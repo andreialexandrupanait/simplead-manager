@@ -1,0 +1,154 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Backup extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'site_id',
+        'storage_destination_id',
+        'type',
+        'trigger',
+        'status',
+        'stage',
+        'progress_percent',
+        'progress_message',
+        'error_message',
+        'file_path',
+        'file_name',
+        'file_size',
+        'checksum',
+        'includes_files',
+        'includes_database',
+        'wp_version',
+        'php_version',
+        'plugins_count',
+        'themes_count',
+        'db_size_mb',
+        'started_at',
+        'completed_at',
+        'duration_seconds',
+        'is_locked',
+        'lock_reason',
+        'expires_at',
+        'last_restored_at',
+        'notes',
+        'restore_status',
+        'restore_stage',
+        'restore_progress_percent',
+        'restore_progress_message',
+        'restore_error_message',
+    ];
+
+    protected $casts = [
+        'progress_percent' => 'integer',
+        'includes_files' => 'boolean',
+        'includes_database' => 'boolean',
+        'is_locked' => 'boolean',
+        'file_size' => 'integer',
+        'plugins_count' => 'integer',
+        'themes_count' => 'integer',
+        'duration_seconds' => 'integer',
+        'db_size_mb' => 'decimal:2',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'last_restored_at' => 'datetime',
+        'restore_progress_percent' => 'integer',
+    ];
+
+    public function site(): BelongsTo
+    {
+        return $this->belongsTo(Site::class);
+    }
+
+    public function storageDestination(): BelongsTo
+    {
+        return $this->belongsTo(StorageDestination::class);
+    }
+
+    public function getFileSizeFormattedAttribute(): string
+    {
+        if (!$this->file_size) return '—';
+
+        $bytes = $this->file_size;
+        if ($bytes === 0) return '0 B';
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = floor(log($bytes, 1024));
+
+        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            'completed' => 'green',
+            'in_progress' => 'purple',
+            'pending' => 'yellow',
+            'failed' => 'red',
+            default => 'gray',
+        };
+    }
+
+    public function getRestoreStatusColorAttribute(): string
+    {
+        return match ($this->restore_status) {
+            'completed' => 'green',
+            'in_progress' => 'purple',
+            'pending' => 'yellow',
+            'failed' => 'red',
+            default => 'gray',
+        };
+    }
+
+    public function getIsRestoringAttribute(): bool
+    {
+        return in_array($this->restore_status, ['pending', 'in_progress']);
+    }
+
+    public function getSizeDiffAttribute(): ?int
+    {
+        if ($this->status !== 'completed' || !$this->file_size) {
+            return null;
+        }
+
+        $previous = static::where('site_id', $this->site_id)
+            ->where('status', 'completed')
+            ->where('id', '<', $this->id)
+            ->whereNotNull('file_size')
+            ->orderByDesc('id')
+            ->value('file_size');
+
+        if ($previous === null) {
+            return null;
+        }
+
+        return $this->file_size - $previous;
+    }
+
+    public function getSizeDiffFormattedAttribute(): ?string
+    {
+        $diff = $this->size_diff;
+        if ($diff === null) {
+            return null;
+        }
+
+        $abs = abs($diff);
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        if ($abs === 0) {
+            return '0 B';
+        }
+
+        $i = floor(log($abs, 1024));
+        $formatted = round($abs / pow(1024, $i), 1) . ' ' . $units[$i];
+
+        return $diff >= 0 ? '+' . $formatted : '-' . $formatted;
+    }
+}

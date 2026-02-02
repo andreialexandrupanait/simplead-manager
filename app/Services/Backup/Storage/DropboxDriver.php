@@ -1,0 +1,365 @@
+<?php
+
+namespace App\Services\Backup\Storage;
+
+use App\Models\StorageDestination;
+use Illuminate\Support\Facades\Http;
+use RuntimeException;
+
+class DropboxDriver implements StorageDriver
+{
+    protected array $config;
+    protected string $basePath;
+
+    protected const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
+    protected const LARGE_FILE_THRESHOLD = 150 * 1024 * 1024; // 150MB
+
+    public function __construct(
+        protected StorageDestination $destination
+    ) {
+        $this->config = $destination->config ?? [];
+        $this->basePath = rtrim($this->config['base_path'] ?? '/#1 SAD Workspace/4. Backup', '/');
+    }
+
+    public function upload(string $localPath, string $remotePath): void
+    {
+        $fileSize = filesize($localPath);
+        $fullPath = $this->fullPath($remotePath);
+
+        if ($fileSize > self::LARGE_FILE_THRESHOLD) {
+            $this->uploadChunked($localPath, $fullPath);
+        } else {
+            $this->uploadSimple($localPath, $fullPath);
+        }
+    }
+
+    protected function uploadSimple(string $localPath, string $dropboxPath): void
+    {
+        $this->apiRequest('https://content.dropboxapi.com/2/files/upload', [
+            'headers' => [
+                'Dropbox-API-Arg' => json_encode([
+                    'path' => $dropboxPath,
+                    'mode' => 'overwrite',
+                    'autorename' => false,
+                ]),
+                'Content-Type' => 'application/octet-stream',
+            ],
+            'body' => file_get_contents($localPath),
+        ]);
+    }
+
+    protected function uploadChunked(string $localPath, string $dropboxPath): void
+    {
+        $handle = fopen($localPath, 'rb');
+        $fileSize = filesize($localPath);
+        $offset = 0;
+
+        // Start session
+        $chunk = fread($handle, self::CHUNK_SIZE);
+        $response = $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/start', [
+            'headers' => [
+                'Dropbox-API-Arg' => json_encode(['close' => false]),
+                'Content-Type' => 'application/octet-stream',
+            ],
+            'body' => $chunk,
+        ]);
+        $sessionId = $response['session_id'];
+        $offset += strlen($chunk);
+
+        // Append chunks
+        while ($offset < $fileSize) {
+            $remaining = $fileSize - $offset;
+            $chunkSize = min(self::CHUNK_SIZE, $remaining);
+            $chunk = fread($handle, $chunkSize);
+            $isLast = ($offset + strlen($chunk)) >= $fileSize;
+
+            if ($isLast) {
+                // Finish session
+                $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/finish', [
+                    'headers' => [
+                        'Dropbox-API-Arg' => json_encode([
+                            'cursor' => [
+                                'session_id' => $sessionId,
+                                'offset' => $offset,
+                            ],
+                            'commit' => [
+                                'path' => $dropboxPath,
+                                'mode' => 'overwrite',
+                                'autorename' => false,
+                            ],
+                        ]),
+                        'Content-Type' => 'application/octet-stream',
+                    ],
+                    'body' => $chunk,
+                ]);
+            } else {
+                $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/append_v2', [
+                    'headers' => [
+                        'Dropbox-API-Arg' => json_encode([
+                            'cursor' => [
+                                'session_id' => $sessionId,
+                                'offset' => $offset,
+                            ],
+                            'close' => false,
+                        ]),
+                        'Content-Type' => 'application/octet-stream',
+                    ],
+                    'body' => $chunk,
+                ]);
+            }
+
+            $offset += strlen($chunk);
+        }
+
+        fclose($handle);
+    }
+
+    public function download(string $remotePath, string $localPath): void
+    {
+        $fullPath = $this->fullPath($remotePath);
+        $accessToken = $this->getAccessToken();
+
+        $dir = dirname($localPath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $headers = [
+            'Dropbox-API-Arg' => json_encode(['path' => $fullPath]),
+        ];
+
+        $teamMemberId = $this->config['team_member_id'] ?? null;
+        if ($teamMemberId) {
+            $headers['Dropbox-API-Select-User'] = $teamMemberId;
+        }
+
+        $rootNamespaceId = $this->config['root_namespace_id'] ?? null;
+        if ($rootNamespaceId) {
+            $headers['Dropbox-API-Path-Root'] = json_encode([
+                '.tag' => 'root',
+                'root' => $rootNamespaceId,
+            ]);
+        }
+
+        $response = Http::withToken($accessToken)
+            ->withHeaders($headers)
+            ->timeout(600)
+            ->sink($localPath)
+            ->post('https://content.dropboxapi.com/2/files/download');
+
+        if ($response->failed()) {
+            throw new RuntimeException("Dropbox download failed: " . $response->body());
+        }
+    }
+
+    public function delete(string $remotePath): void
+    {
+        $this->apiRequest('https://api.dropboxapi.com/2/files/delete_v2', [
+            'json' => ['path' => $this->fullPath($remotePath)],
+        ]);
+    }
+
+    public function exists(string $remotePath): bool
+    {
+        try {
+            $this->apiRequest('https://api.dropboxapi.com/2/files/get_metadata', [
+                'json' => ['path' => $this->fullPath($remotePath)],
+            ]);
+            return true;
+        } catch (RuntimeException) {
+            return false;
+        }
+    }
+
+    public function size(string $remotePath): int
+    {
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/files/get_metadata', [
+            'json' => ['path' => $this->fullPath($remotePath)],
+        ]);
+
+        return $response['size'] ?? 0;
+    }
+
+    public function list(string $directory = ''): array
+    {
+        $path = $directory ? $this->fullPath($directory) : $this->basePath;
+
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder', [
+            'json' => ['path' => $path],
+        ]);
+
+        $files = [];
+        foreach ($response['entries'] ?? [] as $entry) {
+            $files[] = [
+                'name' => $entry['name'],
+                'path' => $entry['path_display'],
+                'size' => $entry['size'] ?? 0,
+                'is_dir' => $entry['.tag'] === 'folder',
+                'modified_at' => $entry['server_modified'] ?? null,
+            ];
+        }
+
+        return $files;
+    }
+
+    public function temporaryUrl(string $remotePath, int $expiresInMinutes = 60): ?string
+    {
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/files/get_temporary_link', [
+            'json' => ['path' => $this->fullPath($remotePath)],
+        ]);
+
+        return $response['link'] ?? null;
+    }
+
+    public function listFolders(string $absolutePath = ''): array
+    {
+        $entries = [];
+        $params = ['path' => $absolutePath];
+
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder', [
+            'json' => $params,
+        ]);
+
+        foreach ($response['entries'] ?? [] as $entry) {
+            if (($entry['.tag'] ?? '') === 'folder') {
+                $entries[] = [
+                    'name' => $entry['name'],
+                    'path' => $entry['path_display'],
+                ];
+            }
+        }
+
+        while (!empty($response['has_more'])) {
+            $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder/continue', [
+                'json' => ['cursor' => $response['cursor']],
+            ]);
+
+            foreach ($response['entries'] ?? [] as $entry) {
+                if (($entry['.tag'] ?? '') === 'folder') {
+                    $entries[] = [
+                        'name' => $entry['name'],
+                        'path' => $entry['path_display'],
+                    ];
+                }
+            }
+        }
+
+        usort($entries, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $entries;
+    }
+
+    public function test(): bool
+    {
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/users/get_current_account', [
+            'json' => null,
+        ]);
+
+        return isset($response['account_id']);
+    }
+
+    protected function getAccessToken(): string
+    {
+        return decrypt($this->config['access_token'] ?? '');
+    }
+
+    protected function refreshAccessToken(): string
+    {
+        $appKey = decrypt($this->config['app_key'] ?? '');
+        $appSecret = decrypt($this->config['app_secret'] ?? '');
+        $refreshToken = decrypt($this->config['refresh_token'] ?? '');
+
+        $response = Http::asForm()->post('https://api.dropbox.com/oauth2/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $refreshToken,
+            'client_id' => $appKey,
+            'client_secret' => $appSecret,
+        ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException('Failed to refresh Dropbox access token: ' . $response->body());
+        }
+
+        $data = $response->json();
+        $newAccessToken = $data['access_token'];
+
+        // Persist the new access token
+        $config = $this->destination->config;
+        $config['access_token'] = encrypt($newAccessToken);
+        $this->destination->update(['config' => $config]);
+        $this->config = $config;
+
+        return $newAccessToken;
+    }
+
+    protected function apiRequest(string $url, array $options): array
+    {
+        $accessToken = $this->getAccessToken();
+
+        $response = $this->makeRequest($url, $options, $accessToken);
+
+        // If token expired, refresh and retry once
+        if ($response->status() === 401) {
+            $accessToken = $this->refreshAccessToken();
+            $response = $this->makeRequest($url, $options, $accessToken);
+        }
+
+        if ($response->failed()) {
+            throw new RuntimeException("Dropbox API error [{$response->status()}]: " . $response->body());
+        }
+
+        $body = $response->body();
+        if (empty($body)) {
+            return [];
+        }
+
+        return $response->json() ?? [];
+    }
+
+    protected function makeRequest(string $url, array $options, string $accessToken)
+    {
+        $request = Http::withToken($accessToken)->timeout(600);
+
+        // For Dropbox Business: select the authorizing team member's account
+        $teamMemberId = $this->config['team_member_id'] ?? null;
+        if ($teamMemberId) {
+            $request = $request->withHeaders([
+                'Dropbox-API-Select-User' => $teamMemberId,
+            ]);
+        }
+
+        // For Dropbox Business: set path root to team namespace so team folders are accessible
+        $rootNamespaceId = $this->config['root_namespace_id'] ?? null;
+        if ($rootNamespaceId) {
+            $request = $request->withHeaders([
+                'Dropbox-API-Path-Root' => json_encode([
+                    '.tag' => 'root',
+                    'root' => $rootNamespaceId,
+                ]),
+            ]);
+        }
+
+        if (isset($options['headers'])) {
+            $request = $request->withHeaders($options['headers']);
+        }
+
+        if (isset($options['body'])) {
+            return $request->withBody($options['body'], $options['headers']['Content-Type'] ?? 'application/octet-stream')
+                ->post($url);
+        }
+
+        if (array_key_exists('json', $options)) {
+            if ($options['json'] === null) {
+                return $request->withBody('null', 'application/json')->post($url);
+            }
+            return $request->post($url, $options['json']);
+        }
+
+        return $request->post($url);
+    }
+
+    protected function fullPath(string $relativePath): string
+    {
+        return $this->basePath . '/' . ltrim($relativePath, '/');
+    }
+}

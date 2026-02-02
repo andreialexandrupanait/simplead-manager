@@ -1,0 +1,184 @@
+<div>
+    {{-- Header --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Uptime Monitoring</h1>
+            <p class="mt-1 text-sm text-gray-500">Monitor the availability of all your sites</p>
+        </div>
+        <x-ui.button wire:click="$dispatch('open-configure-monitor')">
+            <x-icons.plus class="mr-1.5 h-4 w-4" />
+            Add Monitor
+        </x-ui.button>
+    </div>
+
+    {{-- Stats cards --}}
+    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <x-ui.card>
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Total</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900">{{ $this->counts['total'] }}</p>
+        </x-ui.card>
+        <x-ui.card>
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Up</p>
+            <p class="mt-1 text-2xl font-bold text-green-600">{{ $this->counts['up'] }}</p>
+        </x-ui.card>
+        <x-ui.card>
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Down</p>
+            <p class="mt-1 text-2xl font-bold text-red-600">{{ $this->counts['down'] }}</p>
+        </x-ui.card>
+        <x-ui.card>
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Degraded</p>
+            <p class="mt-1 text-2xl font-bold text-yellow-600">{{ $this->counts['degraded'] }}</p>
+        </x-ui.card>
+        <x-ui.card>
+            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Paused</p>
+            <p class="mt-1 text-2xl font-bold text-gray-400">{{ $this->counts['paused'] }}</p>
+        </x-ui.card>
+    </div>
+
+    {{-- Filters & Search --}}
+    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+            @foreach(['all' => 'All', 'up' => 'Up', 'down' => 'Down', 'degraded' => 'Degraded', 'paused' => 'Paused'] as $value => $label)
+                <button
+                    wire:click="$set('filter', '{{ $value }}')"
+                    class="rounded-md px-3 py-1.5 text-xs font-medium transition {{ $filter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                >
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
+        <div class="w-full sm:w-64">
+            <x-ui.input wire:model.live.debounce.300ms="search" placeholder="Search monitors..." />
+        </div>
+    </div>
+
+    {{-- Monitor list --}}
+    @if($monitors->isEmpty())
+        <x-ui.card>
+            <x-ui.empty-state
+                title="No monitors found"
+                :description="$search || $filter !== 'all' ? 'Try adjusting your filters.' : 'Add a monitor to start tracking uptime.'"
+                icon="activity"
+            >
+                <x-slot:action>
+                    @if(!$search && $filter === 'all')
+                        <x-ui.button wire:click="$dispatch('open-configure-monitor')">
+                            <x-icons.plus class="mr-1.5 h-4 w-4" />
+                            Add Monitor
+                        </x-ui.button>
+                    @endif
+                </x-slot:action>
+            </x-ui.empty-state>
+        </x-ui.card>
+    @else
+        <div class="space-y-3">
+            @foreach($monitors as $monitor)
+                <x-ui.card class="hover:ring-purple-200 transition">
+                    <div class="flex items-center gap-4">
+                        {{-- Status indicator --}}
+                        <div class="flex-shrink-0">
+                            @php
+                                $stateColor = match($monitor->current_state) {
+                                    'up' => 'bg-green-500',
+                                    'down' => 'bg-red-500',
+                                    'degraded' => 'bg-yellow-500',
+                                    default => 'bg-gray-400',
+                                };
+                                $isPaused = $monitor->status === 'paused';
+                            @endphp
+                            <span class="relative flex h-3 w-3">
+                                @if(!$isPaused && $monitor->current_state === 'up')
+                                    <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                                @endif
+                                <span class="relative inline-flex h-3 w-3 rounded-full {{ $isPaused ? 'bg-gray-300' : $stateColor }}"></span>
+                            </span>
+                        </div>
+
+                        {{-- Site info --}}
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('sites.uptime', $monitor->site) }}" class="truncate text-sm font-semibold text-gray-900 hover:text-purple-600 transition">
+                                    {{ $monitor->site->name }}
+                                </a>
+                                @if($isPaused)
+                                    <x-ui.badge variant="gray">Paused</x-ui.badge>
+                                @endif
+                            </div>
+                            <p class="truncate text-xs text-gray-500">{{ $monitor->url }}</p>
+                        </div>
+
+                        {{-- Uptime % --}}
+                        <div class="hidden text-right sm:block">
+                            <p class="text-sm font-semibold {{ $monitor->uptime_30d >= 99.5 ? 'text-green-600' : ($monitor->uptime_30d >= 95 ? 'text-yellow-600' : 'text-red-600') }}">
+                                {{ $monitor->uptime_30d !== null ? number_format($monitor->uptime_30d, 2) . '%' : '—' }}
+                            </p>
+                            <p class="text-xs text-gray-400">30d uptime</p>
+                        </div>
+
+                        {{-- Response time --}}
+                        <div class="hidden text-right sm:block">
+                            <p class="text-sm font-semibold text-gray-900">
+                                {{ $monitor->last_response_time ? $monitor->last_response_time . 'ms' : '—' }}
+                            </p>
+                            <p class="text-xs text-gray-400">Response</p>
+                        </div>
+
+                        {{-- Last check --}}
+                        <div class="hidden text-right md:block">
+                            <p class="text-sm text-gray-600">
+                                {{ $monitor->last_checked_at ? $monitor->last_checked_at->diffForHumans() : 'Never' }}
+                            </p>
+                            <p class="text-xs text-gray-400">Last check</p>
+                        </div>
+
+                        {{-- Actions dropdown --}}
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" x-transition
+                                 class="absolute right-0 z-10 mt-1 w-48 rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-950/5">
+                                <button wire:click="$dispatch('open-configure-monitor', { monitorId: {{ $monitor->id }} })" @click="open = false"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    Edit
+                                </button>
+                                <button wire:click="testMonitor({{ $monitor->id }})" @click="open = false"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    Test Now
+                                </button>
+                                @if($isPaused)
+                                    <button wire:click="resumeMonitor({{ $monitor->id }})" @click="open = false"
+                                            class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                        Resume
+                                    </button>
+                                @else
+                                    <button wire:click="pauseMonitor({{ $monitor->id }})" @click="open = false"
+                                            class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                        Pause
+                                    </button>
+                                @endif
+                                <button wire:click="deleteMonitor({{ $monitor->id }})" @click="open = false"
+                                        wire:confirm="Are you sure you want to delete this monitor?"
+                                        class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Uptime bar --}}
+                    @if(!$isPaused)
+                        <div class="mt-3">
+                            <livewire:components.uptime-bar :monitor="$monitor" :key="'bar-'.$monitor->id" />
+                        </div>
+                    @endif
+                </x-ui.card>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Configure Monitor Modal --}}
+    <livewire:uptime.configure-monitor />
+</div>

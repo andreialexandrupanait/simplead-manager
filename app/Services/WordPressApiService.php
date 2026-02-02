@@ -1,0 +1,266 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Site;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
+
+class WordPressApiService
+{
+    public function __construct(
+        protected Site $site,
+    ) {}
+
+    /**
+     * Make an authenticated request to the WordPress REST API.
+     */
+    public function request(string $method, string $endpoint, array $data = []): Response
+    {
+        $apiKey = $this->site->api_key;
+        $apiSecret = $this->site->api_secret;
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+
+        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $timestamp = (string) time();
+        $body = !empty($data) ? json_encode($data) : '';
+
+        // Build the path portion for HMAC signing (must match WP_REST_Request::get_route())
+        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+
+        $stringToSign = implode('|', [
+            strtoupper($method),
+            $path,
+            $timestamp,
+            $body,
+        ]);
+
+        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+
+        $request = Http::withHeaders([
+            'X-SAM-Key'       => $apiKey,
+            'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Signature' => $signature,
+            'User-Agent'      => 'SimpleAD-Manager/1.0',
+            'Accept'          => 'application/json',
+        ])->timeout(30);
+
+        if (strtoupper($method) === 'GET') {
+            $response = $request->get($url);
+        } else {
+            $response = $request->withBody($body, 'application/json')->post($url);
+        }
+
+        if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
+            throw new \RuntimeException(
+                'Cloudflare is blocking API requests to this site. '
+                . 'Add a WAF exception rule in Cloudflare for the path /wp-json/simplead/v1/* '
+                . 'or whitelist this server\'s IP address.'
+            );
+        }
+
+        return $response;
+    }
+
+    /**
+     * Get site information.
+     */
+    public function getInfo(): array
+    {
+        $response = $this->request('GET', '/info');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get all plugins.
+     */
+    public function getPlugins(): array
+    {
+        $response = $this->request('GET', '/plugins');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get all themes.
+     */
+    public function getThemes(): array
+    {
+        $response = $this->request('GET', '/themes');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Update one or more plugins.
+     *
+     * @param array $pluginFiles Array of plugin file paths (e.g., ['akismet/akismet.php'])
+     */
+    public function updatePlugins(array $pluginFiles): array
+    {
+        $response = $this->request('POST', '/plugins/update', [
+            'plugins' => $pluginFiles,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Update one or more themes.
+     *
+     * @param array $themeSlugs Array of theme slugs
+     */
+    public function updateThemes(array $themeSlugs): array
+    {
+        $response = $this->request('POST', '/themes/update', [
+            'themes' => $themeSlugs,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Activate a plugin.
+     */
+    public function activatePlugin(string $pluginFile): array
+    {
+        $response = $this->request('POST', '/plugins/activate', [
+            'plugin' => $pluginFile,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Deactivate a plugin.
+     */
+    public function deactivatePlugin(string $pluginFile): array
+    {
+        $response = $this->request('POST', '/plugins/deactivate', [
+            'plugin' => $pluginFile,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Delete a plugin.
+     */
+    public function deletePlugin(string $pluginFile): array
+    {
+        $response = $this->request('POST', '/plugins/delete', [
+            'plugin' => $pluginFile,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Activate a theme.
+     */
+    public function activateTheme(string $themeSlug): array
+    {
+        $response = $this->request('POST', '/themes/activate', [
+            'theme' => $themeSlug,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Delete a theme.
+     */
+    public function deleteTheme(string $themeSlug): array
+    {
+        $response = $this->request('POST', '/themes/delete', [
+            'theme' => $themeSlug,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get all users.
+     */
+    public function getUsers(): array
+    {
+        $response = $this->request('GET', '/users');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Update WordPress core.
+     */
+    public function updateCore(): array
+    {
+        $response = $this->request('POST', '/core/update');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get a one-time login URL for WP Admin.
+     */
+    public function getLoginUrl(?string $user = null): array
+    {
+        $data = [];
+        if ($user) {
+            $data['user'] = $user;
+        }
+
+        $response = $this->request('POST', '/login-url', $data);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Perform a health check.
+     */
+    public function healthCheck(): array
+    {
+        $response = $this->request('GET', '/health');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Download a large file from the WordPress API (streaming).
+     */
+    public function streamDownload(string $endpoint, string $saveTo): void
+    {
+        $apiKey = $this->site->api_key;
+        $apiSecret = $this->site->api_secret;
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+
+        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $timestamp = (string) time();
+
+        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+
+        $stringToSign = implode('|', [
+            'GET',
+            $path,
+            $timestamp,
+            '',
+        ]);
+
+        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+
+        $dir = dirname($saveTo);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $response = Http::withHeaders([
+            'X-SAM-Key'       => $apiKey,
+            'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Signature' => $signature,
+            'User-Agent'      => 'SimpleAD-Manager/1.0',
+            'Accept'          => 'application/json',
+        ])->timeout(600)->sink($saveTo)->get($url);
+
+        $response->throw();
+    }
+}
