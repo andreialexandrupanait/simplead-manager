@@ -1,9 +1,5 @@
 <div>
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Sites</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage all your WordPress sites</p>
-        </div>
+    <div class="mb-6 flex justify-end">
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />

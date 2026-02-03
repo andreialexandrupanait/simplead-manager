@@ -4,6 +4,8 @@
             $tabs = [
                 ['route' => 'settings.general', 'label' => 'General'],
                 ['route' => 'settings.notifications', 'label' => 'Notifications'],
+                ['route' => 'settings.integrations', 'label' => 'Integrations'],
+                ['route' => 'settings.report-templates', 'label' => 'Report Templates'],
                 ['route' => 'settings.profile', 'label' => 'Profile'],
             ];
         @endphp

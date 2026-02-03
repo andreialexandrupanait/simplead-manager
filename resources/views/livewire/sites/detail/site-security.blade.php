@@ -1,9 +1,5 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Security</h1>
-            <p class="mt-1 text-sm text-gray-500">{{ $site->name }} — SSL & domain monitoring</p>
-        </div>
+    <div class="mb-6 flex justify-end">
         <div class="flex gap-2">
             <x-ui.button variant="secondary" size="sm" wire:click="checkSslNow" wire:loading.attr="disabled">
                 <svg class="h-4 w-4 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="checkSslNow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>

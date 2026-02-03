@@ -1,9 +1,4 @@
 <div>
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
-        <p class="mt-1 text-sm text-gray-500">Manage notification channels and preferences</p>
-    </div>
-
     @include('livewire.settings.partials.settings-tabs')
 
     @if(session('preferences-saved'))

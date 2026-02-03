@@ -1,9 +1,5 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Backups</h1>
-            <p class="mt-1 text-sm text-gray-500">Global backup overview for all sites</p>
-        </div>
+    <div class="mb-6 flex justify-end">
         <x-ui.button wire:click="backupAllSites" wire:loading.attr="disabled" wire:confirm="This will queue backups for all connected sites with an active backup configuration. Continue?">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg>
             <span wire:loading.remove wire:target="backupAllSites">Backup All Sites</span>

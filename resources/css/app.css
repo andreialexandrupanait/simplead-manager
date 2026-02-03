@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] { display: none !important; }
+
+/* Suppress transitions during initial Alpine hydration */
+html.no-transitions *,
+html.no-transitions *::before,
+html.no-transitions *::after {
+    transition-duration: 0s !important;
+}
+
 /* Custom scrollbar for sidebar */
 @layer utilities {
     .scrollbar-thin {

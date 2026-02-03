@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
+use App\Jobs\RunPerformanceTest;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -82,6 +83,23 @@ class Site extends Model
                 'tld' => $tld,
             ]);
             CheckDomainExpiry::dispatch($domainMonitor);
+
+            // Create performance monitor
+            $performanceMonitor = $site->performanceMonitor()->create([
+                'is_active' => true,
+                'frequency' => 'daily',
+                'test_time' => '04:00',
+            ]);
+            RunPerformanceTest::dispatch($performanceMonitor, 'both');
+
+            // Create link monitor
+            $site->linkMonitor()->create([
+                'is_active' => true,
+                'frequency' => 'weekly',
+                'scan_time' => '02:00',
+                'day_of_week' => 0,
+                'next_scan_at' => now()->next('Sunday')->setTimeFromTimeString('02:00'),
+            ]);
         });
     }
 
@@ -146,9 +164,49 @@ class Site extends Model
         return $this->hasOne(BackupConfig::class);
     }
 
+    public function performanceMonitor(): HasOne
+    {
+        return $this->hasOne(PerformanceMonitor::class);
+    }
+
+    public function linkMonitor(): HasOne
+    {
+        return $this->hasOne(LinkMonitor::class);
+    }
+
     public function backups(): HasMany
     {
         return $this->hasMany(Backup::class);
+    }
+
+    public function latestCompletedBackup(): HasOne
+    {
+        return $this->hasOne(Backup::class)->where('status', 'completed')->latestOfMany('completed_at');
+    }
+
+    public function analyticsConnection(): HasOne
+    {
+        return $this->hasOne(AnalyticsConnection::class);
+    }
+
+    public function searchConsoleConnection(): HasOne
+    {
+        return $this->hasOne(SearchConsoleConnection::class);
+    }
+
+    public function reportSchedules(): HasMany
+    {
+        return $this->hasMany(ReportSchedule::class);
+    }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class);
     }
 
     public function getDomainAttribute(): string

@@ -1,6 +1,13 @@
 <?php
 
 use App\Jobs\CheckUptime;
+use App\Jobs\FetchAnalyticsData;
+use App\Jobs\FetchSearchConsoleData;
+use App\Jobs\GenerateReport;
+use App\Jobs\RunPerformanceTest;
+use App\Models\PerformanceMonitor;
+use App\Models\ReportSchedule;
+use App\Models\Site;
 use App\Models\UptimeCheck;
 use App\Models\UptimeMonitor;
 use Illuminate\Foundation\Inspiring;
@@ -78,6 +85,65 @@ Schedule::call(function () {
             $config->update(['next_backup_at' => $next]);
         });
 })->everyFifteenMinutes()->name('scheduled-backups')->withoutOverlapping();
+
+// Performance tests — hourly
+Schedule::call(function () {
+    PerformanceMonitor::where('is_active', true)
+        ->where(fn ($q) => $q->whereNull('next_test_at')->orWhere('next_test_at', '<=', now()))
+        ->each(fn ($monitor) => RunPerformanceTest::dispatch($monitor, 'both'));
+})->hourly()->name('performance-tests')->withoutOverlapping();
+
+// Link scans — hourly
+Schedule::call(function () {
+    \App\Models\LinkMonitor::where('is_active', true)
+        ->where(fn ($q) => $q->whereNull('next_scan_at')->orWhere('next_scan_at', '<=', now()))
+        ->each(function ($monitor) {
+            if (!$monitor->scans()->whereIn('status', ['pending', 'in_progress'])->exists()) {
+                \App\Jobs\RunLinkScan::dispatch($monitor, 'scheduled');
+            }
+        });
+})->hourly()->name('link-scans')->withoutOverlapping();
+
+// Google Analytics & Search Console data fetch — daily at 06:00
+Schedule::call(function () {
+    Site::whereHas('analyticsConnection', fn ($q) => $q->where('is_active', true))
+        ->each(function ($site) {
+            FetchAnalyticsData::dispatch($site, '28d');
+        });
+
+    Site::whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
+        ->each(function ($site) {
+            FetchSearchConsoleData::dispatch($site, '28d');
+        });
+})->dailyAt('06:00')->name('google-data-fetch')->withoutOverlapping();
+
+// Scheduled reports — hourly
+Schedule::call(function () {
+    ReportSchedule::where('is_active', true)
+        ->where(fn ($q) => $q->whereNull('next_run_at')->orWhere('next_run_at', '<=', now()))
+        ->with(['site', 'reportTemplate'])
+        ->each(function (ReportSchedule $schedule) {
+            if (!$schedule->site || !$schedule->reportTemplate) {
+                return;
+            }
+
+            $period = $schedule->period ?? 'last_30_days';
+            [$periodStart, $periodEnd] = match ($period) {
+                'last_7_days' => [now()->subDays(7)->startOfDay(), now()->endOfDay()],
+                'last_month' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
+                default => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
+            };
+
+            GenerateReport::dispatch(
+                $schedule->site,
+                $schedule->reportTemplate,
+                $periodStart,
+                $periodEnd,
+                'scheduled',
+                $schedule,
+            );
+        });
+})->hourly()->name('scheduled-reports')->withoutOverlapping();
 
 // Expired backup cleanup — daily
 Schedule::call(function () {

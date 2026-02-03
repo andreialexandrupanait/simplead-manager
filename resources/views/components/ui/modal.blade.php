@@ -23,7 +23,7 @@ $maxWidthClass = match($maxWidth) {
 
     {{-- Content --}}
     <div x-show="open" x-transition
-         class="relative w-full {{ $maxWidthClass }} rounded-xl bg-white p-6 shadow-xl">
+         class="relative w-full {{ $maxWidthClass }} max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         {{ $slot }}
     </div>
 </div>

@@ -7,6 +7,7 @@ use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
+use App\Services\ActivityLogger;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -148,6 +149,8 @@ class CreateBackup implements ShouldQueue
                 'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
             ]);
 
+            ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
             // Update site
             $this->site->update([
                 'backup_ok' => true,
@@ -193,6 +196,8 @@ class CreateBackup implements ShouldQueue
             if ($this->backup) {
                 NotifyBackupFailed::dispatch($this->site, $this->backup, $e->getMessage());
             }
+
+            ActivityLogger::backupFailed($this->site, $e->getMessage());
 
             throw $e;
         } finally {

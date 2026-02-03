@@ -1,10 +1,5 @@
 <div>
-    {{-- Header --}}
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Uptime Monitoring</h1>
-            <p class="mt-1 text-sm text-gray-500">Monitor the availability of all your sites</p>
-        </div>
+    <div class="mb-6 flex justify-end">
         <x-ui.button wire:click="$dispatch('open-configure-monitor')">
             <x-icons.plus class="mr-1.5 h-4 w-4" />
             Add Monitor
@@ -132,40 +127,39 @@
                         </div>
 
                         {{-- Actions dropdown --}}
-                        <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
+                        <x-ui.dropdown align="right" width="48">
+                            <x-slot:trigger>
+                                <button class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                </button>
+                            </x-slot:trigger>
+                            <button wire:click="$dispatch('open-configure-monitor', { monitorId: {{ $monitor->id }} })"
+                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                Edit
                             </button>
-                            <div x-show="open" @click.outside="open = false" x-transition
-                                 class="absolute right-0 z-10 mt-1 w-48 rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-950/5">
-                                <button wire:click="$dispatch('open-configure-monitor', { monitorId: {{ $monitor->id }} })" @click="open = false"
+                            <button wire:click="testMonitor({{ $monitor->id }})"
+                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                Test Now
+                            </button>
+                            @if($isPaused)
+                                <button wire:click="resumeMonitor({{ $monitor->id }})"
                                         class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                    Edit
+                                    Resume
                                 </button>
-                                <button wire:click="testMonitor({{ $monitor->id }})" @click="open = false"
+                            @else
+                                <button wire:click="pauseMonitor({{ $monitor->id }})"
                                         class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                    Test Now
+                                    Pause
                                 </button>
-                                @if($isPaused)
-                                    <button wire:click="resumeMonitor({{ $monitor->id }})" @click="open = false"
-                                            class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                        Resume
-                                    </button>
-                                @else
-                                    <button wire:click="pauseMonitor({{ $monitor->id }})" @click="open = false"
-                                            class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                        Pause
-                                    </button>
-                                @endif
-                                <button wire:click="deleteMonitor({{ $monitor->id }})" @click="open = false"
-                                        wire:confirm="Are you sure you want to delete this monitor?"
-                                        class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
+                            @endif
+                            <button wire:click="deleteMonitor({{ $monitor->id }})"
+                                    wire:confirm="Are you sure you want to delete this monitor?"
+                                    class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                                Delete
+                            </button>
+                        </x-ui.dropdown>
                     </div>
 
                     {{-- Uptime bar --}}

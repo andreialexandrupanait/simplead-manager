@@ -1,9 +1,4 @@
 <div>
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">{{ $site->name }}</h1>
-        <p class="mt-1 text-sm text-gray-500">{{ $site->domain }}</p>
-    </div>
-
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Health Score</div>
@@ -73,6 +68,148 @@
             @endif
         </x-ui.card>
     </div>
+
+    {{-- Performance summary --}}
+    @php $perfMon = $site->performanceMonitor; @endphp
+    @if($perfMon && ($perfMon->latest_mobile_score !== null || $perfMon->latest_desktop_score !== null))
+        <div class="mt-6">
+            <a href="{{ route('sites.performance', $site) }}" class="block">
+                <x-ui.card class="hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Performance</div>
+                            <div class="mt-1 flex items-center gap-4">
+                                @if($perfMon->latest_mobile_score !== null)
+                                    @php
+                                        $mColor = $perfMon->latest_mobile_score >= 90 ? 'text-green-600' : ($perfMon->latest_mobile_score >= 50 ? 'text-yellow-600' : 'text-red-600');
+                                    @endphp
+                                    <div>
+                                        <span class="text-2xl font-bold {{ $mColor }}">{{ $perfMon->latest_mobile_score }}</span>
+                                        <span class="ml-1 text-xs text-gray-500">Mobile</span>
+                                    </div>
+                                @endif
+                                @if($perfMon->latest_desktop_score !== null)
+                                    @php
+                                        $dColor = $perfMon->latest_desktop_score >= 90 ? 'text-green-600' : ($perfMon->latest_desktop_score >= 50 ? 'text-yellow-600' : 'text-red-600');
+                                    @endphp
+                                    <div>
+                                        <span class="text-2xl font-bold {{ $dColor }}">{{ $perfMon->latest_desktop_score }}</span>
+                                        <span class="ml-1 text-xs text-gray-500">Desktop</span>
+                                    </div>
+                                @endif
+                            </div>
+                            @if($perfMon->last_tested_at)
+                                <p class="mt-1 text-xs text-gray-400">Tested {{ $perfMon->last_tested_at->diffForHumans() }}</p>
+                            @endif
+                        </div>
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </x-ui.card>
+            </a>
+        </div>
+    @endif
+
+    {{-- Analytics & Search Console summary --}}
+    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {{-- Analytics summary --}}
+        <a href="{{ route('sites.analytics', $site) }}" class="block">
+            <x-ui.card class="hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-medium text-gray-500">Analytics (28d)</div>
+                        @if($analyticsSummary)
+                            <div class="mt-1 flex items-center gap-4">
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($analyticsSummary['total_users']) }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Users</span>
+                                </div>
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($analyticsSummary['sessions']) }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Sessions</span>
+                                </div>
+                            </div>
+                        @else
+                            <p class="mt-1 text-sm text-gray-400">Not connected</p>
+                        @endif
+                    </div>
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </x-ui.card>
+        </a>
+
+        {{-- Search Console summary --}}
+        <a href="{{ route('sites.search-console', $site) }}" class="block">
+            <x-ui.card class="hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-medium text-gray-500">Search Console (28d)</div>
+                        @if($searchConsoleSummary)
+                            <div class="mt-1 flex items-center gap-4">
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($searchConsoleSummary['clicks']) }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Clicks</span>
+                                </div>
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($searchConsoleSummary['impressions']) }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Impressions</span>
+                                </div>
+                            </div>
+                        @else
+                            <p class="mt-1 text-sm text-gray-400">Not connected</p>
+                        @endif
+                    </div>
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </x-ui.card>
+        </a>
+    </div>
+
+    {{-- Links summary --}}
+    @php $linkMon = $site->linkMonitor; @endphp
+    @if($linkMon && $linkMon->last_scan_at)
+        <div class="mt-6">
+            <a href="{{ route('sites.links', $site) }}" class="block">
+                <x-ui.card class="hover:shadow-md transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Links</div>
+                            <div class="mt-1 flex items-center gap-4">
+                                @php
+                                    $brokenColor = $linkMon->broken_links === 0 ? 'text-green-600' : 'text-red-600';
+                                @endphp
+                                <div>
+                                    <span class="text-2xl font-bold {{ $brokenColor }}">{{ $linkMon->broken_links }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Broken</span>
+                                </div>
+                                @if($linkMon->redirects > 0)
+                                    <div>
+                                        <span class="text-2xl font-bold text-yellow-600">{{ $linkMon->redirects }}</span>
+                                        <span class="ml-1 text-xs text-gray-500">Redirects</span>
+                                    </div>
+                                @endif
+                                <div>
+                                    <span class="text-2xl font-bold text-gray-900">{{ $linkMon->total_links }}</span>
+                                    <span class="ml-1 text-xs text-gray-500">Total</span>
+                                </div>
+                            </div>
+                            @if($linkMon->last_scan_at)
+                                <p class="mt-1 text-xs text-gray-400">Scanned {{ $linkMon->last_scan_at->diffForHumans() }}</p>
+                            @endif
+                        </div>
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </x-ui.card>
+            </a>
+        </div>
+    @endif
 
     <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <x-ui.card>

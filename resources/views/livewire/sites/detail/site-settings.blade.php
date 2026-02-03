@@ -1,9 +1,4 @@
 <div>
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Site Settings</h1>
-        <p class="mt-1 text-sm text-gray-500">{{ $site->name }} — Configuration</p>
-    </div>
-
     {{-- Flash messages --}}
     @if(session('settings-saved'))
         <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">

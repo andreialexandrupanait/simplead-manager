@@ -38,7 +38,7 @@ class SitesList extends Component
                     default => $q,
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig')
+            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor')
             ->latest()
             ->paginate(12);
 

@@ -6,6 +6,7 @@ use App\Jobs\CreateBackup;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use App\Services\ActivityLogger;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
@@ -102,6 +103,8 @@ class SiteUpdates extends Component
                 'performed_at' => now(),
             ]);
 
+            ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
+
             SyncWordPressSite::dispatch($this->site);
 
             session()->flash('update-success', "{$plugin->name} updated successfully.");
@@ -137,6 +140,8 @@ class SiteUpdates extends Component
                 'performed_at' => now(),
             ]);
 
+            ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
+
             SyncWordPressSite::dispatch($this->site);
 
             session()->flash('update-success', "{$theme->name} updated successfully.");
@@ -167,6 +172,8 @@ class SiteUpdates extends Component
                 'error_message' => $result['error'] ?? null,
                 'performed_at' => now(),
             ]);
+
+            ActivityLogger::coreUpdated($this->site, $this->site->wp_version, $result['to_version'] ?? $this->site->core_update_version);
 
             SyncWordPressSite::dispatch($this->site);
 
@@ -209,6 +216,8 @@ class SiteUpdates extends Component
                             'error_message' => $updateResult['error'] ?? null,
                             'performed_at' => now(),
                         ]);
+
+                        ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
                     }
                 }
             } catch (\Exception $e) {
@@ -238,6 +247,8 @@ class SiteUpdates extends Component
                             'error_message' => $updateResult['error'] ?? null,
                             'performed_at' => now(),
                         ]);
+
+                        ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
                     }
                 }
             } catch (\Exception $e) {

@@ -1,9 +1,4 @@
 <div @if(($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) wire:poll.1s="refreshProgress" @endif>
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Backups</h1>
-        <p class="mt-1 text-sm text-gray-500">{{ $site->name }} — Backup management</p>
-    </div>
-
     @if(session('backup-success'))
         <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('backup-success') }}</div>
     @endif
@@ -378,7 +373,7 @@
                                         <input type="text" x-model="notes"
                                             @keydown.enter="$wire.updateNotes({{ $backup->id }}, notes); editing = false"
                                             @keydown.escape="editing = false"
-                                            @click.away="$wire.updateNotes({{ $backup->id }}, notes); editing = false"
+                                            @click.outside="$wire.updateNotes({{ $backup->id }}, notes); editing = false"
                                             x-ref="notesInput"
                                             x-init="$watch('editing', v => { if(v) $nextTick(() => $refs.notesInput.focus()) })"
                                             class="w-full rounded border-gray-300 px-2 py-1 text-xs focus:border-purple-500 focus:ring-purple-500"
