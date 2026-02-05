@@ -6,18 +6,18 @@
                 $score = $site->health_score;
                 $color = $score >= 90 ? 'text-green-600' : ($score >= 70 ? 'text-yellow-600' : 'text-red-600');
             @endphp
-            <div class="mt-1 text-3xl font-bold {{ $color }}">{{ $score ?? '—' }}</div>
+            <div class="mt-1 text-2xl font-bold {{ $color }}">{{ $score ?? '—' }}</div>
         </x-ui.card>
 
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Uptime</div>
-            <div class="mt-1 text-3xl font-bold text-gray-900">{{ $site->uptime_percentage ?? '—' }}%</div>
+            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $site->uptime_percentage ?? '—' }}%</div>
         </x-ui.card>
 
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">WordPress Version</div>
             <div class="mt-1 flex items-center gap-2">
-                <span class="text-3xl font-bold text-gray-900">{{ $site->wp_version ?? '—' }}</span>
+                <span class="text-2xl font-bold text-gray-900">{{ $site->wp_version ?? '—' }}</span>
                 @if($site->core_update_version)
                     <x-ui.badge variant="yellow">{{ $site->core_update_version }} available</x-ui.badge>
                 @endif
@@ -30,7 +30,7 @@
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Pending Updates</div>
             <div class="mt-1 flex items-center gap-2">
-                <span class="text-3xl font-bold {{ $site->pending_updates_count > 0 ? 'text-yellow-600' : 'text-green-600' }}">
+                <span class="text-2xl font-bold {{ $site->pending_updates_count > 0 ? 'text-yellow-600' : 'text-green-600' }}">
                     {{ $site->pending_updates_count }}
                 </span>
                 @if($site->pending_updates_count > 0)

@@ -5,14 +5,14 @@
 
 @php
 $classes = match($variant) {
-    'primary'   => 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500',
-    'secondary' => 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500',
+    'primary'   => 'bg-accent text-white hover:bg-accent-hover focus:ring-accent',
+    'secondary' => 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500',
     'danger'    => 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
     'ghost'     => 'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500',
 };
 
 $sizes = match($size) {
-    'sm' => 'px-3 py-1.5 text-sm',
+    'sm' => 'px-3 py-1.5 text-xs',
     'md' => 'px-4 py-2 text-sm',
     'lg' => 'px-6 py-3 text-base',
 };

@@ -31,15 +31,27 @@ class CloudflareService
 
     public function listZones(): array
     {
-        $params = [];
+        $params = ['per_page' => 50];
         if ($this->connection->account_id) {
             $params['account.id'] = $this->connection->account_id;
         }
 
-        $query = $params ? '?' . http_build_query($params) : '';
-        $response = $this->request('GET', "/zones{$query}");
+        $allZones = [];
+        $page = 1;
 
-        return $response['result'] ?? [];
+        do {
+            $params['page'] = $page;
+            $query = '?' . http_build_query($params);
+            $response = $this->request('GET', "/zones{$query}");
+
+            $zones = $response['result'] ?? [];
+            $allZones = array_merge($allZones, $zones);
+
+            $totalPages = $response['result_info']['total_pages'] ?? 1;
+            $page++;
+        } while ($page <= $totalPages);
+
+        return $allZones;
     }
 
     public function getZoneDetails(string $zoneId): array

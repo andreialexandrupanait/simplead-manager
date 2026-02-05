@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Jobs\CheckEmailDeliverabilityJob;
 use App\Models\DnsRecordCache;
 use App\Models\Site;
 use App\Services\DnsService;
-use App\Services\EmailDeliverabilityService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -116,15 +116,9 @@ class SiteDns extends Component
 
     public function checkEmailHealth(): void
     {
-        $this->emailCheckLoading = true;
+        CheckEmailDeliverabilityJob::dispatch($this->site);
 
-        try {
-            EmailDeliverabilityService::check($this->site);
-            $this->site->load('latestEmailHealthCheck');
-            unset($this->emailHealth, $this->emailRecommendations);
-        } finally {
-            $this->emailCheckLoading = false;
-        }
+        session()->flash('success', 'Email deliverability check queued. Results will appear shortly.');
     }
 
     public function render()

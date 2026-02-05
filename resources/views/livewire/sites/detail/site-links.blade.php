@@ -3,19 +3,17 @@
     <div class="mb-6 flex justify-end">
         <div class="flex items-center gap-3">
             @if($this->monitor)
-                <button wire:click="openSettings"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+                <x-ui.button variant="secondary" wire:click="openSettings">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                     Settings
-                </button>
+                </x-ui.button>
             @endif
-            <button wire:click="scanNow"
+            <x-ui.button wire:click="scanNow"
                     wire:loading.attr="disabled"
-                    @if($isScanning) disabled @endif
-                    class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50">
+                    @if($isScanning) disabled @endif>
                 <span wire:loading.remove wire:target="scanNow">
                     <x-icons.link class="h-4 w-4" />
                 </span>
@@ -24,7 +22,7 @@
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
                 Scan Now
-            </button>
+            </x-ui.button>
         </div>
     </div>
 
@@ -79,23 +77,23 @@
         <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <x-ui.card>
                 <div class="text-sm font-medium text-gray-500">Total Links</div>
-                <div class="mt-1 text-3xl font-bold text-gray-900">{{ number_format($this->stats['total']) }}</div>
+                <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($this->stats['total']) }}</div>
             </x-ui.card>
             <x-ui.card>
                 <div class="text-sm font-medium text-gray-500">Broken</div>
-                <div class="mt-1 text-3xl font-bold {{ $this->stats['broken'] > 0 ? 'text-red-600' : 'text-green-600' }}">
+                <div class="mt-1 text-2xl font-bold {{ $this->stats['broken'] > 0 ? 'text-red-600' : 'text-green-600' }}">
                     {{ number_format($this->stats['broken']) }}
                 </div>
             </x-ui.card>
             <x-ui.card>
                 <div class="text-sm font-medium text-gray-500">Redirects</div>
-                <div class="mt-1 text-3xl font-bold {{ $this->stats['redirects'] > 0 ? 'text-yellow-600' : 'text-gray-900' }}">
+                <div class="mt-1 text-2xl font-bold {{ $this->stats['redirects'] > 0 ? 'text-yellow-600' : 'text-gray-900' }}">
                     {{ number_format($this->stats['redirects']) }}
                 </div>
             </x-ui.card>
             <x-ui.card>
                 <div class="text-sm font-medium text-gray-500">Timeouts</div>
-                <div class="mt-1 text-3xl font-bold {{ $this->stats['timeouts'] > 0 ? 'text-orange-600' : 'text-gray-900' }}">
+                <div class="mt-1 text-2xl font-bold {{ $this->stats['timeouts'] > 0 ? 'text-orange-600' : 'text-gray-900' }}">
                     {{ number_format($this->stats['timeouts']) }}
                 </div>
             </x-ui.card>
@@ -127,17 +125,16 @@
         <div class="mb-4 flex items-center gap-3">
             <div class="relative flex-1">
                 <x-icons.search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input wire:model.live.debounce.300ms="search"
+                <x-ui.input wire:model.live.debounce.300ms="search"
                        type="text"
                        placeholder="Search by URL, anchor text, or source page..."
-                       class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                       class="pl-10" />
             </div>
-            <select wire:model.live="typeFilter"
-                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+            <x-ui.select wire:model.live="typeFilter">
                 <option value="all">All Types</option>
                 <option value="internal">Internal</option>
                 <option value="external">External</option>
-            </select>
+            </x-ui.select>
         </div>
 
         {{-- Links table --}}
@@ -284,23 +281,23 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Frequency</label>
-                    <select wire:model="settingsFrequency" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.select wire:model="settingsFrequency" class="mt-1">
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
                         <option value="manual">Manual</option>
-                    </select>
+                    </x-ui.select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Scan Time</label>
-                    <input wire:model="settingsScanTime" type="time" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.input wire:model="settingsScanTime" type="time" class="mt-1" />
                 </div>
             </div>
 
             @if($settingsFrequency === 'weekly')
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Day of Week</label>
-                    <select wire:model="settingsDayOfWeek" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.select wire:model="settingsDayOfWeek" class="mt-1">
                         <option value="0">Sunday</option>
                         <option value="1">Monday</option>
                         <option value="2">Tuesday</option>
@@ -308,24 +305,24 @@
                         <option value="4">Thursday</option>
                         <option value="5">Friday</option>
                         <option value="6">Saturday</option>
-                    </select>
+                    </x-ui.select>
                 </div>
             @endif
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Max Pages</label>
-                    <input wire:model="settingsMaxPages" type="number" min="1" max="10000" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.input wire:model="settingsMaxPages" type="number" min="1" max="10000" class="mt-1" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Max Depth</label>
-                    <input wire:model="settingsMaxDepth" type="number" min="1" max="20" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.input wire:model="settingsMaxDepth" type="number" min="1" max="20" class="mt-1" />
                 </div>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700">Timeout (seconds)</label>
-                <input wire:model="settingsTimeout" type="number" min="5" max="120" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                <x-ui.input wire:model="settingsTimeout" type="number" min="5" max="120" class="mt-1" />
             </div>
 
             <div class="flex items-center gap-6">
@@ -357,20 +354,18 @@
                 @if($settingsAlertOnBroken)
                     <div class="mt-2">
                         <label class="block text-sm font-medium text-gray-700">Alert threshold (minimum broken links)</label>
-                        <input wire:model="settingsAlertThreshold" type="number" min="1" class="mt-1 block w-32 rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input wire:model="settingsAlertThreshold" type="number" min="1" class="mt-1 w-32" />
                     </div>
                 @endif
             </div>
 
             <div class="flex justify-end gap-3 border-t pt-4">
-                <button type="button" x-on:click="$dispatch('close-modal-link-settings')"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-link-settings')">
                     Cancel
-                </button>
-                <button type="submit"
-                        class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700">
+                </x-ui.button>
+                <x-ui.button type="submit">
                     Save Settings
-                </button>
+                </x-ui.button>
             </div>
         </form>
     </x-ui.modal>

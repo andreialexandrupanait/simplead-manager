@@ -32,7 +32,7 @@
                             <span class="text-2xl font-bold {{ $this->latestScan ? 'text-gray-900' : 'text-gray-400' }}">
                                 {{ $this->latestScan?->score ?? '—' }}
                             </span>
-                            <span class="text-[10px] text-gray-500">/ 100</span>
+                            <span class="text-xs text-gray-500">/ 100</span>
                         </div>
                     </div>
 

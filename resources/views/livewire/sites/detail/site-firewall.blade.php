@@ -139,11 +139,11 @@
                 @endforeach
             </x-ui.table>
         @else
-            <div class="flex flex-col items-center justify-center py-12 text-center">
-                <x-icons.shield class="h-12 w-12 text-gray-300 mb-3" />
-                <p class="text-sm font-medium text-gray-900">No {{ $tab }} rules</p>
-                <p class="text-xs text-gray-500 mt-1">Add an IP address above to create a {{ $tab }} rule.</p>
-            </div>
+            <x-ui.empty-state
+                title="No {{ $tab }} rules"
+                description="Add an IP address above to create a {{ $tab }} rule."
+                icon="shield"
+            />
         @endif
     </x-ui.card>
 
@@ -188,7 +188,11 @@
                     </x-ui.table>
                 </div>
             @else
-                <p class="text-center text-sm text-gray-500 py-8">No blocked requests recorded yet.</p>
+                <x-ui.empty-state
+                    title="No blocked requests"
+                    description="No blocked requests recorded yet."
+                    icon="shield"
+                />
             @endif
         </x-ui.card>
     </div>

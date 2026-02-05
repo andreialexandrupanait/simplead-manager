@@ -76,28 +76,28 @@
                     @endif
 
                     {{-- Sync --}}
-                    <button wire:click="bulkSync" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkSync">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         Sync
-                    </button>
+                    </x-ui.button>
 
                     {{-- Backup --}}
-                    <button wire:click="bulkBackup" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkBackup">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
                         Backup
-                    </button>
+                    </x-ui.button>
 
                     {{-- Check Uptime --}}
-                    <button wire:click="bulkCheckUptime" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkCheckUptime">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         Check Uptime
-                    </button>
+                    </x-ui.button>
 
                     {{-- Delete (danger) --}}
-                    <button wire:click="confirmBulkDelete" class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50">
+                    <x-ui.button variant="danger" size="sm" wire:click="confirmBulkDelete">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Delete
-                    </button>
+                    </x-ui.button>
 
                     {{-- Deselect all --}}
                     <button wire:click="clearSelection" class="rounded-lg p-1.5 text-purple-400 transition hover:bg-purple-100 hover:text-purple-600" title="Clear selection">
@@ -108,9 +108,9 @@
         @else
         {{-- Search + Filter Pills --}}
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <input type="text" wire:model.live.debounce.300ms="search"
+            <x-ui.input type="text" wire:model.live.debounce.300ms="search"
                 placeholder="Search sites..."
-                class="w-64 rounded-lg border-gray-300 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
+                class="w-64 py-1.5" />
             <div class="flex flex-wrap items-center gap-2">
                 {{-- Client Pill --}}
                 @php
@@ -246,22 +246,24 @@
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Save Order
                     </button>
-                    <button
+                    <x-ui.button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         wire:click="cancelReordering"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
                         Cancel
-                    </button>
+                    </x-ui.button>
                 @else
-                    <button
+                    <x-ui.button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         wire:click="startReordering"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
                         Reorder
-                    </button>
+                    </x-ui.button>
                 @endif
             </div>
         </div>

@@ -23,7 +23,7 @@
                             <div class="absolute bottom-0 left-0 right-0 bg-orange-500/80 px-1 py-0.5 text-center text-[9px] font-bold text-white">LCP</div>
                         @endif
                     </div>
-                    <span class="mt-1 text-[10px] text-gray-500">
+                    <span class="mt-1 text-xs text-gray-500">
                         @if($timingMs >= 1000)
                             {{ round($timingMs / 1000, 1) }}s
                         @else

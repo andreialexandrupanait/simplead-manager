@@ -159,7 +159,7 @@
             <h3 class="mb-4 text-sm font-medium text-gray-900">Recent Incidents</h3>
 
             @if($this->incidents->isEmpty())
-                <p class="py-6 text-center text-sm text-gray-400">No incidents recorded.</p>
+                <p class="py-6 text-center text-sm text-gray-500">No incidents recorded.</p>
             @else
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">

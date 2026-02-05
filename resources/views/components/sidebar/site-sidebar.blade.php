@@ -124,6 +124,14 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
+            :href="route('sites.core-integrity', $site)"
+            icon="file-search"
+            :active="request()->routeIs('sites.core-integrity')"
+        >
+            Core Integrity
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
             :href="route('sites.firewall', $site)"
             icon="shield-alert"
             :active="request()->routeIs('sites.firewall')"

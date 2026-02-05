@@ -24,23 +24,23 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Cloudflare Connection</label>
-                        <select wire:model.live="selectedConnectionId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model.live="selectedConnectionId">
                             <option value="">Select a connection...</option>
                             @foreach($this->connections as $conn)
                                 <option value="{{ $conn->id }}">{{ $conn->account_email ?: 'Connection #' . $conn->id }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                     </div>
 
                     @if($selectedConnectionId)
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Zone</label>
-                            <select wire:model="selectedZoneId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                            <x-ui.select wire:model="selectedZoneId">
                                 <option value="">Select a zone...</option>
                                 @foreach($this->availableZones as $zone)
                                     <option value="{{ $zone['id'] }}">{{ $zone['name'] }} ({{ $zone['status'] }})</option>
                                 @endforeach
-                            </select>
+                            </x-ui.select>
                         </div>
 
                         <div class="flex justify-end">
@@ -92,19 +92,19 @@
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-6">
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                        <select wire:model="dnsType" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model="dnsType">
                             @foreach(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as $type)
                                 <option value="{{ $type }}">{{ $type }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                        <input type="text" wire:model="dnsName" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="@ or subdomain">
+                        <x-ui.input type="text" wire:model="dnsName" placeholder="@ or subdomain" />
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-medium text-gray-600 mb-1">Content</label>
-                        <input type="text" wire:model="dnsContent" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="IP address or value">
+                        <x-ui.input type="text" wire:model="dnsContent" placeholder="IP address or value" />
                     </div>
                     <div class="flex items-end">
                         <x-ui.button wire:click="addDnsRecord" size="sm" class="w-full">Add</x-ui.button>
@@ -196,25 +196,25 @@
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                                <select wire:model="editDnsType" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.select wire:model="editDnsType">
                                     @foreach(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as $type)
                                         <option value="{{ $type }}">{{ $type }}</option>
                                     @endforeach
-                                </select>
+                                </x-ui.select>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                                <input type="text" wire:model="editDnsName" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.input type="text" wire:model="editDnsName" />
                                 @error('editDnsName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Content</label>
-                                <input type="text" wire:model="editDnsContent" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.input type="text" wire:model="editDnsContent" />
                                 @error('editDnsContent') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">TTL</label>
-                                <select wire:model="editDnsTtl" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.select wire:model="editDnsTtl">
                                     <option value="1">Auto</option>
                                     <option value="120">2 min</option>
                                     <option value="300">5 min</option>
@@ -223,7 +223,7 @@
                                     <option value="1800">30 min</option>
                                     <option value="3600">1 hour</option>
                                     <option value="86400">1 day</option>
-                                </select>
+                                </x-ui.select>
                             </div>
                             @if(in_array($editDnsType, ['A', 'AAAA', 'CNAME']))
                                 <label class="flex items-center gap-2 text-sm text-gray-600">
@@ -294,11 +294,11 @@
                     <h3 class="text-sm font-semibold text-gray-900 mb-4">Security Level</h3>
                     <p class="text-sm text-gray-500 mb-3">Current level: <span class="font-medium text-gray-900">{{ ucfirst(str_replace('_', ' ', $this->securityLevel)) }}</span></p>
                     <div class="flex items-center gap-3">
-                        <select wire:model="newSecurityLevel" class="rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model="newSecurityLevel">
                             @foreach(['essentially_off' => 'Essentially Off', 'low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'under_attack' => 'Under Attack'] as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                         <x-ui.button wire:click="setSecurityLevel" size="sm">Apply</x-ui.button>
                     </div>
                 </x-ui.card>
@@ -335,11 +335,11 @@
                     <h3 class="text-sm font-semibold text-gray-900 mb-4">Block IP via Cloudflare</h3>
                     <div class="space-y-3">
                         <div>
-                            <input type="text" wire:model="blockIp" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="IP address (e.g. 192.168.1.1)">
+                            <x-ui.input type="text" wire:model="blockIp" placeholder="IP address (e.g. 192.168.1.1)" />
                             @error('blockIp') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <input type="text" wire:model="blockNote" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Note (optional)">
+                            <x-ui.input type="text" wire:model="blockNote" placeholder="Note (optional)" />
                         </div>
                         <x-ui.button wire:click="blockIpViaCf" size="sm">Block IP</x-ui.button>
                     </div>
@@ -420,7 +420,7 @@
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                                <input type="text" wire:model="fwDescription" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Rule description">
+                                <x-ui.input type="text" wire:model="fwDescription" placeholder="Rule description" />
                                 @error('fwDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
@@ -430,7 +430,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Action</label>
-                                <select wire:model="fwAction" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.select wire:model="fwAction">
                                     <option value="block">Block</option>
                                     <option value="challenge">Challenge (CAPTCHA)</option>
                                     <option value="js_challenge">JS Challenge</option>
@@ -438,7 +438,7 @@
                                     <option value="allow">Allow</option>
                                     <option value="log">Log</option>
                                     <option value="bypass">Bypass</option>
-                                </select>
+                                </x-ui.select>
                             </div>
                         </div>
                         <div class="mt-5 flex justify-end gap-2">
@@ -454,67 +454,261 @@
         @if($tab === 'analytics')
             <div class="mb-6 flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-gray-900">Zone Analytics</h3>
-                <select wire:model.live="analyticsPeriod" class="rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                <x-ui.select wire:model.live="analyticsPeriod">
                     <option value="-30">Last 30 minutes</option>
                     <option value="-360">Last 6 hours</option>
                     <option value="-1440">Last 24 hours</option>
                     <option value="-10080">Last 7 days</option>
                     <option value="-43200">Last 30 days</option>
-                </select>
+                </x-ui.select>
             </div>
 
             @if(!empty($this->analytics))
                 @php
                     $totals = $this->analytics['totals'] ?? [];
+                    $timeseries = $this->analytics['timeseries'] ?? [];
                     $requests = $totals['requests'] ?? [];
                     $bandwidth = $totals['bandwidth'] ?? [];
                     $threats = $totals['threats'] ?? [];
                     $pageviews = $totals['pageviews'] ?? [];
+                    $uniques = $totals['uniques'] ?? [];
+                    $totalReqs = $requests['all'] ?? 0;
+                    $cachedReqs = $requests['cached'] ?? 0;
+                    $uncachedReqs = $totalReqs - $cachedReqs;
+                    $cachePercent = $totalReqs > 0 ? round(($cachedReqs / $totalReqs) * 100, 1) : 0;
+                    $totalBw = $bandwidth['all'] ?? 0;
+                    $cachedBw = $bandwidth['cached'] ?? 0;
+                    $uncachedBw = $totalBw - $cachedBw;
+                    $bwCachePercent = $totalBw > 0 ? round(($cachedBw / $totalBw) * 100, 1) : 0;
                 @endphp
 
+                {{-- Stats Cards --}}
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                     <x-ui.card class="!p-4">
-                        <p class="text-2xl font-bold text-gray-900">{{ number_format($requests['all'] ?? 0) }}</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                                <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                            </div>
+                        </div>
+                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($totalReqs) }}</p>
                         <p class="text-xs text-gray-500">Total Requests</p>
-                        @if(!empty($requests['cached']))
-                            <p class="text-xs text-green-600 mt-1">{{ number_format($requests['cached']) }} cached</p>
-                        @endif
+                        <p class="text-xs text-green-600 mt-1">{{ number_format($cachedReqs) }} cached ({{ $cachePercent }}%)</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            </div>
+                        </div>
                         @php
-                            $totalBw = $bandwidth['all'] ?? 0;
                             $bwFormatted = $totalBw > 1073741824 ? round($totalBw / 1073741824, 2) . ' GB' : round($totalBw / 1048576, 2) . ' MB';
+                            $cachedBwFormatted = $cachedBw > 1073741824 ? round($cachedBw / 1073741824, 2) . ' GB' : round($cachedBw / 1048576, 2) . ' MB';
                         @endphp
-                        <p class="text-2xl font-bold text-gray-900">{{ $bwFormatted }}</p>
+                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ $bwFormatted }}</p>
                         <p class="text-xs text-gray-500">Bandwidth</p>
+                        <p class="text-xs text-green-600 mt-1">{{ $cachedBwFormatted }} saved ({{ $bwCachePercent }}%)</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
-                        <p class="text-2xl font-bold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
+                                <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            </div>
+                        </div>
+                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
                         <p class="text-xs text-gray-500">Threats Blocked</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
-                        <p class="text-2xl font-bold text-gray-900">{{ number_format($pageviews['all'] ?? 0) }}</p>
-                        <p class="text-xs text-gray-500">Page Views</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+                                <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </div>
+                        </div>
+                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($uniques['all'] ?? $pageviews['all'] ?? 0) }}</p>
+                        <p class="text-xs text-gray-500">Unique Visitors</p>
+                        @if(!empty($pageviews['all']))
+                            <p class="text-xs text-gray-400 mt-1">{{ number_format($pageviews['all']) }} page views</p>
+                        @endif
+                    </x-ui.card>
+                </div>
+
+                {{-- Requests Over Time Chart --}}
+                @if(!empty($timeseries))
+                    <x-ui.card class="mb-6">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Requests Over Time</h3>
+                        <div x-data="{
+                            timeseries: @js(collect($timeseries)->map(fn($t) => [
+                                'since' => $t['since'] ?? '',
+                                'requests' => $t['requests']['all'] ?? 0,
+                                'cached' => $t['requests']['cached'] ?? 0,
+                            ])->values()->toArray()),
+                            get maxVal() {
+                                return Math.max(...this.timeseries.map(t => t.requests), 1);
+                            },
+                            formatNum(n) {
+                                if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+                                if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+                                return n.toString();
+                            },
+                            formatTime(iso) {
+                                if (!iso) return '';
+                                let d = new Date(iso);
+                                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                       d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            }
+                        }" class="relative">
+                            {{-- Chart --}}
+                            <div class="flex items-end gap-px" style="height: 200px;">
+                                <template x-for="(point, index) in timeseries" :key="index">
+                                    <div class="relative flex-1 flex flex-col items-stretch justify-end group" style="min-width: 2px;">
+                                        {{-- Tooltip --}}
+                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+                                            <div class="rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg whitespace-nowrap">
+                                                <div class="font-medium" x-text="formatTime(point.since)"></div>
+                                                <div class="mt-1 flex items-center gap-1.5">
+                                                    <span class="h-2 w-2 rounded-full bg-purple-400"></span>
+                                                    <span>Total: <span x-text="formatNum(point.requests)"></span></span>
+                                                </div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="h-2 w-2 rounded-full bg-green-400"></span>
+                                                    <span>Cached: <span x-text="formatNum(point.cached)"></span></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {{-- Bar (uncached background + cached overlay) --}}
+                                        <div class="w-full rounded-t bg-purple-200 transition-all group-hover:bg-purple-300"
+                                             :style="'height: ' + Math.max((point.requests / maxVal) * 100, 1) + '%'">
+                                            <div class="w-full rounded-t bg-purple-500 transition-all"
+                                                 :style="'height: ' + (point.requests > 0 ? (point.cached / point.requests) * 100 : 0) + '%'">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            {{-- Legend --}}
+                            <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-sm bg-purple-500"></span>
+                                    Cached
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-sm bg-purple-200"></span>
+                                    Uncached
+                                </div>
+                            </div>
+                        </div>
+                    </x-ui.card>
+                @endif
+
+                {{-- Cached vs Uncached Breakdown --}}
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+                    <x-ui.card>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Request Cache Ratio</h3>
+                        <div x-data="{ cached: {{ $cachedReqs }}, uncached: {{ $uncachedReqs }}, total: {{ $totalReqs }} }">
+                            {{-- Donut-style bar --}}
+                            <div class="relative h-4 w-full overflow-hidden rounded-full bg-gray-100">
+                                @if($totalReqs > 0)
+                                    <div class="absolute inset-y-0 left-0 rounded-full bg-green-500 transition-all" style="width: {{ $cachePercent }}%"></div>
+                                @endif
+                            </div>
+                            <div class="mt-3 flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-green-500"></span>
+                                    <span class="text-gray-600">Cached</span>
+                                    <span class="font-medium text-gray-900">{{ number_format($cachedReqs) }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-gray-300"></span>
+                                    <span class="text-gray-600">Uncached</span>
+                                    <span class="font-medium text-gray-900">{{ number_format($uncachedReqs) }}</span>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-center text-lg font-bold text-green-600">{{ $cachePercent }}% <span class="text-xs font-normal text-gray-500">cache hit rate</span></p>
+                        </div>
+                    </x-ui.card>
+
+                    <x-ui.card>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Bandwidth Cache Ratio</h3>
+                        <div>
+                            <div class="relative h-4 w-full overflow-hidden rounded-full bg-gray-100">
+                                @if($totalBw > 0)
+                                    <div class="absolute inset-y-0 left-0 rounded-full bg-blue-500 transition-all" style="width: {{ $bwCachePercent }}%"></div>
+                                @endif
+                            </div>
+                            <div class="mt-3 flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-blue-500"></span>
+                                    <span class="text-gray-600">Cached</span>
+                                    <span class="font-medium text-gray-900">{{ $cachedBwFormatted }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-gray-300"></span>
+                                    <span class="text-gray-600">Uncached</span>
+                                    @php $uncachedBwFormatted = $uncachedBw > 1073741824 ? round($uncachedBw / 1073741824, 2) . ' GB' : round($uncachedBw / 1048576, 2) . ' MB'; @endphp
+                                    <span class="font-medium text-gray-900">{{ $uncachedBwFormatted }}</span>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-center text-lg font-bold text-blue-600">{{ $bwCachePercent }}% <span class="text-xs font-normal text-gray-500">bandwidth saved</span></p>
+                        </div>
                     </x-ui.card>
                 </div>
 
                 {{-- Country breakdown --}}
                 @if(!empty($requests['country'] ?? []))
                     <x-ui.card>
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Requests by Country</h3>
-                        <div class="space-y-2">
-                            @php
-                                $countries = collect($requests['country'])->sortByDesc(fn ($v) => $v)->take(10);
-                                $maxCount = $countries->first() ?: 1;
-                            @endphp
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Top 10 Countries by Requests</h3>
+                        @php
+                            $countries = collect($requests['country'])->sortByDesc(fn ($v) => $v)->take(10);
+                            $maxCount = $countries->first() ?: 1;
+                            $totalCountryReqs = collect($requests['country'])->sum();
+                        @endphp
+                        <div class="space-y-3">
                             @foreach($countries as $country => $count)
+                                @php $pct = $totalCountryReqs > 0 ? round(($count / $totalCountryReqs) * 100, 1) : 0; @endphp
                                 <div class="flex items-center gap-3">
-                                    <span class="w-8 text-xs font-medium text-gray-600">{{ $country }}</span>
+                                    <span class="w-8 text-sm font-medium text-gray-700">{{ $country }}</span>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
+                                                <div class="h-full rounded-full bg-purple-500 transition-all" style="width: {{ round(($count / $maxCount) * 100) }}%"></div>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0">
+                                                <span class="text-sm font-medium text-gray-900 w-20 text-right">{{ number_format($count) }}</span>
+                                                <span class="text-xs text-gray-400 w-12 text-right">{{ $pct }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </x-ui.card>
+                @endif
+
+                {{-- Content Type & Status Codes (from timeseries) --}}
+                @if(!empty($totals['requests']['http_status'] ?? []))
+                    <x-ui.card class="mt-6">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">HTTP Status Codes</h3>
+                        @php
+                            $httpStatuses = collect($totals['requests']['http_status'])->sortByDesc(fn ($v) => $v)->take(10);
+                            $maxStatus = $httpStatuses->first() ?: 1;
+                        @endphp
+                        <div class="space-y-2">
+                            @foreach($httpStatuses as $code => $count)
+                                @php
+                                    $statusColor = match(true) {
+                                        $code >= 200 && $code < 300 => 'bg-green-500',
+                                        $code >= 300 && $code < 400 => 'bg-blue-500',
+                                        $code >= 400 && $code < 500 => 'bg-yellow-500',
+                                        $code >= 500 => 'bg-red-500',
+                                        default => 'bg-gray-500',
+                                    };
+                                @endphp
+                                <div class="flex items-center gap-3">
+                                    <span class="w-10 text-xs font-mono font-medium text-gray-600">{{ $code }}</span>
                                     <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                        <div class="h-full rounded-full bg-purple-500" style="width: {{ round(($count / $maxCount) * 100) }}%"></div>
+                                        <div class="h-full rounded-full {{ $statusColor }}" style="width: {{ round(($count / $maxStatus) * 100) }}%"></div>
                                     </div>
                                     <span class="text-xs text-gray-500 w-16 text-right">{{ number_format($count) }}</span>
                                 </div>

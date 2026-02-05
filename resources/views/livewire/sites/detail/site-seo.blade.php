@@ -29,7 +29,7 @@
                                         stroke-linecap="round"/>
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span class="text-3xl font-bold {{ $this->latestCheck->score >= 80 ? 'text-green-600' : ($this->latestCheck->score >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
+                                <span class="text-2xl font-bold {{ $this->latestCheck->score >= 80 ? 'text-green-600' : ($this->latestCheck->score >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
                                     {{ $this->latestCheck->score }}
                                 </span>
                                 <span class="text-xs text-gray-500">/ 100</span>

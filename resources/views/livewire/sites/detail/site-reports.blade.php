@@ -2,16 +2,14 @@
     {{-- Header actions --}}
     <div class="mb-6 flex justify-end">
         <div class="flex gap-3">
-            <button wire:click="openScheduleModal"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            <x-ui.button variant="secondary" wire:click="openScheduleModal">
                 <x-icons.settings class="h-4 w-4" />
                 Schedule
-            </button>
-            <button wire:click="openGenerateModal"
-                    class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
+            </x-ui.button>
+            <x-ui.button wire:click="openGenerateModal">
                 <x-icons.file-text class="h-4 w-4" />
                 Generate Report
-            </button>
+            </x-ui.button>
         </div>
     </div>
 
@@ -158,13 +156,15 @@
                 </div>
             @endif
         @else
-            <div class="px-5 py-12 text-center">
-                <x-icons.file-text class="mx-auto h-8 w-8 text-gray-400" />
-                <p class="mt-2 text-sm text-gray-500">No reports generated yet</p>
-                <button wire:click="openGenerateModal" class="mt-3 text-sm font-medium text-purple-600 hover:text-purple-700">
-                    Generate your first report
-                </button>
-            </div>
+            <x-ui.empty-state
+                title="No reports generated yet"
+                description="Generate your first report to get started."
+                icon="file-text"
+            >
+                <x-slot:action>
+                    <x-ui.button wire:click="openGenerateModal">Generate Report</x-ui.button>
+                </x-slot:action>
+            </x-ui.empty-state>
         @endif
     </div>
 
@@ -184,11 +184,11 @@
                     {{-- Template --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Report Template</label>
-                        <select wire:model="selectedTemplateId" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model="selectedTemplateId">
                             @foreach($templates as $tpl)
                                 <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                     </div>
 
                     {{-- Period --}}
@@ -217,11 +217,11 @@
                             <div class="mt-3 grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Start Date</label>
-                                    <input type="date" wire:model="customStart" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                    <x-ui.input type="date" wire:model="customStart" />
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">End Date</label>
-                                    <input type="date" wire:model="customEnd" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                    <x-ui.input type="date" wire:model="customEnd" />
                                 </div>
                             </div>
                         @endif
@@ -230,9 +230,8 @@
                     {{-- Recipients --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Send to (optional)</label>
-                        <input type="text" wire:model="recipientEmails"
-                               placeholder="email@example.com, another@example.com"
-                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="recipientEmails"
+                               placeholder="email@example.com, another@example.com" />
                         <p class="mt-1 text-xs text-gray-500">Comma-separated email addresses. Leave empty to just generate.</p>
                     </div>
 
@@ -242,12 +241,12 @@
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                    <button wire:click="$set('showGenerateModal', false)" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <x-ui.button variant="secondary" wire:click="$set('showGenerateModal', false)">
                         Cancel
-                    </button>
-                    <button wire:click="generateReport" class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+                    </x-ui.button>
+                    <x-ui.button wire:click="generateReport">
                         Generate Report
-                    </button>
+                    </x-ui.button>
                 </div>
             </div>
         </div>
@@ -278,11 +277,11 @@
                     {{-- Template --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Report Template</label>
-                        <select wire:model="scheduleTemplateId" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model="scheduleTemplateId">
                             @foreach($templates as $tpl)
                                 <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                     </div>
 
                     {{-- Frequency --}}
@@ -305,7 +304,7 @@
                         @if($scheduleFrequency === 'weekly')
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
-                                <select wire:model="scheduleDayOfWeek" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.select wire:model="scheduleDayOfWeek">
                                     <option value="0">Sunday</option>
                                     <option value="1">Monday</option>
                                     <option value="2">Tuesday</option>
@@ -313,40 +312,39 @@
                                     <option value="4">Thursday</option>
                                     <option value="5">Friday</option>
                                     <option value="6">Saturday</option>
-                                </select>
+                                </x-ui.select>
                             </div>
                         @else
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month</label>
-                                <select wire:model="scheduleDayOfMonth" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.select wire:model="scheduleDayOfMonth">
                                     @for($i = 1; $i <= 28; $i++)
                                         <option value="{{ $i }}">{{ $i }}</option>
                                     @endfor
-                                </select>
+                                </x-ui.select>
                             </div>
                         @endif
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                            <input type="time" wire:model="scheduleTime" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                            <x-ui.input type="time" wire:model="scheduleTime" />
                         </div>
                     </div>
 
                     {{-- Period --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Report Period</label>
-                        <select wire:model="schedulePeriod" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.select wire:model="schedulePeriod">
                             <option value="last_7_days">Last 7 days</option>
                             <option value="last_30_days">Last 30 days</option>
                             <option value="last_month">Last calendar month</option>
-                        </select>
+                        </x-ui.select>
                     </div>
 
                     {{-- Recipients --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
-                        <input type="text" wire:model="scheduleRecipientEmails"
-                               placeholder="client@example.com, team@example.com"
-                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="scheduleRecipientEmails"
+                               placeholder="client@example.com, team@example.com" />
                         <p class="mt-1 text-xs text-gray-500">Comma-separated email addresses</p>
                     </div>
 
@@ -360,17 +358,15 @@
                     {{-- Client branding --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Client Name (optional)</label>
-                        <input type="text" wire:model="scheduleClientName"
-                               placeholder="Client company name"
-                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="scheduleClientName"
+                               placeholder="Client company name" />
                     </div>
 
                     {{-- Custom email --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Subject (optional)</label>
-                        <input type="text" wire:model="scheduleEmailSubject"
-                               placeholder="Leave empty for default"
-                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="scheduleEmailSubject"
+                               placeholder="Leave empty for default" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Body (optional)</label>
@@ -391,12 +387,12 @@
                         @endif
                     </div>
                     <div class="flex gap-3">
-                        <button wire:click="$set('showScheduleModal', false)" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <x-ui.button variant="secondary" wire:click="$set('showScheduleModal', false)">
                             Cancel
-                        </button>
-                        <button wire:click="saveSchedule" class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+                        </x-ui.button>
+                        <x-ui.button wire:click="saveSchedule">
                             Save Schedule
-                        </button>
+                        </x-ui.button>
                     </div>
                 </div>
             </div>
@@ -415,19 +411,18 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input type="email" wire:model="sendToEmail"
-                           placeholder="recipient@example.com"
-                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.input type="email" wire:model="sendToEmail"
+                           placeholder="recipient@example.com" />
                     @error('sendToEmail') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                    <button wire:click="$set('showSendModal', false)" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <x-ui.button variant="secondary" wire:click="$set('showSendModal', false)">
                         Cancel
-                    </button>
-                    <button wire:click="sendReport" class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+                    </x-ui.button>
+                    <x-ui.button wire:click="sendReport">
                         Send
-                    </button>
+                    </x-ui.button>
                 </div>
             </div>
         </div>

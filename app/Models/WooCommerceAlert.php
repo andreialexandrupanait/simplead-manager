@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WooCommerceAlert extends Model
 {
+    use HasFactory;
+
+    protected $table = 'woocommerce_alerts';
+
     protected $fillable = [
         'site_id',
         'type',

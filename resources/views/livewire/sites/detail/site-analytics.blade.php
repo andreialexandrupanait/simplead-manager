@@ -248,11 +248,11 @@
                         );
                     }
                 }">
-                    <input
+                    <x-ui.input
                         x-model="search"
                         type="text"
                         placeholder="Search properties..."
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500 mb-3"
+                        class="mb-3"
                     />
                     <div class="max-h-64 overflow-y-auto space-y-1">
                         <template x-for="property in filtered" :key="property._index">

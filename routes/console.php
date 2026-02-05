@@ -235,6 +235,12 @@ Schedule::call(function () {
         ->each(fn ($site) => \App\Jobs\RunSeoCheck::dispatch($site));
 })->weekly()->mondays()->at('05:00')->name('seo-checks')->withoutOverlapping();
 
+// Email deliverability checks — weekly Wednesday at 4 AM
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\CheckEmailDeliverabilityJob::dispatch($site));
+})->weekly()->wednesdays()->at('04:00')->name('email-deliverability-checks')->withoutOverlapping();
+
 // WooCommerce stats sync — every 6 hours
 Schedule::call(function () {
     Site::where('is_connected', true)

@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
         Route::get('/updates', Sites\Detail\SiteUpdates::class)->name('sites.updates');
         Route::get('/security', Sites\Detail\SiteSecurity::class)->name('sites.security');
+        Route::get('/core-integrity', Sites\Detail\SiteCoreIntegrity::class)->name('sites.core-integrity');
         Route::get('/audit-log', Sites\Detail\SiteAuditLog::class)->name('sites.audit-log');
         Route::get('/firewall', Sites\Detail\SiteFirewall::class)->name('sites.firewall');
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');

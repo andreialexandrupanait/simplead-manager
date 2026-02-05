@@ -50,7 +50,7 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">Upcoming</h3>
             @if($this->upcomingWindows->isEmpty())
-                <p class="py-4 text-center text-sm text-gray-400">No upcoming maintenance windows.</p>
+                <p class="py-4 text-center text-sm text-gray-500">No upcoming maintenance windows.</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($this->upcomingWindows as $window)
@@ -93,7 +93,7 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">History</h3>
             @if($this->pastWindows->isEmpty())
-                <p class="py-4 text-center text-sm text-gray-400">No past maintenance windows.</p>
+                <p class="py-4 text-center text-sm text-gray-500">No past maintenance windows.</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($this->pastWindows as $window)
