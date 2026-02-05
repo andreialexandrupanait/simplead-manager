@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Services\ActivityLogger;
+use App\Services\MaintenanceService;
 use Illuminate\Support\Facades\Http;
 
 class CheckUptime implements ShouldQueue
@@ -25,6 +26,11 @@ class CheckUptime implements ShouldQueue
 
     public function handle(): void
     {
+        if (MaintenanceService::isSiteInMaintenance($this->monitor->site, 'uptime')) {
+            $this->monitor->update(['next_check_at' => now()->addSeconds($this->monitor->interval)]);
+            return;
+        }
+
         $result = $this->performCheck();
 
         $check = $this->saveCheck($result);
@@ -267,6 +273,7 @@ class CheckUptime implements ShouldQueue
         if ($this->monitor->consecutive_failures === $this->monitor->alert_after_failures) {
             NotifyIncident::dispatch($incident, 'down');
             ActivityLogger::siteDown($this->monitor->site, $result['failure_reason'] ?? 'Unknown');
+            CreateStatusPageIncident::dispatch($this->monitor->site, $result['failure_reason'] ?? 'Site is down');
         }
     }
 
@@ -281,6 +288,7 @@ class CheckUptime implements ShouldQueue
             ]);
 
             NotifyIncident::dispatch($incident->fresh(), 'recovery');
+            ResolveStatusPageIncident::dispatch($this->monitor->site);
 
             $downtimeMinutes = $incident->started_at ? (int) $incident->started_at->diffInMinutes(now()) : 0;
             ActivityLogger::siteRecovered($this->monitor->site, $downtimeMinutes);

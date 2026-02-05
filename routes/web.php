@@ -12,6 +12,7 @@ use App\Livewire\Uptime;
 use App\Livewire\Clients;
 use App\Livewire\Reports;
 use App\Livewire\Settings;
+use App\Livewire\StatusPages;
 
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
@@ -22,8 +23,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
 
-    // Sites — global
-    Route::get('/sites', Sites\SitesList::class)->name('sites.index');
+    // Sites — global (redirect to dashboard)
+    Route::redirect('/sites', '/')->name('sites.index');
     Route::get('/sites/create', Sites\CreateSite::class)->name('sites.create');
 
     // Sites — site-context (uses {site} parameter)
@@ -32,12 +33,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
         Route::get('/updates', Sites\Detail\SiteUpdates::class)->name('sites.updates');
         Route::get('/security', Sites\Detail\SiteSecurity::class)->name('sites.security');
+        Route::get('/audit-log', Sites\Detail\SiteAuditLog::class)->name('sites.audit-log');
+        Route::get('/firewall', Sites\Detail\SiteFirewall::class)->name('sites.firewall');
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
         Route::get('/links', Sites\Detail\SiteLinks::class)->name('sites.links');
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
+        Route::get('/maintenance', Sites\Detail\SiteMaintenance::class)->name('sites.maintenance');
+        Route::get('/cron', Sites\Detail\SiteCronManager::class)->name('sites.cron');
+        Route::get('/dns', Sites\Detail\SiteDns::class)->name('sites.dns');
+        Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
+        Route::get('/errors', Sites\Detail\SiteErrorLogs::class)->name('sites.errors');
+        Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
     });
@@ -63,12 +72,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Activity — global view
     Route::get('/activity', Dashboard\GlobalActivity::class)->name('activity.index');
 
+    // Errors — global view
+    Route::get('/errors', Dashboard\GlobalErrors::class)->name('errors.index');
+
     // Clients
     Route::get('/clients', Clients\ClientsList::class)->name('clients.index');
     Route::get('/clients/{client}', Clients\ClientDetail::class)->name('clients.show');
 
     // Reports
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
+
+    // Status Pages
+    Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('status-pages.index');
+    Route::get('/status-pages/create', StatusPages\StatusPageEdit::class)->name('status-pages.create');
+    Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('status-pages.edit');
 
     // Plugin download
     Route::get('/download/connector-plugin', function () {
@@ -98,3 +115,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
     });
 });
+
+// Public status pages (no auth)
+Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show');
+Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth');
+Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api');

@@ -1,4 +1,11 @@
 <div>
+    {{-- Flash Message --}}
+    @if(session('message'))
+        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {{ session('message') }}
+        </div>
+    @endif
+
     {{-- Section 1: Stats Bar --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <x-ui.card>
@@ -29,17 +36,244 @@
 
     {{-- Section 2: Sites List View --}}
     <div class="mt-6">
-        <div class="mb-3 flex items-center justify-between">
+        <div class="mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Sites</h2>
-            <a href="{{ route('sites.index') }}" class="text-sm font-medium text-purple-600 hover:text-purple-800">View all</a>
         </div>
+
+        @if(count($selectedSites) > 0)
+            {{-- Bulk Action Bar --}}
+            <div class="mb-3 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5">
+                <div class="flex items-center gap-3">
+                    {{-- Select All checkbox --}}
+                    <input type="checkbox"
+                        wire:click="toggleSelectAll"
+                        @checked(count(array_intersect($selectedSites, $this->sites->pluck('id')->toArray())) === $this->sites->count())
+                        class="h-4 w-4 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                    <span class="text-sm font-medium text-purple-700">
+                        {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }} selected
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- Set Status dropdown --}}
+                    @if($this->siteStatuses->isNotEmpty())
+                        <x-ui.dropdown align="left" width="48">
+                            <x-slot:trigger>
+                                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                                    Set Status
+                                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                            </x-slot:trigger>
+                            @foreach($this->siteStatuses as $status)
+                                <button wire:click="bulkSetStatus({{ $status->id }})" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                                    {{ $status->name }}
+                                </button>
+                            @endforeach
+                            <div class="my-1 border-t border-gray-100"></div>
+                            <button wire:click="bulkClearStatus" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">Clear Status</button>
+                        </x-ui.dropdown>
+                    @endif
+
+                    {{-- Sync --}}
+                    <button wire:click="bulkSync" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Sync
+                    </button>
+
+                    {{-- Backup --}}
+                    <button wire:click="bulkBackup" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                        Backup
+                    </button>
+
+                    {{-- Check Uptime --}}
+                    <button wire:click="bulkCheckUptime" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Check Uptime
+                    </button>
+
+                    {{-- Delete (danger) --}}
+                    <button wire:click="confirmBulkDelete" class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Delete
+                    </button>
+
+                    {{-- Deselect all --}}
+                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-purple-400 transition hover:bg-purple-100 hover:text-purple-600" title="Clear selection">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+        @else
+        {{-- Search + Filter Pills --}}
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <input type="text" wire:model.live.debounce.300ms="search"
+                placeholder="Search sites..."
+                class="w-64 rounded-lg border-gray-300 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
+            <div class="flex flex-wrap items-center gap-2">
+                {{-- Client Pill --}}
+                @php
+                    $clientActive = $this->clientFilter !== null;
+                    $clientLabel = 'Client';
+                    if ($clientActive) {
+                        $selectedClient = $this->clients->firstWhere('id', $this->clientFilter);
+                        $clientLabel = $selectedClient ? $selectedClient->name : 'Client';
+                    }
+                @endphp
+                <x-ui.dropdown align="left" width="56">
+                    <x-slot:trigger>
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $clientActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="max-w-[8rem] truncate">{{ $clientLabel }}</span>
+                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                    </x-slot:trigger>
+
+                    <button wire:click="setClientFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$clientActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        All Clients
+                        @if(!$clientActive)
+                            <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        @endif
+                    </button>
+                    @foreach($this->clients as $client)
+                        <button wire:click="setClientFilter({{ $client->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->clientFilter === $client->id ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                            {{ $client->name }} ({{ $client->sites_count }})
+                            @if($this->clientFilter === $client->id)
+                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            @endif
+                        </button>
+                    @endforeach
+                </x-ui.dropdown>
+
+                {{-- Health Pill --}}
+                @php
+                    $healthActive = $this->filter !== 'all';
+                    $healthLabels = ['all' => 'Health', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'];
+                    $healthLabel = $healthLabels[$this->filter] ?? 'Health';
+                @endphp
+                <x-ui.dropdown align="left" width="48">
+                    <x-slot:trigger>
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $healthActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                            {{ $healthLabel }}
+                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                    </x-slot:trigger>
+
+                    @foreach(['all' => 'All Health', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'] as $value => $label)
+                        <button wire:click="setFilter('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->filter === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                            {{ $label }}
+                            @if($this->filter === $value)
+                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            @endif
+                        </button>
+                    @endforeach
+                </x-ui.dropdown>
+
+                {{-- Status Pill --}}
+                @if($this->siteStatuses->isNotEmpty())
+                    @php
+                        $statusActive = $this->statusFilter !== null;
+                        $statusLabel = 'Status';
+                        if ($statusActive) {
+                            $selectedStatus = $this->siteStatuses->firstWhere('id', $this->statusFilter);
+                            $statusLabel = $selectedStatus ? $selectedStatus->name : 'Status';
+                        }
+                    @endphp
+                    <x-ui.dropdown align="left" width="56">
+                        <x-slot:trigger>
+                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $statusActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                <span class="max-w-[8rem] truncate">{{ $statusLabel }}</span>
+                                <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </x-slot:trigger>
+
+                        <button wire:click="setStatusFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$statusActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                            All Statuses
+                            @if(!$statusActive)
+                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            @endif
+                        </button>
+                        @foreach($this->siteStatuses as $status)
+                            <button wire:click="setStatusFilter({{ $status->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->statusFilter === $status->id ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                                <span class="flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                                    {{ $status->name }} ({{ $status->sites_count }})
+                                </span>
+                                @if($this->statusFilter === $status->id)
+                                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                @endif
+                            </button>
+                        @endforeach
+                    </x-ui.dropdown>
+                @endif
+
+                {{-- Sort Pill --}}
+                @php
+                    $sortActive = $this->sort !== 'manual';
+                    $sortLabels = ['manual' => 'Manual', 'health-asc' => 'Health ↑', 'health-desc' => 'Health ↓', 'name-asc' => 'Name A-Z', 'name-desc' => 'Name Z-A'];
+                    $sortLabel = $sortLabels[$this->sort] ?? 'Sort';
+                    $isManualSort = $this->sort === 'manual';
+                @endphp
+                <x-ui.dropdown align="left" width="48">
+                    <x-slot:trigger>
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $sortActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+                            {{ $sortLabel }}
+                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                    </x-slot:trigger>
+
+                    @foreach(['manual' => 'Manual', 'name-asc' => 'Name A-Z', 'name-desc' => 'Name Z-A', 'health-asc' => 'Health ↑', 'health-desc' => 'Health ↓'] as $value => $label)
+                        <button wire:click="setSort('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->sort === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                            {{ $label }}
+                            @if($this->sort === $value)
+                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            @endif
+                        </button>
+                    @endforeach
+                </x-ui.dropdown>
+
+                {{-- Reorder Button --}}
+                @if($this->reordering)
+                    <button
+                        type="button"
+                        onclick="window.dispatchEvent(new CustomEvent('save-sort-order'))"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Save Order
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="cancelReordering"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                @else
+                    <button
+                        type="button"
+                        wire:click="startReordering"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+                        Reorder
+                    </button>
+                @endif
+            </div>
+        </div>
+        @endif
 
         @if($this->sites->isEmpty())
             <x-ui.card>
                 <x-ui.empty-state title="No sites yet" description="Add your first site to get started." icon="globe" />
             </x-ui.card>
         @else
-            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5">
+            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)" x-on:save-sort-order.window="saveOrder()">
+                <div id="sortable-site-list" x-ref="sortableContainer">
                 @foreach($this->sites as $site)
                     @php
                         // Update badge color
@@ -148,9 +382,9 @@
                         $pluginsTooltip = $updates === 0 ? 'All plugins up to date' : $updates . ' plugin update' . ($updates > 1 ? 's' : '') . ' available';
 
                         // Users
-                        $usersColor = 'text-gray-300';
-                        $usersTooltip = 'No users synced';
-                        // We don't eager load siteUsers count to keep it light — use site_users relationship if available
+                        $usersCount = $site->site_users_count ?? 0;
+                        $usersColor = $usersCount > 0 ? 'text-green-500' : 'text-gray-300';
+                        $usersTooltip = $usersCount > 0 ? $usersCount . ' user' . ($usersCount !== 1 ? 's' : '') : 'No users synced';
 
                         // WordPress connected
                         $wpConnColor = $site->is_connected ? 'text-green-500' : 'text-gray-300';
@@ -192,23 +426,43 @@
                         $healthBarColor = $healthScore >= 90 ? 'bg-green-500' : ($healthScore >= 70 ? 'bg-yellow-500' : 'bg-red-500');
                     @endphp
 
-                    <div class="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}">
-                        {{-- Update Badge --}}
-                        <x-ui.tooltip :text="$updates . ' pending update' . ($updates !== 1 ? 's' : '')">
-                            <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white {{ $updateBadgeColor }}">
-                                {{ $updates }}
+                    <div class="group flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}" data-site-id="{{ $site->id }}" wire:key="site-{{ $site->id }}">
+                        {{-- Drag Handle --}}
+                        @if($this->reordering)
+                            <div class="drag-handle flex-shrink-0 cursor-grab text-gray-300 hover:text-gray-500 active:cursor-grabbing">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                                </svg>
                             </div>
-                        </x-ui.tooltip>
+                        @endif
 
-                        {{-- Site Identity --}}
-                        <div class="min-w-0 flex-1">
-                            <a href="{{ route('sites.overview', $site) }}" class="truncate text-sm font-medium text-gray-900 hover:text-purple-700">
-                                {{ $site->domain }}
-                            </a>
+                        {{-- Checkbox --}}
+                        <div class="flex h-6 w-6 flex-shrink-0 items-center justify-center">
+                            <input
+                                type="checkbox"
+                                wire:click="toggleSiteSelection({{ $site->id }})"
+                                @checked(in_array($site->id, $selectedSites))
+                                class="h-4 w-4 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500 {{ in_array($site->id, $selectedSites) ? '' : 'opacity-0 group-hover:opacity-100' }} transition"
+                            />
                         </div>
 
-                        {{-- Plugin count + Quick actions --}}
+                        {{-- Site Identity --}}
+                        <div class="min-w-0 flex-1 flex items-center gap-2">
+                            <a href="{{ route('sites.overview', $site) }}"
+                               class="truncate text-sm font-medium hover:opacity-80"
+                               style="color: {{ $site->siteStatus?->color ?? '#111827' }}"
+                               @if($site->siteStatus) title="{{ $site->siteStatus->name }}" @endif
+                            >{{ $site->domain }}</a>
+                        </div>
+
+                        {{-- Updates + Plugin count + Quick actions --}}
                         <div class="flex flex-shrink-0 items-center gap-2">
+                            @if($site->is_connected && $updates > 0)
+                                <span class="hidden h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold leading-none text-white lg:inline-flex {{ $updateBadgeColor }}" title="{{ $updates }} updates available">
+                                    {{ $updates }}
+                                </span>
+                                <div class="mx-0.5 hidden h-4 w-px bg-gray-200 lg:block"></div>
+                            @endif
                             <span class="hidden text-xs text-gray-500 lg:inline" title="{{ $site->site_plugins_count }} plugins">
                                 {{ $site->site_plugins_count ?? 0 }}p
                             </span>
@@ -237,276 +491,107 @@
 
                         {{-- Status Icons (hidden below lg) --}}
                         <div class="hidden items-center gap-1.5 lg:flex">
-                            {{-- 1. Uptime (Hovercard) --}}
+                            {{-- 1. Uptime --}}
                             <x-ui.hovercard>
                                 <x-slot:trigger>
-                                    <svg class="h-4 w-4 {{ $uptimeColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    <svg class="h-[17px] w-[17px] {{ $uptimeColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </x-slot:trigger>
-                                @if($site->uptimeMonitor)
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-900">Uptime</span>
-                                        @php
-                                            $state = $site->uptimeMonitor->current_state ?? 'unknown';
-                                            $stateBadge = match($state) {
-                                                'up' => 'bg-green-100 text-green-700',
-                                                'down' => 'bg-red-100 text-red-700',
-                                                'degraded' => 'bg-yellow-100 text-yellow-700',
-                                                default => 'bg-gray-100 text-gray-600',
-                                            };
-                                        @endphp
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $stateBadge }}">{{ ucfirst($state) }}</span>
-                                    </div>
-                                    <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                        <div>
-                                            <span class="text-gray-500">24h</span>
-                                            <span class="ml-1 font-medium text-gray-900">{{ $site->uptimeMonitor->uptime_24h !== null ? number_format($site->uptimeMonitor->uptime_24h, 2) . '%' : '--' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">7d</span>
-                                            <span class="ml-1 font-medium text-gray-900">{{ $site->uptimeMonitor->uptime_7d !== null ? number_format($site->uptimeMonitor->uptime_7d, 2) . '%' : '--' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">30d</span>
-                                            <span class="ml-1 font-medium text-gray-900">{{ $site->uptimeMonitor->uptime_30d !== null ? number_format($site->uptimeMonitor->uptime_30d, 2) . '%' : '--' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">Avg</span>
-                                            <span class="ml-1 font-medium text-gray-900">{{ $site->uptimeMonitor->avg_response_time ? $site->uptimeMonitor->avg_response_time . 'ms' : '--' }}</span>
-                                        </div>
-                                    </div>
-                                    @if($site->uptimeMonitor->last_checked_at)
-                                        <p class="mt-2 text-xs text-gray-500">Last checked {{ $site->uptimeMonitor->last_checked_at->diffForHumans() }}</p>
-                                    @endif
-                                    @php $recentIncidents = $site->uptimeMonitor->incidents->sortByDesc('started_at')->take(3); @endphp
-                                    @if($recentIncidents->isNotEmpty())
-                                        <div class="mt-3 border-t border-gray-100 pt-2">
-                                            <p class="text-xs font-medium text-gray-700">Recent Incidents</p>
-                                            <div class="mt-1 space-y-1">
-                                                @foreach($recentIncidents as $incident)
-                                                    <div class="flex items-center justify-between text-xs">
-                                                        <span class="truncate text-gray-600">{{ \Illuminate\Support\Str::limit($incident->cause ?? 'Unknown', 30) }}</span>
-                                                        <span class="ml-2 flex-shrink-0 text-gray-400">{{ $incident->started_at->diffForHumans() }} ({{ $incident->duration }})</span>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                    <div class="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-                                        <button wire:click="checkNow({{ $site->id }})" class="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700">Check Now</button>
-                                        <a href="{{ route('sites.uptime', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Details</a>
-                                    </div>
-                                @else
-                                    <p class="text-sm text-gray-500">No monitor configured</p>
-                                    <a href="{{ route('sites.uptime', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">Configure Monitor</a>
-                                @endif
+                                <x-hovercards.uptime :site="$site" />
                             </x-ui.hovercard>
 
                             {{-- 2. SSL --}}
-                            <x-ui.tooltip :text="$sslTooltip">
-                                <svg class="h-4 w-4 {{ $sslColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                            </x-ui.tooltip>
-
-                            {{-- 3. Response Time --}}
-                            <x-ui.tooltip :text="$responseTooltip">
-                                <svg class="h-4 w-4 {{ $responseColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </x-ui.tooltip>
-
-                            {{-- 4. Analytics (Hovercard) --}}
                             <x-ui.hovercard>
                                 <x-slot:trigger>
-                                    <svg class="h-4 w-4 {{ $perfColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                    <svg class="h-[17px] w-[17px] {{ $sslColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 </x-slot:trigger>
-                                @if($site->analyticsConnection && $site->analyticsConnection->is_active)
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-900">Google Analytics</span>
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
-                                    </div>
-                                    @if($site->analyticsConnection->property_name)
-                                        <p class="mt-2 text-xs text-gray-600">
-                                            <span class="text-gray-500">Property:</span>
-                                            <span class="font-medium">{{ $site->analyticsConnection->property_name }}</span>
-                                        </p>
-                                    @endif
-                                    @if($site->analyticsConnection->last_sync_at)
-                                        <p class="mt-1 text-xs text-gray-500">Last synced {{ $site->analyticsConnection->last_sync_at->diffForHumans() }}</p>
-                                    @endif
-                                    <div class="mt-3 border-t border-gray-100 pt-3">
-                                        <a href="{{ route('sites.analytics', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Analytics</a>
-                                    </div>
-                                @else
-                                    <p class="text-sm text-gray-500">Analytics not connected</p>
-                                    <a href="{{ route('sites.analytics', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">Connect Analytics</a>
-                                @endif
+                                <x-hovercards.ssl :site="$site" />
+                            </x-ui.hovercard>
+
+                            {{-- 3. Response Time --}}
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $responseColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.response-time :site="$site" />
+                            </x-ui.hovercard>
+
+                            {{-- 4. Analytics --}}
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $perfColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.analytics :site="$site" />
                             </x-ui.hovercard>
 
                             {{-- 5. Links --}}
-                            <x-ui.tooltip :text="$linksTooltip">
-                                <svg class="h-4 w-4 {{ $linksColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                            </x-ui.tooltip>
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $linksColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.links :site="$site" />
+                            </x-ui.hovercard>
 
                             {{-- 6. Domain --}}
-                            <x-ui.tooltip :text="$domainTooltip">
-                                <svg class="h-4 w-4 {{ $domainColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </x-ui.tooltip>
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $domainColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.domain :site="$site" />
+                            </x-ui.hovercard>
 
                             <div class="mx-0.5 h-4 w-px bg-gray-200"></div>
 
-                            {{-- 7. Plugins/Updates (Hovercard) --}}
+                            {{-- 7. Plugins/Updates --}}
                             <x-ui.hovercard>
                                 <x-slot:trigger>
-                                    <svg class="h-4 w-4 {{ $pluginsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+                                    <svg class="h-[17px] w-[17px] {{ $pluginsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
                                 </x-slot:trigger>
-                                @if($updates > 0)
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-900">Pending Updates</span>
-                                        <span class="inline-flex items-center rounded-full {{ $updates <= 5 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700' }} px-2 py-0.5 text-xs font-medium">{{ $updates }}</span>
-                                    </div>
-                                    <div class="mt-3 space-y-2">
-                                        @if($site->core_update_version)
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="font-medium text-gray-900">WordPress Core</span>
-                                                <span class="text-gray-500">{{ $site->wp_version ?? '?' }} &rarr; {{ $site->core_update_version }}</span>
-                                            </div>
-                                        @endif
-                                        @foreach($site->sitePlugins->take(5) as $plugin)
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="truncate font-medium text-gray-700" title="{{ $plugin->name }}">{{ \Illuminate\Support\Str::limit($plugin->name, 25) }}</span>
-                                                <span class="ml-2 flex-shrink-0 text-gray-500">{{ $plugin->version ?? '?' }} &rarr; {{ $plugin->update_version ?? '?' }}</span>
-                                            </div>
-                                        @endforeach
-                                        @if($site->sitePlugins->count() > 5)
-                                            <p class="text-xs text-gray-400">+{{ $site->sitePlugins->count() - 5 }} more plugins</p>
-                                        @endif
-                                        @foreach($site->siteThemes as $theme)
-                                            <div class="flex items-center justify-between text-xs">
-                                                <span class="truncate font-medium text-gray-700" title="{{ $theme->name }}">{{ \Illuminate\Support\Str::limit($theme->name, 25) }} <span class="text-gray-400">(theme)</span></span>
-                                                <span class="ml-2 flex-shrink-0 text-gray-500">{{ $theme->version ?? '?' }} &rarr; {{ $theme->update_version ?? '?' }}</span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    <div class="mt-3 border-t border-gray-100 pt-3">
-                                        <a href="{{ route('sites.plugins', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View All Updates</a>
-                                    </div>
-                                @else
-                                    <div class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-sm text-gray-600">All up to date</span>
-                                    </div>
-                                    <div class="mt-3 border-t border-gray-100 pt-3">
-                                        <a href="{{ route('sites.plugins', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Plugins</a>
-                                    </div>
-                                @endif
+                                <x-hovercards.plugins :site="$site" />
                             </x-ui.hovercard>
 
                             {{-- 8. Users --}}
-                            <x-ui.tooltip :text="$usersTooltip">
-                                <svg class="h-4 w-4 {{ $usersColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                            </x-ui.tooltip>
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $usersColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.users :site="$site" />
+                            </x-ui.hovercard>
 
                             {{-- 9. WordPress Connected --}}
-                            <x-ui.tooltip :text="$wpConnTooltip">
-                                <svg class="h-4 w-4 {{ $wpConnColor }}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.5 12c0-1.19.25-2.32.69-3.35l3.81 10.44A8.51 8.51 0 013.5 12zm8.5 8.5c-.83 0-1.64-.12-2.4-.34l2.55-7.41 2.61 7.15c.02.04.04.07.06.1-.89.32-1.84.5-2.82.5zm1.1-12.47c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.83 0-2.24-.11-2.24-.11-.46-.02-.51.68-.05.7 0 0 .43.06.89.08l1.32 3.61-1.85 5.56-3.08-9.17c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.16 0-.35 0-.55-.01A8.49 8.49 0 0112 3.5c2.13 0 4.07.78 5.56 2.07-.04 0-.07-.01-.11-.01-1.39 0-2.08 1.07-2.08 1.9 0 .7.38 1.29.78 2 .3.52.65 1.19.65 2.16 0 .67-.26 1.45-.6 2.53l-.79 2.63-2.86-8.75zM16.62 18.77l2.59-7.47c.48-1.21.64-2.17.64-3.03 0-.31-.02-.6-.06-.87A8.48 8.48 0 0120.5 12a8.51 8.51 0 01-3.88 6.77z"/></svg>
-                            </x-ui.tooltip>
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $wpConnColor }}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.5 12c0-1.19.25-2.32.69-3.35l3.81 10.44A8.51 8.51 0 013.5 12zm8.5 8.5c-.83 0-1.64-.12-2.4-.34l2.55-7.41 2.61 7.15c.02.04.04.07.06.1-.89.32-1.84.5-2.82.5zm1.1-12.47c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.83 0-2.24-.11-2.24-.11-.46-.02-.51.68-.05.7 0 0 .43.06.89.08l1.32 3.61-1.85 5.56-3.08-9.17c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.16 0-.35 0-.55-.01A8.49 8.49 0 0112 3.5c2.13 0 4.07.78 5.56 2.07-.04 0-.07-.01-.11-.01-1.39 0-2.08 1.07-2.08 1.9 0 .7.38 1.29.78 2 .3.52.65 1.19.65 2.16 0 .67-.26 1.45-.6 2.53l-.79 2.63-2.86-8.75zM16.62 18.77l2.59-7.47c.48-1.21.64-2.17.64-3.03 0-.31-.02-.6-.06-.87A8.48 8.48 0 0120.5 12a8.51 8.51 0 01-3.88 6.77z"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.wordpress :site="$site" />
+                            </x-ui.hovercard>
 
                             <div class="mx-0.5 h-4 w-px bg-gray-200"></div>
 
-                            {{-- 10. Backup (Hovercard) --}}
+                            {{-- 10. Backup --}}
                             <x-ui.hovercard>
                                 <x-slot:trigger>
-                                    <svg class="h-4 w-4 {{ $backupColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                                    <svg class="h-[17px] w-[17px] {{ $backupColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
                                 </x-slot:trigger>
-                                @if($site->backupConfig)
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-900">Backups</span>
-                                        @php
-                                            $bStatus = $site->backupConfig->last_backup_status;
-                                            $bDot = match($bStatus) {
-                                                'completed' => 'bg-green-500',
-                                                'failed' => 'bg-red-500',
-                                                default => 'bg-gray-400',
-                                            };
-                                        @endphp
-                                        <span class="inline-flex items-center gap-1.5 text-xs text-gray-500">
-                                            <span class="h-2 w-2 rounded-full {{ $bDot }}"></span>
-                                            {{ $bStatus ? ucfirst($bStatus) : 'No backups yet' }}
-                                        </span>
-                                    </div>
-                                    @if($site->latestCompletedBackup)
-                                        <div class="mt-3 text-xs">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-gray-500">Last backup</span>
-                                                <span class="font-medium text-gray-900">{{ $site->latestCompletedBackup->completed_at->diffForHumans() }}</span>
-                                            </div>
-                                            <div class="mt-1 flex items-center justify-between">
-                                                <span class="text-gray-500">Size</span>
-                                                <span class="font-medium text-gray-900">{{ $site->latestCompletedBackup->file_size_formatted }}</span>
-                                            </div>
-                                        </div>
-                                    @endif
-                                    <div class="mt-2 text-xs">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-gray-500">Schedule</span>
-                                            <span class="font-medium text-gray-900">{{ ucfirst($site->backupConfig->frequency ?? 'Not set') }}</span>
-                                        </div>
-                                        @if($site->backupConfig->next_backup_at)
-                                            <div class="mt-1 flex items-center justify-between">
-                                                <span class="text-gray-500">Next backup</span>
-                                                <span class="font-medium text-gray-900">{{ $site->backupConfig->next_backup_at->format('M j, g:ia') }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-                                        <button wire:click="runBackup({{ $site->id }})" class="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700">Run Backup</button>
-                                        <a href="{{ route('sites.backups', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Backups</a>
-                                    </div>
-                                @else
-                                    <p class="text-sm text-gray-500">No backup configured</p>
-                                    <a href="{{ route('sites.backups', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">Configure Backups</a>
-                                @endif
+                                <x-hovercards.backup :site="$site" />
                             </x-ui.hovercard>
 
                             {{-- 11. WP Version --}}
-                            <x-ui.tooltip :text="$wpVerTooltip">
-                                <svg class="h-4 w-4 {{ $wpVerColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
-                            </x-ui.tooltip>
+                            <x-ui.hovercard>
+                                <x-slot:trigger>
+                                    <svg class="h-[17px] w-[17px] {{ $wpVerColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+                                </x-slot:trigger>
+                                <x-hovercards.wp-version :site="$site" />
+                            </x-ui.hovercard>
 
-                            {{-- 12. Reports (Hovercard) --}}
+                            {{-- 12. Reports --}}
                             @php $reportsColor = $site->reportSchedules->isNotEmpty() ? 'text-green-500' : 'text-gray-300'; @endphp
                             <x-ui.hovercard>
                                 <x-slot:trigger>
-                                    <svg class="h-4 w-4 {{ $reportsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-[17px] w-[17px] {{ $reportsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                 </x-slot:trigger>
-                                @php $activeSchedule = $site->reportSchedules->first(); @endphp
-                                @if($activeSchedule)
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-900">Reports</span>
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Active</span>
-                                    </div>
-                                    <div class="mt-3 text-xs">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-gray-500">Frequency</span>
-                                            <span class="font-medium text-gray-900">{{ ucfirst($activeSchedule->frequency ?? 'N/A') }}</span>
-                                        </div>
-                                        @if($activeSchedule->next_run_at)
-                                            <div class="mt-1 flex items-center justify-between">
-                                                <span class="text-gray-500">Next report</span>
-                                                <span class="font-medium text-gray-900">{{ $activeSchedule->next_run_at->format('M j, g:ia') }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-                                        <button wire:click="generateQuickReport({{ $site->id }})" class="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700">Generate Report</button>
-                                        <a href="{{ route('sites.reports', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Reports</a>
-                                    </div>
-                                @else
-                                    <p class="text-sm text-gray-500">No reports scheduled</p>
-                                    <div class="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-                                        <button wire:click="generateQuickReport({{ $site->id }})" class="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700">Generate Report</button>
-                                        <a href="{{ route('sites.reports', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">Set Up Schedule</a>
-                                    </div>
-                                @endif
+                                <x-hovercards.reports :site="$site" />
                             </x-ui.hovercard>
                         </div>
 
@@ -542,9 +627,40 @@
                             <button wire:click="runBackup({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Run Backup</button>
                             <button wire:click="checkNow({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Check Uptime</button>
                             <button wire:click="syncSite({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Sync Site</button>
+
+                            {{-- Divider --}}
+                            <div class="my-1 border-t border-gray-100"></div>
+
+                            {{-- Management actions --}}
+                            <button wire:click="startRename({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Rename</button>
+                            <a href="{{ route('sites.settings', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit Settings</a>
+
+                            {{-- Status assignment --}}
+                            @if($this->siteStatuses->isNotEmpty())
+                                <div class="my-1 border-t border-gray-100"></div>
+                                <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">Status</div>
+                                @foreach($this->siteStatuses as $status)
+                                    <button wire:click="setSiteStatus({{ $site->id }}, {{ $status->id }})" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                        <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                                        {{ $status->name }}
+                                        @if($site->site_status_id === $status->id)
+                                            <svg class="ml-auto h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        @endif
+                                    </button>
+                                @endforeach
+                                <button wire:click="setSiteStatus({{ $site->id }}, null)" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">Clear Status</button>
+                            @endif
+
+                            <div class="my-1 border-t border-gray-100"></div>
+                            <button wire:click="confirmDelete({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete Site</button>
                         </x-ui.dropdown>
                     </div>
                 @endforeach
+                </div>
+            </div>
+
+            <div class="mt-4">
+                {{ $this->sites->links() }}
             </div>
         @endif
     </div>
@@ -580,4 +696,67 @@
             Clone A Site
         </a>
     </div>
+
+    {{-- Rename Site Modal --}}
+    <x-ui.modal name="rename-site" maxWidth="sm">
+        <form wire:submit="renameSite">
+            <h2 class="text-lg font-semibold text-gray-900">Rename Site</h2>
+            <p class="mt-1 text-sm text-gray-500">Enter a new name for this site.</p>
+
+            <div class="mt-4">
+                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">Site Name</label>
+                <x-ui.input wire:model="renamingSiteName" id="renamingSiteName" class="mt-1" />
+                @error('renamingSiteName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-rename-site')">
+                    Cancel
+                </x-ui.button>
+                <x-ui.button type="submit">
+                    Save
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    {{-- Delete Site Modal --}}
+    <x-ui.modal name="delete-site" maxWidth="sm">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Delete Site</h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete <span class="font-medium text-gray-900">{{ $deletingSiteName }}</span>? This action cannot be undone.
+            </p>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-site')">
+                    Cancel
+                </x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="deleteSite">
+                    Delete Site
+                </x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Bulk Delete Modal --}}
+    <x-ui.modal name="bulk-delete" maxWidth="sm">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Delete {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete these sites? This action cannot be undone.
+            </p>
+            @if(count($selectedSites) > 0)
+                <ul class="mt-3 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                    @foreach(App\Models\Site::whereIn('id', $selectedSites)->pluck('name', 'id') as $id => $name)
+                        <li class="py-0.5">{{ $name }}</li>
+                    @endforeach
+                </ul>
+            @endif
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-bulk-delete')">Cancel</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="bulkDelete">Delete {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
 </div>

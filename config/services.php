@@ -50,4 +50,8 @@ return [
         'redirect_uri' => env('GOOGLE_REDIRECT_URI', 'https://manager.simplead.ro/auth/google/callback'),
     ],
 
+    'cloudflare' => [
+        'api_url' => env('CLOUDFLARE_API_URL', 'https://api.cloudflare.com/client/v4'),
+    ],
+
 ];

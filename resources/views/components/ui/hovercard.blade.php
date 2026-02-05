@@ -1,60 +1,6 @@
-@props(['align' => 'right', 'width' => 'w-80'])
+@props(['align' => 'right', 'width' => 'w-[28rem]'])
 
-<span x-data="{
-    open: false,
-    panelEl: null,
-    openTimer: null,
-    closeTimer: null,
-
-    startOpen() {
-        clearTimeout(this.closeTimer);
-        this.openTimer = setTimeout(() => {
-            this.open = true;
-            this.$nextTick(() => this.reposition());
-        }, 200);
-    },
-
-    startClose() {
-        clearTimeout(this.openTimer);
-        this.closeTimer = setTimeout(() => { this.open = false; }, 150);
-    },
-
-    cancelClose() {
-        clearTimeout(this.closeTimer);
-    },
-
-    reposition() {
-        let trigger = this.$refs.trigger;
-        if (!trigger || !this.panelEl) return;
-        let rect = trigger.getBoundingClientRect();
-        let pw = this.panelEl.offsetWidth;
-        let ph = this.panelEl.offsetHeight;
-        let spaceBelow = window.innerHeight - rect.bottom;
-
-        if (spaceBelow < ph + 8 && rect.top > ph + 8) {
-            this.panelEl.style.top = Math.round(rect.top - ph - 4) + 'px';
-        } else {
-            this.panelEl.style.top = Math.round(rect.bottom + 4) + 'px';
-        }
-
-        let sidebar = document.querySelector('[data-sidebar]');
-        let minLeft = sidebar ? sidebar.getBoundingClientRect().right + 4 : 8;
-        @if($align === 'right')
-            let left = rect.right - pw;
-            if (left < minLeft) left = minLeft;
-            this.panelEl.style.left = Math.round(left) + 'px';
-        @else
-            let left = rect.left;
-            if (left < minLeft) left = minLeft;
-            if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-            this.panelEl.style.left = Math.round(left) + 'px';
-        @endif
-    },
-}" x-init="
-    let handler = () => { if (open) reposition(); };
-    window.addEventListener('scroll', handler, { passive: true, capture: true });
-    window.addEventListener('resize', handler, { passive: true });
-" class="inline-flex">
+<span x-data="hovercard({ alignRight: {{ $align === 'right' ? 'true' : 'false' }} })" class="inline-flex">
     <span x-ref="trigger" @mouseenter="startOpen()" @mouseleave="startClose()">
         {{ $trigger }}
     </span>

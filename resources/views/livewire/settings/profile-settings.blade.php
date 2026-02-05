@@ -11,7 +11,7 @@
         <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Other sessions have been logged out.</div>
     @endif
 
-    <div class="space-y-6 max-w-2xl">
+    <div class="space-y-6">
         {{-- Profile Section --}}
         <form wire:submit="saveProfile">
             <x-ui.card>

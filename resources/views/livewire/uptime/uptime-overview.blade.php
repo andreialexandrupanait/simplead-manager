@@ -1,5 +1,18 @@
 <div>
-    <div class="mb-6 flex justify-end">
+    {{-- Flash Message --}}
+    @if(session('message'))
+        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    <div class="mb-6 flex items-center justify-end gap-3">
+        @if($this->sitesWithoutMonitorCount > 0)
+            <x-ui.button variant="secondary" wire:click="addMonitorsForAllSites" wire:confirm="Create uptime monitors for {{ $this->sitesWithoutMonitorCount }} site(s) that don't have one?">
+                <span wire:loading.remove wire:target="addMonitorsForAllSites">Add Monitors for All Sites ({{ $this->sitesWithoutMonitorCount }})</span>
+                <span wire:loading wire:target="addMonitorsForAllSites">Creating Monitors...</span>
+            </x-ui.button>
+        @endif
         <x-ui.button wire:click="$dispatch('open-configure-monitor')">
             <x-icons.plus class="mr-1.5 h-4 w-4" />
             Add Monitor

@@ -1,0 +1,34 @@
+@props(['site'])
+
+@if($site->analyticsConnection && $site->analyticsConnection->is_active)
+    <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-gray-900">Google Analytics</span>
+        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+    </div>
+    <div class="mt-3 space-y-1.5 text-xs">
+        @if($site->analyticsConnection->property_name)
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">Property</span>
+                <span class="font-medium text-gray-900">{{ $site->analyticsConnection->property_name }}</span>
+            </div>
+        @endif
+        @if($site->analyticsConnection->measurement_id)
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">Measurement ID</span>
+                <span class="font-medium text-gray-900">{{ $site->analyticsConnection->measurement_id }}</span>
+            </div>
+        @endif
+        @if($site->analyticsConnection->last_sync_at)
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">Last synced</span>
+                <span class="font-medium text-gray-900">{{ $site->analyticsConnection->last_sync_at->diffForHumans() }}</span>
+            </div>
+        @endif
+    </div>
+    <div class="mt-3 border-t border-gray-100 pt-3">
+        <a href="{{ route('sites.analytics', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Analytics</a>
+    </div>
+@else
+    <p class="text-sm text-gray-500">Analytics not connected</p>
+    <a href="{{ route('sites.analytics', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">Connect Analytics</a>
+@endif

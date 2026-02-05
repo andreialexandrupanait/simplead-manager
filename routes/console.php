@@ -145,6 +145,18 @@ Schedule::call(function () {
         });
 })->hourly()->name('scheduled-reports')->withoutOverlapping();
 
+// Maintenance windows — every minute
+Schedule::call(function () {
+    \App\Services\MaintenanceService::processScheduledWindows();
+    \App\Services\MaintenanceService::processEndingWindows();
+})->everyMinute()->name('maintenance-windows')->withoutOverlapping();
+
+// Error log sync — every 15 minutes
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\SyncErrorLogsJob::dispatch($site));
+})->everyFifteenMinutes()->name('error-log-sync')->withoutOverlapping();
+
 // Expired backup cleanup — daily
 Schedule::call(function () {
     \App\Models\Backup::where('expires_at', '<=', now())
@@ -163,3 +175,40 @@ Schedule::call(function () {
             }
         });
 })->daily()->name('expired-backup-cleanup')->withoutOverlapping();
+
+// Security scans — weekly Sunday 2 AM
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\RunSecurityScan::dispatch($site));
+})->weekly()->sundays()->at('02:00')->name('security-scans')->withoutOverlapping();
+
+// Vulnerability checks — daily 3 AM
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\CheckVulnerabilities::dispatch($site));
+})->daily()->at('03:00')->name('vulnerability-checks')->withoutOverlapping();
+
+// Audit log sync — every 30 minutes
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\SyncAuditLogs::dispatch($site));
+})->everyThirtyMinutes()->name('audit-log-sync')->withoutOverlapping();
+
+// Fetch blocked requests — hourly
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\FetchBlockedRequests::dispatch($site));
+})->hourly()->name('fetch-blocked-requests')->withoutOverlapping();
+
+// Sync Cloudflare zone details — daily
+Schedule::call(function () {
+    \App\Models\SiteCloudflare::with('cloudflareConnection')
+        ->each(fn ($sc) => \App\Jobs\SyncCloudflareZone::dispatch($sc));
+})->daily()->name('cloudflare-zone-sync')->withoutOverlapping();
+
+// Clean expired IP rules + old audit logs + old blocked requests — daily
+Schedule::call(function () {
+    \App\Models\IpRule::whereNotNull('expires_at')->where('expires_at', '<=', now())->delete();
+    \App\Models\WpAuditLog::where('action_at', '<=', now()->subDays(90))->delete();
+    \App\Models\BlockedRequest::where('blocked_at', '<=', now()->subDays(30))->delete();
+})->daily()->name('security-cleanup')->withoutOverlapping();

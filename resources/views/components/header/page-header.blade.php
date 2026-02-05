@@ -27,7 +27,7 @@
     // Site-context routes: Dashboard > Sites > SiteName > PageTitle
     if ($siteContext && str_starts_with($routeName, 'sites.') && $routeName !== 'sites.index' && $routeName !== 'sites.create') {
         $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
-        $crumbs[] = ['label' => 'Sites', 'url' => route('sites.index')];
+        $crumbs[] = ['label' => 'Sites', 'url' => route('dashboard')];
         $crumbs[] = ['label' => $siteContext->name, 'url' => route('sites.overview', $siteContext)];
 
         $pageTitle = match($routeName) {
@@ -55,7 +55,7 @@
     // sites.create
     elseif ($routeName === 'sites.create') {
         $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
-        $crumbs[] = ['label' => 'Sites', 'url' => route('sites.index')];
+        $crumbs[] = ['label' => 'Sites', 'url' => route('dashboard')];
         $pageTitle = 'Add New Site';
     }
     // Clients detail

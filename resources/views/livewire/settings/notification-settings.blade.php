@@ -9,7 +9,7 @@
         <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('test-sent') }}</div>
     @endif
 
-    <div class="space-y-6 max-w-2xl">
+    <div class="space-y-6">
         {{-- Notification Channels --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
@@ -31,11 +31,12 @@
                                 <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
                                     @php
                                         $typeIcon = match($channel->type) {
-                                            'email' => '✉',
-                                            'slack' => '💬',
-                                            'discord' => '🎮',
-                                            'webhook' => '🔗',
-                                            default => '📢',
+                                            'email' => "\u{2709}",
+                                            'slack' => "\u{1F4AC}",
+                                            'discord' => "\u{1F3AE}",
+                                            'telegram' => "\u{2708}",
+                                            'webhook' => "\u{1F517}",
+                                            default => "\u{1F4E2}",
                                         };
                                     @endphp
                                     <span class="text-sm">{{ $typeIcon }}</span>
@@ -51,6 +52,11 @@
                                             <x-ui.badge variant="gray">Disabled</x-ui.badge>
                                         @endif
                                     </div>
+                                    @if($channel->last_error)
+                                        <p class="mt-0.5 text-xs text-red-500" title="{{ $channel->last_error_at?->diffForHumans() }}">
+                                            Error: {{ \Illuminate\Support\Str::limit($channel->last_error, 60) }}
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">

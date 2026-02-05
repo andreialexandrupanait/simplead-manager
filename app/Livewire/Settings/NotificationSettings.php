@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
 use App\Services\SettingsService;
 use Livewire\Attributes\On;
@@ -57,10 +58,22 @@ class NotificationSettings extends Component
 
     public function testChannel(int $id): void
     {
-        // Send a test notification to the channel
         $channel = NotificationChannel::findOrFail($id);
-        // For now, flash a message that test was sent
-        session()->flash('test-sent', "Test notification sent to {$channel->name}.");
+
+        SendNotificationJob::dispatch(
+            channel: $channel,
+            site: null,
+            event: 'test',
+            title: 'Test Notification',
+            message: 'This is a test notification from SimpleAD Manager.',
+            fields: [
+                ['title' => 'Channel', 'value' => $channel->name, 'short' => true],
+                ['title' => 'Type', 'value' => ucfirst($channel->type), 'short' => true],
+            ],
+            severity: 'info',
+        );
+
+        session()->flash('test-sent', "Test notification dispatched to {$channel->name}.");
     }
 
     #[On('channels-updated')]

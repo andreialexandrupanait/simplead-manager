@@ -6,6 +6,7 @@ use App\Models\LinkMonitor;
 use App\Models\LinkScan;
 use App\Services\ActivityLogger;
 use App\Services\LinkCheckerService;
+use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,6 +28,11 @@ class RunLinkScan implements ShouldQueue
     public function handle(): void
     {
         $site = $this->monitor->site;
+
+        if (MaintenanceService::isSiteInMaintenance($site, 'links')) {
+            return;
+        }
+
 
         $scan = LinkScan::create([
             'site_id' => $site->id,

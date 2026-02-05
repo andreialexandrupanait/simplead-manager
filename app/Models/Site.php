@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
+use App\Jobs\CheckUptime;
 use App\Jobs\RunPerformanceTest;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -20,6 +22,8 @@ class Site extends Model
         "url",
         "client_id",
         "status",
+        "site_status_id",
+        "sort_order",
         "health_score",
         "type",
         "api_key",
@@ -53,6 +57,7 @@ class Site extends Model
         "ssl_expiry" => "date",
         "last_backup_at" => "datetime",
         "last_synced_at" => "datetime",
+        "sort_order" => "integer",
         "health_score" => "integer",
         "pending_updates_count" => "integer",
         "uptime_percentage" => "decimal:2",
@@ -64,6 +69,12 @@ class Site extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Site $site) {
+            if (!$site->sort_order) {
+                $site->sort_order = (static::max('sort_order') ?? 0) + 1;
+            }
+        });
+
         static::created(function (Site $site) {
             // Create SSL certificate monitor if site uses HTTPS
             if (str_starts_with($site->url, 'https://')) {
@@ -100,6 +111,12 @@ class Site extends Model
                 'day_of_week' => 0,
                 'next_scan_at' => now()->next('Sunday')->setTimeFromTimeString('02:00'),
             ]);
+
+            // Create uptime monitor
+            $uptimeMonitor = $site->uptimeMonitor()->create([
+                'url' => $site->url,
+            ]);
+            CheckUptime::dispatch($uptimeMonitor);
         });
     }
 
@@ -122,6 +139,11 @@ class Site extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function siteStatus(): BelongsTo
+    {
+        return $this->belongsTo(SiteStatus::class);
     }
 
     public function uptimeMonitor(): HasOne
@@ -207,6 +229,111 @@ class Site extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function maintenanceWindows(): HasMany
+    {
+        return $this->hasMany(MaintenanceWindow::class);
+    }
+
+    public function activeMaintenanceWindow(): HasOne
+    {
+        return $this->hasOne(MaintenanceWindow::class)->where('status', 'active');
+    }
+
+    public function dnsRecordCache(): HasOne
+    {
+        return $this->hasOne(DnsRecordCache::class);
+    }
+
+    public function coreFileChecks(): HasMany
+    {
+        return $this->hasMany(CoreFileCheck::class);
+    }
+
+    public function latestCoreFileCheck(): HasOne
+    {
+        return $this->hasOne(CoreFileCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function sitePluginConflicts(): HasMany
+    {
+        return $this->hasMany(SitePluginConflict::class);
+    }
+
+    public function siteCronJobs(): HasMany
+    {
+        return $this->hasMany(SiteCronJob::class);
+    }
+
+    public function databaseCleanups(): HasMany
+    {
+        return $this->hasMany(DatabaseCleanup::class);
+    }
+
+    public function errorLogs(): HasMany
+    {
+        return $this->hasMany(ErrorLog::class);
+    }
+
+    public function databaseHealthChecks(): HasMany
+    {
+        return $this->hasMany(DatabaseHealthCheck::class);
+    }
+
+    public function latestDatabaseHealthCheck(): HasOne
+    {
+        return $this->hasOne(DatabaseHealthCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function emailHealthChecks(): HasMany
+    {
+        return $this->hasMany(EmailHealthCheck::class);
+    }
+
+    public function latestEmailHealthCheck(): HasOne
+    {
+        return $this->hasOne(EmailHealthCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function securityScans(): HasMany
+    {
+        return $this->hasMany(SecurityScan::class);
+    }
+
+    public function latestSecurityScan(): HasOne
+    {
+        return $this->hasOne(SecurityScan::class)->latestOfMany('scanned_at');
+    }
+
+    public function securityIssues(): HasMany
+    {
+        return $this->hasMany(SecurityIssue::class);
+    }
+
+    public function securityRecommendations(): HasMany
+    {
+        return $this->hasMany(SecurityRecommendation::class);
+    }
+
+    public function vulnerabilityAlerts(): HasMany
+    {
+        return $this->hasMany(VulnerabilityAlert::class);
+    }
+
+    public function wpAuditLogs(): HasMany
+    {
+        return $this->hasMany(WpAuditLog::class);
+    }
+
+    public function ipRules(): HasMany
+    {
+        return $this->hasMany(IpRule::class);
+    }
+
+    public function siteCloudflare(): HasOne
+    {
+        return $this->hasOne(SiteCloudflare::class);
     }
 
     public function getDomainAttribute(): string

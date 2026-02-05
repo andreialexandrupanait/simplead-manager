@@ -4,7 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @php $brandingLogo = app(\App\Services\SettingsService::class)->get('branding.logo'); @endphp
     <title>{{ $title ?? 'SimpleAd Manager' }}</title>
+    @if($brandingLogo)
+        <link rel="icon" type="image/png" href="{{ Storage::url($brandingLogo) }}">
+    @endif
     {{-- Pre-Alpine sidebar state to prevent flash --}}
     <script>
         (function() {
@@ -36,7 +40,15 @@
             toggleSidebar() {
                 this.sidebarOpen = !this.sidebarOpen;
                 localStorage.setItem('sidebarOpen', this.sidebarOpen);
-            }
+            },
+            sidebarTooltip: { show: false, text: '', left: 0, top: 0 },
+            showSidebarTooltip(el) {
+                if (this.sidebarOpen || window.innerWidth < 1024) return;
+                const rect = el.getBoundingClientRect();
+                const text = el.querySelector('span')?.textContent?.trim() || '';
+                this.sidebarTooltip = { show: true, text, left: Math.round(rect.right + 8), top: Math.round(rect.top + rect.height / 2) };
+            },
+            hideSidebarTooltip() { this.sidebarTooltip.show = false; }
          }">
 
         {{-- Mobile overlay --}}
@@ -57,18 +69,22 @@
             {{-- Logo area --}}
             <div class="flex h-16 items-center px-4 gap-3">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-3 min-w-0">
-                    <div class="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                        SA
+                    <div class="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
+                        @if($brandingLogo)
+                            <img src="{{ Storage::url($brandingLogo) }}" alt="" class="h-full w-full object-cover">
+                        @else
+                            SA
+                        @endif
                     </div>
                     <span class="text-lg font-bold text-white whitespace-nowrap transition-all duration-300"
                           :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                        SimpleAd Manager
+                        {{ app(\App\Services\SettingsService::class)->get('app_name', 'SimpleAd Manager') }}
                     </span>
                 </a>
             </div>
 
             {{-- Dynamic sidebar content --}}
-            <nav class="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 transition-all duration-300"
+            <nav class="flex-1 overflow-y-auto scrollbar-thin px-2 py-2 transition-all duration-300"
                  :class="sidebarOpen ? '' : 'lg:px-2'">
                 @if(isset($siteContext) && $siteContext)
                     <x-sidebar.site-sidebar :site="$siteContext" />
@@ -106,6 +122,22 @@
                     {{ $slot }}
                 </div>
             </main>
+        </div>
+    </div>
+
+    {{-- Shared sidebar tooltip --}}
+    <div x-show="sidebarTooltip.show" x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 translate-x-1"
+         x-transition:enter-end="opacity-100 translate-x-0"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100 translate-x-0"
+         x-transition:leave-end="opacity-0 translate-x-1"
+         class="pointer-events-none fixed z-[10000] -translate-y-1/2 whitespace-nowrap"
+         :style="`left:${sidebarTooltip.left}px;top:${sidebarTooltip.top}px`">
+        <div class="relative rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg">
+            <span x-text="sidebarTooltip.text"></span>
+            <div class="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
         </div>
     </div>
 

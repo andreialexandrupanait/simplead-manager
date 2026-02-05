@@ -11,6 +11,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(PluginConflictSeeder::class);
+
         // Admin user
         User::factory()->create([
             'name' => 'Andrei',

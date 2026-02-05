@@ -18,6 +18,7 @@
                     <option value="email">Email</option>
                     <option value="slack">Slack</option>
                     <option value="discord">Discord</option>
+                    <option value="telegram">Telegram</option>
                     <option value="webhook">Webhook</option>
                 </x-ui.select>
             </div>
@@ -35,6 +36,20 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Webhook URL</label>
                     <x-ui.input wire:model="webhookUrl" type="url" placeholder="https://hooks.slack.com/..." class="mt-1" />
+                </div>
+            @endif
+
+            {{-- Telegram fields --}}
+            @if($type === 'telegram')
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Bot Token</label>
+                    <x-ui.input wire:model="telegramBotToken" type="password" placeholder="123456:ABC-DEF..." class="mt-1" />
+                    <p class="mt-1 text-xs text-gray-400">Get a bot token from @BotFather on Telegram</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Chat ID</label>
+                    <x-ui.input wire:model="telegramChatId" placeholder="-1001234567890" class="mt-1" />
+                    <p class="mt-1 text-xs text-gray-400">Channel, group, or user chat ID</p>
                 </div>
             @endif
 
@@ -67,6 +82,33 @@
                 <input type="checkbox" wire:model="is_default" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                 <span class="text-sm text-gray-700">Use as default channel for all monitors</span>
             </label>
+
+            {{-- Event Subscriptions --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Event Subscriptions</label>
+                <p class="text-xs text-gray-400 mb-3">Leave all unchecked to receive all events, or select specific events.</p>
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach([
+                        'site_down' => 'Site Down',
+                        'site_up' => 'Site Recovered',
+                        'ssl_expiring' => 'SSL Expiring',
+                        'ssl_expired' => 'SSL Expired',
+                        'domain_expiring' => 'Domain Expiring',
+                        'backup_failed' => 'Backup Failed',
+                        'broken_links' => 'Broken Links',
+                        'performance_drop' => 'Performance Drop',
+                        'budget_violation' => 'Budget Violation',
+                        'maintenance_start' => 'Maintenance Start',
+                        'maintenance_end' => 'Maintenance End',
+                        'test' => 'Test Notification',
+                    ] as $eventKey => $eventLabel)
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" wire:model="eventSubscriptions" value="{{ $eventKey }}" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-xs text-gray-600">{{ $eventLabel }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
         </div>
 
         <div class="mt-6 flex items-center justify-end gap-3">

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Site;
+use App\Services\PluginConflictService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -143,6 +144,13 @@ class SyncWordPressSite implements ShouldQueue
             $this->site->update([
                 'pending_updates_count' => $pendingCount,
             ]);
+
+            // Auto-check plugin conflicts after sync
+            try {
+                PluginConflictService::checkSite($this->site);
+            } catch (\Exception $e) {
+                Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
 
         } catch (\Exception $e) {
             Log::warning("WordPress sync failed for site {$this->site->id}: {$e->getMessage()}");

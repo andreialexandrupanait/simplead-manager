@@ -6,6 +6,7 @@ use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Services\ActivityLogger;
+use App\Services\MaintenanceService;
 use App\Services\PageSpeedService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,6 +29,11 @@ class RunPerformanceTest implements ShouldQueue
     public function handle(PageSpeedService $pageSpeed): void
     {
         $site = $this->monitor->site;
+
+        if (MaintenanceService::isSiteInMaintenance($site, 'performance')) {
+            return;
+        }
+
         $devices = $this->device === 'both' ? ['mobile', 'desktop'] : [$this->device];
         $pages = $this->monitor->pages()->orderByDesc('is_primary')->orderBy('label')->get();
 

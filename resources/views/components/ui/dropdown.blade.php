@@ -9,46 +9,7 @@ $widthClass = match($width) {
 $originClass = $align === 'right' ? 'origin-top-right' : 'origin-top-left';
 @endphp
 
-<div x-data="{
-    open: false,
-    panelEl: null,
-    toggle() {
-        if (this.open) {
-            this.open = false;
-            return;
-        }
-        this.open = true;
-        this.$nextTick(() => this.reposition());
-    },
-    close(e) {
-        if (!this.open) return;
-        if (this.$refs.trigger && this.$refs.trigger.contains(e.target)) return;
-        if (this.panelEl && this.panelEl.contains(e.target)) return;
-        this.open = false;
-    },
-    reposition() {
-        let trigger = this.$refs.trigger;
-        if (!trigger || !this.panelEl) return;
-        let rect = trigger.getBoundingClientRect();
-        let pw = this.panelEl.offsetWidth;
-        let ph = this.panelEl.offsetHeight;
-        let spaceBelow = window.innerHeight - rect.bottom;
-        if (spaceBelow < ph + 8 && rect.top > ph + 8) {
-            this.panelEl.style.top = Math.round(rect.top - ph - 4) + 'px';
-        } else {
-            this.panelEl.style.top = Math.round(rect.bottom + 4) + 'px';
-        }
-        @if($align === 'right')
-            this.panelEl.style.left = Math.round(rect.right - pw) + 'px';
-        @else
-            this.panelEl.style.left = Math.round(rect.left) + 'px';
-        @endif
-    },
-}" x-init="
-    let handler = () => { if (open) reposition(); };
-    window.addEventListener('scroll', handler, { passive: true });
-    window.addEventListener('resize', handler, { passive: true });
-" @click.window="close($event)">
+<div x-data="dropdown({ alignRight: {{ $align === 'right' ? 'true' : 'false' }} })" @click.window="close($event)">
     <div x-ref="trigger" @click="toggle()">
         {{ $trigger }}
     </div>

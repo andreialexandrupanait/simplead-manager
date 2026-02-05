@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Jobs\CheckAbandonedPluginsJob;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use App\Services\PluginConflictService;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
@@ -41,6 +43,8 @@ class SitePlugins extends Component
             $query->where('is_active', false);
         } elseif ($this->filter === 'updates') {
             $query->where('has_update', true);
+        } elseif ($this->filter === 'abandoned') {
+            $query->problematic();
         }
 
         if ($this->search) {
@@ -105,7 +109,36 @@ class SitePlugins extends Component
             'active' => $this->site->sitePlugins()->where('is_active', true)->count(),
             'inactive' => $this->site->sitePlugins()->where('is_active', false)->count(),
             'updates' => $this->site->sitePlugins()->where('has_update', true)->count(),
+            'issues' => $this->site->sitePlugins()->problematic()->count(),
         ];
+    }
+
+    #[Computed]
+    public function abandonedCounts()
+    {
+        return [
+            'abandoned' => $this->site->sitePlugins()->abandoned()->count(),
+            'closed' => $this->site->sitePlugins()->closed()->count(),
+        ];
+    }
+
+    #[Computed]
+    public function lastAbandonedCheck()
+    {
+        return $this->site->sitePlugins()->max('abandoned_checked_at');
+    }
+
+    #[Computed]
+    public function activeConflicts()
+    {
+        if (!Schema::hasTable('site_plugin_conflicts')) {
+            return collect();
+        }
+
+        return $this->site->sitePluginConflicts()
+            ->where('status', 'active')
+            ->with('conflict')
+            ->get();
     }
 
     #[Computed]
@@ -467,6 +500,32 @@ class SitePlugins extends Component
         $this->confirmingDeleteThemeId = null;
         $this->dispatch('close-modal-confirm-delete-theme');
         unset($this->themes, $this->themeCounts);
+    }
+
+    public function checkAbandonedNow(): void
+    {
+        CheckAbandonedPluginsJob::dispatch($this->site);
+        session()->flash('update-success', 'Abandoned plugin check has been dispatched.');
+        unset($this->abandonedCounts, $this->lastAbandonedCheck, $this->plugins, $this->pluginCounts);
+    }
+
+    public function checkConflictsNow(): void
+    {
+        try {
+            PluginConflictService::checkSite($this->site);
+            session()->flash('update-success', 'Plugin conflict check completed.');
+        } catch (\Exception $e) {
+            session()->flash('update-error', "Conflict check failed: {$e->getMessage()}");
+        }
+
+        unset($this->activeConflicts);
+    }
+
+    public function dismissConflict(int $id): void
+    {
+        $conflict = $this->site->sitePluginConflicts()->findOrFail($id);
+        PluginConflictService::dismiss($conflict);
+        unset($this->activeConflicts);
     }
 
     public function syncNow(): void

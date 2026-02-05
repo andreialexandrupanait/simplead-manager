@@ -1,4 +1,4 @@
-<div class="mt-6 max-w-2xl">
+<div class="mt-6">
     @if(session('storage-success'))
         <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('storage-success') }}</div>
     @endif

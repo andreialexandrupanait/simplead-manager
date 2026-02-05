@@ -96,6 +96,89 @@
         </div>
     </div>
 
+    {{-- Plugin Conflict Warnings --}}
+    @if($tab === 'plugins' && $this->activeConflicts->count() > 0)
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-sm font-semibold text-red-800">
+                    {{ $this->activeConflicts->count() }} Plugin Conflict{{ $this->activeConflicts->count() > 1 ? 's' : '' }} Detected
+                </h4>
+                <x-ui.button variant="secondary" size="sm" wire:click="checkConflictsNow" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="checkConflictsNow">Re-check</span>
+                    <span wire:loading wire:target="checkConflictsNow">Checking...</span>
+                </x-ui.button>
+            </div>
+            <div class="space-y-2">
+                @foreach($this->activeConflicts as $siteConflict)
+                    <div class="flex items-start justify-between gap-3 rounded-lg bg-white/60 p-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-medium text-red-900">{{ $siteConflict->plugin_a_slug }}</span>
+                                <span class="text-xs text-red-400">&times;</span>
+                                <span class="text-sm font-medium text-red-900">{{ $siteConflict->plugin_b_slug }}</span>
+                                @if($siteConflict->conflict)
+                                    @php
+                                        $sevColor = match($siteConflict->conflict->severity ?? '') {
+                                            'critical' => 'red',
+                                            'high' => 'red',
+                                            'medium' => 'yellow',
+                                            default => 'gray',
+                                        };
+                                    @endphp
+                                    <x-ui.badge :variant="$sevColor">{{ ucfirst($siteConflict->conflict->severity ?? 'unknown') }}</x-ui.badge>
+                                @endif
+                            </div>
+                            @if($siteConflict->conflict?->description)
+                                <p class="mt-1 text-xs text-red-700">{{ $siteConflict->conflict->description }}</p>
+                            @endif
+                        </div>
+                        <button
+                            wire:click="dismissConflict({{ $siteConflict->id }})"
+                            class="shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Abandoned Plugin Warning Banner --}}
+    @if($tab === 'plugins' && ($this->abandonedCounts['abandoned'] > 0 || $this->abandonedCounts['closed'] > 0))
+        <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-semibold text-yellow-800">Plugin Health Issues</h4>
+                    <p class="mt-1 text-xs text-yellow-700">
+                        {{ $this->abandonedCounts['abandoned'] }} abandoned and {{ $this->abandonedCounts['closed'] }} closed plugin(s) detected.
+                        @if($this->lastAbandonedCheck)
+                            <span class="text-yellow-500">Last checked {{ \Carbon\Carbon::parse($this->lastAbandonedCheck)->diffForHumans() }}</span>
+                        @endif
+                    </p>
+                </div>
+                <x-ui.button variant="secondary" size="sm" wire:click="checkAbandonedNow" wire:loading.attr="disabled">
+                    <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="checkAbandonedNow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span wire:loading.remove wire:target="checkAbandonedNow">Check Now</span>
+                    <span wire:loading wire:target="checkAbandonedNow">Checking...</span>
+                </x-ui.button>
+            </div>
+        </div>
+    @elseif($tab === 'plugins' && !$this->lastAbandonedCheck)
+        <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700">Abandoned Plugin Detection</h4>
+                    <p class="mt-0.5 text-xs text-gray-500">Check if any installed plugins are abandoned or closed on WordPress.org.</p>
+                </div>
+                <x-ui.button variant="secondary" size="sm" wire:click="checkAbandonedNow" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="checkAbandonedNow">Check Now</span>
+                    <span wire:loading wire:target="checkAbandonedNow">Checking...</span>
+                </x-ui.button>
+            </div>
+        </div>
+    @endif
+
     {{-- Tab switcher --}}
     <div class="mb-4 flex items-center gap-1 rounded-lg bg-gray-100 p-1 w-fit">
         <button
@@ -170,9 +253,14 @@
             @if($tab !== 'users')
                 <div class="mt-3 flex items-center gap-2">
                     @php
-                        $filters = $tab === 'plugins'
-                            ? ['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'updates' => 'Updates']
-                            : ['all' => 'All', 'active' => 'Active', 'updates' => 'Updates'];
+                        if ($tab === 'plugins') {
+                            $filters = ['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'updates' => 'Updates'];
+                            if ($this->pluginCounts['issues'] > 0) {
+                                $filters['abandoned'] = 'Issues (' . $this->pluginCounts['issues'] . ')';
+                            }
+                        } else {
+                            $filters = ['all' => 'All', 'active' => 'Active', 'updates' => 'Updates'];
+                        }
                     @endphp
                     @foreach($filters as $key => $label)
                         <button
@@ -204,6 +292,11 @@
                                 </x-ui.badge>
                                 @if($plugin->auto_update)
                                     <x-ui.badge variant="purple">Auto</x-ui.badge>
+                                @endif
+                                @if($plugin->is_closed)
+                                    <x-ui.badge variant="red">Closed</x-ui.badge>
+                                @elseif($plugin->is_abandoned)
+                                    <x-ui.badge variant="yellow">Abandoned</x-ui.badge>
                                 @endif
                             </div>
                             <div class="mt-0.5 text-xs text-gray-500">

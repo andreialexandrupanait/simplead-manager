@@ -3,6 +3,7 @@
 namespace App\Livewire\Uptime;
 
 use App\Jobs\CheckUptime;
+use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -50,6 +51,27 @@ class UptimeOverview extends Component
     public function deleteMonitor(int $id): void
     {
         UptimeMonitor::findOrFail($id)->delete();
+    }
+
+    public function getSitesWithoutMonitorCountProperty(): int
+    {
+        return Site::whereDoesntHave('uptimeMonitor')->count();
+    }
+
+    public function addMonitorsForAllSites(): void
+    {
+        $sites = Site::whereDoesntHave('uptimeMonitor')->get();
+        $created = 0;
+
+        foreach ($sites as $site) {
+            $monitor = $site->uptimeMonitor()->create([
+                'url' => $site->url,
+            ]);
+            CheckUptime::dispatch($monitor);
+            $created++;
+        }
+
+        session()->flash('message', "{$created} uptime monitor(s) created.");
     }
 
     #[On('monitor-saved')]

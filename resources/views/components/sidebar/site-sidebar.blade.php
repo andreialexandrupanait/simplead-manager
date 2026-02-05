@@ -8,14 +8,15 @@
         reposition() {
             if (!this.tooltipEl) return;
             let rect = this.$refs.trigger.getBoundingClientRect();
+            let ph = this.tooltipEl.offsetHeight;
             this.tooltipEl.style.left = Math.round(rect.right + 8) + 'px';
-            this.tooltipEl.style.top = Math.round(rect.top + rect.height / 2) + 'px';
+            this.tooltipEl.style.top = Math.round(rect.top + rect.height / 2 - ph / 2) + 'px';
         },
         init() {
             this.$watch('sidebarOpen', (val) => { if (val) this.showTooltip = false; });
         }
     }">
-        <a href="{{ route('sites.index') }}"
+        <a href="{{ route('dashboard') }}"
            x-ref="trigger"
            @mouseenter="if (!sidebarOpen && window.innerWidth >= 1024) { showTooltip = true; $nextTick(() => reposition()); }"
            @mouseleave="showTooltip = false"
@@ -38,8 +39,8 @@
                  x-transition:leave="transition ease-in duration-100"
                  x-transition:leave-start="opacity-100 translate-x-0"
                  x-transition:leave-end="opacity-0 translate-x-1"
-                 class="pointer-events-none fixed"
-                 style="z-index: 10000; transform: translateY(-50%);">
+                 class="pointer-events-none whitespace-nowrap"
+                 style="display: none; position: fixed; z-index: 10000;">
                 <div class="relative rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg whitespace-nowrap">
                     All Sites
                     <div class="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
@@ -55,8 +56,9 @@
         reposition() {
             if (!this.tooltipEl) return;
             let rect = this.$refs.trigger.getBoundingClientRect();
+            let ph = this.tooltipEl.offsetHeight;
             this.tooltipEl.style.left = Math.round(rect.right + 8) + 'px';
-            this.tooltipEl.style.top = Math.round(rect.top + rect.height / 2) + 'px';
+            this.tooltipEl.style.top = Math.round(rect.top + rect.height / 2 - ph / 2) + 'px';
         },
         init() {
             this.$watch('sidebarOpen', (val) => { if (val) this.showTooltip = false; });
@@ -91,8 +93,8 @@
                  x-transition:leave="transition ease-in duration-100"
                  x-transition:leave-start="opacity-100 translate-x-0"
                  x-transition:leave-end="opacity-0 translate-x-1"
-                 class="pointer-events-none fixed"
-                 style="z-index: 10000; transform: translateY(-50%);">
+                 class="pointer-events-none whitespace-nowrap"
+                 style="display: none; position: fixed; z-index: 10000;">
                 <div class="relative rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg whitespace-nowrap">
                     {{ $site->name }}
                     <div class="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
@@ -110,23 +112,9 @@
         >
             Overview
         </x-sidebar.sidebar-item>
+    </div>
 
-        <x-sidebar.sidebar-item
-            :href="route('sites.plugins', $site)"
-            icon="puzzle"
-            :active="request()->routeIs('sites.plugins')"
-        >
-            Plugins & Themes
-        </x-sidebar.sidebar-item>
-
-        <x-sidebar.sidebar-item
-            :href="route('sites.updates', $site)"
-            icon="refresh-cw"
-            :active="request()->routeIs('sites.updates')"
-        >
-            Updates
-        </x-sidebar.sidebar-item>
-
+    <x-sidebar.sidebar-section title="Security">
         <x-sidebar.sidebar-item
             :href="route('sites.security', $site)"
             icon="shield"
@@ -136,11 +124,29 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
-            :href="route('sites.performance', $site)"
-            icon="zap"
-            :active="request()->routeIs('sites.performance')"
+            :href="route('sites.firewall', $site)"
+            icon="shield-alert"
+            :active="request()->routeIs('sites.firewall')"
         >
-            Performance
+            Firewall
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.audit-log', $site)"
+            icon="file-search"
+            :active="request()->routeIs('sites.audit-log')"
+        >
+            Audit Log
+        </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
+
+    <x-sidebar.sidebar-section title="Maintenance">
+        <x-sidebar.sidebar-item
+            :href="route('sites.updates', $site)"
+            icon="refresh-cw"
+            :active="request()->routeIs('sites.updates')"
+        >
+            Updates
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
@@ -152,6 +158,14 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
+            :href="route('sites.performance', $site)"
+            icon="zap"
+            :active="request()->routeIs('sites.performance')"
+        >
+            Performance
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
             :href="route('sites.uptime', $site)"
             icon="activity"
             :active="request()->routeIs('sites.uptime')"
@@ -160,11 +174,63 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
+            :href="route('sites.cron', $site)"
+            icon="clock"
+            :active="request()->routeIs('sites.cron')"
+        >
+            Cron Jobs
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.maintenance', $site)"
+            icon="wrench"
+            :active="request()->routeIs('sites.maintenance')"
+        >
+            Maintenance
+        </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
+
+    <x-sidebar.sidebar-section title="Content">
+        <x-sidebar.sidebar-item
+            :href="route('sites.plugins', $site)"
+            icon="puzzle"
+            :active="request()->routeIs('sites.plugins')"
+        >
+            Plugins & Themes
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.database', $site)"
+            icon="database"
+            :active="request()->routeIs('sites.database')"
+        >
+            Database
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
             :href="route('sites.links', $site)"
             icon="link"
             :active="request()->routeIs('sites.links')"
         >
             Links
+        </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
+
+    <x-sidebar.sidebar-section title="Integrations">
+        <x-sidebar.sidebar-item
+            :href="route('sites.dns', $site)"
+            icon="globe"
+            :active="request()->routeIs('sites.dns')"
+        >
+            DNS
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.cloudflare', $site)"
+            icon="cloud"
+            :active="request()->routeIs('sites.cloudflare')"
+        >
+            Cloudflare
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
@@ -182,6 +248,16 @@
         >
             Search Console
         </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
+
+    <x-sidebar.sidebar-section title="Reports">
+        <x-sidebar.sidebar-item
+            :href="route('sites.errors', $site)"
+            icon="alert-triangle"
+            :active="request()->routeIs('sites.errors')"
+        >
+            Errors
+        </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
             :href="route('sites.reports', $site)"
@@ -190,7 +266,9 @@
         >
             Reports
         </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
 
+    <x-sidebar.sidebar-section title="Settings">
         <x-sidebar.sidebar-item
             :href="route('sites.settings', $site)"
             icon="settings"
@@ -198,5 +276,5 @@
         >
             Site Settings
         </x-sidebar.sidebar-item>
-    </div>
+    </x-sidebar.sidebar-section>
 </div>

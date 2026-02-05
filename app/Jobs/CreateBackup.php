@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
+use App\Services\MaintenanceService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -38,6 +39,10 @@ class CreateBackup implements ShouldQueue
 
     public function handle(): void
     {
+        if (MaintenanceService::isSiteInMaintenance($this->site, 'backups')) {
+            return;
+        }
+
         $this->tempDir = storage_path('app/temp/backup-' . uniqid());
         mkdir($this->tempDir, 0755, true);
 

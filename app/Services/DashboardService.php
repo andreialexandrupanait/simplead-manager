@@ -10,6 +10,8 @@ use App\Models\SslCertificate;
 use App\Models\DomainMonitor;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardService
 {
@@ -189,7 +191,7 @@ class DashboardService
                 'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
                 'count' => $brokenLinkSites->count(),
                 'items' => $brokenLinkSites->pluck('id')->toArray(),
-                'url' => route('sites.index'),
+                'url' => route('dashboard'),
                 'timestamp' => $brokenLinkSites->max(fn ($s) => $s->linkMonitor->last_scan_at),
             ];
         }
@@ -206,9 +208,9 @@ class DashboardService
         return $groups;
     }
 
-    public function getSitesOverview(int $limit = 0): \Illuminate\Database\Eloquent\Collection
+    public function getSitesOverview(int $perPage = 12, string $search = '', string $filter = 'all', ?int $statusId = null, ?int $clientId = null, string $sort = 'health-asc'): LengthAwarePaginator
     {
-        $query = Site::with([
+        $eagerLoads = [
             'client',
             'uptimeMonitor',
             'uptimeMonitor.incidents',
@@ -222,20 +224,59 @@ class DashboardService
             'siteThemes' => fn($q) => $q->where('has_update', true),
             'analyticsConnection',
             'reportSchedules' => fn($q) => $q->where('is_active', true),
-        ])
+        ];
+
+        if (Schema::hasTable('site_statuses')) {
+            $eagerLoads[] = 'siteStatus';
+        }
+
+        $query = Site::with($eagerLoads)
             ->withCount([
                 'sitePlugins',
                 'sitePlugins as plugins_with_updates_count' => fn($q) => $q->where('has_update', true),
                 'siteThemes as themes_with_updates_count' => fn($q) => $q->where('has_update', true),
-            ])
-            ->orderByRaw('is_up ASC')
-            ->orderByRaw('COALESCE(health_score, 0) ASC');
+                'siteUsers',
+                'backups',
+            ]);
 
-        if ($limit > 0) {
-            $query->limit($limit);
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('domain', 'like', "%{$search}%");
+            });
         }
 
-        return $query->get();
+        if ($filter === 'healthy') {
+            $query->where('health_score', '>=', 90)->where('is_up', true);
+        } elseif ($filter === 'warning') {
+            $query->whereBetween('health_score', [70, 89])->where('is_up', true);
+        } elseif ($filter === 'critical') {
+            $query->where(function ($q) {
+                $q->where('health_score', '<', 70)
+                  ->orWhere('is_up', false);
+            });
+        }
+
+        if ($statusId && Schema::hasColumn('sites', 'site_status_id')) {
+            $query->where('site_status_id', $statusId);
+        }
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
+        }
+
+        $hasSortOrder = Schema::hasColumn('sites', 'sort_order');
+
+        match ($sort) {
+            'manual'      => $hasSortOrder ? $query->orderBy('sort_order', 'asc') : $query->orderBy('id', 'asc'),
+            'name-asc'    => $query->orderBy('name', 'asc'),
+            'name-desc'   => $query->orderBy('name', 'desc'),
+            'health-asc'  => $query->orderByRaw('COALESCE(health_score, 0) ASC'),
+            'health-desc' => $query->orderByRaw('COALESCE(health_score, 0) DESC'),
+            default       => $hasSortOrder ? $query->orderBy('sort_order', 'asc') : $query->orderBy('id', 'asc'),
+        };
+
+        return $query->paginate($perPage);
     }
 
     public function getUptimeOverview(): array

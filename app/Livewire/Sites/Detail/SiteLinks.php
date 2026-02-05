@@ -109,7 +109,7 @@ class SiteLinks extends Component
             });
         }
 
-        return $query->orderByRaw("FIELD(status, 'broken', 'ssl_error', 'dns_error', 'timeout', 'redirect', 'ok', 'pending')")
+        return $query->orderByRaw("CASE status WHEN 'broken' THEN 1 WHEN 'ssl_error' THEN 2 WHEN 'dns_error' THEN 3 WHEN 'timeout' THEN 4 WHEN 'redirect' THEN 5 WHEN 'ok' THEN 6 WHEN 'pending' THEN 7 ELSE 8 END")
             ->paginate(50);
     }
 

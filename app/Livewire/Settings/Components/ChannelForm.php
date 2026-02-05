@@ -19,6 +19,13 @@ class ChannelForm extends Component
     public string $webhookMethod = 'POST';
     public string $webhookHeaders = '';
 
+    // Telegram fields
+    public string $telegramBotToken = '';
+    public string $telegramChatId = '';
+
+    // Event subscriptions
+    public array $eventSubscriptions = [];
+
     #[On('open-channel-form')]
     public function openModal(?int $channelId = null): void
     {
@@ -30,10 +37,19 @@ class ChannelForm extends Component
             $this->name = $channel->name;
             $this->type = $channel->type;
             $this->is_default = $channel->is_default;
+            $this->eventSubscriptions = $channel->event_subscriptions ?? [];
 
             match ($channel->type) {
                 'email' => $this->emailAddress = $channel->config['address'] ?? '',
                 'slack', 'discord' => $this->webhookUrl = $channel->config['webhook_url'] ?? '',
+                'telegram' => (function () use ($channel) {
+                    $this->telegramChatId = $channel->config['chat_id'] ?? '';
+                    try {
+                        $this->telegramBotToken = decrypt($channel->config['bot_token'] ?? '');
+                    } catch (\Exception $e) {
+                        $this->telegramBotToken = '';
+                    }
+                })(),
                 'webhook' => (function () use ($channel) {
                     $this->webhookUrl = $channel->config['url'] ?? '';
                     $this->webhookMethod = $channel->config['method'] ?? 'POST';
@@ -57,18 +73,25 @@ class ChannelForm extends Component
         $this->webhookUrl = '';
         $this->webhookMethod = 'POST';
         $this->webhookHeaders = '';
+        $this->telegramBotToken = '';
+        $this->telegramChatId = '';
+        $this->eventSubscriptions = [];
     }
 
     public function save(): void
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:email,slack,discord,webhook',
+            'type' => 'required|in:email,slack,discord,webhook,telegram',
         ]);
 
         $config = match ($this->type) {
             'email' => ['address' => $this->emailAddress],
             'slack', 'discord' => ['webhook_url' => $this->webhookUrl],
+            'telegram' => [
+                'bot_token' => encrypt($this->telegramBotToken),
+                'chat_id' => $this->telegramChatId,
+            ],
             'webhook' => [
                 'url' => $this->webhookUrl,
                 'method' => $this->webhookMethod,
@@ -82,6 +105,7 @@ class ChannelForm extends Component
             'type' => $this->type,
             'config' => $config,
             'is_default' => $this->is_default,
+            'event_subscriptions' => !empty($this->eventSubscriptions) ? $this->eventSubscriptions : null,
         ];
 
         if ($this->channelId) {

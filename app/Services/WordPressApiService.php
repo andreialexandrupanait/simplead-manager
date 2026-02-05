@@ -216,11 +216,175 @@ class WordPressApiService
     }
 
     /**
+     * Get core file integrity check data (file hashes).
+     */
+    public function getCoreIntegrityCheck(): array
+    {
+        $response = $this->request('GET', '/core-integrity-check');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get cron job list.
+     */
+    public function getCronList(): array
+    {
+        $response = $this->request('GET', '/cron-list');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Run a specific cron hook.
+     */
+    public function runCron(string $hook, ?array $args = null): array
+    {
+        $data = ['hook' => $hook];
+        if ($args !== null) {
+            $data['args'] = $args;
+        }
+        $response = $this->request('POST', '/cron-run', $data);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Disable a specific cron hook.
+     */
+    public function disableCron(string $hook, ?array $args = null): array
+    {
+        $data = ['hook' => $hook];
+        if ($args !== null) {
+            $data['args'] = $args;
+        }
+        $response = $this->request('POST', '/cron-disable', $data);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Enable a specific cron hook.
+     */
+    public function enableCron(string $hook, string $schedule, ?array $args = null): array
+    {
+        $data = ['hook' => $hook, 'schedule' => $schedule];
+        if ($args !== null) {
+            $data['args'] = $args;
+        }
+        $response = $this->request('POST', '/cron-enable', $data);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get database cleanup stats preview.
+     */
+    public function getDbCleanupStats(): array
+    {
+        $response = $this->request('GET', '/db-cleanup-stats');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Run database cleanup with specified options.
+     */
+    public function runDbCleanup(array $options): array
+    {
+        $response = $this->request('POST', '/db-cleanup-run', $options);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get error logs.
+     */
+    public function getErrorLogs(): array
+    {
+        $response = $this->request('GET', '/error-logs');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get database health information.
+     */
+    public function getDatabaseHealth(): array
+    {
+        $response = $this->request('GET', '/database-health');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
      * Perform a health check.
      */
     public function healthCheck(): array
     {
         $response = $this->request('GET', '/health');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get security check results.
+     */
+    public function getSecurityCheck(): array
+    {
+        $response = $this->request('GET', '/security-check');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Apply a security fix.
+     */
+    public function applySecurityFix(string $key): array
+    {
+        $response = $this->request('POST', '/security-fix', [
+            'key' => $key,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get audit logs.
+     */
+    public function getAuditLogs(?string $since = null): array
+    {
+        $endpoint = '/audit-logs';
+        if ($since) {
+            $endpoint .= '?since=' . urlencode($since);
+        }
+        $response = $this->request('GET', $endpoint);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Sync IP rules to the site.
+     */
+    public function syncIpRules(array $rules): array
+    {
+        $response = $this->request('POST', '/ip-rules/sync', [
+            'rules' => $rules,
+        ]);
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Get blocked requests from the site.
+     */
+    public function getBlockedRequests(?string $since = null): array
+    {
+        $endpoint = '/blocked-requests';
+        if ($since) {
+            $endpoint .= '?since=' . urlencode($since);
+        }
+        $response = $this->request('GET', $endpoint);
         $response->throw();
         return $response->json();
     }

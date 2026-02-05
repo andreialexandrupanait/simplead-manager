@@ -6,15 +6,9 @@
     >
         Dashboard
     </x-sidebar.sidebar-item>
+</div>
 
-    <x-sidebar.sidebar-item
-        :href="route('sites.index')"
-        icon="globe"
-        :active="request()->routeIs('sites.*')"
-    >
-        Sites
-    </x-sidebar.sidebar-item>
-
+<x-sidebar.sidebar-section title="Monitoring">
     <x-sidebar.sidebar-item
         :href="route('uptime.index')"
         icon="activity"
@@ -24,19 +18,29 @@
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
-        :href="route('backups.index')"
-        icon="hard-drive"
-        :active="request()->routeIs('backups.*')"
-    >
-        Backups
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
         :href="route('performance.index')"
         icon="zap"
         :active="request()->routeIs('performance.*')"
     >
         Performance
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('errors.index')"
+        icon="alert-triangle"
+        :active="request()->routeIs('errors.*')"
+    >
+        Errors
+    </x-sidebar.sidebar-item>
+</x-sidebar.sidebar-section>
+
+<x-sidebar.sidebar-section title="Management">
+    <x-sidebar.sidebar-item
+        :href="route('backups.index')"
+        icon="hard-drive"
+        :active="request()->routeIs('backups.*')"
+    >
+        Backups
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -71,20 +75,21 @@
         Activity
     </x-sidebar.sidebar-item>
 
-    <div class="pt-6">
-        <div class="overflow-hidden transition-all duration-300"
-             :class="sidebarOpen ? '' : 'lg:max-h-0 lg:opacity-0'"
-            <p class="px-3 text-xs font-semibold uppercase tracking-wider text-white/40">System</p>
-        </div>
-        <div class="mt-2 space-y-1"
-             :class="sidebarOpen ? '' : 'lg:mt-0'">
-            <x-sidebar.sidebar-item
-                :href="route('settings.general')"
-                icon="settings"
-                :active="request()->routeIs('settings.*')"
-            >
-                Settings
-            </x-sidebar.sidebar-item>
-        </div>
-    </div>
-</div>
+    <x-sidebar.sidebar-item
+        :href="route('status-pages.index')"
+        icon="globe"
+        :active="request()->routeIs('status-pages.*')"
+    >
+        Status Pages
+    </x-sidebar.sidebar-item>
+</x-sidebar.sidebar-section>
+
+<x-sidebar.sidebar-section title="System">
+    <x-sidebar.sidebar-item
+        :href="route('settings.general')"
+        icon="settings"
+        :active="request()->routeIs('settings.*')"
+    >
+        Settings
+    </x-sidebar.sidebar-item>
+</x-sidebar.sidebar-section>

@@ -2,15 +2,23 @@
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Jobs\CheckCoreFileIntegrity;
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
+use App\Jobs\RunSecurityScan;
+use App\Models\SecurityIssue;
+use App\Models\SecurityRecommendation;
 use App\Models\Site;
+use App\Models\VulnerabilityAlert;
+use App\Services\SecurityRecommendationService;
+use App\Services\SecurityScanService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteSecurity extends Component
 {
     public Site $site;
+    public string $securityTab = 'overview';
 
     public function mount(Site $site): void
     {
@@ -41,6 +49,113 @@ class SiteSecurity extends Component
             ->orderByDesc('checked_at')
             ->limit(50)
             ->get();
+    }
+
+    #[Computed]
+    public function latestScan()
+    {
+        return $this->site->latestSecurityScan;
+    }
+
+    #[Computed]
+    public function activeIssues()
+    {
+        return SecurityIssue::where('site_id', $this->site->id)
+            ->active()
+            ->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->get();
+    }
+
+    #[Computed]
+    public function recommendations()
+    {
+        return SecurityRecommendation::where('site_id', $this->site->id)
+            ->orderBy('category')
+            ->orderBy('key')
+            ->get()
+            ->groupBy('category');
+    }
+
+    #[Computed]
+    public function recommendationStats()
+    {
+        $recs = SecurityRecommendation::where('site_id', $this->site->id);
+        return [
+            'passed' => (clone $recs)->where('status', 'passed')->count(),
+            'failed' => (clone $recs)->where('status', 'failed')->count(),
+            'total' => $recs->count(),
+        ];
+    }
+
+    #[Computed]
+    public function vulnerabilities()
+    {
+        return VulnerabilityAlert::where('site_id', $this->site->id)
+            ->active()
+            ->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->get();
+    }
+
+    #[Computed]
+    public function latestCoreCheck()
+    {
+        return $this->site->latestCoreFileCheck;
+    }
+
+    public function scanNow(): void
+    {
+        RunSecurityScan::dispatch($this->site);
+        session()->flash('scan-dispatched', 'Security scan has been dispatched. Results will appear shortly.');
+        unset($this->latestScan, $this->activeIssues, $this->recommendations, $this->recommendationStats, $this->vulnerabilities);
+    }
+
+    public function fixRecommendation(string $key): void
+    {
+        $result = SecurityRecommendationService::fix($this->site, $key);
+
+        if ($result) {
+            session()->flash('rec-fixed', 'Security fix applied successfully.');
+        } else {
+            session()->flash('rec-error', 'Failed to apply security fix.');
+        }
+
+        unset($this->recommendations, $this->recommendationStats);
+    }
+
+    public function ignoreRecommendation(int $id): void
+    {
+        $rec = SecurityRecommendation::find($id);
+        if ($rec && $rec->site_id === $this->site->id) {
+            SecurityRecommendationService::ignore($rec);
+        }
+        unset($this->recommendations, $this->recommendationStats);
+    }
+
+    public function resolveIssue(int $id): void
+    {
+        $issue = SecurityIssue::find($id);
+        if ($issue && $issue->site_id === $this->site->id) {
+            SecurityScanService::resolveIssue($issue);
+        }
+        unset($this->activeIssues, $this->latestScan);
+    }
+
+    public function ignoreIssue(int $id): void
+    {
+        $issue = SecurityIssue::find($id);
+        if ($issue && $issue->site_id === $this->site->id) {
+            SecurityScanService::ignoreIssue($issue);
+        }
+        unset($this->activeIssues, $this->latestScan);
+    }
+
+    public function ignoreVulnerability(int $id): void
+    {
+        $vuln = VulnerabilityAlert::find($id);
+        if ($vuln && $vuln->site_id === $this->site->id) {
+            $vuln->update(['status' => 'ignored']);
+        }
+        unset($this->vulnerabilities);
     }
 
     public function checkSslNow(): void
@@ -85,6 +200,13 @@ class SiteSecurity extends Component
         }
 
         unset($this->domainMonitor);
+    }
+
+    public function checkCoreIntegrityNow(): void
+    {
+        CheckCoreFileIntegrity::dispatch($this->site);
+        session()->flash('core-check-dispatched', 'Core file integrity check has been dispatched.');
+        unset($this->latestCoreCheck);
     }
 
     public function render()

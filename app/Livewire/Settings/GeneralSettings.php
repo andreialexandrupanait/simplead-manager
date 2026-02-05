@@ -2,13 +2,20 @@
 
 namespace App\Livewire\Settings;
 
+use App\Models\SiteStatus;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Services\SettingsService;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class GeneralSettings extends Component
 {
+    use WithFileUploads;
+
     // Application
     public string $appName = 'SimpleAd Manager';
     public string $appUrl = '';
@@ -21,6 +28,16 @@ class GeneralSettings extends Component
     public int $alertAfterFailures = 3;
     public int $dataRetentionDays = 90;
 
+    // Logo
+    public $logo;
+    public ?string $logoPath = null;
+
+    // Site Status form
+    public ?int $editingStatusId = null;
+    public string $statusName = '';
+    public string $statusColor = '#6b7280';
+    public int $statusSortOrder = 0;
+
     public function mount(SettingsService $settings): void
     {
         $this->appName = $settings->get('app_name', 'SimpleAd Manager');
@@ -31,6 +48,17 @@ class GeneralSettings extends Component
         $this->defaultTimeout = (int) $settings->get('default_timeout', 30);
         $this->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
         $this->dataRetentionDays = (int) $settings->get('data_retention_days', 90);
+        $this->logoPath = $settings->get('branding.logo');
+    }
+
+    #[Computed]
+    public function siteStatuses()
+    {
+        if (!Schema::hasTable('site_statuses')) {
+            return collect();
+        }
+
+        return SiteStatus::withCount('sites')->orderBy('sort_order')->get();
     }
 
     public function save(SettingsService $settings): void
@@ -44,6 +72,7 @@ class GeneralSettings extends Component
             'defaultTimeout' => 'required|integer|min:5|max:120',
             'alertAfterFailures' => 'required|integer|min:1|max:10',
             'dataRetentionDays' => 'required|integer|min:7|max:365',
+            'logo' => 'nullable|image|max:2048',
         ]);
 
         $settings->set('app_name', $this->appName, 'general', 'string');
@@ -55,7 +84,96 @@ class GeneralSettings extends Component
         $settings->set('alert_after_failures', $this->alertAfterFailures, 'monitoring', 'integer');
         $settings->set('data_retention_days', $this->dataRetentionDays, 'monitoring', 'integer');
 
+        if ($this->logo) {
+            // Delete old logo if exists
+            if ($this->logoPath) {
+                Storage::disk('public')->delete($this->logoPath);
+            }
+
+            $path = $this->logo->store('branding', 'public');
+            $settings->set('branding.logo', $path, 'branding', 'string');
+            $this->logoPath = $path;
+            $this->logo = null;
+        }
+
         session()->flash('settings-saved', true);
+    }
+
+    public function removeLogo(SettingsService $settings): void
+    {
+        if ($this->logoPath) {
+            Storage::disk('public')->delete($this->logoPath);
+            $settings->set('branding.logo', null, 'branding', 'string');
+            $this->logoPath = null;
+        }
+    }
+
+    public function openStatusForm(?int $id = null): void
+    {
+        if (!Schema::hasTable('site_statuses')) {
+            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            return;
+        }
+
+        if ($id) {
+            $status = SiteStatus::findOrFail($id);
+            $this->editingStatusId = $status->id;
+            $this->statusName = $status->name;
+            $this->statusColor = $status->color;
+            $this->statusSortOrder = $status->sort_order;
+        } else {
+            $this->editingStatusId = null;
+            $this->statusName = '';
+            $this->statusColor = '#6b7280';
+            $this->statusSortOrder = 0;
+        }
+
+        $this->resetValidation();
+        $this->dispatch('open-modal-status-form');
+    }
+
+    public function saveStatus(): void
+    {
+        if (!Schema::hasTable('site_statuses')) {
+            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            return;
+        }
+
+        $this->validate([
+            'statusName' => 'required|string|max:255',
+            'statusColor' => 'required|string|max:7',
+            'statusSortOrder' => 'required|integer|min:0',
+        ]);
+
+        SiteStatus::updateOrCreate(
+            ['id' => $this->editingStatusId],
+            [
+                'name' => $this->statusName,
+                'color' => $this->statusColor,
+                'sort_order' => $this->statusSortOrder,
+            ]
+        );
+
+        $this->dispatch('close-modal-status-form');
+        unset($this->siteStatuses);
+    }
+
+    public function deleteStatus(int $id): void
+    {
+        if (!Schema::hasTable('site_statuses')) {
+            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            return;
+        }
+
+        $status = SiteStatus::withCount('sites')->findOrFail($id);
+
+        if ($status->sites_count > 0) {
+            session()->flash('error', "Cannot delete \"{$status->name}\" — {$status->sites_count} site(s) are assigned to it.");
+            return;
+        }
+
+        $status->delete();
+        unset($this->siteStatuses);
     }
 
     public function purgeMonitoringData(): void
