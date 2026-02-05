@@ -100,6 +100,14 @@
                         'budget_violation' => 'Budget Violation',
                         'maintenance_start' => 'Maintenance Start',
                         'maintenance_end' => 'Maintenance End',
+                        'rollback_success' => 'Rollback Success',
+                        'rollback_failed' => 'Rollback Failed',
+                        'disk_space_critical' => 'Disk Space Critical',
+                        'disk_space_warning' => 'Disk Space Warning',
+                        'memory_critical' => 'Memory Critical',
+                        'memory_warning' => 'Memory Warning',
+                        'woo_low_stock' => 'WooCommerce Low Stock',
+                        'woo_out_of_stock' => 'WooCommerce Out of Stock',
                         'test' => 'Test Notification',
                     ] as $eventKey => $eventLabel)
                         <label class="flex items-center gap-2">

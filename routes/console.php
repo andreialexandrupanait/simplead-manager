@@ -212,3 +212,32 @@ Schedule::call(function () {
     \App\Models\WpAuditLog::where('action_at', '<=', now()->subDays(90))->delete();
     \App\Models\BlockedRequest::where('blocked_at', '<=', now()->subDays(30))->delete();
 })->daily()->name('security-cleanup')->withoutOverlapping();
+
+// Clean expired rollback points — daily
+Schedule::call(function () {
+    app(\App\Services\RollbackService::class)->cleanExpired();
+})->daily()->name('rollback-cleanup')->withoutOverlapping();
+
+// Resource checks — every 15 minutes
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\CheckResourceUsage::dispatch($site));
+})->everyFifteenMinutes()->name('resource-checks')->withoutOverlapping();
+
+// Prune old resource checks — daily (older than 90 days)
+Schedule::call(function () {
+    \App\Models\ResourceCheck::where('checked_at', '<=', now()->subDays(90))->delete();
+})->daily()->name('resource-check-prune')->withoutOverlapping();
+
+// SEO checks — weekly Monday at 5 AM
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->each(fn ($site) => \App\Jobs\RunSeoCheck::dispatch($site));
+})->weekly()->mondays()->at('05:00')->name('seo-checks')->withoutOverlapping();
+
+// WooCommerce stats sync — every 6 hours
+Schedule::call(function () {
+    Site::where('is_connected', true)
+        ->where('has_woocommerce', true)
+        ->each(fn ($site) => \App\Jobs\SyncWooCommerceStats::dispatch($site));
+})->everySixHours()->name('woocommerce-sync')->withoutOverlapping();

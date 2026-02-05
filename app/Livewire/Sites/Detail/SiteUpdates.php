@@ -3,10 +3,15 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CreateBackup;
+use App\Jobs\ExecuteRollback;
+use App\Jobs\RunSafeUpdate;
 use App\Jobs\SyncWordPressSite;
+use App\Models\RollbackPoint;
 use App\Models\Site;
 use App\Models\UpdateLog;
 use App\Services\ActivityLogger;
+use App\Services\RollbackService;
+use App\Services\SafeUpdateService;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
@@ -18,6 +23,13 @@ class SiteUpdates extends Component
     use WithPagination;
 
     public Site $site;
+
+    // Rollback
+    public bool $showRollbackModal = false;
+    public ?int $rollbackPointId = null;
+
+    // Safe Update Mode
+    public bool $safeUpdateMode = false;
 
     public function mount(Site $site): void
     {
@@ -48,6 +60,7 @@ class SiteUpdates extends Component
                 'type' => 'plugin',
                 'name' => $plugin->name,
                 'slug' => $plugin->slug,
+                'file' => $plugin->file,
                 'from_version' => $plugin->version,
                 'to_version' => $plugin->update_version,
                 'model_id' => $plugin->id,
@@ -78,6 +91,21 @@ class SiteUpdates extends Component
             ->paginate(20);
     }
 
+    #[Computed]
+    public function rollbackPoints()
+    {
+        return app(RollbackService::class)->getAvailablePoints($this->site);
+    }
+
+    #[Computed]
+    public function activeSafeUpdates()
+    {
+        return $this->site->safeUpdates()
+            ->whereIn('status', ['pending', 'backing_up', 'updating', 'health_checking', 'rolling_back'])
+            ->orderByDesc('started_at')
+            ->get();
+    }
+
     public function updatePlugin(int $pluginId): void
     {
         $this->runPreUpdateBackup();
@@ -103,6 +131,14 @@ class SiteUpdates extends Component
                 'performed_at' => now(),
             ]);
 
+            if ($updateResult['success'] ?? false) {
+                app(RollbackService::class)->createRollbackPoint(
+                    $this->site, 'plugin', $plugin->slug,
+                    $updateResult['from_version'] ?? $plugin->version,
+                    $updateResult['to_version'] ?? $plugin->update_version,
+                );
+            }
+
             ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
 
             SyncWordPressSite::dispatch($this->site);
@@ -112,7 +148,7 @@ class SiteUpdates extends Component
             session()->flash('update-error', "Failed to update {$plugin->name}: {$e->getMessage()}");
         }
 
-        unset($this->availableUpdates);
+        unset($this->availableUpdates, $this->rollbackPoints);
     }
 
     public function updateTheme(int $themeId): void
@@ -140,6 +176,14 @@ class SiteUpdates extends Component
                 'performed_at' => now(),
             ]);
 
+            if ($updateResult['success'] ?? false) {
+                app(RollbackService::class)->createRollbackPoint(
+                    $this->site, 'theme', $theme->slug,
+                    $updateResult['from_version'] ?? $theme->version,
+                    $updateResult['to_version'] ?? $theme->update_version,
+                );
+            }
+
             ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
 
             SyncWordPressSite::dispatch($this->site);
@@ -149,7 +193,7 @@ class SiteUpdates extends Component
             session()->flash('update-error', "Failed to update {$theme->name}: {$e->getMessage()}");
         }
 
-        unset($this->availableUpdates);
+        unset($this->availableUpdates, $this->rollbackPoints);
     }
 
     public function updateCore(): void
@@ -173,6 +217,14 @@ class SiteUpdates extends Component
                 'performed_at' => now(),
             ]);
 
+            if ($result['success'] ?? false) {
+                app(RollbackService::class)->createRollbackPoint(
+                    $this->site, 'core', 'wordpress',
+                    $this->site->wp_version,
+                    $result['to_version'] ?? $this->site->core_update_version,
+                );
+            }
+
             ActivityLogger::coreUpdated($this->site, $this->site->wp_version, $result['to_version'] ?? $this->site->core_update_version);
 
             SyncWordPressSite::dispatch($this->site);
@@ -182,7 +234,7 @@ class SiteUpdates extends Component
             session()->flash('update-error', "Core update failed: {$e->getMessage()}");
         }
 
-        unset($this->availableUpdates);
+        unset($this->availableUpdates, $this->rollbackPoints);
     }
 
     public function updateAll(): void
@@ -217,6 +269,14 @@ class SiteUpdates extends Component
                             'performed_at' => now(),
                         ]);
 
+                        if ($updateResult['success'] ?? false) {
+                            app(RollbackService::class)->createRollbackPoint(
+                                $this->site, 'plugin', $plugin->slug,
+                                $updateResult['from_version'] ?? $plugin->version,
+                                $updateResult['to_version'] ?? $plugin->update_version,
+                            );
+                        }
+
                         ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
                     }
                 }
@@ -248,6 +308,14 @@ class SiteUpdates extends Component
                             'performed_at' => now(),
                         ]);
 
+                        if ($updateResult['success'] ?? false) {
+                            app(RollbackService::class)->createRollbackPoint(
+                                $this->site, 'theme', $theme->slug,
+                                $updateResult['from_version'] ?? $theme->version,
+                                $updateResult['to_version'] ?? $theme->update_version,
+                            );
+                        }
+
                         ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
                     }
                 }
@@ -259,7 +327,74 @@ class SiteUpdates extends Component
         SyncWordPressSite::dispatch($this->site);
         session()->flash('update-success', 'All updates initiated.');
 
-        unset($this->availableUpdates);
+        unset($this->availableUpdates, $this->rollbackPoints);
+    }
+
+    // Rollback methods
+    public function openRollbackModal(int $pointId): void
+    {
+        $this->rollbackPointId = $pointId;
+        $this->showRollbackModal = true;
+    }
+
+    public function executeRollback(): void
+    {
+        $point = RollbackPoint::findOrFail($this->rollbackPointId);
+        ExecuteRollback::dispatch($point);
+        $this->showRollbackModal = false;
+        $this->rollbackPointId = null;
+        session()->flash('update-success', "Rollback initiated for {$point->slug}. It will be processed shortly.");
+        unset($this->rollbackPoints);
+    }
+
+    public function cancelRollback(): void
+    {
+        $this->showRollbackModal = false;
+        $this->rollbackPointId = null;
+    }
+
+    // Safe Update methods
+    public function safeUpdatePlugin(int $pluginId): void
+    {
+        $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
+
+        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
+            $this->site, 'plugin', $plugin->file, $plugin->name,
+            $plugin->version, $plugin->update_version
+        );
+
+        RunSafeUpdate::dispatch($safeUpdate);
+
+        session()->flash('update-success', "Safe update initiated for {$plugin->name}. Backup → Update → Health Check will run automatically.");
+        unset($this->activeSafeUpdates);
+    }
+
+    public function safeUpdateTheme(int $themeId): void
+    {
+        $theme = $this->site->siteThemes()->findOrFail($themeId);
+
+        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
+            $this->site, 'theme', $theme->slug, $theme->name,
+            $theme->version, $theme->update_version
+        );
+
+        RunSafeUpdate::dispatch($safeUpdate);
+
+        session()->flash('update-success', "Safe update initiated for {$theme->name}. Backup → Update → Health Check will run automatically.");
+        unset($this->activeSafeUpdates);
+    }
+
+    public function safeUpdateCore(): void
+    {
+        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
+            $this->site, 'core', 'wordpress', 'WordPress Core',
+            $this->site->wp_version, $this->site->core_update_version
+        );
+
+        RunSafeUpdate::dispatch($safeUpdate);
+
+        session()->flash('update-success', 'Safe core update initiated. Backup → Update → Health Check will run automatically.');
+        unset($this->activeSafeUpdates);
     }
 
     protected function runPreUpdateBackup(): void

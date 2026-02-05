@@ -188,6 +188,14 @@
         >
             Maintenance
         </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.resources', $site)"
+            icon="layers"
+            :active="request()->routeIs('sites.resources')"
+        >
+            Resources
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Content">
@@ -213,6 +221,14 @@
             :active="request()->routeIs('sites.links')"
         >
             Links
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.seo', $site)"
+            icon="search"
+            :active="request()->routeIs('sites.seo')"
+        >
+            SEO
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
@@ -248,6 +264,16 @@
         >
             Search Console
         </x-sidebar.sidebar-item>
+
+        @if($site->has_woocommerce)
+            <x-sidebar.sidebar-item
+                :href="route('sites.woocommerce', $site)"
+                icon="shopping-cart"
+                :active="request()->routeIs('sites.woocommerce')"
+            >
+                WooCommerce
+            </x-sidebar.sidebar-item>
+        @endif
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Reports">

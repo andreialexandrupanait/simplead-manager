@@ -46,6 +46,7 @@ class Site extends Model
         "db_size_mb",
         "uploads_size_mb",
         "core_update_version",
+        "has_woocommerce",
     ];
 
     protected $casts = [
@@ -54,6 +55,7 @@ class Site extends Model
         "ssl_ok" => "boolean",
         "backup_ok" => "boolean",
         "is_connected" => "boolean",
+        "has_woocommerce" => "boolean",
         "ssl_expiry" => "date",
         "last_backup_at" => "datetime",
         "last_synced_at" => "datetime",
@@ -334,6 +336,46 @@ class Site extends Model
     public function siteCloudflare(): HasOne
     {
         return $this->hasOne(SiteCloudflare::class);
+    }
+
+    public function rollbackPoints(): HasMany
+    {
+        return $this->hasMany(RollbackPoint::class);
+    }
+
+    public function safeUpdates(): HasMany
+    {
+        return $this->hasMany(SafeUpdate::class);
+    }
+
+    public function resourceChecks(): HasMany
+    {
+        return $this->hasMany(ResourceCheck::class);
+    }
+
+    public function latestResourceCheck(): HasOne
+    {
+        return $this->hasOne(ResourceCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function seoChecks(): HasMany
+    {
+        return $this->hasMany(SeoCheck::class);
+    }
+
+    public function latestSeoCheck(): HasOne
+    {
+        return $this->hasOne(SeoCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function wooCommerceStats(): HasMany
+    {
+        return $this->hasMany(WooCommerceStat::class);
+    }
+
+    public function wooCommerceAlerts(): HasMany
+    {
+        return $this->hasMany(WooCommerceAlert::class);
     }
 
     public function getDomainAttribute(): string

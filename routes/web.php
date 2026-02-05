@@ -47,6 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/errors', Sites\Detail\SiteErrorLogs::class)->name('sites.errors');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
+        Route::get('/resources', Sites\Detail\SiteResources::class)->name('sites.resources');
+        Route::get('/seo', Sites\Detail\SiteSeo::class)->name('sites.seo');
+        Route::get('/woocommerce', Sites\Detail\SiteWooCommerce::class)->name('sites.woocommerce');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
     });
