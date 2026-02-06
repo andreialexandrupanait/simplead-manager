@@ -1,19 +1,17 @@
 <div>
     {{-- Flash Messages --}}
-    @if(session('sync-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('sync-dispatched') }}</div>
-    @endif
+    <x-ui.flash-alert type="info" key="sync-dispatched" />
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
         <x-ui.page-header title="Audit Log" subtitle="Track user actions and changes made to this site" />
         <div class="flex items-center gap-2">
             <x-ui.button variant="secondary" size="sm" wire:click="exportCsv" wire:loading.attr="disabled">
-                <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="exportCsv" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <x-ui.spinner size="xs" class="hidden" wire:loading.class.remove="hidden" wire:target="exportCsv" />
                 Export CSV
             </x-ui.button>
             <x-ui.button variant="primary" size="sm" wire:click="syncNow" wire:loading.attr="disabled">
-                <svg class="h-4 w-4 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="syncNow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="syncNow" />
                 Sync Now
             </x-ui.button>
         </div>

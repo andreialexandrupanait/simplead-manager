@@ -18,10 +18,7 @@
                 <span wire:loading.remove wire:target="scanNow">
                     <x-icons.link class="h-4 w-4" />
                 </span>
-                <svg wire:loading wire:target="scanNow" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
+                <x-ui.spinner size="sm" wire:loading wire:target="scanNow" />
                 Scan Now
             </x-ui.button>
         </div>
@@ -36,10 +33,7 @@
     @if($isScanning && $this->activeScan)
         <div class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4">
             <div class="flex items-center gap-3">
-                <svg class="h-5 w-5 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
+                <x-ui.spinner size="md" class="text-purple-600" />
                 <div class="flex-1">
                     <p class="text-sm font-medium text-purple-900">
                         Scanning links... {{ $this->activeScan->progress_percent }}%
