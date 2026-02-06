@@ -1,4 +1,10 @@
 <div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Security</h1>
+        <p class="mt-1 text-sm text-gray-500">Scan for vulnerabilities and security issues</p>
+    </div>
+
     {{-- Flash Messages --}}
     @if(session('scan-dispatched'))
         <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('scan-dispatched') }}</div>

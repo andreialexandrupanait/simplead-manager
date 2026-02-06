@@ -37,6 +37,8 @@ networks:
 
 volumes:
     simplead-pgsql:
-        driver: local
+        external: true
+        name: simplead-manager_pgsql_data
     simplead-redis:
-        driver: local
+        external: true
+        name: simplead-manager_redis_data

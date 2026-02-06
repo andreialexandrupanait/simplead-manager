@@ -9,8 +9,8 @@
     @if(!$this->siteCloudflare)
         {{-- Not connected --}}
         <div class="mb-6">
-            <h2 class="text-lg font-semibold text-gray-900">Connect Cloudflare</h2>
-            <p class="text-sm text-gray-500">Connect this site to a Cloudflare zone to manage DNS, cache, security, and analytics.</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Cloudflare</h1>
+            <p class="mt-1 text-sm text-gray-500">Connect this site to a Cloudflare zone to manage DNS, cache, security, and analytics</p>
         </div>
 
         <x-ui.card>

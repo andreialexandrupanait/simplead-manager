@@ -1,4 +1,10 @@
 <div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Updates</h1>
+        <p class="mt-1 text-sm text-gray-500">Manage WordPress core, plugin, and theme updates across all sites</p>
+    </div>
+
     {{-- Counts --}}
     <div class="mb-6 grid grid-cols-3 gap-4">
         <x-ui.card>
@@ -28,14 +34,12 @@
             @endforeach
         </div>
 
-        <div class="flex-1">
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Search updates..."
-                class="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
-        </div>
+        <input
+            type="text"
+            wire:model.live.debounce.300ms="search"
+            placeholder="Search updates..."
+            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        >
     </div>
 
     {{-- Sites with updates --}}

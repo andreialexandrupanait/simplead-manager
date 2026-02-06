@@ -52,6 +52,7 @@ class GlobalErrors extends Component
     public function errors()
     {
         $query = ErrorLog::with('site')
+            ->whereHas('site')
             ->orderByDesc('last_seen_at');
 
         if (!$this->showResolved) {
@@ -81,9 +82,9 @@ class GlobalErrors extends Component
     public function stats(): array
     {
         return [
-            'fatal' => ErrorLog::unresolved()->where('level', 'fatal')->count(),
-            'error' => ErrorLog::unresolved()->where('level', 'error')->count(),
-            'warning' => ErrorLog::unresolved()->where('level', 'warning')->count(),
+            'fatal' => ErrorLog::unresolved()->whereHas('site')->where('level', 'fatal')->count(),
+            'error' => ErrorLog::unresolved()->whereHas('site')->where('level', 'error')->count(),
+            'warning' => ErrorLog::unresolved()->whereHas('site')->where('level', 'warning')->count(),
         ];
     }
 
@@ -107,7 +108,7 @@ class GlobalErrors extends Component
 
     public function resolveAll(): void
     {
-        $query = ErrorLog::unresolved();
+        $query = ErrorLog::unresolved()->whereHas('site');
 
         if ($this->siteFilter !== 'all') {
             $query->where('site_id', $this->siteFilter);

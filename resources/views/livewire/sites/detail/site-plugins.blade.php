@@ -1,3 +1,11 @@
+<div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Plugins & Themes</h1>
+        <p class="mt-1 text-sm text-gray-500">Manage installed plugins and themes</p>
+    </div>
+</div>
+
 <div
     x-data="{
         bulkUpdating: false,
@@ -207,7 +215,7 @@
     <x-ui.card :padding="false">
         {{-- Summary bar + filter + search --}}
         <div class="border-b p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-4">
                     @if($tab === 'plugins')
                         <span class="text-sm text-gray-600">
@@ -239,19 +247,8 @@
                     @endif
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <x-ui.input
-                        wire:model.live.debounce.300ms="search"
-                        type="search"
-                        placeholder="Search..."
-                        class="!w-48"
-                    />
-                </div>
-            </div>
-
-            {{-- Filter pills --}}
-            @if($tab !== 'users')
-                <div class="mt-3 flex items-center gap-2">
+                {{-- Filter pills --}}
+                @if($tab !== 'users')
                     @php
                         if ($tab === 'plugins') {
                             $filters = ['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'updates' => 'Updates'];
@@ -262,17 +259,26 @@
                             $filters = ['all' => 'All', 'active' => 'Active', 'updates' => 'Updates'];
                         }
                     @endphp
-                    @foreach($filters as $key => $label)
-                        <button
-                            wire:click="setFilter('{{ $key }}')"
-                            class="rounded-full px-3 py-1 text-xs font-medium transition
-                                {{ $filter === $key ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
-                        >
-                            {{ $label }}
-                        </button>
-                    @endforeach
-                </div>
-            @endif
+                    <div class="flex rounded-lg bg-gray-100 p-1">
+                        @foreach($filters as $key => $label)
+                            <button
+                                wire:click="setFilter('{{ $key }}')"
+                                class="rounded-md px-3 py-1 text-xs font-medium transition
+                                    {{ $filter === $key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                            >
+                                {{ $label }}
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Search..."
+                    class="ml-auto w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+            </div>
         </div>
 
         {{-- Plugin rows --}}

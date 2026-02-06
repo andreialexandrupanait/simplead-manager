@@ -3,6 +3,8 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -10,19 +12,87 @@ class ClientsList extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $search = '';
+
+    #[Url]
+    public string $statusFilter = 'all';
+
+    #[Url]
+    public string $sortBy = 'name';
+
+    #[Url]
+    public string $sortDirection = 'asc';
+
+    public ?int $deletingId = null;
 
     public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function sort(string $column): void
+    {
+        if ($this->sortBy === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $column;
+            $this->sortDirection = 'asc';
+        }
+    }
+
+    public function confirmDelete(int $id): void
+    {
+        $this->deletingId = $id;
+        $this->dispatch('open-modal-delete-client');
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->deletingId = null;
+        $this->dispatch('close-modal-delete-client');
+    }
+
+    public function delete(): void
+    {
+        if ($this->deletingId) {
+            Client::find($this->deletingId)?->delete();
+            session()->flash('success', 'Client deleted successfully.');
+        }
+
+        $this->deletingId = null;
+        $this->dispatch('close-modal-delete-client');
+    }
+
+    public function changeStatus(int $id, string $status): void
+    {
+        Client::where('id', $id)->update(['status' => $status]);
+        session()->flash('success', 'Client status updated.');
+    }
+
+    #[Computed]
+    public function statusCounts(): array
+    {
+        return [
+            'all' => Client::count(),
+            'active' => Client::where('status', 'active')->count(),
+            'inactive' => Client::where('status', 'inactive')->count(),
+            'archived' => Client::where('status', 'archived')->count(),
+        ];
+    }
+
     public function render()
     {
         $clients = Client::query()
-            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%"))
+            ->search($this->search)
+            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
             ->withCount('sites')
-            ->latest()
+            ->orderBy($this->sortBy, $this->sortDirection)
             ->paginate(12);
 
         return view('livewire.clients.clients-list', compact('clients'))

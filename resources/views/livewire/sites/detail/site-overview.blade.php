@@ -1,4 +1,10 @@
 <div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Overview</h1>
+        <p class="mt-1 text-sm text-gray-500">Site health, status, and key metrics at a glance</p>
+    </div>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Health Score</div>

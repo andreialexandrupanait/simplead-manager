@@ -35,8 +35,8 @@ class GlobalUpdates extends Component
     {
         return [
             'core' => Site::whereNotNull('core_update_version')->count(),
-            'plugins' => SitePlugin::where('has_update', true)->count(),
-            'themes' => SiteTheme::where('has_update', true)->count(),
+            'plugins' => SitePlugin::whereHas('site')->where('has_update', true)->count(),
+            'themes' => SiteTheme::whereHas('site')->where('has_update', true)->count(),
         ];
     }
 

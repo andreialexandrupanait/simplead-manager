@@ -193,7 +193,7 @@
     </div>
 
     {{-- Status icons row (hidden on mobile, visible md+) --}}
-    <div class="mt-4 hidden items-center gap-1.5 border-t border-gray-100 dark:border-gray-700 pt-4 text-xs text-gray-500 dark:text-gray-400 md:flex">
+    <div class="mt-4 hidden items-center gap-3 border-t border-gray-100 dark:border-gray-700 pt-4 text-xs text-gray-500 dark:text-gray-400 md:flex">
 
         {{-- ═══ Group 1: Uptime, SSL, Performance, Security ═══ --}}
 
@@ -247,7 +247,7 @@
         </x-ui.tooltip>
 
         {{-- Separator 1 --}}
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-1.5"></div>
+        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-3.5"></div>
 
         {{-- ═══ Group 2: WP, PHP, Plugins ═══ --}}
 
@@ -292,7 +292,7 @@
         @endif
 
         {{-- Separator 2 --}}
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-1.5"></div>
+        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-3.5"></div>
 
         {{-- ═══ Group 3: Backups, Reports, Client ═══ --}}
 
@@ -321,7 +321,7 @@
         @endif
 
         {{-- Separator 3 --}}
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-1.5"></div>
+        <div class="w-px h-5 bg-gray-200 dark:bg-gray-600 mx-3.5"></div>
 
         {{-- ═══ Group 4: WP Admin, Notes ═══ --}}
 

@@ -1,25 +1,58 @@
-<div x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false" class="relative">
-    {{-- Bell Button --}}
-    <button @click="open = !open" class="relative text-gray-400 hover:text-gray-600 transition">
-        <x-icons.bell class="h-5 w-5" />
-        @if($this->count > 0)
-            <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {{ $this->count > 9 ? '9+' : $this->count }}
+<div x-data="{ open: false }"
+     @click.outside="open = false"
+     @keydown.escape.window="open = false"
+     class="{{ $sidebarMode ? 'w-full' : 'relative' }}">
+
+    @if($sidebarMode)
+        {{-- Sidebar button style --}}
+        <button @click="open = !open"
+                @mouseenter="if (!sidebarOpen && window.innerWidth >= 1024) { showSidebarTooltip($el) }"
+                @mouseleave="hideSidebarTooltip()"
+                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full relative"
+                :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+            <div class="relative shrink-0">
+                <x-icons.bell class="h-4 w-4" />
+                @if($this->count > 0)
+                    <span class="absolute -top-1 -right-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white px-0.5">
+                        {{ $this->count > 9 ? '9+' : $this->count }}
+                    </span>
+                @endif
+            </div>
+            <span class="whitespace-nowrap transition-all duration-300"
+                  :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                Notifications
+                @if($this->count > 0)
+                    <span class="ml-1 text-xs opacity-60">({{ $this->count }})</span>
+                @endif
             </span>
-        @endif
-    </button>
+        </button>
+    @else
+        {{-- Header button style (original) --}}
+        <button @click="open = !open" class="relative text-gray-400 hover:text-gray-600 transition">
+            <x-icons.bell class="h-5 w-5" />
+            @if($this->count > 0)
+                <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {{ $this->count > 9 ? '9+' : $this->count }}
+                </span>
+            @endif
+        </button>
+    @endif
 
     {{-- Dropdown Panel --}}
-    <div
-        x-show="open"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 scale-95"
-        x-transition:enter-end="opacity-100 scale-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 scale-100"
-        x-transition:leave-end="opacity-0 scale-95"
-        x-cloak
-        class="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 rounded-xl bg-white shadow-lg ring-1 ring-gray-950/5 z-50"
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         x-cloak
+         @if($sidebarMode)
+             class="fixed left-64 bottom-16 w-96 rounded-xl bg-white shadow-lg ring-1 ring-gray-950/5 z-50"
+             :class="sidebarOpen ? 'lg:left-64' : 'lg:left-16'"
+         @else
+             class="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 rounded-xl bg-white shadow-lg ring-1 ring-gray-950/5 z-50"
+         @endif
     >
         {{-- Header --}}
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">

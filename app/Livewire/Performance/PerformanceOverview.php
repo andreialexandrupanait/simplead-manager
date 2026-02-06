@@ -22,18 +22,21 @@ class PerformanceOverview extends Component
     #[Computed]
     public function stats(): array
     {
-        $monitors = PerformanceMonitor::where('is_active', true);
+        $monitors = PerformanceMonitor::where('is_active', true)->whereHas('site');
         $total = $monitors->count();
 
         $avgMobile = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
             ->whereNotNull('latest_mobile_score')
             ->avg('latest_mobile_score');
 
         $avgDesktop = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
             ->whereNotNull('latest_desktop_score')
             ->avg('latest_desktop_score');
 
         $poorCount = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
             ->where(function ($q) {
                 $q->where('latest_mobile_score', '<', 50)
                     ->orWhere('latest_desktop_score', '<', 50);
@@ -41,6 +44,7 @@ class PerformanceOverview extends Component
             ->count();
 
         $budgetViolations = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
             ->whereNotNull('budgets')
             ->get()
             ->filter(function ($monitor) {
@@ -83,6 +87,7 @@ class PerformanceOverview extends Component
     public function testAllSites(): void
     {
         $monitors = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
             ->with('site')
             ->get();
 
@@ -112,6 +117,7 @@ class PerformanceOverview extends Component
     {
         $query = PerformanceMonitor::query()
             ->where('is_active', true)
+            ->whereHas('site')
             ->with(['site', 'latestMobileTest', 'latestDesktopTest'])
             ->when($this->search, function ($q) {
                 $q->whereHas('site', fn ($sq) => $sq->where('name', 'like', "%{$this->search}%")

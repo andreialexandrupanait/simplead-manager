@@ -93,16 +93,92 @@
                 @endif
             </nav>
 
-            {{-- Sidebar footer --}}
-            <div class="border-t border-white/10 p-4">
-                <div class="flex items-center gap-3 transition-all duration-300"
-                     :class="sidebarOpen ? '' : 'lg:justify-center'">
-                    <div class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-medium shrink-0">
-                        {{ auth()->user()->initials }}
+            {{-- Sidebar bottom section --}}
+            <div class="border-t border-white/10 mt-auto">
+                {{-- Action buttons container --}}
+                <div class="p-2 space-y-0.5">
+                    {{-- Settings --}}
+                    <a href="{{ route('settings.general') }}"
+                       @mouseenter="showSidebarTooltip($el)"
+                       @mouseleave="hideSidebarTooltip()"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200"
+                       :class="[
+                           sidebarOpen ? '' : 'lg:justify-center lg:px-0',
+                           request()->routeIs('settings.*') ? 'bg-sidebar-hover text-white' : ''
+                       ]">
+                        <x-icons.settings class="h-4 w-4 shrink-0" />
+                        <span class="whitespace-nowrap transition-all duration-300"
+                              :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                            Settings
+                        </span>
+                    </a>
+
+                    {{-- Profile --}}
+                    <a href="{{ route('settings.profile') }}"
+                       @mouseenter="showSidebarTooltip($el)"
+                       @mouseleave="hideSidebarTooltip()"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200"
+                       :class="[
+                           sidebarOpen ? '' : 'lg:justify-center lg:px-0',
+                           request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : ''
+                       ]">
+                        <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0">
+                            {{ auth()->user()->initials }}
+                        </div>
+                        <span class="whitespace-nowrap transition-all duration-300"
+                              :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                            Profile
+                        </span>
+                    </a>
+
+                    {{-- Logout --}}
+                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                        @csrf
+                        <button type="submit"
+                                @mouseenter="showSidebarTooltip($el)"
+                                @mouseleave="hideSidebarTooltip()"
+                                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full"
+                                :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+                            <x-icons.log-out class="h-4 w-4 shrink-0" />
+                            <span class="whitespace-nowrap transition-all duration-300"
+                                  :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                                Log out
+                            </span>
+                        </button>
+                    </form>
+                </div>
+
+                {{-- Live clock --}}
+                <div class="px-3 py-2 text-center border-t border-white/10"
+                     x-data="{
+                         datetime: '',
+                         updateClock() {
+                             const now = new Date();
+                             const day = String(now.getDate()).padStart(2, '0');
+                             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                             const month = months[now.getMonth()];
+                             const year = now.getFullYear();
+                             const hours = String(now.getHours()).padStart(2, '0');
+                             const minutes = String(now.getMinutes()).padStart(2, '0');
+                             const seconds = String(now.getSeconds()).padStart(2, '0');
+
+                             this.datetime = `${day} ${month} ${year} | ${hours}:${minutes}:${seconds}`;
+                         }
+                     }"
+                     x-init="updateClock(); setInterval(() => updateClock(), 1000)">
+
+                    {{-- When expanded --}}
+                    <div x-show="sidebarOpen" class="transition-all duration-300">
+                        <div class="text-xs text-white/60 font-mono" x-text="datetime"></div>
                     </div>
-                    <div class="text-sm text-white/80 whitespace-nowrap transition-all duration-300"
-                         :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                        {{ auth()->user()->name }}
+
+                    {{-- When collapsed --}}
+                    <div x-show="!sidebarOpen"
+                         @mouseenter="showSidebarTooltip($el)"
+                         @mouseleave="hideSidebarTooltip()"
+                         class="lg:flex hidden items-center justify-center">
+                        <x-icons.clock class="h-4 w-4 text-white/40" />
+                        <span class="hidden" x-text="datetime"></span>
                     </div>
                 </div>
             </div>

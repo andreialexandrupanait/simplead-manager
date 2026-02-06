@@ -21,11 +21,11 @@ class UptimeOverview extends Component
     public function getCountsProperty(): array
     {
         return [
-            'total' => UptimeMonitor::count(),
-            'up' => UptimeMonitor::where('current_state', 'up')->count(),
-            'down' => UptimeMonitor::where('current_state', 'down')->count(),
-            'degraded' => UptimeMonitor::where('current_state', 'degraded')->count(),
-            'paused' => UptimeMonitor::where('status', 'paused')->count(),
+            'total' => UptimeMonitor::whereHas('site')->count(),
+            'up' => UptimeMonitor::whereHas('site')->where('current_state', 'up')->count(),
+            'down' => UptimeMonitor::whereHas('site')->where('current_state', 'down')->count(),
+            'degraded' => UptimeMonitor::whereHas('site')->where('current_state', 'degraded')->count(),
+            'paused' => UptimeMonitor::whereHas('site')->where('status', 'paused')->count(),
         ];
     }
 
@@ -83,6 +83,7 @@ class UptimeOverview extends Component
     public function render()
     {
         $monitors = UptimeMonitor::query()
+            ->whereHas('site')
             ->with('site')
             ->when($this->search, function ($q) {
                 $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%"))

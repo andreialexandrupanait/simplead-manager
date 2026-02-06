@@ -22,8 +22,9 @@ class DashboardService
         $sitesDown = Site::where('is_up', false)->count();
         $totalClients = Client::count();
 
-        $avgUptime = UptimeMonitor::whereNotNull('uptime_30d')->avg('uptime_30d');
-        $avgResponseTime = UptimeMonitor::whereNotNull('avg_response_time')
+        $avgUptime = UptimeMonitor::whereHas('site')->whereNotNull('uptime_30d')->avg('uptime_30d');
+        $avgResponseTime = UptimeMonitor::whereHas('site')
+            ->whereNotNull('avg_response_time')
             ->where('avg_response_time', '>', 0)
             ->avg('avg_response_time');
 
@@ -61,11 +62,11 @@ class DashboardService
         }
 
         // SSL — group expired separate from expiring-soon
-        $sslExpiring = SslCertificate::whereNotNull('expires_at')
+        $sslExpiring = SslCertificate::whereHas('site')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(14))
             ->with('site')
-            ->get()
-            ->filter(fn ($cert) => $cert->site);
+            ->get();
 
         $sslExpired = $sslExpiring->filter(fn ($cert) => $cert->expires_at->isPast());
         $sslExpiringSoon = $sslExpiring->filter(fn ($cert) => !$cert->expires_at->isPast());
@@ -105,11 +106,11 @@ class DashboardService
         }
 
         // Domains — group expired separate from expiring-soon
-        $domainsExpiring = DomainMonitor::whereNotNull('expires_at')
+        $domainsExpiring = DomainMonitor::whereHas('site')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(30))
             ->with('site')
-            ->get()
-            ->filter(fn ($d) => $d->site);
+            ->get();
 
         $domainsExpired = $domainsExpiring->filter(fn ($d) => $d->expires_at->isPast());
         $domainsExpiringSoon = $domainsExpiring->filter(fn ($d) => !$d->expires_at->isPast());
@@ -149,11 +150,11 @@ class DashboardService
         }
 
         // Backup failures (last 24h) — group all with retry action
-        $failedBackups = Backup::where('status', 'failed')
+        $failedBackups = Backup::whereHas('site')
+            ->where('status', 'failed')
             ->where('created_at', '>=', now()->subDay())
             ->with('site')
-            ->get()
-            ->filter(fn ($b) => $b->site);
+            ->get();
 
         if ($failedBackups->isNotEmpty()) {
             $siteNames = $failedBackups->map(fn ($b) => $b->site->name)->unique()->toArray();
@@ -281,7 +282,7 @@ class DashboardService
 
     public function getUptimeOverview(): array
     {
-        $monitors = UptimeMonitor::with('site')->get();
+        $monitors = UptimeMonitor::whereHas('site')->with('site')->get();
 
         $up = $monitors->where('current_state', 'up')->count();
         $down = $monitors->where('current_state', 'down')->count();
@@ -289,7 +290,8 @@ class DashboardService
 
         $avgUptime = $monitors->whereNotNull('uptime_30d')->avg('uptime_30d');
 
-        $recentIncidents = UptimeIncident::with('monitor.site')
+        $recentIncidents = UptimeIncident::whereHas('monitor.site')
+            ->with('monitor.site')
             ->orderByDesc('started_at')
             ->limit(5)
             ->get();
@@ -305,7 +307,8 @@ class DashboardService
 
     public function getRecentActivity(int $limit = 15): \Illuminate\Database\Eloquent\Collection
     {
-        return ActivityLog::with('site')
+        return ActivityLog::whereHas('site')
+            ->with('site')
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
@@ -313,28 +316,33 @@ class DashboardService
 
     public function getSummaryStats(): array
     {
-        $backupsToday = Backup::where('status', 'completed')
+        $backupsToday = Backup::whereHas('site')
+            ->where('status', 'completed')
             ->whereDate('completed_at', today())
             ->count();
 
-        $failedBackups = Backup::where('status', 'failed')
+        $failedBackups = Backup::whereHas('site')
+            ->where('status', 'failed')
             ->where('created_at', '>=', now()->subDay())
             ->count();
 
-        $totalStorageBytes = Backup::where('status', 'completed')
+        $totalStorageBytes = Backup::whereHas('site')
+            ->where('status', 'completed')
             ->sum('file_size');
 
-        $pendingPluginUpdates = \App\Models\SitePlugin::where('has_update', true)->count();
-        $pendingThemeUpdates = \App\Models\SiteTheme::where('has_update', true)->count();
+        $pendingPluginUpdates = \App\Models\SitePlugin::whereHas('site')->where('has_update', true)->count();
+        $pendingThemeUpdates = \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count();
         $pendingCoreUpdates = Site::whereNotNull('core_update_version')->count();
         $pendingUpdates = $pendingPluginUpdates + $pendingThemeUpdates + $pendingCoreUpdates;
 
-        $sslExpiring = SslCertificate::whereNotNull('expires_at')
+        $sslExpiring = SslCertificate::whereHas('site')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(30))
             ->where('expires_at', '>', now())
             ->count();
 
-        $domainsExpiring = DomainMonitor::whereNotNull('expires_at')
+        $domainsExpiring = DomainMonitor::whereHas('site')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(30))
             ->where('expires_at', '>', now())
             ->count();

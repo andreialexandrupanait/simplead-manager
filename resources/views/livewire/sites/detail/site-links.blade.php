@@ -1,6 +1,10 @@
 <div class="min-w-0" @if($isScanning) wire:poll.3s="checkScanProgress" @endif>
-    {{-- Header actions --}}
-    <div class="mb-6 flex justify-end">
+    {{-- Header --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Broken Links</h1>
+            <p class="mt-1 text-sm text-gray-500">Scan and fix broken links across your site</p>
+        </div>
         <div class="flex items-center gap-3">
             @if($this->monitor)
                 <x-ui.button variant="secondary" wire:click="openSettings">

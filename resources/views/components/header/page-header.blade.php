@@ -125,32 +125,8 @@
 
         {{-- Right side actions --}}
         <div class="flex items-center gap-3 ml-4">
-            {{-- Search --}}
-            <div class="relative" x-data="{ open: false }">
-                <button @click="open = !open" class="text-gray-400 hover:text-gray-600">
-                    <x-icons.search class="h-5 w-5" />
-                </button>
-            </div>
-
             {{-- Notifications --}}
             <livewire:components.notification-dropdown />
-
-            {{-- Avatar dropdown --}}
-            <x-ui.dropdown align="right" width="48">
-                <x-slot:trigger>
-                    <button class="flex items-center gap-2">
-                        <div class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-medium">
-                            {{ auth()->user()->initials }}
-                        </div>
-                    </button>
-                </x-slot:trigger>
-                <a href="{{ route('settings.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
-                <a href="{{ route('settings.general') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Log out</button>
-                </form>
-            </x-ui.dropdown>
         </div>
     </div>
 </header>

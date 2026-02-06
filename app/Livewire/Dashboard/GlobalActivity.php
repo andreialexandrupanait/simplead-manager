@@ -40,6 +40,7 @@ class GlobalActivity extends Component
     public function activities()
     {
         $query = ActivityLog::with('site')
+            ->whereHas('site')
             ->orderByDesc('created_at');
 
         if ($this->typeFilter !== 'all') {

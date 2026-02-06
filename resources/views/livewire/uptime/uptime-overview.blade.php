@@ -6,17 +6,24 @@
         </div>
     @endif
 
-    <div class="mb-6 flex items-center justify-end gap-3">
-        @if($this->sitesWithoutMonitorCount > 0)
-            <x-ui.button variant="secondary" wire:click="addMonitorsForAllSites" wire:confirm="Create uptime monitors for {{ $this->sitesWithoutMonitorCount }} site(s) that don't have one?">
-                <span wire:loading.remove wire:target="addMonitorsForAllSites">Add Monitors for All Sites ({{ $this->sitesWithoutMonitorCount }})</span>
-                <span wire:loading wire:target="addMonitorsForAllSites">Creating Monitors...</span>
+    {{-- Header with Add Button --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Uptime Monitoring</h1>
+            <p class="mt-1 text-sm text-gray-500">Track site availability and response times</p>
+        </div>
+        <div class="flex items-center gap-3">
+            @if($this->sitesWithoutMonitorCount > 0)
+                <x-ui.button variant="secondary" wire:click="addMonitorsForAllSites" wire:confirm="Create uptime monitors for {{ $this->sitesWithoutMonitorCount }} site(s) that don't have one?">
+                    <span wire:loading.remove wire:target="addMonitorsForAllSites">Add Monitors for All Sites ({{ $this->sitesWithoutMonitorCount }})</span>
+                    <span wire:loading wire:target="addMonitorsForAllSites">Creating Monitors...</span>
+                </x-ui.button>
+            @endif
+            <x-ui.button wire:click="$dispatch('open-configure-monitor')">
+                <x-icons.plus class="mr-1.5 h-4 w-4" />
+                Add Monitor
             </x-ui.button>
-        @endif
-        <x-ui.button wire:click="$dispatch('open-configure-monitor')">
-            <x-icons.plus class="mr-1.5 h-4 w-4" />
-            Add Monitor
-        </x-ui.button>
+        </div>
     </div>
 
     {{-- Stats cards --}}
@@ -44,7 +51,7 @@
     </div>
 
     {{-- Filters & Search --}}
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
             @foreach(['all' => 'All', 'up' => 'Up', 'down' => 'Down', 'degraded' => 'Degraded', 'paused' => 'Paused'] as $value => $label)
                 <button
@@ -55,9 +62,12 @@
                 </button>
             @endforeach
         </div>
-        <div class="w-full sm:w-64">
-            <x-ui.input wire:model.live.debounce.300ms="search" placeholder="Search monitors..." />
-        </div>
+        <input
+            type="text"
+            wire:model.live.debounce.300ms="search"
+            placeholder="Search monitors..."
+            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        >
     </div>
 
     {{-- Monitor list --}}

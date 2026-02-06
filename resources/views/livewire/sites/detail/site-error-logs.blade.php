@@ -2,8 +2,8 @@
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">Error Logs</h2>
-            <p class="text-sm text-gray-500">{{ $site->name }}</p>
+            <h1 class="text-2xl font-semibold text-gray-900">Error Logs</h1>
+            <p class="mt-1 text-sm text-gray-500">Monitor PHP errors, warnings, and notices</p>
         </div>
         <x-ui.button wire:click="syncNow" wire:loading.attr="disabled">
             <x-icons.refresh-cw class="mr-1.5 h-4 w-4" wire:loading.class="animate-spin" wire:target="syncNow" />
@@ -56,20 +56,28 @@
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         {{-- Level filter --}}
-        <div class="flex rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'] as $value => $label)
-                <button
-                    wire:click="$set('levelFilter', '{{ $value }}')"
-                    @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-white text-gray-900 shadow-sm' => $this->levelFilter === $value,
-                        'text-gray-500 hover:text-gray-700' => $this->levelFilter !== $value,
-                    ])
-                >
+        @php
+            $levelActive = $this->levelFilter !== 'all';
+            $levelLabels = ['all' => 'Level', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'];
+            $levelLabel = $levelActive ? $levelLabels[$this->levelFilter] : 'Level';
+        @endphp
+        <x-ui.dropdown align="left" width="48">
+            <x-slot:trigger>
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $levelActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    {{ $levelLabel }}
+                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </x-slot:trigger>
+            @foreach(['all' => 'All Levels', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'] as $value => $label)
+                <button wire:click="$set('levelFilter', '{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->levelFilter === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
                     {{ $label }}
+                    @if($this->levelFilter === $value)
+                        <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    @endif
                 </button>
             @endforeach
-        </div>
+        </x-ui.dropdown>
 
         {{-- Show resolved toggle --}}
         <label class="flex items-center gap-2 text-sm text-gray-600">
@@ -77,11 +85,9 @@
             Show resolved
         </label>
 
-        <div class="flex-1"></div>
-
         {{-- Mark all resolved --}}
         @if($this->stats['fatal'] + $this->stats['error'] + $this->stats['warning'] > 0)
-            <x-ui.button variant="secondary" wire:click="resolveAll" wire:confirm="Mark all errors as resolved?">
+            <x-ui.button variant="secondary" wire:click="resolveAll" wire:confirm="Mark all errors as resolved?" class="ml-auto">
                 Mark All Resolved
             </x-ui.button>
         @endif

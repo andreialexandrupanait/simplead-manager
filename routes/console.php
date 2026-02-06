@@ -21,24 +21,27 @@ Artisan::command('inspire', function () {
 // Uptime monitoring: dispatch checks for due monitors every minute
 Schedule::call(function () {
     UptimeMonitor::active()
+        ->whereHas('site')
         ->due()
         ->each(fn (UptimeMonitor $monitor) => CheckUptime::dispatch($monitor));
 })->everyMinute()->name('uptime-checks')->withoutOverlapping();
 
 // SSL certificate checks — every 12 hours
 Schedule::call(function () {
-    \App\Models\SslCertificate::where(function ($q) {
-        $q->whereNull('next_check_at')
-          ->orWhere('next_check_at', '<=', now());
-    })->each(fn ($cert) => \App\Jobs\CheckSslCertificate::dispatch($cert));
+    \App\Models\SslCertificate::whereHas('site')
+        ->where(function ($q) {
+            $q->whereNull('next_check_at')
+              ->orWhere('next_check_at', '<=', now());
+        })->each(fn ($cert) => \App\Jobs\CheckSslCertificate::dispatch($cert));
 })->cron('0 */12 * * *')->name('ssl-checks')->withoutOverlapping();
 
 // Domain expiry checks — daily
 Schedule::call(function () {
-    \App\Models\DomainMonitor::where(function ($q) {
-        $q->whereNull('next_check_at')
-          ->orWhere('next_check_at', '<=', now());
-    })->each(fn ($domain) => \App\Jobs\CheckDomainExpiry::dispatch($domain));
+    \App\Models\DomainMonitor::whereHas('site')
+        ->where(function ($q) {
+            $q->whereNull('next_check_at')
+              ->orWhere('next_check_at', '<=', now());
+        })->each(fn ($domain) => \App\Jobs\CheckDomainExpiry::dispatch($domain));
 })->daily()->name('domain-checks')->withoutOverlapping();
 
 // Daily pruning: remove checks older than 90 days
@@ -53,7 +56,8 @@ Schedule::call(function () {
 
 // Scheduled backups — every 15 minutes, check for due backup configs
 Schedule::call(function () {
-    \App\Models\BackupConfig::where('is_enabled', true)
+    \App\Models\BackupConfig::whereHas('site')
+        ->where('is_enabled', true)
         ->where('next_backup_at', '<=', now())
         ->with('site')
         ->each(function (\App\Models\BackupConfig $config) {
@@ -89,6 +93,7 @@ Schedule::call(function () {
 // Performance tests — hourly
 Schedule::call(function () {
     PerformanceMonitor::where('is_active', true)
+        ->whereHas('site')
         ->where(fn ($q) => $q->whereNull('next_test_at')->orWhere('next_test_at', '<=', now()))
         ->each(fn ($monitor) => RunPerformanceTest::dispatch($monitor, 'both'));
 })->hourly()->name('performance-tests')->withoutOverlapping();
@@ -96,6 +101,7 @@ Schedule::call(function () {
 // Link scans — hourly
 Schedule::call(function () {
     \App\Models\LinkMonitor::where('is_active', true)
+        ->whereHas('site')
         ->where(fn ($q) => $q->whereNull('next_scan_at')->orWhere('next_scan_at', '<=', now()))
         ->each(function ($monitor) {
             if (!$monitor->scans()->whereIn('status', ['pending', 'in_progress'])->exists()) {
@@ -120,6 +126,7 @@ Schedule::call(function () {
 // Scheduled reports — hourly
 Schedule::call(function () {
     ReportSchedule::where('is_active', true)
+        ->whereHas('site')
         ->where(fn ($q) => $q->whereNull('next_run_at')->orWhere('next_run_at', '<=', now()))
         ->with(['site', 'reportTemplate'])
         ->each(function (ReportSchedule $schedule) {

@@ -6,8 +6,11 @@
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900">Audit Log</h2>
-        <div class="flex gap-2">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Audit Log</h1>
+            <p class="mt-1 text-sm text-gray-500">Track user actions and changes made to this site</p>
+        </div>
+        <div class="flex items-center gap-2">
             <x-ui.button variant="secondary" size="sm" wire:click="exportCsv" wire:loading.attr="disabled">
                 <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="exportCsv" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Export CSV
@@ -20,35 +23,70 @@
     </div>
 
     {{-- Filters --}}
-    <div class="mb-6">
-        <x-ui.card class="!p-4">
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <div class="flex-1">
-                    <input type="text"
-                           wire:model.live.debounce.300ms="search"
-                           placeholder="Search by user, object, or IP..."
-                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500">
-                </div>
-                <div>
-                    <select wire:model.live="userFilter"
-                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
-                        <option value="all">All Users</option>
-                        @foreach($this->users as $user)
-                            <option value="{{ $user }}">{{ $user }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <select wire:model.live="actionFilter"
-                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
-                        <option value="all">All Actions</option>
-                        @foreach($this->actionTypes as $type)
-                            <option value="{{ $type }}">{{ ucfirst(str_replace('_', ' ', $type)) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-        </x-ui.card>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+        {{-- User filter --}}
+        @php
+            $userActive = $this->userFilter !== 'all';
+            $userLabel = $userActive ? $this->userFilter : 'User';
+        @endphp
+        <x-ui.dropdown align="left" width="48">
+            <x-slot:trigger>
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $userActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span class="max-w-[8rem] truncate">{{ $userLabel }}</span>
+                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </x-slot:trigger>
+            <button wire:click="$set('userFilter', 'all')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$userActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                All Users
+                @if(!$userActive)
+                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                @endif
+            </button>
+            @foreach($this->users as $user)
+                <button wire:click="$set('userFilter', '{{ $user }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->userFilter === $user ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    {{ $user }}
+                    @if($this->userFilter === $user)
+                        <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    @endif
+                </button>
+            @endforeach
+        </x-ui.dropdown>
+
+        {{-- Action filter --}}
+        @php
+            $actionActive = $this->actionFilter !== 'all';
+            $actionLabel = $actionActive ? ucfirst(str_replace('_', ' ', $this->actionFilter)) : 'Action';
+        @endphp
+        <x-ui.dropdown align="left" width="48">
+            <x-slot:trigger>
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $actionActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span class="max-w-[8rem] truncate">{{ $actionLabel }}</span>
+                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </x-slot:trigger>
+            <button wire:click="$set('actionFilter', 'all')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$actionActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                All Actions
+                @if(!$actionActive)
+                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                @endif
+            </button>
+            @foreach($this->actionTypes as $type)
+                <button wire:click="$set('actionFilter', '{{ $type }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->actionFilter === $type ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    {{ ucfirst(str_replace('_', ' ', $type)) }}
+                    @if($this->actionFilter === $type)
+                        <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    @endif
+                </button>
+            @endforeach
+        </x-ui.dropdown>
+
+        {{-- Search --}}
+        <input type="text"
+               wire:model.live.debounce.300ms="search"
+               placeholder="Search by user, object, or IP..."
+               class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500">
     </div>
 
     {{-- Logs Table --}}

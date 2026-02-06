@@ -6,6 +6,20 @@
         </div>
     @endif
 
+    {{-- Header --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
+            <p class="mt-1 text-sm text-gray-500">Overview of all your sites and infrastructure</p>
+        </div>
+        <a href="{{ route('sites.create') }}">
+            <x-ui.button>
+                <x-icons.plus class="h-4 w-4" />
+                Add Site
+            </x-ui.button>
+        </a>
+    </div>
+
     {{-- Section 1: Stats Bar --}}
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <x-ui.card>
@@ -107,12 +121,8 @@
             </div>
         @else
         {{-- Search + Filter Pills --}}
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <x-ui.input type="text" wire:model.live.debounce.300ms="search"
-                placeholder="Search sites..."
-                class="w-64 py-1.5" />
-            <div class="flex flex-wrap items-center gap-2">
-                {{-- Client Pill --}}
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+            {{-- Client Pill --}}
                 @php
                     $clientActive = $this->clientFilter !== null;
                     $clientLabel = 'Client';
@@ -246,26 +256,30 @@
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Save Order
                     </button>
-                    <x-ui.button
+                    <button
                         type="button"
-                        variant="secondary"
-                        size="sm"
                         wire:click="cancelReordering"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
                         Cancel
-                    </x-ui.button>
+                    </button>
                 @else
-                    <x-ui.button
+                    <button
                         type="button"
-                        variant="secondary"
-                        size="sm"
                         wire:click="startReordering"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
                         Reorder
-                    </x-ui.button>
+                    </button>
                 @endif
-            </div>
+
+            <input
+                type="text"
+                wire:model.live.debounce.300ms="search"
+                placeholder="Search sites..."
+                class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            >
         </div>
         @endif
 
@@ -488,11 +502,11 @@
                             </a>
 
                             {{-- Separator --}}
-                            <div class="mx-1 hidden h-4 w-px bg-gray-200 lg:block"></div>
+                            <div class="mx-3.5 hidden h-4 w-px bg-gray-200 lg:block"></div>
                         </div>
 
                         {{-- Status Icons (hidden below lg) --}}
-                        <div class="hidden items-center gap-1.5 lg:flex">
+                        <div class="hidden items-center gap-3 lg:flex">
                             {{-- 1. Uptime --}}
                             <x-ui.hovercard>
                                 <x-slot:trigger>
@@ -541,7 +555,7 @@
                                 <x-hovercards.domain :site="$site" />
                             </x-ui.hovercard>
 
-                            <div class="mx-0.5 h-4 w-px bg-gray-200"></div>
+                            <div class="mx-3.5 h-4 w-px bg-gray-200"></div>
 
                             {{-- 7. Plugins/Updates --}}
                             <x-ui.hovercard>
@@ -567,7 +581,7 @@
                                 <x-hovercards.wordpress :site="$site" />
                             </x-ui.hovercard>
 
-                            <div class="mx-0.5 h-4 w-px bg-gray-200"></div>
+                            <div class="mx-3.5 h-4 w-px bg-gray-200"></div>
 
                             {{-- 10. Backup --}}
                             <x-ui.hovercard>

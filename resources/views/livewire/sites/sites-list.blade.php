@@ -1,5 +1,10 @@
 <div>
-    <div class="mb-6 flex justify-end">
+    {{-- Header with Add Button --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Sites</h1>
+            <p class="mt-1 text-sm text-gray-500">Manage all your WordPress sites</p>
+        </div>
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
@@ -9,29 +14,21 @@
     </div>
 
     {{-- Search & Filter Bar --}}
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div class="relative flex-1">
-            <x-icons.search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <x-ui.input wire:model.live.debounce.300ms="search" type="text" placeholder="Search sites..." class="pl-10" />
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+        <div class="flex rounded-lg bg-gray-100 p-1">
+            @foreach(['all' => 'All', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'] as $value => $label)
+                <button wire:click="$set('filter', '{{ $value }}')"
+                        class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $filter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                    {{ $label }}
+                </button>
+            @endforeach
         </div>
-        <div class="flex gap-2">
-            <button wire:click="$set('filter', 'all')"
-                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $filter === 'all' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100' }}">
-                All
-            </button>
-            <button wire:click="$set('filter', 'healthy')"
-                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $filter === 'healthy' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-100' }}">
-                Healthy
-            </button>
-            <button wire:click="$set('filter', 'warning')"
-                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $filter === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'text-gray-600 hover:bg-gray-100' }}">
-                Warning
-            </button>
-            <button wire:click="$set('filter', 'critical')"
-                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $filter === 'critical' ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-100' }}">
-                Critical
-            </button>
-        </div>
+        <input
+            type="text"
+            wire:model.live.debounce.300ms="search"
+            placeholder="Search sites..."
+            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        >
     </div>
 
     {{-- Sites Grid --}}

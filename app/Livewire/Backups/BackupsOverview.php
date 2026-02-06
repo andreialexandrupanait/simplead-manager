@@ -41,7 +41,8 @@ class BackupsOverview extends Component
 
     public function backupAllSites(): void
     {
-        $configs = BackupConfig::where('is_enabled', true)
+        $configs = BackupConfig::whereHas('site')
+            ->where('is_enabled', true)
             ->with('site')
             ->get();
 

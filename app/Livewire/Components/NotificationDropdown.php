@@ -12,6 +12,7 @@ use Livewire\Component;
 
 class NotificationDropdown extends Component
 {
+    public bool $sidebarMode = false;
     public array $dismissedAlerts = [];
 
     #[Computed]
@@ -46,7 +47,8 @@ class NotificationDropdown extends Component
 
     public function retryFailedBackups(): void
     {
-        $failedSiteIds = Backup::where('status', 'failed')
+        $failedSiteIds = Backup::whereHas('site')
+            ->where('status', 'failed')
             ->where('created_at', '>=', now()->subDay())
             ->pluck('site_id')
             ->unique();

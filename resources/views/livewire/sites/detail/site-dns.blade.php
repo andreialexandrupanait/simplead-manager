@@ -2,9 +2,9 @@
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">DNS Records</h2>
-            <p class="text-sm text-gray-500">
-                {{ $site->domain }}
+            <h1 class="text-2xl font-semibold text-gray-900">DNS Records</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                View and manage DNS records for {{ $site->domain }}
                 @if($this->dnsCache?->checked_at)
                     &middot; Last checked {{ $this->dnsCache->checked_at->diffForHumans() }}
                 @endif

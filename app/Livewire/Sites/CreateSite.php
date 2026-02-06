@@ -88,7 +88,7 @@ class CreateSite extends Component
     public function render()
     {
         return view('livewire.sites.create-site', [
-            'clients' => Client::where('is_active', true)->orderBy('name')->get(),
+            'clients' => Client::where('status', 'active')->orderBy('name')->get(),
         ])->layout('components.layouts.app', ['title' => 'Add New Site']);
     }
 }

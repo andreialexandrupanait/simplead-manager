@@ -80,8 +80,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/errors', Dashboard\GlobalErrors::class)->name('errors.index');
 
     // Clients
-    Route::get('/clients', Clients\ClientsList::class)->name('clients.index');
-    Route::get('/clients/{client}', Clients\ClientDetail::class)->name('clients.show');
+    Route::prefix('clients')->group(function () {
+        Route::get('/', Clients\ClientsList::class)->name('clients.index');
+        Route::get('/create', Clients\ClientForm::class)->name('clients.create');
+        Route::get('/{client}', Clients\ClientDetail::class)->name('clients.show');
+        Route::get('/{client}/edit', Clients\ClientForm::class)->name('clients.edit');
+    });
 
     // Reports
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');

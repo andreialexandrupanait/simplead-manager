@@ -1,4 +1,10 @@
 <div>
+    {{-- Header --}}
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Errors</h1>
+        <p class="mt-1 text-sm text-gray-500">Monitor PHP errors, warnings, and notices across all sites</p>
+    </div>
+
     {{-- Stats bar --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-ui.card class="!p-4">
@@ -39,31 +45,61 @@
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         {{-- Site filter --}}
-        <select
-            wire:model.live="siteFilter"
-            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
-            <option value="all">All Sites</option>
+        @php
+            $siteActive = $this->siteFilter !== 'all';
+            $siteLabel = 'Site';
+            if ($siteActive) {
+                $selectedSite = $this->sites->firstWhere('id', $this->siteFilter);
+                $siteLabel = $selectedSite ? $selectedSite->name : 'Site';
+            }
+        @endphp
+        <x-ui.dropdown align="left" width="56">
+            <x-slot:trigger>
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $siteActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                    <span class="max-w-[8rem] truncate">{{ $siteLabel }}</span>
+                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </x-slot:trigger>
+            <button wire:click="$set('siteFilter', 'all')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$siteActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                All Sites
+                @if(!$siteActive)
+                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                @endif
+            </button>
             @foreach($this->sites as $site)
-                <option value="{{ $site->id }}">{{ $site->name }}</option>
-            @endforeach
-        </select>
-
-        {{-- Level filter --}}
-        <div class="flex rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'] as $value => $label)
-                <button
-                    wire:click="$set('levelFilter', '{{ $value }}')"
-                    @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-white text-gray-900 shadow-sm' => $this->levelFilter === $value,
-                        'text-gray-500 hover:text-gray-700' => $this->levelFilter !== $value,
-                    ])
-                >
-                    {{ $label }}
+                <button wire:click="$set('siteFilter', '{{ $site->id }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->siteFilter == $site->id ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    {{ $site->name }}
+                    @if($this->siteFilter == $site->id)
+                        <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    @endif
                 </button>
             @endforeach
-        </div>
+        </x-ui.dropdown>
+
+        {{-- Level filter --}}
+        @php
+            $levelActive = $this->levelFilter !== 'all';
+            $levelLabels = ['all' => 'Level', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'];
+            $levelLabel = $levelActive ? $levelLabels[$this->levelFilter] : 'Level';
+        @endphp
+        <x-ui.dropdown align="left" width="48">
+            <x-slot:trigger>
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $levelActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    {{ $levelLabel }}
+                    <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+            </x-slot:trigger>
+            @foreach(['all' => 'All Levels', 'fatal' => 'Fatal', 'error' => 'Error', 'warning' => 'Warning', 'notice' => 'Notice', 'deprecated' => 'Deprecated'] as $value => $label)
+                <button wire:click="$set('levelFilter', '{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->levelFilter === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    {{ $label }}
+                    @if($this->levelFilter === $value)
+                        <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    @endif
+                </button>
+            @endforeach
+        </x-ui.dropdown>
 
         {{-- Show resolved toggle --}}
         <label class="flex items-center gap-2 text-sm text-gray-600">
@@ -72,14 +108,12 @@
         </label>
 
         {{-- Search --}}
-        <div class="flex-1">
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Search errors..."
-                class="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
-        </div>
+        <input
+            type="text"
+            wire:model.live.debounce.300ms="search"
+            placeholder="Search errors..."
+            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        >
 
         {{-- Mark all resolved --}}
         @if($this->stats['fatal'] + $this->stats['error'] + $this->stats['warning'] > 0)

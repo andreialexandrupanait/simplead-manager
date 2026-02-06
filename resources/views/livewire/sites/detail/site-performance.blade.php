@@ -1,6 +1,10 @@
 <div class="min-w-0" @if($isRunning) wire:poll.2s="checkTestProgress" @endif>
-    {{-- Header actions --}}
-    <div class="mb-6 flex justify-end">
+    {{-- Header --}}
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Performance</h1>
+            <p class="mt-1 text-sm text-gray-500">Monitor Core Web Vitals and PageSpeed scores</p>
+        </div>
         <div class="flex items-center gap-3">
             @if($this->monitor)
                 <button wire:click="openBudgetModal"
