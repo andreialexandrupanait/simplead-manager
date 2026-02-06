@@ -4,10 +4,7 @@
     @endif
 
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Status Pages</h1>
-            <p class="mt-1 text-sm text-gray-500">Create public status pages to communicate uptime to your clients</p>
-        </div>
+        <x-ui.page-header title="Status Pages" subtitle="Create public status pages to communicate uptime to your clients" />
         <x-ui.button :href="route('status-pages.create')">
             <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             Create Status Page

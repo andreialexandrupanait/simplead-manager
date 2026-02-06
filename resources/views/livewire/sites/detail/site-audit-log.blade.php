@@ -6,10 +6,7 @@
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Audit Log</h1>
-            <p class="mt-1 text-sm text-gray-500">Track user actions and changes made to this site</p>
-        </div>
+        <x-ui.page-header title="Audit Log" subtitle="Track user actions and changes made to this site" />
         <div class="flex items-center gap-2">
             <x-ui.button variant="secondary" size="sm" wire:click="exportCsv" wire:loading.attr="disabled">
                 <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="exportCsv" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -83,10 +80,11 @@
         </x-ui.dropdown>
 
         {{-- Search --}}
-        <input type="text"
-               wire:model.live.debounce.300ms="search"
-               placeholder="Search by user, object, or IP..."
-               class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500">
+        <x-ui.search-input
+            wire:model.live.debounce.300ms="search"
+            placeholder="Search by user, object, or IP..."
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Logs Table --}}

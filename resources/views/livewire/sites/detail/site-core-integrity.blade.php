@@ -1,10 +1,7 @@
 <div>
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Core File Integrity</h1>
-            <p class="mt-1 text-sm text-gray-500">Compare WordPress core files against official checksums from wordpress.org</p>
-        </div>
+        <x-ui.page-header title="Core File Integrity" subtitle="Compare WordPress core files against official checksums from wordpress.org" />
         <x-ui.button wire:click="runCheck" wire:loading.attr="disabled">
             <svg class="mr-1.5 h-4 w-4 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="runCheck" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>

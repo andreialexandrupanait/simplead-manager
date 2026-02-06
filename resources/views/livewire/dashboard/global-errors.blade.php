@@ -1,9 +1,6 @@
 <div>
     {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">Errors</h1>
-        <p class="mt-1 text-sm text-gray-500">Monitor PHP errors, warnings, and notices across all sites</p>
-    </div>
+    <x-ui.page-header title="Errors" subtitle="Monitor PHP errors, warnings, and notices across all sites" />
 
     {{-- Stats bar --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -108,12 +105,11 @@
         </label>
 
         {{-- Search --}}
-        <input
-            type="text"
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search errors..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
 
         {{-- Mark all resolved --}}
         @if($this->stats['fatal'] + $this->stats['error'] + $this->stats['warning'] > 0)

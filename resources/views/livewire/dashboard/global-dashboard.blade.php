@@ -8,10 +8,7 @@
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
-            <p class="mt-1 text-sm text-gray-500">Overview of all your sites and infrastructure</p>
-        </div>
+        <x-ui.page-header title="Dashboard" subtitle="Overview of all your sites and infrastructure" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
@@ -274,12 +271,11 @@
                     </button>
                 @endif
 
-            <input
-                type="text"
+            <x-ui.search-input
                 wire:model.live.debounce.300ms="search"
                 placeholder="Search sites..."
-                class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
+                class="ml-auto w-64"
+            />
         </div>
         @endif
 

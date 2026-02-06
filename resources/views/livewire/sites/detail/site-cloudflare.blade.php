@@ -8,10 +8,7 @@
 
     @if(!$this->siteCloudflare)
         {{-- Not connected --}}
-        <div class="mb-6">
-            <h1 class="text-2xl font-semibold text-gray-900">Cloudflare</h1>
-            <p class="mt-1 text-sm text-gray-500">Connect this site to a Cloudflare zone to manage DNS, cache, security, and analytics</p>
-        </div>
+        <x-ui.page-header title="Cloudflare" subtitle="Connect this site to a Cloudflare zone to manage DNS, cache, security, and analytics" />
 
         <x-ui.card>
             @if($this->connections->isEmpty())

@@ -1,10 +1,7 @@
 <div>
     {{-- Header with Add Button --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Backups</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage site backups and restore points</p>
-        </div>
+        <x-ui.page-header title="Backups" subtitle="Manage site backups and restore points" />
         <x-ui.button wire:click="backupAllSites" wire:loading.attr="disabled" wire:confirm="This will queue backups for all connected sites with an active backup configuration. Continue?">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg>
             <span wire:loading.remove wire:target="backupAllSites">Backup All Sites</span>
@@ -46,18 +43,16 @@
 
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <div class="flex gap-1 rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'completed' => 'Completed', 'failed' => 'Failed', 'in_progress' => 'In Progress'] as $value => $label)
-                <button wire:click="$set('filter', '{{ $value }}')"
-                    class="rounded-md px-3 py-1.5 text-xs font-medium transition
-                        {{ $filter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-        <input type="text" wire:model.live.debounce.300ms="search"
+        <x-ui.filter-tabs
+            :options="['all' => 'All', 'completed' => 'Completed', 'failed' => 'Failed', 'in_progress' => 'In Progress']"
+            :selected="$filter"
+            wire="filter"
+        />
+        <x-ui.search-input
+            wire:model.live.debounce.300ms="search"
             placeholder="Search by site name..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500">
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Backups Table --}}

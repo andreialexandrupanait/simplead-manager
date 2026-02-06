@@ -6,10 +6,7 @@
 
     {{-- Header with Stats --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Firewall</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage firewall rules and block malicious traffic</p>
-        </div>
+        <x-ui.page-header title="Firewall" subtitle="Manage firewall rules and block malicious traffic" />
         <div class="flex items-center gap-4 text-sm text-gray-500">
             <span>{{ $this->stats['total_rules'] }} rules</span>
             <span>{{ $this->stats['blocked_today'] }} blocked today</span>

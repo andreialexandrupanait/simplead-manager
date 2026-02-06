@@ -1,10 +1,7 @@
 <div>
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Maintenance Windows</h1>
-            <p class="mt-1 text-sm text-gray-500">Schedule maintenance to pause monitoring during planned downtime</p>
-        </div>
+        <x-ui.page-header title="Maintenance Windows" subtitle="Schedule maintenance to pause monitoring during planned downtime" />
         <x-ui.button wire:click="openCreateModal">
             <x-icons.plus class="mr-1.5 h-4 w-4" />
             Schedule Maintenance

@@ -1,10 +1,7 @@
 <div>
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Error Logs</h1>
-            <p class="mt-1 text-sm text-gray-500">Monitor PHP errors, warnings, and notices</p>
-        </div>
+        <x-ui.page-header title="Error Logs" subtitle="Monitor PHP errors, warnings, and notices" />
         <x-ui.button wire:click="syncNow" wire:loading.attr="disabled">
             <x-icons.refresh-cw class="mr-1.5 h-4 w-4" wire:loading.class="animate-spin" wire:target="syncNow" />
             Sync Now

@@ -1,9 +1,6 @@
 <div @if(($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) wire:poll.1s="refreshProgress" @endif>
     {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">Backups</h1>
-        <p class="mt-1 text-sm text-gray-500">Create, schedule, and restore site backups</p>
-    </div>
+    <x-ui.page-header title="Backups" subtitle="Create, schedule, and restore site backups" />
 
     @if(session('backup-success'))
         <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('backup-success') }}</div>

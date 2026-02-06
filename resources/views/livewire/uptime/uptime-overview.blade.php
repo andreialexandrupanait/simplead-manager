@@ -8,10 +8,7 @@
 
     {{-- Header with Add Button --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Uptime Monitoring</h1>
-            <p class="mt-1 text-sm text-gray-500">Track site availability and response times</p>
-        </div>
+        <x-ui.page-header title="Uptime Monitoring" subtitle="Track site availability and response times" />
         <div class="flex items-center gap-3">
             @if($this->sitesWithoutMonitorCount > 0)
                 <x-ui.button variant="secondary" wire:click="addMonitorsForAllSites" wire:confirm="Create uptime monitors for {{ $this->sitesWithoutMonitorCount }} site(s) that don't have one?">
@@ -52,22 +49,16 @@
 
     {{-- Filters & Search --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'up' => 'Up', 'down' => 'Down', 'degraded' => 'Degraded', 'paused' => 'Paused'] as $value => $label)
-                <button
-                    wire:click="$set('filter', '{{ $value }}')"
-                    class="rounded-md px-3 py-1.5 text-xs font-medium transition {{ $filter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
-                >
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-        <input
-            type="text"
+        <x-ui.filter-tabs
+            :options="['all' => 'All', 'up' => 'Up', 'down' => 'Down', 'degraded' => 'Degraded', 'paused' => 'Paused']"
+            :selected="$filter"
+            wire="filter"
+        />
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search monitors..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Monitor list --}}

@@ -1,9 +1,6 @@
 <div>
     {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">Updates</h1>
-        <p class="mt-1 text-sm text-gray-500">Manage WordPress core, plugin, and theme updates across all sites</p>
-    </div>
+    <x-ui.page-header title="Updates" subtitle="Manage WordPress core, plugin, and theme updates across all sites" />
 
     {{-- Counts --}}
     <div class="mb-6 grid grid-cols-3 gap-4">
@@ -23,23 +20,16 @@
 
     {{-- Filter bar --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <div class="flex rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'core' => 'Core', 'plugins' => 'Plugins', 'themes' => 'Themes'] as $value => $label)
-                <button
-                    wire:click="$set('typeFilter', '{{ $value }}')"
-                    class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $this->typeFilter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
-                >
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-
-        <input
-            type="text"
+        <x-ui.filter-tabs
+            :options="['all' => 'All', 'core' => 'Core', 'plugins' => 'Plugins', 'themes' => 'Themes']"
+            :selected="$this->typeFilter"
+            wire="typeFilter"
+        />
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search updates..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Sites with updates --}}

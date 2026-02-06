@@ -1,9 +1,6 @@
 <div>
     {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">Plugins & Themes</h1>
-        <p class="mt-1 text-sm text-gray-500">Manage installed plugins and themes</p>
-    </div>
+    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes" />
 </div>
 
 <div
@@ -272,11 +269,10 @@
                     </div>
                 @endif
 
-                <input
-                    type="text"
+                <x-ui.search-input
                     wire:model.live.debounce.300ms="search"
                     placeholder="Search..."
-                    class="ml-auto w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    class="ml-auto w-48"
                 >
             </div>
         </div>

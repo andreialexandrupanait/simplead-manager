@@ -1,10 +1,7 @@
 <div class="min-w-0">
     {{-- Header with Add Button --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Performance</h1>
-            <p class="mt-1 text-sm text-gray-500">Monitor site performance and Core Web Vitals</p>
-        </div>
+        <x-ui.page-header title="Performance" subtitle="Monitor site performance and Core Web Vitals" />
         <x-ui.button wire:click="testAllSites" wire:loading.attr="disabled" wire:confirm="This will queue performance tests for all monitored sites. Continue?">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             <span wire:loading.remove wire:target="testAllSites">Test All Sites</span>
@@ -60,9 +57,11 @@
 
     {{-- Search --}}
     <div class="mb-4">
-        <input type="text" wire:model.live.debounce.300ms="search"
+        <x-ui.search-input
+            wire:model.live.debounce.300ms="search"
             placeholder="Search by site name or domain..."
-            class="w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500">
+            class="w-64"
+        />
     </div>
 
     {{-- Ranking Table --}}
