@@ -378,6 +378,45 @@ class Site extends Model
         return $this->hasMany(WooCommerceAlert::class);
     }
 
+    // Query Scopes
+
+    public function scopeHealthy($query)
+    {
+        return $query->where('health_score', '>=', 90)->where('is_up', true);
+    }
+
+    public function scopeWarning($query)
+    {
+        return $query->whereBetween('health_score', [70, 89])->where('is_up', true);
+    }
+
+    public function scopeCritical($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('health_score', '<', 70)->orWhere('is_up', false);
+        });
+    }
+
+    public function scopeSearchable($query, string $term)
+    {
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+              ->orWhere('url', 'like', "%{$term}%");
+        });
+    }
+
+    public function scopeConnected($query)
+    {
+        return $query->where('is_connected', true);
+    }
+
+    public function scopeWithPendingUpdates($query)
+    {
+        return $query->where('pending_updates_count', '>', 0);
+    }
+
+    // Accessors
+
     public function getDomainAttribute(): string
     {
         return parse_url($this->url, PHP_URL_HOST) ?? $this->url;

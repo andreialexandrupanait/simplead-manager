@@ -59,6 +59,21 @@ class SitePlugin extends Model
         });
     }
 
+    public function scopeWithUpdates($query)
+    {
+        return $query->where('has_update', true);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
