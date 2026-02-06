@@ -1,17 +1,9 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    @if(session('settings-saved'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Settings saved successfully.</div>
-    @endif
-
-    @if(session('error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('error') }}</div>
-    @endif
-
-    @if(session('data-purged'))
-        <div class="mb-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">Monitoring data has been purged.</div>
-    @endif
+    <x-ui.flash-alert type="success" key="settings-saved" message="Settings saved successfully." />
+    <x-ui.flash-alert type="error" key="error" />
+    <x-ui.flash-alert type="warning" key="data-purged" message="Monitoring data has been purged." />
 
     <form wire:submit="save" class="space-y-6">
         {{-- Application Settings --}}

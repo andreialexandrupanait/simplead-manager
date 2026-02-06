@@ -76,15 +76,9 @@
     </div>
 
     {{-- Flash messages --}}
-    @if(session('update-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('update-success') }}</div>
-    @endif
-    @if(session('update-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{{ session('update-error') }}</div>
-    @endif
-    @if(session('sync-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">{{ session('sync-dispatched') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="update-success" />
+    <x-ui.flash-alert type="error" key="update-error" />
+    <x-ui.flash-alert type="info" key="sync-dispatched" />
 
     {{-- Bulk update progress bar --}}
     <div x-show="bulkUpdating" x-cloak class="mb-4 rounded-lg bg-blue-50 p-4">
@@ -163,7 +157,7 @@
                     </p>
                 </div>
                 <x-ui.button variant="secondary" size="sm" wire:click="checkAbandonedNow" wire:loading.attr="disabled">
-                    <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="checkAbandonedNow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <x-ui.spinner size="xs" class="hidden" wire:loading.class.remove="hidden" wire:target="checkAbandonedNow" />
                     <span wire:loading.remove wire:target="checkAbandonedNow">Check Now</span>
                     <span wire:loading wire:target="checkAbandonedNow">Checking...</span>
                 </x-ui.button>

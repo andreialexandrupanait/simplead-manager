@@ -24,15 +24,9 @@
     </div>
 
     {{-- Flash messages --}}
-    @if(session('update-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('update-success') }}</div>
-    @endif
-    @if(session('update-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{{ session('update-error') }}</div>
-    @endif
-    @if(session('sync-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">{{ session('sync-dispatched') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="update-success" />
+    <x-ui.flash-alert type="error" key="update-error" />
+    <x-ui.flash-alert type="info" key="sync-dispatched" />
 
     {{-- Safe Updates in Progress --}}
     @if($this->activeSafeUpdates->count() > 0)

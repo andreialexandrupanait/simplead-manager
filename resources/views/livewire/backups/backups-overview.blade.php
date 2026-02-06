@@ -9,9 +9,7 @@
         </x-ui.button>
     </div>
 
-    @if(session('backup-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('backup-success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="backup-success" />
 
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -93,18 +91,9 @@
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
                                 <td class="px-3 py-3">
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                        {{ match($backup->status_color) {
-                                            'green' => 'bg-green-50 text-green-700',
-                                            'purple' => 'bg-purple-50 text-purple-700',
-                                            'yellow' => 'bg-yellow-50 text-yellow-700',
-                                            'red' => 'bg-red-50 text-red-700',
-                                            default => 'bg-gray-50 text-gray-700',
-                                        } }}">
-                                        {{ ucfirst($backup->status) }}
-                                    </span>
+                                    <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
                                     @if($backup->is_locked)
-                                        <span class="ml-1 inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">Locked</span>
+                                        <x-ui.badge variant="purple" class="ml-1">Locked</x-ui.badge>
                                     @endif
                                 </td>
                             </tr>

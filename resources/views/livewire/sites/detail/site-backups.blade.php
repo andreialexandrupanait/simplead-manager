@@ -2,13 +2,8 @@
     {{-- Header --}}
     <x-ui.page-header title="Backups" subtitle="Create, schedule, and restore site backups" />
 
-    @if(session('backup-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('backup-success') }}</div>
-    @endif
-
-    @if(session('backup-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('backup-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="backup-success" />
+    <x-ui.flash-alert type="error" key="backup-error" />
 
     {{-- Storage Quota Warning --}}
     @if($this->storageQuotaInfo && $this->storageQuotaInfo['level'] !== 'ok')
@@ -23,10 +18,12 @@
                     </span>
                 </div>
             </div>
-            <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                <div class="h-1.5 rounded-full {{ $this->storageQuotaInfo['level'] === 'error' ? 'bg-red-500' : 'bg-yellow-500' }}"
-                     style="width: {{ min($this->storageQuotaInfo['percent'], 100) }}%"></div>
-            </div>
+            <x-ui.progress-bar
+                :percent="$this->storageQuotaInfo['percent']"
+                :color="$this->storageQuotaInfo['level'] === 'error' ? 'red' : 'yellow'"
+                size="sm"
+                class="mt-2"
+            />
         </div>
     @endif
 

@@ -1,14 +1,8 @@
 <div>
     {{-- Flash messages --}}
-    @if(session('db-health-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('db-health-success') }}</div>
-    @endif
-    @if(session('db-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('db-success') }}</div>
-    @endif
-    @if(session('db-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{{ session('db-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="db-health-success" />
+    <x-ui.flash-alert type="success" key="db-success" />
+    <x-ui.flash-alert type="error" key="db-error" />
 
     {{-- Database Health Section --}}
     <div class="mb-8">

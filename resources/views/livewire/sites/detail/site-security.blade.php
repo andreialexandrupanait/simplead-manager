@@ -3,15 +3,9 @@
     <x-ui.page-header title="Security" subtitle="Scan for vulnerabilities and security issues" />
 
     {{-- Flash Messages --}}
-    @if(session('scan-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('scan-dispatched') }}</div>
-    @endif
-    @if(session('rec-fixed'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('rec-fixed') }}</div>
-    @endif
-    @if(session('rec-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('rec-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="info" key="scan-dispatched" />
+    <x-ui.flash-alert type="success" key="rec-fixed" />
+    <x-ui.flash-alert type="error" key="rec-error" />
 
     {{-- Security Score Header --}}
     <div class="mb-6">

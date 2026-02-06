@@ -1,10 +1,6 @@
 <div>
-    @if(session('cf-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('cf-success') }}</div>
-    @endif
-    @if(session('cf-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('cf-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="cf-success" />
+    <x-ui.flash-alert type="error" key="cf-error" />
 
     @if(!$this->siteCloudflare)
         {{-- Not connected --}}

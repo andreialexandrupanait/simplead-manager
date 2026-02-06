@@ -1,20 +1,8 @@
 <div>
     {{-- Flash messages --}}
-    @if(session('settings-saved'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">
-            {{ session('settings-saved') }}
-        </div>
-    @endif
-    @if(session('sync-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
-            {{ session('sync-dispatched') }}
-        </div>
-    @endif
-    @if(session('wp-admin-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-            {{ session('wp-admin-error') }}
-        </div>
-    @endif
+    <x-ui.flash-alert type="success" key="settings-saved" />
+    <x-ui.flash-alert type="info" key="sync-dispatched" />
+    <x-ui.flash-alert type="error" key="wp-admin-error" />
 
     <x-ui.card>
         <div class="flex items-center justify-between mb-6">

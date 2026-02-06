@@ -1,7 +1,5 @@
 <div>
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
 
     <div class="mb-6 flex items-center justify-between">
         <x-ui.page-header title="Status Pages" subtitle="Create public status pages to communicate uptime to your clients" />
