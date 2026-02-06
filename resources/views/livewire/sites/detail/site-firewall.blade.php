@@ -1,8 +1,6 @@
 <div>
     {{-- Flash Messages --}}
-    @if(session('fetch-dispatched'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('fetch-dispatched') }}</div>
-    @endif
+    <x-ui.flash-alert type="info" key="fetch-dispatched" />
 
     {{-- Header with Stats --}}
     <div class="mb-6 flex items-center justify-between">
@@ -15,78 +13,33 @@
 
     {{-- Stats Cards --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50">
-                    <x-icons.shield class="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total_rules'] }}</p>
-                    <p class="text-xs text-gray-500">Active Rules</p>
-                </div>
-            </div>
-        </x-ui.card>
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                    <x-icons.shield-alert class="h-5 w-5 text-red-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total_blocked'] }}</p>
-                    <p class="text-xs text-gray-500">Total Blocked</p>
-                </div>
-            </div>
-        </x-ui.card>
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50">
-                    <x-icons.alert-triangle class="h-5 w-5 text-yellow-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['blocked_today'] }}</p>
-                    <p class="text-xs text-gray-500">Blocked Today</p>
-                </div>
-            </div>
-        </x-ui.card>
+        <x-ui.stat-card label="Active Rules" :value="$this->stats['total_rules']" icon="shield" color="purple" />
+        <x-ui.stat-card label="Total Blocked" :value="$this->stats['total_blocked']" icon="shield-alert" color="red" />
+        <x-ui.stat-card label="Blocked Today" :value="$this->stats['blocked_today']" icon="alert-triangle" color="yellow" />
     </div>
 
     {{-- Tabs --}}
-    <div class="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1">
-        <button wire:click="$set('tab', 'block')"
-                class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $tab === 'block' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
-            Block List
-        </button>
-        <button wire:click="$set('tab', 'allow')"
-                class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $tab === 'allow' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
-            Allow List
-        </button>
-    </div>
+    <x-ui.filter-tabs
+        :options="['block' => 'Block List', 'allow' => 'Allow List']"
+        :selected="$tab"
+        wire="tab"
+        class="mb-6"
+    />
 
     {{-- Add Rule Form --}}
     <div class="mb-6">
         <x-ui.card>
             <h3 class="text-sm font-semibold text-gray-900 mb-4">Add {{ $tab === 'block' ? 'Block' : 'Allow' }} Rule</h3>
             <form wire:submit="addRule" class="flex flex-col gap-3 sm:flex-row">
-                <div class="flex-1">
-                    <input type="text"
-                           wire:model="newIp"
-                           placeholder="IP address or CIDR range (e.g. 192.168.1.0/24)"
-                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500">
-                    @error('newIp') <span class="text-xs text-red-600 mt-1">{{ $message }}</span> @enderror
-                </div>
+                <x-ui.form-group error="newIp" class="flex-1">
+                    <x-ui.input wire:model="newIp" placeholder="IP address or CIDR range (e.g. 192.168.1.0/24)" />
+                </x-ui.form-group>
                 <div class="sm:w-48">
-                    <input type="text"
-                           wire:model="newReason"
-                           placeholder="Reason (optional)"
-                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.input wire:model="newReason" placeholder="Reason (optional)" />
                 </div>
-                <div class="sm:w-44">
-                    <input type="datetime-local"
-                           wire:model="newExpiry"
-                           placeholder="Expiry (optional)"
-                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-purple-500 focus:ring-purple-500">
-                    @error('newExpiry') <span class="text-xs text-red-600 mt-1">{{ $message }}</span> @enderror
-                </div>
+                <x-ui.form-group error="newExpiry" class="sm:w-44">
+                    <x-ui.input type="datetime-local" wire:model="newExpiry" />
+                </x-ui.form-group>
                 <x-ui.button variant="primary" size="sm" type="submit" wire:loading.attr="disabled">
                     Add Rule
                 </x-ui.button>
@@ -153,7 +106,7 @@
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-900">Recent Blocked Requests</h3>
                 <x-ui.button variant="secondary" size="sm" wire:click="fetchBlocked" wire:loading.attr="disabled">
-                    <svg class="h-3.5 w-3.5 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="fetchBlocked" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <x-ui.spinner size="xs" class="hidden" wire:loading.class.remove="hidden" wire:target="fetchBlocked" />
                     Fetch Latest
                 </x-ui.button>
             </div>

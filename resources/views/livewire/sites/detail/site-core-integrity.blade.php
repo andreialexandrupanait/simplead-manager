@@ -3,18 +3,13 @@
     <div class="mb-6 flex items-center justify-between">
         <x-ui.page-header title="Core File Integrity" subtitle="Compare WordPress core files against official checksums from wordpress.org" />
         <x-ui.button wire:click="runCheck" wire:loading.attr="disabled">
-            <svg class="mr-1.5 h-4 w-4 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="runCheck" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
+            <x-ui.spinner size="sm" class="mr-1.5 hidden" wire:loading.class.remove="hidden" wire:target="runCheck" />
             Run Check
         </x-ui.button>
     </div>
 
     {{-- Flash Messages --}}
-    @if(session('integrity-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('integrity-success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="integrity-success" />
 
     @if($this->latestCheck)
         @php $check = $this->latestCheck; @endphp
@@ -25,11 +20,11 @@
                 <div class="flex items-center gap-3">
                     <div class="flex h-10 w-10 items-center justify-center rounded-lg {{ $check->status === 'clean' ? 'bg-green-100' : ($check->status === 'modified' ? 'bg-red-100' : 'bg-yellow-100') }}">
                         @if($check->status === 'clean')
-                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            <x-icons.check-circle class="h-5 w-5 text-green-600" />
                         @elseif($check->status === 'modified')
-                            <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                            <x-icons.alert-triangle class="h-5 w-5 text-red-600" />
                         @else
-                            <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <x-icons.alert-triangle class="h-5 w-5 text-yellow-600" />
                         @endif
                     </div>
                     <div>
@@ -66,7 +61,7 @@
         @if($check->error_message)
             <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
                 <div class="flex items-start gap-2">
-                    <svg class="h-5 w-5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <x-icons.alert-triangle class="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
                     <div>
                         <p class="font-medium">Check Error</p>
                         <p class="mt-1">{{ $check->error_message }}</p>
@@ -85,7 +80,7 @@
                             <div class="h-2.5 w-2.5 rounded-full bg-red-500"></div>
                             <h3 class="text-sm font-semibold text-gray-900">Modified Files ({{ count($check->modified_files) }})</h3>
                         </div>
-                        <svg class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'modified' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        <x-icons.chevron-down class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'modified' ? 'rotate-180' : '' }}" />
                     </button>
 
                     @if($expandedSection === 'modified')
@@ -93,7 +88,7 @@
                             @foreach($check->modified_files as $file)
                                 <div class="py-3">
                                     <div class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <x-icons.file-text class="h-4 w-4 text-red-500 shrink-0" />
                                         <span class="font-mono text-sm text-gray-900">{{ $file['path'] }}</span>
                                     </div>
                                     <div class="mt-1 ml-6 grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -121,14 +116,14 @@
                             <div class="h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
                             <h3 class="text-sm font-semibold text-gray-900">Missing Files ({{ count($check->missing_files) }})</h3>
                         </div>
-                        <svg class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'missing' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        <x-icons.chevron-down class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'missing' ? 'rotate-180' : '' }}" />
                     </button>
 
                     @if($expandedSection === 'missing')
                         <div class="mt-4 space-y-1">
                             @foreach($check->missing_files as $path)
                                 <div class="flex items-center gap-2 rounded-lg bg-yellow-50 px-3 py-2">
-                                    <svg class="h-4 w-4 text-yellow-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <x-icons.alert-triangle class="h-4 w-4 text-yellow-500 shrink-0" />
                                     <span class="font-mono text-xs text-yellow-800">{{ $path }}</span>
                                 </div>
                             @endforeach
@@ -145,14 +140,14 @@
                             <div class="h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
                             <h3 class="text-sm font-semibold text-gray-900">Unknown Files ({{ count($check->unknown_files) }})</h3>
                         </div>
-                        <svg class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'unknown' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        <x-icons.chevron-down class="h-5 w-5 text-gray-400 transition-transform {{ $expandedSection === 'unknown' ? 'rotate-180' : '' }}" />
                     </button>
 
                     @if($expandedSection === 'unknown')
                         <div class="mt-4 space-y-1">
                             @foreach($check->unknown_files as $path)
                                 <div class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
-                                    <svg class="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <x-icons.alert-triangle class="h-4 w-4 text-gray-400 shrink-0" />
                                     <span class="font-mono text-xs text-gray-700">{{ $path }}</span>
                                 </div>
                             @endforeach
@@ -167,7 +162,7 @@
             <x-ui.card class="mb-6">
                 <div class="flex items-center gap-3 p-2">
                     <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <x-icons.check-circle class="h-6 w-6 text-green-600" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-green-700">All Core Files Are Clean</p>
@@ -221,10 +216,7 @@
             />
             <div class="mt-4 flex justify-center">
                 <x-ui.button wire:click="runCheck" wire:loading.attr="disabled">
-                    <svg class="mr-1.5 h-4 w-4 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="runCheck" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
+                    <x-ui.spinner size="sm" class="mr-1.5 hidden" wire:loading.class.remove="hidden" wire:target="runCheck" />
                     Run First Check
                 </x-ui.button>
             </div>
