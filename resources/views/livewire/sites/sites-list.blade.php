@@ -1,10 +1,7 @@
 <div>
     {{-- Header with Add Button --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Sites</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage all your WordPress sites</p>
-        </div>
+        <x-ui.page-header title="Sites" subtitle="Manage all your WordPress sites" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
@@ -15,20 +12,16 @@
 
     {{-- Search & Filter Bar --}}
     <div class="mb-6 flex flex-wrap items-center gap-3">
-        <div class="flex rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'] as $value => $label)
-                <button wire:click="$set('filter', '{{ $value }}')"
-                        class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $filter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                    {{ $label }}
-                </button>
-            @endforeach
-        </div>
-        <input
-            type="text"
+        <x-ui.filter-tabs
+            :options="['all' => 'All', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical']"
+            :selected="$filter"
+            wire="filter"
+        />
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search sites..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Sites Grid --}}

@@ -1,10 +1,7 @@
 <div>
     {{-- Header with Add Button --}}
     <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Clients</h1>
-            <p class="mt-1 text-sm text-gray-500">Manage your clients and their sites</p>
-        </div>
+        <x-ui.page-header title="Clients" subtitle="Manage your clients and their sites" />
         <a href="{{ route('clients.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
@@ -27,12 +24,11 @@
         </div>
 
         {{-- Search --}}
-        <input
-            type="text"
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search clients..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Clients Table --}}

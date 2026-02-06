@@ -1,9 +1,6 @@
 <div>
     {{-- Header --}}
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">Activity</h1>
-        <p class="mt-1 text-sm text-gray-500">Track all automated actions and events across your sites</p>
-    </div>
+    <x-ui.page-header title="Activity" subtitle="Track all automated actions and events across your sites" />
 
     {{-- Filter bar --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -56,12 +53,11 @@
         </x-ui.dropdown>
 
         {{-- Search --}}
-        <input
-            type="text"
+        <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search activity..."
-            class="ml-auto w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-        >
+            class="ml-auto w-64"
+        />
     </div>
 
     {{-- Activity list --}}
