@@ -29,7 +29,7 @@
                         <div class="flex items-center gap-2">
                             <h3 class="font-medium text-gray-900">{{ $template->name }}</h3>
                             @if($template->is_default)
-                                <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">Default</span>
+                                <x-ui.badge variant="purple">Default</x-ui.badge>
                             @endif
                         </div>
                         @if($template->description)
@@ -50,9 +50,7 @@
                                 ];
                             @endphp
                             @foreach($template->sections ?? [] as $section)
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                                    {{ $sectionLabels[$section] ?? ucfirst($section) }}
-                                </span>
+                                <x-ui.badge variant="gray">{{ $sectionLabels[$section] ?? ucfirst($section) }}</x-ui.badge>
                             @endforeach
                         </div>
 

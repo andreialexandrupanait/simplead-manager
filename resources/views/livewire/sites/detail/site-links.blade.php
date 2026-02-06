@@ -25,9 +25,7 @@
     </div>
 
     {{-- Flash message --}}
-    @if(session('message'))
-        <x-ui.alert class="mb-6">{{ session('message') }}</x-ui.alert>
-    @endif
+    <x-ui.flash-alert type="success" key="message" class="mb-6" />
 
     {{-- Scan Progress Banner --}}
     @if($isScanning && $this->activeScan)
@@ -109,27 +107,24 @@
                 <button wire:click="setStatusFilter('{{ $key }}')"
                         class="px-4 py-2.5 text-sm font-medium transition {{ $statusFilter === $key ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500 hover:text-gray-700' }}">
                     {{ $tab['label'] }}
-                    <span class="ml-1 rounded-full {{ $statusFilter === $key ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600' }} px-2 py-0.5 text-xs font-medium">
-                        {{ $tab['count'] }}
-                    </span>
+                    <x-ui.badge :variant="$statusFilter === $key ? 'purple' : 'gray'" class="ml-1">{{ $tab['count'] }}</x-ui.badge>
                 </button>
             @endforeach
         </div>
 
         {{-- Search and type filter --}}
         <div class="mb-4 flex items-center gap-3">
-            <div class="relative flex-1">
-                <x-icons.search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <x-ui.input wire:model.live.debounce.300ms="search"
-                       type="text"
-                       placeholder="Search by URL, anchor text, or source page..."
-                       class="pl-10" />
-            </div>
             <x-ui.select wire:model.live="typeFilter">
                 <option value="all">All Types</option>
                 <option value="internal">Internal</option>
                 <option value="external">External</option>
             </x-ui.select>
+
+            <x-ui.search-input
+                wire:model.live.debounce.300ms="search"
+                placeholder="Search by URL, anchor text, or source page..."
+                class="ml-auto w-64"
+            />
         </div>
 
         {{-- Links table --}}

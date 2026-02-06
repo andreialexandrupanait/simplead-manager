@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Clients;
 
+use App\Livewire\Traits\WithSorting;
 use App\Models\Client;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -11,18 +12,13 @@ use Livewire\WithPagination;
 class ClientsList extends Component
 {
     use WithPagination;
+    use WithSorting;
 
     #[Url]
     public string $search = '';
 
     #[Url]
     public string $statusFilter = 'all';
-
-    #[Url]
-    public string $sortBy = 'name';
-
-    #[Url]
-    public string $sortDirection = 'asc';
 
     public ?int $deletingId = null;
 
@@ -34,16 +30,6 @@ class ClientsList extends Component
     public function updatingStatusFilter(): void
     {
         $this->resetPage();
-    }
-
-    public function sort(string $column): void
-    {
-        if ($this->sortBy === $column) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortBy = $column;
-            $this->sortDirection = 'asc';
-        }
     }
 
     public function confirmDelete(int $id): void
@@ -92,7 +78,7 @@ class ClientsList extends Component
             ->search($this->search)
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
             ->withCount('sites')
-            ->orderBy($this->sortBy, $this->sortDirection)
+            ->orderBy($this->sortBy, $this->sortDir)
             ->paginate(12);
 
         return view('livewire.clients.clients-list', compact('clients'))

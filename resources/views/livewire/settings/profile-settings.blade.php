@@ -1,15 +1,9 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    @if(session('profile-saved'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Profile updated successfully.</div>
-    @endif
-    @if(session('password-changed'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Password changed successfully.</div>
-    @endif
-    @if(session('sessions-cleared'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Other sessions have been logged out.</div>
-    @endif
+    <x-ui.flash-alert type="success" key="profile-saved" />
+    <x-ui.flash-alert type="success" key="password-changed" />
+    <x-ui.flash-alert type="success" key="sessions-cleared" />
 
     <div class="space-y-6">
         {{-- Profile Section --}}

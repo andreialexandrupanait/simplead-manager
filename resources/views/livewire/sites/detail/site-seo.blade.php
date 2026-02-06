@@ -9,9 +9,7 @@
         </x-ui.button>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
 
     @if($this->latestCheck)
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">

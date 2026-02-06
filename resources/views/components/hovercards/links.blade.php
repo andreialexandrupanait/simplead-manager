@@ -3,11 +3,11 @@
 @if($site->linkMonitor)
     @php
         $broken = $site->linkMonitor->broken_links ?? 0;
-        $linksBadge = $broken === 0 ? 'bg-green-100 text-green-700' : ($broken <= 5 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700');
+        $linksVariant = $broken === 0 ? 'green' : ($broken <= 5 ? 'yellow' : 'red');
     @endphp
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Link Monitor</span>
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $linksBadge }}">{{ $broken }} broken</span>
+        <x-ui.badge :variant="$linksVariant">{{ $broken }} broken</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         @if($site->linkMonitor->total_links !== null)

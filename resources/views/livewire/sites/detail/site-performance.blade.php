@@ -35,9 +35,7 @@
     </div>
 
     {{-- Flash message --}}
-    @if(session('message'))
-        <x-ui.alert class="mb-6">{{ session('message') }}</x-ui.alert>
-    @endif
+    <x-ui.flash-alert type="success" key="message" class="mb-6" />
 
     {{-- Test Progress Banner --}}
     @if($isRunning || $this->activeTests->isNotEmpty())
@@ -431,9 +429,7 @@
                         <tr>
                             <x-ui.td>{{ $test->tested_at?->format('M j, H:i') ?? '—' }}</x-ui.td>
                             <x-ui.td>
-                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $test->device === 'mobile' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700' }}">
-                                    {{ ucfirst($test->device) }}
-                                </span>
+                                <x-ui.badge :variant="$test->device === 'mobile' ? 'purple' : 'blue'">{{ ucfirst($test->device) }}</x-ui.badge>
                             </x-ui.td>
                             <x-ui.td>
                                 @if($test->performance_score !== null)
@@ -488,10 +484,7 @@
                         <svg wire:loading.remove wire:target="runTest" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
-                        <svg wire:loading wire:target="runTest" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
+                        <x-ui.spinner size="sm" wire:loading wire:target="runTest" />
                         Run First Test
                     </button>
                 </div>

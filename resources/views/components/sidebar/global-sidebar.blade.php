@@ -83,13 +83,3 @@
         Status Pages
     </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
-
-<x-sidebar.sidebar-section title="System">
-    <x-sidebar.sidebar-item
-        :href="route('settings.general')"
-        icon="settings"
-        :active="request()->routeIs('settings.*')"
-    >
-        Settings
-    </x-sidebar.sidebar-item>
-</x-sidebar.sidebar-section>

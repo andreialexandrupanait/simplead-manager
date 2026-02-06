@@ -30,15 +30,9 @@
         </div>
     @endif
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('error') }}</div>
-    @endif
-    @if(session('analytics-refreshing'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">Data is being refreshed in the background. Reload in a moment.</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="error" />
+    <x-ui.flash-alert type="info" key="analytics-refreshing" />
 
     @if($connection && $connection->is_active)
         {{-- Data subtitle --}}

@@ -5,7 +5,7 @@
 @if($usersCount > 0)
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">WordPress Users</span>
-        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">{{ $usersCount }}</span>
+        <x-ui.badge variant="blue">{{ $usersCount }}</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         <div class="flex items-center justify-between">

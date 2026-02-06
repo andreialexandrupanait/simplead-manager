@@ -53,7 +53,7 @@
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
                         <span class="text-gray-500">Status</span>
-                        <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Active</span>
+                        <x-ui.badge variant="green">Active</x-ui.badge>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Frequency</span>
@@ -101,10 +101,9 @@
                 @if($this->backupConfig?->last_backup_status)
                     <div class="flex justify-between">
                         <span class="text-gray-500">Last Status</span>
-                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                            {{ $this->backupConfig->last_backup_status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                        <x-ui.badge :variant="$this->backupConfig->last_backup_status === 'completed' ? 'green' : 'red'">
                             {{ ucfirst($this->backupConfig->last_backup_status) }}
-                        </span>
+                        </x-ui.badge>
                     </div>
                 @endif
             </div>
@@ -154,10 +153,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <template x-if="status === 'pending' || status === 'in_progress'">
-                                <svg class="h-5 w-5 animate-spin text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
+                                <x-ui.spinner size="md" class="text-purple-600" />
                             </template>
                             <template x-if="status === 'completed'">
                                 <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,10 +250,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <template x-if="status === 'pending' || status === 'in_progress'">
-                                <svg class="h-5 w-5 animate-spin text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
+                                <x-ui.spinner size="md" class="text-purple-600" />
                             </template>
                             <template x-if="status === 'completed'">
                                 <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,28 +331,16 @@
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($backup->size_diff_formatted)
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                            {{ $backup->size_diff >= 0 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700' }}">
-                                            {{ $backup->size_diff_formatted }}
-                                        </span>
+                                        <x-ui.badge :variant="$backup->size_diff >= 0 ? 'yellow' : 'green'">{{ $backup->size_diff_formatted }}</x-ui.badge>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
                                 <td class="px-3 py-3">
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                        {{ match($backup->status_color) {
-                                            'green' => 'bg-green-50 text-green-700',
-                                            'purple' => 'bg-purple-50 text-purple-700',
-                                            'yellow' => 'bg-yellow-50 text-yellow-700',
-                                            'red' => 'bg-red-50 text-red-700',
-                                            default => 'bg-gray-50 text-gray-700',
-                                        } }}">
-                                        {{ ucfirst($backup->status) }}
-                                    </span>
+                                    <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
                                     @if($backup->is_locked)
-                                        <span class="ml-1 inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">Locked</span>
+                                        <x-ui.badge variant="purple" class="ml-1">Locked</x-ui.badge>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-sm max-w-[150px]"

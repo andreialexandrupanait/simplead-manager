@@ -20,17 +20,7 @@
         {{-- Stats Cards --}}
         <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {{-- Total Records --}}
-            <x-ui.card class="!p-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50">
-                        <x-icons.layers class="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                        <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total_records'] }}</p>
-                        <p class="text-xs text-gray-500">Total Records</p>
-                    </div>
-                </div>
-            </x-ui.card>
+            <x-ui.stat-card label="Total Records" :value="$this->stats['total_records']" icon="layers" color="purple" />
 
             {{-- CDN / DNS Provider --}}
             <x-ui.card class="!p-4">
@@ -269,7 +259,7 @@
                 <x-ui.card>
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-base font-semibold text-gray-900">{{ $type }} Records</h3>
-                        <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">{{ count($records) }}</span>
+                        <x-ui.badge variant="gray">{{ count($records) }}</x-ui.badge>
                     </div>
 
                     <div class="overflow-x-auto">

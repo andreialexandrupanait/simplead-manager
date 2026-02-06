@@ -29,7 +29,7 @@
                         @if($paused->isNotEmpty())
                             <div class="mt-1 flex gap-1">
                                 @foreach($paused as $type)
-                                    <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">{{ ucfirst($type) }}</span>
+                                    <x-ui.badge variant="yellow">{{ ucfirst($type) }}</x-ui.badge>
                                 @endforeach
                             </div>
                         @endif

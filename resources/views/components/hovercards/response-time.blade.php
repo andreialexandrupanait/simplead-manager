@@ -3,12 +3,12 @@
 @if($site->uptimeMonitor && $site->uptimeMonitor->avg_response_time)
     @php
         $rt = $site->uptimeMonitor->avg_response_time;
-        $rtBadge = $rt < 500 ? 'bg-green-100 text-green-700' : ($rt <= 2000 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700');
+        $rtVariant = $rt < 500 ? 'green' : ($rt <= 2000 ? 'yellow' : 'red');
         $rtLabel = $rt < 500 ? 'Fast' : ($rt <= 2000 ? 'Moderate' : 'Slow');
     @endphp
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Response Time</span>
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $rtBadge }}">{{ $rtLabel }}</span>
+        <x-ui.badge :variant="$rtVariant">{{ $rtLabel }}</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         <div class="flex items-center justify-between">

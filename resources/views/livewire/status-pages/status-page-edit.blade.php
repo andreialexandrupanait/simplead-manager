@@ -1,7 +1,5 @@
 <div>
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
 
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -227,12 +225,8 @@
                                 <div class="flex items-start justify-between">
                                     <div>
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-{{ $incident->severity_color }}-50 text-{{ $incident->severity_color }}-700">
-                                                {{ ucfirst($incident->severity) }}
-                                            </span>
-                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $incident->status === 'resolved' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700' }}">
-                                                {{ $incident->status_label }}
-                                            </span>
+                                            <x-ui.badge :variant="$incident->severity_color">{{ ucfirst($incident->severity) }}</x-ui.badge>
+                                            <x-ui.badge :variant="$incident->status === 'resolved' ? 'green' : 'blue'">{{ $incident->status_label }}</x-ui.badge>
                                             @if($incident->auto_created)
                                                 <span class="text-xs text-gray-400">Auto</span>
                                             @endif

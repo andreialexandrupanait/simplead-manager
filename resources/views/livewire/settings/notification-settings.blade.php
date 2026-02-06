@@ -1,13 +1,8 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    @if(session('preferences-saved'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">Notification preferences saved.</div>
-    @endif
-
-    @if(session('test-sent'))
-        <div class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{{ session('test-sent') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="preferences-saved" />
+    <x-ui.flash-alert type="info" key="test-sent" />
 
     <div class="space-y-6">
         {{-- Notification Channels --}}

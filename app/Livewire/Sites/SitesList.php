@@ -2,26 +2,13 @@
 
 namespace App\Livewire\Sites;
 
+use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class SitesList extends Component
 {
-    use WithPagination;
-
-    public string $search = '';
-    public string $filter = 'all';
-
-    public function updatingSearch(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFilter(): void
-    {
-        $this->resetPage();
-    }
+    use WithTableFilters;
 
     public function render()
     {

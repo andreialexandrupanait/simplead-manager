@@ -147,7 +147,7 @@
                                 @foreach($this->dnsRecords as $record)
                                     <tr>
                                         <td class="py-2 pr-4">
-                                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">{{ $record['type'] }}</span>
+                                            <x-ui.badge variant="gray">{{ $record['type'] }}</x-ui.badge>
                                         </td>
                                         <td class="py-2 pr-4 font-mono text-xs">{{ $record['name'] }}</td>
                                         <td class="py-2 pr-4 font-mono text-xs max-w-xs truncate">{{ $record['content'] }}</td>
@@ -314,11 +314,11 @@
                     <h3 class="text-sm font-semibold text-gray-900 mb-4">WAF Status</h3>
                     <div class="flex items-center gap-2">
                         @if($this->wafStatus === 'on')
-                            <span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">Enabled</span>
+                            <x-ui.badge variant="green">Enabled</x-ui.badge>
                         @elseif($this->wafStatus === 'off')
-                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Disabled</span>
+                            <x-ui.badge variant="gray">Disabled</x-ui.badge>
                         @else
-                            <span class="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700">{{ ucfirst($this->wafStatus) }}</span>
+                            <x-ui.badge variant="yellow">{{ ucfirst($this->wafStatus) }}</x-ui.badge>
                         @endif
                     </div>
                     <p class="mt-2 text-xs text-gray-500">Web Application Firewall protects against common web exploits. Manage WAF rules in the Cloudflare dashboard.</p>
@@ -348,9 +348,7 @@
                             <div class="flex items-center justify-between py-3">
                                 <div>
                                     <span class="font-mono text-sm text-gray-900">{{ $rule['configuration']['value'] ?? 'N/A' }}</span>
-                                    <span class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ ($rule['mode'] ?? '') === 'block' ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-600' }}">
-                                        {{ ucfirst($rule['mode'] ?? 'N/A') }}
-                                    </span>
+                                    <x-ui.badge :variant="($rule['mode'] ?? '') === 'block' ? 'red' : 'gray'" class="ml-2">{{ ucfirst($rule['mode'] ?? 'N/A') }}</x-ui.badge>
                                     @if(!empty($rule['notes']))
                                         <span class="ml-2 text-xs text-gray-500">{{ $rule['notes'] }}</span>
                                     @endif
@@ -386,9 +384,7 @@
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ ($rule['paused'] ?? false) ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-700' }}">
-                                        {{ ($rule['paused'] ?? false) ? 'Paused' : 'Active' }}
-                                    </span>
+                                    <x-ui.badge :variant="($rule['paused'] ?? false) ? 'gray' : 'green'">{{ ($rule['paused'] ?? false) ? 'Paused' : 'Active' }}</x-ui.badge>
                                     <button wire:click="openEditFirewallModal('{{ $rule['id'] }}', '{{ addslashes($rule['description'] ?? '') }}', '{{ addslashes($rule['filter']['expression'] ?? '') }}', '{{ $rule['action'] ?? 'block' }}')"
                                         class="text-gray-400 hover:text-purple-600">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>

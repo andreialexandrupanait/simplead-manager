@@ -16,12 +16,8 @@
     </div>
 
     {{-- Flash messages --}}
-    @if(session('cron-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('cron-success') }}</div>
-    @endif
-    @if(session('cron-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{{ session('cron-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="cron-success" />
+    <x-ui.flash-alert type="error" key="cron-error" />
 
     {{-- Overdue warning --}}
     @if($this->overdueCount > 0)

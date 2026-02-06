@@ -20,6 +20,7 @@ class SiteOverview extends Component
     {
         $cache = AnalyticsCache::where('site_id', $this->site->id)
             ->where('date_range', '28d')
+            ->latest('fetched_at')
             ->first();
 
         if (!$cache) return null;
@@ -32,6 +33,7 @@ class SiteOverview extends Component
         $cache = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', '28d')
             ->where('data_type', 'overview')
+            ->latest('fetched_at')
             ->first();
 
         if (!$cache) return null;

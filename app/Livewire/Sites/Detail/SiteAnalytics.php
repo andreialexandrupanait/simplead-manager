@@ -30,6 +30,7 @@ class SiteAnalytics extends Component
 
         $cache = AnalyticsCache::where('site_id', $this->site->id)
             ->where('date_range', $this->dateRange)
+            ->latest('fetched_at')
             ->first();
 
         if (!$cache || $cache->expires_at->isPast()) {
@@ -113,6 +114,7 @@ class SiteAnalytics extends Component
         if ($connection && $connection->is_active) {
             $cache = AnalyticsCache::where('site_id', $this->site->id)
                 ->where('date_range', $this->dateRange)
+                ->latest('fetched_at')
                 ->first();
 
             if ($cache) {

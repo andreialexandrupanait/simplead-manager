@@ -31,6 +31,7 @@ class SiteSearchConsole extends Component
         $cache = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', $this->dateRange)
             ->where('data_type', 'overview')
+            ->latest('fetched_at')
             ->first();
 
         if (!$cache || $cache->expires_at->isPast()) {

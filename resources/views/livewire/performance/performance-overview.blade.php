@@ -9,9 +9,7 @@
         </x-ui.button>
     </div>
 
-    @if(session('perf-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('perf-success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="perf-success" />
 
     {{-- Stats Cards --}}
     <div class="mb-6 grid grid-cols-5 gap-4">
@@ -56,11 +54,11 @@
     </div>
 
     {{-- Search --}}
-    <div class="mb-4">
+    <div class="mb-4 flex items-center">
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search by site name or domain..."
-            class="w-64"
+            class="ml-auto w-64"
         />
     </div>
 

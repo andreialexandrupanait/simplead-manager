@@ -41,7 +41,7 @@
                             <span class="flex items-center gap-1">
                                 Client
                                 @if($sortBy === 'name')
-                                    <svg class="h-4 w-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>
@@ -50,7 +50,7 @@
                             <span class="flex items-center gap-1">
                                 Sites
                                 @if($sortBy === 'sites_count')
-                                    <svg class="h-4 w-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>
@@ -58,7 +58,7 @@
                             <span class="flex items-center gap-1">
                                 Status
                                 @if($sortBy === 'status')
-                                    <svg class="h-4 w-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>
@@ -66,7 +66,7 @@
                             <span class="flex items-center gap-1">
                                 Created
                                 @if($sortBy === 'created_at')
-                                    <svg class="h-4 w-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>

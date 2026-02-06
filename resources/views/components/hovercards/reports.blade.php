@@ -5,7 +5,7 @@
 @if($activeSchedule)
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Reports</span>
-        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Active</span>
+        <x-ui.badge variant="green">Active</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         <div class="flex items-center justify-between">

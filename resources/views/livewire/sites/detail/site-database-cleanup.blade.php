@@ -22,28 +22,8 @@
         @if($this->latestHealthCheck)
             {{-- Health overview cards --}}
             <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <x-ui.card class="!p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50">
-                            <x-icons.database class="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                            <p class="text-2xl font-bold text-gray-900">{{ $this->latestHealthCheck->formatted_total_size }}</p>
-                            <p class="text-xs text-gray-500">Total Size</p>
-                        </div>
-                    </div>
-                </x-ui.card>
-                <x-ui.card class="!p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
-                            <x-icons.layers class="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p class="text-2xl font-bold text-gray-900">{{ $this->latestHealthCheck->total_tables }}</p>
-                            <p class="text-xs text-gray-500">Tables</p>
-                        </div>
-                    </div>
-                </x-ui.card>
+                <x-ui.stat-card label="Total Size" :value="$this->latestHealthCheck->formatted_total_size" icon="database" color="purple" />
+                <x-ui.stat-card label="Tables" :value="$this->latestHealthCheck->total_tables" icon="layers" color="blue" />
                 <x-ui.card class="!p-4">
                     <div class="flex items-center gap-3">
                         <div class="flex h-10 w-10 items-center justify-center rounded-lg
@@ -155,7 +135,7 @@
     <div class="mb-6 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-gray-900">Database Cleanup</h2>
         <x-ui.button variant="secondary" wire:click="loadStats" wire:loading.attr="disabled">
-            <svg class="h-4 w-4 mr-1 animate-spin hidden" wire:loading.class.remove="hidden" wire:target="loadStats" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="loadStats" />
             <span wire:loading.remove wire:target="loadStats">Preview Cleanup</span>
             <span wire:loading wire:target="loadStats">Loading...</span>
         </x-ui.button>

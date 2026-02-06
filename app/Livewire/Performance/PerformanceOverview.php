@@ -3,6 +3,7 @@
 namespace App\Livewire\Performance;
 
 use App\Jobs\RunPerformanceTest;
+use App\Livewire\Traits\WithSorting;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
 use Livewire\Attributes\Computed;
@@ -10,9 +11,20 @@ use Livewire\Component;
 
 class PerformanceOverview extends Component
 {
+    use WithSorting;
+
     public string $search = '';
-    public string $sortBy = 'mobile_score';
-    public string $sortDir = 'desc';
+
+    public function mount(): void
+    {
+        // Override trait defaults for this component
+        if (!request()->has('sortBy')) {
+            $this->sortBy = 'mobile_score';
+        }
+        if (!request()->has('sortDir')) {
+            $this->sortDir = 'desc';
+        }
+    }
 
     public function updatingSearch(): void
     {
@@ -101,16 +113,6 @@ class PerformanceOverview extends Component
         }
 
         session()->flash('perf-success', "Queued performance tests for {$queued} site(s).");
-    }
-
-    public function sort(string $column): void
-    {
-        if ($this->sortBy === $column) {
-            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortBy = $column;
-            $this->sortDir = 'desc';
-        }
     }
 
     public function render()

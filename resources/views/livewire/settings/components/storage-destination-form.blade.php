@@ -84,7 +84,7 @@
                                 {{ $browserCurrentPath ?: '/ (root)' }}
                             </span>
                             <span wire:loading wire:target="browseTo, browseUp, openFolderBrowser" class="text-gray-400">
-                                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <x-ui.spinner size="sm" />
                             </span>
                             <button type="button" wire:click="closeFolderBrowser" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Close">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

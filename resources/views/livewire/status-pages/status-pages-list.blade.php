@@ -30,10 +30,10 @@
                                 <div class="flex items-center gap-2">
                                     <h3 class="text-sm font-semibold text-gray-900">{{ $page->title }}</h3>
                                     @if(!$page->is_public)
-                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Private</span>
+                                        <x-ui.badge variant="gray">Private</x-ui.badge>
                                     @endif
                                     @if($page->password_hash)
-                                        <span class="inline-flex items-center rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700">Password</span>
+                                        <x-ui.badge variant="yellow">Password</x-ui.badge>
                                     @endif
                                 </div>
                                 <div class="mt-0.5 flex items-center gap-3 text-xs text-gray-500">

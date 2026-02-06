@@ -301,14 +301,4 @@
             Reports
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
-
-    <x-sidebar.sidebar-section title="Settings">
-        <x-sidebar.sidebar-item
-            :href="route('sites.settings', $site)"
-            icon="settings"
-            :active="request()->routeIs('sites.settings')"
-        >
-            Site Settings
-        </x-sidebar.sidebar-item>
-    </x-sidebar.sidebar-section>
 </div>

@@ -3,7 +3,7 @@
 @if($site->analyticsConnection && $site->analyticsConnection->is_active)
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Google Analytics</span>
-        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+        <x-ui.badge variant="green">Connected</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         @if($site->analyticsConnection->property_name)

@@ -9,45 +9,13 @@
     </div>
 
     {{-- Flash messages --}}
-    @if(session('error-log-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('error-log-success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="error-log-success" />
 
     {{-- Stats bar --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                    <x-icons.alert-triangle class="h-5 w-5 text-red-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['fatal'] }}</p>
-                    <p class="text-xs text-gray-500">Fatal Errors</p>
-                </div>
-            </div>
-        </x-ui.card>
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50">
-                    <x-icons.alert-triangle class="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['error'] }}</p>
-                    <p class="text-xs text-gray-500">Errors</p>
-                </div>
-            </div>
-        </x-ui.card>
-        <x-ui.card class="!p-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50">
-                    <x-icons.alert-triangle class="h-5 w-5 text-yellow-600" />
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-900">{{ $this->stats['warning'] }}</p>
-                    <p class="text-xs text-gray-500">Warnings</p>
-                </div>
-            </div>
-        </x-ui.card>
+        <x-ui.stat-card label="Fatal Errors" :value="$this->stats['fatal']" icon="alert-triangle" color="red" />
+        <x-ui.stat-card label="Errors" :value="$this->stats['error']" icon="alert-triangle" color="orange" />
+        <x-ui.stat-card label="Warnings" :value="$this->stats['warning']" icon="alert-triangle" color="yellow" />
     </div>
 
     {{-- Filters --}}

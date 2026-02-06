@@ -26,6 +26,7 @@ class GlobalDashboard extends Component
     public ?int $clientFilter = null;
     public string $sort = 'manual';
     public bool $reordering = false;
+    public string $viewMode = 'list'; // 'list' or 'grid'
 
     // Selection
     public array $selectedSites = [];

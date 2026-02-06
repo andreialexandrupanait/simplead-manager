@@ -3,30 +3,17 @@
 namespace App\Livewire\Backups;
 
 use App\Jobs\CreateBackup;
+use App\Livewire\Traits\WithTableFilters;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class BackupsOverview extends Component
 {
-    use WithPagination;
-
-    public string $search = '';
-    public string $filter = 'all';
-
-    public function updatingSearch(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFilter(): void
-    {
-        $this->resetPage();
-    }
+    use WithTableFilters;
 
     #[Computed]
     public function stats(): array

@@ -5,7 +5,7 @@
 @if($updates > 0)
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Pending Updates</span>
-        <span class="inline-flex items-center rounded-full {{ $updates <= 5 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700' }} px-2 py-0.5 text-xs font-medium">{{ $updates }}</span>
+        <x-ui.badge :variant="$updates <= 5 ? 'orange' : 'red'">{{ $updates }}</x-ui.badge>
     </div>
     <div class="mt-2 text-xs">
         <div class="flex items-center justify-between">

@@ -1,18 +1,10 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('error') }}</div>
-    @endif
-    @if(session('storage-success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{{ session('storage-success') }}</div>
-    @endif
-    @if(session('storage-error'))
-        <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ session('storage-error') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="error" />
+    <x-ui.flash-alert type="success" key="storage-success" />
+    <x-ui.flash-alert type="error" key="storage-error" />
 
     <div class="space-y-6">
         {{-- Section 1: Storage Destinations --}}
@@ -51,7 +43,7 @@
                                     <div class="text-sm font-medium text-gray-900">
                                         {{ $destination->name }}
                                         @if($destination->is_default)
-                                            <span class="ml-1 inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">Default</span>
+                                            <x-ui.badge variant="purple" class="ml-1">Default</x-ui.badge>
                                         @endif
                                     </div>
                                     <div class="text-xs text-gray-500">
@@ -228,11 +220,7 @@
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">
                                         {{ $cfConn->account_email ?: 'Connection #' . $cfConn->id }}
-                                        @if($cfConn->is_valid)
-                                            <span class="ml-1 inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Valid</span>
-                                        @else
-                                            <span class="ml-1 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Invalid</span>
-                                        @endif
+                                        <x-ui.badge :variant="$cfConn->is_valid ? 'green' : 'red'" class="ml-1">{{ $cfConn->is_valid ? 'Valid' : 'Invalid' }}</x-ui.badge>
                                     </div>
                                     <div class="text-xs text-gray-500">
                                         {{ $cfConn->siteCloudflare->count() }} {{ Str::plural('zone', $cfConn->siteCloudflare->count()) }} connected

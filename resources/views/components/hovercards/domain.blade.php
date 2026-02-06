@@ -3,12 +3,12 @@
 @if($site->domainMonitor && $site->domainMonitor->expires_at)
     @php
         $daysLeft = (int) now()->diffInDays($site->domainMonitor->expires_at, false);
-        $domainBadge = $daysLeft < 0 ? 'bg-red-100 text-red-700' : ($daysLeft <= 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700');
+        $domainVariant = $daysLeft < 0 ? 'red' : ($daysLeft <= 30 ? 'yellow' : 'green');
         $domainLabel = $daysLeft < 0 ? 'Expired' : ($daysLeft <= 30 ? 'Expiring' : 'OK');
     @endphp
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Domain</span>
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $domainBadge }}">{{ $domainLabel }}</span>
+        <x-ui.badge :variant="$domainVariant">{{ $domainLabel }}</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         @if($site->domainMonitor->registrar)

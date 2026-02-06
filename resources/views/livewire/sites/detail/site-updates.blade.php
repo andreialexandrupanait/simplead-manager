@@ -81,9 +81,7 @@
             <h2 class="text-lg font-semibold text-gray-900">
                 Available Updates
                 @if($this->availableUpdates->count() > 0)
-                    <span class="ml-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
-                        {{ $this->availableUpdates->count() }}
-                    </span>
+                    <x-ui.badge variant="yellow" class="ml-1">{{ $this->availableUpdates->count() }}</x-ui.badge>
                 @endif
             </h2>
             @if($this->availableUpdates->count() > 1 && !$safeUpdateMode)

@@ -13,7 +13,7 @@ trait WithTableFilters
     public string $search = '';
 
     #[Url]
-    public ?string $filter = null;
+    public string $filter = 'all';
 
     public function updatingSearch(): void
     {

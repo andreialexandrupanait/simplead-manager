@@ -36,9 +36,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="font-medium text-gray-900">Scheduled Reports</span>
-                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $schedule->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
-                                {{ $schedule->is_active ? 'Active' : 'Paused' }}
-                            </span>
+                            <x-ui.badge :variant="$schedule->is_active ? 'green' : 'gray'">{{ $schedule->is_active ? 'Active' : 'Paused' }}</x-ui.badge>
                         </div>
                         <p class="text-sm text-gray-500">
                             {{ ucfirst($schedule->frequency) }}
@@ -103,15 +101,15 @@
                                     {{ $report->reportTemplate?->name ?? '—' }}
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-3 text-sm">
-                                    @if($report->status === 'completed')
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Completed</span>
-                                    @elseif($report->status === 'generating')
-                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Generating</span>
-                                    @elseif($report->status === 'pending')
-                                        <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Pending</span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Failed</span>
-                                    @endif
+                                    @php
+                                        $statusVariant = match($report->status) {
+                                            'completed' => 'green',
+                                            'generating' => 'blue',
+                                            'pending' => 'yellow',
+                                            default => 'red',
+                                        };
+                                    @endphp
+                                    <x-ui.badge :variant="$statusVariant">{{ ucfirst($report->status) }}</x-ui.badge>
                                 </td>
                                 <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
                                     {{ $report->file_size ? $report->file_size_formatted : '—' }}

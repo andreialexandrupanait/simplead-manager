@@ -3,10 +3,10 @@
 @if($site->sslCertificate)
     @php
         $cert = $site->sslCertificate;
-        $sslBadge = match($cert->status) {
-            'valid' => 'bg-green-100 text-green-700',
-            'expiring_soon' => 'bg-yellow-100 text-yellow-700',
-            default => 'bg-red-100 text-red-700',
+        $sslVariant = match($cert->status) {
+            'valid' => 'green',
+            'expiring_soon' => 'yellow',
+            default => 'red',
         };
         $sslLabel = match($cert->status) {
             'valid' => 'Valid',
@@ -16,7 +16,7 @@
     @endphp
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">SSL Certificate</span>
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $sslBadge }}">{{ $sslLabel }}</span>
+        <x-ui.badge :variant="$sslVariant">{{ $sslLabel }}</x-ui.badge>
     </div>
     <div class="mt-3 space-y-1.5 text-xs">
         <div class="flex items-center justify-between">

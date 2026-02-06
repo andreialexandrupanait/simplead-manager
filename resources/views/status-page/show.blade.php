@@ -35,7 +35,7 @@
                                 <div>
                                     <h3 class="font-medium text-gray-900">{{ $incident->title }}</h3>
                                     <p class="mt-0.5 text-sm text-gray-600">
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-{{ $incident->severity_color }}-100 text-{{ $incident->severity_color }}-700">{{ $incident->status_label }}</span>
+                                        <x-ui.badge :variant="$incident->severity_color">{{ $incident->status_label }}</x-ui.badge>
                                         &middot; Started {{ $incident->started_at?->diffForHumans() }}
                                     </p>
                                 </div>
@@ -135,7 +135,7 @@
                                                     &middot; {{ ucfirst($incident->severity) }}
                                                 </p>
                                             </div>
-                                            <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Resolved</span>
+                                            <x-ui.badge variant="green">Resolved</x-ui.badge>
                                         </div>
                                         @if($incident->updates->isNotEmpty())
                                             <div class="mt-3 space-y-1.5 border-t border-gray-100 pt-3">

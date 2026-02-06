@@ -5,14 +5,14 @@
         <span class="text-sm font-semibold text-gray-900">Uptime</span>
         @php
             $state = $site->uptimeMonitor->current_state ?? 'unknown';
-            $stateBadge = match($state) {
-                'up' => 'bg-green-100 text-green-700',
-                'down' => 'bg-red-100 text-red-700',
-                'degraded' => 'bg-yellow-100 text-yellow-700',
-                default => 'bg-gray-100 text-gray-600',
+            $stateVariant = match($state) {
+                'up' => 'green',
+                'down' => 'red',
+                'degraded' => 'yellow',
+                default => 'gray',
             };
         @endphp
-        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $stateBadge }}">{{ ucfirst($state) }}</span>
+        <x-ui.badge :variant="$stateVariant">{{ ucfirst($state) }}</x-ui.badge>
     </div>
     <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div>

@@ -9,9 +9,7 @@
         </x-ui.button>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">{{ session('success') }}</div>
-    @endif
+    <x-ui.flash-alert type="success" key="success" />
 
     {{-- Stats Cards --}}
     @if($this->todayStats)
@@ -107,9 +105,7 @@
             <div class="border-b p-4">
                 <h3 class="text-lg font-semibold text-gray-900">
                     Alerts
-                    <span class="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                        {{ $this->alerts->count() }}
-                    </span>
+                    <x-ui.badge variant="red" class="ml-1">{{ $this->alerts->count() }}</x-ui.badge>
                 </h3>
             </div>
             <div class="divide-y">
