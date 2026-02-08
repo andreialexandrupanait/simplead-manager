@@ -16,11 +16,15 @@ class NotifyDomainAlert implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $timeout = 30;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public DomainMonitor $domainMonitor,
         public string $alertType
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     public function handle(): void
     {

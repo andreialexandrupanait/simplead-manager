@@ -12,6 +12,16 @@ return new class extends Migration
      */
     private function indexExists(string $table, string $indexName): bool
     {
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            $result = DB::selectOne(
+                "SELECT 1 FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND name = ?",
+                [$table, $indexName]
+            );
+            return $result !== null;
+        }
+
         return DB::selectOne(
             "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
             [$table, $indexName]
@@ -58,7 +68,7 @@ return new class extends Migration
         }
 
         // WP audit logs table
-        if (!$this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
+        if (Schema::hasTable('wp_audit_logs') && !$this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
             Schema::table('wp_audit_logs', function (Blueprint $table) {
                 $table->index(['site_id', 'action_at']);
             });
@@ -107,7 +117,7 @@ return new class extends Migration
             });
         }
 
-        if ($this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
+        if (Schema::hasTable('wp_audit_logs') && $this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
             Schema::table('wp_audit_logs', function (Blueprint $table) {
                 $table->dropIndex(['site_id', 'action_at']);
             });

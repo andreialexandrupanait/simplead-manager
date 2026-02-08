@@ -5,21 +5,28 @@ namespace App\Jobs;
 use App\Models\SiteCloudflare;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class SyncCloudflareZone implements ShouldQueue
+class SyncCloudflareZone implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
     public int $timeout = 60;
+    public array $backoff = [15, 30];
 
     public function __construct(
         public SiteCloudflare $siteCloudflare,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'cf-sync-' . $this->siteCloudflare->id;
+    }
 
     public function handle(): void
     {

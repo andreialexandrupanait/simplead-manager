@@ -1,19 +1,15 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    <x-ui.flash-alert type="success" key="profile-saved" />
-    <x-ui.flash-alert type="success" key="password-changed" />
-    <x-ui.flash-alert type="success" key="sessions-cleared" />
-
     <div class="space-y-6">
         {{-- Profile Section --}}
         <form wire:submit="saveProfile">
             <x-ui.card>
-                <h3 class="text-base font-semibold text-gray-900 mb-4">Profile Information</h3>
+                <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Profile Information') }}</h3>
                 <div class="space-y-4">
                     {{-- Avatar --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Avatar</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Avatar') }}</label>
                         <div class="flex items-center gap-4">
                             <div class="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-lg font-bold text-purple-600 overflow-hidden">
                                 @if(Auth::user()->avatar_path)
@@ -30,29 +26,37 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
                         <x-ui.input wire:model="name" class="mt-1" />
                         @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Email</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
                         <x-ui.input wire:model="email" type="email" class="mt-1" />
                         @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Timezone</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Timezone') }}</label>
                         <x-ui.select wire:model="timezone" class="mt-1">
                             @foreach(timezone_identifiers_list() as $tz)
                                 <option value="{{ $tz }}">{{ $tz }}</option>
                             @endforeach
                         </x-ui.select>
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Language') }}</label>
+                        <x-ui.select wire:model="language" class="mt-1">
+                            <option value="en">{{ __('English') }}</option>
+                            <option value="ro">{{ __('Romanian') }}</option>
+                        </x-ui.select>
+                    </div>
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <x-ui.button type="submit">Save Profile</x-ui.button>
+                    <x-ui.button type="submit">{{ __('Save Profile') }}</x-ui.button>
                 </div>
             </x-ui.card>
         </form>
@@ -60,56 +64,98 @@
         {{-- Password Section --}}
         <form wire:submit="changePassword">
             <x-ui.card>
-                <h3 class="text-base font-semibold text-gray-900 mb-4">Change Password</h3>
+                <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Change Password') }}</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Current Password</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Current Password') }}</label>
                         <x-ui.input wire:model="currentPassword" type="password" class="mt-1" />
                         @error('currentPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">New Password</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('New Password') }}</label>
                         <x-ui.input wire:model="newPassword" type="password" class="mt-1" />
                         @error('newPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Confirm New Password') }}</label>
                         <x-ui.input wire:model="newPasswordConfirmation" type="password" class="mt-1" />
                         @error('newPasswordConfirmation') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <x-ui.button type="submit">Change Password</x-ui.button>
+                    <x-ui.button type="submit">{{ __('Change Password') }}</x-ui.button>
                 </div>
             </x-ui.card>
         </form>
 
         {{-- Two-Factor Authentication --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-2">Two-Factor Authentication</h3>
-            <p class="text-sm text-gray-500 mb-4">Add an additional layer of security to your account.</p>
-            <div class="flex items-center gap-3">
-                @if(Auth::user()->two_factor_enabled)
-                    <x-ui.badge variant="green">Enabled</x-ui.badge>
-                @else
-                    <x-ui.badge variant="gray">Not enabled</x-ui.badge>
-                @endif
-                <p class="text-xs text-gray-400">Two-factor authentication setup coming soon.</p>
-            </div>
+            <h3 class="text-base font-semibold text-gray-900 mb-2">{{ __('Two-Factor Authentication') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('Add an additional layer of security to your account using a TOTP authenticator app.') }}</p>
+
+            @if(!Auth::user()->two_factor_enabled && !$showingQrCode)
+                {{-- Not enabled — show enable button --}}
+                <div class="flex items-center gap-3">
+                    <x-ui.badge variant="gray">{{ __('Not enabled') }}</x-ui.badge>
+                    <x-ui.button wire:click="enableTwoFactor" variant="secondary">{{ __('Enable 2FA') }}</x-ui.button>
+                </div>
+            @elseif($showingQrCode)
+                {{-- QR code setup phase --}}
+                <div class="space-y-4">
+                    <p class="text-sm text-gray-700">{{ __('Scan the QR code below with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code to confirm.') }}</p>
+                    <div class="flex justify-center p-4 bg-white rounded-lg border border-gray-200">
+                        {!! $twoFactorQrSvg !!}
+                    </div>
+                    <div class="max-w-xs">
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Verification Code') }}</label>
+                        <x-ui.input wire:model="twoFactorCode" placeholder="000000" maxlength="6" class="mt-1" />
+                        @error('twoFactorCode') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <x-ui.button wire:click="confirmTwoFactor">{{ __('Confirm & Enable') }}</x-ui.button>
+                        <x-ui.button wire:click="$set('showingQrCode', false)" variant="secondary">{{ __('Cancel') }}</x-ui.button>
+                    </div>
+                </div>
+            @else
+                {{-- Enabled — show status + actions --}}
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <x-ui.badge variant="green">{{ __('Enabled') }}</x-ui.badge>
+                    </div>
+
+                    @if($showingRecoveryCodes && !empty($recoveryCodes))
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">{{ __('Recovery Codes') }}</p>
+                            <p class="text-xs text-gray-500 mb-3">{{ __('Store these codes in a secure location. Each code can only be used once.') }}</p>
+                            <div class="grid grid-cols-2 gap-2 max-w-sm bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                @foreach($recoveryCodes as $code)
+                                    <code class="text-sm font-mono text-gray-800">{{ $code }}</code>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="flex items-center gap-3">
+                        <x-ui.button wire:click="showRecoveryCodes" variant="secondary">{{ __('Show Recovery Codes') }}</x-ui.button>
+                        <x-ui.button wire:click="regenerateRecoveryCodes" variant="secondary">{{ __('Regenerate Codes') }}</x-ui.button>
+                        <x-ui.button wire:click="disableTwoFactor" variant="danger" wire:confirm="{{ __('Are you sure you want to disable two-factor authentication?') }}">{{ __('Disable 2FA') }}</x-ui.button>
+                    </div>
+                </div>
+            @endif
         </x-ui.card>
 
         {{-- Active Sessions --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Active Sessions</h3>
-                    <p class="text-sm text-gray-500">Manage your active sessions across devices.</p>
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Active Sessions') }}</h3>
+                    <p class="text-sm text-gray-500">{{ __('Manage your active sessions across devices.') }}</p>
                 </div>
-                <x-ui.button variant="secondary" wire:click="logoutOtherSessions" wire:confirm="Log out all other sessions?">
-                    Log Out Others
+                <x-ui.button variant="secondary" wire:click="logoutOtherSessions" wire:confirm="{{ __('Log out all other sessions?') }}">
+                    {{ __('Log Out Others') }}
                 </x-ui.button>
             </div>
 
@@ -120,7 +166,7 @@
                             <p class="text-sm font-medium text-gray-900">
                                 {{ Str::limit($session->user_agent, 60) }}
                                 @if($session->is_current)
-                                    <x-ui.badge variant="green">Current</x-ui.badge>
+                                    <x-ui.badge variant="green">{{ __('Current') }}</x-ui.badge>
                                 @endif
                             </p>
                             <p class="text-xs text-gray-500">{{ $session->ip_address }} &middot; {{ $session->last_activity }}</p>
@@ -132,10 +178,10 @@
 
         {{-- Danger Zone --}}
         <x-ui.card class="border-red-200 ring-red-100">
-            <h3 class="text-base font-semibold text-red-600 mb-2">Delete Account</h3>
-            <p class="text-sm text-gray-500 mb-4">Permanently delete your account and all associated data. This action cannot be undone.</p>
-            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="Are you sure you want to delete your account? This cannot be undone.">
-                Delete Account
+            <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Delete Account') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete your account and all associated data. This action cannot be undone.') }}</p>
+            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}">
+                {{ __('Delete Account') }}
             </x-ui.button>
         </x-ui.card>
     </div>

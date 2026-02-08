@@ -96,7 +96,7 @@ class GeneralSettings extends Component
             $this->logo = null;
         }
 
-        session()->flash('settings-saved', true);
+        $this->dispatch('notify', type: 'success', message: 'Settings saved successfully.');
     }
 
     public function removeLogo(SettingsService $settings): void
@@ -111,7 +111,7 @@ class GeneralSettings extends Component
     public function openStatusForm(?int $id = null): void
     {
         if (!Schema::hasTable('site_statuses')) {
-            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }
 
@@ -135,7 +135,7 @@ class GeneralSettings extends Component
     public function saveStatus(): void
     {
         if (!Schema::hasTable('site_statuses')) {
-            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }
 
@@ -161,14 +161,14 @@ class GeneralSettings extends Component
     public function deleteStatus(int $id): void
     {
         if (!Schema::hasTable('site_statuses')) {
-            session()->flash('error', 'Please run migrations first: php artisan migrate');
+            $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }
 
         $status = SiteStatus::withCount('sites')->findOrFail($id);
 
         if ($status->sites_count > 0) {
-            session()->flash('error', "Cannot delete \"{$status->name}\" — {$status->sites_count} site(s) are assigned to it.");
+            $this->dispatch('notify', type: 'error', message: "Cannot delete \"{$status->name}\" — {$status->sites_count} site(s) are assigned to it.");
             return;
         }
 
@@ -181,7 +181,7 @@ class GeneralSettings extends Component
         UptimeCheck::query()->delete();
         UptimeIncident::query()->delete();
 
-        session()->flash('data-purged', true);
+        $this->dispatch('notify', type: 'warning', message: 'Monitoring data has been purged.');
     }
 
     public function render()

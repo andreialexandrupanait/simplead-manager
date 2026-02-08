@@ -5,20 +5,28 @@ namespace App\Jobs;
 use App\Models\DomainMonitor;
 use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class CheckDomainExpiry implements ShouldQueue
+class CheckDomainExpiry implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $timeout = 60;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public DomainMonitor $domainMonitor
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'domain-check-' . $this->domainMonitor->id;
+    }
 
     public function handle(): void
     {

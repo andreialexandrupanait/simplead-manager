@@ -14,7 +14,7 @@
             @endif
             <x-ui.button wire:click="scanNow"
                     wire:loading.attr="disabled"
-                    @if($isScanning) disabled @endif>
+                    :disabled="$isScanning">
                 <span wire:loading.remove wire:target="scanNow">
                     <x-icons.link class="h-4 w-4" />
                 </span>

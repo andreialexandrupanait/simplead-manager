@@ -108,6 +108,11 @@
                         'memory_warning' => 'Memory Warning',
                         'woo_low_stock' => 'WooCommerce Low Stock',
                         'woo_out_of_stock' => 'WooCommerce Out of Stock',
+                        'app_backup_completed' => 'App Backup Completed',
+                        'app_backup_failed' => 'App Backup Failed',
+                        'horizon_stopped' => 'Horizon Stopped',
+                        'horizon_long_wait' => 'Horizon Long Wait',
+                        'job_failures' => 'Repeated Job Failures',
                         'test' => 'Test Notification',
                     ] as $eventKey => $eventLabel)
                         <label class="flex items-center gap-2">

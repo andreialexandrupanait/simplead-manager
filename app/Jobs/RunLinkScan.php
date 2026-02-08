@@ -8,22 +8,29 @@ use App\Services\ActivityLogger;
 use App\Services\LinkCheckerService;
 use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunLinkScan implements ShouldQueue
+class RunLinkScan implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 3600;
     public int $tries = 2;
+    public array $backoff = [60, 180];
 
     public function __construct(
         public LinkMonitor $monitor,
         public string $trigger = 'manual',
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'link-scan-' . $this->monitor->id;
+    }
 
     public function handle(): void
     {

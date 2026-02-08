@@ -5,6 +5,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Jobs\CheckUptime;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -17,17 +18,20 @@ class SiteUptime extends Component
         $this->site = $site;
     }
 
-    public function getMonitorProperty(): ?UptimeMonitor
+    #[Computed]
+    public function monitor(): ?UptimeMonitor
     {
         return $this->site->uptimeMonitor;
     }
 
-    public function getCheckCountProperty(): int
+    #[Computed]
+    public function checkCount(): int
     {
         return $this->monitor?->checks()->count() ?? 0;
     }
 
-    public function getIncidentsProperty()
+    #[Computed]
+    public function incidents()
     {
         if (!$this->monitor) {
             return collect();

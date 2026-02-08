@@ -21,6 +21,7 @@ class SendNotificationJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $timeout = 30;
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -34,7 +35,9 @@ class SendNotificationJob implements ShouldQueue
         public ?array $webhookPayload = null,
         public ?string $mailableClass = null,
         public ?array $mailableArgs = null,
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     public function handle(): void
     {

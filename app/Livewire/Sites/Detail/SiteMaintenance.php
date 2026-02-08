@@ -6,6 +6,7 @@ use App\Models\MaintenanceWindow;
 use App\Models\Site;
 use App\Services\MaintenanceService;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class SiteMaintenance extends Component
@@ -14,6 +15,7 @@ class SiteMaintenance extends Component
 
     // Modal state
     public bool $showModal = false;
+    #[Locked]
     public ?int $editingId = null;
 
     // Form fields

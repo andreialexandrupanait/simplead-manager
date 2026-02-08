@@ -1,9 +1,6 @@
 <div>
     @include('livewire.settings.partials.settings-tabs')
 
-    <x-ui.flash-alert type="success" key="preferences-saved" />
-    <x-ui.flash-alert type="info" key="test-sent" />
-
     <div class="space-y-6">
         {{-- Notification Channels --}}
         <x-ui.card>

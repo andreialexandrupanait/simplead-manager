@@ -2,11 +2,12 @@
     <nav class="-mb-px flex gap-6">
         @php
             $tabs = [
-                ['route' => 'settings.general', 'label' => 'General'],
-                ['route' => 'settings.notifications', 'label' => 'Notifications'],
-                ['route' => 'settings.integrations', 'label' => 'Integrations'],
-                ['route' => 'settings.report-templates', 'label' => 'Report Templates'],
-                ['route' => 'settings.profile', 'label' => 'Profile'],
+                ['route' => 'settings.general', 'label' => __('General')],
+                ['route' => 'settings.notifications', 'label' => __('Notifications')],
+                ['route' => 'settings.integrations', 'label' => __('Integrations')],
+                ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
+                ['route' => 'settings.application-backup', 'label' => __('Application Backup')],
+                ['route' => 'settings.profile', 'label' => __('Profile')],
             ];
         @endphp
 

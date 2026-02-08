@@ -11,6 +11,7 @@ use App\Services\ActivityLogger;
 use App\Services\ReportGeneratorService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
-class GenerateReport implements ShouldQueue
+class GenerateReport implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -35,6 +36,11 @@ class GenerateReport implements ShouldQueue
         public ?ReportSchedule $schedule = null,
         public ?array $recipientEmails = null,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'report-' . $this->site->id . '-' . $this->template->id;
+    }
 
     public function handle(): void
     {

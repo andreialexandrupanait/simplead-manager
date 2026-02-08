@@ -6,21 +6,28 @@ use App\Models\RollbackPoint;
 use App\Services\Notifications\NotificationService;
 use App\Services\RollbackService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class ExecuteRollback implements ShouldQueue
+class ExecuteRollback implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
     public int $timeout = 300;
+    public array $backoff = [60, 180];
 
     public function __construct(
         public RollbackPoint $point,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'rollback-' . $this->point->id;
+    }
 
     public function handle(RollbackService $rollbackService): void
     {

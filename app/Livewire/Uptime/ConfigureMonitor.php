@@ -6,11 +6,14 @@ use App\Jobs\CheckUptime;
 use App\Models\NotificationChannel;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ConfigureMonitor extends Component
 {
+    #[Locked]
     public ?int $monitorId = null;
     public ?int $siteId = null;
 
@@ -184,12 +187,14 @@ class ConfigureMonitor extends Component
         $this->dispatch('monitor-saved');
     }
 
-    public function getChannelsProperty()
+    #[Computed]
+    public function channels()
     {
         return NotificationChannel::where('is_active', true)->get();
     }
 
-    public function getSitesProperty()
+    #[Computed]
+    public function sites()
     {
         return Site::orderBy('name')->get(['id', 'name', 'url']);
     }

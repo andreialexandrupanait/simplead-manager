@@ -136,6 +136,6 @@ class ReportTemplatesSettings extends Component
 
         return view('livewire.settings.report-templates-settings', [
             'templates' => $templates,
-        ]);
+        ])->layout('components.layouts.app', ['title' => 'Report Templates']);
     }
 }

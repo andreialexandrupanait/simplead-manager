@@ -9,40 +9,40 @@
     $pageTitle = $title;
     $isDashboard = ($routeName === 'dashboard');
 
-    // Time-based Romanian greeting for dashboard
+    // Time-based greeting for dashboard
     $greeting = null;
     if ($isDashboard) {
         $hour = (int) now()->format('H');
         if ($hour >= 5 && $hour < 12) {
-            $greeting = 'Bună dimineața';
+            $greeting = __('Good morning');
         } elseif ($hour >= 12 && $hour < 18) {
-            $greeting = 'Bună ziua';
+            $greeting = __('Good afternoon');
         } else {
-            $greeting = 'Bună seara';
+            $greeting = __('Good evening');
         }
         $greeting .= ', ' . $user->name;
-        $pageTitle = 'Dashboard';
+        $pageTitle = __('Dashboard');
     }
 
     // Site-context routes: Dashboard > Sites > SiteName > PageTitle
     if ($siteContext && str_starts_with($routeName, 'sites.') && $routeName !== 'sites.index' && $routeName !== 'sites.create') {
-        $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
-        $crumbs[] = ['label' => 'Sites', 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Sites'), 'url' => route('dashboard')];
         $crumbs[] = ['label' => $siteContext->name, 'url' => route('sites.overview', $siteContext)];
 
         $pageTitle = match($routeName) {
-            'sites.overview' => 'Overview',
-            'sites.plugins' => 'Plugins & Themes',
-            'sites.updates' => 'Updates',
-            'sites.security' => 'Security',
-            'sites.performance' => 'Performance',
-            'sites.backups' => 'Backups',
-            'sites.uptime' => 'Uptime',
-            'sites.links' => 'Links',
-            'sites.analytics' => 'Analytics',
-            'sites.search-console' => 'Search Console',
-            'sites.reports' => 'Reports',
-            'sites.settings' => 'Site Settings',
+            'sites.overview' => __('Site Overview'),
+            'sites.plugins' => __('Plugins'),
+            'sites.updates' => __('Updates'),
+            'sites.security' => __('Security'),
+            'sites.performance' => __('Performance'),
+            'sites.backups' => __('Backups'),
+            'sites.uptime' => __('Uptime'),
+            'sites.links' => __('Links'),
+            'sites.analytics' => __('Analytics'),
+            'sites.search-console' => __('Search Console'),
+            'sites.reports' => __('Reports'),
+            'sites.settings' => __('Site Settings'),
             default => $title,
         };
 
@@ -54,37 +54,38 @@
     }
     // sites.create
     elseif ($routeName === 'sites.create') {
-        $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
-        $crumbs[] = ['label' => 'Sites', 'url' => route('dashboard')];
-        $pageTitle = 'Add New Site';
+        $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Sites'), 'url' => route('dashboard')];
+        $pageTitle = __('Add Site');
     }
     // Clients detail
     elseif ($routeName === 'clients.show') {
-        $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
-        $crumbs[] = ['label' => 'Clients', 'url' => route('clients.index')];
+        $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Clients'), 'url' => route('clients.index')];
     }
     // Settings pages
     elseif (str_starts_with($routeName, 'settings.')) {
-        $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
 
         $settingsTitle = match($routeName) {
-            'settings.general' => 'General',
-            'settings.notifications' => 'Notifications',
-            'settings.profile' => 'Profile',
-            'settings.integrations' => 'Integrations',
-            'settings.report-templates' => 'Report Templates',
+            'settings.general' => __('General'),
+            'settings.notifications' => __('Notifications'),
+            'settings.profile' => __('Profile'),
+            'settings.integrations' => __('Integrations'),
+            'settings.report-templates' => __('Report Templates'),
+            'settings.application-backup' => __('Application Backup'),
             default => $title,
         };
 
         if ($routeName !== 'settings.general') {
-            $crumbs[] = ['label' => 'Settings', 'url' => route('settings.general')];
+            $crumbs[] = ['label' => __('Settings'), 'url' => route('settings.general')];
         }
 
         $pageTitle = $settingsTitle;
     }
     // Top-level index pages: Dashboard > PageTitle
     elseif (!$isDashboard) {
-        $crumbs[] = ['label' => 'Dashboard', 'url' => route('dashboard')];
+        $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
     }
 @endphp
 
@@ -104,7 +105,7 @@
         <div class="flex min-w-0 flex-1 flex-col justify-center">
             @if($isDashboard)
                 <h1 class="text-sm font-bold tracking-wide text-gray-900 truncate leading-tight">{{ $greeting }}</h1>
-                <span class="text-xs text-gray-400 mt-0.5">Dashboard</span>
+                <span class="text-xs text-gray-400 mt-0.5">{{ __('Dashboard') }}</span>
             @else
                 <h1 class="text-sm font-bold tracking-wide text-gray-900 uppercase truncate leading-tight">{{ $pageTitle }}</h1>
                 @if(count($crumbs) > 0)

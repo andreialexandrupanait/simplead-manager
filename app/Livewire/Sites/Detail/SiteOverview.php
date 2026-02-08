@@ -5,6 +5,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Models\AnalyticsCache;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteOverview extends Component
@@ -16,7 +17,8 @@ class SiteOverview extends Component
         $this->site = $site;
     }
 
-    public function getAnalyticsSummaryProperty(): ?array
+    #[Computed]
+    public function analyticsSummary(): ?array
     {
         $cache = AnalyticsCache::where('site_id', $this->site->id)
             ->where('date_range', '28d')
@@ -28,7 +30,8 @@ class SiteOverview extends Component
         return $cache->data['overview'] ?? null;
     }
 
-    public function getSearchConsoleSummaryProperty(): ?array
+    #[Computed]
+    public function searchConsoleSummary(): ?array
     {
         $cache = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', '28d')

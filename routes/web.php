@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AppBackupDownloadController;
 use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\DropboxAuthController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ReportDownloadController;
 use App\Livewire\Backups;
 use App\Livewire\Dashboard;
@@ -13,6 +15,9 @@ use App\Livewire\Clients;
 use App\Livewire\Reports;
 use App\Livewire\Settings;
 use App\Livewire\StatusPages;
+
+// Health check (no auth)
+Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1');
 
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
@@ -114,6 +119,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Report Templates
         Route::get('/report-templates', Settings\ReportTemplatesSettings::class)->name('settings.report-templates');
 
+        // Application Backup
+        Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
+
+        // App backup download (signed URL for local storage)
+        Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware('signed');
+
         // Dropbox OAuth
         Route::get('/storage/dropbox/auth', [DropboxAuthController::class, 'redirect'])->name('dropbox.auth');
         Route::get('/storage/dropbox/callback', [DropboxAuthController::class, 'callback'])->name('dropbox.callback');
@@ -125,6 +136,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Public status pages (no auth)
-Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show');
-Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth');
-Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api');
+Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show')->middleware('throttle:status-page');
+Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:login');
+Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api')->middleware('throttle:status-page');

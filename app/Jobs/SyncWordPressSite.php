@@ -6,23 +6,29 @@ use App\Models\Site;
 use App\Services\PluginConflictService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncWordPressSite implements ShouldQueue
+class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-
-    public int $backoff = 30;
+    public int $timeout = 120;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public Site $site,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'sync-wp-' . $this->site->id;
+    }
 
     public function handle(): void
     {

@@ -6,6 +6,7 @@ use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -14,7 +15,7 @@ use App\Services\ActivityLogger;
 use App\Services\MaintenanceService;
 use Illuminate\Support\Facades\Http;
 
-class CheckUptime implements ShouldQueue
+class CheckUptime implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -23,6 +24,11 @@ class CheckUptime implements ShouldQueue
     public function __construct(
         public UptimeMonitor $monitor
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'check-uptime-' . $this->monitor->id;
+    }
 
     public function handle(): void
     {

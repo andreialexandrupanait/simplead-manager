@@ -11,6 +11,7 @@ use App\Services\ActivityLogger;
 use App\Services\MaintenanceService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use ZipArchive;
 
-class CreateBackup implements ShouldQueue
+class CreateBackup implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -36,6 +37,11 @@ class CreateBackup implements ShouldQueue
         public ?int $storageDestinationId = null,
         public ?int $backupId = null,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'backup-' . $this->site->id;
+    }
 
     public function handle(): void
     {

@@ -9,6 +9,7 @@ use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Models\UpdateLog;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class SitePerformance extends Component
@@ -17,6 +18,7 @@ class SitePerformance extends Component
     public string $historyRange = '30d';
     public bool $showSettings = false;
     public bool $isRunning = false;
+    #[Locked]
     public ?int $trackingTestId = null;
 
     // Settings form

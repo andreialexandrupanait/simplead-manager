@@ -5,20 +5,28 @@ namespace App\Jobs;
 use App\Models\SslCertificate;
 use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class CheckSslCertificate implements ShouldQueue
+class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $timeout = 60;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public SslCertificate $certificate
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'ssl-check-' . $this->certificate->id;
+    }
 
     public function handle(): void
     {

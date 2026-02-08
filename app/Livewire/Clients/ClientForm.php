@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Rules\RomanianCui;
 use Livewire\Component;
 
 class ClientForm extends Component
@@ -52,8 +53,8 @@ class ClientForm extends Component
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
             'country' => ['nullable', 'string', 'max:100'],
-            'vat_number' => ['nullable', 'string', 'max:50'],
-            'registration_number' => ['nullable', 'string', 'max:50'],
+            'vat_number' => ['nullable', 'string', 'max:50', new RomanianCui],
+            'registration_number' => ['nullable', 'string', 'max:50', 'regex:/^J\d{1,2}\/\d+\/\d{4}$/'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', 'in:active,inactive,archived'],
         ];

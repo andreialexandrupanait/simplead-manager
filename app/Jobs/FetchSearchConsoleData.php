@@ -6,19 +6,29 @@ use App\Models\SearchConsoleCache;
 use App\Models\Site;
 use App\Services\GoogleSearchConsoleService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class FetchSearchConsoleData implements ShouldQueue
+class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 2;
+    public int $timeout = 120;
+    public array $backoff = [30, 60];
 
     public function __construct(
         public Site $site,
         public string $dateRange = '28d'
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'search-console-' . $this->site->id;
+    }
 
     public function handle(): void
     {

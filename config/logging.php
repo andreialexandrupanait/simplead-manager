@@ -73,6 +73,21 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'daily-json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => env('LOG_DAILY_DAYS', 30),
+            'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'replace_placeholders' => true,
+        ],
+
+        'production' => [
+            'driver' => 'stack',
+            'channels' => ['daily-json'],
+            'ignore_exceptions' => false,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

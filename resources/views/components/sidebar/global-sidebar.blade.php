@@ -4,17 +4,17 @@
         icon="home"
         :active="request()->routeIs('dashboard')"
     >
-        Dashboard
+        {{ __('Dashboard') }}
     </x-sidebar.sidebar-item>
 </div>
 
-<x-sidebar.sidebar-section title="Monitoring">
+<x-sidebar.sidebar-section :title="__('Monitoring')">
     <x-sidebar.sidebar-item
         :href="route('uptime.index')"
         icon="activity"
         :active="request()->routeIs('uptime.*')"
     >
-        Uptime
+        {{ __('Uptime') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -22,7 +22,7 @@
         icon="zap"
         :active="request()->routeIs('performance.*')"
     >
-        Performance
+        {{ __('Performance') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -30,17 +30,17 @@
         icon="alert-triangle"
         :active="request()->routeIs('errors.*')"
     >
-        Errors
+        {{ __('Errors') }}
     </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
-<x-sidebar.sidebar-section title="Management">
+<x-sidebar.sidebar-section :title="__('Management')">
     <x-sidebar.sidebar-item
         :href="route('backups.index')"
         icon="hard-drive"
         :active="request()->routeIs('backups.*')"
     >
-        Backups
+        {{ __('Backups') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -48,7 +48,7 @@
         icon="refresh-cw"
         :active="request()->routeIs('updates.*')"
     >
-        Updates
+        {{ __('Updates') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -56,7 +56,7 @@
         icon="users"
         :active="request()->routeIs('clients.*')"
     >
-        Clients
+        {{ __('Clients') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -64,7 +64,7 @@
         icon="file-text"
         :active="request()->routeIs('reports.*')"
     >
-        Reports
+        {{ __('Reports') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -72,7 +72,7 @@
         icon="inbox"
         :active="request()->routeIs('activity.*')"
     >
-        Activity
+        {{ __('Activity') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
@@ -80,6 +80,6 @@
         icon="globe"
         :active="request()->routeIs('status-pages.*')"
     >
-        Status Pages
+        {{ __('Status Pages') }}
     </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>

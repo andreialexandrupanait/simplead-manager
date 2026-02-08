@@ -5,6 +5,7 @@ namespace App\Livewire\Settings;
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
 use App\Services\SettingsService;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -42,7 +43,7 @@ class NotificationSettings extends Component
         $settings->set('quiet_hours_start', $this->quietHoursStart, 'notifications', 'string');
         $settings->set('quiet_hours_end', $this->quietHoursEnd, 'notifications', 'string');
 
-        session()->flash('preferences-saved', true);
+        $this->dispatch('notify', type: 'success', message: 'Notification preferences saved.');
     }
 
     public function deleteChannel(int $id): void
@@ -73,7 +74,7 @@ class NotificationSettings extends Component
             severity: 'info',
         );
 
-        session()->flash('test-sent', "Test notification dispatched to {$channel->name}.");
+        $this->dispatch('notify', type: 'info', message: "Test notification dispatched to {$channel->name}.");
     }
 
     #[On('channels-updated')]
@@ -82,7 +83,8 @@ class NotificationSettings extends Component
         // Livewire will re-render automatically
     }
 
-    public function getChannelsProperty()
+    #[Computed]
+    public function channels()
     {
         return NotificationChannel::orderBy('name')->get();
     }

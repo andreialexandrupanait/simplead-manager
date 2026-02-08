@@ -134,6 +134,20 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    Alpine.data('toast', () => ({
+        show: false,
+        message: '',
+        type: 'success',
+        _timeout: null,
+        notify(detail) {
+            this.message = detail.message;
+            this.type = detail.type ?? 'success';
+            this.show = true;
+            clearTimeout(this._timeout);
+            this._timeout = setTimeout(() => this.show = false, 4000);
+        },
+    }));
+
     Alpine.data('hovercard', (opts = {}) => ({
         open: false,
         panelEl: null,

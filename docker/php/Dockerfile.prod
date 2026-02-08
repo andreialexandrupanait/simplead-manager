@@ -1,0 +1,80 @@
+FROM php:8.3-fpm-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    fcgi \
+    freetype-dev \
+    icu-dev \
+    imagemagick-dev \
+    libjpeg-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
+    libxml2-dev \
+    libzip-dev \
+    oniguruma-dev \
+    postgresql-dev \
+    $PHPIZE_DEPS
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+        --with-webp \
+    && docker-php-ext-install -j$(nproc) \
+        bcmath \
+        exif \
+        gd \
+        intl \
+        mbstring \
+        opcache \
+        pcntl \
+        pdo_pgsql \
+        pgsql \
+        xml \
+        zip
+
+# Install PECL extensions
+RUN pecl install imagick redis \
+    && docker-php-ext-enable imagick redis
+
+# Remove build dependencies to keep image small
+RUN apk del $PHPIZE_DEPS
+
+# Copy PHP configuration
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-app.ini
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/10-opcache.ini
+COPY docker/php/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zz-app.conf
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Create non-root user
+RUN addgroup -g 1000 -S appuser \
+    && adduser -u 1000 -S appuser -G appuser
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy application code
+COPY --chown=appuser:appuser . /var/www/html
+
+# Install Composer dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+    && rm -rf /root/.composer/cache
+
+# Set permissions on writable directories
+RUN chown -R appuser:appuser storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# Switch to non-root user
+USER appuser
+
+# Health check via FPM ping endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET \
+        cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1
+
+EXPOSE 9000
+
+CMD ["php-fpm"]

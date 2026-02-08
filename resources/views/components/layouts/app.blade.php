@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -109,7 +109,7 @@
                         <x-icons.settings class="h-4 w-4 shrink-0" />
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                            Settings
+                            {{ __('Settings') }}
                         </span>
                     </a>
 
@@ -127,7 +127,7 @@
                         </div>
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                            Profile
+                            {{ __('Profile') }}
                         </span>
                     </a>
 
@@ -142,7 +142,7 @@
                             <x-icons.log-out class="h-4 w-4 shrink-0" />
                             <span class="whitespace-nowrap transition-all duration-300"
                                   :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                                Log out
+                                {{ __('Log Out') }}
                             </span>
                         </button>
                     </form>
@@ -199,6 +199,14 @@
                 </div>
             </main>
         </div>
+    </div>
+
+    {{-- Global toast notification --}}
+    <div x-data="toast" x-on:notify.window="notify($event.detail)" x-show="show" x-cloak
+         x-transition.duration.200ms
+         class="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg p-4 text-sm shadow-lg"
+         :class="type === 'success' ? 'bg-green-50 text-green-800' : type === 'error' ? 'bg-red-50 text-red-800' : type === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-blue-50 text-blue-800'"
+         x-text="message">
     </div>
 
     {{-- Shared sidebar tooltip --}}

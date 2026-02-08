@@ -53,7 +53,8 @@ class User extends Authenticatable
             "email_verified_at" => "datetime",
             "password" => "hashed",
             "two_factor_enabled" => "boolean",
-            "two_factor_recovery_codes" => "array",
+            "two_factor_secret" => "encrypted",
+            "two_factor_recovery_codes" => "encrypted:array",
         ];
     }
 

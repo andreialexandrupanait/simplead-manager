@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ActivityLog;
 use App\Models\Site;
+use App\Models\User;
 
 class ActivityLogger
 {
@@ -187,5 +188,91 @@ class ActivityLogger
             icon: 'file-text',
             url: route('sites.reports', $site),
         );
+    }
+
+    public static function appBackupCompleted(string $fileName, int $fileSize): ActivityLog
+    {
+        $sizeMb = round($fileSize / 1024 / 1024, 1);
+
+        return static::log(
+            type: 'app_backup',
+            severity: 'success',
+            title: 'Application backup completed',
+            description: "{$fileName} ({$sizeMb} MB)",
+            metadata: ['file_name' => $fileName, 'file_size' => $fileSize],
+            icon: 'hard-drive',
+            url: route('settings.application-backup'),
+        );
+    }
+
+    public static function appBackupFailed(string $error): ActivityLog
+    {
+        return static::log(
+            type: 'app_backup',
+            severity: 'critical',
+            title: 'Application backup failed',
+            description: $error,
+            metadata: ['error' => $error],
+            icon: 'hard-drive',
+            url: route('settings.application-backup'),
+        );
+    }
+
+    public static function appDatabaseRestored(string $backupDate): ActivityLog
+    {
+        return static::log(
+            type: 'app_backup',
+            severity: 'warning',
+            title: 'Application database restored',
+            description: "Restored from backup dated {$backupDate}",
+            metadata: ['backup_date' => $backupDate],
+            icon: 'hard-drive',
+            url: route('settings.application-backup'),
+        );
+    }
+
+    public static function userLogin(User $user): ActivityLog
+    {
+        return static::log(
+            type: 'auth',
+            severity: 'info',
+            title: "{$user->name} logged in",
+            metadata: [
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ],
+            icon: 'log-in',
+        );
+    }
+
+    public static function userLogout(User $user): ActivityLog
+    {
+        return static::log(
+            type: 'auth',
+            severity: 'info',
+            title: "{$user->name} logged out",
+            metadata: [
+                'ip' => request()->ip(),
+            ],
+            icon: 'log-out',
+        );
+    }
+
+    public static function userLoginFailed(string $email): ActivityLog
+    {
+        return ActivityLog::create([
+            'site_id' => null,
+            'user_id' => null,
+            'type' => 'auth',
+            'severity' => 'warning',
+            'title' => "Failed login attempt for {$email}",
+            'metadata' => [
+                'email' => $email,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ],
+            'icon' => 'alert-triangle',
+            'created_at' => now(),
+        ]);
     }
 }

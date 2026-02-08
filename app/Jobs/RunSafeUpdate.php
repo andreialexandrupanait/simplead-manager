@@ -6,12 +6,13 @@ use App\Models\SafeUpdate;
 use App\Services\Notifications\NotificationService;
 use App\Services\SafeUpdateService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunSafeUpdate implements ShouldQueue
+class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -21,6 +22,11 @@ class RunSafeUpdate implements ShouldQueue
     public function __construct(
         public SafeUpdate $safeUpdate,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'safe-update-' . $this->safeUpdate->id;
+    }
 
     public function handle(SafeUpdateService $safeUpdateService): void
     {

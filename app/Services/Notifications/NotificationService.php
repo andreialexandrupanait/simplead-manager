@@ -54,6 +54,47 @@ class NotificationService
         }
     }
 
+    public static function notifyAppEvent(
+        string $event,
+        string $title,
+        string $message,
+        array $fields = [],
+        string $severity = 'warning',
+        ?array $webhookPayload = null,
+        ?string $mailableClass = null,
+        ?array $mailableArgs = null,
+        ?array $channelIds = null
+    ): void {
+        if ($severity !== 'critical' && static::isQuietHours()) {
+            return;
+        }
+
+        if ($channelIds) {
+            $channels = NotificationChannel::whereIn('id', $channelIds)->where('is_active', true)->get();
+        } else {
+            $channels = NotificationChannel::where('is_default', true)->where('is_active', true)->get();
+        }
+
+        foreach ($channels as $channel) {
+            if (!$channel->subscribedTo($event)) {
+                continue;
+            }
+
+            SendNotificationJob::dispatch(
+                $channel,
+                null,
+                $event,
+                $title,
+                $message,
+                $fields,
+                $severity,
+                $webhookPayload,
+                $mailableClass,
+                $mailableArgs,
+            );
+        }
+    }
+
     protected static function isQuietHours(): bool
     {
         $settings = app(SettingsService::class);

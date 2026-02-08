@@ -17,12 +17,16 @@ class NotifyBudgetViolation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $timeout = 30;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public PerformanceMonitor $monitor,
         public array $violations,
         public PerformanceTest $test
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     public function handle(): void
     {

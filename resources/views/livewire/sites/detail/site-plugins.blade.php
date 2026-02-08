@@ -1,8 +1,3 @@
-<div>
-    {{-- Header --}}
-    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes" />
-</div>
-
 <div
     x-data="{
         bulkUpdating: false,
@@ -53,6 +48,9 @@
         }
     }"
 >
+    {{-- Header --}}
+    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes" />
+
     {{-- Indeterminate progress bar styles --}}
     <style>
         @keyframes indeterminate {
@@ -267,7 +265,7 @@
                     wire:model.live.debounce.300ms="search"
                     placeholder="Search..."
                     class="ml-auto w-48"
-                >
+                />
             </div>
         </div>
 

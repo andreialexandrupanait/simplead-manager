@@ -9,22 +9,29 @@ use App\Services\ActivityLogger;
 use App\Services\MaintenanceService;
 use App\Services\PageSpeedService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunPerformanceTest implements ShouldQueue
+class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
     public int $tries = 2;
+    public array $backoff = [60, 180];
 
     public function __construct(
         public PerformanceMonitor $monitor,
         public string $device = 'both'
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'perf-test-' . $this->monitor->id;
+    }
 
     public function handle(PageSpeedService $pageSpeed): void
     {

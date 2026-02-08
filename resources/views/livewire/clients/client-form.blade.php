@@ -45,13 +45,15 @@
                     @error('company') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label for="vat_number" class="mb-1 block text-sm font-medium text-gray-700">VAT Number</label>
-                    <x-ui.input wire:model="vat_number" id="vat_number" type="text" class="w-full" />
+                    <label for="vat_number" class="mb-1 block text-sm font-medium text-gray-700">{{ __('VAT Number') }} (CUI)</label>
+                    <x-ui.input wire:model="vat_number" id="vat_number" type="text" class="w-full" placeholder="RO12345678" />
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Romanian CUI, optionally prefixed with RO') }}</p>
                     @error('vat_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label for="registration_number" class="mb-1 block text-sm font-medium text-gray-700">Registration Number</label>
-                    <x-ui.input wire:model="registration_number" id="registration_number" type="text" class="w-full" />
+                    <label for="registration_number" class="mb-1 block text-sm font-medium text-gray-700">{{ __('Registration Number') }} (Nr. Reg. Com.)</label>
+                    <x-ui.input wire:model="registration_number" id="registration_number" type="text" class="w-full" placeholder="J40/12345/2024" />
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Format: J{county}/{number}/{year}') }}</p>
                     @error('registration_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
             </div>
