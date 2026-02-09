@@ -1,8 +1,10 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     {{-- Flash messages --}}
-    <x-ui.flash-alert type="success" key="db-health-success" />
     <x-ui.flash-alert type="success" key="db-success" />
     <x-ui.flash-alert type="error" key="db-error" />
+
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="health" :jobs="$trackedJobs" title="Checking database health..." />
 
     {{-- Database Health Section --}}
     <div class="mb-8">

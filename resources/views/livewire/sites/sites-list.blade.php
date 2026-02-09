@@ -26,7 +26,7 @@
 
     {{-- Sites Grid --}}
     @if($sites->count())
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             @foreach($sites as $site)
                 <livewire:components.site-card :site="$site" :key="$site->id" />
             @endforeach

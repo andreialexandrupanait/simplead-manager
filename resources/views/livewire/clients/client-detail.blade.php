@@ -111,7 +111,7 @@
                     @foreach($client->sites as $site)
                         <a href="{{ route('sites.overview', $site) }}" class="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition">
                             <div class="flex items-center gap-3">
-                                <img src="https://www.google.com/s2/favicons?domain={{ $site->domain }}&sz=32" alt="" class="h-6 w-6 rounded">
+                                <x-site-favicon :site="$site" />
                                 <div>
                                     <p class="text-sm font-medium text-gray-900">{{ $site->name }}</p>
                                     <p class="text-xs text-gray-500">{{ $site->domain }}</p>

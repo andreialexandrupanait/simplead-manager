@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Services\ActivityLogger;
+use App\Services\JobTracker;
 use App\Services\MaintenanceService;
 use Illuminate\Support\Facades\Http;
 
@@ -32,6 +33,8 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Checking uptime...');
+
         if (MaintenanceService::isSiteInMaintenance($this->monitor->site, 'uptime')) {
             $this->monitor->update(['next_check_at' => now()->addSeconds($this->monitor->interval)]);
             return;
@@ -56,6 +59,13 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
             'is_up' => $this->monitor->current_state === 'up',
             'uptime_percentage' => $this->monitor->uptime_30d,
         ]);
+
+        JobTracker::complete($this->uniqueId(), 'Uptime check complete');
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Uptime check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 
     protected function performCheck(): array
@@ -78,7 +88,10 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
             // Build the HTTP request
             $request = Http::timeout($this->monitor->timeout)
-                ->connectTimeout($this->monitor->timeout);
+                ->connectTimeout($this->monitor->timeout)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; SimpleAdMonitor/1.0; +https://manager.simplead.ro)',
+                ]);
 
             // Follow redirects
             if (!$this->monitor->follow_redirects) {
@@ -113,6 +126,11 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
             // Check status code
             $acceptedCodes = $this->monitor->accepted_status_codes ?? [200, 201, 202, 203, 204, 301, 302];
             $result['is_up'] = in_array($response->status(), $acceptedCodes);
+
+            // Cloudflare JS challenge returns 403 with cf-mitigated header — site is actually up
+            if (!$result['is_up'] && $response->status() === 403 && $response->header('cf-mitigated') === 'challenge') {
+                $result['is_up'] = true;
+            }
 
             if (!$result['is_up']) {
                 $result['failure_reason'] = "HTTP {$response->status()}";

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
 use App\Services\GoogleSearchConsoleService;
+use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,9 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public Site $site,
-        public string $dateRange = '28d'
+        public string $dateRange = '28d',
+        public ?string $customStart = null,
+        public ?string $customEnd = null,
     ) {}
 
     public function uniqueId(): string
@@ -32,25 +35,33 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Fetching Search Console data...');
+
         $connection = $this->site->searchConsoleConnection;
         if (!$connection || !$connection->is_active) return;
 
         $google = $connection->googleConnection;
         if (!$google || !$google->is_active) return;
 
-        $service = new GoogleSearchConsoleService($google);
         $siteUrl = $connection->property_url;
-
         [$startDate, $endDate] = $this->getDateRange();
 
         try {
+            $service = new GoogleSearchConsoleService($google);
+
+            // Compute previous period dates for comparison
+            [$prevStart, $prevEnd] = $this->getPreviousPeriodRange($startDate, $endDate);
+
             $dataTypes = [
                 'overview' => fn () => $service->getOverview($siteUrl, $startDate, $endDate),
+                'overview_previous' => fn () => $service->getOverview($siteUrl, $prevStart, $prevEnd),
                 'performance_over_time' => fn () => $service->getPerformanceOverTime($siteUrl, $startDate, $endDate),
-                'queries' => fn () => $service->getTopQueries($siteUrl, $startDate, $endDate),
-                'pages' => fn () => $service->getTopPages($siteUrl, $startDate, $endDate),
-                'countries' => fn () => $service->getCountries($siteUrl, $startDate, $endDate),
+                'queries' => fn () => $service->getTopQueries($siteUrl, $startDate, $endDate, 50),
+                'pages' => fn () => $service->getTopPages($siteUrl, $startDate, $endDate, 50),
+                'countries' => fn () => $service->getCountries($siteUrl, $startDate, $endDate, 25),
                 'devices' => fn () => $service->getDevices($siteUrl, $startDate, $endDate),
+                'search_appearance' => fn () => $service->getSearchAppearance($siteUrl, $startDate, $endDate),
+                'sitemaps' => fn () => $service->getSitemaps($siteUrl),
             ];
 
             foreach ($dataTypes as $type => $fetcher) {
@@ -77,14 +88,25 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
                 'last_error' => null,
             ]);
 
+            JobTracker::complete($this->uniqueId(), 'Search Console data fetched');
+
         } catch (\Exception $e) {
             $connection->update(['last_error' => $e->getMessage()]);
             throw $e;
         }
     }
 
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+    }
+
     private function getDateRange(): array
     {
+        if ($this->dateRange === 'custom' && $this->customStart && $this->customEnd) {
+            return [$this->customStart, $this->customEnd];
+        }
+
         $endDate = now()->subDays(3)->format('Y-m-d');
 
         $startDate = match ($this->dateRange) {
@@ -95,5 +117,17 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         };
 
         return [$startDate, $endDate];
+    }
+
+    private function getPreviousPeriodRange(string $startDate, string $endDate): array
+    {
+        $start = \Carbon\Carbon::parse($startDate);
+        $end = \Carbon\Carbon::parse($endDate);
+        $days = $start->diffInDays($end);
+
+        $prevEnd = $start->copy()->subDay()->format('Y-m-d');
+        $prevStart = $start->copy()->subDays($days + 1)->format('Y-m-d');
+
+        return [$prevStart, $prevEnd];
     }
 }

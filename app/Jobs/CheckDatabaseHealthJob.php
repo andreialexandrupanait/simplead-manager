@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Site;
 use App\Services\DatabaseHealthService;
+use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,11 +32,19 @@ class CheckDatabaseHealthJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Checking database health...');
+
         try {
             DatabaseHealthService::check($this->site);
+            JobTracker::complete($this->uniqueId(), 'Database health check complete');
         } catch (\Exception $e) {
             Log::warning("Database health check failed for site {$this->site->id}: {$e->getMessage()}");
             throw $e;
         }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Health check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

@@ -1,4 +1,4 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     <div class="mb-6 flex items-center justify-between">
         {{-- Safe Update Mode Toggle --}}
         <label class="flex items-center gap-2 cursor-pointer">
@@ -26,7 +26,9 @@
     {{-- Flash messages --}}
     <x-ui.flash-alert type="success" key="update-success" />
     <x-ui.flash-alert type="error" key="update-error" />
-    <x-ui.flash-alert type="info" key="sync-dispatched" />
+
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
     {{-- Safe Updates in Progress --}}
     @if($this->activeSafeUpdates->count() > 0)

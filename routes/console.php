@@ -118,6 +118,13 @@ Schedule::call(function () {
         });
 })->dailyAt('06:00')->name('google-data-fetch')->withoutOverlapping()->onOneServer();
 
+// Tracked keyword positions — daily at 06:30
+Schedule::call(function () {
+    Site::whereHas('trackedKeywords')
+        ->whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
+        ->each(fn ($site) => \App\Jobs\FetchKeywordPositions::dispatch($site));
+})->dailyAt('06:30')->name('keyword-position-fetch')->withoutOverlapping()->onOneServer();
+
 // Scheduled reports — hourly
 Schedule::call(function () {
     ReportSchedule::where('is_active', true)
@@ -323,5 +330,27 @@ Schedule::call(function () {
 // Horizon metrics snapshot — every 5 minutes
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->name('horizon-snapshot')->onOneServer();
 
+// Favicon backfill — daily, fetch favicons for sites that don't have one
+Schedule::call(function () {
+    Site::whereNull('favicon_path')
+        ->each(fn ($site) => \App\Jobs\FetchSiteFavicon::dispatch($site));
+})->daily()->name('favicon-backfill')->withoutOverlapping()->onOneServer();
+
 // Daily health digest email — 7:00 AM
 Schedule::job(new \App\Jobs\SendDailyDigest)->dailyAt('07:00')->name('daily-digest')->onOneServer();
+
+// Screenshot refresh — weekly Sunday 3:00 AM, refresh screenshots for 10 sites
+Schedule::call(function () {
+    $sites = Site::with('performanceMonitor')
+        ->whereNotNull('screenshot_path')
+        ->where('status', 'active')
+        ->orderBy('updated_at')
+        ->limit(10)
+        ->get();
+
+    foreach ($sites as $site) {
+        if ($site->performanceMonitor) {
+            RunPerformanceTest::dispatch($site->performanceMonitor, 'desktop');
+        }
+    }
+})->weekly()->sundays()->at('03:00')->name('screenshot-refresh')->withoutOverlapping()->onOneServer();

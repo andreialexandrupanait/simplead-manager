@@ -31,6 +31,11 @@ class GlobalDashboard extends Component
     // Selection
     public array $selectedSites = [];
 
+    public function mount(): void
+    {
+        $this->viewMode = session('dashboard.viewMode', 'list');
+    }
+
     // Rename modal
     public ?int $renamingSiteId = null;
     public string $renamingSiteName = '';
@@ -96,6 +101,11 @@ class GlobalDashboard extends Component
     {
         $this->resetPage();
         unset($this->sites);
+    }
+
+    public function updatedViewMode(): void
+    {
+        session(['dashboard.viewMode' => $this->viewMode]);
     }
 
     public function toggleSiteSelection(int $siteId): void

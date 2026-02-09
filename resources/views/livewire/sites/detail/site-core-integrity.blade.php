@@ -1,15 +1,15 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
         <x-ui.page-header title="Core File Integrity" subtitle="Compare WordPress core files against official checksums from wordpress.org" />
-        <x-ui.button wire:click="runCheck" wire:loading.attr="disabled">
+        <x-ui.button wire:click="runCheck" wire:loading.attr="disabled" :disabled="$hasRunningJobs">
             <x-ui.spinner size="sm" class="mr-1.5 hidden" wire:loading.class.remove="hidden" wire:target="runCheck" />
             Run Check
         </x-ui.button>
     </div>
 
-    {{-- Flash Messages --}}
-    <x-ui.flash-alert type="success" key="integrity-success" />
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="integrity" :jobs="$trackedJobs" title="Checking core file integrity..." />
 
     @if($this->latestCheck)
         @php $check = $this->latestCheck; @endphp

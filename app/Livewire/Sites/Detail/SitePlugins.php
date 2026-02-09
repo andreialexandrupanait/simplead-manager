@@ -4,6 +4,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckAbandonedPluginsJob;
 use App\Jobs\SyncWordPressSite;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\Site;
 use App\Models\UpdateLog;
 use App\Services\PluginConflictService;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class SitePlugins extends Component
 {
+    use WithJobTracking;
+
     public Site $site;
 
     public string $tab = 'plugins';
@@ -27,9 +30,18 @@ class SitePlugins extends Component
     public ?int $confirmingDeleteId = null;
     public ?int $confirmingDeleteThemeId = null;
 
+    protected function jobTrackingKeys(): array
+    {
+        return [
+            'sync' => 'sync-wp-' . $this->site->id,
+            'abandoned' => 'abandoned-plugins-' . $this->site->id,
+        ];
+    }
+
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -504,8 +516,7 @@ class SitePlugins extends Component
 
     public function checkAbandonedNow(): void
     {
-        CheckAbandonedPluginsJob::dispatch($this->site);
-        session()->flash('update-success', 'Abandoned plugin check has been dispatched.');
+        $this->dispatchTrackedJob('abandoned', new CheckAbandonedPluginsJob($this->site), 'Checking for abandoned plugins...');
         unset($this->abandonedCounts, $this->lastAbandonedCheck, $this->plugins, $this->pluginCounts);
     }
 
@@ -530,8 +541,13 @@ class SitePlugins extends Component
 
     public function syncNow(): void
     {
-        SyncWordPressSite::dispatch($this->site);
-        session()->flash('sync-dispatched', 'Sync job has been dispatched.');
+        $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->plugins, $this->themes, $this->users, $this->pluginCounts, $this->themeCounts, $this->userCount, $this->abandonedCounts, $this->lastAbandonedCheck, $this->activeConflicts);
+        $this->site->refresh();
     }
 
     public function render()

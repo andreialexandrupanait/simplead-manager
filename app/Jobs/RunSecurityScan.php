@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Site;
+use App\Services\JobTracker;
 use App\Services\SecurityScanService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -30,6 +31,13 @@ class RunSecurityScan implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Running security scan...');
         SecurityScanService::scan($this->site);
+        JobTracker::complete($this->uniqueId(), 'Security scan complete');
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Security scan failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

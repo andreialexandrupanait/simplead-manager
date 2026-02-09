@@ -95,7 +95,58 @@
 
         <livewire:settings.components.storage-destination-form />
 
-        {{-- Section 2: Google Accounts --}}
+        {{-- Section 2: Google API Credentials --}}
+        <x-ui.card wire:key="google-credentials-card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-gray-900">Google API Credentials</h3>
+                @if($googleClientId && $googleClientSecret)
+                    <x-ui.badge variant="green">Configured</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Not Configured</x-ui.badge>
+                @endif
+            </div>
+
+            {{-- Setup instructions --}}
+            <div x-data="{ showInstructions: false }" class="mb-4">
+                <button @click="showInstructions = !showInstructions" class="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1 mb-3">
+                    <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    How to get your Google API credentials
+                </button>
+                <div x-show="showInstructions" x-collapse class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
+                    <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                        <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="font-medium underline hover:text-blue-900">Google Cloud Console &rarr; Credentials</a></li>
+                        <li>Create or select an <strong>OAuth 2.0 Client ID</strong> (type: Web application)</li>
+                        <li>Under <strong>Authorized redirect URIs</strong>, add: <code class="bg-blue-100 px-1 rounded text-xs">{{ config('services.google.redirect_uri') ?: url('/google/callback') }}</code></li>
+                        <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below</li>
+                    </ol>
+                    <p class="mt-2 text-xs text-blue-600">Make sure the <strong>Google Analytics API</strong> and <strong>Google Search Console API</strong> are enabled in your project.</p>
+                </div>
+            </div>
+
+            <form wire:submit="saveGoogleCredentials" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                    <input type="text" wire:model="googleClientId"
+                        class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                        placeholder="Enter Google Client ID">
+                    @error('googleClientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                    <input type="password" wire:model="googleClientSecret"
+                        class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                        placeholder="Enter Google Client Secret">
+                    @error('googleClientSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <div class="flex justify-end">
+                    <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                        Save Credentials
+                    </x-ui.button>
+                </div>
+            </form>
+        </x-ui.card>
+
+        {{-- Section 3: Google Accounts --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-semibold text-gray-900">Google Accounts</h3>

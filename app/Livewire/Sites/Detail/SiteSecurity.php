@@ -6,6 +6,7 @@ use App\Jobs\CheckCoreFileIntegrity;
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
 use App\Jobs\RunSecurityScan;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\SecurityIssue;
 use App\Models\SecurityRecommendation;
 use App\Models\Site;
@@ -17,12 +18,23 @@ use Livewire\Component;
 
 class SiteSecurity extends Component
 {
+    use WithJobTracking;
+
     public Site $site;
     public string $securityTab = 'overview';
+
+    protected function jobTrackingKeys(): array
+    {
+        return [
+            'scan' => 'security-scan-' . $this->site->id,
+            'integrity' => 'core-integrity-' . $this->site->id,
+        ];
+    }
 
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -104,8 +116,7 @@ class SiteSecurity extends Component
 
     public function scanNow(): void
     {
-        RunSecurityScan::dispatch($this->site);
-        session()->flash('scan-dispatched', 'Security scan has been dispatched. Results will appear shortly.');
+        $this->dispatchTrackedJob('scan', new RunSecurityScan($this->site), 'Running security scan...');
         unset($this->latestScan, $this->activeIssues, $this->recommendations, $this->recommendationStats, $this->vulnerabilities);
     }
 
@@ -204,9 +215,13 @@ class SiteSecurity extends Component
 
     public function checkCoreIntegrityNow(): void
     {
-        CheckCoreFileIntegrity::dispatch($this->site);
-        session()->flash('core-check-dispatched', 'Core file integrity check has been dispatched.');
+        $this->dispatchTrackedJob('integrity', new CheckCoreFileIntegrity($this->site), 'Checking core file integrity...');
         unset($this->latestCoreCheck);
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->latestScan, $this->activeIssues, $this->recommendations, $this->recommendationStats, $this->vulnerabilities, $this->latestCoreCheck);
     }
 
     public function render()

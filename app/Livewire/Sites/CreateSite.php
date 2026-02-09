@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Sites;
 
+use App\Jobs\FetchSiteFavicon;
+use App\Jobs\RunPerformanceTest;
 use App\Models\Client;
 use App\Models\Site;
 use Livewire\Attributes\Url;
@@ -36,6 +38,19 @@ class CreateSite extends Component
             'status'    => 'pending',
         ]);
 
+        // Dispatch favicon fetch
+        FetchSiteFavicon::dispatch($site);
+
+        // Create performance monitor if missing and dispatch test (will fetch screenshot)
+        if (!$site->performanceMonitor) {
+            $monitor = $site->performanceMonitor()->create([
+                'is_active' => true,
+                'frequency' => 'daily',
+                'test_time' => '04:00',
+            ]);
+            RunPerformanceTest::dispatch($monitor, 'mobile');
+        }
+
         session()->flash('message', "Site \"{$site->name}\" connected successfully.");
 
         $this->redirect(route('sites.settings', $site), navigate: true);
@@ -66,13 +81,28 @@ class CreateSite extends Component
 
             $name = parse_url($url, PHP_URL_HOST) ?? $url;
 
-            Site::create([
+            $site = Site::create([
                 'name'      => $name,
                 'url'       => $url,
                 'client_id' => $this->clientId,
                 'type'      => 'wordpress',
                 'status'    => 'pending',
             ]);
+
+            // Dispatch favicon fetch
+            FetchSiteFavicon::dispatch($site);
+
+            // Create performance monitor if missing and dispatch test (will fetch screenshot)
+            if (!$site->performanceMonitor) {
+                $monitor = $site->performanceMonitor()->create([
+                    'is_active' => true,
+                    'frequency' => 'daily',
+                    'test_time' => '04:00',
+                ]);
+                // Delay to avoid PageSpeed API rate limiting
+                RunPerformanceTest::dispatch($monitor, 'mobile')->delay(now()->addSeconds($created * 5));
+            }
+
             $created++;
         }
 

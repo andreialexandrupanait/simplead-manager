@@ -28,6 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
 
+    // Site Comparison
+    Route::get('/comparison', Dashboard\SiteComparison::class)->name('comparison');
+
     // Sites — global (redirect to dashboard)
     Route::redirect('/sites', '/')->name('sites.index');
     Route::get('/sites/create', Sites\CreateSite::class)->name('sites.create');

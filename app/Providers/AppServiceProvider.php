@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Notifications\NotificationService;
+use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
@@ -42,6 +43,23 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->ip());
         });
 
+        // Load Google API credentials from DB if not set in env
+        $this->app->booted(function () {
+            try {
+                $settings = app(SettingsService::class);
+
+                if (empty(config('services.google.client_id'))) {
+                    config(['services.google.client_id' => $settings->get('google_client_id')]);
+                }
+                if (empty(config('services.google.client_secret'))) {
+                    $secret = $settings->get('google_client_secret');
+                    config(['services.google.client_secret' => $secret ? decrypt($secret) : null]);
+                }
+            } catch (\Exception $e) {
+                // DB may not be available during migrations
+            }
+        });
+
         // Horizon long wait alert
         $this->app['events']->listen(LongWaitDetected::class, function (LongWaitDetected $event) {
             NotificationService::notifyAppEvent(
@@ -54,7 +72,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Job failure tracking — notify on 3rd failure within an hour
         Queue::failing(function (JobFailed $event) {
-            $jobClass = get_class($event->job->resolveName());
+            $jobClass = $event->job->resolveName();
             $cacheKey = "job_failures:{$jobClass}";
 
             $failures = Cache::get($cacheKey, 0) + 1;

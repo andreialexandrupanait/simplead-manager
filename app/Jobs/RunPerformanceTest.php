@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 {
@@ -88,6 +89,13 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
                 if ($device === 'mobile') {
                     $wpHealth = $this->runWpHealthChecks($site, $results);
                     $test->update(['wp_health_checks' => $wpHealth]);
+                }
+
+                // Save desktop screenshot for site card thumbnail (primary page only)
+                if ($device === 'desktop') {
+                    if ($pageId === null || ($this->monitor->pages()->where('id', $pageId)->value('is_primary'))) {
+                        $this->saveScreenshot($site, $test);
+                    }
                 }
             } catch (\Exception $e) {
                 $test->update([
@@ -298,6 +306,48 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 
         if (!empty($newViolations)) {
             NotifyBudgetViolation::dispatch($this->monitor, $newViolations, $latestTest);
+        }
+    }
+
+    private function saveScreenshot(Site $site, PerformanceTest $test): void
+    {
+        try {
+            $dataUri = $test->screenshot_final;
+            if (!$dataUri || !str_contains($dataUri, 'base64,')) {
+                return;
+            }
+
+            $base64 = explode('base64,', $dataUri, 2)[1];
+            $imageData = base64_decode($base64);
+            if (!$imageData) {
+                return;
+            }
+
+            $src = @imagecreatefromstring($imageData);
+            if (!$src) {
+                return;
+            }
+
+            $origW = imagesx($src);
+            $origH = imagesy($src);
+            $newW = 800;
+            $newH = (int) round($origH * ($newW / $origW));
+
+            $dst = imagecreatetruecolor($newW, $newH);
+            imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+
+            ob_start();
+            imagejpeg($dst, null, 80);
+            $jpeg = ob_get_clean();
+
+            imagedestroy($src);
+            imagedestroy($dst);
+
+            $path = "screenshots/{$site->id}.jpg";
+            Storage::disk('public')->put($path, $jpeg);
+            $site->update(['screenshot_path' => $path]);
+        } catch (\Exception $e) {
+            // Non-critical — fail silently
         }
     }
 

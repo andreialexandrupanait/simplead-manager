@@ -6,6 +6,7 @@ use App\Jobs\CreateBackup;
 use App\Jobs\ExecuteRollback;
 use App\Jobs\RunSafeUpdate;
 use App\Jobs\SyncWordPressSite;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\RollbackPoint;
 use App\Models\Site;
 use App\Models\UpdateLog;
@@ -20,7 +21,7 @@ use Livewire\WithPagination;
 
 class SiteUpdates extends Component
 {
-    use WithPagination;
+    use WithPagination, WithJobTracking;
 
     public Site $site;
 
@@ -31,9 +32,15 @@ class SiteUpdates extends Component
     // Safe Update Mode
     public bool $safeUpdateMode = false;
 
+    protected function jobTrackingKeys(): array
+    {
+        return ['sync' => 'sync-wp-' . $this->site->id];
+    }
+
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -411,8 +418,13 @@ class SiteUpdates extends Component
 
     public function syncNow(): void
     {
-        SyncWordPressSite::dispatch($this->site);
-        session()->flash('sync-dispatched', 'Sync job has been dispatched.');
+        $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->availableUpdates, $this->rollbackPoints, $this->activeSafeUpdates);
+        $this->site->refresh();
     }
 
     public function render()

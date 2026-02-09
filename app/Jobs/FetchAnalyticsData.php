@@ -22,7 +22,9 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public Site $site,
-        public string $dateRange = '28d'
+        public string $dateRange = '28d',
+        public ?string $customStart = null,
+        public ?string $customEnd = null,
     ) {}
 
     public function uniqueId(): string
@@ -44,14 +46,21 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         [$startDate, $endDate] = $this->getDateRange();
 
         try {
+            // Compute previous period dates for comparison
+            [$prevStart, $prevEnd] = $this->getPreviousPeriodRange($startDate, $endDate);
+
             $data = [
                 'overview' => $service->getOverview($propertyId, $startDate, $endDate),
+                'overview_previous' => $service->getOverview($propertyId, $prevStart, $prevEnd),
                 'users_over_time' => $service->getUsersOverTime($propertyId, $startDate, $endDate),
                 'traffic_sources' => $service->getTrafficSources($propertyId, $startDate, $endDate),
                 'top_pages' => $service->getTopPages($propertyId, $startDate, $endDate),
                 'devices' => $service->getDevices($propertyId, $startDate, $endDate),
                 'countries' => $service->getCountries($propertyId, $startDate, $endDate),
                 'cities' => $service->getCities($propertyId, $startDate, $endDate),
+                'referral_sources' => $service->getReferralSources($propertyId, $startDate, $endDate),
+                'landing_pages' => $service->getLandingPages($propertyId, $startDate, $endDate),
+                'demographics' => $service->getDemographics($propertyId, $startDate, $endDate),
             ];
 
             AnalyticsCache::updateOrCreate(
@@ -81,6 +90,10 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
     private function getDateRange(): array
     {
+        if ($this->dateRange === 'custom' && $this->customStart && $this->customEnd) {
+            return [$this->customStart, $this->customEnd];
+        }
+
         $endDate = now()->subDay()->format('Y-m-d');
 
         $startDate = match ($this->dateRange) {
@@ -91,5 +104,17 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         };
 
         return [$startDate, $endDate];
+    }
+
+    private function getPreviousPeriodRange(string $startDate, string $endDate): array
+    {
+        $start = \Carbon\Carbon::parse($startDate);
+        $end = \Carbon\Carbon::parse($endDate);
+        $days = $start->diffInDays($end);
+
+        $prevEnd = $start->copy()->subDay()->format('Y-m-d');
+        $prevStart = $start->copy()->subDays($days + 1)->format('Y-m-d');
+
+        return [$prevStart, $prevEnd];
     }
 }

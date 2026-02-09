@@ -258,6 +258,193 @@ class GoogleAnalyticsService extends GoogleApiService
         return $data;
     }
 
+    public function getReferralSources(string $propertyId, string $startDate, string $endDate, int $limit = 20): array
+    {
+        $response = $this->api()->post("{$this->baseUrl}/{$propertyId}:runReport", [
+            'dateRanges' => [
+                ['startDate' => $startDate, 'endDate' => $endDate],
+            ],
+            'dimensions' => [
+                ['name' => 'sessionSource'],
+                ['name' => 'sessionMedium'],
+            ],
+            'metrics' => [
+                ['name' => 'sessions'],
+                ['name' => 'totalUsers'],
+                ['name' => 'bounceRate'],
+            ],
+            'orderBys' => [
+                ['metric' => ['metricName' => 'sessions'], 'desc' => true],
+            ],
+            'limit' => $limit,
+        ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Analytics API error: ' . $response->body());
+        }
+
+        $data = [];
+        $total = 0;
+        foreach ($response->json('rows', []) as $row) {
+            $sessions = (int) ($row['metricValues'][0]['value'] ?? 0);
+            $total += $sessions;
+            $data[] = [
+                'source' => $row['dimensionValues'][0]['value'] ?? '(direct)',
+                'medium' => $row['dimensionValues'][1]['value'] ?? '(none)',
+                'sessions' => $sessions,
+                'users' => (int) ($row['metricValues'][1]['value'] ?? 0),
+                'bounce_rate' => round((float) ($row['metricValues'][2]['value'] ?? 0) * 100, 1),
+            ];
+        }
+
+        foreach ($data as &$item) {
+            $item['percentage'] = $total > 0 ? round(($item['sessions'] / $total) * 100, 1) : 0;
+        }
+
+        return $data;
+    }
+
+    public function getLandingPages(string $propertyId, string $startDate, string $endDate, int $limit = 20): array
+    {
+        $response = $this->api()->post("{$this->baseUrl}/{$propertyId}:runReport", [
+            'dateRanges' => [
+                ['startDate' => $startDate, 'endDate' => $endDate],
+            ],
+            'dimensions' => [
+                ['name' => 'landingPage'],
+            ],
+            'metrics' => [
+                ['name' => 'sessions'],
+                ['name' => 'bounceRate'],
+                ['name' => 'engagementRate'],
+                ['name' => 'averageSessionDuration'],
+            ],
+            'orderBys' => [
+                ['metric' => ['metricName' => 'sessions'], 'desc' => true],
+            ],
+            'limit' => $limit,
+        ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Analytics API error: ' . $response->body());
+        }
+
+        $data = [];
+        foreach ($response->json('rows', []) as $row) {
+            $data[] = [
+                'page' => $row['dimensionValues'][0]['value'] ?? '/',
+                'sessions' => (int) ($row['metricValues'][0]['value'] ?? 0),
+                'bounce_rate' => round((float) ($row['metricValues'][1]['value'] ?? 0) * 100, 1),
+                'engagement_rate' => round((float) ($row['metricValues'][2]['value'] ?? 0) * 100, 1),
+                'avg_duration' => round((float) ($row['metricValues'][3]['value'] ?? 0), 1),
+            ];
+        }
+
+        return $data;
+    }
+
+    public function getDemographics(string $propertyId, string $startDate, string $endDate): array
+    {
+        // Fetch age data
+        $ageResponse = $this->api()->post("{$this->baseUrl}/{$propertyId}:runReport", [
+            'dateRanges' => [
+                ['startDate' => $startDate, 'endDate' => $endDate],
+            ],
+            'dimensions' => [
+                ['name' => 'userAgeBracket'],
+            ],
+            'metrics' => [
+                ['name' => 'totalUsers'],
+            ],
+            'orderBys' => [
+                ['dimension' => ['dimensionName' => 'userAgeBracket']],
+            ],
+        ]);
+
+        // Fetch gender data
+        $genderResponse = $this->api()->post("{$this->baseUrl}/{$propertyId}:runReport", [
+            'dateRanges' => [
+                ['startDate' => $startDate, 'endDate' => $endDate],
+            ],
+            'dimensions' => [
+                ['name' => 'userGender'],
+            ],
+            'metrics' => [
+                ['name' => 'totalUsers'],
+            ],
+        ]);
+
+        $age = [];
+        if ($ageResponse->successful()) {
+            foreach ($ageResponse->json('rows', []) as $row) {
+                $age[] = [
+                    'bracket' => $row['dimensionValues'][0]['value'] ?? 'unknown',
+                    'users' => (int) ($row['metricValues'][0]['value'] ?? 0),
+                ];
+            }
+        }
+
+        $gender = [];
+        if ($genderResponse->successful()) {
+            foreach ($genderResponse->json('rows', []) as $row) {
+                $gender[] = [
+                    'gender' => ucfirst($row['dimensionValues'][0]['value'] ?? 'unknown'),
+                    'users' => (int) ($row['metricValues'][0]['value'] ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'age' => $age,
+            'gender' => $gender,
+        ];
+    }
+
+    public function getRealtimeData(string $propertyId): array
+    {
+        // Total active users
+        $totalResponse = $this->api()->post("{$this->baseUrl}/{$propertyId}:runRealtimeReport", [
+            'metrics' => [
+                ['name' => 'activeUsers'],
+            ],
+        ]);
+
+        $totalActiveUsers = 0;
+        if ($totalResponse->successful()) {
+            $totalActiveUsers = (int) ($totalResponse->json('rows.0.metricValues.0.value') ?? 0);
+        }
+
+        // Top active pages
+        $pagesResponse = $this->api()->post("{$this->baseUrl}/{$propertyId}:runRealtimeReport", [
+            'dimensions' => [
+                ['name' => 'unifiedScreenName'],
+            ],
+            'metrics' => [
+                ['name' => 'activeUsers'],
+            ],
+            'orderBys' => [
+                ['metric' => ['metricName' => 'activeUsers'], 'desc' => true],
+            ],
+            'limit' => 10,
+        ]);
+
+        $activePages = [];
+        if ($pagesResponse->successful()) {
+            foreach ($pagesResponse->json('rows', []) as $row) {
+                $activePages[] = [
+                    'page' => $row['dimensionValues'][0]['value'] ?? '',
+                    'active_users' => (int) ($row['metricValues'][0]['value'] ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'active_users' => $totalActiveUsers,
+            'active_pages' => $activePages,
+            'fetched_at' => now()->toIso8601String(),
+        ];
+    }
+
     public function getCities(string $propertyId, string $startDate, string $endDate, int $limit = 10): array
     {
         $response = $this->api()->post("{$this->baseUrl}/{$propertyId}:runReport", [

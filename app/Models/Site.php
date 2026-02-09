@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
 use App\Jobs\CheckUptime;
+use App\Jobs\FetchSiteFavicon;
 use App\Jobs\RunPerformanceTest;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Site extends Model
 {
@@ -47,6 +49,8 @@ class Site extends Model
         "uploads_size_mb",
         "core_update_version",
         "has_woocommerce",
+        "favicon_path",
+        "screenshot_path",
     ];
 
     protected $casts = [
@@ -113,6 +117,9 @@ class Site extends Model
                 'day_of_week' => 0,
                 'next_scan_at' => now()->next('Sunday')->setTimeFromTimeString('02:00'),
             ]);
+
+            // Fetch favicon
+            FetchSiteFavicon::dispatch($site);
 
             // Create uptime monitor
             $uptimeMonitor = $site->uptimeMonitor()->create([
@@ -378,6 +385,11 @@ class Site extends Model
         return $this->hasMany(WooCommerceAlert::class);
     }
 
+    public function trackedKeywords(): HasMany
+    {
+        return $this->hasMany(TrackedKeyword::class);
+    }
+
     // Query Scopes
 
     public function scopeHealthy($query)
@@ -429,5 +441,15 @@ class Site extends Model
         if ($this->health_score >= 90) return "healthy";
         if ($this->health_score >= 70) return "warning";
         return "critical";
+    }
+
+    public function getFaviconUrlAttribute(): ?string
+    {
+        return $this->favicon_path ? Storage::disk('public')->url($this->favicon_path) : null;
+    }
+
+    public function getScreenshotUrlAttribute(): ?string
+    {
+        return $this->screenshot_path ? Storage::disk('public')->url($this->screenshot_path) : null;
     }
 }

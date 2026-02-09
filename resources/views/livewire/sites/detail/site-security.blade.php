@@ -1,11 +1,14 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     {{-- Header --}}
     <x-ui.page-header title="Security" subtitle="Scan for vulnerabilities and security issues" />
 
     {{-- Flash Messages --}}
-    <x-ui.flash-alert type="info" key="scan-dispatched" />
     <x-ui.flash-alert type="success" key="rec-fixed" />
     <x-ui.flash-alert type="error" key="rec-error" />
+
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="scan" :jobs="$trackedJobs" title="Running security scan..." />
+    <x-ui.job-progress job-key="integrity" :jobs="$trackedJobs" title="Checking core file integrity..." />
 
     {{-- Security Score Header --}}
     <div class="mb-6">

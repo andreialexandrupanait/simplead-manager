@@ -1,4 +1,5 @@
 <div
+    @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif
     x-data="{
         bulkUpdating: false,
         bulkTotal: 0,
@@ -76,7 +77,10 @@
     {{-- Flash messages --}}
     <x-ui.flash-alert type="success" key="update-success" />
     <x-ui.flash-alert type="error" key="update-error" />
-    <x-ui.flash-alert type="info" key="sync-dispatched" />
+
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
+    <x-ui.job-progress job-key="abandoned" :jobs="$trackedJobs" title="Checking for abandoned plugins..." />
 
     {{-- Bulk update progress bar --}}
     <div x-show="bulkUpdating" x-cloak class="mb-4 rounded-lg bg-blue-50 p-4">

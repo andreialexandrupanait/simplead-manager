@@ -1,4 +1,4 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     {{-- Header actions --}}
     <div class="mb-6 flex justify-end">
         <div class="flex items-center gap-2">
@@ -21,6 +21,9 @@
             @endif
         </div>
     </div>
+
+    {{-- Job Progress --}}
+    <x-ui.job-progress job-key="uptime" :jobs="$trackedJobs" title="Checking uptime..." />
 
     @if(!$this->monitor)
         {{-- Empty state: no monitor configured --}}

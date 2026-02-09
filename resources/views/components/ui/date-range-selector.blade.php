@@ -5,10 +5,21 @@
     'refreshAction' => 'refreshData',
 ])
 
-<div class="flex items-center gap-2">
+<div class="flex items-center gap-2" x-data="{
+    showCustom: false,
+    customStart: '',
+    customEnd: '',
+    applyCustom() {
+        if (this.customStart && this.customEnd) {
+            $wire.setCustomDateRange(this.customStart, this.customEnd);
+            this.showCustom = false;
+        }
+    }
+}">
     @foreach($options as $value => $label)
         <button
             wire:click="{{ $wire }}('{{ $value }}')"
+            @click="showCustom = false"
             @class([
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition',
                 'bg-purple-100 text-purple-700' => $selected === $value,
@@ -18,6 +29,44 @@
             {{ $label }}
         </button>
     @endforeach
+
+    {{-- Custom date range --}}
+    <div class="relative">
+        <button
+            @click="showCustom = !showCustom"
+            @class([
+                'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                'bg-purple-100 text-purple-700' => $selected === 'custom',
+                'bg-gray-100 text-gray-600 hover:bg-gray-200' => $selected !== 'custom',
+            ])
+        >
+            Custom
+        </button>
+        <div
+            x-show="showCustom"
+            x-transition
+            @click.outside="showCustom = false"
+            class="absolute right-0 top-full mt-2 z-50 rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
+            style="min-width: 280px"
+        >
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                    <input x-model="customStart" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                    <input x-model="customEnd" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500" />
+                </div>
+                <button
+                    @click="applyCustom()"
+                    class="w-full rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700 transition"
+                >
+                    Apply
+                </button>
+            </div>
+        </div>
+    </div>
 
     @if($refreshAction)
         <button

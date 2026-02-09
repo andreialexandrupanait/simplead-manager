@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Site;
+use App\Services\JobTracker;
 use App\Services\PluginAbandonmentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -30,6 +31,13 @@ class CheckAbandonedPluginsJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Checking for abandoned plugins...');
         PluginAbandonmentService::checkAllForSite($this->site);
+        JobTracker::complete($this->uniqueId(), 'Abandoned plugin check complete');
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Abandoned check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

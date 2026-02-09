@@ -7,6 +7,7 @@ use App\Models\GoogleConnection;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CloudflareService;
+use App\Services\SettingsService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -16,9 +17,53 @@ class IntegrationsSettings extends Component
     public bool $showDisconnectModal = false;
     public ?int $disconnectingId = null;
 
+    // Google API Credentials
+    public string $googleClientId = '';
+    public string $googleClientSecret = '';
+
     // Cloudflare
     public string $cfApiToken = '';
     public ?int $deletingCfId = null;
+
+    public function mount(): void
+    {
+        $settings = app(SettingsService::class);
+
+        $this->googleClientId = $settings->get('google_client_id') ?? '';
+
+        $encrypted = $settings->get('google_client_secret');
+        if ($encrypted) {
+            try {
+                $this->googleClientSecret = decrypt($encrypted);
+            } catch (\Exception $e) {
+                $this->googleClientSecret = '';
+            }
+        }
+    }
+
+    public function saveGoogleCredentials(): void
+    {
+        $this->validate([
+            'googleClientId' => 'required|string|min:10',
+            'googleClientSecret' => 'required|string|min:10',
+        ], [
+            'googleClientId.required' => 'Client ID is required.',
+            'googleClientSecret.required' => 'Client Secret is required.',
+        ]);
+
+        $settings = app(SettingsService::class);
+
+        $settings->set('google_client_id', trim($this->googleClientId), 'google');
+        $settings->set('google_client_secret', encrypt(trim($this->googleClientSecret)), 'google');
+
+        // Update runtime config so it takes effect immediately
+        config([
+            'services.google.client_id' => trim($this->googleClientId),
+            'services.google.client_secret' => trim($this->googleClientSecret),
+        ]);
+
+        session()->flash('success', 'Google API credentials saved.');
+    }
 
     #[Computed]
     public function destinations()

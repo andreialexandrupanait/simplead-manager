@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Jobs\FetchSiteFavicon;
 use App\Models\Site;
+use App\Services\JobTracker;
 use App\Services\PluginConflictService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
@@ -32,6 +34,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Syncing site data...');
+
         $api = new WordPressApiService($this->site);
 
         try {
@@ -147,6 +151,11 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 Log::info("User sync skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
+            // Fetch favicon if not yet cached
+            if (!$this->site->favicon_path) {
+                FetchSiteFavicon::dispatch($this->site);
+            }
+
             // Update pending updates count
             $pendingCount = $this->site->sitePlugins()->where('has_update', true)->count()
                 + $this->site->siteThemes()->where('has_update', true)->count()
@@ -163,6 +172,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
+            JobTracker::complete($this->uniqueId(), 'Site sync complete');
+
         } catch (\Exception $e) {
             Log::warning("WordPress sync failed for site {$this->site->id}: {$e->getMessage()}");
 
@@ -172,5 +183,10 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
             throw $e;
         }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Sync failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

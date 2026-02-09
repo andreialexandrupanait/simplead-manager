@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Site;
 use App\Services\CoreFileIntegrityService;
+use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,6 +31,13 @@ class CheckCoreFileIntegrity implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Checking core file integrity...');
         CoreFileIntegrityService::check($this->site);
+        JobTracker::complete($this->uniqueId(), 'Core file integrity check complete');
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Integrity check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

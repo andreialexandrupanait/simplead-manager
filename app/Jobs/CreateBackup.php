@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
+use App\Services\JobTracker;
 use App\Services\MaintenanceService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
@@ -45,7 +46,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Creating backup...');
+
         if (MaintenanceService::isSiteInMaintenance($this->site, 'backups')) {
+            JobTracker::complete($this->uniqueId(), 'Backup skipped (maintenance mode)');
             return;
         }
 
@@ -183,6 +187,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             // Apply retention policy
             $this->applyRetention($destination);
 
+            JobTracker::complete($this->uniqueId(), 'Backup complete');
+
         } catch (\Exception $e) {
             Log::error("Backup failed for site {$this->site->id}: {$e->getMessage()}");
 
@@ -225,6 +231,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                 'progress_message' => $message,
             ]);
         }
+
+        JobTracker::progress($this->uniqueId(), $percent, $message);
     }
 
     protected function resolveStorageDestination(): ?StorageDestination
@@ -297,5 +305,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             }
             rmdir($this->tempDir);
         }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Backup failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

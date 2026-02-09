@@ -6,6 +6,14 @@
     >
         {{ __('Dashboard') }}
     </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('comparison')"
+        icon="bar-chart-2"
+        :active="request()->routeIs('comparison')"
+    >
+        {{ __('Comparison') }}
+    </x-sidebar.sidebar-item>
 </div>
 
 <x-sidebar.sidebar-section :title="__('Monitoring')">

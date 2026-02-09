@@ -10,6 +10,8 @@ class SitesList extends Component
 {
     use WithTableFilters;
 
+    protected $listeners = ['site-deleted' => '$refresh'];
+
     public function render()
     {
         $sites = Site::query()
@@ -25,9 +27,10 @@ class SitesList extends Component
                     default => $q,
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor')
+            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'sslCertificate', 'linkMonitor', 'analyticsConnection', 'domainMonitor')
+            ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
             ->latest()
-            ->paginate(12);
+            ->paginate(16);
 
         return view('livewire.sites.sites-list', compact('sites'))
             ->layout('components.layouts.app', ['title' => 'Sites']);

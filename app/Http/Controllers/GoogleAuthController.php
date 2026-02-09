@@ -14,7 +14,7 @@ class GoogleAuthController extends Controller
 
         if (empty($clientId)) {
             return redirect()->route('settings.integrations')
-                ->with('error', 'Google Client ID is not configured. Set GOOGLE_CLIENT_ID in your .env file.');
+                ->with('error', 'Google Client ID is not configured. Add your credentials in Settings > Integrations.');
         }
 
         session(['google_return_url' => $request->get('return_url', route('settings.integrations'))]);

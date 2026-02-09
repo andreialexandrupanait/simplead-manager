@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckUptime;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\Computed;
@@ -11,11 +12,20 @@ use Livewire\Component;
 
 class SiteUptime extends Component
 {
+    use WithJobTracking;
+
     public Site $site;
+
+    protected function jobTrackingKeys(): array
+    {
+        $monitorId = $this->site->uptimeMonitor?->id;
+        return $monitorId ? ['uptime' => 'check-uptime-' . $monitorId] : [];
+    }
 
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -59,8 +69,14 @@ class SiteUptime extends Component
     public function testNow(): void
     {
         if ($this->monitor) {
-            CheckUptime::dispatch($this->monitor);
+            $this->dispatchTrackedJob('uptime', new CheckUptime($this->monitor), 'Checking uptime...');
         }
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->monitor, $this->checkCount, $this->incidents);
+        $this->site->refresh();
     }
 
     #[On('monitor-saved')]

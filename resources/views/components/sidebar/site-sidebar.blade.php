@@ -71,8 +71,7 @@
              :class="sidebarOpen ? '' : 'lg:flex lg:justify-center lg:px-2'">
             <div class="flex items-center gap-3"
                  :class="sidebarOpen ? '' : 'lg:justify-center'">
-                <img src="https://www.google.com/s2/favicons?domain={{ parse_url($site->url, PHP_URL_HOST) ?? $site->url }}&sz=32"
-                     alt="" class="h-6 w-6 rounded shrink-0">
+                <x-site-favicon :site="$site" />
                 <div class="min-w-0 whitespace-nowrap transition-all duration-300"
                      :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                     <p class="truncate text-sm font-medium text-white">{{ $site->name }}</p>

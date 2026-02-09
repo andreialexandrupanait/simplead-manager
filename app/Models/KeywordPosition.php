@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class KeywordPosition extends Model
+{
+    protected $fillable = ['tracked_keyword_id', 'date', 'position', 'clicks', 'impressions', 'ctr'];
+
+    protected $casts = [
+        'date' => 'date',
+        'position' => 'float',
+        'ctr' => 'float',
+    ];
+
+    public function trackedKeyword(): BelongsTo
+    {
+        return $this->belongsTo(TrackedKeyword::class);
+    }
+}

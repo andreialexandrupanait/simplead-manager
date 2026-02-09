@@ -139,9 +139,10 @@ class ReportGeneratorService
             ->first();
         if ($analyticsCache) {
             $analyticsData = $analyticsCache->data ?? [];
-            $overview['total_users'] = $analyticsData['total_users'] ?? null;
-            $overview['total_sessions'] = $analyticsData['total_sessions'] ?? null;
-            $overview['total_pageviews'] = $analyticsData['total_pageviews'] ?? null;
+            $analyticsOverview = $analyticsData['overview'] ?? [];
+            $overview['total_users'] = $analyticsOverview['total_users'] ?? null;
+            $overview['total_sessions'] = $analyticsOverview['sessions'] ?? null;
+            $overview['total_pageviews'] = $analyticsOverview['pageviews'] ?? null;
         }
 
         // Search Console
@@ -152,8 +153,8 @@ class ReportGeneratorService
             ->first();
         if ($scCache) {
             $scData = $scCache->data ?? [];
-            $overview['total_clicks'] = $scData['total_clicks'] ?? null;
-            $overview['total_impressions'] = $scData['total_impressions'] ?? null;
+            $overview['total_clicks'] = $scData['clicks'] ?? null;
+            $overview['total_impressions'] = $scData['impressions'] ?? null;
         }
 
         // Links
@@ -274,51 +275,77 @@ class ReportGeneratorService
             return null;
         }
 
-        return $cache->data;
+        $raw = $cache->data;
+        $overview = $raw['overview'] ?? [];
+
+        // Map cached structure to what report partials expect (flat keys)
+        $mapped = [
+            'total_pageviews' => $overview['pageviews'] ?? 0,
+            'total_users' => $overview['total_users'] ?? 0,
+            'new_users' => $overview['new_users'] ?? 0,
+            'returning_users' => max(0, ($overview['total_users'] ?? 0) - ($overview['new_users'] ?? 0)),
+            'bounce_rate' => $overview['bounce_rate'] ?? 0,
+            'avg_session_duration' => $overview['avg_session_duration'] ?? 0,
+            'engagement_rate' => $overview['engagement_rate'] ?? 0,
+            'sessions' => $overview['sessions'] ?? 0,
+            'daily_users' => $raw['users_over_time'] ?? [],
+            'traffic_sources' => collect($raw['traffic_sources'] ?? [])->map(fn($s) => [
+                'source' => $s['channel'] ?? ($s['source'] ?? '—'),
+                'users' => $s['users'] ?? $s['sessions'] ?? 0,
+                'sessions' => $s['sessions'] ?? 0,
+            ])->toArray(),
+            'top_pages' => $raw['top_pages'] ?? [],
+            'devices' => collect($raw['devices'] ?? [])->map(fn($d) => [
+                'device' => $d['device'] ?? '—',
+                'users' => $d['sessions'] ?? $d['users'] ?? 0,
+            ])->toArray(),
+            'countries' => $raw['countries'] ?? [],
+            'cities' => $raw['cities'] ?? [],
+            'referral_sources' => $raw['referral_sources'] ?? [],
+        ];
+
+        return $mapped;
     }
 
     protected function gatherSearchConsoleData(): ?array
     {
-        $overview = SearchConsoleCache::where('site_id', $this->site->id)
+        $caches = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', '28d')
-            ->where('data_type', 'overview')
-            ->latest('fetched_at')
-            ->first();
+            ->get()
+            ->keyBy('data_type');
 
-        $queries = SearchConsoleCache::where('site_id', $this->site->id)
-            ->where('date_range', '28d')
-            ->where('data_type', 'queries')
-            ->latest('fetched_at')
-            ->first();
-
-        $pages = SearchConsoleCache::where('site_id', $this->site->id)
-            ->where('date_range', '28d')
-            ->where('data_type', 'pages')
-            ->latest('fetched_at')
-            ->first();
-
-        $countries = SearchConsoleCache::where('site_id', $this->site->id)
-            ->where('date_range', '28d')
-            ->where('data_type', 'countries')
-            ->latest('fetched_at')
-            ->first();
-
-        $devices = SearchConsoleCache::where('site_id', $this->site->id)
-            ->where('date_range', '28d')
-            ->where('data_type', 'devices')
-            ->latest('fetched_at')
-            ->first();
-
-        if (!$overview) {
+        $overviewCache = $caches->get('overview');
+        if (!$overviewCache) {
             return null;
         }
 
+        $overviewData = $overviewCache->data ?? [];
+        $performanceData = $caches->get('performance_over_time')?->data ?? [];
+
+        // Map cached overview keys to what report partials expect
+        $mappedOverview = [
+            'total_clicks' => $overviewData['clicks'] ?? 0,
+            'total_impressions' => $overviewData['impressions'] ?? 0,
+            'avg_ctr' => ($overviewData['ctr'] ?? 0) / 100, // Report expects 0-1 range, cache stores percent
+            'avg_position' => $overviewData['position'] ?? 0,
+            'daily_data' => $performanceData, // Performance over time for the bar chart
+        ];
+
+        // Map query/page CTR from percent back to 0-1 for report partial which multiplies by 100
+        $queries = collect($caches->get('queries')?->data ?? [])->map(fn($q) => array_merge($q, [
+            'ctr' => ($q['ctr'] ?? 0) / 100,
+        ]))->toArray();
+
+        $pages = collect($caches->get('pages')?->data ?? [])->map(fn($p) => array_merge($p, [
+            'ctr' => ($p['ctr'] ?? 0) / 100,
+        ]))->toArray();
+
         return [
-            'overview' => $overview->data ?? [],
-            'queries' => $queries->data ?? [],
-            'pages' => $pages->data ?? [],
-            'countries' => $countries->data ?? [],
-            'devices' => $devices->data ?? [],
+            'overview' => $mappedOverview,
+            'queries' => $queries,
+            'pages' => $pages,
+            'countries' => $caches->get('countries')?->data ?? [],
+            'devices' => $caches->get('devices')?->data ?? [],
         ];
     }
 

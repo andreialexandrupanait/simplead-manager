@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckCoreFileIntegrity;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\CoreFileCheck;
 use App\Models\Site;
 use Livewire\Attributes\Computed;
@@ -11,15 +12,21 @@ use Livewire\WithPagination;
 
 class SiteCoreIntegrity extends Component
 {
-    use WithPagination;
+    use WithPagination, WithJobTracking;
 
     public Site $site;
 
     public ?string $expandedSection = null;
 
+    protected function jobTrackingKeys(): array
+    {
+        return ['integrity' => 'core-integrity-' . $this->site->id];
+    }
+
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -44,8 +51,12 @@ class SiteCoreIntegrity extends Component
 
     public function runCheck(): void
     {
-        CheckCoreFileIntegrity::dispatch($this->site);
-        session()->flash('integrity-success', 'Core file integrity check has been queued. Results will appear shortly.');
+        $this->dispatchTrackedJob('integrity', new CheckCoreFileIntegrity($this->site), 'Checking core file integrity...');
+        unset($this->latestCheck, $this->checkHistory);
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
         unset($this->latestCheck, $this->checkHistory);
     }
 

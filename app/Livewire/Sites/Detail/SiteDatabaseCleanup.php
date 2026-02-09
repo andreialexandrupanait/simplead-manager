@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckDatabaseHealthJob;
+use App\Livewire\Traits\WithJobTracking;
 use App\Models\Site;
 use App\Services\DatabaseCleanupService;
 use Livewire\Attributes\Computed;
@@ -10,6 +11,8 @@ use Livewire\Component;
 
 class SiteDatabaseCleanup extends Component
 {
+    use WithJobTracking;
+
     public Site $site;
 
     public ?array $stats = null;
@@ -25,9 +28,15 @@ class SiteDatabaseCleanup extends Component
 
     public bool $showConfirmation = false;
 
+    protected function jobTrackingKeys(): array
+    {
+        return ['health' => 'db-health-' . $this->site->id];
+    }
+
     public function mount(Site $site): void
     {
         $this->site = $site;
+        $this->initJobTracking();
     }
 
     #[Computed]
@@ -44,8 +53,12 @@ class SiteDatabaseCleanup extends Component
 
     public function refreshHealth(): void
     {
-        CheckDatabaseHealthJob::dispatch($this->site);
-        session()->flash('db-health-success', 'Database health check has been queued.');
+        $this->dispatchTrackedJob('health', new CheckDatabaseHealthJob($this->site), 'Checking database health...');
+        unset($this->latestHealthCheck, $this->healthIssues);
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
         unset($this->latestHealthCheck, $this->healthIssues);
     }
 

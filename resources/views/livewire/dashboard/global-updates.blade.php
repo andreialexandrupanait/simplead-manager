@@ -47,8 +47,7 @@
                 <x-ui.card>
                     <div class="mb-3 flex items-center justify-between">
                         <a href="{{ route('sites.updates', $site) }}" class="flex items-center gap-2 hover:text-purple-600">
-                            <img src="https://www.google.com/s2/favicons?domain={{ $site->domain }}&sz=32"
-                                 alt="" class="h-6 w-6 rounded ring-1 ring-gray-200">
+                            <x-site-favicon :site="$site" />
                             <h3 class="text-sm font-semibold text-gray-900">{{ $site->name }}</h3>
                         </a>
                         <a href="{{ route('sites.updates', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">

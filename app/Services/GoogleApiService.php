@@ -18,15 +18,22 @@ class GoogleApiService
 
     protected function ensureValidToken(): void
     {
-        if ($this->connection->token_expires_at->isFuture()) {
-            $this->accessToken = decrypt($this->connection->access_token);
-            return;
+        try {
+            if ($this->connection->token_expires_at->isFuture()) {
+                $this->accessToken = decrypt($this->connection->access_token);
+                return;
+            }
+
+            $refreshToken = decrypt($this->connection->refresh_token);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            $this->connection->update(['is_active' => false]);
+            throw new \Exception('Google token encryption is invalid. Please reconnect your Google account in Settings > Integrations.');
         }
 
         $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.client_id'),
             'client_secret' => config('services.google.client_secret'),
-            'refresh_token' => decrypt($this->connection->refresh_token),
+            'refresh_token' => $refreshToken,
             'grant_type' => 'refresh_token',
         ]);
 
