@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\WordPressApiService;
@@ -21,6 +22,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 3600;
     public int $tries = 1;
+    public string $queue = 'backups';
 
     protected ?string $tempDir = null;
 

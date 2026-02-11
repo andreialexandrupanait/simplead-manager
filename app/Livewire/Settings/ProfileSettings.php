@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use PragmaRX\Google2FA\Google2FA;
@@ -36,6 +37,7 @@ class ProfileSettings extends Component
     public bool $showingRecoveryCodes = false;
     public string $twoFactorCode = '';
     public ?string $twoFactorQrSvg = null;
+    #[Locked]
     public ?string $pendingTwoFactorSecret = null;
     public array $recoveryCodes = [];
 
@@ -110,8 +112,19 @@ class ProfileSettings extends Component
         $this->dispatch('notify', type: 'success', message: 'Other sessions have been logged out.');
     }
 
+    public string $deleteAccountPassword = '';
+
     public function deleteAccount(): void
     {
+        $this->validate([
+            'deleteAccountPassword' => 'required',
+        ]);
+
+        if (!Hash::check($this->deleteAccountPassword, Auth::user()->password)) {
+            $this->addError('deleteAccountPassword', 'The password is incorrect.');
+            return;
+        }
+
         $user = Auth::user();
         Auth::logout();
         $user->delete();

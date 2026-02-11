@@ -1,3 +1,4 @@
+<x-scripts.data-table />
 <div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
     @if($connection && $connection->is_active)
         <div class="mb-6 flex justify-end">
@@ -20,22 +21,6 @@
         @endif
 
         @if($overview)
-            {{-- Insight Alerts --}}
-            @if(count($insights) > 0)
-                <div class="mb-6 space-y-2">
-                    @foreach($insights as $insight)
-                        <div class="rounded-lg border px-4 py-3 text-sm flex items-center gap-2 {{ $insight['type'] === 'good' ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800' }}">
-                            @if($insight['type'] === 'good')
-                                <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                            @else
-                                <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>
-                            @endif
-                            <span><strong>{{ $insight['metric'] }}</strong> {{ $insight['direction'] === 'up' ? 'increased' : 'decreased' }} by {{ abs($insight['change']) }}% compared to previous period</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-
             {{-- Metric Cards + Performance Chart wrapped in one Alpine scope for toggle + aggregation --}}
             <div x-data="{
                 {{-- Metric toggle state --}}
@@ -149,12 +134,7 @@
                     <div @click="toggleMetric('clicks')" class="cursor-pointer transition" :class="activeMetrics.clicks ? '' : 'opacity-50'">
                         <x-ui.card>
                             <div :class="activeMetrics.clicks ? 'border-b-2 border-purple-500 pb-2' : 'pb-2'">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-xs font-medium text-gray-500">Clicks</div>
-                                    @if(isset($deltas['clicks']) && $deltas['clicks'] !== null)
-                                        <span class="text-xs font-medium {{ $deltas['clicks'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['clicks'] >= 0 ? '+' : '' }}{{ $deltas['clicks'] }}%</span>
-                                    @endif
-                                </div>
+                                <div class="text-xs font-medium text-gray-500">Clicks</div>
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['clicks']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
@@ -166,12 +146,7 @@
                     <div @click="toggleMetric('impressions')" class="cursor-pointer transition" :class="activeMetrics.impressions ? '' : 'opacity-50'">
                         <x-ui.card>
                             <div :class="activeMetrics.impressions ? 'border-b-2 border-cyan-500 pb-2' : 'pb-2'">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-xs font-medium text-gray-500">Impressions</div>
-                                    @if(isset($deltas['impressions']) && $deltas['impressions'] !== null)
-                                        <span class="text-xs font-medium {{ $deltas['impressions'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['impressions'] >= 0 ? '+' : '' }}{{ $deltas['impressions'] }}%</span>
-                                    @endif
-                                </div>
+                                <div class="text-xs font-medium text-gray-500">Impressions</div>
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['impressions']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
@@ -183,12 +158,7 @@
                     <div @click="toggleMetric('ctr')" class="cursor-pointer transition" :class="activeMetrics.ctr ? '' : 'opacity-50'">
                         <x-ui.card>
                             <div :class="activeMetrics.ctr ? 'border-b-2 border-emerald-500 pb-2' : 'pb-2'">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-xs font-medium text-gray-500">CTR</div>
-                                    @if(isset($deltas['ctr']) && $deltas['ctr'] !== null)
-                                        <span class="text-xs font-medium {{ $deltas['ctr'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['ctr'] >= 0 ? '+' : '' }}{{ $deltas['ctr'] }}%</span>
-                                    @endif
-                                </div>
+                                <div class="text-xs font-medium text-gray-500">CTR</div>
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['ctr'] }}%</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
@@ -200,12 +170,7 @@
                     <div @click="toggleMetric('position')" class="cursor-pointer transition" :class="activeMetrics.position ? '' : 'opacity-50'">
                         <x-ui.card>
                             <div :class="activeMetrics.position ? 'border-b-2 border-amber-500 pb-2' : 'pb-2'">
-                                <div class="flex items-center justify-between">
-                                    <div class="text-xs font-medium text-gray-500">Position</div>
-                                    @if(isset($deltas['position']) && $deltas['position'] !== null)
-                                        <span class="text-xs font-medium {{ $deltas['position'] <= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['position'] >= 0 ? '+' : '' }}{{ $deltas['position'] }}%</span>
-                                    @endif
-                                </div>
+                                <div class="text-xs font-medium text-gray-500">Position</div>
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['position'] }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
@@ -237,46 +202,14 @@
             {{-- Top Search Queries (Alpine-driven: sort, search, percentage bars, CSV export) --}}
             @if(count($queries) > 0)
                 <div class="mt-6" x-data="{
-                    rows: @js($queries),
-                    limit: 10, search: '', sortCol: null, sortDir: 'desc',
-                    get sorted() {
-                        if (!this.sortCol) return this.rows;
-                        const col = this.sortCol; const dir = this.sortDir;
-                        return [...this.rows].sort((a, b) => {
-                            let av = a[col], bv = b[col];
-                            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-                            if (av < bv) return dir === 'asc' ? -1 : 1;
-                            if (av > bv) return dir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
-                    },
-                    get filtered() {
-                        if (!this.search) return this.sorted;
-                        const q = this.search.toLowerCase();
-                        return this.sorted.filter(r => r.query.toLowerCase().includes(q));
-                    },
-                    get total() { return this.filtered.length; },
+                    ...dataTableMixin(@js($queries), ['query']),
                     get maxClicks() { return Math.max(...this.rows.map(r => r.clicks), 1); },
-                    toggleSort(col) {
-                        if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
-                        else { this.sortCol = col; this.sortDir = 'desc'; }
-                    },
-                    sortIcon(col) {
-                        if (this.sortCol !== col) return '↕';
-                        return this.sortDir === 'asc' ? '↑' : '↓';
-                    },
                     exportCsv() {
                         const headers = ['Query','Clicks','Impressions','CTR','Position'];
                         const csv = [headers.join(','), ...this.filtered.map(r =>
                             [this.csvEscape(r.query), r.clicks, r.impressions, r.ctr + '%', r.position].join(',')
                         )].join('\n');
                         this.downloadCsv(csv, 'search-queries.csv');
-                    },
-                    csvEscape(v) { return '\"' + String(v).replace(/\"/g, '\"\"') + '\"'; },
-                    downloadCsv(csv, name) {
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                        a.download = name; a.click(); URL.revokeObjectURL(a.href);
                     },
                 }">
                     <x-ui.card>
@@ -388,46 +321,14 @@
             {{-- Top Pages (Alpine-driven: sort, search, percentage bars, CSV export) --}}
             @if(count($pages) > 0)
                 <div class="mt-6" x-data="{
-                    rows: @js($pages),
-                    limit: 10, search: '', sortCol: null, sortDir: 'desc',
-                    get sorted() {
-                        if (!this.sortCol) return this.rows;
-                        const col = this.sortCol; const dir = this.sortDir;
-                        return [...this.rows].sort((a, b) => {
-                            let av = a[col], bv = b[col];
-                            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-                            if (av < bv) return dir === 'asc' ? -1 : 1;
-                            if (av > bv) return dir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
-                    },
-                    get filtered() {
-                        if (!this.search) return this.sorted;
-                        const q = this.search.toLowerCase();
-                        return this.sorted.filter(r => r.page.toLowerCase().includes(q));
-                    },
-                    get total() { return this.filtered.length; },
+                    ...dataTableMixin(@js($pages), ['page']),
                     get maxClicks() { return Math.max(...this.rows.map(r => r.clicks), 1); },
-                    toggleSort(col) {
-                        if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
-                        else { this.sortCol = col; this.sortDir = 'desc'; }
-                    },
-                    sortIcon(col) {
-                        if (this.sortCol !== col) return '↕';
-                        return this.sortDir === 'asc' ? '↑' : '↓';
-                    },
                     exportCsv() {
                         const headers = ['Page','Clicks','Impressions','CTR','Position'];
                         const csv = [headers.join(','), ...this.filtered.map(r =>
                             [this.csvEscape(r.page), r.clicks, r.impressions, r.ctr + '%', r.position].join(',')
                         )].join('\n');
                         this.downloadCsv(csv, 'search-pages.csv');
-                    },
-                    csvEscape(v) { return '\"' + String(v).replace(/\"/g, '\"\"') + '\"'; },
-                    downloadCsv(csv, name) {
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                        a.download = name; a.click(); URL.revokeObjectURL(a.href);
                     },
                 }">
                     <x-ui.card>
@@ -485,45 +386,13 @@
             <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {{-- Countries (Alpine-driven: sort, search, CSV export) --}}
                 <div x-data="{
-                    rows: @js($countries),
-                    limit: 10, search: '', sortCol: null, sortDir: 'desc',
-                    get sorted() {
-                        if (!this.sortCol) return this.rows;
-                        const col = this.sortCol; const dir = this.sortDir;
-                        return [...this.rows].sort((a, b) => {
-                            let av = a[col], bv = b[col];
-                            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-                            if (av < bv) return dir === 'asc' ? -1 : 1;
-                            if (av > bv) return dir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
-                    },
-                    get filtered() {
-                        if (!this.search) return this.sorted;
-                        const q = this.search.toLowerCase();
-                        return this.sorted.filter(r => r.country.toLowerCase().includes(q));
-                    },
-                    get total() { return this.filtered.length; },
-                    toggleSort(col) {
-                        if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
-                        else { this.sortCol = col; this.sortDir = 'desc'; }
-                    },
-                    sortIcon(col) {
-                        if (this.sortCol !== col) return '↕';
-                        return this.sortDir === 'asc' ? '↑' : '↓';
-                    },
+                    ...dataTableMixin(@js($countries), ['country']),
                     exportCsv() {
                         const headers = ['Country','Clicks','Impressions'];
                         const csv = [headers.join(','), ...this.filtered.map(r =>
                             [this.csvEscape(r.country), r.clicks, r.impressions].join(',')
                         )].join('\n');
                         this.downloadCsv(csv, 'search-countries.csv');
-                    },
-                    csvEscape(v) { return '\"' + String(v).replace(/\"/g, '\"\"') + '\"'; },
-                    downloadCsv(csv, name) {
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                        a.download = name; a.click(); URL.revokeObjectURL(a.href);
                     },
                 }">
                 <x-ui.card>

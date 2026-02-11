@@ -27,9 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
-
-    // Site Comparison
-    Route::get('/comparison', Dashboard\SiteComparison::class)->name('comparison');
+    Route::get('/dashboard/widgets', Dashboard\WidgetDashboard::class)->name('dashboard.widgets');
 
     // Sites — global (redirect to dashboard)
     Route::redirect('/sites', '/')->name('sites.index');
@@ -60,7 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/seo', Sites\Detail\SiteSeo::class)->name('sites.seo');
         Route::get('/woocommerce', Sites\Detail\SiteWooCommerce::class)->name('sites.woocommerce');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
-        Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
+
+        // Legacy redirect (settings merged into overview)
+        Route::get('/settings', fn (\App\Models\Site $site) => redirect()->route('sites.overview', $site));
     });
 
     // Backups — global view
@@ -105,7 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Plugin download
     Route::get('/download/connector-plugin', function () {
-        $path = storage_path('app/simplead-connector.zip');
+        $path = base_path('simplead-manager-connector.zip');
         abort_unless(file_exists($path), 404);
         return response()->download($path, 'simplead-connector.zip');
     })->name('download.connector-plugin');

@@ -1,163 +1,18 @@
 @php
-    // --- Status computations for all 12 indicators (matching site-row.blade.php) ---
+    $s = \App\Helpers\SiteStatusHelper::compute($site);
 
-    // 1. Uptime
-    $uptimeColor = 'text-gray-300';
-    $uptimeTip = 'Uptime: Not monitored';
-    if ($site->uptimeMonitor) {
-        if ($site->is_up === true) {
-            $uptimeColor = 'text-green-500';
-            $uptimeTip = 'Site is up' . ($site->uptime_percentage ? ' — ' . $site->uptime_percentage . '%' : '');
-        } elseif ($site->is_up === false) {
-            $uptimeColor = 'text-red-500';
-            $uptimeTip = 'Site is DOWN';
-        } else {
-            $uptimeColor = 'text-yellow-500';
-            $uptimeTip = 'Uptime: Checking...';
-        }
-    }
-
-    // 2. SSL
-    $sslColor = 'text-gray-300';
-    $sslTip = 'SSL: No certificate';
-    if ($site->sslCertificate) {
-        $cert = $site->sslCertificate;
-        if ($cert->status === 'valid') {
-            $sslColor = 'text-green-500';
-            $sslTip = 'SSL: Valid';
-        } elseif ($cert->status === 'expiring_soon') {
-            $sslColor = 'text-yellow-500';
-            $sslTip = 'SSL: Expiring soon';
-        } else {
-            $sslColor = 'text-red-500';
-            $sslTip = 'SSL: ' . ucfirst($cert->status ?? 'Invalid');
-        }
-    }
-
-    // 3. Response Time
-    $responseColor = 'text-gray-300';
-    $responseTip = 'Response time: N/A';
-    if ($site->uptimeMonitor && $site->uptimeMonitor->avg_response_time) {
-        $rt = $site->uptimeMonitor->avg_response_time;
-        if ($rt < 500) {
-            $responseColor = 'text-green-500';
-        } elseif ($rt <= 2000) {
-            $responseColor = 'text-yellow-500';
-        } else {
-            $responseColor = 'text-red-500';
-        }
-        $responseTip = 'Response: ' . number_format($rt) . 'ms';
-    }
-
-    // 4. Performance
-    $perfColor = 'text-gray-300';
-    $perfTip = 'Performance: Not monitored';
-    if ($site->performanceMonitor) {
-        $score = $site->performanceMonitor->latest_mobile_score ?? $site->performanceMonitor->latest_desktop_score;
-        if ($score !== null) {
-            if ($score >= 90) {
-                $perfColor = 'text-green-500';
-            } elseif ($score >= 50) {
-                $perfColor = 'text-yellow-500';
-            } else {
-                $perfColor = 'text-red-500';
-            }
-            $perfTip = 'Performance: ' . $score;
-        }
-    }
-
-    // 5. Broken Links
-    $linksColor = 'text-gray-300';
-    $linksTip = 'Links: Not monitored';
-    if ($site->linkMonitor) {
-        $broken = $site->linkMonitor->broken_links ?? 0;
-        $linksColor = $broken === 0 ? 'text-green-500' : ($broken <= 5 ? 'text-yellow-500' : 'text-red-500');
-        $linksTip = $broken === 0 ? 'No broken links' : $broken . ' broken link' . ($broken > 1 ? 's' : '');
-    }
-
-    // 6. Domain Expiry
-    $domainColor = 'text-gray-300';
-    $domainTip = 'Domain: Not monitored';
-    if ($site->domainMonitor && $site->domainMonitor->expires_at) {
-        $daysLeft = (int) now()->diffInDays($site->domainMonitor->expires_at, false);
-        if ($daysLeft < 0) {
-            $domainColor = 'text-red-500';
-            $domainTip = 'Domain expired';
-        } elseif ($daysLeft <= 30) {
-            $domainColor = 'text-yellow-500';
-            $domainTip = 'Domain expires in ' . $daysLeft . ' days';
-        } else {
-            $domainColor = 'text-green-500';
-            $domainTip = 'Domain expires in ' . $daysLeft . ' days';
-        }
-    }
-
-    // 7. Plugins (update count)
-    $updates = $site->pending_updates_count ?? 0;
-    $pluginsColor = 'text-gray-300';
-    $pluginsTip = 'Plugins: Not connected';
-    if ($site->is_connected) {
-        $pluginsColor = $updates === 0 ? 'text-green-500' : ($updates <= 5 ? 'text-yellow-500' : 'text-red-500');
-        $pluginsTip = $updates === 0 ? 'All plugins up to date' : $updates . ' update' . ($updates > 1 ? 's' : '') . ' available';
-    }
-
-    // 8. Users
-    $usersCount = $site->site_users_count ?? 0;
-    $usersColor = $usersCount > 0 ? 'text-green-500' : 'text-gray-300';
-    $usersTip = $usersCount > 0 ? $usersCount . ' user' . ($usersCount > 1 ? 's' : '') : 'No users tracked';
-
-    // 9. WordPress Connected
-    $wpConnColor = $site->is_connected ? 'text-green-500' : 'text-gray-300';
-    $wpConnTip = $site->is_connected ? 'WordPress connected' : 'Not connected';
-
-    // 10. Backups
-    $backupColor = 'text-gray-300';
-    $backupTip = 'Backups: Not configured';
-    if ($site->backupConfig) {
-        $bc = $site->backupConfig;
-        if (!$bc->is_enabled) {
-            $backupTip = 'Backups: Disabled';
-        } elseif ($bc->last_backup_status === 'failed') {
-            $backupColor = 'text-red-500';
-            $backupTip = 'Last backup failed';
-        } elseif ($site->last_backup_at) {
-            $maxHours = match($bc->frequency ?? 'daily') {
-                'daily' => 26, 'weekly' => 170, 'monthly' => 745, default => 26,
-            };
-            if ($site->last_backup_at->diffInHours(now()) > $maxHours) {
-                $backupColor = 'text-yellow-500';
-                $backupTip = 'Backup overdue — last: ' . $site->last_backup_at->diffForHumans();
-            } else {
-                $backupColor = 'text-green-500';
-                $backupTip = 'Last backup: ' . $site->last_backup_at->diffForHumans();
-            }
-        } else {
-            $backupColor = 'text-yellow-500';
-            $backupTip = 'Pending first backup';
-        }
-    }
-
-    // 11. WP Version
-    $wpVerColor = 'text-gray-300';
-    $wpVerTip = 'WP version: Unknown';
-    if ($site->wp_version) {
-        if ($site->core_update_version) {
-            $wpVerColor = 'text-yellow-500';
-            $wpVerTip = 'WP ' . $site->wp_version . ' → ' . $site->core_update_version;
-        } else {
-            $wpVerColor = 'text-green-500';
-            $wpVerTip = 'WP ' . $site->wp_version . ' (latest)';
-        }
-    }
-
-    // 12. Reports (always gray)
-    $reportsColor = 'text-gray-300';
-    $reportsTip = 'Reports';
-    $reportsCount = $site->report_schedules_count ?? 0;
-    if ($reportsCount > 0) {
-        $reportsColor = 'text-green-500';
-        $reportsTip = $reportsCount . ' report schedule' . ($reportsCount > 1 ? 's' : '');
-    }
+    $uptimeColor = $s['uptime']['color'];     $uptimeTip = $s['uptime']['tip'];
+    $sslColor = $s['ssl']['color'];           $sslTip = $s['ssl']['tip'];
+    $responseColor = $s['response']['color']; $responseTip = $s['response']['tip'];
+    $perfColor = $s['performance']['color'];  $perfTip = $s['performance']['tip'];
+    $linksColor = $s['links']['color'];       $linksTip = $s['links']['tip'];
+    $domainColor = $s['domain']['color'];     $domainTip = $s['domain']['tip'];
+    $pluginsColor = $s['plugins']['color'];   $pluginsTip = $s['plugins']['tip'];
+    $usersColor = $s['users']['color'];       $usersTip = $s['users']['tip'];
+    $wpConnColor = $s['wpConn']['color'];     $wpConnTip = $s['wpConn']['tip'];
+    $backupColor = $s['backup']['color'];     $backupTip = $s['backup']['tip'];
+    $wpVerColor = $s['wpVersion']['color'];   $wpVerTip = $s['wpVersion']['tip'];
+    $reportsColor = $s['reports']['color'];   $reportsTip = $s['reports']['tip'];
 
     // Gradient from domain hash for screenshot placeholder
     $hash = abs(crc32($site->domain));

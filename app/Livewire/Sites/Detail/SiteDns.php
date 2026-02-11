@@ -21,7 +21,7 @@ class SiteDns extends Component
 
         // Auto-fetch on first visit if no cache exists
         if (! $this->site->dnsRecordCache) {
-            $this->refresh();
+            $this->dispatchDnsRefresh();
         }
     }
 
@@ -103,13 +103,27 @@ class SiteDns extends Component
 
     public function refresh(): void
     {
-        $this->loading = true;
+        $this->dispatchDnsRefresh();
+    }
 
-        try {
-            DnsService::fetchAndCache($this->site);
-            $this->site->load('dnsRecordCache');
-            unset($this->dnsCache, $this->stats, $this->recordGroups);
-        } finally {
+    private function dispatchDnsRefresh(): void
+    {
+        $this->loading = true;
+        $site = $this->site;
+
+        dispatch(function () use ($site) {
+            DnsService::fetchAndCache($site);
+        })->afterResponse();
+
+        $this->dispatch('notify', type: 'info', message: 'DNS lookup started...');
+    }
+
+    public function checkDnsProgress(): void
+    {
+        $this->site->load('dnsRecordCache');
+        unset($this->dnsCache, $this->stats, $this->recordGroups);
+
+        if ($this->dnsCache) {
             $this->loading = false;
         }
     }

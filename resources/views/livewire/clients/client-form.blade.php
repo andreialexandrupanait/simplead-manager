@@ -1,9 +1,6 @@
 <div class="max-w-4xl">
     {{-- Header --}}
-    <div class="mb-6 flex items-center gap-4">
-        <a href="{{ $client ? route('clients.show', $client) : route('clients.index') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-            <x-icons.arrow-left class="h-5 w-5" />
-        </a>
+    <div class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">{{ $client ? 'Edit Client' : 'Add Client' }}</h1>
     </div>
 
@@ -96,7 +93,7 @@
                 </div>
                 <div>
                     <label for="notes" class="mb-1 block text-sm font-medium text-gray-700">Notes</label>
-                    <textarea wire:model="notes" id="notes" rows="4" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent"></textarea>
+                    <textarea wire:model="notes" id="notes" rows="4" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent"></textarea>
                     @error('notes') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
             </div>

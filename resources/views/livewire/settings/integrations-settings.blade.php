@@ -7,7 +7,7 @@
     <x-ui.flash-alert type="error" key="storage-error" />
 
     <div class="space-y-6">
-        {{-- Section 1: Storage Destinations --}}
+        {{-- Card 1: Storage Destinations --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-semibold text-gray-900">Storage Destinations</h3>
@@ -23,7 +23,6 @@
                     @foreach($this->destinations as $destination)
                         <div class="flex items-center justify-between py-3">
                             <div class="flex items-center gap-3">
-                                {{-- Type icon --}}
                                 <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
                                     {{ match($destination->type) {
                                         'local' => 'bg-gray-100 text-gray-600',
@@ -91,14 +90,61 @@
                     @endforeach
                 </div>
             @endif
+
+            {{-- Dropbox credentials --}}
+            <div class="border-t border-gray-200 mt-5 pt-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-sm font-medium text-gray-900">Dropbox API Credentials</h4>
+                    @if($dropboxAppKey && $dropboxAppSecret)
+                        <x-ui.badge variant="green">Configured</x-ui.badge>
+                    @else
+                        <x-ui.badge variant="red">Not Configured</x-ui.badge>
+                    @endif
+                </div>
+
+                <div x-data="{ showInstructions: false }" class="mb-4">
+                    <button @click="showInstructions = !showInstructions" class="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1 mb-3">
+                        <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        How to get your Dropbox API credentials
+                    </button>
+                    <div x-show="showInstructions" x-collapse class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
+                        <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                            <li>Go to the <a href="https://www.dropbox.com/developers/apps" target="_blank" class="font-medium underline hover:text-blue-900">Dropbox App Console</a></li>
+                            <li>Click <strong>Create app</strong> (or select an existing one)</li>
+                            <li>Choose <strong>Scoped access</strong> and <strong>Full Dropbox</strong> access type</li>
+                            <li>Under the <strong>Permissions</strong> tab, enable: <code class="bg-blue-100 px-1 rounded text-xs">account_info.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.metadata.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.write</code></li>
+                            <li>Under the <strong>Settings</strong> tab, add this <strong>Redirect URI</strong>: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('dropbox.callback') }}</code></li>
+                            <li>Copy the <strong>App key</strong> and <strong>App secret</strong> from the Settings tab and paste them below</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <form wire:submit="saveDropboxCredentials" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">App Key</label>
+                        <x-ui.input type="text" wire:model="dropboxAppKey" placeholder="Enter Dropbox App Key" />
+                        @error('dropboxAppKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">App Secret</label>
+                        <x-ui.input type="password" wire:model="dropboxAppSecret" placeholder="Enter Dropbox App Secret" />
+                        @error('dropboxAppSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="flex justify-end">
+                        <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                            Save Credentials
+                        </x-ui.button>
+                    </div>
+                </form>
+            </div>
         </x-ui.card>
 
         <livewire:settings.components.storage-destination-form />
 
-        {{-- Section 2: Google API Credentials --}}
-        <x-ui.card wire:key="google-credentials-card">
+        {{-- Card 3: Google --}}
+        <x-ui.card wire:key="google-card">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Google API Credentials</h3>
+                <h3 class="text-base font-semibold text-gray-900">Google</h3>
                 @if($googleClientId && $googleClientSecret)
                     <x-ui.badge variant="green">Configured</x-ui.badge>
                 @else
@@ -126,16 +172,12 @@
             <form wire:submit="saveGoogleCredentials" class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                    <input type="text" wire:model="googleClientId"
-                        class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
-                        placeholder="Enter Google Client ID">
+                    <x-ui.input type="text" wire:model="googleClientId" placeholder="Enter Google Client ID" />
                     @error('googleClientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                    <input type="password" wire:model="googleClientSecret"
-                        class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
-                        placeholder="Enter Google Client Secret">
+                    <x-ui.input type="password" wire:model="googleClientSecret" placeholder="Enter Google Client Secret" />
                     @error('googleClientSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div class="flex justify-end">
@@ -144,74 +186,74 @@
                     </x-ui.button>
                 </div>
             </form>
-        </x-ui.card>
 
-        {{-- Section 3: Google Accounts --}}
-        <x-ui.card>
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Google Accounts</h3>
-                <x-ui.button wire:click="addAccount" size="sm">
-                    <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Account
-                </x-ui.button>
-            </div>
+            {{-- Connected Accounts section --}}
+            <div class="border-t border-gray-200 mt-5 pt-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-medium text-gray-900">Connected Accounts</h4>
+                    <x-ui.button wire:click="addAccount" size="sm">
+                        <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Account
+                    </x-ui.button>
+                </div>
 
-            @if($connections->isEmpty())
-                <x-ui.empty-state
-                    title="No Google accounts connected"
-                    description="Connect a Google account to use Google Analytics and Search Console integrations."
-                    icon="globe"
-                />
-            @else
-                <div class="space-y-3">
-                    @foreach($connections as $conn)
-                        <div class="rounded-lg border border-gray-200 p-4">
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-3">
-                                    @if($conn->avatar_url)
-                                        <img src="{{ $conn->avatar_url }}" alt="" class="h-10 w-10 rounded-full">
-                                    @else
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                    @endif
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ $conn->email }}</div>
-                                        <div class="mt-0.5 text-xs text-gray-500">
-                                            Connected {{ $conn->created_at->format('M d, Y') }}
-                                            @if($conn->sites_using > 0)
-                                                &middot; Used by {{ $conn->sites_using }} {{ Str::plural('site', $conn->sites_using) }}
-                                            @endif
-                                        </div>
-                                        @if($conn->scopes)
-                                            <div class="mt-1 flex flex-wrap gap-1">
-                                                @foreach($conn->scopes as $scope)
-                                                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                                        {{ str_replace('.readonly', '', $scope) === 'analytics' ? 'Analytics' : 'Search Console' }}
-                                                    </span>
-                                                @endforeach
+                @if($connections->isEmpty())
+                    <x-ui.empty-state
+                        title="No Google accounts connected"
+                        description="Connect a Google account to use Google Analytics and Search Console integrations."
+                        icon="globe"
+                    />
+                @else
+                    <div class="space-y-3">
+                        @foreach($connections as $conn)
+                            <div class="rounded-lg border border-gray-200 p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center gap-3">
+                                        @if($conn->avatar_url)
+                                            <img src="{{ $conn->avatar_url }}" alt="" class="h-10 w-10 rounded-full">
+                                        @else
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
                                             </div>
                                         @endif
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $conn->email }}</div>
+                                            <div class="mt-0.5 text-xs text-gray-500">
+                                                Connected {{ $conn->created_at->format('M d, Y') }}
+                                                @if($conn->sites_using > 0)
+                                                    &middot; Used by {{ $conn->sites_using }} {{ Str::plural('site', $conn->sites_using) }}
+                                                @endif
+                                            </div>
+                                            @if($conn->scopes)
+                                                <div class="mt-1 flex flex-wrap gap-1">
+                                                    @foreach($conn->scopes as $scope)
+                                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                                            {{ str_replace('.readonly', '', $scope) === 'analytics' ? 'Analytics' : 'Search Console' }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
+                                    <button
+                                        wire:click="confirmDisconnect({{ $conn->id }})"
+                                        class="text-sm text-gray-400 hover:text-red-600 transition"
+                                    >
+                                        Disconnect
+                                    </button>
                                 </div>
-                                <button
-                                    wire:click="confirmDisconnect({{ $conn->id }})"
-                                    class="text-sm text-gray-400 hover:text-red-600 transition"
-                                >
-                                    Disconnect
-                                </button>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </x-ui.card>
 
-        {{-- Section 3: Cloudflare Connections --}}
+        {{-- Card 4: Cloudflare --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-semibold text-gray-900">Cloudflare Connections</h3>
@@ -249,9 +291,7 @@
             <div class="mb-4 flex items-end gap-3">
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
-                    <input type="password" wire:model="cfApiToken"
-                        class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
-                        placeholder="Enter Cloudflare API token">
+                    <x-ui.input type="password" wire:model="cfApiToken" placeholder="Enter Cloudflare API token" />
                 </div>
                 <x-ui.button wire:click="addCloudflareConnection" wire:loading.attr="disabled" size="sm">
                     Connect

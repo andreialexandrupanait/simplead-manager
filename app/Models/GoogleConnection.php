@@ -21,6 +21,8 @@ class GoogleConnection extends Model
     ];
 
     protected $casts = [
+        'access_token' => 'encrypted',
+        'refresh_token' => 'encrypted',
         'scopes' => 'array',
         'token_expires_at' => 'datetime',
         'last_used_at' => 'datetime',

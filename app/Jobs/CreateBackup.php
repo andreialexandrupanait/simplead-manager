@@ -27,6 +27,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 1800;
     public int $tries = 1;
+    public string $queue = 'backups';
 
     protected ?Backup $backup = null;
     protected ?string $tempDir = null;
@@ -248,10 +249,11 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             return StorageDestination::find($config->storage_destination_id);
         }
 
-        // Default destination
+        // Default destination (fall back to any active if no default set)
         return StorageDestination::where('is_default', true)
             ->where('is_active', true)
-            ->first();
+            ->first()
+            ?? StorageDestination::where('is_active', true)->first();
     }
 
     protected function applyRetention(StorageDestination $destination): void

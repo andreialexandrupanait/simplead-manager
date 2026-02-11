@@ -48,6 +48,14 @@ class AppServiceProvider extends ServiceProvider
             try {
                 $settings = app(SettingsService::class);
 
+                if (empty(config('services.dropbox.app_key'))) {
+                    config(['services.dropbox.app_key' => $settings->get('dropbox_app_key')]);
+                }
+                if (empty(config('services.dropbox.app_secret'))) {
+                    $secret = $settings->get('dropbox_app_secret');
+                    config(['services.dropbox.app_secret' => $secret ? decrypt($secret) : null]);
+                }
+
                 if (empty(config('services.google.client_id'))) {
                     config(['services.google.client_id' => $settings->get('google_client_id')]);
                 }

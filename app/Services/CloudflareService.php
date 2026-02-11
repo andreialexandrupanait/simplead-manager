@@ -32,9 +32,6 @@ class CloudflareService
     public function listZones(): array
     {
         $params = ['per_page' => 50];
-        if ($this->connection->account_id) {
-            $params['account.id'] = $this->connection->account_id;
-        }
 
         $allZones = [];
         $page = 1;

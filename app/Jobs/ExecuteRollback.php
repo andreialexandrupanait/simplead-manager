@@ -22,6 +22,7 @@ class ExecuteRollback implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public RollbackPoint $point,
+        public ?int $userId = null,
     ) {}
 
     public function uniqueId(): string
@@ -31,7 +32,7 @@ class ExecuteRollback implements ShouldQueue, ShouldBeUnique
 
     public function handle(RollbackService $rollbackService): void
     {
-        $rollbackService->executeRollback($this->point);
+        $rollbackService->executeRollback($this->point, $this->userId);
 
         NotificationService::notifySiteEvent(
             $this->point->site,

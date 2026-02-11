@@ -23,7 +23,7 @@ class NotificationChannel extends Model
     ];
 
     protected $casts = [
-        'config' => 'array',
+        'config' => 'encrypted:array',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'last_used_at' => 'datetime',

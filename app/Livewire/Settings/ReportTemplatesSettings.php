@@ -8,7 +8,6 @@ use Livewire\Component;
 class ReportTemplatesSettings extends Component
 {
     public ?int $editingTemplateId = null;
-    public bool $showForm = false;
 
     public string $name = '';
     public string $description = '';
@@ -36,7 +35,7 @@ class ReportTemplatesSettings extends Component
     public function openCreateForm(): void
     {
         $this->resetForm();
-        $this->showForm = true;
+        $this->dispatch('open-modal-template-form');
     }
 
     public function editTemplate(int $id): void
@@ -51,7 +50,7 @@ class ReportTemplatesSettings extends Component
         $this->primary_color = $template->primary_color ?? '#7C3AED';
         $this->intro_text = $template->intro_text ?? '';
         $this->closing_text = $template->closing_text ?? '';
-        $this->showForm = true;
+        $this->dispatch('open-modal-template-form');
     }
 
     public function saveTemplate(): void
@@ -77,7 +76,7 @@ class ReportTemplatesSettings extends Component
             session()->flash('template-success', 'Template created.');
         }
 
-        $this->showForm = false;
+        $this->dispatch('close-modal-template-form');
         $this->resetForm();
     }
 
@@ -126,7 +125,7 @@ class ReportTemplatesSettings extends Component
 
     public function cancelForm(): void
     {
-        $this->showForm = false;
+        $this->dispatch('close-modal-template-form');
         $this->resetForm();
     }
 

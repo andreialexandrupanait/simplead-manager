@@ -2,8 +2,6 @@
 
 namespace App\Livewire\Sites;
 
-use App\Jobs\FetchSiteFavicon;
-use App\Jobs\RunPerformanceTest;
 use App\Models\Client;
 use App\Models\Site;
 use Livewire\Attributes\Url;
@@ -38,22 +36,12 @@ class CreateSite extends Component
             'status'    => 'pending',
         ]);
 
-        // Dispatch favicon fetch
-        FetchSiteFavicon::dispatch($site);
-
-        // Create performance monitor if missing and dispatch test (will fetch screenshot)
-        if (!$site->performanceMonitor) {
-            $monitor = $site->performanceMonitor()->create([
-                'is_active' => true,
-                'frequency' => 'daily',
-                'test_time' => '04:00',
-            ]);
-            RunPerformanceTest::dispatch($monitor, 'mobile');
-        }
+        // Note: Site::booted() handles creating monitors (performance, uptime, SSL, domain, link)
+        // and dispatching FetchSiteFavicon + RunPerformanceTest automatically on creation.
 
         session()->flash('message', "Site \"{$site->name}\" connected successfully.");
 
-        $this->redirect(route('sites.settings', $site), navigate: true);
+        $this->redirect(route('sites.overview', $site), navigate: true);
     }
 
     public function bulkAddSites(): void
@@ -89,19 +77,7 @@ class CreateSite extends Component
                 'status'    => 'pending',
             ]);
 
-            // Dispatch favicon fetch
-            FetchSiteFavicon::dispatch($site);
-
-            // Create performance monitor if missing and dispatch test (will fetch screenshot)
-            if (!$site->performanceMonitor) {
-                $monitor = $site->performanceMonitor()->create([
-                    'is_active' => true,
-                    'frequency' => 'daily',
-                    'test_time' => '04:00',
-                ]);
-                // Delay to avoid PageSpeed API rate limiting
-                RunPerformanceTest::dispatch($monitor, 'mobile')->delay(now()->addSeconds($created * 5));
-            }
+            // Note: Site::booted() handles creating monitors and dispatching jobs automatically.
 
             $created++;
         }

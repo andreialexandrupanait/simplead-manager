@@ -105,26 +105,21 @@
     </div>
 
     {{-- Create/Edit Form Modal --}}
-    @if($showForm)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/50" wire:click="cancelForm"></div>
-            <div class="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-                <div class="mb-5 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">
-                        {{ $editingTemplateId ? 'Edit Template' : 'New Template' }}
-                    </h3>
-                    <button wire:click="cancelForm" class="text-gray-400 hover:text-gray-600">
-                        <x-icons.x class="h-5 w-5" />
-                    </button>
-                </div>
+    <x-ui.modal name="template-form" maxWidth="2xl">
+        <div class="mb-5 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">
+                {{ $editingTemplateId ? 'Edit Template' : 'New Template' }}
+            </h3>
+            <button @click="$dispatch('close-modal-template-form')" class="text-gray-400 hover:text-gray-600">
+                <x-icons.x class="h-5 w-5" />
+            </button>
+        </div>
 
                 <div class="space-y-5">
                     {{-- Name --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
-                        <input type="text" wire:model="name"
-                               placeholder="e.g. Monthly Maintenance Report"
-                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="name" placeholder="e.g. Monthly Maintenance Report" />
                         @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
@@ -169,24 +164,18 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Company Name</label>
-                                <input type="text" wire:model="company_name"
-                                       placeholder="Your Company"
-                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.input type="text" wire:model="company_name" placeholder="Your Company" />
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Website</label>
-                                <input type="text" wire:model="company_website"
-                                       placeholder="https://example.com"
-                                       class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <x-ui.input type="text" wire:model="company_website" placeholder="https://example.com" />
                             </div>
                         </div>
                         <div class="mt-3">
                             <label class="block text-xs font-medium text-gray-700 mb-1">Primary Color</label>
                             <div class="flex items-center gap-3">
-                                <input type="color" wire:model="primary_color"
-                                       class="h-9 w-14 cursor-pointer rounded border border-gray-300">
-                                <input type="text" wire:model="primary_color"
-                                       class="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-purple-500 focus:ring-purple-500">
+                                <input type="color" wire:model="primary_color" class="h-9 w-14 cursor-pointer rounded border border-gray-300">
+                                <x-ui.input type="text" wire:model="primary_color" class="w-24 font-mono" />
                             </div>
                         </div>
                     </div>
@@ -209,15 +198,11 @@
                     </div>
                 </div>
 
-                <div class="mt-6 flex justify-end gap-3">
-                    <button wire:click="cancelForm" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        Cancel
-                    </button>
-                    <button wire:click="saveTemplate" class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
-                        {{ $editingTemplateId ? 'Update Template' : 'Create Template' }}
-                    </button>
-                </div>
-            </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <x-ui.button variant="secondary" wire:click="cancelForm">Cancel</x-ui.button>
+            <x-ui.button wire:click="saveTemplate">
+                {{ $editingTemplateId ? 'Update Template' : 'Create Template' }}
+            </x-ui.button>
         </div>
-    @endif
+    </x-ui.modal>
 </div>

@@ -15,6 +15,9 @@ use App\Services\ActivityLogger;
 use App\Services\JobTracker;
 use App\Services\MaintenanceService;
 use Illuminate\Support\Facades\Http;
+use App\Jobs\NotifyIncident;
+use App\Jobs\CreateStatusPageIncident;
+use App\Jobs\ResolveStatusPageIncident;
 
 class CheckUptime implements ShouldQueue, ShouldBeUnique
 {
@@ -37,6 +40,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
         if (MaintenanceService::isSiteInMaintenance($this->monitor->site, 'uptime')) {
             $this->monitor->update(['next_check_at' => now()->addSeconds($this->monitor->interval)]);
+            JobTracker::complete($this->uniqueId(), 'Skipped — site in maintenance');
             return;
         }
 

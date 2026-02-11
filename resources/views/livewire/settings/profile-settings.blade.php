@@ -180,6 +180,10 @@
         <x-ui.card class="border-red-200 ring-red-100">
             <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Delete Account') }}</h3>
             <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete your account and all associated data. This action cannot be undone.') }}</p>
+            <div class="max-w-sm mb-4">
+                <x-ui.input type="password" wire:model="deleteAccountPassword" label="{{ __('Confirm your password') }}" placeholder="{{ __('Enter your password to confirm') }}" />
+                @error('deleteAccountPassword') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
             <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}">
                 {{ __('Delete Account') }}
             </x-ui.button>

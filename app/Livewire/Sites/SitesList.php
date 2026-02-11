@@ -15,8 +15,10 @@ class SitesList extends Component
     public function render()
     {
         $sites = Site::query()
-            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('url', 'like', "%{$this->search}%"))
+            ->when($this->search, fn ($q) => $q->where(function ($q) {
+                $q->where('name', 'like', "%{$this->search}%")
+                  ->orWhere('url', 'like', "%{$this->search}%");
+            }))
             ->when($this->filter !== 'all', function ($q) {
                 return match($this->filter) {
                     'healthy' => $q->where('health_score', '>=', 90)->where('is_up', true),

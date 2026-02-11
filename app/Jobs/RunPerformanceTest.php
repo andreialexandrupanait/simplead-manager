@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
 use App\Models\Site;
+use App\Jobs\NotifyBudgetViolation;
+use App\Jobs\NotifyPerformanceDrop;
 use App\Services\ActivityLogger;
 use App\Services\MaintenanceService;
 use App\Services\PageSpeedService;

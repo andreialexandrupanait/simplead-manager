@@ -538,6 +538,12 @@ class SitePerformance extends Component
             return;
         }
 
+        $this->validate([
+            'settingsFrequency' => 'required|in:daily,weekly,monthly',
+            'settingsTestTime' => 'required|date_format:H:i',
+            'settingsThreshold' => 'required|integer|min:1|max:100',
+        ]);
+
         $this->monitor->update([
             'frequency' => $this->settingsFrequency,
             'test_time' => $this->settingsTestTime,

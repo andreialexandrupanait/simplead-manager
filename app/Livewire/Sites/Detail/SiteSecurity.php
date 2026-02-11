@@ -91,11 +91,18 @@ class SiteSecurity extends Component
     #[Computed]
     public function recommendationStats()
     {
-        $recs = SecurityRecommendation::where('site_id', $this->site->id);
+        $counts = SecurityRecommendation::where('site_id', $this->site->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) as passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            ")
+            ->first();
+
         return [
-            'passed' => (clone $recs)->where('status', 'passed')->count(),
-            'failed' => (clone $recs)->where('status', 'failed')->count(),
-            'total' => $recs->count(),
+            'passed' => (int) $counts->passed,
+            'failed' => (int) $counts->failed,
+            'total' => (int) $counts->total,
         ];
     }
 

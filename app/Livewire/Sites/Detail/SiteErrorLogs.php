@@ -60,10 +60,18 @@ class SiteErrorLogs extends Component
     #[Computed]
     public function stats(): array
     {
+        $counts = $this->site->errorLogs()->unresolved()
+            ->selectRaw("
+                SUM(CASE WHEN level = 'fatal' THEN 1 ELSE 0 END) as fatal,
+                SUM(CASE WHEN level = 'error' THEN 1 ELSE 0 END) as error,
+                SUM(CASE WHEN level = 'warning' THEN 1 ELSE 0 END) as warning
+            ")
+            ->first();
+
         return [
-            'fatal' => $this->site->errorLogs()->unresolved()->where('level', 'fatal')->count(),
-            'error' => $this->site->errorLogs()->unresolved()->where('level', 'error')->count(),
-            'warning' => $this->site->errorLogs()->unresolved()->where('level', 'warning')->count(),
+            'fatal' => (int) $counts->fatal,
+            'error' => (int) $counts->error,
+            'warning' => (int) $counts->warning,
         ];
     }
 
@@ -74,7 +82,7 @@ class SiteErrorLogs extends Component
 
     public function resolveError(int $id): void
     {
-        $errorLog = ErrorLog::findOrFail($id);
+        $errorLog = $this->site->errorLogs()->findOrFail($id);
         ErrorLogService::resolve($errorLog, auth()->user());
         unset($this->errors, $this->stats);
     }

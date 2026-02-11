@@ -77,7 +77,7 @@ class SiteAnalytics extends Component
 
     public function connectAnalytics(): void
     {
-        $googleConnection = GoogleConnection::where('is_active', true)->first();
+        $googleConnection = $this->resolveGoogleConnection();
 
         if (!$googleConnection) {
             $this->redirect(route('google.auth', ['return_url' => route('sites.analytics', $this->site)]));
@@ -97,7 +97,7 @@ class SiteAnalytics extends Component
         $property = $this->availableProperties[$index] ?? null;
         if (!$property) return;
 
-        $googleConnection = GoogleConnection::where('is_active', true)->first();
+        $googleConnection = $this->resolveGoogleConnection();
         if (!$googleConnection) return;
 
         AnalyticsConnection::updateOrCreate(
@@ -142,12 +142,22 @@ class SiteAnalytics extends Component
         session()->flash('success', 'Analytics disconnected.');
     }
 
+    private function resolveGoogleConnection(): ?GoogleConnection
+    {
+        // Use the site's existing connection's Google account if available
+        $existing = $this->site->analyticsConnection?->googleConnection;
+        if ($existing && $existing->is_active) {
+            return $existing;
+        }
+
+        return GoogleConnection::where('is_active', true)->first();
+    }
+
     public function render()
     {
         $connection = $this->site->analyticsConnection;
         $cache = null;
         $overview = null;
-        $overviewPrevious = null;
         $usersOverTime = [];
         $trafficSources = [];
         $topPages = [];
@@ -157,8 +167,6 @@ class SiteAnalytics extends Component
         $referralSources = [];
         $landingPages = [];
         $demographics = [];
-        $deltas = [];
-        $insights = [];
         $annotations = [];
 
         if ($connection && $connection->is_active) {
@@ -174,7 +182,6 @@ class SiteAnalytics extends Component
             if ($cache) {
                 $data = $cache->data;
                 $overview = $data['overview'] ?? null;
-                $overviewPrevious = $data['overview_previous'] ?? null;
                 $usersOverTime = $data['users_over_time'] ?? [];
                 $trafficSources = $data['traffic_sources'] ?? [];
                 $topPages = $data['top_pages'] ?? [];
@@ -184,12 +191,6 @@ class SiteAnalytics extends Component
                 $referralSources = $data['referral_sources'] ?? [];
                 $landingPages = $data['landing_pages'] ?? [];
                 $demographics = $data['demographics'] ?? [];
-
-                // Compute deltas and insights
-                if ($overview && $overviewPrevious) {
-                    $deltas = $this->computeDeltas($overview, $overviewPrevious);
-                    $insights = $this->computeInsights($overview, $overviewPrevious);
-                }
 
                 // Build annotations from update logs
                 if ($cache->start_date && $cache->end_date) {
@@ -204,9 +205,6 @@ class SiteAnalytics extends Component
             'connection' => $connection,
             'cache' => $cache,
             'overview' => $overview,
-            'overviewPrevious' => $overviewPrevious,
-            'deltas' => $deltas,
-            'insights' => $insights,
             'annotations' => $annotations,
             'usersOverTime' => $usersOverTime,
             'trafficSources' => $trafficSources,
@@ -222,62 +220,6 @@ class SiteAnalytics extends Component
             'siteContext' => $this->site,
             'title' => $this->site->name . ' — Analytics',
         ]);
-    }
-
-    private function computeDeltas(array $current, array $previous): array
-    {
-        $deltas = [];
-        $metrics = ['total_users', 'new_users', 'sessions', 'pageviews', 'bounce_rate', 'avg_session_duration', 'engagement_rate'];
-        foreach ($metrics as $key) {
-            $cur = $current[$key] ?? 0;
-            $prev = $previous[$key] ?? 0;
-            if ($prev != 0) {
-                $deltas[$key] = round((($cur - $prev) / abs($prev)) * 100, 1);
-            } else {
-                $deltas[$key] = $cur > 0 ? 100 : null;
-            }
-        }
-        return $deltas;
-    }
-
-    private function computeInsights(array $current, array $previous): array
-    {
-        $insights = [];
-        $labels = [
-            'total_users' => 'Users',
-            'new_users' => 'New Users',
-            'sessions' => 'Sessions',
-            'pageviews' => 'Pageviews',
-            'bounce_rate' => 'Bounce Rate',
-            'engagement_rate' => 'Engagement Rate',
-        ];
-        // Lower bounce rate is better
-        $invertedMetrics = ['bounce_rate'];
-
-        foreach ($labels as $key => $label) {
-            $cur = $current[$key] ?? 0;
-            $prev = $previous[$key] ?? 0;
-            if ($prev == 0) continue;
-
-            $change = round((($cur - $prev) / abs($prev)) * 100, 1);
-            if (abs($change) < 25) continue;
-
-            $isPositive = $change > 0;
-            if (in_array($key, $invertedMetrics)) {
-                $isPositive = !$isPositive;
-            }
-
-            $insights[] = [
-                'metric' => $label,
-                'change' => $change,
-                'direction' => $change > 0 ? 'up' : 'down',
-                'type' => $isPositive ? 'good' : 'bad',
-                'current' => $cur,
-                'previous' => $prev,
-            ];
-        }
-
-        return $insights;
     }
 
     private function getAnnotations($startDate, $endDate, array $usersOverTime): array

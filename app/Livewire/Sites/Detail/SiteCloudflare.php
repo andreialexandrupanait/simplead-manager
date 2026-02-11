@@ -82,6 +82,12 @@ class SiteCloudflare extends Component
         return CloudflareConnection::where('is_valid', true)->orderBy('account_email')->get();
     }
 
+    public function updatedSelectedConnectionId(): void
+    {
+        $this->selectedZoneId = null;
+        unset($this->availableZones);
+    }
+
     #[Computed]
     public function availableZones(): array
     {

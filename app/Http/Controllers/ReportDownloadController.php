@@ -10,6 +10,11 @@ class ReportDownloadController extends Controller
 {
     public function __invoke(Request $request, Report $report)
     {
+        // Verify the report belongs to a site the authenticated user manages
+        if (!$report->site || !$report->site->exists) {
+            abort(403, 'Unauthorized.');
+        }
+
         if (!$report->file_path) {
             abort(404, 'Report file not available.');
         }

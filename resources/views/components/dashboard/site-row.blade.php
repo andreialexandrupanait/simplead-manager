@@ -6,124 +6,31 @@
 ])
 
 @php
-    // Update badge color
-    $updates = $site->pending_updates_count ?? 0;
-    $updateBadgeColor = $updates === 0 ? 'bg-green-500' : ($updates <= 5 ? 'bg-orange-500' : 'bg-red-500');
+    $s = \App\Helpers\SiteStatusHelper::compute($site);
 
-    // Uptime status
-    $uptimeColor = 'text-gray-300';
-    if ($site->uptimeMonitor) {
-        if ($site->is_up === true) {
-            $uptimeColor = 'text-green-500';
-        } elseif ($site->is_up === false) {
-            $uptimeColor = 'text-red-500';
-        } else {
-            $uptimeColor = 'text-yellow-500';
-        }
+    $uptimeColor = $s['uptime']['color'];
+    $sslColor = $s['ssl']['color'];
+    $responseColor = $s['response']['color'];
+    $perfColor = $s['performance']['color'];
+    $linksColor = $s['links']['color'];
+    $domainColor = $s['domain']['color'];
+    $pluginsColor = $s['plugins']['color'];
+    $usersColor = $s['users']['color'];
+    $wpConnColor = $s['wpConn']['color'];
+    $backupColor = $s['backup']['color'];
+    $wpVerColor = $s['wpVersion']['color'];
+
+    // Analytics (not part of shared helper - site-row specific)
+    $analyticsColor = 'text-gray-300';
+    if ($site->analyticsConnection && $site->analyticsConnection->is_active) {
+        $analyticsColor = 'text-green-500';
     }
 
-    // SSL status
-    $sslColor = 'text-gray-300';
-    if ($site->sslCertificate) {
-        $cert = $site->sslCertificate;
-        if ($cert->status === 'valid') {
-            $sslColor = 'text-green-500';
-        } elseif ($cert->status === 'expiring_soon') {
-            $sslColor = 'text-yellow-500';
-        } else {
-            $sslColor = 'text-red-500';
-        }
-    }
-
-    // Response time
-    $responseColor = 'text-gray-300';
-    if ($site->uptimeMonitor && $site->uptimeMonitor->avg_response_time) {
-        $rt = $site->uptimeMonitor->avg_response_time;
-        if ($rt < 500) {
-            $responseColor = 'text-green-500';
-        } elseif ($rt <= 2000) {
-            $responseColor = 'text-yellow-500';
-        } else {
-            $responseColor = 'text-red-500';
-        }
-    }
-
-    // Performance
-    $perfColor = 'text-gray-300';
-    if ($site->performanceMonitor && $site->performanceMonitor->latest_mobile_score !== null) {
-        $score = $site->performanceMonitor->latest_mobile_score;
-        if ($score >= 90) {
-            $perfColor = 'text-green-500';
-        } elseif ($score >= 50) {
-            $perfColor = 'text-yellow-500';
-        } else {
-            $perfColor = 'text-red-500';
-        }
-    }
-
-    // Links
-    $linksColor = 'text-gray-300';
-    if ($site->linkMonitor) {
-        $broken = $site->linkMonitor->broken_links ?? 0;
-        if ($broken === 0) {
-            $linksColor = 'text-green-500';
-        } elseif ($broken <= 5) {
-            $linksColor = 'text-yellow-500';
-        } else {
-            $linksColor = 'text-red-500';
-        }
-    }
-
-    // Domain expiry
-    $domainColor = 'text-gray-300';
-    if ($site->domainMonitor && $site->domainMonitor->expires_at) {
-        $daysLeft = (int) now()->diffInDays($site->domainMonitor->expires_at, false);
-        if ($daysLeft < 0) {
-            $domainColor = 'text-red-500';
-        } elseif ($daysLeft <= 30) {
-            $domainColor = 'text-yellow-500';
-        } else {
-            $domainColor = 'text-green-500';
-        }
-    }
-
-    // Plugins (update count)
-    $pluginsColor = $updates === 0 ? 'text-green-500' : ($updates <= 5 ? 'text-yellow-500' : 'text-red-500');
-
-    // Users
-    $usersCount = $site->site_users_count ?? 0;
-    $usersColor = $usersCount > 0 ? 'text-green-500' : 'text-gray-300';
-
-    // WordPress connected
-    $wpConnColor = $site->is_connected ? 'text-green-500' : 'text-gray-300';
-
-    // Backup
-    $backupColor = 'text-gray-300';
-    if ($site->backupConfig) {
-        $bc = $site->backupConfig;
-        if ($bc->last_backup_status === 'failed') {
-            $backupColor = 'text-red-500';
-        } elseif ($bc->last_backup_at && $bc->last_backup_at->diffInDays(now()) > 2) {
-            $backupColor = 'text-yellow-500';
-        } elseif ($bc->last_backup_at) {
-            $backupColor = 'text-green-500';
-        }
-    }
-
-    // WP Version
-    $wpVerColor = 'text-gray-300';
-    if ($site->wp_version) {
-        if ($site->core_update_version) {
-            $wpVerColor = 'text-yellow-500';
-        } else {
-            $wpVerColor = 'text-green-500';
-        }
-    }
-
-    // Health bar
-    $healthScore = $site->health_score ?? 0;
+    $updates = $s['updates'];
+    $updateBadgeColor = $s['updateBadgeColor'];
+    $healthScore = $s['healthScore'];
     $healthWidth = max(0, min(100, $healthScore));
-    $healthBarColor = $healthScore >= 90 ? 'bg-green-500' : ($healthScore >= 70 ? 'bg-yellow-500' : 'bg-red-500');
+    $healthBarColor = $s['healthBarColor'];
 
     $isSelected = in_array($site->id, $selectedSites);
 @endphp
@@ -220,10 +127,10 @@
             <x-hovercards.response-time :site="$site" />
         </x-ui.hovercard>
 
-        {{-- 4. Performance --}}
+        {{-- 4. Analytics --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $perfColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <svg class="h-5 w-5 {{ $analyticsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </x-slot:trigger>
             <x-hovercards.analytics :site="$site" />
         </x-ui.hovercard>
@@ -320,8 +227,6 @@
         <a href="{{ route('sites.backups', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Backups</a>
         <a href="{{ route('sites.uptime', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Uptime</a>
         <a href="{{ route('sites.performance', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Performance</a>
-        <a href="{{ route('sites.settings', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Settings</a>
-
         <div class="my-1 border-t border-gray-100"></div>
 
         {{-- Action buttons --}}
@@ -333,7 +238,7 @@
 
         {{-- Management actions --}}
         <button wire:click="startRename({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Rename</button>
-        <a href="{{ route('sites.settings', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit Settings</a>
+        <a href="{{ route('sites.overview', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View Overview</a>
 
         {{-- Status assignment --}}
         @if($siteStatuses->isNotEmpty())

@@ -53,7 +53,7 @@ class SendDailyDigest implements ShouldQueue
                 ->count(),
             'updates_available' => DB::table('sites')
                 ->where('is_connected', true)
-                ->where('updates_available', '>', 0)
+                ->where('pending_updates_count', '>', 0)
                 ->count(),
             'ssl_expiring_soon' => DB::table('ssl_certificates')
                 ->whereNotNull('expires_at')

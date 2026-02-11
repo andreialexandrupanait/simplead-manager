@@ -17,6 +17,10 @@ class IntegrationsSettings extends Component
     public bool $showDisconnectModal = false;
     public ?int $disconnectingId = null;
 
+    // Dropbox API Credentials
+    public string $dropboxAppKey = '';
+    public string $dropboxAppSecret = '';
+
     // Google API Credentials
     public string $googleClientId = '';
     public string $googleClientSecret = '';
@@ -29,6 +33,17 @@ class IntegrationsSettings extends Component
     {
         $settings = app(SettingsService::class);
 
+        $this->dropboxAppKey = $settings->get('dropbox_app_key') ?? '';
+
+        $encryptedDropbox = $settings->get('dropbox_app_secret');
+        if ($encryptedDropbox) {
+            try {
+                $this->dropboxAppSecret = decrypt($encryptedDropbox);
+            } catch (\Exception $e) {
+                $this->dropboxAppSecret = '';
+            }
+        }
+
         $this->googleClientId = $settings->get('google_client_id') ?? '';
 
         $encrypted = $settings->get('google_client_secret');
@@ -39,6 +54,29 @@ class IntegrationsSettings extends Component
                 $this->googleClientSecret = '';
             }
         }
+    }
+
+    public function saveDropboxCredentials(): void
+    {
+        $this->validate([
+            'dropboxAppKey' => 'required|string|min:10',
+            'dropboxAppSecret' => 'required|string|min:10',
+        ], [
+            'dropboxAppKey.required' => 'App Key is required.',
+            'dropboxAppSecret.required' => 'App Secret is required.',
+        ]);
+
+        $settings = app(SettingsService::class);
+
+        $settings->set('dropbox_app_key', trim($this->dropboxAppKey), 'dropbox');
+        $settings->set('dropbox_app_secret', encrypt(trim($this->dropboxAppSecret)), 'dropbox');
+
+        config([
+            'services.dropbox.app_key' => trim($this->dropboxAppKey),
+            'services.dropbox.app_secret' => trim($this->dropboxAppSecret),
+        ]);
+
+        session()->flash('success', 'Dropbox API credentials saved.');
     }
 
     public function saveGoogleCredentials(): void
@@ -225,11 +263,11 @@ class IntegrationsSettings extends Component
 
     public function render()
     {
-        $connections = GoogleConnection::all()->map(function ($conn) {
-            $conn->sites_using = $conn->analyticsConnections()->count()
-                + $conn->searchConsoleConnections()->count();
-            return $conn;
-        });
+        $connections = GoogleConnection::withCount(['analyticsConnections', 'searchConsoleConnections'])
+            ->get()
+            ->each(function ($conn) {
+                $conn->sites_using = $conn->analytics_connections_count + $conn->search_console_connections_count;
+            });
 
         return view('livewire.settings.integrations-settings', [
             'connections' => $connections,

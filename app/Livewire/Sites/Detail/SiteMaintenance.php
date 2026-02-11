@@ -14,7 +14,6 @@ class SiteMaintenance extends Component
     public Site $site;
 
     // Modal state
-    public bool $showModal = false;
     #[Locked]
     public ?int $editingId = null;
 
@@ -69,7 +68,7 @@ class SiteMaintenance extends Component
         $this->editingId = null;
         $this->scheduledStartAt = now()->addMinutes(5)->format('Y-m-d\TH:i');
         $this->scheduledEndAt = now()->addHour()->format('Y-m-d\TH:i');
-        $this->showModal = true;
+        $this->dispatch('open-modal-maintenance-form');
     }
 
     public function openEditModal(int $id): void
@@ -87,7 +86,7 @@ class SiteMaintenance extends Component
         $this->pauseLinks = $window->pause_links;
         $this->notifyOnStart = $window->notify_on_start;
         $this->notifyOnEnd = $window->notify_on_end;
-        $this->showModal = true;
+        $this->dispatch('open-modal-maintenance-form');
     }
 
     public function save(): void
@@ -120,7 +119,7 @@ class SiteMaintenance extends Component
             MaintenanceWindow::create($data);
         }
 
-        $this->showModal = false;
+        $this->dispatch('close-modal-maintenance-form');
         unset($this->activeMaintenance, $this->upcomingWindows, $this->pastWindows);
     }
 

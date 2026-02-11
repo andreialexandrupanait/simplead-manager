@@ -9,6 +9,11 @@ class BackupDownloadController extends Controller
 {
     public function __invoke(Request $request, Backup $backup)
     {
+        // Verify the backup belongs to a valid site
+        if (!$backup->site || !$backup->site->exists) {
+            abort(403, 'Unauthorized.');
+        }
+
         $destination = $backup->storageDestination;
 
         if (!$destination || $destination->type !== 'local') {

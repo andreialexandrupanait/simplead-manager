@@ -1,322 +1,132 @@
 <div>
-    {{-- Header --}}
-    <x-ui.page-header title="Overview" subtitle="Site health, status, and key metrics at a glance" />
-
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Health Score</div>
-            @php
-                $score = $site->health_score;
-                $color = $score >= 90 ? 'text-green-600' : ($score >= 70 ? 'text-yellow-600' : 'text-red-600');
-            @endphp
-            <div class="mt-1 text-2xl font-bold {{ $color }}">{{ $score ?? '—' }}</div>
-        </x-ui.card>
-
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Uptime</div>
-            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $site->uptime_percentage ?? '—' }}%</div>
-        </x-ui.card>
-
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">WordPress Version</div>
-            <div class="mt-1 flex items-center gap-2">
-                <span class="text-2xl font-bold text-gray-900">{{ $site->wp_version ?? '—' }}</span>
-                @if($site->core_update_version)
-                    <x-ui.badge variant="yellow">{{ $site->core_update_version }} available</x-ui.badge>
-                @endif
-            </div>
-        </x-ui.card>
-    </div>
-
-    {{-- WordPress-specific cards --}}
-    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Pending Updates</div>
-            <div class="mt-1 flex items-center gap-2">
-                <span class="text-2xl font-bold {{ $site->pending_updates_count > 0 ? 'text-yellow-600' : 'text-green-600' }}">
-                    {{ $site->pending_updates_count }}
-                </span>
-                @if($site->pending_updates_count > 0)
-                    <a href="{{ route('sites.updates', $site) }}" class="text-sm text-purple-600 hover:text-purple-700">
-                        View updates &rarr;
-                    </a>
-                @endif
-            </div>
-        </x-ui.card>
-
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Storage</div>
-            <div class="mt-2 space-y-1 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-gray-500">Database</span>
-                    <span class="font-medium text-gray-900">{{ $site->db_size_mb ? $site->db_size_mb . ' MB' : '—' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500">Uploads</span>
-                    <span class="font-medium text-gray-900">{{ $site->uploads_size_mb ? $site->uploads_size_mb . ' MB' : '—' }}</span>
-                </div>
-            </div>
-        </x-ui.card>
-
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">WordPress Connection</div>
-            <div class="mt-2 flex items-center gap-2">
-                <span class="h-2.5 w-2.5 rounded-full {{ $site->is_connected ? 'bg-green-500' : 'bg-gray-400' }}"></span>
-                <span class="text-sm {{ $site->is_connected ? 'text-green-700' : 'text-gray-500' }}">
-                    {{ $site->is_connected ? 'Connected' : 'Not connected' }}
-                </span>
-            </div>
-            @if($site->last_synced_at)
-                <p class="mt-1 text-xs text-gray-400">Last synced {{ $site->last_synced_at->diffForHumans() }}</p>
+    <x-ui.page-header
+        title="Overview"
+        subtitle="Site health, status, and key metrics"
+    >
+        <x-slot:actions>
+            @if($site->is_connected)
+                <button wire:click="openWpAdmin"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                    <x-icons.globe class="h-4 w-4" />
+                    Open WP Admin
+                </button>
+                <button wire:click="syncNow"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                    <x-icons.refresh-cw class="h-4 w-4" />
+                    Sync Now
+                </button>
+                <button wire:click="openConnectModal"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                        title="Plugin Settings">
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                </button>
+            @else
+                <button wire:click="openConnectModal"
+                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition">
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                    </svg>
+                    Connect Plugin
+                </button>
             @endif
-        </x-ui.card>
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    {{-- 3-Column Responsive Grid --}}
+    <div class="grid gap-4 lg:grid-cols-12">
+
+        {{-- Left Column (Narrow) - 3 columns --}}
+        <div class="space-y-4 lg:col-span-3">
+            @include('livewire.sites.detail.overview._site-info-card')
+            @include('livewire.sites.detail.overview._reports-card')
+            @include('livewire.sites.detail.overview._client-card')
+        </div>
+
+        {{-- Center Column (Wide) - 5 columns --}}
+        <div class="space-y-4 lg:col-span-5">
+            @include('livewire.sites.detail.overview._uptime-card')
+            @include('livewire.sites.detail.overview._analytics-card')
+        </div>
+
+        {{-- Right Column (Medium) - 4 columns --}}
+        <div class="space-y-4 lg:col-span-4">
+            @include('livewire.sites.detail.overview._updates-card')
+            @include('livewire.sites.detail.overview._backups-card')
+        </div>
+
     </div>
 
-    {{-- Performance summary --}}
-    @php $perfMon = $site->performanceMonitor; @endphp
-    @if($perfMon && ($perfMon->latest_mobile_score !== null || $perfMon->latest_desktop_score !== null))
-        <div class="mt-6">
-            <a href="{{ route('sites.performance', $site) }}" class="block">
-                <x-ui.card class="hover:shadow-md transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-medium text-gray-500">Performance</div>
-                            <div class="mt-1 flex items-center gap-4">
-                                @if($perfMon->latest_mobile_score !== null)
-                                    @php
-                                        $mColor = $perfMon->latest_mobile_score >= 90 ? 'text-green-600' : ($perfMon->latest_mobile_score >= 50 ? 'text-yellow-600' : 'text-red-600');
-                                    @endphp
-                                    <div>
-                                        <span class="text-2xl font-bold {{ $mColor }}">{{ $perfMon->latest_mobile_score }}</span>
-                                        <span class="ml-1 text-xs text-gray-500">Mobile</span>
-                                    </div>
-                                @endif
-                                @if($perfMon->latest_desktop_score !== null)
-                                    @php
-                                        $dColor = $perfMon->latest_desktop_score >= 90 ? 'text-green-600' : ($perfMon->latest_desktop_score >= 50 ? 'text-yellow-600' : 'text-red-600');
-                                    @endphp
-                                    <div>
-                                        <span class="text-2xl font-bold {{ $dColor }}">{{ $perfMon->latest_desktop_score }}</span>
-                                        <span class="ml-1 text-xs text-gray-500">Desktop</span>
-                                    </div>
-                                @endif
-                            </div>
-                            @if($perfMon->last_tested_at)
-                                <p class="mt-1 text-xs text-gray-400">Tested {{ $perfMon->last_tested_at->diffForHumans() }}</p>
-                            @endif
-                        </div>
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </div>
-                </x-ui.card>
-            </a>
-        </div>
-    @endif
+    {{-- Connect Plugin Modal --}}
+    <x-ui.modal name="connect-plugin" maxWidth="lg">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold text-gray-900">Connect WordPress Plugin</h2>
+            <p class="mt-1 text-sm text-gray-500">Follow these steps to connect your WordPress site.</p>
 
-    {{-- Analytics & Search Console summary --}}
-    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {{-- Analytics summary --}}
-        <a href="{{ route('sites.analytics', $site) }}" class="block">
-            <x-ui.card class="hover:shadow-md transition">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="text-sm font-medium text-gray-500">Analytics (28d)</div>
-                        @if($analyticsSummary)
-                            <div class="mt-1 flex items-center gap-4">
-                                <div>
-                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($analyticsSummary['total_users']) }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Users</span>
-                                </div>
-                                <div>
-                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($analyticsSummary['sessions']) }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Sessions</span>
-                                </div>
-                            </div>
-                        @else
-                            <p class="mt-1 text-sm text-gray-400">Not connected</p>
-                        @endif
-                    </div>
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                </div>
-            </x-ui.card>
-        </a>
-
-        {{-- Search Console summary --}}
-        <a href="{{ route('sites.search-console', $site) }}" class="block">
-            <x-ui.card class="hover:shadow-md transition">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="text-sm font-medium text-gray-500">Search Console (28d)</div>
-                        @if($searchConsoleSummary)
-                            <div class="mt-1 flex items-center gap-4">
-                                <div>
-                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($searchConsoleSummary['clicks']) }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Clicks</span>
-                                </div>
-                                <div>
-                                    <span class="text-2xl font-bold text-gray-900">{{ number_format($searchConsoleSummary['impressions']) }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Impressions</span>
-                                </div>
-                            </div>
-                        @else
-                            <p class="mt-1 text-sm text-gray-400">Not connected</p>
-                        @endif
-                    </div>
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                </div>
-            </x-ui.card>
-        </a>
-    </div>
-
-    {{-- Links summary --}}
-    @php $linkMon = $site->linkMonitor; @endphp
-    @if($linkMon && $linkMon->last_scan_at)
-        <div class="mt-6">
-            <a href="{{ route('sites.links', $site) }}" class="block">
-                <x-ui.card class="hover:shadow-md transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-medium text-gray-500">Links</div>
-                            <div class="mt-1 flex items-center gap-4">
-                                @php
-                                    $brokenColor = $linkMon->broken_links === 0 ? 'text-green-600' : 'text-red-600';
-                                @endphp
-                                <div>
-                                    <span class="text-2xl font-bold {{ $brokenColor }}">{{ $linkMon->broken_links }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Broken</span>
-                                </div>
-                                @if($linkMon->redirects > 0)
-                                    <div>
-                                        <span class="text-2xl font-bold text-yellow-600">{{ $linkMon->redirects }}</span>
-                                        <span class="ml-1 text-xs text-gray-500">Redirects</span>
-                                    </div>
-                                @endif
-                                <div>
-                                    <span class="text-2xl font-bold text-gray-900">{{ $linkMon->total_links }}</span>
-                                    <span class="ml-1 text-xs text-gray-500">Total</span>
-                                </div>
-                            </div>
-                            @if($linkMon->last_scan_at)
-                                <p class="mt-1 text-xs text-gray-400">Scanned {{ $linkMon->last_scan_at->diffForHumans() }}</p>
-                            @endif
-                        </div>
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </div>
-                </x-ui.card>
-            </a>
-        </div>
-    @endif
-
-    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <x-ui.card>
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Site Information</h3>
-            <dl class="space-y-3 text-sm">
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">URL</dt>
-                    <dd class="text-gray-900"><a href="{{ $site->url }}" target="_blank" class="text-purple-600 hover:text-purple-700">{{ $site->url }}</a></dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">PHP Version</dt>
-                    <dd class="text-gray-900">{{ $site->php_version ?? '—' }}</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">Server</dt>
-                    <dd class="text-gray-900">{{ $site->server_software ?? '—' }}</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">SSL Status</dt>
-                    <dd>
-                        @if($site->sslCertificate)
-                            <x-ui.badge :variant="$site->sslCertificate->status_color">
-                                {{ $site->sslCertificate->status_label }}
-                            </x-ui.badge>
-                        @else
-                            <x-ui.badge :variant="$site->ssl_ok ? 'green' : 'red'">
-                                {{ $site->ssl_ok ? 'Valid' : 'Invalid' }}
-                            </x-ui.badge>
-                        @endif
-                    </dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">SSL Expiry</dt>
-                    <dd class="text-gray-900">
-                        {{ $site->sslCertificate?->expires_at?->format('M d, Y') ?? $site->ssl_expiry?->format('M d, Y') ?? '—' }}
-                    </dd>
-                </div>
-                @if($site->domainMonitor?->expires_at)
-                    <div class="flex justify-between">
-                        <dt class="text-gray-500">Domain Expiry</dt>
-                        <dd class="text-gray-900">
-                            {{ $site->domainMonitor->expires_at->format('M d, Y') }}
-                            @if($site->domainMonitor->days_remaining !== null)
-                                <span class="ml-1 text-xs {{ $site->domainMonitor->days_remaining <= 30 ? 'text-yellow-600' : 'text-green-600' }}">
-                                    ({{ $site->domainMonitor->days_remaining }} days)
-                                </span>
-                            @endif
-                        </dd>
-                    </div>
-                @endif
-                @if($site->domainMonitor?->registrar)
-                    <div class="flex justify-between">
-                        <dt class="text-gray-500">Registrar</dt>
-                        <dd class="text-gray-900">{{ $site->domainMonitor->registrar }}</dd>
-                    </div>
-                @endif
-                <div class="flex justify-between">
-                    <dt class="text-gray-500">Multisite</dt>
-                    <dd class="text-gray-900">{{ $site->is_multisite ? 'Yes' : 'No' }}</dd>
-                </div>
-            </dl>
-        </x-ui.card>
-
-        <x-ui.card>
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Status</h3>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">Status</span>
-                    <x-ui.badge :variant="$site->is_up ? 'green' : 'red'">
-                        {{ $site->is_up ? 'Online' : 'Offline' }}
-                    </x-ui.badge>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">WordPress Connection</span>
-                    <div class="flex items-center gap-1.5">
-                        <span class="h-2 w-2 rounded-full {{ $site->is_connected ? 'bg-green-500' : 'bg-gray-400' }}"></span>
-                        <span class="text-sm {{ $site->is_connected ? 'text-green-700' : 'text-gray-500' }}">
-                            {{ $site->is_connected ? 'Connected' : 'Not connected' }}
-                        </span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">Pending Updates</span>
-                    <x-ui.badge :variant="$site->pending_updates_count > 0 ? 'yellow' : 'green'">
-                        {{ $site->pending_updates_count }} updates
-                    </x-ui.badge>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">Backup Status</span>
-                    <x-ui.badge :variant="$site->backup_ok ? 'green' : 'red'">
-                        {{ $site->backup_ok ? 'OK' : 'Failed' }}
-                    </x-ui.badge>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-500">Last Backup</span>
-                    <span class="text-sm text-gray-900">{{ $site->last_backup_at?->diffForHumans() ?? 'Never' }}</span>
-                </div>
-                @if($site->client)
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-500">Client</span>
-                        <span class="text-sm text-gray-900">{{ $site->client->name }}</span>
-                    </div>
-                @endif
+            <div class="mt-4 rounded-lg bg-gray-50 p-4">
+                <ol class="space-y-3 text-sm text-gray-700">
+                    <li class="flex gap-3">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">1</span>
+                        <span><a href="{{ route('download.connector-plugin') }}" class="font-medium text-indigo-600 hover:text-indigo-500 underline">Download the connector plugin</a> (.zip file)</span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">2</span>
+                        <span>Install &amp; activate it in your WordPress site (Plugins &rarr; Add New &rarr; Upload)</span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">3</span>
+                        <span>Go to <strong>WP Admin &rarr; Settings &rarr; SimpleAD Manager</strong></span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">4</span>
+                        <span>Copy the <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>API Endpoint</strong> into the fields below</span>
+                    </li>
+                </ol>
             </div>
-        </x-ui.card>
-    </div>
+
+            <form wire:submit="saveCredentials" class="mt-5 space-y-4">
+                <div>
+                    <label for="apiEndpoint" class="block text-sm font-medium text-gray-700">API Endpoint</label>
+                    <input wire:model="apiEndpoint" type="text" id="apiEndpoint"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                           placeholder="https://example.com/wp-json/jesuspended/v1">
+                    @error('apiEndpoint') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="apiKey" class="block text-sm font-medium text-gray-700">API Key</label>
+                    <input wire:model="apiKey" type="text" id="apiKey"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                           placeholder="Paste your API key here">
+                    @error('apiKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="apiSecret" class="block text-sm font-medium text-gray-700">API Secret</label>
+                    <input wire:model="apiSecret" type="password" id="apiSecret"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                           placeholder="Paste your API secret here">
+                    @error('apiSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    @if($site->is_connected)
+                        <button type="button" wire:click="disconnectSite" wire:confirm="Are you sure you want to disconnect this site?"
+                                class="text-sm font-medium text-red-600 hover:text-red-500">
+                            Disconnect
+                        </button>
+                    @else
+                        <div></div>
+                    @endif
+
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition">
+                        Save &amp; Connect
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-ui.modal>
 </div>

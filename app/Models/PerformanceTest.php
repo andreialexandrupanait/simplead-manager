@@ -165,9 +165,6 @@ class PerformanceTest extends Model
 
     private function formatBytes(int $bytes): string
     {
-        if ($bytes >= 1048576) {
-            return round($bytes / 1048576, 1) . ' MB';
-        }
-        return round($bytes / 1024, 1) . ' KB';
+        return \App\Helpers\FormatHelper::bytes($bytes, 1);
     }
 }

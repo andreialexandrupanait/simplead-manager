@@ -23,7 +23,7 @@ class RollbackService
         ]);
     }
 
-    public function executeRollback(RollbackPoint $point): array
+    public function executeRollback(RollbackPoint $point, ?int $userId = null): array
     {
         $site = $point->site;
         $api = new WordPressApiService($site);
@@ -34,7 +34,7 @@ class RollbackService
 
         UpdateLog::create([
             'site_id' => $site->id,
-            'user_id' => auth()->id(),
+            'user_id' => $userId ?? auth()->id(),
             'type' => $point->type,
             'name' => $point->slug,
             'slug' => $point->slug,

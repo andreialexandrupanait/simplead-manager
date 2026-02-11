@@ -108,16 +108,24 @@ class SecurityScanService
             ];
         }
 
-        // 7. Upsert security issues
+        // 7. Upsert security issues (preserve first_detected_at and is_ignored)
         foreach ($issues as $issueData) {
-            SecurityIssue::updateOrCreate(
-                ['site_id' => $site->id, 'type' => $issueData['type']],
-                array_merge($issueData, [
+            $existing = SecurityIssue::where('site_id', $site->id)
+                ->where('type', $issueData['type'])
+                ->first();
+
+            if ($existing) {
+                $existing->update(array_merge($issueData, [
+                    'is_fixed' => false,
+                ]));
+            } else {
+                SecurityIssue::create(array_merge($issueData, [
+                    'site_id' => $site->id,
                     'first_detected_at' => now(),
                     'is_fixed' => false,
                     'is_ignored' => false,
-                ])
-            );
+                ]));
+            }
         }
 
         // Mark issues that were previously detected but not found in this scan as fixed
@@ -138,10 +146,10 @@ class SecurityScanService
 
         foreach ($activeIssues as $issue) {
             match ($issue->severity) {
-                'critical' => ($score -= 20) && $criticalCount++,
-                'high' => ($score -= 10) && $highCount++,
-                'medium' => ($score -= 5) && $mediumCount++,
-                'low' => ($score -= 2) && $lowCount++,
+                'critical' => (function () use (&$score, &$criticalCount) { $score -= 20; $criticalCount++; })(),
+                'high' => (function () use (&$score, &$highCount) { $score -= 10; $highCount++; })(),
+                'medium' => (function () use (&$score, &$mediumCount) { $score -= 5; $mediumCount++; })(),
+                'low' => (function () use (&$score, &$lowCount) { $score -= 2; $lowCount++; })(),
                 default => null,
             };
         }
@@ -150,10 +158,10 @@ class SecurityScanService
         $activeVulns = $site->vulnerabilityAlerts()->active()->get();
         foreach ($activeVulns as $vuln) {
             match ($vuln->severity) {
-                'critical' => ($score -= 20) && $criticalCount++,
-                'high' => ($score -= 10) && $highCount++,
-                'medium' => ($score -= 5) && $mediumCount++,
-                'low' => ($score -= 2) && $lowCount++,
+                'critical' => (function () use (&$score, &$criticalCount) { $score -= 20; $criticalCount++; })(),
+                'high' => (function () use (&$score, &$highCount) { $score -= 10; $highCount++; })(),
+                'medium' => (function () use (&$score, &$mediumCount) { $score -= 5; $mediumCount++; })(),
+                'low' => (function () use (&$score, &$lowCount) { $score -= 2; $lowCount++; })(),
                 default => null,
             };
         }

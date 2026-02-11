@@ -101,11 +101,8 @@
                     <a href="{{ route('settings.general') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200"
-                       :class="[
-                           sidebarOpen ? '' : 'lg:justify-center lg:px-0',
-                           request()->routeIs('settings.*') ? 'bg-sidebar-hover text-white' : ''
-                       ]">
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') ? 'bg-sidebar-hover text-white' : '' }}"
+                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" />
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
@@ -117,11 +114,8 @@
                     <a href="{{ route('settings.profile') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200"
-                       :class="[
-                           sidebarOpen ? '' : 'lg:justify-center lg:px-0',
-                           request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : ''
-                       ]">
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
+                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                         <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0">
                             {{ auth()->user()->initials }}
                         </div>

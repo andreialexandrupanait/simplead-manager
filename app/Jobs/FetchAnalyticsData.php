@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\AnalyticsCache;
 use App\Models\Site;
 use App\Services\GoogleAnalyticsService;
+use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,11 +35,19 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
+        JobTracker::start($this->uniqueId(), 'Fetching Analytics data...');
+
         $connection = $this->site->analyticsConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (!$connection || !$connection->is_active) {
+            JobTracker::complete($this->uniqueId(), 'Skipped — no active connection');
+            return;
+        }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
+        if (!$google || !$google->is_active) {
+            JobTracker::complete($this->uniqueId(), 'Skipped — no active Google connection');
+            return;
+        }
 
         $service = new GoogleAnalyticsService($google);
         $propertyId = $connection->property_id;
@@ -46,12 +55,8 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         [$startDate, $endDate] = $this->getDateRange();
 
         try {
-            // Compute previous period dates for comparison
-            [$prevStart, $prevEnd] = $this->getPreviousPeriodRange($startDate, $endDate);
-
             $data = [
                 'overview' => $service->getOverview($propertyId, $startDate, $endDate),
-                'overview_previous' => $service->getOverview($propertyId, $prevStart, $prevEnd),
                 'users_over_time' => $service->getUsersOverTime($propertyId, $startDate, $endDate),
                 'traffic_sources' => $service->getTrafficSources($propertyId, $startDate, $endDate),
                 'top_pages' => $service->getTopPages($propertyId, $startDate, $endDate),
@@ -82,10 +87,17 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
                 'last_error' => null,
             ]);
 
+            JobTracker::complete($this->uniqueId(), 'Analytics data fetched');
+
         } catch (\Exception $e) {
             $connection->update(['last_error' => $e->getMessage()]);
             throw $e;
         }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 
     private function getDateRange(): array
@@ -106,15 +118,4 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         return [$startDate, $endDate];
     }
 
-    private function getPreviousPeriodRange(string $startDate, string $endDate): array
-    {
-        $start = \Carbon\Carbon::parse($startDate);
-        $end = \Carbon\Carbon::parse($endDate);
-        $days = $start->diffInDays($end);
-
-        $prevEnd = $start->copy()->subDay()->format('Y-m-d');
-        $prevStart = $start->copy()->subDays($days + 1)->format('Y-m-d');
-
-        return [$prevStart, $prevEnd];
-    }
 }

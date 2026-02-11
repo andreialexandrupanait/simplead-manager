@@ -356,4 +356,97 @@ class DashboardService
             'domains_expiring' => $domainsExpiring,
         ];
     }
+
+    public function getHealthDistribution(): array
+    {
+        $counts = Site::query()
+            ->selectRaw("
+                SUM(CASE WHEN health_score >= 90 AND is_up = true THEN 1 ELSE 0 END) as healthy,
+                SUM(CASE WHEN health_score >= 70 AND health_score < 90 AND is_up = true THEN 1 ELSE 0 END) as warning,
+                SUM(CASE WHEN health_score < 70 AND is_up = true THEN 1 ELSE 0 END) as critical,
+                SUM(CASE WHEN is_up = false THEN 1 ELSE 0 END) as down
+            ")
+            ->first();
+
+        return [
+            'labels' => ['Healthy', 'Warning', 'Critical', 'Down'],
+            'values' => [
+                (int) ($counts->healthy ?? 0),
+                (int) ($counts->warning ?? 0),
+                (int) ($counts->critical ?? 0),
+                (int) ($counts->down ?? 0),
+            ],
+            'colors' => ['#10b981', '#f59e0b', '#ef4444', '#991b1b'],
+        ];
+    }
+
+    public function getSitesNeedingAttention(int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return Site::with([
+            'uptimeMonitor',
+            'sslCertificate',
+            'latestCompletedBackup',
+            'client'
+        ])
+        ->where(function ($query) {
+            $query->where('health_score', '<', 70)
+                ->orWhere('is_up', false)
+                ->orWhereHas('sslCertificate', function ($q) {
+                    $q->whereNotNull('expires_at')
+                      ->where('expires_at', '<=', now()->addDays(14));
+                })
+                ->orWhereDoesntHave('latestCompletedBackup')
+                ->orWhereHas('latestCompletedBackup', function ($q) {
+                    $q->where('completed_at', '<=', now()->subDays(7));
+                })
+                ->orWhereNotNull('core_update_version');
+        })
+        ->orderByRaw('CASE WHEN is_up = false THEN 0 ELSE 1 END')
+        ->orderByRaw('COALESCE(health_score, 0) ASC')
+        ->limit($limit)
+        ->get();
+    }
+
+    public function getBackupStatus(): array
+    {
+        $backupsToday = Backup::whereHas('site')
+            ->where('status', 'completed')
+            ->whereDate('completed_at', today())
+            ->count();
+
+        $failedBackups = Backup::whereHas('site')
+            ->where('status', 'failed')
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
+
+        $totalStorageBytes = Backup::whereHas('site')
+            ->where('status', 'completed')
+            ->sum('file_size');
+
+        $sitesWithoutBackup = Site::whereDoesntHave('latestCompletedBackup')
+            ->orWhereHas('latestCompletedBackup', function ($q) {
+                $q->where('completed_at', '<=', now()->subDays(7));
+            })
+            ->count();
+
+        return [
+            'backups_today' => $backupsToday,
+            'failed_backups' => $failedBackups,
+            'total_storage_gb' => $totalStorageBytes ? round($totalStorageBytes / 1024 / 1024 / 1024, 2) : 0,
+            'sites_without_backup' => $sitesWithoutBackup,
+        ];
+    }
+
+    public function getTrafficOverview(string $period = '7d'): array
+    {
+        // This is a placeholder for future GA integration
+        // For now, return empty data
+        return [
+            'total_visits' => 0,
+            'unique_visitors' => 0,
+            'page_views' => 0,
+            'bounce_rate' => 0,
+            'avg_session_duration' => 0,
+        ];
+    }
 }

@@ -8,8 +8,6 @@ use Livewire\Component;
 class ClientDetail extends Component
 {
     public Client $client;
-    public bool $showDeleteModal = false;
-
     public function mount(Client $client): void
     {
         $this->client = $client->load('sites');
@@ -17,12 +15,7 @@ class ClientDetail extends Component
 
     public function confirmDelete(): void
     {
-        $this->showDeleteModal = true;
-    }
-
-    public function cancelDelete(): void
-    {
-        $this->showDeleteModal = false;
+        $this->dispatch('open-modal-delete-client');
     }
 
     public function delete(): void

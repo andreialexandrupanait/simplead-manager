@@ -97,15 +97,6 @@ class DatabaseHealthCheck extends Model
 
     protected static function formatBytes(int $bytes): string
     {
-        if ($bytes >= 1_073_741_824) {
-            return round($bytes / 1_073_741_824, 2) . ' GB';
-        }
-        if ($bytes >= 1_048_576) {
-            return round($bytes / 1_048_576, 2) . ' MB';
-        }
-        if ($bytes >= 1024) {
-            return round($bytes / 1024, 2) . ' KB';
-        }
-        return $bytes . ' B';
+        return \App\Helpers\FormatHelper::bytes($bytes);
     }
 }

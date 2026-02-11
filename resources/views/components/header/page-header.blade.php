@@ -42,7 +42,18 @@
             'sites.analytics' => __('Analytics'),
             'sites.search-console' => __('Search Console'),
             'sites.reports' => __('Reports'),
-            'sites.settings' => __('Site Settings'),
+            'sites.errors' => __('Error Logs'),
+            'sites.cloudflare' => __('Cloudflare'),
+            'sites.dns' => __('DNS'),
+            'sites.maintenance' => __('Maintenance'),
+            'sites.cron' => __('Cron Jobs'),
+            'sites.database' => __('Database'),
+            'sites.resources' => __('Resources'),
+            'sites.seo' => __('SEO'),
+            'sites.woocommerce' => __('WooCommerce'),
+            'sites.audit-log' => __('Audit Log'),
+            'sites.firewall' => __('Firewall'),
+            'sites.core-integrity' => __('Core Integrity'),
             default => $title,
         };
 
@@ -87,6 +98,15 @@
     elseif (!$isDashboard) {
         $crumbs[] = ['label' => __('Dashboard'), 'url' => route('dashboard')];
     }
+
+    // Back button: show when not on dashboard and breadcrumbs exist
+    $showBackButton = false;
+    $backUrl = null;
+
+    if (!$isDashboard && count($crumbs) > 0) {
+        $showBackButton = true;
+        $backUrl = $crumbs[count($crumbs) - 1]['url'];
+    }
 @endphp
 
 <header class="sticky top-0 z-30 border-b bg-white shadow-sm">
@@ -100,6 +120,13 @@
         <button @click="mobileSidebarOpen = true" class="mr-3 lg:hidden text-gray-500">
             <x-icons.menu class="h-6 w-6" />
         </button>
+
+        {{-- Back button (shows when not on dashboard) --}}
+        @if($showBackButton)
+            <a href="{{ $backUrl }}" class="mr-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+                <x-icons.arrow-left class="h-5 w-5" />
+            </a>
+        @endif
 
         {{-- Title + breadcrumb (left side) --}}
         <div class="flex min-w-0 flex-1 flex-col justify-center">

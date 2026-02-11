@@ -23,14 +23,14 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input type="text" wire:model.live="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="My Status Page">
+                    <x-ui.input type="text" wire:model.live="title" placeholder="My Status Page" />
                     @error('title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
                     <div class="flex items-center">
                         <span class="text-sm text-gray-400 mr-1">/status/</span>
-                        <input type="text" wire:model="slug" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="my-status-page">
+                        <x-ui.input type="text" wire:model="slug" placeholder="my-status-page" />
                     </div>
                     @error('slug') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -40,27 +40,27 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
-                    <input type="text" wire:model="logoUrl" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="https://example.com/logo.png">
+                    <x-ui.input type="text" wire:model="logoUrl" placeholder="https://example.com/logo.png" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
                     <div class="flex items-center gap-2">
                         <input type="color" wire:model="primaryColor" class="h-9 w-9 rounded cursor-pointer border-0 p-0">
-                        <input type="text" wire:model="primaryColor" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <x-ui.input type="text" wire:model="primaryColor" />
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                    <select wire:model="clientId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    <x-ui.select wire:model="clientId">
                         <option value="">No client</option>
                         @foreach($this->clients as $client)
                             <option value="{{ $client->id }}">{{ $client->name }}</option>
                         @endforeach
-                    </select>
+                    </x-ui.select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Incident History (days)</label>
-                    <input type="number" wire:model="incidentHistoryDays" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" min="1" max="365">
+                    <x-ui.input type="number" wire:model="incidentHistoryDays" min="1" max="365" />
                 </div>
             </div>
         </x-ui.card>
@@ -70,7 +70,7 @@
             <h3 class="text-base font-semibold text-gray-900 mb-4">Custom Domain</h3>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Custom Domain</label>
-                <input type="text" wire:model="customDomain" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="status.yourdomain.com">
+                <x-ui.input type="text" wire:model="customDomain" placeholder="status.yourdomain.com" />
             </div>
             <div class="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <p class="text-sm font-medium text-blue-800 mb-1">Setup Instructions</p>
@@ -121,7 +121,7 @@
             @endif
             <div class="mt-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ $statusPage?->password_hash ? 'Change Password' : 'Set Password (optional)' }}</label>
-                <input type="password" wire:model="password" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Leave blank for no password">
+                <x-ui.input type="password" wire:model="password" placeholder="Leave blank for no password" />
             </div>
         </x-ui.card>
 
@@ -191,25 +191,25 @@
                     <h4 class="text-sm font-medium text-gray-900 mb-3">Create Incident</h4>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div class="sm:col-span-2">
-                            <input type="text" wire:model="incidentTitle" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Incident title">
+                            <x-ui.input type="text" wire:model="incidentTitle" placeholder="Incident title" />
                         </div>
                         <div>
-                            <select wire:model="incidentSeverity" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                            <x-ui.select wire:model="incidentSeverity">
                                 <option value="minor">Minor</option>
                                 <option value="major">Major</option>
                                 <option value="critical">Critical</option>
-                            </select>
+                            </x-ui.select>
                         </div>
                         <div class="sm:col-span-2">
                             <textarea wire:model="incidentDescription" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Description (optional)"></textarea>
                         </div>
                         <div>
-                            <select wire:model="incidentSiteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500 mb-2">
+                            <x-ui.select wire:model="incidentSiteId" class="mb-2">
                                 <option value="">All sites</option>
                                 @foreach($this->availableSites->whereIn('id', $selectedSites) as $site)
                                     <option value="{{ $site->id }}">{{ $site->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-ui.select>
                             <x-ui.button wire:click="createIncident" size="sm" class="w-full">Create Incident</x-ui.button>
                         </div>
                     </div>
@@ -244,11 +244,11 @@
                                     </div>
                                     @if($incident->status !== 'resolved')
                                         <div class="flex items-center gap-1">
-                                            <select wire:change="updateIncidentStatus({{ $incident->id }}, $event.target.value)" class="rounded-lg border-gray-300 text-xs focus:border-purple-500 focus:ring-purple-500">
+                                            <x-ui.select wire:change="updateIncidentStatus({{ $incident->id }}, $event.target.value)" class="text-xs">
                                                 @foreach(['investigating', 'identified', 'monitoring', 'resolved'] as $status)
                                                     <option value="{{ $status }}" {{ $incident->status === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
                                                 @endforeach
-                                            </select>
+                                            </x-ui.select>
                                             <x-ui.button variant="secondary" size="sm" wire:click="resolveIncident({{ $incident->id }})">Resolve</x-ui.button>
                                         </div>
                                     @endif
@@ -271,12 +271,12 @@
                                 @if($incident->status !== 'resolved')
                                     <div class="mt-3 border-t border-gray-100 pt-3">
                                         <div class="flex items-center gap-2">
-                                            <input type="text" wire:model="updateMessage" class="flex-1 rounded-lg border-gray-300 text-xs focus:border-purple-500 focus:ring-purple-500" placeholder="Add an update...">
-                                            <select wire:model="updateStatus" class="rounded-lg border-gray-300 text-xs focus:border-purple-500 focus:ring-purple-500">
+                                            <x-ui.input type="text" wire:model="updateMessage" class="flex-1 text-xs" placeholder="Add an update..." />
+                                            <x-ui.select wire:model="updateStatus" class="text-xs">
                                                 @foreach(['investigating', 'identified', 'monitoring', 'resolved'] as $status)
                                                     <option value="{{ $status }}">{{ ucfirst($status) }}</option>
                                                 @endforeach
-                                            </select>
+                                            </x-ui.select>
                                             <x-ui.button size="sm" wire:click="addIncidentUpdate({{ $incident->id }})">Post</x-ui.button>
                                         </div>
                                     </div>

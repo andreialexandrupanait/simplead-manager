@@ -1,3 +1,4 @@
+<x-scripts.data-table />
 <div>
     @if($connection && $connection->is_active)
         <div class="mb-6 flex justify-end">
@@ -56,86 +57,39 @@
         </div>
 
         @if($overview)
-            {{-- Insight Alerts --}}
-            @if(count($insights) > 0)
-                <div class="mb-6 space-y-2">
-                    @foreach($insights as $insight)
-                        <div class="rounded-lg border px-4 py-3 text-sm flex items-center gap-2 {{ $insight['type'] === 'good' ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800' }}">
-                            @if($insight['type'] === 'good')
-                                <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                            @else
-                                <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>
-                            @endif
-                            <span><strong>{{ $insight['metric'] }}</strong> {{ $insight['direction'] === 'up' ? 'increased' : 'decreased' }} by {{ abs($insight['change']) }}% compared to previous period</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-
             {{-- Overview metric cards with sparklines --}}
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Users</div>
-                        @if(isset($deltas['total_users']) && $deltas['total_users'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['total_users'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['total_users'] >= 0 ? '+' : '' }}{{ $deltas['total_users'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Users</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['total_users']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('users')->toArray()" color="#8D5CF5" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">New Users</div>
-                        @if(isset($deltas['new_users']) && $deltas['new_users'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['new_users'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['new_users'] >= 0 ? '+' : '' }}{{ $deltas['new_users'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">New Users</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['new_users']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('new_users')->toArray()" color="#06b6d4" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Sessions</div>
-                        @if(isset($deltas['sessions']) && $deltas['sessions'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['sessions'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['sessions'] >= 0 ? '+' : '' }}{{ $deltas['sessions'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Sessions</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['sessions']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('sessions')->toArray()" color="#10b981" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Pageviews</div>
-                        @if(isset($deltas['pageviews']) && $deltas['pageviews'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['pageviews'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['pageviews'] >= 0 ? '+' : '' }}{{ $deltas['pageviews'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Pageviews</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['pageviews']) }}</div>
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Bounce Rate</div>
-                        @if(isset($deltas['bounce_rate']) && $deltas['bounce_rate'] !== null)
-                            {{-- Inverted: lower bounce = better = green --}}
-                            <span class="text-xs font-medium {{ $deltas['bounce_rate'] <= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['bounce_rate'] >= 0 ? '+' : '' }}{{ $deltas['bounce_rate'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Bounce Rate</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['bounce_rate'] }}%</div>
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Avg Time</div>
-                        @if(isset($deltas['avg_session_duration']) && $deltas['avg_session_duration'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['avg_session_duration'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['avg_session_duration'] >= 0 ? '+' : '' }}{{ $deltas['avg_session_duration'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Avg Time</div>
                     @php
                         $mins = floor($overview['avg_session_duration'] / 60);
                         $secs = (int) ($overview['avg_session_duration'] % 60);
@@ -143,12 +97,7 @@
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ $mins }}m {{ $secs }}s</div>
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-gray-500">Engagement</div>
-                        @if(isset($deltas['engagement_rate']) && $deltas['engagement_rate'] !== null)
-                            <span class="text-xs font-medium {{ $deltas['engagement_rate'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $deltas['engagement_rate'] >= 0 ? '+' : '' }}{{ $deltas['engagement_rate'] }}%</span>
-                        @endif
-                    </div>
+                    <div class="text-xs font-medium text-gray-500">Engagement</div>
                     <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['engagement_rate'] }}%</div>
                 </x-ui.card>
             </div>
@@ -402,45 +351,13 @@
             {{-- Referral Sources (Alpine-driven: sort, search, CSV export) --}}
             @if(count($referralSources) > 0)
                 <div class="mt-6" x-data="{
-                    rows: @js($referralSources),
-                    limit: 10, search: '', sortCol: null, sortDir: 'desc',
-                    get sorted() {
-                        if (!this.sortCol) return this.rows;
-                        const col = this.sortCol; const dir = this.sortDir;
-                        return [...this.rows].sort((a, b) => {
-                            let av = a[col], bv = b[col];
-                            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-                            if (av < bv) return dir === 'asc' ? -1 : 1;
-                            if (av > bv) return dir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
-                    },
-                    get filtered() {
-                        if (!this.search) return this.sorted;
-                        const q = this.search.toLowerCase();
-                        return this.sorted.filter(r => (r.source + ' ' + r.medium).toLowerCase().includes(q));
-                    },
-                    get total() { return this.filtered.length; },
-                    toggleSort(col) {
-                        if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
-                        else { this.sortCol = col; this.sortDir = 'desc'; }
-                    },
-                    sortIcon(col) {
-                        if (this.sortCol !== col) return '↕';
-                        return this.sortDir === 'asc' ? '↑' : '↓';
-                    },
+                    ...dataTableMixin(@js($referralSources), ['source', 'medium']),
                     exportCsv() {
                         const headers = ['Source','Medium','Sessions','Users','Bounce Rate','Percentage'];
                         const csv = [headers.join(','), ...this.filtered.map(r =>
                             [this.csvEscape(r.source), this.csvEscape(r.medium), r.sessions, r.users, r.bounce_rate + '%', r.percentage + '%'].join(',')
                         )].join('\n');
                         this.downloadCsv(csv, 'referral-sources.csv');
-                    },
-                    csvEscape(v) { return '\"' + String(v).replace(/\"/g, '\"\"') + '\"'; },
-                    downloadCsv(csv, name) {
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                        a.download = name; a.click(); URL.revokeObjectURL(a.href);
                     },
                 }">
                     <x-ui.card>
@@ -503,33 +420,7 @@
             {{-- Landing Pages (Alpine-driven: sort, search, CSV export) --}}
             @if(count($landingPages) > 0)
                 <div class="mt-6" x-data="{
-                    rows: @js($landingPages),
-                    limit: 10, search: '', sortCol: null, sortDir: 'desc',
-                    get sorted() {
-                        if (!this.sortCol) return this.rows;
-                        const col = this.sortCol; const dir = this.sortDir;
-                        return [...this.rows].sort((a, b) => {
-                            let av = a[col], bv = b[col];
-                            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-                            if (av < bv) return dir === 'asc' ? -1 : 1;
-                            if (av > bv) return dir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
-                    },
-                    get filtered() {
-                        if (!this.search) return this.sorted;
-                        const q = this.search.toLowerCase();
-                        return this.sorted.filter(r => r.page.toLowerCase().includes(q));
-                    },
-                    get total() { return this.filtered.length; },
-                    toggleSort(col) {
-                        if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
-                        else { this.sortCol = col; this.sortDir = 'desc'; }
-                    },
-                    sortIcon(col) {
-                        if (this.sortCol !== col) return '↕';
-                        return this.sortDir === 'asc' ? '↑' : '↓';
-                    },
+                    ...dataTableMixin(@js($landingPages), ['page']),
                     fmtDuration(s) {
                         const m = Math.floor(s / 60); const sec = Math.round(s % 60);
                         return m + 'm ' + sec + 's';
@@ -540,12 +431,6 @@
                             [this.csvEscape(r.page), r.sessions, r.bounce_rate + '%', r.engagement_rate + '%', this.fmtDuration(r.avg_duration)].join(',')
                         )].join('\n');
                         this.downloadCsv(csv, 'landing-pages.csv');
-                    },
-                    csvEscape(v) { return '\"' + String(v).replace(/\"/g, '\"\"') + '\"'; },
-                    downloadCsv(csv, name) {
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                        a.download = name; a.click(); URL.revokeObjectURL(a.href);
                     },
                 }">
                     <x-ui.card>

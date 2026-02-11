@@ -25,8 +25,6 @@ class SiteUpdates extends Component
 
     public Site $site;
 
-    // Rollback
-    public bool $showRollbackModal = false;
     public ?int $rollbackPointId = null;
 
     // Safe Update Mode
@@ -122,34 +120,11 @@ class SiteUpdates extends Component
         try {
             $api = new WordPressApiService($this->site);
             $result = $api->updatePlugins([$plugin->file]);
-
             $updateResult = $result['results'][0] ?? [];
 
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'plugin',
-                'name' => $plugin->name,
-                'slug' => $plugin->slug,
-                'from_version' => $updateResult['from_version'] ?? $plugin->version,
-                'to_version' => $updateResult['to_version'] ?? $plugin->update_version,
-                'success' => $updateResult['success'] ?? false,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            if ($updateResult['success'] ?? false) {
-                app(RollbackService::class)->createRollbackPoint(
-                    $this->site, 'plugin', $plugin->slug,
-                    $updateResult['from_version'] ?? $plugin->version,
-                    $updateResult['to_version'] ?? $plugin->update_version,
-                );
-            }
-
-            ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
+            $this->logUpdate('plugin', $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version, $updateResult);
 
             SyncWordPressSite::dispatch($this->site);
-
             session()->flash('update-success', "{$plugin->name} updated successfully.");
         } catch (\Exception $e) {
             session()->flash('update-error', "Failed to update {$plugin->name}: {$e->getMessage()}");
@@ -167,34 +142,11 @@ class SiteUpdates extends Component
         try {
             $api = new WordPressApiService($this->site);
             $result = $api->updateThemes([$theme->slug]);
-
             $updateResult = $result['results'][0] ?? [];
 
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'theme',
-                'name' => $theme->name,
-                'slug' => $theme->slug,
-                'from_version' => $updateResult['from_version'] ?? $theme->version,
-                'to_version' => $updateResult['to_version'] ?? $theme->update_version,
-                'success' => $updateResult['success'] ?? false,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            if ($updateResult['success'] ?? false) {
-                app(RollbackService::class)->createRollbackPoint(
-                    $this->site, 'theme', $theme->slug,
-                    $updateResult['from_version'] ?? $theme->version,
-                    $updateResult['to_version'] ?? $theme->update_version,
-                );
-            }
-
-            ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
+            $this->logUpdate('theme', $theme->name, $theme->slug, $theme->version, $theme->update_version, $updateResult);
 
             SyncWordPressSite::dispatch($this->site);
-
             session()->flash('update-success', "{$theme->name} updated successfully.");
         } catch (\Exception $e) {
             session()->flash('update-error', "Failed to update {$theme->name}: {$e->getMessage()}");
@@ -211,31 +163,9 @@ class SiteUpdates extends Component
             $api = new WordPressApiService($this->site);
             $result = $api->updateCore();
 
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'core',
-                'name' => 'WordPress Core',
-                'slug' => 'wordpress',
-                'from_version' => $this->site->wp_version,
-                'to_version' => $result['to_version'] ?? $this->site->core_update_version,
-                'success' => $result['success'] ?? false,
-                'error_message' => $result['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            if ($result['success'] ?? false) {
-                app(RollbackService::class)->createRollbackPoint(
-                    $this->site, 'core', 'wordpress',
-                    $this->site->wp_version,
-                    $result['to_version'] ?? $this->site->core_update_version,
-                );
-            }
-
-            ActivityLogger::coreUpdated($this->site, $this->site->wp_version, $result['to_version'] ?? $this->site->core_update_version);
+            $this->logUpdate('core', 'WordPress Core', 'wordpress', $this->site->wp_version, $this->site->core_update_version, $result);
 
             SyncWordPressSite::dispatch($this->site);
-
             session()->flash('update-success', 'WordPress core update initiated.');
         } catch (\Exception $e) {
             session()->flash('update-error', "Core update failed: {$e->getMessage()}");
@@ -250,7 +180,13 @@ class SiteUpdates extends Component
 
         // Update core first
         if ($this->site->core_update_version) {
-            $this->updateCore();
+            try {
+                $api = new WordPressApiService($this->site);
+                $result = $api->updateCore();
+                $this->logUpdate('core', 'WordPress Core', 'wordpress', $this->site->wp_version, $this->site->core_update_version, $result);
+            } catch (\Exception $e) {
+                session()->flash('update-error', "Core update failed: {$e->getMessage()}");
+            }
         }
 
         // Update all plugins
@@ -263,28 +199,7 @@ class SiteUpdates extends Component
                 foreach ($result['results'] ?? [] as $updateResult) {
                     $plugin = $plugins->firstWhere('file', $updateResult['file']);
                     if ($plugin) {
-                        UpdateLog::create([
-                            'site_id' => $this->site->id,
-                            'user_id' => auth()->id(),
-                            'type' => 'plugin',
-                            'name' => $plugin->name,
-                            'slug' => $plugin->slug,
-                            'from_version' => $updateResult['from_version'] ?? $plugin->version,
-                            'to_version' => $updateResult['to_version'] ?? $plugin->update_version,
-                            'success' => $updateResult['success'] ?? false,
-                            'error_message' => $updateResult['error'] ?? null,
-                            'performed_at' => now(),
-                        ]);
-
-                        if ($updateResult['success'] ?? false) {
-                            app(RollbackService::class)->createRollbackPoint(
-                                $this->site, 'plugin', $plugin->slug,
-                                $updateResult['from_version'] ?? $plugin->version,
-                                $updateResult['to_version'] ?? $plugin->update_version,
-                            );
-                        }
-
-                        ActivityLogger::pluginUpdated($this->site, $plugin->name, $updateResult['from_version'] ?? $plugin->version, $updateResult['to_version'] ?? $plugin->update_version);
+                        $this->logUpdate('plugin', $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version, $updateResult);
                     }
                 }
             } catch (\Exception $e) {
@@ -302,28 +217,7 @@ class SiteUpdates extends Component
                 foreach ($result['results'] ?? [] as $updateResult) {
                     $theme = $themes->firstWhere('slug', $updateResult['slug']);
                     if ($theme) {
-                        UpdateLog::create([
-                            'site_id' => $this->site->id,
-                            'user_id' => auth()->id(),
-                            'type' => 'theme',
-                            'name' => $theme->name,
-                            'slug' => $theme->slug,
-                            'from_version' => $updateResult['from_version'] ?? $theme->version,
-                            'to_version' => $updateResult['to_version'] ?? $theme->update_version,
-                            'success' => $updateResult['success'] ?? false,
-                            'error_message' => $updateResult['error'] ?? null,
-                            'performed_at' => now(),
-                        ]);
-
-                        if ($updateResult['success'] ?? false) {
-                            app(RollbackService::class)->createRollbackPoint(
-                                $this->site, 'theme', $theme->slug,
-                                $updateResult['from_version'] ?? $theme->version,
-                                $updateResult['to_version'] ?? $theme->update_version,
-                            );
-                        }
-
-                        ActivityLogger::themeUpdated($this->site, $theme->name, $updateResult['from_version'] ?? $theme->version, $updateResult['to_version'] ?? $theme->update_version);
+                        $this->logUpdate('theme', $theme->name, $theme->slug, $theme->version, $theme->update_version, $updateResult);
                     }
                 }
             } catch (\Exception $e) {
@@ -341,23 +235,17 @@ class SiteUpdates extends Component
     public function openRollbackModal(int $pointId): void
     {
         $this->rollbackPointId = $pointId;
-        $this->showRollbackModal = true;
+        $this->dispatch('open-modal-rollback-confirm');
     }
 
     public function executeRollback(): void
     {
-        $point = RollbackPoint::findOrFail($this->rollbackPointId);
-        ExecuteRollback::dispatch($point);
-        $this->showRollbackModal = false;
+        $point = $this->site->rollbackPoints()->findOrFail($this->rollbackPointId);
+        ExecuteRollback::dispatch($point, auth()->id());
+        $this->dispatch('close-modal-rollback-confirm');
         $this->rollbackPointId = null;
         session()->flash('update-success', "Rollback initiated for {$point->slug}. It will be processed shortly.");
         unset($this->rollbackPoints);
-    }
-
-    public function cancelRollback(): void
-    {
-        $this->showRollbackModal = false;
-        $this->rollbackPointId = null;
     }
 
     // Safe Update methods
@@ -370,7 +258,7 @@ class SiteUpdates extends Component
             $plugin->version, $plugin->update_version
         );
 
-        RunSafeUpdate::dispatch($safeUpdate);
+        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
 
         session()->flash('update-success', "Safe update initiated for {$plugin->name}. Backup → Update → Health Check will run automatically.");
         unset($this->activeSafeUpdates);
@@ -385,7 +273,7 @@ class SiteUpdates extends Component
             $theme->version, $theme->update_version
         );
 
-        RunSafeUpdate::dispatch($safeUpdate);
+        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
 
         session()->flash('update-success', "Safe update initiated for {$theme->name}. Backup → Update → Health Check will run automatically.");
         unset($this->activeSafeUpdates);
@@ -398,10 +286,41 @@ class SiteUpdates extends Component
             $this->site->wp_version, $this->site->core_update_version
         );
 
-        RunSafeUpdate::dispatch($safeUpdate);
+        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
 
         session()->flash('update-success', 'Safe core update initiated. Backup → Update → Health Check will run automatically.');
         unset($this->activeSafeUpdates);
+    }
+
+    private function logUpdate(string $type, string $name, string $slug, ?string $fromVersion, ?string $toVersion, array $updateResult): void
+    {
+        $actualFrom = $updateResult['from_version'] ?? $fromVersion;
+        $actualTo = $updateResult['to_version'] ?? $toVersion;
+
+        UpdateLog::create([
+            'site_id' => $this->site->id,
+            'user_id' => auth()->id(),
+            'type' => $type,
+            'name' => $name,
+            'slug' => $slug,
+            'from_version' => $actualFrom,
+            'to_version' => $actualTo,
+            'success' => $updateResult['success'] ?? false,
+            'error_message' => $updateResult['error'] ?? null,
+            'performed_at' => now(),
+        ]);
+
+        if ($updateResult['success'] ?? false) {
+            app(RollbackService::class)->createRollbackPoint(
+                $this->site, $type, $slug, $actualFrom, $actualTo,
+            );
+        }
+
+        match ($type) {
+            'plugin' => ActivityLogger::pluginUpdated($this->site, $name, $actualFrom, $actualTo),
+            'theme' => ActivityLogger::themeUpdated($this->site, $name, $actualFrom, $actualTo),
+            'core' => ActivityLogger::coreUpdated($this->site, $actualFrom, $actualTo),
+        };
     }
 
     protected function runPreUpdateBackup(): void

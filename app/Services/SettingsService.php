@@ -3,18 +3,27 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use Illuminate\Support\Facades\Cache;
 
 class SettingsService
 {
+    private const CACHE_TTL = 300; // 5 minutes
+
     public function get(string $key, mixed $default = null): mixed
     {
-        $setting = AppSetting::where('key', $key)->first();
+        $cached = Cache::remember("settings.{$key}", self::CACHE_TTL, function () use ($key) {
+            $setting = AppSetting::where('key', $key)->first();
+            if (!$setting) {
+                return ['_null' => true];
+            }
+            return ['value' => $setting->value, 'type' => $setting->type];
+        });
 
-        if (!$setting) {
+        if (isset($cached['_null'])) {
             return $default;
         }
 
-        return $this->castValue($setting->value, $setting->type);
+        return $this->castValue($cached['value'], $cached['type']);
     }
 
     public function set(string $key, mixed $value, string $group = 'general', string $type = 'string'): void
@@ -29,14 +38,19 @@ class SettingsService
                 'type' => $type,
             ]
         );
+
+        Cache::forget("settings.{$key}");
+        Cache::forget("settings.group.{$group}");
     }
 
     public function getGroup(string $group): array
     {
-        return AppSetting::where('group', $group)
-            ->get()
-            ->mapWithKeys(fn (AppSetting $s) => [$s->key => $this->castValue($s->value, $s->type)])
-            ->toArray();
+        return Cache::remember("settings.group.{$group}", self::CACHE_TTL, function () use ($group) {
+            return AppSetting::where('group', $group)
+                ->get()
+                ->mapWithKeys(fn (AppSetting $s) => [$s->key => $this->castValue($s->value, $s->type)])
+                ->toArray();
+        });
     }
 
     protected function castValue(?string $value, string $type): mixed

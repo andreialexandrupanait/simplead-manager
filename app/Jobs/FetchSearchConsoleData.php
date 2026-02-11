@@ -49,12 +49,8 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         try {
             $service = new GoogleSearchConsoleService($google);
 
-            // Compute previous period dates for comparison
-            [$prevStart, $prevEnd] = $this->getPreviousPeriodRange($startDate, $endDate);
-
             $dataTypes = [
                 'overview' => fn () => $service->getOverview($siteUrl, $startDate, $endDate),
-                'overview_previous' => fn () => $service->getOverview($siteUrl, $prevStart, $prevEnd),
                 'performance_over_time' => fn () => $service->getPerformanceOverTime($siteUrl, $startDate, $endDate),
                 'queries' => fn () => $service->getTopQueries($siteUrl, $startDate, $endDate, 50),
                 'pages' => fn () => $service->getTopPages($siteUrl, $startDate, $endDate, 50),
@@ -119,15 +115,4 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         return [$startDate, $endDate];
     }
 
-    private function getPreviousPeriodRange(string $startDate, string $endDate): array
-    {
-        $start = \Carbon\Carbon::parse($startDate);
-        $end = \Carbon\Carbon::parse($endDate);
-        $days = $start->diffInDays($end);
-
-        $prevEnd = $start->copy()->subDay()->format('Y-m-d');
-        $prevStart = $start->copy()->subDays($days + 1)->format('Y-m-d');
-
-        return [$prevStart, $prevEnd];
-    }
 }

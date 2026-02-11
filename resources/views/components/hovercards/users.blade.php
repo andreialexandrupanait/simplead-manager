@@ -20,9 +20,9 @@
         @endif
     </div>
     <div class="mt-3 border-t border-gray-100 pt-3">
-        <a href="{{ route('sites.settings', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Settings</a>
+        <a href="{{ route('sites.overview', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Overview</a>
     </div>
 @else
     <p class="text-sm text-gray-500">No users synced</p>
-    <a href="{{ route('sites.settings', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">View Settings</a>
+    <a href="{{ route('sites.overview', $site) }}" class="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-800">View Overview</a>
 @endif

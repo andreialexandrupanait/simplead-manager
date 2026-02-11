@@ -117,9 +117,7 @@
     </div>
 
     {{-- Create/Edit Modal --}}
-    @if($showModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="$set('showModal', false)">
-            <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+    <x-ui.modal name="maintenance-form" maxWidth="lg">
                 <h2 class="text-lg font-semibold text-gray-900">
                     {{ $editingId ? 'Edit Maintenance Window' : 'Schedule Maintenance' }}
                 </h2>
@@ -191,7 +189,7 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <x-ui.button type="button" variant="secondary" wire:click="$set('showModal', false)">
+                        <x-ui.button type="button" variant="secondary" @click="$dispatch('close-modal-maintenance-form')">
                             Cancel
                         </x-ui.button>
                         <x-ui.button type="submit">
@@ -199,7 +197,5 @@
                         </x-ui.button>
                     </div>
                 </form>
-            </div>
-        </div>
-    @endif
+    </x-ui.modal>
 </div>

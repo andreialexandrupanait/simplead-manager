@@ -33,7 +33,7 @@ class SafeUpdateService
         ]);
     }
 
-    public function runSafeUpdate(SafeUpdate $safeUpdate): void
+    public function runSafeUpdate(SafeUpdate $safeUpdate, ?int $userId = null): void
     {
         $site = $safeUpdate->site;
         $api = new WordPressApiService($site);
@@ -65,7 +65,7 @@ class SafeUpdateService
 
             UpdateLog::create([
                 'site_id' => $site->id,
-                'user_id' => auth()->id(),
+                'user_id' => $userId ?? auth()->id(),
                 'type' => $safeUpdate->type,
                 'name' => $safeUpdate->name,
                 'slug' => $safeUpdate->slug,

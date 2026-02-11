@@ -21,6 +21,7 @@ class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public SafeUpdate $safeUpdate,
+        public ?int $userId = null,
     ) {}
 
     public function uniqueId(): string
@@ -30,7 +31,7 @@ class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
 
     public function handle(SafeUpdateService $safeUpdateService): void
     {
-        $safeUpdateService->runSafeUpdate($this->safeUpdate);
+        $safeUpdateService->runSafeUpdate($this->safeUpdate, $this->userId);
     }
 
     public function failed(?\Throwable $exception): void

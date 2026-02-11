@@ -190,7 +190,8 @@ class StatusPageEdit extends Component
 
     public function updateIncidentStatus(int $incidentId, string $status): void
     {
-        $incident = StatusPageIncident::findOrFail($incidentId);
+        if (!$this->statusPage) return;
+        $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => $status,
             'resolved_at' => $status === 'resolved' ? now() : $incident->resolved_at,
@@ -201,7 +202,8 @@ class StatusPageEdit extends Component
 
     public function resolveIncident(int $incidentId): void
     {
-        $incident = StatusPageIncident::findOrFail($incidentId);
+        if (!$this->statusPage) return;
+        $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => 'resolved',
             'resolved_at' => now(),
@@ -223,7 +225,8 @@ class StatusPageEdit extends Component
             'updateStatus' => 'required|in:investigating,identified,monitoring,resolved',
         ]);
 
-        $incident = StatusPageIncident::findOrFail($incidentId);
+        if (!$this->statusPage) return;
+        $incident = $this->statusPage->incidents()->findOrFail($incidentId);
 
         $incident->update([
             'status' => $this->updateStatus,

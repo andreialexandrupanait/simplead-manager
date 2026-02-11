@@ -119,14 +119,18 @@ class Backup extends Model
             return null;
         }
 
-        $previous = static::where('site_id', $this->site_id)
-            ->where('status', 'completed')
-            ->where('id', '<', $this->id)
-            ->whereNotNull('file_size')
-            ->orderByDesc('id')
-            ->value('file_size');
+        // Use a cached property to avoid N+1 queries in lists
+        if (!isset($this->attributes['_previous_file_size'])) {
+            $this->attributes['_previous_file_size'] = static::where('site_id', $this->site_id)
+                ->where('status', 'completed')
+                ->where('id', '<', $this->id)
+                ->whereNotNull('file_size')
+                ->orderByDesc('id')
+                ->value('file_size') ?? '_null';
+        }
 
-        if ($previous === null) {
+        $previous = $this->attributes['_previous_file_size'];
+        if ($previous === '_null') {
             return null;
         }
 

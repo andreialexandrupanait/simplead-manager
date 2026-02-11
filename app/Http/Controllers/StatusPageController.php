@@ -34,12 +34,20 @@ class StatusPageController extends Controller
         ]);
     }
 
-    public function api(string $slug)
+    public function api(Request $request, string $slug)
     {
         $statusPage = StatusPage::where('slug', $slug)->firstOrFail();
 
         if (!$statusPage->is_public) {
             abort(404);
+        }
+
+        // Enforce password protection on API endpoint
+        if ($statusPage->password_hash) {
+            $authenticated = session("status-page-auth.{$statusPage->id}");
+            if (!$authenticated) {
+                abort(403, 'This status page is password protected.');
+            }
         }
 
         $data = StatusPageService::getPublicData($statusPage);

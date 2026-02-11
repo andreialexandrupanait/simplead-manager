@@ -306,30 +306,26 @@
     </x-ui.card>
 
     {{-- Rollback Confirmation Modal --}}
-    @if($showRollbackModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="cancelRollback">
-            <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-semibold text-gray-900">Confirm Rollback</h3>
-                @php
-                    $selectedPoint = $this->rollbackPoints->firstWhere('id', $rollbackPointId);
-                @endphp
-                @if($selectedPoint)
-                    <p class="mt-2 text-sm text-gray-600">
-                        Are you sure you want to rollback <strong>{{ $selectedPoint->slug }}</strong>
-                        from version <strong>{{ $selectedPoint->to_version }}</strong>
-                        to <strong>{{ $selectedPoint->from_version }}</strong>?
-                    </p>
-                    <div class="mt-3 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
-                        <p class="text-xs text-yellow-700">
-                            This will revert the {{ $selectedPoint->type }} to its previous version. A site sync will be triggered after the rollback.
-                        </p>
-                    </div>
-                @endif
-                <div class="mt-4 flex justify-end gap-3">
-                    <x-ui.button variant="secondary" wire:click="cancelRollback">Cancel</x-ui.button>
-                    <x-ui.button variant="danger" wire:click="executeRollback">Confirm Rollback</x-ui.button>
-                </div>
+    <x-ui.modal name="rollback-confirm" maxWidth="md">
+        <h3 class="text-lg font-semibold text-gray-900">Confirm Rollback</h3>
+        @php
+            $selectedPoint = $rollbackPointId ? $this->rollbackPoints->firstWhere('id', $rollbackPointId) : null;
+        @endphp
+        @if($selectedPoint)
+            <p class="mt-2 text-sm text-gray-600">
+                Are you sure you want to rollback <strong>{{ $selectedPoint->slug }}</strong>
+                from version <strong>{{ $selectedPoint->to_version }}</strong>
+                to <strong>{{ $selectedPoint->from_version }}</strong>?
+            </p>
+            <div class="mt-3 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p class="text-xs text-yellow-700">
+                    This will revert the {{ $selectedPoint->type }} to its previous version. A site sync will be triggered after the rollback.
+                </p>
             </div>
+        @endif
+        <div class="mt-4 flex justify-end gap-3">
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-rollback-confirm')">Cancel</x-ui.button>
+            <x-ui.button variant="danger" wire:click="executeRollback">Confirm Rollback</x-ui.button>
         </div>
-    @endif
+    </x-ui.modal>
 </div>

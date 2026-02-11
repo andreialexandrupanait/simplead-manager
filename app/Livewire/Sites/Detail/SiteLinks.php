@@ -246,6 +246,15 @@ class SiteLinks extends Component
             return;
         }
 
+        $this->validate([
+            'settingsFrequency' => 'required|in:daily,weekly,monthly',
+            'settingsScanTime' => 'required|date_format:H:i',
+            'settingsMaxPages' => 'required|integer|min:1|max:5000',
+            'settingsMaxDepth' => 'required|integer|min:1|max:50',
+            'settingsTimeout' => 'required|integer|min:5|max:120',
+            'settingsAlertThreshold' => 'required|integer|min:1|max:1000',
+        ]);
+
         $excludePaths = array_filter(array_map('trim', explode("\n", $this->settingsExcludePaths)));
         $excludeDomains = array_filter(array_map('trim', explode("\n", $this->settingsExcludeDomains)));
 

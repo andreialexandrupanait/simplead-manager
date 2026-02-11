@@ -116,11 +116,20 @@ class SitePlugins extends Component
     #[Computed]
     public function pluginCounts()
     {
+        $counts = $this->site->sitePlugins()
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as inactive,
+                SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates
+            ")
+            ->first();
+
         return [
-            'total' => $this->site->sitePlugins()->count(),
-            'active' => $this->site->sitePlugins()->where('is_active', true)->count(),
-            'inactive' => $this->site->sitePlugins()->where('is_active', false)->count(),
-            'updates' => $this->site->sitePlugins()->where('has_update', true)->count(),
+            'total' => (int) $counts->total,
+            'active' => (int) $counts->active,
+            'inactive' => (int) $counts->inactive,
+            'updates' => (int) $counts->updates,
             'issues' => $this->site->sitePlugins()->problematic()->count(),
         ];
     }

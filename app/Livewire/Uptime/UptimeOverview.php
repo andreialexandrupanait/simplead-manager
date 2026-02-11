@@ -20,23 +20,33 @@ class UptimeOverview extends Component
 
     public function getCountsProperty(): array
     {
+        $counts = UptimeMonitor::whereHas('site')
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN current_state = 'up' THEN 1 ELSE 0 END) as up,
+                SUM(CASE WHEN current_state = 'down' THEN 1 ELSE 0 END) as down,
+                SUM(CASE WHEN current_state = 'degraded' THEN 1 ELSE 0 END) as degraded,
+                SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) as paused
+            ")
+            ->first();
+
         return [
-            'total' => UptimeMonitor::whereHas('site')->count(),
-            'up' => UptimeMonitor::whereHas('site')->where('current_state', 'up')->count(),
-            'down' => UptimeMonitor::whereHas('site')->where('current_state', 'down')->count(),
-            'degraded' => UptimeMonitor::whereHas('site')->where('current_state', 'degraded')->count(),
-            'paused' => UptimeMonitor::whereHas('site')->where('status', 'paused')->count(),
+            'total' => (int) $counts->total,
+            'up' => (int) $counts->up,
+            'down' => (int) $counts->down,
+            'degraded' => (int) $counts->degraded,
+            'paused' => (int) $counts->paused,
         ];
     }
 
     public function pauseMonitor(int $id): void
     {
-        UptimeMonitor::findOrFail($id)->update(['status' => 'paused']);
+        UptimeMonitor::whereHas('site')->findOrFail($id)->update(['status' => 'paused']);
     }
 
     public function resumeMonitor(int $id): void
     {
-        UptimeMonitor::findOrFail($id)->update([
+        UptimeMonitor::whereHas('site')->findOrFail($id)->update([
             'status' => 'active',
             'next_check_at' => now(),
         ]);
@@ -44,13 +54,13 @@ class UptimeOverview extends Component
 
     public function testMonitor(int $id): void
     {
-        $monitor = UptimeMonitor::findOrFail($id);
+        $monitor = UptimeMonitor::whereHas('site')->findOrFail($id);
         CheckUptime::dispatch($monitor);
     }
 
     public function deleteMonitor(int $id): void
     {
-        UptimeMonitor::findOrFail($id)->delete();
+        UptimeMonitor::whereHas('site')->findOrFail($id)->delete();
     }
 
     public function getSitesWithoutMonitorCountProperty(): int

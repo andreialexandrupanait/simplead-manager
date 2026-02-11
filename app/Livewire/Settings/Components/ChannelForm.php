@@ -80,10 +80,30 @@ class ChannelForm extends Component
 
     public function save(): void
     {
-        $this->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'type' => 'required|in:email,slack,discord,webhook,telegram',
-        ]);
+        ];
+
+        $rules = match ($this->type) {
+            'email' => array_merge($rules, [
+                'emailAddress' => 'required|email|max:255',
+            ]),
+            'slack', 'discord' => array_merge($rules, [
+                'webhookUrl' => 'required|url|max:2048',
+            ]),
+            'telegram' => array_merge($rules, [
+                'telegramBotToken' => 'required|string|max:255',
+                'telegramChatId' => 'required|string|max:255',
+            ]),
+            'webhook' => array_merge($rules, [
+                'webhookUrl' => 'required|url|max:2048',
+                'webhookMethod' => 'required|in:GET,POST,PUT,PATCH',
+            ]),
+            default => $rules,
+        };
+
+        $this->validate($rules);
 
         $config = match ($this->type) {
             'email' => ['address' => $this->emailAddress],

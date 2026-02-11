@@ -314,15 +314,13 @@ class SiteBackups extends Component
 
         return StorageDestination::where('is_default', true)
             ->where('is_active', true)
-            ->first();
+            ->first()
+            ?? StorageDestination::where('is_active', true)->first();
     }
 
     protected function formatBytes(int $bytes): string
     {
-        if ($bytes === 0) return '0 B';
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = floor(log($bytes, 1024));
-        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+        return \App\Helpers\FormatHelper::bytes($bytes);
     }
 
     public function render()

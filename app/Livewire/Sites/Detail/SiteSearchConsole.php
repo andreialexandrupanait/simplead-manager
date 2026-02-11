@@ -96,7 +96,7 @@ class SiteSearchConsole extends Component
 
     public function connectSearchConsole(): void
     {
-        $googleConnection = GoogleConnection::where('is_active', true)->first();
+        $googleConnection = $this->resolveGoogleConnection();
 
         if (!$googleConnection) {
             $this->redirect(route('google.auth', ['return_url' => route('sites.search-console', $this->site)]));
@@ -116,7 +116,7 @@ class SiteSearchConsole extends Component
         $property = $this->availableProperties[$index] ?? null;
         if (!$property) return;
 
-        $googleConnection = GoogleConnection::where('is_active', true)->first();
+        $googleConnection = $this->resolveGoogleConnection();
         if (!$googleConnection) return;
 
         $propertyType = str_starts_with($property['site_url'], 'sc-domain:') ? 'domain' : 'url';
@@ -240,11 +240,20 @@ class SiteSearchConsole extends Component
         session()->flash('success', 'Search Console disconnected.');
     }
 
+    private function resolveGoogleConnection(): ?GoogleConnection
+    {
+        $existing = $this->site->searchConsoleConnection?->googleConnection;
+        if ($existing && $existing->is_active) {
+            return $existing;
+        }
+
+        return GoogleConnection::where('is_active', true)->first();
+    }
+
     public function render()
     {
         $connection = $this->site->searchConsoleConnection;
         $overview = null;
-        $overviewPrevious = null;
         $performanceOverTime = [];
         $queries = [];
         $pages = [];
@@ -253,8 +262,6 @@ class SiteSearchConsole extends Component
         $searchAppearance = [];
         $sitemaps = [];
         $cache = null;
-        $deltas = [];
-        $insights = [];
 
         if ($connection && $connection->is_active) {
             $query = SearchConsoleCache::where('site_id', $this->site->id)
@@ -268,7 +275,6 @@ class SiteSearchConsole extends Component
 
             $cache = $caches->get('overview');
             $overview = $cache?->data;
-            $overviewPrevious = $caches->get('overview_previous')?->data;
             $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
             $queries = $caches->get('queries')?->data ?? [];
             $pages = $caches->get('pages')?->data ?? [];
@@ -276,12 +282,6 @@ class SiteSearchConsole extends Component
             $devices = $caches->get('devices')?->data ?? [];
             $searchAppearance = $caches->get('search_appearance')?->data ?? [];
             $sitemaps = $caches->get('sitemaps')?->data ?? [];
-
-            // Compute deltas and insights
-            if ($overview && $overviewPrevious) {
-                $deltas = $this->computeDeltas($overview, $overviewPrevious);
-                $insights = $this->computeInsights($overview, $overviewPrevious);
-            }
         }
 
         // Tracked keywords with recent positions
@@ -297,9 +297,6 @@ class SiteSearchConsole extends Component
             'connection' => $connection,
             'cache' => $cache,
             'overview' => $overview,
-            'overviewPrevious' => $overviewPrevious,
-            'deltas' => $deltas,
-            'insights' => $insights,
             'performanceOverTime' => $performanceOverTime,
             'queries' => $queries,
             'pages' => $pages,
@@ -315,56 +312,4 @@ class SiteSearchConsole extends Component
         ]);
     }
 
-    private function computeDeltas(array $current, array $previous): array
-    {
-        $deltas = [];
-        foreach (['clicks', 'impressions', 'ctr', 'position'] as $key) {
-            $cur = $current[$key] ?? 0;
-            $prev = $previous[$key] ?? 0;
-            if ($prev != 0) {
-                $deltas[$key] = round((($cur - $prev) / abs($prev)) * 100, 1);
-            } else {
-                $deltas[$key] = $cur > 0 ? 100 : null;
-            }
-        }
-        return $deltas;
-    }
-
-    private function computeInsights(array $current, array $previous): array
-    {
-        $insights = [];
-        $labels = [
-            'clicks' => 'Clicks',
-            'impressions' => 'Impressions',
-            'ctr' => 'CTR',
-            'position' => 'Average Position',
-        ];
-        // Position and CTR: lower position is better; higher CTR is better
-        $invertedMetrics = ['position'];
-
-        foreach (['clicks', 'impressions', 'ctr', 'position'] as $key) {
-            $cur = $current[$key] ?? 0;
-            $prev = $previous[$key] ?? 0;
-            if ($prev == 0) continue;
-
-            $change = round((($cur - $prev) / abs($prev)) * 100, 1);
-            if (abs($change) < 25) continue;
-
-            $isPositive = $change > 0;
-            if (in_array($key, $invertedMetrics)) {
-                $isPositive = !$isPositive; // Lower position = better
-            }
-
-            $insights[] = [
-                'metric' => $labels[$key],
-                'change' => $change,
-                'direction' => $change > 0 ? 'up' : 'down',
-                'type' => $isPositive ? 'good' : 'bad',
-                'current' => $cur,
-                'previous' => $prev,
-            ];
-        }
-
-        return $insights;
-    }
 }
