@@ -26,6 +26,10 @@
 </head>
 <body class="h-full bg-gray-50">
 
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-purple-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
+        Skip to content
+    </a>
+
     <div class="flex h-full"
          x-data="{
             sidebarOpen: localStorage.getItem('sidebarOpen') !== 'false',
@@ -187,7 +191,7 @@
             <x-header.page-header :title="$title ?? 'SimpleAd Manager'" :site-context="$siteContext ?? null" />
 
             {{-- Page content --}}
-            <main class="flex-1 p-6 lg:p-8">
+            <main id="main-content" class="flex-1 p-6 lg:p-8">
                 <div class="mx-auto max-w-7xl">
                     {{ $slot }}
                 </div>

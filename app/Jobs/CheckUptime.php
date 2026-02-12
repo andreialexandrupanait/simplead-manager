@@ -260,28 +260,44 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
     {
         $monitor = $this->monitor;
 
-        // Calculate uptime percentages for various periods
+        $now = now();
+        $stats = \Illuminate\Support\Facades\DB::selectOne("
+            SELECT
+                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_24h,
+                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_24h,
+                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_7d,
+                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_7d,
+                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_30d,
+                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_30d,
+                COUNT(*) as total_365d,
+                SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_365d,
+                AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response
+            FROM uptime_checks
+            WHERE uptime_monitor_id = ? AND checked_at >= ?
+        ", [
+            $now->copy()->subHours(24),
+            $now->copy()->subHours(24),
+            $now->copy()->subDays(7),
+            $now->copy()->subDays(7),
+            $now->copy()->subDays(30),
+            $now->copy()->subDays(30),
+            $now->copy()->subHours(24),
+            $monitor->id,
+            $now->copy()->subDays(365),
+        ]);
+
         $periods = [
-            '24h' => now()->subHours(24),
-            '7d' => now()->subDays(7),
-            '30d' => now()->subDays(30),
-            '365d' => now()->subDays(365),
+            '24h' => [$stats->total_24h, $stats->up_24h],
+            '7d' => [$stats->total_7d, $stats->up_7d],
+            '30d' => [$stats->total_30d, $stats->up_30d],
+            '365d' => [$stats->total_365d, $stats->up_365d],
         ];
 
-        foreach ($periods as $key => $since) {
-            $total = $monitor->checks()->where('checked_at', '>=', $since)->count();
-            $up = $monitor->checks()->where('checked_at', '>=', $since)->where('is_up', true)->count();
-
+        foreach ($periods as $key => [$total, $up]) {
             $monitor->{"uptime_{$key}"} = $total > 0 ? round(($up / $total) * 100, 3) : null;
         }
 
-        // Average response time (last 24h, only successful checks)
-        $monitor->avg_response_time = (int) $monitor->checks()
-            ->where('checked_at', '>=', now()->subHours(24))
-            ->where('is_up', true)
-            ->whereNotNull('response_time')
-            ->avg('response_time');
-
+        $monitor->avg_response_time = (int) ($stats->avg_response ?? 0);
         $monitor->save();
     }
 

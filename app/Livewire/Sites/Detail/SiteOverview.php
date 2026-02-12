@@ -6,6 +6,7 @@ use App\Jobs\SyncWordPressSite;
 use App\Models\AnalyticsCache;
 use App\Models\Site;
 use App\Services\WordPressApiService;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -55,6 +56,24 @@ class SiteOverview extends Component
             'themes' => $themes,
             'total' => $core + $plugins + $themes,
         ];
+    }
+
+    #[Computed]
+    public function activeReportSchedules(): Collection
+    {
+        return $this->site->reportSchedules()->where('is_active', true)->get();
+    }
+
+    #[Computed]
+    public function lastReport(): ?object
+    {
+        return $this->site->reports()->latest('created_at')->first();
+    }
+
+    #[Computed]
+    public function backupStorageUsed(): int
+    {
+        return (int) $this->site->backups()->sum('file_size');
     }
 
     public function runBackup(): void

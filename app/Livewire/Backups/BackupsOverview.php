@@ -74,7 +74,7 @@ class BackupsOverview extends Component
             $queued++;
         }
 
-        session()->flash('backup-success', "Queued backups for {$queued} site(s).");
+        $this->dispatch('notify', type: 'success', message: "Queued backups for {$queued} site(s).");
     }
 
     public function render()

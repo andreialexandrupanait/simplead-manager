@@ -36,7 +36,7 @@
 
             {{-- Storage Usage --}}
             @php
-                $storageUsed = $site->backups()->sum('file_size');
+                $storageUsed = $this->backupStorageUsed;
                 $storageLimit = $site->backupConfig->storage_limit_gb * 1024 * 1024 * 1024; // Convert GB to bytes
                 $storagePercent = $storageLimit > 0 ? min(($storageUsed / $storageLimit) * 100, 100) : 0;
             @endphp

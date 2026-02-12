@@ -314,16 +314,33 @@ class SiteCloudflare extends Component
             return;
         }
 
+        if (count($records) > 500) {
+            session()->flash('cf-error', 'Import limited to 500 records maximum.');
+            return;
+        }
+
+        $allowedTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA'];
         $service = new CloudflareService($cf->cloudflareConnection);
         $success = 0;
         $failed = 0;
 
         foreach ($records as $record) {
+            if (!is_array($record)) {
+                $failed++;
+                continue;
+            }
+
+            $type = $record['type'] ?? null;
+            if (!in_array($type, $allowedTypes) || empty($record['name']) || empty($record['content'])) {
+                $failed++;
+                continue;
+            }
+
             try {
                 $service->createDnsRecord($cf->zone_id, [
-                    'type' => $record['type'] ?? 'A',
-                    'name' => $record['name'] ?? '',
-                    'content' => $record['content'] ?? '',
+                    'type' => $type,
+                    'name' => $record['name'],
+                    'content' => $record['content'],
                     'ttl' => $record['ttl'] ?? 1,
                     'proxied' => $record['proxied'] ?? false,
                 ]);

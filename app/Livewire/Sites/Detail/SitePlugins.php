@@ -17,6 +17,9 @@ class SitePlugins extends Component
 {
     use WithJobTracking;
 
+    private static ?bool $hasSiteUsersTable = null;
+    private static ?bool $hasSitePluginConflictsTable = null;
+
     public Site $site;
 
     public string $tab = 'plugins';
@@ -95,7 +98,7 @@ class SitePlugins extends Component
     #[Computed]
     public function users()
     {
-        if (!Schema::hasTable('site_users')) {
+        if (!(static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
             return collect();
         }
 
@@ -152,7 +155,7 @@ class SitePlugins extends Component
     #[Computed]
     public function activeConflicts()
     {
-        if (!Schema::hasTable('site_plugin_conflicts')) {
+        if (!(static::$hasSitePluginConflictsTable ??= Schema::hasTable('site_plugin_conflicts'))) {
             return collect();
         }
 
@@ -175,7 +178,7 @@ class SitePlugins extends Component
     #[Computed]
     public function userCount()
     {
-        if (!Schema::hasTable('site_users')) {
+        if (!(static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
             return 0;
         }
 
@@ -213,65 +216,37 @@ class SitePlugins extends Component
     public function updateSinglePlugin(int $pluginId): array
     {
         $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
-
-        try {
-            $api = new WordPressApiService($this->site);
-            $result = $api->updatePlugins([$plugin->file]);
-
-            $updateResult = $result['results'][0] ?? [];
-
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'plugin',
-                'name' => $plugin->name,
-                'slug' => $plugin->slug,
-                'from_version' => $updateResult['from_version'] ?? $plugin->version,
-                'to_version' => $updateResult['to_version'] ?? $plugin->update_version,
-                'success' => $updateResult['success'] ?? false,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            SyncWordPressSite::dispatch($this->site);
-
-            unset($this->plugins, $this->pluginCounts);
-
-            $success = $updateResult['success'] ?? false;
-            return [
-                'success' => $success,
-                'message' => $success
-                    ? "Updated to v" . ($updateResult['to_version'] ?? $plugin->update_version)
-                    : ($updateResult['error'] ?? 'Update failed'),
-                'version' => $updateResult['to_version'] ?? $plugin->update_version,
-            ];
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => "Failed: {$e->getMessage()}",
-                'version' => null,
-            ];
-        }
+        $result = $this->performUpdate('plugin', $plugin->file, $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version);
+        unset($this->plugins, $this->pluginCounts);
+        return $result;
     }
 
     public function updateSingleTheme(int $themeId): array
     {
         $theme = $this->site->siteThemes()->findOrFail($themeId);
+        $result = $this->performUpdate('theme', $theme->slug, $theme->name, $theme->slug, $theme->version, $theme->update_version);
+        unset($this->themes, $this->themeCounts);
+        return $result;
+    }
 
+    private function performUpdate(string $type, string $identifier, string $name, string $slug, ?string $currentVersion, ?string $updateVersion): array
+    {
         try {
             $api = new WordPressApiService($this->site);
-            $result = $api->updateThemes([$theme->slug]);
+            $result = $type === 'plugin'
+                ? $api->updatePlugins([$identifier])
+                : $api->updateThemes([$identifier]);
 
             $updateResult = $result['results'][0] ?? [];
 
             UpdateLog::create([
                 'site_id' => $this->site->id,
                 'user_id' => auth()->id(),
-                'type' => 'theme',
-                'name' => $theme->name,
-                'slug' => $theme->slug,
-                'from_version' => $updateResult['from_version'] ?? $theme->version,
-                'to_version' => $updateResult['to_version'] ?? $theme->update_version,
+                'type' => $type,
+                'name' => $name,
+                'slug' => $slug,
+                'from_version' => $updateResult['from_version'] ?? $currentVersion,
+                'to_version' => $updateResult['to_version'] ?? $updateVersion,
                 'success' => $updateResult['success'] ?? false,
                 'error_message' => $updateResult['error'] ?? null,
                 'performed_at' => now(),
@@ -279,15 +254,13 @@ class SitePlugins extends Component
 
             SyncWordPressSite::dispatch($this->site);
 
-            unset($this->themes, $this->themeCounts);
-
             $success = $updateResult['success'] ?? false;
             return [
                 'success' => $success,
                 'message' => $success
-                    ? "Updated to v" . ($updateResult['to_version'] ?? $theme->update_version)
+                    ? "Updated to v" . ($updateResult['to_version'] ?? $updateVersion)
                     : ($updateResult['error'] ?? 'Update failed'),
-                'version' => $updateResult['to_version'] ?? $theme->update_version,
+                'version' => $updateResult['to_version'] ?? $updateVersion,
             ];
         } catch (\Exception $e) {
             return [

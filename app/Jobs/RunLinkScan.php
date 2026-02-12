@@ -18,6 +18,7 @@ class RunLinkScan implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public string $queue = 'default';
     public int $timeout = 3600;
     public int $tries = 2;
     public array $backoff = [60, 180];

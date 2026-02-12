@@ -113,7 +113,7 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
                 if (count($recipients) > 0) {
                     $updateData['last_sent_at'] = now();
                 }
-                $updateData['next_run_at'] = $this->calculateNextRun($this->schedule);
+                $updateData['next_run_at'] = $this->schedule->calculateNextRun();
                 $this->schedule->update($updateData);
             }
         } catch (\Throwable $e) {
@@ -128,21 +128,4 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    protected function calculateNextRun(ReportSchedule $schedule): Carbon
-    {
-        $tz = $schedule->timezone ?? 'Europe/Bucharest';
-        [$hour, $minute] = explode(':', $schedule->time ?? '08:00');
-
-        if ($schedule->frequency === 'weekly') {
-            $next = now($tz)->next(Carbon::getDays()[$schedule->day_of_week ?? 0]);
-            $next->setTime((int) $hour, (int) $minute);
-        } else {
-            // monthly
-            $dayOfMonth = $schedule->day_of_month ?? 1;
-            $next = now($tz)->addMonth()->setDay(min($dayOfMonth, now($tz)->addMonth()->daysInMonth));
-            $next->setTime((int) $hour, (int) $minute);
-        }
-
-        return $next->utc();
-    }
 }

@@ -48,7 +48,7 @@ class ClientsList extends Component
     {
         if ($this->deletingId) {
             Client::find($this->deletingId)?->delete();
-            session()->flash('success', 'Client deleted successfully.');
+            $this->dispatch('notify', type: 'success', message: 'Client deleted successfully.');
         }
 
         $this->deletingId = null;
@@ -57,8 +57,10 @@ class ClientsList extends Component
 
     public function changeStatus(int $id, string $status): void
     {
+        if (!in_array($status, ['active', 'inactive', 'archived'])) return;
+
         Client::where('id', $id)->update(['status' => $status]);
-        session()->flash('success', 'Client status updated.');
+        $this->dispatch('notify', type: 'success', message: 'Client status updated.');
     }
 
     #[Computed]

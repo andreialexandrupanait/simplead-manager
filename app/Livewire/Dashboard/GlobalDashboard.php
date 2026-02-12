@@ -171,7 +171,7 @@ class GlobalDashboard extends Component
     {
         $site = Site::findOrFail($siteId);
         CreateBackup::dispatch($site, 'full', 'manual');
-        session()->flash('message', "Backup queued for {$site->name}.");
+        $this->dispatch('notify', type: 'success', message: "Backup queued for {$site->name}.");
     }
 
     public function checkNow(int $siteId): void
@@ -179,7 +179,7 @@ class GlobalDashboard extends Component
         $site = Site::findOrFail($siteId);
         if ($site->uptimeMonitor) {
             CheckUptime::dispatch($site->uptimeMonitor);
-            session()->flash('message', "Uptime check queued for {$site->name}.");
+            $this->dispatch('notify', type: 'success', message: "Uptime check queued for {$site->name}.");
         }
     }
 
@@ -187,7 +187,7 @@ class GlobalDashboard extends Component
     {
         $site = Site::findOrFail($siteId);
         SyncWordPressSite::dispatch($site);
-        session()->flash('message', "Sync queued for {$site->name}.");
+        $this->dispatch('notify', type: 'success', message: "Sync queued for {$site->name}.");
     }
 
     public function generateQuickReport(int $siteId): void
@@ -195,11 +195,11 @@ class GlobalDashboard extends Component
         $site = Site::findOrFail($siteId);
         $template = ReportTemplate::where('is_default', true)->first() ?? ReportTemplate::first();
         if (!$template) {
-            session()->flash('message', 'No report template configured.');
+            $this->dispatch('notify', type: 'error', message: 'No report template configured.');
             return;
         }
         GenerateReport::dispatch($site, $template, now()->subDays(30)->startOfDay(), now()->endOfDay(), 'manual');
-        session()->flash('message', "Report generation queued for {$site->name}.");
+        $this->dispatch('notify', type: 'success', message: "Report generation queued for {$site->name}.");
     }
 
     public function startRename(int $siteId, string $currentName): void
@@ -224,7 +224,7 @@ class GlobalDashboard extends Component
         $this->renamingSiteId = null;
         $this->renamingSiteName = '';
 
-        session()->flash('message', "Site renamed to \"{$site->name}\".");
+        $this->dispatch('notify', type: 'success', message: "Site renamed to \"{$site->name}\".");
         $this->dispatch('close-modal-rename-site');
     }
 
@@ -246,7 +246,7 @@ class GlobalDashboard extends Component
         $this->deletingSiteId = null;
         $this->deletingSiteName = null;
 
-        session()->flash('message', "Site \"{$siteName}\" has been deleted.");
+        $this->dispatch('notify', type: 'success', message: "Site \"{$siteName}\" has been deleted.");
         $this->dispatch('close-modal-delete-site');
     }
 
@@ -260,7 +260,7 @@ class GlobalDashboard extends Component
         Site::whereIn('id', $this->selectedSites)->update(['site_status_id' => $statusId]);
         $this->selectedSites = [];
         unset($this->sites, $this->siteStatuses);
-        session()->flash('message', 'Status updated for selected sites.');
+        $this->dispatch('notify', type: 'success', message: 'Status updated for selected sites.');
     }
 
     public function bulkClearStatus(): void
@@ -268,7 +268,7 @@ class GlobalDashboard extends Component
         Site::whereIn('id', $this->selectedSites)->update(['site_status_id' => null]);
         $this->selectedSites = [];
         unset($this->sites, $this->siteStatuses);
-        session()->flash('message', 'Status cleared for selected sites.');
+        $this->dispatch('notify', type: 'success', message: 'Status cleared for selected sites.');
     }
 
     public function bulkSync(): void
@@ -279,7 +279,7 @@ class GlobalDashboard extends Component
         }
         $count = $sites->count();
         $this->selectedSites = [];
-        session()->flash('message', "Sync queued for {$count} sites.");
+        $this->dispatch('notify', type: 'success', message: "Sync queued for {$count} sites.");
     }
 
     public function bulkBackup(): void
@@ -290,7 +290,7 @@ class GlobalDashboard extends Component
         }
         $count = $sites->count();
         $this->selectedSites = [];
-        session()->flash('message', "Backup queued for {$count} sites.");
+        $this->dispatch('notify', type: 'success', message: "Backup queued for {$count} sites.");
     }
 
     public function bulkCheckUptime(): void
@@ -304,7 +304,7 @@ class GlobalDashboard extends Component
             }
         }
         $this->selectedSites = [];
-        session()->flash('message', "Uptime check queued for {$count} sites.");
+        $this->dispatch('notify', type: 'success', message: "Uptime check queued for {$count} sites.");
     }
 
     public function confirmBulkDelete(): void
@@ -318,7 +318,7 @@ class GlobalDashboard extends Component
         Site::whereIn('id', $this->selectedSites)->delete();
         $this->selectedSites = [];
         unset($this->sites, $this->stats);
-        session()->flash('message', "{$count} sites deleted.");
+        $this->dispatch('notify', type: 'success', message: "{$count} sites deleted.");
         $this->dispatch('close-modal-bulk-delete');
     }
 
@@ -352,7 +352,7 @@ class GlobalDashboard extends Component
         $this->reordering = false;
         unset($this->sites);
 
-        session()->flash('message', 'Sort order saved.');
+        $this->dispatch('notify', type: 'success', message: 'Sort order saved.');
         $this->redirect(route('dashboard'), navigate: true);
     }
 

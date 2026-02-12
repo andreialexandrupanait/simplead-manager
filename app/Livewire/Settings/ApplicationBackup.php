@@ -109,6 +109,12 @@ class ApplicationBackup extends Component
     }
 
     #[Computed]
+    public function completedBackupCount(): int
+    {
+        return AppBackup::where('status', 'completed')->count();
+    }
+
+    #[Computed]
     public function lastBackup(): ?AppBackup
     {
         return AppBackup::where('status', 'completed')->latest()->first();
@@ -326,7 +332,7 @@ class ApplicationBackup extends Component
         try {
             $service = app(AppBackupService::class);
             $service->deleteBackup($backup);
-            unset($this->totalStorageUsed, $this->lastBackup);
+            unset($this->totalStorageUsed, $this->lastBackup, $this->completedBackupCount);
             $this->dispatch('notify', type: 'success', message: 'Backup deleted.');
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: 'Delete failed: ' . $e->getMessage());
@@ -344,7 +350,7 @@ class ApplicationBackup extends Component
         } elseif (!$this->awaitingBackup) {
             // Backup finished (completed/failed) — stop tracking
             $this->trackingBackupId = null;
-            unset($this->lastBackup, $this->totalStorageUsed);
+            unset($this->lastBackup, $this->totalStorageUsed, $this->completedBackupCount);
         }
         // If awaitingBackup is true but no record found yet, keep polling
     }

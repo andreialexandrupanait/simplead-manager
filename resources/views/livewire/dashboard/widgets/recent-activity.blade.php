@@ -60,7 +60,7 @@
                                     {{-- Site Link --}}
                                     @if($activity->site)
                                         <a
-                                            href="{{ route('sites.show', $activity->site) }}"
+                                            href="{{ route('sites.overview', $activity->site) }}"
                                             class="mt-1 inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700"
                                         >
                                             <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

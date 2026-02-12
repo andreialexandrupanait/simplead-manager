@@ -116,20 +116,26 @@ class GlobalErrors extends Component
 
     public function resolveAll(): void
     {
-        $query = ErrorLog::unresolved()->whereHas('site');
-
-        if ($this->siteFilter !== 'all') {
-            $query->where('site_id', $this->siteFilter);
-        }
-        if ($this->levelFilter !== 'all') {
+        if ($this->levelFilter === 'all' && $this->siteFilter !== 'all') {
+            $site = Site::find($this->siteFilter);
+            if ($site) {
+                ErrorLogService::resolveAll($site, auth()->user());
+            }
+        } elseif ($this->levelFilter === 'all' && $this->siteFilter === 'all') {
+            Site::each(fn (Site $site) => ErrorLogService::resolveAll($site, auth()->user()));
+        } else {
+            // Level filter active — resolve matching subset directly
+            $query = ErrorLog::unresolved()->whereHas('site');
+            if ($this->siteFilter !== 'all') {
+                $query->where('site_id', $this->siteFilter);
+            }
             $query->where('level', $this->levelFilter);
+            $query->update([
+                'is_resolved' => true,
+                'resolved_by' => auth()->id(),
+                'resolved_at' => now(),
+            ]);
         }
-
-        $query->update([
-            'is_resolved' => true,
-            'resolved_by' => auth()->id(),
-            'resolved_at' => now(),
-        ]);
 
         unset($this->errors, $this->stats);
     }

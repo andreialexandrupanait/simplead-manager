@@ -314,21 +314,26 @@ class DashboardService
             ->get();
     }
 
+    private function getBackupCounts(): array
+    {
+        return [
+            'backups_today' => Backup::whereHas('site')
+                ->where('status', 'completed')
+                ->whereDate('completed_at', today())
+                ->count(),
+            'failed_backups' => Backup::whereHas('site')
+                ->where('status', 'failed')
+                ->where('created_at', '>=', now()->subDay())
+                ->count(),
+            'total_storage_bytes' => Backup::whereHas('site')
+                ->where('status', 'completed')
+                ->sum('file_size'),
+        ];
+    }
+
     public function getSummaryStats(): array
     {
-        $backupsToday = Backup::whereHas('site')
-            ->where('status', 'completed')
-            ->whereDate('completed_at', today())
-            ->count();
-
-        $failedBackups = Backup::whereHas('site')
-            ->where('status', 'failed')
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
-
-        $totalStorageBytes = Backup::whereHas('site')
-            ->where('status', 'completed')
-            ->sum('file_size');
+        $backups = $this->getBackupCounts();
 
         $pendingPluginUpdates = \App\Models\SitePlugin::whereHas('site')->where('has_update', true)->count();
         $pendingThemeUpdates = \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count();
@@ -348,9 +353,9 @@ class DashboardService
             ->count();
 
         return [
-            'backups_today' => $backupsToday,
-            'failed_backups' => $failedBackups,
-            'total_storage' => $totalStorageBytes,
+            'backups_today' => $backups['backups_today'],
+            'failed_backups' => $backups['failed_backups'],
+            'total_storage' => $backups['total_storage_bytes'],
             'pending_updates' => $pendingUpdates,
             'ssl_expiring' => $sslExpiring,
             'domains_expiring' => $domainsExpiring,
@@ -409,19 +414,7 @@ class DashboardService
 
     public function getBackupStatus(): array
     {
-        $backupsToday = Backup::whereHas('site')
-            ->where('status', 'completed')
-            ->whereDate('completed_at', today())
-            ->count();
-
-        $failedBackups = Backup::whereHas('site')
-            ->where('status', 'failed')
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
-
-        $totalStorageBytes = Backup::whereHas('site')
-            ->where('status', 'completed')
-            ->sum('file_size');
+        $backups = $this->getBackupCounts();
 
         $sitesWithoutBackup = Site::whereDoesntHave('latestCompletedBackup')
             ->orWhereHas('latestCompletedBackup', function ($q) {
@@ -430,23 +423,11 @@ class DashboardService
             ->count();
 
         return [
-            'backups_today' => $backupsToday,
-            'failed_backups' => $failedBackups,
-            'total_storage_gb' => $totalStorageBytes ? round($totalStorageBytes / 1024 / 1024 / 1024, 2) : 0,
+            'backups_today' => $backups['backups_today'],
+            'failed_backups' => $backups['failed_backups'],
+            'total_storage_gb' => $backups['total_storage_bytes'] ? round($backups['total_storage_bytes'] / 1024 / 1024 / 1024, 2) : 0,
             'sites_without_backup' => $sitesWithoutBackup,
         ];
     }
 
-    public function getTrafficOverview(string $period = '7d'): array
-    {
-        // This is a placeholder for future GA integration
-        // For now, return empty data
-        return [
-            'total_visits' => 0,
-            'unique_visitors' => 0,
-            'page_views' => 0,
-            'bounce_rate' => 0,
-            'avg_session_duration' => 0,
-        ];
-    }
 }

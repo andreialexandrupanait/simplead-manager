@@ -31,11 +31,11 @@
                                         default => 'bg-gray-100 text-gray-600',
                                     } }}">
                                     @if($destination->type === 'local')
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                        <x-icons.hard-drive class="w-4 h-4" />
                                     @elseif($destination->type === 'dropbox')
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
                                     @else
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                                        <x-icons.cloud class="w-4 h-4" />
                                     @endif
                                 </div>
                                 <div>
@@ -65,7 +65,7 @@
                                 <button wire:click="testDestination({{ $destination->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                                     title="Test Connection">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <x-icons.check-circle class="w-4 h-4" />
                                 </button>
                                 @if(!$destination->is_default)
                                     <button wire:click="setDefault({{ $destination->id }})"
@@ -192,9 +192,7 @@
                 <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-medium text-gray-900">Connected Accounts</h4>
                     <x-ui.button wire:click="addAccount" size="sm">
-                        <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                        <x-icons.plus class="mr-1 h-4 w-4" />
                         Add Account
                     </x-ui.button>
                 </div>
@@ -306,7 +304,7 @@
                         <div class="flex items-center justify-between py-3">
                             <div class="flex items-center gap-3">
                                 <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-orange-100 text-orange-600">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                                    <x-icons.cloud class="w-4 h-4" />
                                 </div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">
@@ -325,7 +323,7 @@
                                 <button wire:click="testCloudflareConnection({{ $cfConn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                                     title="Test Connection">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <x-icons.check-circle class="w-4 h-4" />
                                 </button>
                                 <button wire:click="confirmDeleteCloudflare({{ $cfConn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"

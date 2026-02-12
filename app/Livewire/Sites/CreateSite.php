@@ -22,7 +22,7 @@ class CreateSite extends Component
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'url'  => 'required|url|max:255',
+            'url'  => 'required|url|max:255|unique:sites,url',
             'clientId' => 'nullable|exists:clients,id',
             'notes' => 'nullable|string|max:1000',
         ]);

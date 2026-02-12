@@ -3,17 +3,17 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\SyncAuditLogs;
+use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use App\Models\WpAuditLog;
 use App\Services\AuditLogService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class SiteAuditLog extends Component
 {
-    use WithPagination;
+    use WithTableFilters;
 
     public Site $site;
 
@@ -22,9 +22,6 @@ class SiteAuditLog extends Component
 
     #[Url]
     public string $userFilter = 'all';
-
-    #[Url]
-    public string $search = '';
 
     public function mount(Site $site): void
     {
@@ -102,12 +99,6 @@ class SiteAuditLog extends Component
     }
 
     public function updatedUserFilter(): void
-    {
-        $this->resetPage();
-        unset($this->logs);
-    }
-
-    public function updatedSearch(): void
     {
         $this->resetPage();
         unset($this->logs);

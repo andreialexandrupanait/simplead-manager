@@ -7,6 +7,7 @@ use App\Models\Link;
 use App\Models\LinkMonitor;
 use App\Models\LinkScan;
 use App\Models\Site;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -83,7 +84,7 @@ class SiteLinks extends Component
     {
         $scan = $this->latestScan;
         if (!$scan) {
-            return Link::where('id', 0)->paginate(50);
+            return new LengthAwarePaginator([], 0, 50);
         }
 
         $query = Link::where('link_scan_id', $scan->id)

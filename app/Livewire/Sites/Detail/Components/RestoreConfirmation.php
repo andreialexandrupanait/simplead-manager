@@ -133,14 +133,7 @@ class RestoreConfirmation extends Component
 
     protected function resolveDestination(): ?StorageDestination
     {
-        $config = $this->site->backupConfig;
-        if ($config?->storage_destination_id) {
-            return StorageDestination::find($config->storage_destination_id);
-        }
-
-        return StorageDestination::where('is_default', true)
-            ->where('is_active', true)
-            ->first();
+        return StorageDestination::resolveForSite($this->site);
     }
 
     public function render()

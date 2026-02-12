@@ -16,22 +16,18 @@
 
     {{-- Card Content --}}
     <div class="p-4">
-        @php
-            $activeSchedules = $site->reportSchedules()->where('is_active', true)->get();
-        @endphp
-
-        @if($activeSchedules->count() > 0)
+        @if($this->activeReportSchedules->count() > 0)
             {{-- Schedule Count --}}
             <div class="mb-4 text-center">
-                <div class="text-4xl font-bold text-orange-600">{{ $activeSchedules->count() }}</div>
+                <div class="text-4xl font-bold text-orange-600">{{ $this->activeReportSchedules->count() }}</div>
                 <div class="mt-1 text-sm text-gray-500">
-                    Active {{ Str::plural('Schedule', $activeSchedules->count()) }}
+                    Active {{ Str::plural('Schedule', $this->activeReportSchedules->count()) }}
                 </div>
             </div>
 
             {{-- Scheduled Reports List --}}
             <div class="space-y-2 border-t border-gray-100 pt-4">
-                @foreach($activeSchedules->take(3) as $schedule)
+                @foreach($this->activeReportSchedules->take(3) as $schedule)
                 <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                     <div class="flex-1">
                         <div class="text-sm font-medium text-gray-900">
@@ -49,23 +45,19 @@
                 </div>
                 @endforeach
 
-                @if($activeSchedules->count() > 3)
+                @if($this->activeReportSchedules->count() > 3)
                 <div class="pt-2 text-center">
                     <a href="{{ route('sites.reports', $site) }}" class="text-xs text-purple-600 hover:text-purple-700">
-                        +{{ $activeSchedules->count() - 3 }} more schedules
+                        +{{ $this->activeReportSchedules->count() - 3 }} more schedules
                     </a>
                 </div>
                 @endif
             </div>
 
             {{-- Last Report Sent --}}
-            @php
-                $lastReport = $site->reports()->latest('created_at')->first();
-            @endphp
-
-            @if($lastReport)
+            @if($this->lastReport)
             <div class="mt-4 border-t border-gray-100 pt-4 text-xs text-gray-500">
-                Last report sent {{ $lastReport->created_at->diffForHumans() }}
+                Last report sent {{ $this->lastReport->created_at->diffForHumans() }}
             </div>
             @endif
         @else

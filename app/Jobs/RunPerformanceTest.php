@@ -22,6 +22,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public string $queue = 'default';
     public int $timeout = 300;
     public int $tries = 2;
     public array $backoff = [60, 180];
@@ -108,9 +109,6 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
                 report($e);
             }
 
-            if (count($this->device === 'both' ? ['mobile', 'desktop'] : [$this->device]) > 1) {
-                sleep(2);
-            }
         }
     }
 

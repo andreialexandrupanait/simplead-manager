@@ -77,11 +77,13 @@ class LinkCheckerService
                 $this->visited[$normalizedUrl] = true;
                 $this->pagesScanned++;
 
-                $this->scan->update([
-                    'progress_percent' => min(90, intval(($this->pagesScanned / $maxPages) * 90)),
-                    'progress_message' => "Scanning page {$this->pagesScanned}/{$maxPages}: " . $this->truncateUrl($url),
-                    'pages_scanned' => $this->pagesScanned,
-                ]);
+                if ($this->pagesScanned % 5 === 0 || $this->pagesScanned >= $maxPages || $this->pagesScanned === 1) {
+                    $this->scan->update([
+                        'progress_percent' => min(90, intval(($this->pagesScanned / $maxPages) * 90)),
+                        'progress_message' => "Scanning page {$this->pagesScanned}/{$maxPages}: " . $this->truncateUrl($url),
+                        'pages_scanned' => $this->pagesScanned,
+                    ]);
+                }
 
                 $links = $this->crawlPage($url);
 

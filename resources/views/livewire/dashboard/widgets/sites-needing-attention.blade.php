@@ -28,7 +28,7 @@
             <div class="space-y-2">
                 @foreach($this->data['sites'] as $site)
                     <a
-                        href="{{ route('sites.show', $site) }}"
+                        href="{{ route('sites.overview', $site) }}"
                         class="group flex items-center gap-3 rounded-lg border border-gray-200 p-3 transition hover:border-purple-300 hover:bg-purple-50"
                     >
                         {{-- Site Icon/Favicon --}}

@@ -89,25 +89,22 @@
             <form wire:submit="saveCredentials" class="mt-5 space-y-4">
                 <div>
                     <label for="apiEndpoint" class="block text-sm font-medium text-gray-700">API Endpoint</label>
-                    <input wire:model="apiEndpoint" type="text" id="apiEndpoint"
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                           placeholder="https://example.com/wp-json/jesuspended/v1">
+                    <x-ui.input wire:model="apiEndpoint" type="text" id="apiEndpoint" class="mt-1"
+                           placeholder="https://example.com/wp-json/jesuspended/v1" />
                     @error('apiEndpoint') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label for="apiKey" class="block text-sm font-medium text-gray-700">API Key</label>
-                    <input wire:model="apiKey" type="text" id="apiKey"
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                           placeholder="Paste your API key here">
+                    <x-ui.input wire:model="apiKey" type="text" id="apiKey" class="mt-1"
+                           placeholder="Paste your API key here" />
                     @error('apiKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label for="apiSecret" class="block text-sm font-medium text-gray-700">API Secret</label>
-                    <input wire:model="apiSecret" type="password" id="apiSecret"
-                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                           placeholder="Paste your API secret here">
+                    <x-ui.input wire:model="apiSecret" type="password" id="apiSecret" class="mt-1"
+                           placeholder="Paste your API secret here" />
                     @error('apiSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 

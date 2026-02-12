@@ -12,7 +12,7 @@
     <x-ui.flash-alert type="success" key="perf-success" />
 
     {{-- Stats Cards --}}
-    <div class="mb-6 grid grid-cols-5 gap-4">
+    <div class="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <x-ui.card>
             <div class="text-center">
                 <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total'] }}</p>

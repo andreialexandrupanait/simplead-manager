@@ -19,6 +19,9 @@ class GoogleAuthController extends Controller
 
         session(['google_return_url' => $request->get('return_url', route('settings.integrations'))]);
 
+        $state = bin2hex(random_bytes(32));
+        session(['google_oauth_state' => $state]);
+
         $params = http_build_query([
             'client_id' => $clientId,
             'redirect_uri' => config('services.google.redirect_uri'),
@@ -32,7 +35,7 @@ class GoogleAuthController extends Controller
             ]),
             'access_type' => 'offline',
             'prompt' => 'consent',
-            'state' => csrf_token(),
+            'state' => $state,
         ]);
 
         return redirect("https://accounts.google.com/o/oauth2/v2/auth?{$params}");
@@ -44,6 +47,8 @@ class GoogleAuthController extends Controller
             return redirect(session('google_return_url', route('settings.integrations')))
                 ->with('error', 'Google authorization was cancelled.');
         }
+
+        abort_unless($request->get('state') === session()->pull('google_oauth_state'), 403);
 
         $code = $request->get('code');
 

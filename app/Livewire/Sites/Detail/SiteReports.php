@@ -161,7 +161,7 @@ class SiteReports extends Component
         }
 
         // Calculate next run
-        $schedule->update(['next_run_at' => $this->calculateNextRun($schedule)]);
+        $schedule->update(['next_run_at' => $schedule->calculateNextRun()]);
 
         $this->showScheduleModal = false;
         session()->flash('report-success', 'Report schedule saved.');
@@ -228,23 +228,6 @@ class SiteReports extends Component
             'custom' => [Carbon::parse($customStart)->startOfDay(), Carbon::parse($customEnd)->endOfDay()],
             default => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
         };
-    }
-
-    protected function calculateNextRun(ReportSchedule $schedule): Carbon
-    {
-        $tz = $schedule->timezone ?? 'Europe/Bucharest';
-        [$hour, $minute] = explode(':', $schedule->time ?? '08:00');
-
-        if ($schedule->frequency === 'weekly') {
-            $next = now($tz)->next(Carbon::getDays()[$schedule->day_of_week ?? 0]);
-            $next->setTime((int) $hour, (int) $minute);
-        } else {
-            $dayOfMonth = $schedule->day_of_month ?? 1;
-            $next = now($tz)->addMonth()->setDay(min($dayOfMonth, now($tz)->addMonth()->daysInMonth));
-            $next->setTime((int) $hour, (int) $minute);
-        }
-
-        return $next->utc();
     }
 
     public function render()

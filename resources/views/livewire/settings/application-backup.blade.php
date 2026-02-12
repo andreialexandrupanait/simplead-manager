@@ -73,7 +73,7 @@
                 </div>
                 <div class="flex justify-between">
                     <span class="text-gray-500">Backup Count</span>
-                    <span class="text-gray-900 font-medium">{{ \App\Models\AppBackup::where('status', 'completed')->count() }}</span>
+                    <span class="text-gray-900 font-medium">{{ $this->completedBackupCount }}</span>
                 </div>
             </div>
             <div class="mt-4">
@@ -265,10 +265,7 @@
             <div x-show="open" x-cloak x-transition class="mt-4">
                 <form wire:submit="saveConfig" class="space-y-4">
                     {{-- Enable toggle --}}
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="isEnabled" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                        <span class="text-sm text-gray-700">Enable scheduled backups</span>
-                    </label>
+                    <x-ui.checkbox wire:model.live="isEnabled" label="Enable scheduled backups" />
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {{-- Frequency --}}
@@ -364,10 +361,9 @@
 
                     {{-- Encryption --}}
                     <div class="border-t pt-4">
-                        <label class="flex items-center gap-2 mb-3">
-                            <input type="checkbox" wire:model.live="encryptBackup" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-sm text-gray-700">Encrypt backups (AES-256-CBC)</span>
-                        </label>
+                        <div class="mb-3">
+                            <x-ui.checkbox wire:model.live="encryptBackup" label="Encrypt backups (AES-256-CBC)" />
+                        </div>
 
                         @if($encryptBackup)
                             <div class="max-w-sm">
@@ -521,14 +517,8 @@
 
             <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700">Additional Components</label>
-                <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="createIncludeLogs" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                    <span class="text-sm text-gray-700">Include log files</span>
-                </label>
-                <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="createIncludeCodebase" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                    <span class="text-sm text-gray-700">Include codebase (excluding vendor, node_modules, .git)</span>
-                </label>
+                <x-ui.checkbox wire:model="createIncludeLogs" label="Include log files" />
+                <x-ui.checkbox wire:model="createIncludeCodebase" label="Include codebase (excluding vendor, node_modules, .git)" />
             </div>
         </div>
 

@@ -117,10 +117,9 @@
                 <h3 class="text-base font-semibold text-gray-900 mb-4">Quiet Hours</h3>
                 <p class="text-sm text-gray-500 mb-4">Suppress notifications during specified hours.</p>
 
-                <label class="flex items-center gap-3 mb-4">
-                    <input type="checkbox" wire:model.live="quietHoursEnabled" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                    <span class="text-sm font-medium text-gray-700">Enable quiet hours</span>
-                </label>
+                <div class="mb-4">
+                    <x-ui.checkbox wire:model.live="quietHoursEnabled" label="Enable quiet hours" />
+                </div>
 
                 @if($quietHoursEnabled)
                     <div class="grid grid-cols-2 gap-4">

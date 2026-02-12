@@ -16,6 +16,8 @@ class GeneralSettings extends Component
 {
     use WithFileUploads;
 
+    private static ?bool $hasSiteStatusesTable = null;
+
     // Application
     public string $appName = 'SimpleAd Manager';
     public string $appUrl = '';
@@ -54,7 +56,7 @@ class GeneralSettings extends Component
     #[Computed]
     public function siteStatuses()
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             return collect();
         }
 
@@ -110,7 +112,7 @@ class GeneralSettings extends Component
 
     public function openStatusForm(?int $id = null): void
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }
@@ -134,7 +136,7 @@ class GeneralSettings extends Component
 
     public function saveStatus(): void
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }
@@ -160,7 +162,7 @@ class GeneralSettings extends Component
 
     public function deleteStatus(int $id): void
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
             return;
         }

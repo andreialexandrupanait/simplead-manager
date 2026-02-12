@@ -63,13 +63,14 @@ class ResponseTimeChart extends Component
             ->where('is_up', true)
             ->whereNotNull('response_time');
 
-        $avg = (int) round((clone $query)->avg('response_time'));
-        $min = (int) (clone $query)->min('response_time');
-        $max = (int) (clone $query)->max('response_time');
+        $stats = (clone $query)->selectRaw('AVG(response_time) as avg_rt, MIN(response_time) as min_rt, MAX(response_time) as max_rt, COUNT(*) as total')->first();
 
-        // P95 calculation
-        $total = (clone $query)->count();
+        $avg = (int) round($stats->avg_rt ?? 0);
+        $min = (int) ($stats->min_rt ?? 0);
+        $max = (int) ($stats->max_rt ?? 0);
+
         $p95 = 0;
+        $total = (int) $stats->total;
         if ($total > 0) {
             $offset = (int) floor($total * 0.95) - 1;
             $p95 = (int) (clone $query)

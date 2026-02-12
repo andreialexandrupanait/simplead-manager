@@ -51,10 +51,7 @@ class WidgetDashboard extends Component
     {
         $this->widgetService->updateLayout(auth()->id(), $layout);
 
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Layout saved successfully'
-        ]);
+        $this->dispatch('notify', type: 'success', message: 'Layout saved successfully');
     }
 
     public function addWidget(string $type)
@@ -67,17 +64,11 @@ class WidgetDashboard extends Component
 
             $this->showAddWidgetModal = false;
 
-            $this->dispatch('notify', [
-                'type' => 'success',
-                'message' => 'Widget added successfully'
-            ]);
+            $this->dispatch('notify', type: 'success', message: 'Widget added successfully');
 
             $this->dispatch('widget-added', widgetId: $widget->id);
         } catch (\Exception $e) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => $e->getMessage()
-            ]);
+            $this->dispatch('notify', type: 'error', message: $e->getMessage());
         }
     }
 
@@ -88,10 +79,7 @@ class WidgetDashboard extends Component
         unset($this->widgets);
         unset($this->availableWidgetTypes);
 
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Widget removed successfully'
-        ]);
+        $this->dispatch('notify', type: 'success', message: 'Widget removed successfully');
     }
 
     public function toggleWidgetVisibility(int $widgetId)
@@ -100,10 +88,7 @@ class WidgetDashboard extends Component
 
         unset($this->widgets);
 
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Widget visibility updated'
-        ]);
+        $this->dispatch('notify', type: 'success', message: 'Widget visibility updated');
     }
 
     public function resetToDefaults()
@@ -116,10 +101,7 @@ class WidgetDashboard extends Component
         $this->showResetModal = false;
         $this->isEditMode = false;
 
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Dashboard reset to defaults'
-        ]);
+        $this->dispatch('notify', type: 'success', message: 'Dashboard reset to defaults');
 
         // Reload the page to refresh all widgets
         $this->js('window.location.reload()');

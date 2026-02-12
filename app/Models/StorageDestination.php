@@ -57,6 +57,19 @@ class StorageDestination extends Model
         return round(($this->used_bytes / $this->quota_bytes) * 100, 1);
     }
 
+    public static function resolveForSite(Site $site): ?self
+    {
+        $config = $site->backupConfig;
+        if ($config?->storage_destination_id) {
+            return static::find($config->storage_destination_id);
+        }
+
+        return static::where('is_default', true)
+            ->where('is_active', true)
+            ->first()
+            ?? static::where('is_active', true)->first();
+    }
+
     protected function formatBytes(int $bytes): string
     {
         return \App\Helpers\FormatHelper::bytes($bytes);
