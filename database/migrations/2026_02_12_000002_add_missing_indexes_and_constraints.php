@@ -83,9 +83,9 @@ return new class extends Migration
         }
 
         // Add index on uptime_checks for query performance
-        if (!$this->indexExists('uptime_checks', 'uptime_checks_monitor_checked_at_index')) {
+        if (!$this->indexExists('uptime_checks', 'uptime_checks_monitor_id_checked_at_index')) {
             Schema::table('uptime_checks', function (Blueprint $table) {
-                $table->index(['uptime_monitor_id', 'checked_at']);
+                $table->index(['monitor_id', 'checked_at']);
             });
         }
 
@@ -147,9 +147,9 @@ return new class extends Migration
             });
         }
 
-        if ($this->indexExists('uptime_checks', 'uptime_checks_monitor_checked_at_index')) {
+        if ($this->indexExists('uptime_checks', 'uptime_checks_monitor_id_checked_at_index')) {
             Schema::table('uptime_checks', function (Blueprint $table) {
-                $table->dropIndex(['uptime_monitor_id', 'checked_at']);
+                $table->dropIndex(['monitor_id', 'checked_at']);
             });
         }
 
