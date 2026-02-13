@@ -9,6 +9,15 @@ if (!defined('ABSPATH')) {
  */
 class SAM_Database_Endpoint extends SAM_Endpoint_Base {
 
+    /**
+     * Known WP core tables (without prefix).
+     */
+    private const WP_CORE_TABLES = [
+        'posts', 'postmeta', 'comments', 'commentmeta',
+        'terms', 'termmeta', 'term_taxonomy', 'term_relationships',
+        'options', 'users', 'usermeta', 'links',
+    ];
+
     public function register_routes(): void {
         register_rest_route(SAM_REST_NAMESPACE, '/database-health', [
             'methods'             => 'GET',
@@ -27,6 +36,15 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'cleanup_run'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+    }
+
+    /**
+     * Validate that a table name exists in the database.
+     */
+    private function validate_table_name(string $table): bool {
+        global $wpdb;
+        $tables = $wpdb->get_col("SHOW TABLES");
+        return in_array($table, $tables, true);
     }
 
     public function database_health(WP_REST_Request $request): WP_REST_Response {
@@ -201,11 +219,13 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
 
         SAM_Audit_Logger::log('db_cleanup', 'database', null, "Cleaned {$total} items via SimpleAd Manager: " . json_encode($cleaned));
 
-        // Optimize tables after cleanup
+        // Optimize tables after cleanup — validate each table name
         if ($total > 0) {
-            $tables = $wpdb->get_col("SHOW TABLES");
-            foreach ($tables as $table) {
-                $wpdb->query("OPTIMIZE TABLE `{$table}`");
+            $db_tables = $wpdb->get_col("SHOW TABLES");
+            foreach ($db_tables as $table) {
+                if (in_array($table, $db_tables, true)) {
+                    $wpdb->query("OPTIMIZE TABLE `" . esc_sql($table) . "`");
+                }
             }
         }
 

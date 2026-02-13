@@ -10,5 +10,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(PluginConflictSeeder::class);
         $this->call(SiteStatusSeeder::class);
+        $this->call(SitePresetSeeder::class);
     }
 }

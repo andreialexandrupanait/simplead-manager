@@ -54,14 +54,15 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Check Interval</label>
-                    <x-ui.select wire:model="interval" class="mt-1">
-                        <option value="60">1 minute</option>
-                        <option value="120">2 minutes</option>
-                        <option value="300">5 minutes</option>
-                        <option value="600">10 minutes</option>
-                        <option value="900">15 minutes</option>
-                        <option value="1800">30 minutes</option>
-                        <option value="3600">1 hour</option>
+                    <x-ui.select wire:model="interval_minutes" class="mt-1">
+                        <option value="1">1 minute</option>
+                        <option value="2">2 minutes</option>
+                        <option value="3">3 minutes</option>
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
                     </x-ui.select>
                 </div>
                 <div>

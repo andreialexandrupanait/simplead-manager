@@ -1,4 +1,4 @@
-<div>
+<div @if($hasRunningJobs) wire:poll.1s="checkJobProgress" @endif>
     <x-ui.page-header
         title="Overview"
         subtitle="Site health, status, and key metrics"
@@ -34,6 +34,8 @@
             @endif
         </x-slot:actions>
     </x-ui.page-header>
+
+    <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
     {{-- 3-Column Responsive Grid --}}
     <div class="grid gap-4 lg:grid-cols-12">

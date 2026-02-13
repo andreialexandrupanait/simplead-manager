@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AnalyticsCache;
 use App\Models\Site;
+use App\Services\CircuitBreakerService;
 use App\Services\GoogleAnalyticsService;
 use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
@@ -26,7 +27,9 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         public string $dateRange = '28d',
         public ?string $customStart = null,
         public ?string $customEnd = null,
-    ) {}
+    ) {
+        $this->onQueue('sync');
+    }
 
     public function uniqueId(): string
     {
@@ -55,18 +58,23 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         [$startDate, $endDate] = $this->getDateRange();
 
         try {
-            $data = [
-                'overview' => $service->getOverview($propertyId, $startDate, $endDate),
-                'users_over_time' => $service->getUsersOverTime($propertyId, $startDate, $endDate),
-                'traffic_sources' => $service->getTrafficSources($propertyId, $startDate, $endDate),
-                'top_pages' => $service->getTopPages($propertyId, $startDate, $endDate),
-                'devices' => $service->getDevices($propertyId, $startDate, $endDate),
-                'countries' => $service->getCountries($propertyId, $startDate, $endDate),
-                'cities' => $service->getCities($propertyId, $startDate, $endDate),
-                'referral_sources' => $service->getReferralSources($propertyId, $startDate, $endDate),
-                'landing_pages' => $service->getLandingPages($propertyId, $startDate, $endDate),
-                'demographics' => $service->getDemographics($propertyId, $startDate, $endDate),
+            $endpoints = [
+                'overview' => fn () => $service->getOverview($propertyId, $startDate, $endDate),
+                'users_over_time' => fn () => $service->getUsersOverTime($propertyId, $startDate, $endDate),
+                'traffic_sources' => fn () => $service->getTrafficSources($propertyId, $startDate, $endDate),
+                'top_pages' => fn () => $service->getTopPages($propertyId, $startDate, $endDate),
             ];
+
+            $data = [];
+            $completed = 0;
+            $total = count($endpoints);
+
+            foreach ($endpoints as $name => $fetcher) {
+                $label = str_replace('_', ' ', $name);
+                JobTracker::progress($this->uniqueId(), (int) round($completed / $total * 90), "Fetching {$label}...");
+                $data[$name] = $fetcher();
+                $completed++;
+            }
 
             AnalyticsCache::updateOrCreate(
                 [
@@ -87,6 +95,9 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
                 'last_error' => null,
             ]);
 
+            JobTracker::progress($this->uniqueId(), 95, 'Saving data...');
+
+            CircuitBreakerService::recordSuccess($this->site);
             JobTracker::complete($this->uniqueId(), 'Analytics data fetched');
 
         } catch (\Exception $e) {
@@ -97,6 +108,7 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Analytics fetch failed');
         JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 
@@ -106,14 +118,18 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
             return [$this->customStart, $this->customEnd];
         }
 
-        $endDate = now()->subDay()->format('Y-m-d');
+        // Analytics data has ~1 day processing delay
+        $dataDelay = 1;
+        $endDate = now()->subDays($dataDelay)->format('Y-m-d');
 
-        $startDate = match ($this->dateRange) {
-            '7d' => now()->subDays(7)->format('Y-m-d'),
-            '28d' => now()->subDays(28)->format('Y-m-d'),
-            '90d' => now()->subDays(90)->format('Y-m-d'),
-            default => now()->subDays(28)->format('Y-m-d'),
+        $days = match ($this->dateRange) {
+            '7d' => 7,
+            '28d' => 28,
+            '90d' => 90,
+            default => 28,
         };
+
+        $startDate = now()->subDays($days + $dataDelay)->format('Y-m-d');
 
         return [$startDate, $endDate];
     }

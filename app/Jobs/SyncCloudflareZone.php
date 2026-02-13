@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\SiteCloudflare;
+use App\Services\CircuitBreakerService;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -21,7 +22,9 @@ class SyncCloudflareZone implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public SiteCloudflare $siteCloudflare,
-    ) {}
+    ) {
+        $this->onQueue('sync');
+    }
 
     public function uniqueId(): string
     {

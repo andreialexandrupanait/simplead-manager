@@ -1,4 +1,4 @@
-<x-ui.card>
+<x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -69,11 +69,11 @@
                 title="No client assigned"
                 description="Assign a client to this site for billing and reporting."
             >
-                <x-slot:actions>
+                <x-slot:action>
                     <x-ui.button wire:click="openAssignClientModal" color="purple">
                         Assign Client
                     </x-ui.button>
-                </x-slot:actions>
+                </x-slot:action>
             </x-ui.empty-state>
         @endif
     </div>

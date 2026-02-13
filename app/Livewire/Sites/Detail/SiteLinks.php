@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\RunLinkScan;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Link;
 use App\Models\LinkMonitor;
 use App\Models\LinkScan;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 
 class SiteLinks extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public Site $site;
     public string $statusFilter = 'all';
@@ -39,6 +40,7 @@ class SiteLinks extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->loadSettings();
 

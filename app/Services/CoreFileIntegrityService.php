@@ -24,11 +24,18 @@ class CoreFileIntegrityService
         return $data['checksums'] ?? [];
     }
 
-    public static function check(Site $site): CoreFileCheck
+    public static function check(Site $site, ?string $trackerKey = null): CoreFileCheck
     {
+        $startTime = microtime(true);
+        Log::info("Core file integrity check started for site {$site->id} ({$site->name})");
+
         try {
             $api = new WordPressApiService($site);
             $siteFiles = $api->getCoreIntegrityCheck();
+
+            if ($trackerKey) {
+                JobTracker::progress($trackerKey, 20, 'Fetching official checksums...');
+            }
 
             $wpVersion = $siteFiles['wp_version'] ?? $site->wp_version;
 
@@ -51,6 +58,10 @@ class CoreFileIntegrityService
                     'error_message' => "Could not fetch official checksums for WordPress {$wpVersion}.",
                     'checked_at' => now(),
                 ]);
+            }
+
+            if ($trackerKey) {
+                JobTracker::progress($trackerKey, 40, 'Comparing files...');
             }
 
             $fileHashes = $siteFiles['files'] ?? [];
@@ -84,6 +95,10 @@ class CoreFileIntegrityService
 
             $status = (count($modified) > 0 || count($missing) > 0 || count($unknown) > 0) ? 'modified' : 'clean';
 
+            if ($trackerKey) {
+                JobTracker::progress($trackerKey, 80, 'Saving results...');
+            }
+
             $check = CoreFileCheck::create([
                 'site_id' => $site->id,
                 'wp_version' => $wpVersion,
@@ -113,6 +128,19 @@ class CoreFileIntegrityService
                     severity: 'critical',
                 );
             }
+
+            if ($trackerKey) {
+                JobTracker::progress($trackerKey, 95, 'Finalizing...');
+            }
+
+            $duration = round(microtime(true) - $startTime, 2);
+            Log::info("Core file integrity check completed for site {$site->id}", [
+                'status' => $status,
+                'modified' => count($modified),
+                'missing' => count($missing),
+                'unknown' => count($unknown),
+                'duration_seconds' => $duration,
+            ]);
 
             ActivityLogger::log(
                 type: 'security',

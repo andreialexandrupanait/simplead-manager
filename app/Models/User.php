@@ -22,6 +22,7 @@ class User extends Authenticatable
         "name",
         "email",
         "password",
+        "is_admin",
         "timezone",
         "date_format",
         "language",
@@ -54,6 +55,7 @@ class User extends Authenticatable
             "email_verified_at" => "datetime",
             "password" => "hashed",
             "two_factor_enabled" => "boolean",
+            "is_admin" => "boolean",
             "two_factor_secret" => "encrypted",
             "two_factor_recovery_codes" => "encrypted:array",
         ];

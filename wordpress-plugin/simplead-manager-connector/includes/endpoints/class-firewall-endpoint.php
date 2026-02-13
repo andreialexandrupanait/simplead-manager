@@ -58,6 +58,39 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         dbDelta($sql);
     }
 
+    /**
+     * Validate an IP address or CIDR notation.
+     */
+    private function validate_ip(string $ip): bool {
+        // Plain IP address
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return true;
+        }
+
+        // CIDR notation (e.g. 192.168.1.0/24 or 2001:db8::/32)
+        if (strpos($ip, '/') !== false) {
+            [$address, $prefix] = explode('/', $ip, 2);
+
+            if (!filter_var($address, FILTER_VALIDATE_IP)) {
+                return false;
+            }
+
+            $prefix = (int) $prefix;
+
+            // IPv4 CIDR
+            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                return $prefix >= 0 && $prefix <= 32;
+            }
+
+            // IPv6 CIDR
+            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                return $prefix >= 0 && $prefix <= 128;
+            }
+        }
+
+        return false;
+    }
+
     public function sync_ip_rules(WP_REST_Request $request): WP_REST_Response {
         global $wpdb;
 
@@ -70,12 +103,19 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         $wpdb->query("TRUNCATE TABLE {$table}");
 
         $synced = 0;
+        $rejected = [];
         foreach ($rules as $rule) {
             $ip = sanitize_text_field($rule['ip'] ?? '');
             $action = in_array($rule['action'] ?? '', ['allow', 'block'], true) ? $rule['action'] : 'block';
             $note = sanitize_text_field($rule['note'] ?? '');
 
             if (empty($ip)) {
+                continue;
+            }
+
+            // Validate IP/CIDR before accepting
+            if (!$this->validate_ip($ip)) {
+                $rejected[] = $ip;
                 continue;
             }
 
@@ -94,10 +134,17 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
 
         SAM_Audit_Logger::log('ip_rules_synced', 'firewall', null, "Synced {$synced} IP rules via SimpleAd Manager");
 
-        return $this->success([
+        $response = [
             'synced' => $synced,
             'total'  => count($rules),
-        ]);
+        ];
+
+        if (!empty($rejected)) {
+            $response['rejected'] = $rejected;
+            $response['rejected_reason'] = 'Invalid IP address or CIDR notation';
+        }
+
+        return $this->success($response);
     }
 
     public function get_blocked_requests(WP_REST_Request $request): WP_REST_Response {
@@ -106,8 +153,10 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         $since = $request->get_param('since');
         $table = $wpdb->prefix . 'sam_blocked_requests';
 
-        // Check if table exists
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
+        // Check if table exists using prepare-safe pattern
+        $table_exists = $wpdb->get_var(
+            $wpdb->prepare("SHOW TABLES LIKE %s", $table)
+        );
         if (!$table_exists) {
             return $this->success(['requests' => [], 'count' => 0]);
         }
@@ -135,9 +184,9 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
     }
 
     /**
-     * Write IP block/allow rules into .htaccess.
+     * Write IP block/allow rules into .htaccess (atomic write).
      */
-    private function update_htaccess_rules(): void {
+    public function update_htaccess_rules(): void {
         global $wpdb;
 
         $htaccess = ABSPATH . '.htaccess';
@@ -158,11 +207,11 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         );
 
         if (empty($rules)) {
-            file_put_contents($htaccess, $contents);
+            $this->atomic_htaccess_write($htaccess, $contents);
             return;
         }
 
-        // Build new rules
+        // Build new rules — only validated IPs reach this point
         $block = "# BEGIN SimpleAd Manager IP Rules\n";
         $block .= "<IfModule mod_rewrite.c>\n";
         $block .= "RewriteEngine On\n";
@@ -170,10 +219,9 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         foreach ($rules as $rule) {
             $ip = $rule['ip'];
             if ($rule['action'] === 'block') {
-                // Convert CIDR to regex-friendly if needed
+                // Skip CIDR ranges for rewrite rules (handled below)
                 if (strpos($ip, '/') !== false) {
-                    // For CIDR ranges, use Apache's Require directive instead
-                    continue; // Handled below in Require block
+                    continue;
                 }
                 $block .= "RewriteCond %{REMOTE_ADDR} ^" . preg_quote($ip, '/') . "$\n";
                 $block .= "RewriteRule ^ - [F,L]\n";
@@ -197,6 +245,36 @@ class SAM_Firewall_Endpoint extends SAM_Endpoint_Base {
         $block .= "</IfModule>\n";
         $block .= "# END SimpleAd Manager IP Rules\n";
 
-        file_put_contents($htaccess, $block . $contents);
+        $this->atomic_htaccess_write($htaccess, $block . $contents);
+    }
+
+    /**
+     * Atomic .htaccess write: write to .tmp, then rename.
+     */
+    private function atomic_htaccess_write(string $file_path, string $contents): bool {
+        $tmp_path = $file_path . '.tmp';
+        $bak_path = $file_path . '.bak';
+
+        // Create backup
+        if (file_exists($file_path)) {
+            copy($file_path, $bak_path);
+        }
+
+        // Write to temp
+        if (file_put_contents($tmp_path, $contents) === false) {
+            @unlink($tmp_path);
+            return false;
+        }
+
+        // Atomic rename
+        if (!rename($tmp_path, $file_path)) {
+            @unlink($tmp_path);
+            if (file_exists($bak_path)) {
+                rename($bak_path, $file_path);
+            }
+            return false;
+        }
+
+        return true;
     }
 }

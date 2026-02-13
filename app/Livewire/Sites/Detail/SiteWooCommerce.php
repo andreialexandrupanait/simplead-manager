@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\SyncWooCommerceStats;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\WooCommerceService;
 use Livewire\Attributes\Computed;
@@ -10,10 +11,13 @@ use Livewire\Component;
 
 class SiteWooCommerce extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         abort_unless($site->has_woocommerce, 404);
         $this->site = $site;
     }

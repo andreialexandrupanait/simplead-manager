@@ -1,4 +1,4 @@
-<x-ui.card>
+<x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -44,9 +44,20 @@
             </button>
         </div>
 
-        @if($this->analyticsData)
+        @if($this->analyticsData && ($this->analyticsData['overview'] ?? null))
             @php
-                $data = $this->analyticsData;
+                $overview = $this->analyticsData['overview'];
+                $previous = $this->analyticsData['overview_previous'] ?? [];
+
+                $usersChange = ($previous['total_users'] ?? 0) > 0
+                    ? round((($overview['total_users'] ?? 0) - $previous['total_users']) / $previous['total_users'] * 100, 1)
+                    : null;
+                $sessionsChange = ($previous['sessions'] ?? 0) > 0
+                    ? round((($overview['sessions'] ?? 0) - $previous['sessions']) / $previous['sessions'] * 100, 1)
+                    : null;
+                $pageviewsChange = ($previous['pageviews'] ?? 0) > 0
+                    ? round((($overview['pageviews'] ?? 0) - $previous['pageviews']) / $previous['pageviews'] * 100, 1)
+                    : null;
             @endphp
 
             {{-- Metrics Grid --}}
@@ -56,19 +67,19 @@
                     <div>
                         <div class="text-sm text-gray-600">Total Users</div>
                         <div class="mt-1 text-2xl font-bold text-gray-900">
-                            {{ number_format($data['users'] ?? 0) }}
+                            {{ number_format($overview['total_users'] ?? 0) }}
                         </div>
                     </div>
-                    @if(isset($data['users_change']))
-                        <div class="flex items-center gap-1 text-sm {{ $data['users_change'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                    @if($usersChange !== null)
+                        <div class="flex items-center gap-1 text-sm {{ $usersChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                @if($data['users_change'] >= 0)
+                                @if($usersChange >= 0)
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
                                 @else
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                                 @endif
                             </svg>
-                            {{ abs($data['users_change']) }}%
+                            {{ abs($usersChange) }}%
                         </div>
                     @endif
                 </div>
@@ -78,19 +89,19 @@
                     <div>
                         <div class="text-sm text-gray-600">Sessions</div>
                         <div class="mt-1 text-2xl font-bold text-gray-900">
-                            {{ number_format($data['sessions'] ?? 0) }}
+                            {{ number_format($overview['sessions'] ?? 0) }}
                         </div>
                     </div>
-                    @if(isset($data['sessions_change']))
-                        <div class="flex items-center gap-1 text-sm {{ $data['sessions_change'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                    @if($sessionsChange !== null)
+                        <div class="flex items-center gap-1 text-sm {{ $sessionsChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                @if($data['sessions_change'] >= 0)
+                                @if($sessionsChange >= 0)
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
                                 @else
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                                 @endif
                             </svg>
-                            {{ abs($data['sessions_change']) }}%
+                            {{ abs($sessionsChange) }}%
                         </div>
                     @endif
                 </div>
@@ -100,28 +111,39 @@
                     <div>
                         <div class="text-sm text-gray-600">Pageviews</div>
                         <div class="mt-1 text-2xl font-bold text-gray-900">
-                            {{ number_format($data['pageviews'] ?? 0) }}
+                            {{ number_format($overview['pageviews'] ?? 0) }}
                         </div>
                     </div>
-                    @if(isset($data['pageviews_change']))
-                        <div class="flex items-center gap-1 text-sm {{ $data['pageviews_change'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                    @if($pageviewsChange !== null)
+                        <div class="flex items-center gap-1 text-sm {{ $pageviewsChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                @if($data['pageviews_change'] >= 0)
+                                @if($pageviewsChange >= 0)
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
                                 @else
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                                 @endif
                             </svg>
-                            {{ abs($data['pageviews_change']) }}%
+                            {{ abs($pageviewsChange) }}%
                         </div>
                     @endif
                 </div>
             </div>
+        @elseif($site->analyticsConnection?->is_active)
+            <x-ui.empty-state
+                title="No data for this period"
+                description="Analytics is connected but no data has been recorded yet.{{ $site->analyticsConnection->last_sync_at ? ' Last sync: ' . $site->analyticsConnection->last_sync_at->diffForHumans() : '' }}"
+            />
         @else
             <x-ui.empty-state
-                title="No analytics data"
+                title="No analytics connected"
                 description="Connect Google Analytics to track site traffic and engagement."
-            />
+            >
+                <x-slot:action>
+                    <x-ui.button href="{{ route('sites.analytics', $site) }}" color="indigo">
+                        Configure Analytics
+                    </x-ui.button>
+                </x-slot:action>
+            </x-ui.empty-state>
         @endif
     </div>
 </x-ui.card>

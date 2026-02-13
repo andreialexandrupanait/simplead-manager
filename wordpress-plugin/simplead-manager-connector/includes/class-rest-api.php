@@ -49,9 +49,15 @@ abstract class SAM_Endpoint_Base {
     abstract public function register_routes(): void;
 
     /**
-     * Standard permission callback using HMAC authentication.
+     * Standard permission callback using HMAC authentication + rate limiting.
      */
     public function check_permission(WP_REST_Request $request) {
+        // Rate limit check first (cheap, avoids HMAC computation on abuse)
+        $rate_check = SAM_Rate_Limiter::check($request);
+        if (is_wp_error($rate_check)) {
+            return $rate_check;
+        }
+
         return SAM_Authentication::validate($request);
     }
 

@@ -20,7 +20,7 @@ class PageSpeedService
         $params = [
             'url' => $url,
             'strategy' => strtoupper($device) === 'DESKTOP' ? 'DESKTOP' : 'MOBILE',
-            'category' => ['PERFORMANCE', 'ACCESSIBILITY', 'BEST_PRACTICES', 'SEO'],
+            'category' => ['PERFORMANCE'],
         ];
 
         if ($this->apiKey) {
@@ -46,9 +46,6 @@ class PageSpeedService
 
         return [
             'performance_score' => $this->extractScore($categories, 'performance'),
-            'accessibility_score' => $this->extractScore($categories, 'accessibility'),
-            'best_practices_score' => $this->extractScore($categories, 'best-practices'),
-            'seo_score' => $this->extractScore($categories, 'seo'),
 
             'fcp' => $this->extractMetricSeconds($audits, 'first-contentful-paint'),
             'lcp' => $this->extractMetricSeconds($audits, 'largest-contentful-paint'),
@@ -60,15 +57,7 @@ class PageSpeedService
             ...$this->parseFieldData($data),
             ...$this->parsePageStats($lighthouse),
 
-            'opportunities' => $this->parseOpportunities($audits),
-            'diagnostics' => $this->parseDiagnostics($audits),
             'lighthouse_version' => $lighthouse['lighthouseVersion'] ?? null,
-
-            'third_party_scripts' => $this->parseThirdPartyScripts($audits),
-            ...$this->parseDomSize($audits),
-            ...$this->parseUnusedCode($audits),
-            'image_audit' => $this->parseImageAudit($audits),
-            'filmstrip' => $this->parseFilmstrip($audits),
             'screenshot_final' => $audits['final-screenshot']['details']['data'] ?? null,
         ];
     }
@@ -158,183 +147,4 @@ class PageSpeedService
         ];
     }
 
-    private function parseOpportunities(array $audits): array
-    {
-        $opportunities = [];
-
-        foreach ($audits as $key => $audit) {
-            if (($audit['details']['type'] ?? '') !== 'opportunity') {
-                continue;
-            }
-            if (($audit['score'] ?? 1) >= 0.9) {
-                continue;
-            }
-
-            $savings = $audit['details']['overallSavingsMs'] ?? 0;
-            $opportunities[] = [
-                'id' => $key,
-                'title' => $audit['title'] ?? $key,
-                'description' => $audit['description'] ?? '',
-                'savings_ms' => round($savings),
-                'savings_bytes' => $audit['details']['overallSavingsBytes'] ?? null,
-            ];
-        }
-
-        usort($opportunities, fn ($a, $b) => $b['savings_ms'] <=> $a['savings_ms']);
-
-        return array_slice($opportunities, 0, 10);
-    }
-
-    private function parseDiagnostics(array $audits): array
-    {
-        $diagnostics = [];
-
-        foreach ($audits as $key => $audit) {
-            if (($audit['details']['type'] ?? '') === 'opportunity') {
-                continue;
-            }
-            if (($audit['score'] ?? 1) >= 0.9) {
-                continue;
-            }
-            if (!isset($audit['title'])) {
-                continue;
-            }
-
-            $diagnostics[] = [
-                'id' => $key,
-                'title' => $audit['title'],
-                'description' => $audit['description'] ?? '',
-                'displayValue' => $audit['displayValue'] ?? null,
-            ];
-        }
-
-        return array_slice($diagnostics, 0, 10);
-    }
-
-    private function parseThirdPartyScripts(array $audits): ?array
-    {
-        $items = $audits['third-party-summary']['details']['items'] ?? [];
-        if (empty($items)) {
-            return null;
-        }
-
-        $scripts = [];
-        foreach ($items as $item) {
-            $scripts[] = [
-                'entity' => $item['entity'] ?? ($item['mainEntity']['text'] ?? 'Unknown'),
-                'transfer_size' => $item['transferSize'] ?? 0,
-                'blocking_time' => $item['blockingTime'] ?? 0,
-                'main_thread_time' => $item['mainThreadTime'] ?? 0,
-            ];
-        }
-
-        usort($scripts, fn ($a, $b) => $b['blocking_time'] <=> $a['blocking_time']);
-
-        return $scripts;
-    }
-
-    private function parseDomSize(array $audits): array
-    {
-        $items = $audits['dom-size']['details']['items'] ?? [];
-
-        return [
-            'dom_elements' => isset($items[0]['value']) ? (int) $items[0]['value'] : null,
-            'dom_max_depth' => isset($items[1]['value']) ? (int) $items[1]['value'] : null,
-            'dom_max_children' => isset($items[2]['value']) ? (int) $items[2]['value'] : null,
-        ];
-    }
-
-    private function parseUnusedCode(array $audits): array
-    {
-        $jsItems = $audits['unused-javascript']['details']['items'] ?? [];
-        $cssItems = $audits['unused-css-rules']['details']['items'] ?? [];
-
-        $unusedJsBytes = 0;
-        $unusedJsDetails = [];
-        foreach ($jsItems as $item) {
-            $wasted = $item['wastedBytes'] ?? 0;
-            $unusedJsBytes += $wasted;
-            $unusedJsDetails[] = [
-                'url' => $item['url'] ?? '',
-                'total_bytes' => $item['totalBytes'] ?? 0,
-                'wasted_bytes' => $wasted,
-            ];
-        }
-
-        $unusedCssBytes = 0;
-        $unusedCssDetails = [];
-        foreach ($cssItems as $item) {
-            $wasted = $item['wastedBytes'] ?? 0;
-            $unusedCssBytes += $wasted;
-            $unusedCssDetails[] = [
-                'url' => $item['url'] ?? '',
-                'total_bytes' => $item['totalBytes'] ?? 0,
-                'wasted_bytes' => $wasted,
-            ];
-        }
-
-        return [
-            'unused_js_bytes' => $unusedJsBytes > 0 ? $unusedJsBytes : null,
-            'unused_css_bytes' => $unusedCssBytes > 0 ? $unusedCssBytes : null,
-            'unused_js_details' => !empty($unusedJsDetails) ? $unusedJsDetails : null,
-            'unused_css_details' => !empty($unusedCssDetails) ? $unusedCssDetails : null,
-        ];
-    }
-
-    private function parseImageAudit(array $audits): ?array
-    {
-        $checks = [
-            'uses-optimized-images' => 'unoptimized',
-            'modern-image-formats' => 'not_webp',
-            'uses-responsive-images' => 'oversized',
-            'offscreen-images' => 'offscreen',
-        ];
-
-        $totalSavings = 0;
-        $issues = [];
-        $counts = [];
-
-        foreach ($checks as $auditKey => $issueType) {
-            $items = $audits[$auditKey]['details']['items'] ?? [];
-            $counts[$issueType] = count($items);
-
-            foreach ($items as $item) {
-                $savings = $item['wastedBytes'] ?? 0;
-                $totalSavings += $savings;
-                $issues[] = [
-                    'type' => $issueType,
-                    'url' => $item['url'] ?? '',
-                    'wasted_bytes' => $savings,
-                ];
-            }
-        }
-
-        if (empty($issues)) {
-            return null;
-        }
-
-        return [
-            'counts' => $counts,
-            'total_savings_bytes' => $totalSavings,
-            'issues' => array_slice($issues, 0, 20),
-        ];
-    }
-
-    private function parseFilmstrip(array $audits): ?array
-    {
-        $items = $audits['screenshot-thumbnails']['details']['items'] ?? [];
-        if (empty($items)) {
-            return null;
-        }
-
-        $filmstrip = [];
-        foreach ($items as $item) {
-            $filmstrip[] = [
-                'timing' => $item['timing'] ?? 0,
-                'data' => $item['data'] ?? '',
-            ];
-        }
-
-        return $filmstrip;
-    }
 }

@@ -4,31 +4,23 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\FetchSearchConsoleData;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\GoogleConnection;
-use App\Models\KeywordPosition;
 use App\Models\SearchConsoleCache;
 use App\Models\SearchConsoleConnection;
 use App\Models\Site;
-use App\Models\TrackedKeyword;
 use App\Services\GoogleSearchConsoleService;
 use Livewire\Component;
 
 class SiteSearchConsole extends Component
 {
-    use WithJobTracking;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
     public string $dateRange = '28d';
     public ?string $customStart = null;
     public ?string $customEnd = null;
     public array $availableProperties = [];
-    public string $inspectUrl = '';
-    public ?array $urlInspectionResult = null;
-
-    // Drill-down state
-    public array $drillDownResults = [];
-    public string $drillDownLabel = '';
-    public string $drillDownType = '';
 
     protected function jobTrackingKeys(): array
     {
@@ -37,6 +29,7 @@ class SiteSearchConsole extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }
@@ -139,98 +132,6 @@ class SiteSearchConsole extends Component
         session()->flash('success', "Connected to {$property['site_url']}. Data is being fetched.");
     }
 
-    public function inspectUrlAction(): void
-    {
-        $this->urlInspectionResult = null;
-
-        $url = trim($this->inspectUrl);
-        if (empty($url)) {
-            $this->dispatch('notify', type: 'error', message: 'Please enter a URL to inspect.');
-            return;
-        }
-
-        $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) return;
-
-        $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
-
-        try {
-            $service = new GoogleSearchConsoleService($google);
-            $this->urlInspectionResult = $service->inspectUrl($connection->property_url, $url);
-        } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'URL Inspection failed: ' . $e->getMessage());
-        }
-    }
-
-    public function drillDown(string $type, string $value): void
-    {
-        $this->drillDownResults = [];
-        $this->drillDownLabel = $value;
-        $this->drillDownType = $type;
-
-        $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) return;
-
-        $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
-
-        [$startDate, $endDate] = $this->getDateRange();
-
-        try {
-            $service = new GoogleSearchConsoleService($google);
-            $siteUrl = $connection->property_url;
-
-            if ($type === 'query') {
-                // Show pages for this query
-                $this->drillDownResults = $service->getFilteredResults($siteUrl, $startDate, $endDate, 'query', $value, 'page', 20);
-            } else {
-                // Show queries for this page
-                $this->drillDownResults = $service->getFilteredResults($siteUrl, $startDate, $endDate, 'page', $value, 'query', 20);
-            }
-
-            $this->dispatch('open-modal-sc-drilldown');
-        } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Drill-down failed: ' . $e->getMessage());
-        }
-    }
-
-    private function getDateRange(): array
-    {
-        $endDate = now()->subDays(3)->format('Y-m-d');
-
-        $startDate = match ($this->dateRange) {
-            '7d' => now()->subDays(10)->format('Y-m-d'),
-            '28d' => now()->subDays(31)->format('Y-m-d'),
-            '90d' => now()->subDays(93)->format('Y-m-d'),
-            default => now()->subDays(31)->format('Y-m-d'),
-        };
-
-        return [$startDate, $endDate];
-    }
-
-    public function trackKeyword(string $keyword): void
-    {
-        $keyword = trim($keyword);
-        if (empty($keyword)) return;
-
-        TrackedKeyword::firstOrCreate([
-            'site_id' => $this->site->id,
-            'keyword' => $keyword,
-        ]);
-
-        $this->dispatch('notify', type: 'success', message: "Tracking keyword: {$keyword}");
-    }
-
-    public function untrackKeyword(int $id): void
-    {
-        TrackedKeyword::where('id', $id)
-            ->where('site_id', $this->site->id)
-            ->delete();
-
-        $this->dispatch('notify', type: 'success', message: 'Keyword removed from tracking.');
-    }
-
     public function disconnectSearchConsole(): void
     {
         $this->site->searchConsoleConnection?->delete();
@@ -257,10 +158,6 @@ class SiteSearchConsole extends Component
         $performanceOverTime = [];
         $queries = [];
         $pages = [];
-        $countries = [];
-        $devices = [];
-        $searchAppearance = [];
-        $sitemaps = [];
         $cache = null;
 
         if ($connection && $connection->is_active) {
@@ -278,18 +175,7 @@ class SiteSearchConsole extends Component
             $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
             $queries = $caches->get('queries')?->data ?? [];
             $pages = $caches->get('pages')?->data ?? [];
-            $countries = $caches->get('countries')?->data ?? [];
-            $devices = $caches->get('devices')?->data ?? [];
-            $searchAppearance = $caches->get('search_appearance')?->data ?? [];
-            $sitemaps = $caches->get('sitemaps')?->data ?? [];
         }
-
-        // Tracked keywords with recent positions
-        $trackedKeywords = TrackedKeyword::where('site_id', $this->site->id)
-            ->with(['positions' => function ($q) {
-                $q->orderByDesc('date')->limit(30);
-            }])
-            ->get();
 
         $googleConnections = GoogleConnection::where('is_active', true)->get();
 
@@ -300,11 +186,6 @@ class SiteSearchConsole extends Component
             'performanceOverTime' => $performanceOverTime,
             'queries' => $queries,
             'pages' => $pages,
-            'countries' => $countries,
-            'devices' => $devices,
-            'searchAppearance' => $searchAppearance,
-            'sitemaps' => $sitemaps,
-            'trackedKeywords' => $trackedKeywords,
             'googleConnections' => $googleConnections,
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,

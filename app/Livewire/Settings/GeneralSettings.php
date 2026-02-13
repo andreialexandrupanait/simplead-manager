@@ -74,7 +74,7 @@ class GeneralSettings extends Component
             'defaultTimeout' => 'required|integer|min:5|max:120',
             'alertAfterFailures' => 'required|integer|min:1|max:10',
             'dataRetentionDays' => 'required|integer|min:7|max:365',
-            'logo' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048|dimensions:max_width=2000,max_height=2000',
         ]);
 
         $settings->set('app_name', $this->appName, 'general', 'string');
@@ -92,7 +92,7 @@ class GeneralSettings extends Component
                 Storage::disk('public')->delete($this->logoPath);
             }
 
-            $path = $this->logo->store('branding', 'public');
+            $path = $this->logo->storeAs('branding', uniqid('logo_') . '.' . $this->logo->getClientOriginalExtension(), 'public');
             $settings->set('branding.logo', $path, 'branding', 'string');
             $this->logoPath = $path;
             $this->logo = null;

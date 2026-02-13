@@ -4,6 +4,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckDatabaseHealthJob;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\DatabaseCleanupService;
 use Livewire\Attributes\Computed;
@@ -11,7 +12,7 @@ use Livewire\Component;
 
 class SiteDatabaseCleanup extends Component
 {
-    use WithJobTracking;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
 
@@ -35,6 +36,7 @@ class SiteDatabaseCleanup extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }

@@ -22,18 +22,24 @@ class PluginAbandonmentService
         }
 
         try {
-            $response = Http::timeout(15)->get('https://api.wordpress.org/plugins/info/1.2/', [
+            $response = Http::timeout(15)->retry(3, 100, throw: false)->get('https://api.wordpress.org/plugins/info/1.2/', [
                 'action' => 'plugin_information',
                 'slug' => $plugin->slug,
             ]);
 
-            if ($response->status() === 404 || $response->failed()) {
+            if ($response->status() === 404) {
                 $plugin->update([
                     'is_on_wp_org' => false,
                     'is_closed' => true,
                     'closed_reason' => 'not_found',
                     'abandoned_checked_at' => now(),
                 ]);
+                return;
+            }
+
+            if ($response->failed()) {
+                Log::warning("WordPress.org API returned {$response->status()} for plugin {$plugin->slug}");
+                $plugin->update(['abandoned_checked_at' => now()]);
                 return;
             }
 
@@ -52,7 +58,8 @@ class PluginAbandonmentService
             }
 
             $lastUpdated = isset($data['last_updated']) ? Carbon::parse($data['last_updated']) : null;
-            $isAbandoned = $lastUpdated && $lastUpdated->lt(now()->subYears(2));
+            $abandonmentYears = config('monitoring.plugin_abandonment_years', 2);
+            $isAbandoned = $lastUpdated && $lastUpdated->lt(now()->subYears($abandonmentYears));
 
             $plugin->update([
                 'is_on_wp_org' => true,
@@ -70,23 +77,35 @@ class PluginAbandonmentService
         }
     }
 
-    public static function checkAllForSite(Site $site): array
+    public static function checkAllForSite(Site $site, ?string $trackerKey = null): array
     {
         $plugins = $site->sitePlugins()->get();
         $abandoned = 0;
         $closed = 0;
+        $total = $plugins->count();
+        $completed = 0;
 
         foreach ($plugins as $plugin) {
+            if ($trackerKey && $total > 0) {
+                $pluginName = $plugin->name ?: $plugin->slug ?: 'plugin';
+                JobTracker::progress($trackerKey, (int) round($completed / $total * 90), "Checking {$pluginName}...");
+            }
+
             static::checkPlugin($plugin);
 
             $plugin->refresh();
             if ($plugin->is_abandoned) $abandoned++;
             if ($plugin->is_closed) $closed++;
+            $completed++;
 
             // Rate limit: 1 second between requests
             if ($plugins->last() !== $plugin) {
                 sleep(1);
             }
+        }
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 95, 'Finalizing...');
         }
 
         $total = $plugins->count();

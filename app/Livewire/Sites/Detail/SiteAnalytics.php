@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\FetchAnalyticsData;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\AnalyticsCache;
 use App\Models\AnalyticsConnection;
 use App\Models\GoogleConnection;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class SiteAnalytics extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
     public string $dateRange = '28d';
     public ?string $customStart = null;
@@ -23,6 +26,7 @@ class SiteAnalytics extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 
@@ -161,12 +165,6 @@ class SiteAnalytics extends Component
         $usersOverTime = [];
         $trafficSources = [];
         $topPages = [];
-        $devices = [];
-        $countries = [];
-        $cities = [];
-        $referralSources = [];
-        $landingPages = [];
-        $demographics = [];
         $annotations = [];
 
         if ($connection && $connection->is_active) {
@@ -185,12 +183,6 @@ class SiteAnalytics extends Component
                 $usersOverTime = $data['users_over_time'] ?? [];
                 $trafficSources = $data['traffic_sources'] ?? [];
                 $topPages = $data['top_pages'] ?? [];
-                $devices = $data['devices'] ?? [];
-                $countries = $data['countries'] ?? [];
-                $cities = $data['cities'] ?? [];
-                $referralSources = $data['referral_sources'] ?? [];
-                $landingPages = $data['landing_pages'] ?? [];
-                $demographics = $data['demographics'] ?? [];
 
                 // Build annotations from update logs
                 if ($cache->start_date && $cache->end_date) {
@@ -209,12 +201,6 @@ class SiteAnalytics extends Component
             'usersOverTime' => $usersOverTime,
             'trafficSources' => $trafficSources,
             'topPages' => $topPages,
-            'devices' => $devices,
-            'countries' => $countries,
-            'cities' => $cities,
-            'referralSources' => $referralSources,
-            'landingPages' => $landingPages,
-            'demographics' => $demographics,
             'googleConnections' => $googleConnections,
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,

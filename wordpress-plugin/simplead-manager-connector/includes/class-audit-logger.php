@@ -6,8 +6,12 @@ if (!defined('ABSPATH')) {
 
 /**
  * Logs WordPress actions for audit trail.
+ * Uses batch inserts on shutdown for performance.
  */
 class SAM_Audit_Logger {
+
+    private static array $pending = [];
+    private static bool $shutdown_registered = false;
 
     public static function create_table(): void {
         global $wpdb;
@@ -33,24 +37,68 @@ class SAM_Audit_Logger {
     }
 
     public static function log(string $action, ?string $object_type = null, ?string $object_name = null, ?string $details = null): void {
-        global $wpdb;
-
         $user = wp_get_current_user();
         $user_login = $user->ID ? $user->user_login : 'system';
 
-        $wpdb->insert(
-            $wpdb->prefix . 'sam_audit_logs',
-            [
-                'action'      => $action,
-                'object_type' => $object_type,
-                'object_name' => $object_name,
-                'user_login'  => $user_login,
-                'user_ip'     => self::get_client_ip(),
-                'details'     => $details,
-                'created_at'  => current_time('mysql', true),
-            ],
-            ['%s', '%s', '%s', '%s', '%s', '%s', '%s']
-        );
+        self::$pending[] = [
+            'action'      => $action,
+            'object_type' => $object_type,
+            'object_name' => $object_name,
+            'user_login'  => $user_login,
+            'user_ip'     => self::get_client_ip(),
+            'details'     => $details,
+            'created_at'  => current_time('mysql', true),
+        ];
+
+        // Register shutdown handler once
+        if (!self::$shutdown_registered) {
+            self::$shutdown_registered = true;
+            add_action('shutdown', [__CLASS__, 'flush']);
+        }
+    }
+
+    /**
+     * Flush all pending log entries to the database in a single batch.
+     */
+    public static function flush(): void {
+        if (empty(self::$pending)) {
+            return;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sam_audit_logs';
+
+        // Build batch INSERT
+        $columns = '(action, object_type, object_name, user_login, user_ip, details, created_at)';
+        $placeholders = [];
+        $values = [];
+
+        foreach (self::$pending as $entry) {
+            $placeholders[] = '(%s, %s, %s, %s, %s, %s, %s)';
+            $values[] = $entry['action'];
+            $values[] = $entry['object_type'];
+            $values[] = $entry['object_name'];
+            $values[] = $entry['user_login'];
+            $values[] = $entry['user_ip'];
+            $values[] = $entry['details'];
+            $values[] = $entry['created_at'];
+        }
+
+        $sql = "INSERT INTO {$table} {$columns} VALUES " . implode(', ', $placeholders);
+        $wpdb->query($wpdb->prepare($sql, $values));
+
+        self::$pending = [];
+
+        // Auto-purge entries older than 90 days (once per day via transient)
+        if (!get_transient('sam_audit_purged')) {
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$table} WHERE created_at < %s",
+                    gmdate('Y-m-d H:i:s', strtotime('-90 days'))
+                )
+            );
+            set_transient('sam_audit_purged', 1, DAY_IN_SECONDS);
+        }
     }
 
     public static function get_logs(?string $since = null, int $limit = 500): array {

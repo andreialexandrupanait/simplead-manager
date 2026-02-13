@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\RunSeoCheck;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\SeoService;
 use Livewire\Attributes\Computed;
@@ -10,10 +11,13 @@ use Livewire\Component;
 
 class SiteSeo extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckEmailDeliverabilityJob;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\DnsRecordCache;
 use App\Models\Site;
 use App\Services\DnsService;
@@ -11,12 +12,15 @@ use Livewire\Component;
 
 class SiteDns extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
     public bool $loading = false;
     public bool $emailCheckLoading = false;
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
 
         // Auto-fetch on first visit if no cache exists

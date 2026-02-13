@@ -63,6 +63,25 @@ class Backup extends Model
         'restore_progress_percent' => 'integer',
     ];
 
+    // Query Scopes
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    public function scopeFailed($query)
+    {
+        return $query->where('status', 'failed');
+    }
+
+    public function scopeForSite($query, int $siteId)
+    {
+        return $query->where('site_id', $siteId);
+    }
+
+    // Relationships
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);

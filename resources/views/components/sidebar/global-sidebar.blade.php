@@ -26,13 +26,6 @@
         {{ __('Performance') }}
     </x-sidebar.sidebar-item>
 
-    <x-sidebar.sidebar-item
-        :href="route('errors.index')"
-        icon="alert-triangle"
-        :active="request()->routeIs('errors.*')"
-    >
-        {{ __('Errors') }}
-    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Management')">

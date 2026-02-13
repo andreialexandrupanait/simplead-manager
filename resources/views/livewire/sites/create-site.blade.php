@@ -44,6 +44,19 @@
                         @error('clientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
+                    {{-- Preset --}}
+                    <div>
+                        <label for="presetId" class="block text-sm font-medium text-gray-700">Monitoring Preset</label>
+                        <x-ui.select wire:model="presetId" id="presetId" class="mt-1">
+                            <option value="">— Use default preset —</option>
+                            @foreach($presets as $preset)
+                                <option value="{{ $preset->id }}">{{ $preset->name }}{{ $preset->is_default ? ' (Default)' : '' }}</option>
+                            @endforeach
+                        </x-ui.select>
+                        <p class="mt-1 text-xs text-gray-400">Determines which monitoring modules are enabled for this site.</p>
+                        @error('presetId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
                     {{-- Notes --}}
                     <div>
                         <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
@@ -100,6 +113,17 @@
                             @endforeach
                         </x-ui.select>
                         @error('clientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Preset --}}
+                    <div>
+                        <label for="bulkPresetId" class="block text-sm font-medium text-gray-700">Monitoring Preset <span class="text-gray-400">(applied to all)</span></label>
+                        <x-ui.select wire:model="presetId" id="bulkPresetId" class="mt-1">
+                            <option value="">— Use default preset —</option>
+                            @foreach($presets as $preset)
+                                <option value="{{ $preset->id }}">{{ $preset->name }}{{ $preset->is_default ? ' (Default)' : '' }}</option>
+                            @endforeach
+                        </x-ui.select>
                     </div>
                 </div>
 

@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
+use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\MaintenanceService;
 use App\Services\WordPressApiService;
@@ -27,7 +28,6 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 1800;
     public int $tries = 1;
-    public string $queue = 'backups';
 
     protected ?Backup $backup = null;
     protected ?string $tempDir = null;
@@ -38,7 +38,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         public string $trigger = 'manual',
         public ?int $storageDestinationId = null,
         public ?int $backupId = null,
-    ) {}
+    ) {
+        $this->onQueue('backups');
+    }
 
     public function uniqueId(): string
     {
@@ -188,6 +190,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             // Apply retention policy
             $this->applyRetention($destination);
 
+            CircuitBreakerService::recordSuccess($this->site);
             JobTracker::complete($this->uniqueId(), 'Backup complete');
 
         } catch (\Exception $e) {
@@ -282,13 +285,19 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         foreach ($toDelete as $oldBackup) {
             try {
-                $oldDestination = $oldBackup->storageDestination;
-                if ($oldDestination && $oldBackup->file_path) {
-                    $driver = StorageFactory::make($oldDestination);
-                    $driver->delete($oldBackup->file_path);
-                    $oldDestination->decrement('used_bytes', max(0, $oldBackup->file_size ?? 0));
-                }
-                $oldBackup->delete();
+                \Illuminate\Support\Facades\DB::transaction(function () use ($oldBackup) {
+                    $oldDestination = $oldBackup->storageDestination;
+
+                    // Delete from storage first
+                    if ($oldDestination && $oldBackup->file_path) {
+                        $driver = StorageFactory::make($oldDestination);
+                        $driver->delete($oldBackup->file_path);
+                        $oldDestination->decrement('used_bytes', max(0, $oldBackup->file_size ?? 0));
+                    }
+
+                    // Then delete DB record
+                    $oldBackup->delete();
+                });
             } catch (\Exception $e) {
                 Log::warning("Failed to delete old backup {$oldBackup->id}: {$e->getMessage()}");
             }
@@ -311,6 +320,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Backup failed');
         JobTracker::fail($this->uniqueId(), 'Backup failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

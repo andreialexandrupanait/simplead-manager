@@ -14,7 +14,6 @@ class SecurityScan extends Model
     protected $fillable = [
         'site_id',
         'score',
-        'scores_breakdown',
         'critical_count',
         'high_count',
         'medium_count',
@@ -24,7 +23,6 @@ class SecurityScan extends Model
     ];
 
     protected $casts = [
-        'scores_breakdown' => 'array',
         'score' => 'integer',
         'critical_count' => 'integer',
         'high_count' => 'integer',
@@ -33,6 +31,11 @@ class SecurityScan extends Model
         'scan_duration' => 'integer',
         'scanned_at' => 'datetime',
     ];
+
+    public function scopeForSite($query, int $siteId)
+    {
+        return $query->where('site_id', $siteId);
+    }
 
     public function site(): BelongsTo
     {

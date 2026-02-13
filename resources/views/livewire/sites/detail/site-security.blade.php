@@ -71,32 +71,6 @@
                 </div>
             </div>
 
-            {{-- Category Breakdown --}}
-            @if($this->latestScan && $this->latestScan->scores_breakdown)
-                <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-                    @php
-                        $categoryLabels = [
-                            'file_security' => 'Files',
-                            'login_security' => 'Login',
-                            'database_security' => 'Database',
-                            'http_headers' => 'Headers',
-                            'ssl_https' => 'SSL',
-                            'core_integrity' => 'Core',
-                            'plugins' => 'Plugins',
-                        ];
-                    @endphp
-                    @foreach($this->latestScan->scores_breakdown as $cat => $catScore)
-                        <div class="text-center">
-                            <div class="mx-auto mb-1 h-2 w-full rounded-full bg-gray-100">
-                                <div class="h-2 rounded-full {{ $catScore >= 80 ? 'bg-green-500' : ($catScore >= 50 ? 'bg-yellow-500' : 'bg-red-500') }}"
-                                     style="width: {{ $catScore }}%"></div>
-                            </div>
-                            <span class="text-xs text-gray-500">{{ $categoryLabels[$cat] ?? ucfirst($cat) }}</span>
-                            <span class="block text-xs font-medium text-gray-700">{{ $catScore }}%</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
         </x-ui.card>
     </div>
 

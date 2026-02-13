@@ -22,7 +22,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = 'default';
+    public string $queue = 'performance';
     public int $timeout = 300;
     public int $tries = 2;
     public array $backoff = [60, 180];
@@ -88,12 +88,6 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
                     ...$results,
                 ]);
 
-                // Run WP health checks on mobile test only
-                if ($device === 'mobile') {
-                    $wpHealth = $this->runWpHealthChecks($site, $results);
-                    $test->update(['wp_health_checks' => $wpHealth]);
-                }
-
                 // Save desktop screenshot for site card thumbnail (primary page only)
                 if ($device === 'desktop') {
                     if ($pageId === null || ($this->monitor->pages()->where('id', $pageId)->value('is_primary'))) {
@@ -110,108 +104,6 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
             }
 
         }
-    }
-
-    private function runWpHealthChecks(Site $site, array $results): array
-    {
-        $checks = [];
-
-        // Cache plugin detection
-        $cachePlugins = ['wp-super-cache', 'w3-total-cache', 'wp-fastest-cache', 'litespeed-cache', 'wp-rocket', 'autoptimize', 'breeze', 'hummingbird', 'sg-cachepress', 'nitropack'];
-        $thirdParty = $results['third_party_scripts'] ?? [];
-        $allUrls = collect($thirdParty)->pluck('entity')->implode(' ');
-        $hasCachePlugin = false;
-        if ($site->plugins ?? false) {
-            $pluginSlugs = collect(is_array($site->plugins) ? $site->plugins : [])->pluck('slug')->toArray();
-            $hasCachePlugin = !empty(array_intersect($pluginSlugs, $cachePlugins));
-        }
-        $checks[] = [
-            'key' => 'cache_plugin',
-            'label' => 'Caching Plugin',
-            'status' => $hasCachePlugin ? 'pass' : 'fail',
-            'detail' => $hasCachePlugin ? 'Caching plugin detected' : 'No caching plugin detected',
-            'recommendation' => $hasCachePlugin ? null : 'Install a caching plugin like WP Super Cache or LiteSpeed Cache',
-        ];
-
-        // Image optimization plugin
-        $imagePlugins = ['imagify', 'smush', 'shortpixel-image-optimiser', 'ewww-image-optimizer', 'optimole-wp', 'webp-converter-for-media'];
-        $hasImagePlugin = false;
-        if ($site->plugins ?? false) {
-            $pluginSlugs = collect(is_array($site->plugins) ? $site->plugins : [])->pluck('slug')->toArray();
-            $hasImagePlugin = !empty(array_intersect($pluginSlugs, $imagePlugins));
-        }
-        $checks[] = [
-            'key' => 'image_optimization',
-            'label' => 'Image Optimization',
-            'status' => $hasImagePlugin ? 'pass' : 'warn',
-            'detail' => $hasImagePlugin ? 'Image optimization plugin detected' : 'No image optimization plugin detected',
-            'recommendation' => $hasImagePlugin ? null : 'Consider installing an image optimization plugin like Imagify or ShortPixel',
-        ];
-
-        // Minification plugin
-        $minPlugins = ['autoptimize', 'wp-rocket', 'litespeed-cache', 'fast-velocity-minify', 'hummingbird', 'sg-cachepress'];
-        $hasMinPlugin = false;
-        if ($site->plugins ?? false) {
-            $pluginSlugs = collect(is_array($site->plugins) ? $site->plugins : [])->pluck('slug')->toArray();
-            $hasMinPlugin = !empty(array_intersect($pluginSlugs, $minPlugins));
-        }
-        $checks[] = [
-            'key' => 'minification',
-            'label' => 'Asset Minification',
-            'status' => $hasMinPlugin ? 'pass' : 'warn',
-            'detail' => $hasMinPlugin ? 'Minification plugin detected' : 'No minification plugin detected',
-            'recommendation' => $hasMinPlugin ? null : 'Consider enabling asset minification with Autoptimize or similar',
-        ];
-
-        // Plugin count
-        $pluginCount = 0;
-        if ($site->plugins ?? false) {
-            $pluginCount = count(is_array($site->plugins) ? $site->plugins : []);
-        }
-        $pluginStatus = $pluginCount <= 25 ? 'pass' : ($pluginCount <= 40 ? 'warn' : 'fail');
-        $checks[] = [
-            'key' => 'plugin_count',
-            'label' => 'Plugin Count',
-            'status' => $pluginStatus,
-            'detail' => "{$pluginCount} plugins installed",
-            'recommendation' => $pluginStatus === 'pass' ? null : 'Consider reducing the number of active plugins to improve performance',
-        ];
-
-        // PHP version
-        $phpVersion = $site->php_version ?? null;
-        $phpStatus = 'warn';
-        if ($phpVersion) {
-            $phpStatus = version_compare($phpVersion, '8.1', '>=') ? 'pass' : 'fail';
-        }
-        $checks[] = [
-            'key' => 'php_version',
-            'label' => 'PHP Version',
-            'status' => $phpStatus,
-            'detail' => $phpVersion ? "PHP {$phpVersion}" : 'PHP version unknown',
-            'recommendation' => $phpStatus === 'pass' ? null : 'Upgrade to PHP 8.1 or higher for better performance',
-        ];
-
-        // CDN detection from third-party scripts
-        $cdnProviders = ['cloudflare', 'fastly', 'akamai', 'cloudfront', 'stackpath', 'bunnycdn', 'keycdn', 'sucuri'];
-        $hasCdn = false;
-        foreach ($thirdParty as $script) {
-            $entity = strtolower($script['entity'] ?? '');
-            foreach ($cdnProviders as $cdn) {
-                if (str_contains($entity, $cdn)) {
-                    $hasCdn = true;
-                    break 2;
-                }
-            }
-        }
-        $checks[] = [
-            'key' => 'cdn',
-            'label' => 'CDN Detection',
-            'status' => $hasCdn ? 'pass' : 'warn',
-            'detail' => $hasCdn ? 'CDN detected' : 'No CDN detected',
-            'recommendation' => $hasCdn ? null : 'Consider using a CDN like Cloudflare to improve load times globally',
-        ];
-
-        return $checks;
     }
 
     private function checkBudgets(): void

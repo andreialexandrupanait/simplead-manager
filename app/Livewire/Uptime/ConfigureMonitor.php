@@ -20,7 +20,7 @@ class ConfigureMonitor extends Component
     // Form fields
     public string $type = 'http';
     public string $url = '';
-    public int $interval = 300;
+    public int $interval_minutes = 5;
     public int $timeout = 30;
     public string $http_method = 'GET';
     public string $http_headers_text = '';
@@ -83,7 +83,7 @@ class ConfigureMonitor extends Component
         $this->siteId = $monitor->site_id;
         $this->type = $monitor->type;
         $this->url = $monitor->url;
-        $this->interval = $monitor->interval;
+        $this->interval_minutes = $monitor->interval_minutes;
         $this->timeout = $monitor->timeout;
         $this->http_method = $monitor->http_method;
         $this->http_headers_text = $monitor->http_headers ? json_encode($monitor->http_headers, JSON_PRETTY_PRINT) : '';
@@ -108,7 +108,7 @@ class ConfigureMonitor extends Component
         $this->type = 'http';
         $this->url = '';
         $this->urlAutoFilled = false;
-        $this->interval = 300;
+        $this->interval_minutes = 5;
         $this->timeout = 30;
         $this->http_method = 'GET';
         $this->http_headers_text = '';
@@ -134,7 +134,7 @@ class ConfigureMonitor extends Component
             'siteId' => 'required|exists:sites,id',
             'type' => 'required|in:http,https,keyword,ping',
             'url' => 'required|url',
-            'interval' => 'required|integer|min:60|max:3600',
+            'interval_minutes' => 'required|integer|min:1|max:60',
             'timeout' => 'required|integer|min:5|max:120',
             'http_method' => 'required|in:GET,POST,PUT,PATCH,DELETE,HEAD',
             'alert_after_failures' => 'required|integer|min:1|max:10',
@@ -144,7 +144,7 @@ class ConfigureMonitor extends Component
             'site_id' => $this->siteId,
             'type' => $this->type,
             'url' => $this->url,
-            'interval' => $this->interval,
+            'interval_minutes' => $this->interval_minutes,
             'timeout' => $this->timeout,
             'http_method' => $this->http_method,
             'http_headers' => $this->http_headers_text ? json_decode($this->http_headers_text, true) : null,

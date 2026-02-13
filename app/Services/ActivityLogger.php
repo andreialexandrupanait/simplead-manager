@@ -118,6 +118,90 @@ class ActivityLogger
         );
     }
 
+    public static function pluginActivated(Site $site, string $name): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'info',
+            title: "Plugin activated on {$site->name}",
+            description: $name,
+            site: $site,
+            metadata: ['plugin' => $name, 'action' => 'activated'],
+            icon: 'toggle-right',
+            url: route('sites.plugins', $site),
+        );
+    }
+
+    public static function pluginDeactivated(Site $site, string $name): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'info',
+            title: "Plugin deactivated on {$site->name}",
+            description: $name,
+            site: $site,
+            metadata: ['plugin' => $name, 'action' => 'deactivated'],
+            icon: 'toggle-left',
+            url: route('sites.plugins', $site),
+        );
+    }
+
+    public static function pluginDeleted(Site $site, string $name): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'warning',
+            title: "Plugin deleted on {$site->name}",
+            description: $name,
+            site: $site,
+            metadata: ['plugin' => $name, 'action' => 'deleted'],
+            icon: 'trash-2',
+            url: route('sites.plugins', $site),
+        );
+    }
+
+    public static function themeActivated(Site $site, string $name): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'info',
+            title: "Theme activated on {$site->name}",
+            description: $name,
+            site: $site,
+            metadata: ['theme' => $name, 'action' => 'activated'],
+            icon: 'toggle-right',
+            url: route('sites.plugins', $site),
+        );
+    }
+
+    public static function themeDeleted(Site $site, string $name): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'warning',
+            title: "Theme deleted on {$site->name}",
+            description: $name,
+            site: $site,
+            metadata: ['theme' => $name, 'action' => 'deleted'],
+            icon: 'trash-2',
+            url: route('sites.plugins', $site),
+        );
+    }
+
+    public static function pluginRolledBack(Site $site, string $name, string $from, string $to): ActivityLog
+    {
+        return static::log(
+            type: 'plugin',
+            severity: 'warning',
+            title: "Plugin rolled back on {$site->name}",
+            description: "{$name}: {$from} → {$to}",
+            site: $site,
+            metadata: ['plugin' => $name, 'from' => $from, 'to' => $to, 'action' => 'rollback'],
+            icon: 'rotate-ccw',
+            url: route('sites.plugins', $site),
+        );
+    }
+
     public static function coreUpdated(Site $site, ?string $from, ?string $to): ActivityLog
     {
         return static::log(

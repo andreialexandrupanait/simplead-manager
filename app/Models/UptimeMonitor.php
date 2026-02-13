@@ -16,7 +16,6 @@ class UptimeMonitor extends Model
         'site_id',
         'type',
         'url',
-        'interval',
         'timeout',
         'http_method',
         'http_headers',
@@ -47,6 +46,7 @@ class UptimeMonitor extends Model
         'avg_response_time',
         'last_response_time',
         'last_failure_reason',
+        'interval_minutes',
     ];
 
     protected $casts = [
@@ -61,13 +61,13 @@ class UptimeMonitor extends Model
         'last_checked_at' => 'datetime',
         'next_check_at' => 'datetime',
         'last_state_change_at' => 'datetime',
-        'interval' => 'integer',
         'timeout' => 'integer',
         'alert_after_failures' => 'integer',
         'consecutive_failures' => 'integer',
         'ssl_expiry_threshold' => 'integer',
         'avg_response_time' => 'integer',
         'last_response_time' => 'integer',
+        'interval_minutes' => 'integer',
     ];
 
     public function site(): BelongsTo

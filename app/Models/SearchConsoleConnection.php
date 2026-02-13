@@ -15,12 +15,16 @@ class SearchConsoleConnection extends Model
         'permission_level',
         'is_active',
         'last_sync_at',
+        'next_sync_at',
+        'interval_minutes',
         'last_error',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'last_sync_at' => 'datetime',
+        'next_sync_at' => 'datetime',
+        'interval_minutes' => 'integer',
     ];
 
     public function site(): BelongsTo

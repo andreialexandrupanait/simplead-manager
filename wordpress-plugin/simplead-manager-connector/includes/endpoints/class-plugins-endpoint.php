@@ -41,6 +41,34 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         ]);
     }
 
+    /**
+     * Validate a plugin file path — no traversal, must exist in WP_PLUGIN_DIR.
+     */
+    private function validate_plugin_path(string $plugin_file): bool {
+        // Reject path traversal
+        if (strpos($plugin_file, '..') !== false) {
+            return false;
+        }
+
+        // Reject absolute paths
+        if ($plugin_file[0] === '/' || $plugin_file[0] === '\\') {
+            return false;
+        }
+
+        // Reject null bytes
+        if (strpos($plugin_file, "\0") !== false) {
+            return false;
+        }
+
+        // Must be a known installed plugin
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $all_plugins = get_plugins();
+        return isset($all_plugins[$plugin_file]);
+    }
+
     public function list_plugins(WP_REST_Request $request): WP_REST_Response {
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -85,9 +113,7 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         $plugin_files = $params['plugins'] ?? [];
 
         if (empty($plugin_files)) {
-            return $this->error('MISSING_PLUGINS', 'No plugins specified for update.')->get_error_data()
-                ? new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_PLUGINS', 'message' => 'No plugins specified for update.']], 400)
-                : new WP_REST_Response(['success' => false], 400);
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_PLUGINS', 'message' => 'No plugins specified for update.']], 400);
         }
 
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
@@ -101,6 +127,16 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         $results = [];
         foreach ($plugin_files as $plugin_file) {
             $plugin_file = sanitize_text_field($plugin_file);
+
+            // Validate path before upgrading
+            if (!$this->validate_plugin_path($plugin_file)) {
+                $results[$plugin_file] = [
+                    'success' => false,
+                    'error'   => 'Invalid plugin path.',
+                ];
+                continue;
+            }
+
             $result = $upgrader->upgrade($plugin_file);
 
             $results[$plugin_file] = [
@@ -126,6 +162,10 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
 
         if (empty($plugin_file)) {
             return new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_PLUGIN', 'message' => 'Plugin file not specified.']], 400);
+        }
+
+        if (!$this->validate_plugin_path($plugin_file)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_PATH', 'message' => 'Invalid plugin path.']], 400);
         }
 
         if (!function_exists('activate_plugin')) {
@@ -154,6 +194,10 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             return new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_PLUGIN', 'message' => 'Plugin file not specified.']], 400);
         }
 
+        if (!$this->validate_plugin_path($plugin_file)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_PATH', 'message' => 'Invalid plugin path.']], 400);
+        }
+
         if (!function_exists('deactivate_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
@@ -171,6 +215,10 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
 
         if (empty($plugin_file)) {
             return new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_PLUGIN', 'message' => 'Plugin file not specified.']], 400);
+        }
+
+        if (!$this->validate_plugin_path($plugin_file)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_PATH', 'message' => 'Invalid plugin path.']], 400);
         }
 
         if (!function_exists('delete_plugins')) {

@@ -35,7 +35,7 @@ class CheckDatabaseHealthJob implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Checking database health...');
 
         try {
-            DatabaseHealthService::check($this->site);
+            DatabaseHealthService::check($this->site, $this->uniqueId());
             JobTracker::complete($this->uniqueId(), 'Database health check complete');
         } catch (\Exception $e) {
             Log::warning("Database health check failed for site {$this->site->id}: {$e->getMessage()}");

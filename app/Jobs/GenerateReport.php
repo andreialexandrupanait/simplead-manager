@@ -25,7 +25,8 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
-    public int $tries = 1;
+    public int $tries = 2;
+    public array $backoff = [60, 120];
 
     public function __construct(
         public Site $site,
@@ -35,7 +36,9 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
         public string $trigger = 'manual',
         public ?ReportSchedule $schedule = null,
         public ?array $recipientEmails = null,
-    ) {}
+    ) {
+        $this->onQueue('reports');
+    }
 
     public function uniqueId(): string
     {

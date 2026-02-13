@@ -84,7 +84,10 @@ return [
 
         'production' => [
             'driver' => 'stack',
-            'channels' => ['daily-json'],
+            'channels' => array_filter([
+                'daily-json',
+                env('LOG_SLACK_WEBHOOK_URL') ? 'slack' : null,
+            ]),
             'ignore_exceptions' => false,
         ],
 

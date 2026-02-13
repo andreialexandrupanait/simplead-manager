@@ -61,7 +61,7 @@ class ProfileSettings extends Component
             'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
             'timezone' => 'required|timezone',
             'language' => 'required|in:en,ro',
-            'avatar' => 'nullable|image|max:2048',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048|dimensions:max_width=1000,max_height=1000',
         ]);
 
         $user = Auth::user();
@@ -71,7 +71,7 @@ class ProfileSettings extends Component
         $user->language = $this->language;
 
         if ($this->avatar) {
-            $path = $this->avatar->store('avatars', 'public');
+            $path = $this->avatar->storeAs('avatars', uniqid('avatar_') . '.' . $this->avatar->getClientOriginalExtension(), 'public');
             $user->avatar_path = $path;
         }
 
@@ -168,7 +168,14 @@ class ProfileSettings extends Component
             new SvgImageBackEnd(),
         );
         $writer = new Writer($renderer);
-        $this->twoFactorQrSvg = $writer->writeString($qrCodeUrl);
+        $svg = $writer->writeString($qrCodeUrl);
+
+        // Sanitize: ensure output is a valid SVG and strip any script elements
+        if (str_contains($svg, '<svg') && !preg_match('/<script/i', $svg)) {
+            $this->twoFactorQrSvg = $svg;
+        } else {
+            $this->twoFactorQrSvg = null;
+        }
 
         $this->showingQrCode = true;
         $this->showingRecoveryCodes = false;

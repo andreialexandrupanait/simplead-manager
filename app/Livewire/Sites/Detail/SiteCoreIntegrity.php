@@ -4,6 +4,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckCoreFileIntegrity;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\CoreFileCheck;
 use App\Models\Site;
 use Livewire\Attributes\Computed;
@@ -12,7 +13,7 @@ use Livewire\WithPagination;
 
 class SiteCoreIntegrity extends Component
 {
-    use WithPagination, WithJobTracking;
+    use WithPagination, WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
 
@@ -25,6 +26,7 @@ class SiteCoreIntegrity extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }

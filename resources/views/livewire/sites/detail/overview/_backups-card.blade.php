@@ -1,4 +1,4 @@
-<x-ui.card>
+<x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -37,7 +37,8 @@
             {{-- Storage Usage --}}
             @php
                 $storageUsed = $this->backupStorageUsed;
-                $storageLimit = $site->backupConfig->storage_limit_gb * 1024 * 1024 * 1024; // Convert GB to bytes
+                $destination = $site->backupConfig->storageDestination;
+                $storageLimit = $destination?->quota_bytes ?? 0;
                 $storagePercent = $storageLimit > 0 ? min(($storageUsed / $storageLimit) * 100, 100) : 0;
             @endphp
 
@@ -45,20 +46,23 @@
                 <div class="mb-2 flex items-center justify-between">
                     <span class="text-sm text-gray-600">Storage Used</span>
                     <span class="text-sm font-medium text-gray-900">
-                        {{ number_format($storageUsed / 1024 / 1024 / 1024, 2) }} GB / {{ $site->backupConfig->storage_limit_gb }} GB
+                        {{ \App\Helpers\FormatHelper::bytes($storageUsed) }}{{ $storageLimit > 0 ? ' / ' . \App\Helpers\FormatHelper::bytes($storageLimit) : '' }}
                     </span>
                 </div>
+                @if($storageLimit > 0)
                 <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
                     <div
                         class="h-full rounded-full transition-all {{ $storagePercent >= 90 ? 'bg-red-500' : ($storagePercent >= 70 ? 'bg-yellow-500' : 'bg-teal-500') }}"
                         style="width: {{ $storagePercent }}%"
                     ></div>
                 </div>
+                @endif
             </div>
+        @endif
 
-            {{-- Last Backup --}}
-            @if($site->latestCompletedBackup)
-            <div class="mb-4 flex items-center justify-between border-t border-gray-100 pt-4">
+        {{-- Last Backup --}}
+        @if($site->latestCompletedBackup)
+            <div class="mb-4 flex items-center justify-between {{ $site->backupConfig ? 'border-t border-gray-100 pt-4' : '' }}">
                 <div>
                     <div class="text-sm text-gray-600">Last Backup</div>
                     <div class="mt-1 text-sm font-medium text-gray-900">
@@ -72,28 +76,44 @@
                     <span class="text-xs font-medium">Success</span>
                 </div>
             </div>
-            @endif
 
-            {{-- Run Backup Button --}}
-            <div class="border-t border-gray-100 pt-4">
-                <x-ui.button wire:click="runBackup" color="teal" size="sm" class="w-full">
-                    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Run Backup Now
-                </x-ui.button>
+            {{-- Total Backups --}}
+            @php $completedCount = $site->backups()->where('status', 'completed')->count(); @endphp
+            @if($completedCount > 1)
+            <div class="mb-4 flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total Backups</span>
+                <span class="text-sm font-medium text-gray-900">{{ $completedCount }}</span>
             </div>
-        @else
+            @endif
+        @endif
+
+        {{-- Run Backup Button --}}
+        <div class="{{ ($site->backupConfig || $site->latestCompletedBackup) ? 'border-t border-gray-100 pt-4' : '' }}">
+            <x-ui.button wire:click="runBackup" color="teal" size="sm" class="w-full">
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Run Backup Now
+            </x-ui.button>
+        </div>
+
+        @if(!$site->backupConfig && !$site->latestCompletedBackup)
             <x-ui.empty-state
-                title="No backup configured"
+                title="No backups yet"
                 description="Set up automated backups to protect your site data."
             >
-                <x-slot:actions>
+                <x-slot:action>
                     <x-ui.button href="{{ route('sites.backups', $site) }}" color="teal">
                         Configure Backups
                     </x-ui.button>
-                </x-slot:actions>
+                </x-slot:action>
             </x-ui.empty-state>
+        @elseif(!$site->backupConfig)
+            <div class="mt-3 text-center">
+                <a href="{{ route('sites.backups', $site) }}" class="text-xs text-gray-500 hover:text-purple-600">
+                    Set up automated backups →
+                </a>
+            </div>
         @endif
     </div>
 </x-ui.card>

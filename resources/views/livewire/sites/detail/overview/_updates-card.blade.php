@@ -1,4 +1,4 @@
-<x-ui.card>
+<x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">

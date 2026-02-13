@@ -14,7 +14,10 @@ class SitesList extends Component
 
     public function render()
     {
+        $user = auth()->user();
+
         $sites = Site::query()
+            ->when(!$user->is_admin, fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
                   ->orWhere('url', 'like', "%{$this->search}%");

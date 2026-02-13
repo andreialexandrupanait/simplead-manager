@@ -59,8 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/woocommerce', Sites\Detail\SiteWooCommerce::class)->name('sites.woocommerce');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
 
-        // Legacy redirect (settings merged into overview)
-        Route::get('/settings', fn (\App\Models\Site $site) => redirect()->route('sites.overview', $site));
+        Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
     });
 
     // Backups — global view
@@ -124,6 +123,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
+
+        // Site Presets
+        Route::get('/site-presets', Settings\SitePresetsSettings::class)->name('settings.site-presets');
 
         // App backup download (signed URL for local storage)
         Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware('signed');

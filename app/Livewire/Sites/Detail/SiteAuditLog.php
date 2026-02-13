@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\SyncAuditLogs;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use App\Models\WpAuditLog;
@@ -13,7 +14,7 @@ use Livewire\Component;
 
 class SiteAuditLog extends Component
 {
-    use WithTableFilters;
+    use WithTableFilters, WithSiteAuthorization;
 
     public Site $site;
 
@@ -25,6 +26,7 @@ class SiteAuditLog extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\RunPerformanceTest;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformancePage;
 use App\Models\PerformanceTest;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class SitePerformance extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
     public string $historyRange = '30d';
     public bool $showSettings = false;
@@ -42,6 +45,7 @@ class SitePerformance extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->loadSettings();
 

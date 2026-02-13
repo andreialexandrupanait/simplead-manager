@@ -6,8 +6,11 @@ if (!defined('ABSPATH')) {
 
 /**
  * Handles one-time login token processing.
+ * Tokens are stored as SHA-256 hashes and compared timing-safely.
  */
 class SAM_Login_Handler {
+
+    private const TOKEN_EXPIRY = 120; // 2 minutes
 
     /**
      * Check for a login token in the URL and auto-login if valid.
@@ -18,6 +21,7 @@ class SAM_Login_Handler {
         }
 
         $token = sanitize_text_field($_GET['sam_login_token']);
+        $token_hash = hash('sha256', $token);
 
         $stored = get_option('sam_login_tokens', []);
         // Clean expired tokens
@@ -25,14 +29,23 @@ class SAM_Login_Handler {
             return $data['expires'] > time();
         });
 
-        if (!isset($stored[$token])) {
+        // Timing-safe lookup: check all hashes to avoid timing leaks
+        $matched_hash = null;
+        foreach ($stored as $stored_hash => $data) {
+            if (hash_equals($stored_hash, $token_hash)) {
+                $matched_hash = $stored_hash;
+                break;
+            }
+        }
+
+        if ($matched_hash === null) {
             update_option('sam_login_tokens', $stored);
             wp_die('Invalid or expired login token.', 'Login Failed', ['response' => 403]);
             return;
         }
 
-        $token_data = $stored[$token];
-        unset($stored[$token]); // Single-use: remove immediately
+        $token_data = $stored[$matched_hash];
+        unset($stored[$matched_hash]); // Single-use: remove immediately
         update_option('sam_login_tokens', $stored);
 
         $user = get_user_by('login', $token_data['user']);
@@ -58,6 +71,7 @@ class SAM_Login_Handler {
 
     /**
      * Generate a one-time login token.
+     * Stores the SHA-256 hash, returns the plaintext token in the URL.
      */
     public static function generate_token(?string $user_login = null): array {
         if (!$user_login) {
@@ -75,7 +89,8 @@ class SAM_Login_Handler {
         }
 
         $token = bin2hex(random_bytes(32));
-        $expires = time() + 300; // 5 minutes
+        $token_hash = hash('sha256', $token);
+        $expires = time() + self::TOKEN_EXPIRY;
 
         $stored = get_option('sam_login_tokens', []);
         // Clean expired tokens
@@ -83,13 +98,15 @@ class SAM_Login_Handler {
             return $data['expires'] > time();
         });
 
-        $stored[$token] = [
+        // Store hash, not plaintext
+        $stored[$token_hash] = [
             'user'    => $user_login,
             'expires' => $expires,
         ];
 
         update_option('sam_login_tokens', $stored);
 
+        // Return plaintext token in URL (only sent to authenticated Laravel app)
         $login_url = add_query_arg('sam_login_token', $token, home_url('/'));
 
         return [

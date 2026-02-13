@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\GenerateReport;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Mail\ReportGeneratedMail;
 use App\Models\Report;
 use App\Models\ReportSchedule;
@@ -15,7 +16,7 @@ use Livewire\WithPagination;
 
 class SiteReports extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public Site $site;
 
@@ -51,6 +52,7 @@ class SiteReports extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
 
         $defaultTemplate = ReportTemplate::where('is_default', true)->first()

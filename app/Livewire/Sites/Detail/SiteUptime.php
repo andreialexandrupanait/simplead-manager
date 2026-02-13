@@ -4,6 +4,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CheckUptime;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\Computed;
@@ -12,7 +13,7 @@ use Livewire\Component;
 
 class SiteUptime extends Component
 {
-    use WithJobTracking;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
 
@@ -24,6 +25,7 @@ class SiteUptime extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }

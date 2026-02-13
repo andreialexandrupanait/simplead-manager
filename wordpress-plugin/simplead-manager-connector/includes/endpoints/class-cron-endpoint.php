@@ -35,6 +35,23 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
         ]);
     }
 
+    /**
+     * Get all hooks currently in the WP cron schedule.
+     */
+    private function get_scheduled_hooks(): array {
+        $crons = _get_cron_array();
+        if (empty($crons)) {
+            return [];
+        }
+
+        $valid = [];
+        foreach ($crons as $hooks) {
+            $valid = array_merge($valid, array_keys($hooks));
+        }
+
+        return array_unique($valid);
+    }
+
     public function list_crons(WP_REST_Request $request): WP_REST_Response {
         $crons = _get_cron_array();
         if (empty($crons)) {
@@ -89,6 +106,15 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
                 'success' => false,
                 'error'   => ['code' => 'MISSING_HOOK', 'message' => 'Cron hook name is required.'],
             ], 400);
+        }
+
+        // Only allow hooks that are actually in the WP cron schedule
+        $scheduled_hooks = $this->get_scheduled_hooks();
+        if (!in_array($hook, $scheduled_hooks, true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'HOOK_NOT_SCHEDULED', 'message' => 'Hook is not in the WP cron schedule. Only scheduled hooks can be executed.'],
+            ], 403);
         }
 
         @set_time_limit(120);
@@ -160,6 +186,15 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
+        // Only allow re-enabling hooks that were previously disabled by us
+        $disabled = get_option('sam_disabled_crons', []);
+        if (!in_array($hook, $disabled, true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'HOOK_NOT_DISABLED', 'message' => 'Only hooks previously disabled by SimpleAd Manager can be re-enabled.'],
+            ], 403);
+        }
+
         // Validate schedule
         $schedules = wp_get_schedules();
         if (!isset($schedules[$schedule])) {
@@ -173,7 +208,6 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
         $result = wp_schedule_event(time(), $schedule, $hook, $args);
 
         // Remove from disabled list
-        $disabled = get_option('sam_disabled_crons', []);
         $disabled = array_values(array_diff($disabled, [$hook]));
         update_option('sam_disabled_crons', $disabled);
 

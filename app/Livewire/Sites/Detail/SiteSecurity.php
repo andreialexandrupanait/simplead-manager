@@ -7,6 +7,7 @@ use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
 use App\Jobs\RunSecurityScan;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SecurityIssue;
 use App\Models\SecurityRecommendation;
 use App\Models\Site;
@@ -18,7 +19,7 @@ use Livewire\Component;
 
 class SiteSecurity extends Component
 {
-    use WithJobTracking;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
     public string $securityTab = 'overview';
@@ -33,6 +34,7 @@ class SiteSecurity extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }

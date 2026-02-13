@@ -3,7 +3,7 @@
  * Plugin Name: SimpleAd Manager Connector
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 1.0.0
+ * Version: 1.2.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,38 +17,50 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '1.0.0');
+define('SAM_VERSION', '1.2.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
 define('SAM_REST_NAMESPACE', 'simplead/v1');
 
-// Core classes
+// Always-needed core classes
 require_once SAM_PLUGIN_DIR . 'includes/class-authentication.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-audit-logger.php';
-require_once SAM_PLUGIN_DIR . 'includes/class-rest-api.php';
-require_once SAM_PLUGIN_DIR . 'includes/class-admin.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-rate-limiter.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-login-handler.php';
 
-// Endpoint classes
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-info-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-plugins-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-themes-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-users-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-core-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-health-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-security-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-backup-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-rollback-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-database-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-cron-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-monitoring-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-error-log-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-seo-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-audit-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-firewall-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-login-endpoint.php';
-require_once SAM_PLUGIN_DIR . 'includes/endpoints/class-woocommerce-endpoint.php';
+// Autoloader for endpoint + admin classes (loaded on demand)
+spl_autoload_register(function ($class) {
+    static $map = [
+        // REST API base + endpoints
+        'SAM_REST_API'              => 'class-rest-api.php',
+        'SAM_Endpoint_Base'         => 'class-rest-api.php',
+        'SAM_Info_Endpoint'         => 'endpoints/class-info-endpoint.php',
+        'SAM_Plugins_Endpoint'      => 'endpoints/class-plugins-endpoint.php',
+        'SAM_Themes_Endpoint'       => 'endpoints/class-themes-endpoint.php',
+        'SAM_Users_Endpoint'        => 'endpoints/class-users-endpoint.php',
+        'SAM_Core_Endpoint'         => 'endpoints/class-core-endpoint.php',
+        'SAM_Health_Endpoint'       => 'endpoints/class-health-endpoint.php',
+        'SAM_Security_Endpoint'     => 'endpoints/class-security-endpoint.php',
+        'SAM_Backup_Endpoint'       => 'endpoints/class-backup-endpoint.php',
+        'SAM_Rollback_Endpoint'     => 'endpoints/class-rollback-endpoint.php',
+        'SAM_Database_Endpoint'     => 'endpoints/class-database-endpoint.php',
+        'SAM_Cron_Endpoint'         => 'endpoints/class-cron-endpoint.php',
+        'SAM_Monitoring_Endpoint'   => 'endpoints/class-monitoring-endpoint.php',
+        'SAM_Error_Log_Endpoint'    => 'endpoints/class-error-log-endpoint.php',
+        'SAM_SEO_Endpoint'          => 'endpoints/class-seo-endpoint.php',
+        'SAM_Audit_Endpoint'        => 'endpoints/class-audit-endpoint.php',
+        'SAM_Firewall_Endpoint'     => 'endpoints/class-firewall-endpoint.php',
+        'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
+        'SAM_WooCommerce_Endpoint'  => 'endpoints/class-woocommerce-endpoint.php',
+        // Admin
+        'SAM_Admin'                 => 'class-admin.php',
+    ];
+
+    if (isset($map[$class])) {
+        require_once SAM_PLUGIN_DIR . 'includes/' . $map[$class];
+    }
+});
 
 /**
  * Main plugin class.
@@ -74,9 +86,16 @@ final class SimpleAd_Manager_Connector {
         register_uninstall_hook(SAM_PLUGIN_FILE, [__CLASS__, 'uninstall']);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-        add_action('admin_menu', [$this, 'register_admin_menu']);
         add_action('init', [$this, 'handle_login_token']);
-        add_action('admin_init', [$this, 'register_settings']);
+
+        // Unified admin init — classes loaded via autoloader only when needed
+        if (is_admin()) {
+            $admin = new SAM_Admin();
+            add_action('admin_menu', [$admin, 'register_menu']);
+            add_action('admin_init', [$admin, 'register_settings']);
+            add_action('admin_enqueue_scripts', [$admin, 'enqueue_assets']);
+            $admin->register_ajax_handlers();
+        }
 
         // Hook into various WP actions for audit logging
         SAM_Audit_Logger::register_hooks();
@@ -118,16 +137,6 @@ final class SimpleAd_Manager_Connector {
     public function register_rest_routes(): void {
         $api = new SAM_REST_API();
         $api->register_routes();
-    }
-
-    public function register_admin_menu(): void {
-        $admin = new SAM_Admin();
-        $admin->register_menu();
-    }
-
-    public function register_settings(): void {
-        $admin = new SAM_Admin();
-        $admin->register_settings();
     }
 
     public function handle_login_token(): void {

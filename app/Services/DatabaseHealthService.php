@@ -8,10 +8,17 @@ use Illuminate\Support\Facades\Log;
 
 class DatabaseHealthService
 {
-    public static function check(Site $site): DatabaseHealthCheck
+    public static function check(Site $site, ?string $trackerKey = null): DatabaseHealthCheck
     {
+        $startTime = microtime(true);
+        Log::info("Database health check started for site {$site->id} ({$site->name})");
+
         $api = new WordPressApiService($site);
         $data = $api->getDatabaseHealth();
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 40, 'Analyzing tables...');
+        }
 
         $tablesData = $data['tables'] ?? [];
         $totalSize = 0;
@@ -32,18 +39,19 @@ class DatabaseHealthService
         // Tables with overhead
         $tablesWithOverhead = collect($tablesData)->filter(fn ($t) => ($t['overhead'] ?? 0) > 0)->values()->all();
 
-        // Determine status
+        // Determine status using configurable thresholds
         $warnings = 0;
-        if ($totalSize > 1_073_741_824) $warnings++;
-        if ($autoloadSize > 1_048_576) $warnings++;
+        if ($totalSize > config('monitoring.db_total_size_warning', 1_073_741_824)) $warnings++;
+        if ($autoloadSize > config('monitoring.db_autoload_size_warning', 1_048_576)) $warnings++;
         if ($myisamCount > 0) $warnings++;
 
         $totalOverhead = collect($tablesWithOverhead)->sum('overhead');
-        if ($totalOverhead > 104_857_600) $warnings++;
+        if ($totalOverhead > config('monitoring.db_overhead_warning', 104_857_600)) $warnings++;
 
+        $tableSizeWarning = config('monitoring.db_table_size_warning', 524_288_000);
         foreach ($sortedTables as $table) {
             $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
-            if ($tableSize > 524_288_000) $warnings++;
+            if ($tableSize > $tableSizeWarning) $warnings++;
         }
 
         $status = match (true) {
@@ -51,6 +59,10 @@ class DatabaseHealthService
             $warnings >= 1 => 'warning',
             default => 'healthy',
         };
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 80, 'Saving results...');
+        }
 
         $healthCheck = DatabaseHealthCheck::create([
             'site_id' => $site->id,
@@ -63,6 +75,19 @@ class DatabaseHealthService
             'autoload_size' => $autoloadSize,
             'status' => $status,
             'checked_at' => now(),
+        ]);
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 95, 'Finalizing...');
+        }
+
+        $duration = round(microtime(true) - $startTime, 2);
+        Log::info("Database health check completed for site {$site->id}", [
+            'status' => $status,
+            'total_size' => $totalSize,
+            'total_tables' => $totalTables,
+            'warnings' => $warnings,
+            'duration_seconds' => $duration,
         ]);
 
         ActivityLogger::log(

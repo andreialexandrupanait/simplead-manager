@@ -267,6 +267,46 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
         ];
     }
 
+    /**
+     * Atomic file write: write to .tmp, verify, rename(). Create .bak before modifying.
+     */
+    private function atomic_file_write(string $file_path, string $contents): bool {
+        $tmp_path = $file_path . '.tmp';
+        $bak_path = $file_path . '.bak';
+
+        // Create backup of original
+        if (file_exists($file_path)) {
+            if (!copy($file_path, $bak_path)) {
+                return false;
+            }
+        }
+
+        // Write to temp file
+        $written = file_put_contents($tmp_path, $contents);
+        if ($written === false) {
+            @unlink($tmp_path);
+            return false;
+        }
+
+        // Verify temp file is readable and non-empty
+        if (!is_readable($tmp_path) || filesize($tmp_path) === 0) {
+            @unlink($tmp_path);
+            return false;
+        }
+
+        // Atomic rename
+        if (!rename($tmp_path, $file_path)) {
+            @unlink($tmp_path);
+            // Restore from backup
+            if (file_exists($bak_path)) {
+                rename($bak_path, $file_path);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
     private function fix_disable_file_editor(): array {
         $config_file = ABSPATH . 'wp-config.php';
         if (!is_writable($config_file)) {
@@ -278,13 +318,15 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
             return ['success' => true, 'message' => 'DISALLOW_FILE_EDIT is already defined.'];
         }
 
-        $contents = str_replace(
+        $new_contents = str_replace(
             "/* That's all, stop editing!",
             "define( 'DISALLOW_FILE_EDIT', true );\n\n/* That's all, stop editing!",
             $contents
         );
 
-        file_put_contents($config_file, $contents);
+        if (!$this->atomic_file_write($config_file, $new_contents)) {
+            return ['success' => false, 'message' => 'Failed to write wp-config.php atomically.'];
+        }
 
         return ['success' => true, 'message' => 'File editor has been disabled.'];
     }
@@ -301,7 +343,11 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
         }
 
         $rule = "\n# Block XML-RPC - Added by SimpleAd Manager\n<Files xmlrpc.php>\n  Require all denied\n</Files>\n";
-        file_put_contents($htaccess_file, $contents . $rule);
+        $new_contents = $contents . $rule;
+
+        if (!$this->atomic_file_write($htaccess_file, $new_contents)) {
+            return ['success' => false, 'message' => 'Failed to write .htaccess atomically.'];
+        }
 
         return ['success' => true, 'message' => 'XML-RPC has been blocked via .htaccess.'];
     }

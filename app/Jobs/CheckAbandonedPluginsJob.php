@@ -32,7 +32,7 @@ class CheckAbandonedPluginsJob implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         JobTracker::start($this->uniqueId(), 'Checking for abandoned plugins...');
-        PluginAbandonmentService::checkAllForSite($this->site);
+        PluginAbandonmentService::checkAllForSite($this->site, $this->uniqueId());
         JobTracker::complete($this->uniqueId(), 'Abandoned plugin check complete');
     }
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\SyncErrorLogsJob;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\ErrorLog;
 use App\Models\Site;
 use App\Services\ErrorLogService;
@@ -13,7 +14,7 @@ use Livewire\WithPagination;
 
 class SiteErrorLogs extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public Site $site;
 
@@ -27,6 +28,7 @@ class SiteErrorLogs extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 

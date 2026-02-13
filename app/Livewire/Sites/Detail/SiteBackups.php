@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\CreateBackup;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
@@ -15,7 +16,7 @@ use Livewire\WithPagination;
 
 class SiteBackups extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public Site $site;
     public ?int $trackingBackupId = null;
@@ -23,6 +24,7 @@ class SiteBackups extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
 
         // If there's an in-progress backup on page load, track it

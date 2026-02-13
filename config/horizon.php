@@ -99,7 +99,11 @@ return [
     'waits' => [
         'redis:default' => 60,
         'redis:notifications' => 60,
+        'redis:uptime' => 30,
         'redis:backups' => 300,
+        'redis:sync' => 120,
+        'redis:performance' => 120,
+        'redis:reports' => 120,
     ],
 
     /*
@@ -199,9 +203,9 @@ return [
     */
 
     'defaults' => [
-        'supervisor-1' => [
+        'supervisor-uptime' => [
             'connection' => 'redis',
-            'queue' => ['notifications', 'default'],
+            'queue' => ['uptime'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -209,7 +213,7 @@ return [
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 3,
-            'timeout' => 90,
+            'timeout' => 30,
             'nice' => 0,
         ],
         'supervisor-backups' => [
@@ -224,26 +228,104 @@ return [
             'timeout' => 3600,
             'nice' => 0,
         ],
+        'supervisor-sync' => [
+            'connection' => 'redis',
+            'queue' => ['sync'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
+        'supervisor-performance' => [
+            'connection' => 'redis',
+            'queue' => ['performance'],
+            'balance' => false,
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 2,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+        'supervisor-reports' => [
+            'connection' => 'redis',
+            'queue' => ['reports'],
+            'balance' => false,
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 2,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+        'supervisor-default' => [
+            'connection' => 'redis',
+            'queue' => ['notifications', 'default'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 90,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
         'production' => [
-            'supervisor-1' => [
-                'maxProcesses' => 10,
+            'supervisor-uptime' => [
+                'maxProcesses' => (int) env('HORIZON_UPTIME_WORKERS', 6),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
             'supervisor-backups' => [
-                'maxProcesses' => 1,
+                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 2),
+            ],
+            'supervisor-sync' => [
+                'maxProcesses' => (int) env('HORIZON_SYNC_WORKERS', 3),
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
+            'supervisor-performance' => [
+                'maxProcesses' => (int) env('HORIZON_PERFORMANCE_WORKERS', 1),
+            ],
+            'supervisor-reports' => [
+                'maxProcesses' => (int) env('HORIZON_REPORT_WORKERS', 1),
+            ],
+            'supervisor-default' => [
+                'maxProcesses' => (int) env('HORIZON_DEFAULT_WORKERS', 3),
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
             ],
         ],
 
         'local' => [
-            'supervisor-1' => [
-                'maxProcesses' => 3,
+            'supervisor-uptime' => [
+                'maxProcesses' => 2,
             ],
             'supervisor-backups' => [
                 'maxProcesses' => 1,
+            ],
+            'supervisor-sync' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-performance' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-reports' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-default' => [
+                'maxProcesses' => 2,
             ],
         ],
     ],

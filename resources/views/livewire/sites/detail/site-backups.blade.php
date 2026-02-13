@@ -1,4 +1,4 @@
-<div @if(($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) wire:poll.1s="refreshProgress" @endif>
+<div @if(($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) wire:poll.5s="refreshProgress" @endif>
     {{-- Header --}}
     <x-ui.page-header title="Backups" subtitle="Create, schedule, and restore site backups" />
 

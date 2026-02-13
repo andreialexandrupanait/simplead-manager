@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\MaintenanceWindow;
 use App\Models\Site;
 use App\Services\MaintenanceService;
@@ -11,6 +12,8 @@ use Livewire\Component;
 
 class SiteMaintenance extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
 
     // Modal state
@@ -32,6 +35,7 @@ class SiteMaintenance extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 

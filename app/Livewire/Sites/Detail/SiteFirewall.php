@@ -3,6 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\FetchBlockedRequests;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\BlockedRequest;
 use App\Models\IpRule;
 use App\Models\Site;
@@ -13,6 +14,8 @@ use Livewire\Component;
 
 class SiteFirewall extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
     public string $tab = 'block';
 
@@ -23,6 +26,7 @@ class SiteFirewall extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 

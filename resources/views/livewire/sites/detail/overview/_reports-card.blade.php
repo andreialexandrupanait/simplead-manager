@@ -1,4 +1,4 @@
-<x-ui.card>
+<x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -65,11 +65,11 @@
                 title="No scheduled reports"
                 description="Create automated reports to share site performance with clients."
             >
-                <x-slot:actions>
+                <x-slot:action>
                     <x-ui.button href="{{ route('sites.reports', $site) }}" color="orange">
                         Create Report
                     </x-ui.button>
-                </x-slot:actions>
+                </x-slot:action>
             </x-ui.empty-state>
         @endif
     </div>

@@ -7,6 +7,7 @@ use App\Jobs\ExecuteRollback;
 use App\Jobs\RunSafeUpdate;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\RollbackPoint;
 use App\Models\Site;
 use App\Models\UpdateLog;
@@ -21,7 +22,7 @@ use Livewire\WithPagination;
 
 class SiteUpdates extends Component
 {
-    use WithPagination, WithJobTracking;
+    use WithPagination, WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
 
@@ -37,6 +38,7 @@ class SiteUpdates extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
     }

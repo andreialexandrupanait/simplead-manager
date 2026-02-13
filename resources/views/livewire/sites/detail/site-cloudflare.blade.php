@@ -4,7 +4,7 @@
 
     @if(!$this->siteCloudflare)
         {{-- Not connected --}}
-        <x-ui.page-header title="Cloudflare" subtitle="Connect this site to a Cloudflare zone to manage DNS, cache, security, and analytics" />
+        <x-ui.page-header title="Cloudflare" subtitle="Connect this site to a Cloudflare zone to manage DNS, cache, and analytics" />
 
         <x-ui.card>
             @if($this->connections->isEmpty())
@@ -69,7 +69,7 @@
         {{-- Tabs --}}
         <div class="mb-6 border-b border-gray-200">
             <nav class="-mb-px flex gap-6">
-                @foreach(['dns' => 'DNS', 'cache' => 'Cache', 'security' => 'Security', 'analytics' => 'Analytics'] as $key => $label)
+                @foreach(['overview' => 'Overview', 'cache' => 'Cache', 'analytics' => 'Analytics'] as $key => $label)
                     <button wire:click="$set('tab', '{{ $key }}')"
                         class="whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition {{ $tab === $key ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                         {{ $label }}
@@ -78,54 +78,8 @@
             </nav>
         </div>
 
-        {{-- DNS Tab --}}
-        @if($tab === 'dns')
-            <x-ui.card class="mb-6">
-                <h3 class="text-sm font-semibold text-gray-900 mb-4">Add DNS Record</h3>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-6">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                        <x-ui.select wire:model="dnsType">
-                            @foreach(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as $type)
-                                <option value="{{ $type }}">{{ $type }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                        <x-ui.input type="text" wire:model="dnsName" placeholder="@ or subdomain" />
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Content</label>
-                        <x-ui.input type="text" wire:model="dnsContent" placeholder="IP address or value" />
-                    </div>
-                    <div class="flex items-end">
-                        <x-ui.button wire:click="addDnsRecord" size="sm" class="w-full">Add</x-ui.button>
-                    </div>
-                </div>
-                @if(in_array($dnsType, ['A', 'AAAA', 'CNAME']))
-                    <label class="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" wire:model="dnsProxied" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                        Proxied (orange cloud)
-                    </label>
-                @endif
-            </x-ui.card>
-
-            {{-- Import/Export Bar --}}
-            <div class="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <x-ui.button variant="secondary" size="sm" wire:click="exportDnsRecords">
-                    <svg class="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export JSON
-                </x-ui.button>
-                <div class="flex items-center gap-2">
-                    <input type="file" wire:model="dnsImportFile" accept=".json" class="text-sm text-gray-500 file:mr-2 file:rounded-lg file:border-0 file:bg-purple-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
-                    @if($dnsImportFile)
-                        <x-ui.button size="sm" wire:click="importDnsRecords">Import</x-ui.button>
-                    @endif
-                </div>
-                @error('dnsImportFile') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            </div>
-
+        {{-- Overview Tab --}}
+        @if($tab === 'overview')
             <x-ui.card>
                 <h3 class="text-sm font-semibold text-gray-900 mb-4">DNS Records</h3>
                 @if(empty($this->dnsRecords))
@@ -140,7 +94,6 @@
                                     <th class="pb-2 pr-4">Content</th>
                                     <th class="pb-2 pr-4">TTL</th>
                                     <th class="pb-2 pr-4">Proxy</th>
-                                    <th class="pb-2"></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
@@ -154,84 +107,19 @@
                                         <td class="py-2 pr-4 text-xs text-gray-500">{{ $record['ttl'] == 1 ? 'Auto' : $record['ttl'] . 's' }}</td>
                                         <td class="py-2 pr-4">
                                             @if(in_array($record['type'], ['A', 'AAAA', 'CNAME']))
-                                                <button wire:click="toggleProxy('{{ $record['id'] }}', '{{ $record['type'] }}', '{{ $record['name'] }}', '{{ $record['content'] }}', {{ $record['ttl'] }}, {{ $record['proxied'] ? 'true' : 'false' }})"
-                                                    class="text-xs {{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
+                                                <span class="text-xs {{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
                                                     <svg class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-                                                </button>
+                                                </span>
                                             @endif
-                                        </td>
-                                        <td class="py-2 text-right">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button wire:click="openDnsEditModal('{{ $record['id'] }}', '{{ $record['type'] }}', '{{ $record['name'] }}', '{{ addslashes($record['content']) }}', {{ $record['ttl'] }}, {{ ($record['proxied'] ?? false) ? 'true' : 'false' }})"
-                                                    class="text-gray-400 hover:text-purple-600">
-                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                </button>
-                                                <button wire:click="deleteDnsRecord('{{ $record['id'] }}')"
-                                                    wire:confirm="Delete this DNS record?"
-                                                    class="text-gray-400 hover:text-red-600">
-                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
+                    <p class="mt-3 text-xs text-gray-400">Manage DNS records in the Cloudflare dashboard.</p>
                 @endif
             </x-ui.card>
-
-            {{-- DNS Edit Modal --}}
-            @if($showDnsEditModal)
-                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="$set('showDnsEditModal', false)">
-                    <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-                        <h3 class="text-base font-semibold text-gray-900 mb-4">Edit DNS Record</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                                <x-ui.select wire:model="editDnsType">
-                                    @foreach(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'] as $type)
-                                        <option value="{{ $type }}">{{ $type }}</option>
-                                    @endforeach
-                                </x-ui.select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                                <x-ui.input type="text" wire:model="editDnsName" />
-                                @error('editDnsName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Content</label>
-                                <x-ui.input type="text" wire:model="editDnsContent" />
-                                @error('editDnsContent') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">TTL</label>
-                                <x-ui.select wire:model="editDnsTtl">
-                                    <option value="1">Auto</option>
-                                    <option value="120">2 min</option>
-                                    <option value="300">5 min</option>
-                                    <option value="600">10 min</option>
-                                    <option value="900">15 min</option>
-                                    <option value="1800">30 min</option>
-                                    <option value="3600">1 hour</option>
-                                    <option value="86400">1 day</option>
-                                </x-ui.select>
-                            </div>
-                            @if(in_array($editDnsType, ['A', 'AAAA', 'CNAME']))
-                                <label class="flex items-center gap-2 text-sm text-gray-600">
-                                    <input type="checkbox" wire:model="editDnsProxied" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                    Proxied (orange cloud)
-                                </label>
-                            @endif
-                        </div>
-                        <div class="mt-5 flex justify-end gap-2">
-                            <x-ui.button variant="secondary" wire:click="$set('showDnsEditModal', false)">Cancel</x-ui.button>
-                            <x-ui.button wire:click="updateDnsRecord">Save Changes</x-ui.button>
-                        </div>
-                    </div>
-                </div>
-            @endif
         @endif
 
         {{-- Cache Tab --}}
@@ -278,165 +166,6 @@
                     </div>
                 @endif
             </x-ui.card>
-        @endif
-
-        {{-- Security Tab --}}
-        @if($tab === 'security')
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Security Level</h3>
-                    <p class="text-sm text-gray-500 mb-3">Current level: <span class="font-medium text-gray-900">{{ ucfirst(str_replace('_', ' ', $this->securityLevel)) }}</span></p>
-                    <div class="flex items-center gap-3">
-                        <x-ui.select wire:model="newSecurityLevel">
-                            @foreach(['essentially_off' => 'Essentially Off', 'low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'under_attack' => 'Under Attack'] as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </x-ui.select>
-                        <x-ui.button wire:click="setSecurityLevel" size="sm">Apply</x-ui.button>
-                    </div>
-                </x-ui.card>
-
-                <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Under Attack Mode</h3>
-                    <p class="text-sm text-gray-500 mb-3">Enable "I'm Under Attack" mode to add extra protection during an active DDoS attack.</p>
-                    <x-ui.button
-                        wire:click="toggleUnderAttack"
-                        variant="{{ $this->securityLevel === 'under_attack' ? 'danger' : 'secondary' }}"
-                    >
-                        {{ $this->securityLevel === 'under_attack' ? 'Disable Under Attack Mode' : 'Enable Under Attack Mode' }}
-                    </x-ui.button>
-                </x-ui.card>
-            </div>
-
-            {{-- WAF Status + Block IP --}}
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mt-6">
-                <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">WAF Status</h3>
-                    <div class="flex items-center gap-2">
-                        @if($this->wafStatus === 'on')
-                            <x-ui.badge variant="green">Enabled</x-ui.badge>
-                        @elseif($this->wafStatus === 'off')
-                            <x-ui.badge variant="gray">Disabled</x-ui.badge>
-                        @else
-                            <x-ui.badge variant="yellow">{{ ucfirst($this->wafStatus) }}</x-ui.badge>
-                        @endif
-                    </div>
-                    <p class="mt-2 text-xs text-gray-500">Web Application Firewall protects against common web exploits. Manage WAF rules in the Cloudflare dashboard.</p>
-                </x-ui.card>
-
-                <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Block IP via Cloudflare</h3>
-                    <div class="space-y-3">
-                        <div>
-                            <x-ui.input type="text" wire:model="blockIp" placeholder="IP address (e.g. 192.168.1.1)" />
-                            @error('blockIp') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <x-ui.input type="text" wire:model="blockNote" placeholder="Note (optional)" />
-                        </div>
-                        <x-ui.button wire:click="blockIpViaCf" size="sm">Block IP</x-ui.button>
-                    </div>
-                </x-ui.card>
-            </div>
-
-            {{-- IP Access Rules --}}
-            @if(!empty($this->accessRules))
-                <x-ui.card class="mt-6">
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">IP Access Rules</h3>
-                    <div class="divide-y divide-gray-100">
-                        @foreach($this->accessRules as $rule)
-                            <div class="flex items-center justify-between py-3">
-                                <div>
-                                    <span class="font-mono text-sm text-gray-900">{{ $rule['configuration']['value'] ?? 'N/A' }}</span>
-                                    <x-ui.badge :variant="($rule['mode'] ?? '') === 'block' ? 'red' : 'gray'" class="ml-2">{{ ucfirst($rule['mode'] ?? 'N/A') }}</x-ui.badge>
-                                    @if(!empty($rule['notes']))
-                                        <span class="ml-2 text-xs text-gray-500">{{ $rule['notes'] }}</span>
-                                    @endif
-                                </div>
-                                <button wire:click="removeAccessRule('{{ $rule['id'] }}')"
-                                    wire:confirm="Remove this access rule?"
-                                    class="text-gray-400 hover:text-red-600">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                        @endforeach
-                    </div>
-                </x-ui.card>
-            @endif
-
-            {{-- Firewall Rules --}}
-            <x-ui.card class="mt-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-sm font-semibold text-gray-900">Firewall Rules</h3>
-                    <x-ui.button size="sm" wire:click="openCreateFirewallModal">Add Rule</x-ui.button>
-                </div>
-                @if(empty($this->firewallRules))
-                    <p class="text-sm text-gray-500">No firewall rules configured.</p>
-                @else
-                    <div class="divide-y divide-gray-100">
-                        @foreach($this->firewallRules as $rule)
-                            <div class="flex items-center justify-between py-3">
-                                <div class="flex-1 min-w-0">
-                                    <span class="text-sm font-medium text-gray-900">{{ $rule['description'] ?? 'Unnamed rule' }}</span>
-                                    <div class="text-xs text-gray-500">Action: {{ ucfirst($rule['action'] ?? 'N/A') }}</div>
-                                    @if(!empty($rule['filter']['expression'] ?? null))
-                                        <div class="mt-1 truncate font-mono text-xs text-gray-400">{{ $rule['filter']['expression'] }}</div>
-                                    @endif
-                                </div>
-                                <div class="flex items-center gap-2 ml-4">
-                                    <x-ui.badge :variant="($rule['paused'] ?? false) ? 'gray' : 'green'">{{ ($rule['paused'] ?? false) ? 'Paused' : 'Active' }}</x-ui.badge>
-                                    <button wire:click="openEditFirewallModal('{{ $rule['id'] }}', '{{ addslashes($rule['description'] ?? '') }}', '{{ addslashes($rule['filter']['expression'] ?? '') }}', '{{ $rule['action'] ?? 'block' }}')"
-                                        class="text-gray-400 hover:text-purple-600">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button wire:click="deleteFirewallRule('{{ $rule['id'] }}')"
-                                        wire:confirm="Delete this firewall rule?"
-                                        class="text-gray-400 hover:text-red-600">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </x-ui.card>
-
-            {{-- Firewall Rule Modal --}}
-            @if($showFirewallModal)
-                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="$set('showFirewallModal', false)">
-                    <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-                        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ $editingFirewallRuleId ? 'Edit' : 'Create' }} Firewall Rule</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                                <x-ui.input type="text" wire:model="fwDescription" placeholder="Rule description" />
-                                @error('fwDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Filter Expression</label>
-                                <textarea wire:model="fwExpression" rows="3" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500" placeholder='(ip.src eq 192.168.1.1) or (http.request.uri.path contains "/admin")'></textarea>
-                                @error('fwExpression') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Action</label>
-                                <x-ui.select wire:model="fwAction">
-                                    <option value="block">Block</option>
-                                    <option value="challenge">Challenge (CAPTCHA)</option>
-                                    <option value="js_challenge">JS Challenge</option>
-                                    <option value="managed_challenge">Managed Challenge</option>
-                                    <option value="allow">Allow</option>
-                                    <option value="log">Log</option>
-                                    <option value="bypass">Bypass</option>
-                                </x-ui.select>
-                            </div>
-                        </div>
-                        <div class="mt-5 flex justify-end gap-2">
-                            <x-ui.button variant="secondary" wire:click="$set('showFirewallModal', false)">Cancel</x-ui.button>
-                            <x-ui.button wire:click="saveFirewallRule">{{ $editingFirewallRuleId ? 'Update Rule' : 'Create Rule' }}</x-ui.button>
-                        </div>
-                    </div>
-                </div>
-            @endif
         @endif
 
         {{-- Analytics Tab --}}

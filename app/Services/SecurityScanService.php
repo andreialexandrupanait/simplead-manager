@@ -6,61 +6,52 @@ use App\Models\SecurityIssue;
 use App\Models\SecurityScan;
 use App\Models\Site;
 use App\Services\Notifications\NotificationService;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class SecurityScanService
 {
-    public static function scan(Site $site): SecurityScan
+    public static function scan(Site $site, ?string $trackerKey = null): SecurityScan
     {
         $startTime = microtime(true);
         $issues = [];
 
-        try {
-            // 1. Check HTTP headers
-            $headerIssues = static::checkHeaders($site->url);
-            $issues = array_merge($issues, $headerIssues);
-        } catch (\Exception $e) {
-            Log::warning("Security scan: header check failed for site {$site->id}: {$e->getMessage()}");
+        // 1. WP Version check
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 10, 'Checking WordPress version...');
         }
-
         try {
-            // 2. Fetch recommendation status from WP connector
-            SecurityRecommendationService::check($site);
-        } catch (\Exception $e) {
-            Log::warning("Security scan: recommendation check failed for site {$site->id}: {$e->getMessage()}");
-        }
-
-        try {
-            // 3. Check SSL status
-            $ssl = $site->sslCertificate;
-            if ($ssl) {
-                if ($ssl->status === 'expired') {
+            $wpVersion = $site->wp_version;
+            if ($wpVersion) {
+                if (version_compare($wpVersion, '6.4', '<')) {
                     $issues[] = [
-                        'category' => 'config',
-                        'type' => 'ssl_expired',
-                        'severity' => 'critical',
-                        'title' => 'SSL certificate has expired',
-                        'description' => 'The SSL certificate for this site has expired. Visitors will see security warnings.',
-                        'recommendation' => 'Renew the SSL certificate immediately.',
-                    ];
-                } elseif ($ssl->status === 'expiring_soon') {
-                    $issues[] = [
-                        'category' => 'config',
-                        'type' => 'ssl_expiring_soon',
-                        'severity' => 'medium',
-                        'title' => 'SSL certificate expiring soon',
-                        'description' => "The SSL certificate expires in {$ssl->days_remaining} days.",
-                        'recommendation' => 'Renew the SSL certificate before it expires.',
+                        'category' => 'core',
+                        'type' => 'wp_outdated',
+                        'severity' => version_compare($wpVersion, '6.0', '<') ? 'critical' : 'high',
+                        'title' => "WordPress {$wpVersion} is outdated",
+                        'description' => 'Running an outdated WordPress version exposes the site to known vulnerabilities.',
+                        'recommendation' => 'Update WordPress to the latest version.',
                     ];
                 }
             }
         } catch (\Exception $e) {
-            Log::warning("Security scan: SSL check failed for site {$site->id}: {$e->getMessage()}");
+            Log::warning("Security scan: WP version check failed for site {$site->id}: {$e->getMessage()}");
         }
 
+        // 2. Vulnerable plugins
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 30, 'Checking plugin vulnerabilities...');
+        }
         try {
-            // 4. Check core integrity
+            VulnerabilityCheckService::check($site);
+        } catch (\Exception $e) {
+            Log::warning("Security scan: vulnerability check failed for site {$site->id}: {$e->getMessage()}");
+        }
+
+        // 3. Core integrity
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 50, 'Checking core integrity...');
+        }
+        try {
             $coreCheck = $site->latestCoreFileCheck;
             if ($coreCheck && $coreCheck->status === 'modified') {
                 if ($coreCheck->modified_count > 0) {
@@ -88,27 +79,61 @@ class SecurityScanService
             Log::warning("Security scan: core integrity check failed for site {$site->id}: {$e->getMessage()}");
         }
 
+        // 4. Debug mode check
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 65, 'Checking debug mode...');
+        }
         try {
-            // 5. Check plugin vulnerabilities
-            VulnerabilityCheckService::check($site);
+            if ($site->is_connected) {
+                $api = new WordPressApiService($site);
+                $siteInfo = $api->getInfo();
+                if (!empty($siteInfo['debug_mode'])) {
+                    $issues[] = [
+                        'category' => 'config',
+                        'type' => 'debug_mode_enabled',
+                        'severity' => 'high',
+                        'title' => 'WordPress debug mode is enabled',
+                        'description' => 'WP_DEBUG is enabled in production, which may expose sensitive information.',
+                        'recommendation' => 'Disable WP_DEBUG in wp-config.php.',
+                    ];
+                }
+            }
         } catch (\Exception $e) {
-            Log::warning("Security scan: vulnerability check failed for site {$site->id}: {$e->getMessage()}");
+            Log::warning("Security scan: debug mode check failed for site {$site->id}: {$e->getMessage()}");
         }
 
-        // 6. Add issues from failed recommendations
-        $failedRecs = $site->securityRecommendations()->failed()->get();
-        foreach ($failedRecs as $rec) {
-            $issues[] = [
-                'category' => 'config',
-                'type' => 'rec_' . $rec->key,
-                'severity' => in_array($rec->category, ['http_headers', 'ssl_https']) ? 'medium' : 'high',
-                'title' => $rec->title . ' — not configured',
-                'description' => $rec->description,
-                'recommendation' => $rec->can_auto_fix ? 'This can be automatically fixed using the Recommendations tab.' : 'Manual configuration required.',
-            ];
+        // 5. SSL check
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 80, 'Checking SSL certificate...');
+        }
+        try {
+            $ssl = $site->sslCertificate;
+            if ($ssl) {
+                if ($ssl->status === 'expired') {
+                    $issues[] = [
+                        'category' => 'config',
+                        'type' => 'ssl_expired',
+                        'severity' => 'critical',
+                        'title' => 'SSL certificate has expired',
+                        'description' => 'The SSL certificate for this site has expired. Visitors will see security warnings.',
+                        'recommendation' => 'Renew the SSL certificate immediately.',
+                    ];
+                } elseif ($ssl->status === 'expiring_soon') {
+                    $issues[] = [
+                        'category' => 'config',
+                        'type' => 'ssl_expiring_soon',
+                        'severity' => 'medium',
+                        'title' => 'SSL certificate expiring soon',
+                        'description' => "The SSL certificate expires in {$ssl->days_remaining} days.",
+                        'recommendation' => 'Renew the SSL certificate before it expires.',
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Security scan: SSL check failed for site {$site->id}: {$e->getMessage()}");
         }
 
-        // 7. Upsert security issues (preserve first_detected_at and is_ignored)
+        // Upsert security issues
         foreach ($issues as $issueData) {
             $existing = SecurityIssue::where('site_id', $site->id)
                 ->where('type', $issueData['type'])
@@ -128,7 +153,11 @@ class SecurityScanService
             }
         }
 
-        // Mark issues that were previously detected but not found in this scan as fixed
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 90, 'Calculating security score...');
+        }
+
+        // Mark issues not found in this scan as fixed
         $currentTypes = array_column($issues, 'type');
         SecurityIssue::where('site_id', $site->id)
             ->active()
@@ -136,7 +165,7 @@ class SecurityScanService
             ->where('type', 'not like', 'vuln_%')
             ->update(['is_fixed' => true, 'fixed_at' => now()]);
 
-        // 8. Calculate score
+        // Calculate score
         $activeIssues = SecurityIssue::where('site_id', $site->id)->active()->get();
         $score = 100;
         $criticalCount = 0;
@@ -168,32 +197,12 @@ class SecurityScanService
 
         $score = max(0, $score);
 
-        // 9. Calculate category breakdown
-        $recommendations = $site->securityRecommendations;
-        $categories = ['file_security', 'login_security', 'database_security', 'http_headers', 'ssl_https'];
-        $breakdown = [];
-        foreach ($categories as $cat) {
-            $catRecs = $recommendations->where('category', $cat);
-            $total = $catRecs->count();
-            $passed = $catRecs->where('status', 'passed')->count();
-            $breakdown[$cat] = $total > 0 ? round(($passed / $total) * 100) : 100;
-        }
-
-        // Core integrity score
-        $coreCheck = $site->latestCoreFileCheck;
-        $breakdown['core_integrity'] = ($coreCheck && $coreCheck->status === 'clean') ? 100 : (($coreCheck && $coreCheck->status === 'modified') ? 30 : 50);
-
-        // Plugin vulnerabilities score
-        $vulnCount = $site->vulnerabilityAlerts()->active()->count();
-        $breakdown['plugins'] = $vulnCount === 0 ? 100 : max(0, 100 - ($vulnCount * 15));
-
         $scanDuration = (int) (microtime(true) - $startTime);
 
-        // 10. Create scan record
+        // Create scan record
         $scan = SecurityScan::create([
             'site_id' => $site->id,
             'score' => $score,
-            'scores_breakdown' => $breakdown,
             'critical_count' => $criticalCount,
             'high_count' => $highCount,
             'medium_count' => $mediumCount,
@@ -207,7 +216,7 @@ class SecurityScanService
             ->active()
             ->update(['security_scan_id' => $scan->id]);
 
-        // 11. Notify if critical
+        // Notify if critical
         if ($score < 50) {
             NotificationService::notifySiteEvent(
                 $site,
@@ -219,7 +228,7 @@ class SecurityScanService
             );
         }
 
-        // 12. Activity log
+        // Activity log
         ActivityLogger::log(
             'security',
             $score < 50 ? 'critical' : ($score < 80 ? 'warning' : 'info'),
@@ -231,73 +240,6 @@ class SecurityScanService
         );
 
         return $scan;
-    }
-
-    public static function checkHeaders(string $url): array
-    {
-        $issues = [];
-
-        $response = Http::timeout(15)
-            ->withHeaders(['User-Agent' => 'SimpleAD-Manager/1.0 SecurityScanner'])
-            ->get($url);
-
-        $headers = collect($response->headers())->mapWithKeys(fn ($v, $k) => [strtolower($k) => $v[0] ?? '']);
-
-        $headerChecks = [
-            'x-frame-options' => [
-                'type' => 'missing_x_frame_options',
-                'title' => 'Missing X-Frame-Options header',
-                'description' => 'The X-Frame-Options header is not set, which may allow clickjacking attacks.',
-                'recommendation' => 'Add X-Frame-Options: SAMEORIGIN header.',
-            ],
-            'x-content-type-options' => [
-                'type' => 'missing_x_content_type_options',
-                'title' => 'Missing X-Content-Type-Options header',
-                'description' => 'The X-Content-Type-Options header is not set, which may allow MIME-sniffing attacks.',
-                'recommendation' => 'Add X-Content-Type-Options: nosniff header.',
-            ],
-            'x-xss-protection' => [
-                'type' => 'missing_x_xss_protection',
-                'title' => 'Missing X-XSS-Protection header',
-                'description' => 'The X-XSS-Protection header is not set.',
-                'recommendation' => 'Add X-XSS-Protection: 1; mode=block header.',
-            ],
-            'referrer-policy' => [
-                'type' => 'missing_referrer_policy',
-                'title' => 'Missing Referrer-Policy header',
-                'description' => 'The Referrer-Policy header is not set, which may leak sensitive URL parameters.',
-                'recommendation' => 'Add Referrer-Policy: strict-origin-when-cross-origin header.',
-            ],
-            'permissions-policy' => [
-                'type' => 'missing_permissions_policy',
-                'title' => 'Missing Permissions-Policy header',
-                'description' => 'The Permissions-Policy header is not set.',
-                'recommendation' => 'Add a Permissions-Policy header to control browser features.',
-            ],
-            'content-security-policy' => [
-                'type' => 'missing_csp',
-                'title' => 'Missing Content-Security-Policy header',
-                'description' => 'No Content-Security-Policy header found. CSP is the most effective defense against XSS.',
-                'recommendation' => 'Configure a Content-Security-Policy header appropriate for your site.',
-            ],
-            'strict-transport-security' => [
-                'type' => 'missing_hsts',
-                'title' => 'Missing HSTS header',
-                'description' => 'The Strict-Transport-Security header is not set.',
-                'recommendation' => 'Add Strict-Transport-Security: max-age=31536000; includeSubDomains header.',
-            ],
-        ];
-
-        foreach ($headerChecks as $header => $check) {
-            if (!$headers->has($header) || empty($headers[$header])) {
-                $issues[] = array_merge($check, [
-                    'category' => 'header',
-                    'severity' => in_array($header, ['content-security-policy', 'permissions-policy']) ? 'low' : 'medium',
-                ]);
-            }
-        }
-
-        return $issues;
     }
 
     public static function resolveIssue(SecurityIssue $issue): void

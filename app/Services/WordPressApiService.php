@@ -467,7 +467,7 @@ class WordPressApiService
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
         $stringToSign = implode('|', [
-            'GET',
+            'POST',
             $path,
             $timestamp,
             '',
@@ -486,7 +486,7 @@ class WordPressApiService
             'X-SAM-Signature' => $signature,
             'User-Agent'      => 'SimpleAD-Manager/1.0',
             'Accept'          => 'application/json',
-        ])->timeout(600)->sink($saveTo)->get($url);
+        ])->timeout(600)->sink($saveTo)->post($url);
 
         $response->throw();
     }

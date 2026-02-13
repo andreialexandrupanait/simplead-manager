@@ -4,6 +4,7 @@ namespace App\Livewire\Sites;
 
 use App\Models\Client;
 use App\Models\Site;
+use App\Models\SitePreset;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -15,6 +16,7 @@ class CreateSite extends Component
     public string $name = '';
     public string $url = '';
     public ?int $clientId = null;
+    public ?int $presetId = null;
     public string $notes = '';
     public string $bulkUrls = '';
 
@@ -24,13 +26,16 @@ class CreateSite extends Component
             'name' => 'required|string|max:255',
             'url'  => 'required|url|max:255|unique:sites,url',
             'clientId' => 'nullable|exists:clients,id',
+            'presetId' => 'nullable|exists:site_presets,id',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $site = Site::create([
             'name'      => $this->name,
             'url'       => $this->url,
+            'user_id'   => auth()->id(),
             'client_id' => $this->clientId,
+            'applied_preset_id' => $this->presetId,
             'notes'     => $this->notes,
             'type'      => 'wordpress',
             'status'    => 'pending',
@@ -72,7 +77,9 @@ class CreateSite extends Component
             $site = Site::create([
                 'name'      => $name,
                 'url'       => $url,
+                'user_id'   => auth()->id(),
                 'client_id' => $this->clientId,
+                'applied_preset_id' => $this->presetId,
                 'type'      => 'wordpress',
                 'status'    => 'pending',
             ]);
@@ -95,6 +102,7 @@ class CreateSite extends Component
     {
         return view('livewire.sites.create-site', [
             'clients' => Client::where('status', 'active')->orderBy('name')->get(),
+            'presets' => SitePreset::orderBy('sort_order')->get(),
         ])->layout('components.layouts.app', ['title' => 'Add New Site']);
     }
 }

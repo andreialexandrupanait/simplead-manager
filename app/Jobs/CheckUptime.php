@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
+use App\Services\CircuitBreakerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,11 +24,14 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 3;
+    public array $backoff = [30, 60, 120];
 
     public function __construct(
         public UptimeMonitor $monitor
-    ) {}
+    ) {
+        $this->onQueue('uptime');
+    }
 
     public function uniqueId(): string
     {
@@ -39,7 +43,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Checking uptime...');
 
         if (MaintenanceService::isSiteInMaintenance($this->monitor->site, 'uptime')) {
-            $this->monitor->update(['next_check_at' => now()->addSeconds($this->monitor->interval)]);
+            $this->monitor->update(['next_check_at' => now()->addMinutes($this->monitor->interval_minutes)]);
             JobTracker::complete($this->uniqueId(), 'Skipped — site in maintenance');
             return;
         }
@@ -63,6 +67,13 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
             'is_up' => $this->monitor->current_state === 'up',
             'uptime_percentage' => $this->monitor->uptime_30d,
         ]);
+
+        // Circuit breaker reporting
+        if ($result['is_up']) {
+            CircuitBreakerService::recordSuccess($this->monitor->site);
+        }
+        // Note: uptime failures don't trip the circuit breaker (they're expected for monitoring)
+        // Only connectivity/API failures trip it
 
         JobTracker::complete($this->uniqueId(), 'Uptime check complete');
     }
@@ -183,8 +194,8 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
             $context = stream_context_create([
                 'ssl' => [
                     'capture_peer_cert' => true,
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
             ]);
 
@@ -250,7 +261,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
         }
 
         $this->monitor->last_checked_at = now();
-        $this->monitor->next_check_at = now()->addSeconds($this->monitor->interval);
+        $this->monitor->next_check_at = now()->addMinutes($this->monitor->interval_minutes);
         $this->monitor->last_response_time = $result['response_time'];
         $this->monitor->last_failure_reason = $result['failure_reason'];
         $this->monitor->save();

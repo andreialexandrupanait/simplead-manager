@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\FetchSiteFavicon;
 use App\Models\Site;
+use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\PluginConflictService;
 use App\Services\WordPressApiService;
@@ -25,7 +26,9 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public Site $site,
-    ) {}
+    ) {
+        $this->onQueue('sync');
+    }
 
     public function uniqueId(): string
     {
@@ -59,6 +62,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 'last_synced_at' => now(),
             ]);
 
+            JobTracker::progress($this->uniqueId(), 15, 'Syncing plugins...');
+
             // Sync plugins
             $pluginsData = $api->getPlugins();
             $existingPluginFiles = [];
@@ -90,6 +95,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 ->whereNotIn('file', $existingPluginFiles)
                 ->delete();
 
+            JobTracker::progress($this->uniqueId(), 35, 'Syncing themes...');
+
             // Sync themes
             $themesData = $api->getThemes();
             $existingThemeSlugs = [];
@@ -119,6 +126,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
             $this->site->siteThemes()
                 ->whereNotIn('slug', $existingThemeSlugs)
                 ->delete();
+
+            JobTracker::progress($this->uniqueId(), 55, 'Syncing users...');
 
             // Sync users
             try {
@@ -151,6 +160,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 Log::info("User sync skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
+            JobTracker::progress($this->uniqueId(), 70, 'Updating metadata...');
+
             // Fetch favicon if not yet cached
             if (!$this->site->favicon_path) {
                 FetchSiteFavicon::dispatch($this->site);
@@ -165,6 +176,8 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 'pending_updates_count' => $pendingCount,
             ]);
 
+            JobTracker::progress($this->uniqueId(), 85, 'Checking plugin conflicts...');
+
             // Auto-check plugin conflicts after sync
             try {
                 PluginConflictService::checkSite($this->site);
@@ -172,6 +185,9 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
+            JobTracker::progress($this->uniqueId(), 95, 'Finalizing...');
+
+            CircuitBreakerService::recordSuccess($this->site);
             JobTracker::complete($this->uniqueId(), 'Site sync complete');
 
         } catch (\Exception $e) {
@@ -187,6 +203,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'WP sync failed');
         JobTracker::fail($this->uniqueId(), 'Sync failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 }

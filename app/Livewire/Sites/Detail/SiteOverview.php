@@ -7,11 +7,14 @@ use App\Models\AnalyticsCache;
 use App\Models\Site;
 use App\Services\WordPressApiService;
 use Illuminate\Database\Eloquent\Collection;
+use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteOverview extends Component
 {
+    use WithJobTracking, WithSiteAuthorization;
     public Site $site;
 
     // Period selectors for cards
@@ -24,7 +27,22 @@ class SiteOverview extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
+        $this->initJobTracking();
+    }
+
+    protected function jobTrackingKeys(): array
+    {
+        return [
+            'sync' => 'sync-wp-' . $this->site->id,
+        ];
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        $this->site->refresh();
+        unset($this->analyticsData, $this->updatesData);
     }
 
     public function setAnalyticsPeriod(string $period): void
@@ -73,7 +91,7 @@ class SiteOverview extends Component
     #[Computed]
     public function backupStorageUsed(): int
     {
-        return (int) $this->site->backups()->sum('file_size');
+        return (int) $this->site->backups()->where('status', 'completed')->sum('file_size');
     }
 
     public function runBackup(): void
@@ -91,8 +109,7 @@ class SiteOverview extends Component
 
     public function syncNow(): void
     {
-        SyncWordPressSite::dispatch($this->site);
-        session()->flash('sync-dispatched', 'Sync job has been dispatched.');
+        $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
     }
 
     public function openWpAdmin(): void

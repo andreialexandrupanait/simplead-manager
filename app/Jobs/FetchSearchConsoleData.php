@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
+use App\Services\CircuitBreakerService;
 use App\Services\GoogleSearchConsoleService;
 use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
@@ -26,7 +27,9 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         public string $dateRange = '28d',
         public ?string $customStart = null,
         public ?string $customEnd = null,
-    ) {}
+    ) {
+        $this->onQueue('sync');
+    }
 
     public function uniqueId(): string
     {
@@ -54,13 +57,15 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
                 'performance_over_time' => fn () => $service->getPerformanceOverTime($siteUrl, $startDate, $endDate),
                 'queries' => fn () => $service->getTopQueries($siteUrl, $startDate, $endDate, 50),
                 'pages' => fn () => $service->getTopPages($siteUrl, $startDate, $endDate, 50),
-                'countries' => fn () => $service->getCountries($siteUrl, $startDate, $endDate, 25),
-                'devices' => fn () => $service->getDevices($siteUrl, $startDate, $endDate),
-                'search_appearance' => fn () => $service->getSearchAppearance($siteUrl, $startDate, $endDate),
-                'sitemaps' => fn () => $service->getSitemaps($siteUrl),
             ];
 
+            $completed = 0;
+            $total = count($dataTypes);
+
             foreach ($dataTypes as $type => $fetcher) {
+                $label = str_replace('_', ' ', $type);
+                JobTracker::progress($this->uniqueId(), (int) round($completed / $total * 90), "Fetching {$label}...");
+
                 $data = $fetcher();
 
                 SearchConsoleCache::updateOrCreate(
@@ -77,6 +82,8 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
                         'expires_at' => now()->addHours(6),
                     ]
                 );
+
+                $completed++;
             }
 
             $connection->update([
@@ -84,6 +91,9 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
                 'last_error' => null,
             ]);
 
+            JobTracker::progress($this->uniqueId(), 95, 'Saving data...');
+
+            CircuitBreakerService::recordSuccess($this->site);
             JobTracker::complete($this->uniqueId(), 'Search Console data fetched');
 
         } catch (\Exception $e) {
@@ -94,6 +104,7 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Search Console fetch failed');
         JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 
@@ -103,14 +114,18 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
             return [$this->customStart, $this->customEnd];
         }
 
-        $endDate = now()->subDays(3)->format('Y-m-d');
+        // Search Console data has ~3 day processing delay
+        $dataDelay = 3;
+        $endDate = now()->subDays($dataDelay)->format('Y-m-d');
 
-        $startDate = match ($this->dateRange) {
-            '7d' => now()->subDays(10)->format('Y-m-d'),
-            '28d' => now()->subDays(31)->format('Y-m-d'),
-            '90d' => now()->subDays(93)->format('Y-m-d'),
-            default => now()->subDays(31)->format('Y-m-d'),
+        $days = match ($this->dateRange) {
+            '7d' => 7,
+            '28d' => 28,
+            '90d' => 90,
+            default => 28,
         };
+
+        $startDate = now()->subDays($days + $dataDelay)->format('Y-m-d');
 
         return [$startDate, $endDate];
     }

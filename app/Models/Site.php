@@ -4,9 +4,8 @@ namespace App\Models;
 
 use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
-use App\Jobs\CheckUptime;
 use App\Jobs\FetchSiteFavicon;
-use App\Jobs\RunPerformanceTest;
+use App\Services\ModuleConfigService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +21,7 @@ class Site extends Model
     protected $fillable = [
         "name",
         "url",
+        "user_id",
         "client_id",
         "status",
         "site_status_id",
@@ -51,6 +51,8 @@ class Site extends Model
         "has_woocommerce",
         "favicon_path",
         "screenshot_path",
+        "applied_preset_id",
+        "is_preset_customized",
     ];
 
     protected $casts = [
@@ -71,6 +73,8 @@ class Site extends Model
         "uploads_size_mb" => "decimal:2",
         "api_key" => "encrypted",
         "api_secret" => "encrypted",
+        "applied_preset_id" => "integer",
+        "is_preset_customized" => "boolean",
     ];
 
     protected static function booted(): void
@@ -101,31 +105,17 @@ class Site extends Model
             ]);
             CheckDomainExpiry::dispatch($domainMonitor);
 
-            // Create performance monitor
-            $performanceMonitor = $site->performanceMonitor()->create([
-                'is_active' => true,
-                'frequency' => 'daily',
-                'test_time' => '04:00',
-            ]);
-            RunPerformanceTest::dispatch($performanceMonitor, 'both');
-
-            // Create link monitor
-            $site->linkMonitor()->create([
-                'is_active' => true,
-                'frequency' => 'weekly',
-                'scan_time' => '02:00',
-                'day_of_week' => 0,
-                'next_scan_at' => now()->next('Sunday')->setTimeFromTimeString('02:00'),
-            ]);
-
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);
 
-            // Create uptime monitor
-            $uptimeMonitor = $site->uptimeMonitor()->create([
-                'url' => $site->url,
-            ]);
-            CheckUptime::dispatch($uptimeMonitor);
+            // Apply preset via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
+            $preset = $site->applied_preset_id
+                ? SitePreset::find($site->applied_preset_id)
+                : SitePreset::getDefault();
+
+            if ($preset) {
+                app(ModuleConfigService::class)->applyPreset($site, $preset);
+            }
         });
     }
 
@@ -172,6 +162,41 @@ class Site extends Model
         }
 
         return implode('.', $parts);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function appliedPreset(): BelongsTo
+    {
+        return $this->belongsTo(SitePreset::class, 'applied_preset_id');
+    }
+
+    public function securityMonitor(): HasOne
+    {
+        return $this->hasOne(SecurityMonitor::class);
+    }
+
+    public function databaseCleanupConfig(): HasOne
+    {
+        return $this->hasOne(DatabaseCleanupConfig::class);
+    }
+
+    public function healthState(): HasOne
+    {
+        return $this->hasOne(SiteHealthState::class);
+    }
+
+    public function monthlySnapshots(): HasMany
+    {
+        return $this->hasMany(SiteMonthlySnapshot::class);
+    }
+
+    public function reportConfig(): HasOne
+    {
+        return $this->hasOne(SiteReportConfig::class);
     }
 
     public function client()
