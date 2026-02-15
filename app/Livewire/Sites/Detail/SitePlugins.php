@@ -272,6 +272,10 @@ class SitePlugins extends Component
             SyncWordPressSite::dispatch($this->site);
 
             $success = $updateResult['success'] ?? false;
+            if (!$success) {
+                $errorMsg = $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed');
+                $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: " . $errorMsg);
+            }
             return [
                 'success' => $success,
                 'message' => $success
@@ -286,9 +290,11 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
+            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
+            $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: " . $cleanMsg);
             return [
                 'success' => false,
-                'message' => "Failed: " . $this->cleanErrorMessage($e->getMessage()),
+                'message' => "Failed: " . $cleanMsg,
                 'version' => null,
             ];
         }
@@ -331,11 +337,13 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
+            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
             $this->updateResults['plugin_' . $id] = [
                 'success' => false,
-                'message' => "Activate failed: " . $this->cleanErrorMessage($e->getMessage()),
+                'message' => "Activate failed: " . $cleanMsg,
                 'version' => null,
             ];
+            $this->dispatch('notify', type: 'error', message: "Activate failed: " . $cleanMsg);
         }
 
         unset($this->plugins, $this->pluginCounts);
@@ -361,11 +369,13 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
+            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
             $this->updateResults['plugin_' . $id] = [
                 'success' => false,
-                'message' => "Deactivate failed: " . $this->cleanErrorMessage($e->getMessage()),
+                'message' => "Deactivate failed: " . $cleanMsg,
                 'version' => null,
             ];
+            $this->dispatch('notify', type: 'error', message: "Deactivate failed: " . $cleanMsg);
         }
 
         unset($this->plugins, $this->pluginCounts);
@@ -390,6 +400,7 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->deletePlugin($plugin->file);
+            $plugin->delete();
             ActivityLogger::pluginDeleted($this->site, $plugin->name);
             SyncWordPressSite::dispatch($this->site);
             session()->flash('update-success', "{$plugin->name} deleted.");
@@ -423,11 +434,13 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
+            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
             $this->updateResults['theme_' . $id] = [
                 'success' => false,
-                'message' => "Activate failed: " . $this->cleanErrorMessage($e->getMessage()),
+                'message' => "Activate failed: " . $cleanMsg,
                 'version' => null,
             ];
+            $this->dispatch('notify', type: 'error', message: "Activate failed: " . $cleanMsg);
         }
 
         unset($this->themes, $this->themeCounts);
@@ -449,6 +462,25 @@ class SitePlugins extends Component
         $this->dispatch('open-modal-confirm-delete-theme');
     }
 
+    public function deleteThemeById(int $id): void
+    {
+        $theme = $this->site->siteThemes()->findOrFail($id);
+
+        try {
+            $api = new WordPressApiService($this->site);
+            $api->deleteTheme($theme->slug);
+            $theme->delete();
+            ActivityLogger::themeDeleted($this->site, $theme->name);
+            SyncWordPressSite::dispatch($this->site);
+            $this->dispatch('notify', type: 'success', message: "{$theme->name} deleted.");
+        } catch (\Exception $e) {
+            Log::error('deleteTheme failed', ['error' => $e->getMessage(), 'theme' => $theme->slug]);
+            $this->dispatch('notify', type: 'error', message: "Delete failed: " . $this->cleanErrorMessage($e->getMessage()));
+        }
+
+        unset($this->themes, $this->themeCounts);
+    }
+
     public function deleteTheme(): void
     {
         if (!$this->confirmingDeleteThemeId) {
@@ -460,6 +492,7 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->deleteTheme($theme->slug);
+            $theme->delete();
             ActivityLogger::themeDeleted($this->site, $theme->name);
             SyncWordPressSite::dispatch($this->site);
             session()->flash('update-success', "{$theme->name} deleted.");
@@ -483,6 +516,7 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->deletePlugin($plugin->file);
+            $plugin->delete();
             ActivityLogger::pluginDeleted($this->site, $plugin->name);
             unset($this->plugins, $this->pluginCounts);
             return ['success' => true, 'message' => "{$plugin->name} deleted.", 'name' => $plugin->name];
@@ -506,6 +540,7 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->deleteTheme($theme->slug);
+            $theme->delete();
             ActivityLogger::themeDeleted($this->site, $theme->name);
             unset($this->themes, $this->themeCounts);
             return ['success' => true, 'message' => "{$theme->name} deleted.", 'name' => $theme->name];

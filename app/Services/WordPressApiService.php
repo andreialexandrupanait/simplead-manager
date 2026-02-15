@@ -66,6 +66,28 @@ class WordPressApiService
     }
 
     /**
+     * Extract a meaningful error message from a failed WordPress API response and throw.
+     */
+    private function throwIfFailed(Response $response): void
+    {
+        if ($response->successful()) {
+            return;
+        }
+
+        $json = $response->json();
+        $message = $json['error']['message']
+            ?? $json['message']
+            ?? null;
+
+        if ($message) {
+            throw new \RuntimeException($message);
+        }
+
+        // Fall back to Laravel's default throw (includes status code)
+        $response->throw();
+    }
+
+    /**
      * Get site information.
      */
     public function getInfo(): array
@@ -105,7 +127,7 @@ class WordPressApiService
         $response = $this->request('POST', '/plugins/update', [
             'plugins' => $pluginFiles,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -119,7 +141,7 @@ class WordPressApiService
         $response = $this->request('POST', '/themes/update', [
             'themes' => $themeSlugs,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -131,7 +153,7 @@ class WordPressApiService
         $response = $this->request('POST', '/plugins/activate', [
             'plugin' => $pluginFile,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -143,7 +165,7 @@ class WordPressApiService
         $response = $this->request('POST', '/plugins/deactivate', [
             'plugin' => $pluginFile,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -155,7 +177,7 @@ class WordPressApiService
         $response = $this->request('POST', '/plugins/delete', [
             'plugin' => $pluginFile,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -167,7 +189,7 @@ class WordPressApiService
         $response = $this->request('POST', '/themes/activate', [
             'theme' => $themeSlug,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 
@@ -179,7 +201,7 @@ class WordPressApiService
         $response = $this->request('POST', '/themes/delete', [
             'theme' => $themeSlug,
         ]);
-        $response->throw();
+        $this->throwIfFailed($response);
         return $response->json();
     }
 

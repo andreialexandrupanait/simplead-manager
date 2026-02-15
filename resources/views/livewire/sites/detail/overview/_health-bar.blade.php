@@ -1,8 +1,8 @@
 @php
     $dims = $this->healthDimensions;
     $score = $dims['healthScore'];
-    $barColor = $score >= 90 ? 'bg-green-500' : ($score >= 70 ? 'bg-yellow-500' : 'bg-red-500');
-    $scoreTextColor = $score >= 90 ? 'text-green-700' : ($score >= 70 ? 'text-yellow-700' : 'text-red-700');
+    $barColor = $score >= 75 ? 'bg-green-500' : ($score >= 50 ? 'bg-yellow-500' : 'bg-red-500');
+    $scoreTextColor = $score >= 75 ? 'text-green-700' : ($score >= 50 ? 'text-yellow-700' : 'text-red-700');
 
     $indicators = [
         ['key' => 'uptime', 'label' => 'Uptime'],

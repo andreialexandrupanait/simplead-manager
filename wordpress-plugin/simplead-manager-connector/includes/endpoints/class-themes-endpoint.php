@@ -134,6 +134,7 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
         }
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/theme.php';
 
         $result = delete_theme($theme_slug);
 

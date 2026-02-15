@@ -438,18 +438,18 @@ class Site extends Model
 
     public function scopeHealthy($query)
     {
-        return $query->where('health_score', '>=', 90)->where('is_up', true);
+        return $query->where('health_score', '>=', 75)->where('is_up', true);
     }
 
     public function scopeWarning($query)
     {
-        return $query->whereBetween('health_score', [70, 89])->where('is_up', true);
+        return $query->whereBetween('health_score', [50, 74])->where('is_up', true);
     }
 
     public function scopeCritical($query)
     {
         return $query->where(function ($q) {
-            $q->where('health_score', '<', 70)->orWhere('is_up', false);
+            $q->where('health_score', '<', 50)->orWhere('is_up', false);
         });
     }
 
@@ -482,8 +482,8 @@ class Site extends Model
     {
         if (!$this->is_up) return "critical";
         if ($this->health_score === null) return "unknown";
-        if ($this->health_score >= 90) return "healthy";
-        if ($this->health_score >= 70) return "warning";
+        if ($this->health_score >= 75) return "healthy";
+        if ($this->health_score >= 50) return "warning";
         return "critical";
     }
 

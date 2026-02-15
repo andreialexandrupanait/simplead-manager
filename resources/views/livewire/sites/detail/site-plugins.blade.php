@@ -775,10 +775,14 @@
                                     <span wire:loading wire:target="activateTheme({{ $theme->id }})">...</span>
                                 </button>
                                 <button
-                                    wire:click="confirmDeleteTheme({{ $theme->id }})"
+                                    wire:click="deleteThemeById({{ $theme->id }})"
+                                    wire:confirm="Are you sure you want to delete {{ $theme->name }}?"
+                                    wire:loading.attr="disabled"
+                                    wire:target="deleteThemeById({{ $theme->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                                 >
-                                    Delete
+                                    <span wire:loading.remove wire:target="deleteThemeById({{ $theme->id }})">Delete</span>
+                                    <span wire:loading wire:target="deleteThemeById({{ $theme->id }})">Deleting...</span>
                                 </button>
                             @endif
 
@@ -966,9 +970,8 @@
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-delete-theme')">
                     Cancel
                 </x-ui.button>
-                <x-ui.button variant="danger" wire:click="deleteTheme" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="deleteTheme">Delete Theme</span>
-                    <span wire:loading wire:target="deleteTheme">Deleting...</span>
+                <x-ui.button variant="danger" x-on:click="$wire.deleteTheme()">
+                    Delete Theme
                 </x-ui.button>
             </div>
         </div>

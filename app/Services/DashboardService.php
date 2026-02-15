@@ -311,9 +311,9 @@ class DashboardService
     {
         $counts = Site::query()
             ->selectRaw("
-                SUM(CASE WHEN health_score >= 90 AND is_up = true THEN 1 ELSE 0 END) as healthy,
-                SUM(CASE WHEN health_score >= 70 AND health_score < 90 AND is_up = true THEN 1 ELSE 0 END) as warning,
-                SUM(CASE WHEN health_score < 70 AND is_up = true THEN 1 ELSE 0 END) as critical,
+                SUM(CASE WHEN health_score >= 75 AND is_up = true THEN 1 ELSE 0 END) as healthy,
+                SUM(CASE WHEN health_score >= 50 AND health_score < 75 AND is_up = true THEN 1 ELSE 0 END) as warning,
+                SUM(CASE WHEN health_score < 50 AND is_up = true THEN 1 ELSE 0 END) as critical,
                 SUM(CASE WHEN is_up = false THEN 1 ELSE 0 END) as down
             ")
             ->first();
