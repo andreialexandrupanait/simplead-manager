@@ -22,7 +22,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(prepend: [
             \App\Http\Middleware\SecurityHeaders::class,
-            \App\Http\Middleware\StatusPageCustomDomain::class,
         ]);
 
         $middleware->web(append: [

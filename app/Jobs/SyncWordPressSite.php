@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
@@ -56,7 +57,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 'is_multisite' => $info['is_multisite'] ?? $this->site->is_multisite,
                 'db_size_mb' => $info['db_size_mb'] ?? $this->site->db_size_mb,
                 'uploads_size_mb' => $info['uploads_size_mb'] ?? $this->site->uploads_size_mb,
-                'core_update_version' => $info['core_update_version'] ?? null,
+                'core_update_version' => $info['core_new_version'] ?? null,
                 'has_woocommerce' => $hasWooCommerce,
                 'is_connected' => true,
                 'last_synced_at' => now(),
@@ -79,9 +80,9 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                         'author_uri' => $plugin['author_uri'] ?? null,
                         'plugin_uri' => $plugin['plugin_uri'] ?? null,
                         'description' => $plugin['description'] ?? null,
-                        'is_active' => $plugin['is_active'] ?? false,
-                        'has_update' => $plugin['has_update'] ?? false,
-                        'update_version' => $plugin['update_version'] ?? null,
+                        'is_active' => ($plugin['status'] ?? $plugin['is_active'] ?? '') === 'active',
+                        'has_update' => $plugin['update_available'] ?? $plugin['has_update'] ?? false,
+                        'update_version' => $plugin['new_version'] ?? $plugin['update_version'] ?? null,
                         'requires_wp' => $plugin['requires_wp'] ?? null,
                         'requires_php' => $plugin['requires_php'] ?? null,
                         'auto_update' => $plugin['auto_update'] ?? false,
@@ -110,11 +111,11 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                         'author' => $theme['author'] ?? null,
                         'author_uri' => $theme['author_uri'] ?? null,
                         'description' => $theme['description'] ?? null,
-                        'is_active' => $theme['is_active'] ?? false,
-                        'is_child_theme' => $theme['is_child_theme'] ?? false,
+                        'is_active' => ($theme['status'] ?? $theme['is_active'] ?? '') === 'active',
+                        'is_child_theme' => !empty($theme['parent_theme']) || ($theme['is_child_theme'] ?? false),
                         'parent_theme' => $theme['parent_theme'] ?? null,
-                        'has_update' => $theme['has_update'] ?? false,
-                        'update_version' => $theme['update_version'] ?? null,
+                        'has_update' => $theme['update_available'] ?? $theme['has_update'] ?? false,
+                        'update_version' => $theme['new_version'] ?? $theme['update_version'] ?? null,
                         'screenshot_url' => $theme['screenshot_url'] ?? null,
                         'auto_update' => $theme['auto_update'] ?? false,
                     ]
@@ -183,6 +184,14 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 PluginConflictService::checkSite($this->site);
             } catch (\Exception $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
+
+            // Fetch DB cleanup stats for overview card
+            try {
+                $dbStats = $api->getDbCleanupStats();
+                Cache::put("db-cleanup-stats-{$this->site->id}", $dbStats, now()->addHours(24));
+            } catch (\Exception $e) {
+                Log::info("DB cleanup stats skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             JobTracker::progress($this->uniqueId(), 95, 'Finalizing...');

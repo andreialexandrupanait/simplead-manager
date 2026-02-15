@@ -1,4 +1,4 @@
-<x-ui.card :padding="false">
+<x-ui.card :padding="false" class="flex flex-col">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -9,13 +9,13 @@
             </div>
             <h3 class="text-base font-semibold text-gray-900">Pending Updates</h3>
         </div>
-        <a href="{{ route('sites.updates', $site) }}" class="text-sm text-purple-600 hover:text-purple-700">
+        <a href="{{ route('sites.plugins', $site) }}" class="text-sm text-purple-600 hover:text-purple-700">
             View Details →
         </a>
     </div>
 
     {{-- Card Content --}}
-    <div class="p-4">
+    <div class="flex flex-1 flex-col p-4">
         @php
             $updates = $this->updatesData;
             $hasUpdates = $updates['total'] > 0;
@@ -31,7 +31,7 @@
             </div>
 
             {{-- Update Breakdown --}}
-            <div class="space-y-2 border-t border-gray-100 pt-4">
+            <div class="flex-1 space-y-2 border-t border-gray-100 pt-4">
                 @if($updates['core'] > 0)
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">

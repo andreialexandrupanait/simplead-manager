@@ -15,7 +15,7 @@ $originClass = $align === 'right' ? 'origin-top-right' : 'origin-top-left';
     </div>
 
     <template x-teleport="body">
-        <div x-show="open" @click="open = false"
+        <div x-show="open" @click="setTimeout(() => open = false, 50)"
              x-init="panelEl = $el"
              x-transition:enter="transition ease-out duration-100"
              x-transition:enter-start="opacity-0 scale-95"

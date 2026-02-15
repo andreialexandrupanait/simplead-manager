@@ -57,6 +57,12 @@ trait WithJobTracking
             }
 
             $previousStatus = $this->trackedJobs[$name]['status'] ?? null;
+
+            // Don't show jobs that finished before this page loaded
+            if ($previousStatus === null && in_array($data['status'], ['complete', 'failed'])) {
+                continue;
+            }
+
             $this->trackedJobs[$name] = $data;
 
             if ($data['status'] === 'running') {

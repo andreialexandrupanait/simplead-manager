@@ -10,7 +10,6 @@ use App\Services\Notifications\NotificationService;
 class PluginConflictService
 {
     protected static array $duplicateFunctionality = [
-        'SEO' => ['wordpress-seo', 'seo-by-rank-math', 'all-in-one-seo-pack', 'autodescription'],
         'Caching' => ['w3-total-cache', 'wp-super-cache', 'wp-fastest-cache', 'litespeed-cache', 'wp-rocket', 'breeze', 'sg-cachepress'],
         'Security' => ['wordfence', 'sucuri-scanner', 'better-wp-security', 'all-in-one-wp-security-and-firewall'],
         'Backup' => ['updraftplus', 'duplicator', 'backwpup', 'developer-developer'],

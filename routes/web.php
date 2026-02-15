@@ -19,6 +19,19 @@ use App\Livewire\StatusPages;
 // Health check (no auth)
 Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1');
 
+// Temporary restore file download (token-protected, no auth)
+Route::get('/restore-download/{token}', function (string $token) {
+    // Only allow hex tokens (64 chars)
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        abort(404);
+    }
+    $path = storage_path("app/temp/restore-{$token}");
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path);
+})->middleware('throttle:10,1');
+
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
 
@@ -27,39 +40,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
-    Route::get('/dashboard/widgets', Dashboard\WidgetDashboard::class)->name('dashboard.widgets');
+    Route::get('/dashboard/widgets', fn () => redirect()->route('dashboard'))->name('dashboard.widgets');
 
     // Sites — global (redirect to dashboard)
     Route::redirect('/sites', '/')->name('sites.index');
-    Route::get('/sites/create', Sites\CreateSite::class)->name('sites.create');
+    Route::get('/sites/create', Sites\CreateSiteWizard::class)->name('sites.create');
 
     // Sites — site-context (uses {site} parameter)
     Route::prefix('/sites/{site}')->group(function () {
         Route::get('/', Sites\Detail\SiteOverview::class)->name('sites.overview');
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
-        Route::get('/updates', Sites\Detail\SiteUpdates::class)->name('sites.updates');
         Route::get('/security', Sites\Detail\SiteSecurity::class)->name('sites.security');
-        Route::get('/core-integrity', Sites\Detail\SiteCoreIntegrity::class)->name('sites.core-integrity');
-        Route::get('/audit-log', Sites\Detail\SiteAuditLog::class)->name('sites.audit-log');
-        Route::get('/firewall', Sites\Detail\SiteFirewall::class)->name('sites.firewall');
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
-        Route::get('/links', Sites\Detail\SiteLinks::class)->name('sites.links');
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
-        Route::get('/maintenance', Sites\Detail\SiteMaintenance::class)->name('sites.maintenance');
-        Route::get('/cron', Sites\Detail\SiteCronManager::class)->name('sites.cron');
-        Route::get('/dns', Sites\Detail\SiteDns::class)->name('sites.dns');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
-        Route::get('/errors', Sites\Detail\SiteErrorLogs::class)->name('sites.errors');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
-        Route::get('/resources', Sites\Detail\SiteResources::class)->name('sites.resources');
-        Route::get('/seo', Sites\Detail\SiteSeo::class)->name('sites.seo');
-        Route::get('/woocommerce', Sites\Detail\SiteWooCommerce::class)->name('sites.woocommerce');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
-
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
+
+        // Deprecated routes — redirect to overview (keep named routes for backwards compat)
+        Route::get('/updates', fn ($site) => redirect()->route('sites.plugins', $site))->name('sites.updates');
+        Route::get('/core-integrity', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.core-integrity');
+        Route::get('/audit-log', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.audit-log');
+        Route::get('/firewall', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.firewall');
+        Route::get('/links', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.links');
+        Route::get('/maintenance', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.maintenance');
+        Route::get('/cron', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.cron');
+        Route::get('/dns', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.dns');
+        Route::get('/errors', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.errors');
+        Route::get('/resources', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.resources');
+        Route::get('/woocommerce', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.woocommerce');
     });
 
     // Backups — global view
@@ -77,14 +90,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
 
-    // Updates — global view
-    Route::get('/updates', Dashboard\GlobalUpdates::class)->name('updates.index');
-
-    // Activity — global view
-    Route::get('/activity', Dashboard\GlobalActivity::class)->name('activity.index');
-
-    // Errors — global view
-    Route::get('/errors', Dashboard\GlobalErrors::class)->name('errors.index');
+    // Deprecated global views — redirect to dashboard
+    Route::get('/updates', fn () => redirect()->route('dashboard'))->name('updates.index');
+    Route::get('/activity', fn () => redirect()->route('dashboard'))->name('activity.index');
+    Route::get('/errors', fn () => redirect()->route('dashboard'))->name('errors.index');
 
     // Clients
     Route::prefix('clients')->group(function () {
@@ -97,14 +106,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Reports
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
 
-    // Status Pages
-    Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('status-pages.index');
-    Route::get('/status-pages/create', StatusPages\StatusPageEdit::class)->name('status-pages.create');
-    Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('status-pages.edit');
+    // Status Pages — deprecated routes, redirect to settings
+    Route::get('/status-pages', fn () => redirect()->route('settings.status-pages'))->name('status-pages.index');
+    Route::get('/status-pages/create', fn () => redirect()->route('settings.status-pages.create'))->name('status-pages.create');
+    Route::get('/status-pages/{statusPage}/edit', fn ($statusPage) => redirect()->route('settings.status-pages.edit', $statusPage))->name('status-pages.edit');
 
     // Plugin download
     Route::get('/download/connector-plugin', function () {
-        $path = base_path('simplead-manager-connector.zip');
+        $path = public_path('simplead-manager-connector.zip');
         abort_unless(file_exists($path), 404);
         return response()->download($path, 'simplead-connector.zip');
     })->name('download.connector-plugin');
@@ -126,6 +135,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Site Presets
         Route::get('/site-presets', Settings\SitePresetsSettings::class)->name('settings.site-presets');
+
+        // Status Pages
+        Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('settings.status-pages');
+        Route::get('/status-pages/create', StatusPages\StatusPageEdit::class)->name('settings.status-pages.create');
+        Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('settings.status-pages.edit');
 
         // App backup download (signed URL for local storage)
         Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware('signed');

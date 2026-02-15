@@ -26,15 +26,8 @@ class GlobalDashboard extends Component
     public ?int $clientFilter = null;
     public string $sort = 'manual';
     public bool $reordering = false;
-    public string $viewMode = 'list'; // 'list' or 'grid'
-
     // Selection
     public array $selectedSites = [];
-
-    public function mount(): void
-    {
-        $this->viewMode = session('dashboard.viewMode', 'list');
-    }
 
     // Rename modal
     public ?int $renamingSiteId = null;
@@ -101,11 +94,6 @@ class GlobalDashboard extends Component
     {
         $this->resetPage();
         unset($this->sites);
-    }
-
-    public function updatedViewMode(): void
-    {
-        session(['dashboard.viewMode' => $this->viewMode]);
     }
 
     public function toggleSiteSelection(int $siteId): void

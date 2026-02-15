@@ -15,17 +15,20 @@ class WordPressApiService
     /**
      * Make an authenticated request to the WordPress REST API.
      */
-    public function request(string $method, string $endpoint, array $data = []): Response
+    public function request(string $method, string $endpoint, array $data = [], array $queryParams = [], int $timeout = 30): Response
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
         $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
 
         $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
         $timestamp = (string) time();
         $body = !empty($data) ? json_encode($data) : '';
 
-        // Build the path portion for HMAC signing (must match WP_REST_Request::get_route())
+        // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
         $stringToSign = implode('|', [
@@ -43,7 +46,7 @@ class WordPressApiService
             'X-SAM-Signature' => $signature,
             'User-Agent'      => 'SimpleAD-Manager/1.0',
             'Accept'          => 'application/json',
-        ])->timeout(30);
+        ])->timeout($timeout);
 
         if (strtoupper($method) === 'GET') {
             $response = $request->get($url);
@@ -278,6 +281,16 @@ class WordPressApiService
     }
 
     /**
+     * Clear WordPress caches (object cache, transients, plugin caches).
+     */
+    public function clearCache(): array
+    {
+        $response = $this->request('POST', '/cache-clear');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
      * Get database cleanup stats preview.
      */
     public function getDbCleanupStats(): array
@@ -354,11 +367,8 @@ class WordPressApiService
      */
     public function getAuditLogs(?string $since = null): array
     {
-        $endpoint = '/audit-logs';
-        if ($since) {
-            $endpoint .= '?since=' . urlencode($since);
-        }
-        $response = $this->request('GET', $endpoint);
+        $queryParams = $since ? ['since' => $since] : [];
+        $response = $this->request('GET', '/audit-logs', [], $queryParams);
         $response->throw();
         return $response->json();
     }
@@ -380,11 +390,8 @@ class WordPressApiService
      */
     public function getBlockedRequests(?string $since = null): array
     {
-        $endpoint = '/blocked-requests';
-        if ($since) {
-            $endpoint .= '?since=' . urlencode($since);
-        }
-        $response = $this->request('GET', $endpoint);
+        $queryParams = $since ? ['since' => $since] : [];
+        $response = $this->request('GET', '/blocked-requests', [], $queryParams);
         $response->throw();
         return $response->json();
     }
@@ -413,21 +420,11 @@ class WordPressApiService
     }
 
     /**
-     * Get SEO check data.
-     */
-    public function getSeoCheck(): array
-    {
-        $response = $this->request('GET', '/seo-check');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
      * Get WooCommerce stats.
      */
     public function getWooStats(?string $period = 'today'): array
     {
-        $response = $this->request('GET', "/woo/stats?period={$period}");
+        $response = $this->request('GET', '/woo/stats', [], ['period' => $period]);
         $response->throw();
         return $response->json();
     }
@@ -485,8 +482,7 @@ class WordPressApiService
             'X-SAM-Timestamp' => $timestamp,
             'X-SAM-Signature' => $signature,
             'User-Agent'      => 'SimpleAD-Manager/1.0',
-            'Accept'          => 'application/json',
-        ])->timeout(600)->sink($saveTo)->post($url);
+        ])->timeout(600)->withBody('', 'application/json')->sink($saveTo)->post($url);
 
         $response->throw();
     }

@@ -1,5 +1,6 @@
-<x-scripts.data-table />
 <div>
+    <x-scripts.data-table />
+
     @if($connection && $connection->is_active)
         <div class="mb-6 flex justify-end">
             <x-ui.date-range-selector :selected="$dateRange" />
@@ -11,94 +12,85 @@
     <x-ui.flash-alert type="info" key="analytics-refreshing" />
 
     @if($connection && $connection->is_active)
-        {{-- Data subtitle --}}
-        @if($cache)
-            <p class="mb-6 text-xs text-gray-400">
-                Data from {{ $cache->start_date->format('M d') }} &ndash; {{ $cache->end_date->format('M d, Y') }}
-                &middot; Updated {{ $cache->fetched_at->diffForHumans() }}
-            </p>
-        @endif
+        @php $status = $this->googleConnectionStatus; @endphp
 
-        {{-- Real-Time Card --}}
-        <div class="mb-6" x-data="{ loaded: @js($realtimeData !== null) }">
-            <x-ui.card>
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-base font-semibold text-gray-900">Real-Time</h3>
-                    <x-ui.button size="sm" variant="secondary" wire:click="fetchRealtimeData">
-                        <span wire:loading.remove wire:target="fetchRealtimeData">Refresh</span>
-                        <span wire:loading wire:target="fetchRealtimeData">Loading...</span>
-                    </x-ui.button>
-                </div>
-                @if($realtimeData)
-                    <div wire:poll.30s="fetchRealtimeData">
-                        <div class="text-center mb-4">
-                            <div class="text-4xl font-bold text-purple-600">{{ number_format($realtimeData['active_users']) }}</div>
-                            <div class="text-sm text-gray-500 mt-1">Active users right now</div>
+        {{-- Google connection broken --}}
+        @if($status && !$status['google_active'])
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
+                        <div>
+                            <p class="text-sm font-medium text-red-800">Google account needs to be reconnected</p>
+                            <p class="text-xs text-red-600">The access token for {{ $status['email'] ?? 'the connected account' }} has expired or been revoked.</p>
                         </div>
-                        @if(count($realtimeData['active_pages'] ?? []) > 0)
-                            <div class="border-t border-gray-100 pt-3">
-                                <h4 class="text-xs font-medium text-gray-500 mb-2">Top Active Pages</h4>
-                                <div class="space-y-1">
-                                    @foreach(array_slice($realtimeData['active_pages'], 0, 5) as $page)
-                                        <div class="flex items-center justify-between text-sm">
-                                            <span class="truncate text-gray-700 max-w-[300px]" title="{{ $page['page'] }}">{{ $page['page'] }}</span>
-                                            <span class="text-gray-500 font-medium">{{ $page['active_users'] }}</span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                        <p class="text-xs text-gray-400 mt-3">Updated {{ \Carbon\Carbon::parse($realtimeData['fetched_at'])->diffForHumans() }}</p>
                     </div>
-                @else
-                    <p class="text-sm text-gray-400">Click refresh to load real-time data.</p>
-                @endif
-            </x-ui.card>
-        </div>
+                    <div class="flex items-center gap-2">
+                        <x-ui.button wire:click="reconnectGoogle" variant="primary" size="sm">Reconnect</x-ui.button>
+                    </div>
+                </div>
+            </div>
+        @else
+            {{-- Connected info bar --}}
+            <div class="mb-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                    <span>Property: <strong class="text-gray-900">{{ $status['property'] ?? '—' }}</strong></span>
+                    <span>Account: <strong class="text-gray-900">{{ $status['email'] ?? '—' }}</strong></span>
+                    @if($status['last_sync'] ?? null)
+                        <span>Last sync: {{ $status['last_sync']->diffForHumans() }}</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-2">
+                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Change Property</button>
+                    <span class="text-gray-300">|</span>
+                    <button wire:click="disconnectAnalytics" wire:confirm="Disconnect Google Analytics? Cached data will be removed." class="text-xs font-medium text-gray-400 hover:text-red-600">Disconnect</button>
+                </div>
+            </div>
 
-        @if($overview)
-            {{-- Overview metric cards with sparklines --}}
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+            {{-- Last error display --}}
+            @if($status && ($status['last_error'] ?? null))
+                <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <x-icons.alert-triangle class="h-4 w-4 text-yellow-600" />
+                            <p class="text-sm text-yellow-800">{{ $status['last_error'] }}</p>
+                        </div>
+                        <x-ui.button wire:click="refreshData" variant="secondary" size="sm">
+                            <span wire:loading.remove wire:target="refreshData">Retry</span>
+                            <span wire:loading wire:target="refreshData">Retrying...</span>
+                        </x-ui.button>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Data subtitle --}}
+            @if($cache)
+                <p class="mb-6 text-xs text-gray-400">
+                    Data from {{ $cache->start_date->format('M d') }} &ndash; {{ $cache->end_date->format('M d, Y') }}
+                    &middot; Updated {{ $cache->fetched_at->diffForHumans() }}
+                </p>
+            @endif
+
+            @if($overview)
+            {{-- Overview metric cards --}}
+            <div class="grid grid-cols-3 gap-4">
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Users</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['total_users']) }}</div>
+                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['total_users']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('users')->toArray()" color="#8D5CF5" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
-                    <div class="text-xs font-medium text-gray-500">New Users</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['new_users']) }}</div>
-                    @if(count($usersOverTime) > 1)
-                        <x-charts.sparkline :data="collect($usersOverTime)->pluck('new_users')->toArray()" color="#06b6d4" />
-                    @endif
-                </x-ui.card>
-                <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Sessions</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['sessions']) }}</div>
+                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['sessions']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('sessions')->toArray()" color="#10b981" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Pageviews</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['pageviews']) }}</div>
-                </x-ui.card>
-                <x-ui.card>
-                    <div class="text-xs font-medium text-gray-500">Bounce Rate</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['bounce_rate'] }}%</div>
-                </x-ui.card>
-                <x-ui.card>
-                    <div class="text-xs font-medium text-gray-500">Avg Time</div>
-                    @php
-                        $mins = floor($overview['avg_session_duration'] / 60);
-                        $secs = (int) ($overview['avg_session_duration'] % 60);
-                    @endphp
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ $mins }}m {{ $secs }}s</div>
-                </x-ui.card>
-                <x-ui.card>
-                    <div class="text-xs font-medium text-gray-500">Engagement</div>
-                    <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['engagement_rate'] }}%</div>
+                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['pageviews']) }}</div>
                 </x-ui.card>
             </div>
 
@@ -214,84 +206,74 @@
                 </div>
             @endif
 
-            {{-- Traffic Sources & Top Pages --}}
-            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {{-- Traffic Sources --}}
-                <x-ui.card>
-                    <h3 class="mb-4 text-base font-semibold text-gray-900">Traffic Sources</h3>
-                    @if(count($trafficSources) > 0)
-                        <div class="mb-4">
-                            <x-charts.donut-chart
-                                :labels="collect($trafficSources)->pluck('channel')->toArray()"
-                                :data="collect($trafficSources)->pluck('sessions')->toArray()"
-                                :colors="['#8D5CF5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#9ca3af']"
-                                height="220px"
-                            />
-                        </div>
-                        <div class="space-y-3">
-                            @foreach($trafficSources as $source)
-                                <div>
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="font-medium text-gray-700">{{ $source['channel'] }}</span>
-                                        <span class="text-gray-500">{{ number_format($source['sessions']) }} ({{ $source['percentage'] }}%)</span>
-                                    </div>
-                                    <div class="mt-1 h-2 w-full rounded-full bg-gray-100">
-                                        <div class="h-2 rounded-full bg-purple-500" style="width: {{ $source['percentage'] }}%"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-sm text-gray-400">No traffic source data available.</p>
-                    @endif
-                </x-ui.card>
-
-                {{-- Top Pages --}}
-                <x-ui.card>
-                    <h3 class="mb-4 text-base font-semibold text-gray-900">Top Pages</h3>
-                    @if(count($topPages) > 0)
-                        <div class="space-y-2">
-                            @foreach($topPages as $page)
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="truncate font-medium text-gray-700 max-w-[200px]" title="{{ $page['path'] }}">{{ $page['path'] }}</span>
-                                    <span class="text-gray-500">{{ number_format($page['pageviews']) }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-sm text-gray-400">No page data available.</p>
-                    @endif
-                </x-ui.card>
-            </div>
-
-            {{-- Disconnect link --}}
-            <div class="mt-6 text-center">
-                <button wire:click="disconnectAnalytics" wire:confirm="Disconnect Google Analytics? Cached data will be removed." class="text-sm text-gray-400 hover:text-red-600 transition">
-                    Disconnect Analytics
-                </button>
-            </div>
-        @else
-            {{-- Connected but no data yet --}}
-            <x-ui.card>
-                <x-ui.empty-state
-                    title="Fetching analytics data"
-                    description="Data is being fetched from Google Analytics. This may take a moment. Try refreshing the page."
-                    icon="bar-chart-2"
-                />
-            </x-ui.card>
-        @endif
+            @else
+                {{-- Connected but no data yet --}}
+                @if($connection->last_error)
+                    <x-ui.card>
+                        <x-ui.empty-state
+                            title="Failed to fetch Analytics data"
+                            :description="$connection->last_error"
+                            icon="alert-triangle"
+                        >
+                            <x-slot:action>
+                                <x-ui.button wire:click="refreshData">
+                                    <span wire:loading.remove wire:target="refreshData">Retry</span>
+                                    <span wire:loading wire:target="refreshData">Retrying...</span>
+                                </x-ui.button>
+                            </x-slot:action>
+                        </x-ui.empty-state>
+                    </x-ui.card>
+                @else
+                    <x-ui.card>
+                        <x-ui.empty-state
+                            title="Fetching analytics data"
+                            description="Data is being fetched from Google Analytics. This may take a moment. Try refreshing the page."
+                            icon="bar-chart-2"
+                        />
+                    </x-ui.card>
+                @endif
+            @endif
+        @endif {{-- end google_active check --}}
     @else
-        {{-- Not connected empty state --}}
+        {{-- Not connected — show appropriate guidance --}}
         <x-ui.card>
-            <x-ui.empty-state
-                title="Google Analytics not connected"
-                description="Connect a Google Analytics property to view traffic, engagement, and audience data for this site."
-                icon="bar-chart-2"
-            >
-                <x-slot:action>
-                    <x-ui.button wire:click="connectAnalytics">Connect Google Analytics</x-ui.button>
-                </x-slot:action>
-            </x-ui.empty-state>
+            @if(!$this->hasGoogleCredentials)
+                <x-ui.empty-state
+                    title="Google API credentials not configured"
+                    description="Set up Google OAuth credentials in Settings > Integrations before connecting Analytics."
+                    icon="bar-chart-2"
+                >
+                    <x-slot:action>
+                        <x-ui.button :href="route('settings.integrations')" variant="primary">Go to Integrations</x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @elseif(!$this->hasGoogleAccounts)
+                <x-ui.empty-state
+                    title="No Google account connected"
+                    description="Connect a Google account first, then select an Analytics property for this site."
+                    icon="bar-chart-2"
+                >
+                    <x-slot:action>
+                        <x-ui.button wire:click="reconnectGoogle" variant="primary">
+                            <span wire:loading.remove wire:target="reconnectGoogle">Connect Google Account</span>
+                            <span wire:loading wire:target="reconnectGoogle">Redirecting...</span>
+                        </x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @else
+                <x-ui.empty-state
+                    title="Google Analytics not connected"
+                    description="Select a Google Analytics property to view traffic, engagement, and audience data."
+                    icon="bar-chart-2"
+                >
+                    <x-slot:action>
+                        <x-ui.button wire:click="connectAnalytics" variant="primary">
+                            <span wire:loading.remove wire:target="connectAnalytics">Select Property</span>
+                            <span wire:loading wire:target="connectAnalytics">Loading properties...</span>
+                        </x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @endif
         </x-ui.card>
     @endif
 
@@ -299,7 +281,16 @@
     @if(count($availableProperties) > 0)
         <div class="mt-6">
             <x-ui.card>
-                @if(count($googleConnections) > 0)
+                @if(count($googleConnections) > 1)
+                    <div class="mb-3">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Google Account</label>
+                        <select wire:change="switchGoogleAccount($event.target.value)" class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                            @foreach($googleConnections as $gc)
+                                <option value="{{ $gc->id }}" @selected($gc->id === ($selectedGoogleConnectionId ?? $googleConnections->first()->id))>{{ $gc->email }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @elseif(count($googleConnections) === 1)
                     <p class="mb-3 text-sm text-gray-500">Connected as: {{ $googleConnections->first()->email }}</p>
                 @endif
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Select GA4 Property</h3>

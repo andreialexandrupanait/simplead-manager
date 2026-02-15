@@ -1,5 +1,5 @@
-<x-scripts.data-table />
-<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
+    <x-scripts.data-table />
     @if($connection && $connection->is_active)
         <div class="mb-6 flex justify-end">
             <x-ui.date-range-selector :selected="$dateRange" />
@@ -13,14 +13,65 @@
     <x-ui.job-progress job-key="fetch" :jobs="$trackedJobs" title="Fetching Search Console data..." />
 
     @if($connection && $connection->is_active)
-        @if($cache)
-            <p class="mb-6 text-xs text-gray-400">
-                Data from {{ $cache->start_date->format('M d') }} &ndash; {{ $cache->end_date->format('M d, Y') }}
-                &middot; Updated {{ $cache->fetched_at->diffForHumans() }}
-            </p>
-        @endif
+        @php $status = $this->googleConnectionStatus; @endphp
 
-        @if($overview)
+        {{-- Google connection broken --}}
+        @if($status && !$status['google_active'])
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
+                        <div>
+                            <p class="text-sm font-medium text-red-800">Google account needs to be reconnected</p>
+                            <p class="text-xs text-red-600">The access token for {{ $status['email'] ?? 'the connected account' }} has expired or been revoked.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <x-ui.button wire:click="reconnectGoogle" variant="primary" size="sm">Reconnect</x-ui.button>
+                    </div>
+                </div>
+            </div>
+        @else
+            {{-- Connected info bar --}}
+            <div class="mb-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                    <span>Property: <strong class="text-gray-900">{{ $status['property'] ?? '—' }}</strong></span>
+                    <span>Account: <strong class="text-gray-900">{{ $status['email'] ?? '—' }}</strong></span>
+                    @if($status['last_sync'] ?? null)
+                        <span>Last sync: {{ $status['last_sync']->diffForHumans() }}</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-2">
+                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Change Property</button>
+                    <span class="text-gray-300">|</span>
+                    <button wire:click="disconnectSearchConsole" wire:confirm="Disconnect Search Console? Cached data will be removed." class="text-xs font-medium text-gray-400 hover:text-red-600">Disconnect</button>
+                </div>
+            </div>
+
+            {{-- Last error display --}}
+            @if($status && ($status['last_error'] ?? null))
+                <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <x-icons.alert-triangle class="h-4 w-4 text-yellow-600" />
+                            <p class="text-sm text-yellow-800">{{ $status['last_error'] }}</p>
+                        </div>
+                        <x-ui.button wire:click="refreshData" variant="secondary" size="sm">
+                            <span wire:loading.remove wire:target="refreshData">Retry</span>
+                            <span wire:loading wire:target="refreshData">Retrying...</span>
+                        </x-ui.button>
+                    </div>
+                </div>
+            @endif
+
+            @if($cache)
+                <p class="mb-6 text-xs text-gray-400">
+                    Data from {{ $cache->start_date->format('M d') }} &ndash; {{ $cache->end_date->format('M d, Y') }}
+                    &middot; Updated {{ $cache->fetched_at->diffForHumans() }}
+                </p>
+            @endif
+
+            @if($overview)
             {{-- Metric Cards + Performance Chart wrapped in one Alpine scope for toggle + aggregation --}}
             <div x-data="{
                 {{-- Metric toggle state --}}
@@ -263,112 +314,74 @@
                 </div>
             @endif
 
-            {{-- Top Pages (Alpine-driven: sort, search, percentage bars, CSV export) --}}
-            @if(count($pages) > 0)
-                <div class="mt-6" x-data="{
-                    ...dataTableMixin(@js($pages), ['page']),
-                    get maxClicks() { return Math.max(...this.rows.map(r => r.clicks), 1); },
-                    exportCsv() {
-                        const headers = ['Page','Clicks','Impressions','CTR','Position'];
-                        const csv = [headers.join(','), ...this.filtered.map(r =>
-                            [this.csvEscape(r.page), r.clicks, r.impressions, r.ctr + '%', r.position].join(',')
-                        )].join('\n');
-                        this.downloadCsv(csv, 'search-pages.csv');
-                    },
-                }">
-                    <x-ui.card>
-                        <div class="mb-4 flex items-center justify-between gap-3">
-                            <h3 class="text-base font-semibold text-gray-900">Top Pages</h3>
-                            <div class="flex items-center gap-2">
-                                <input x-model="search" type="text" placeholder="Search pages..." class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500 w-48" />
-                                <button @click="exportCsv()" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition" title="Export CSV">
-                                    <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>CSV
-                                </button>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-gray-200">
-                                        <th class="pb-2 text-left font-medium text-gray-500 cursor-pointer select-none" @click="toggleSort('page')">Page <span class="text-xs" x-text="sortIcon('page')"></span></th>
-                                        <th class="pb-2 text-right font-medium text-gray-500 cursor-pointer select-none" @click="toggleSort('clicks')">Clicks <span class="text-xs" x-text="sortIcon('clicks')"></span></th>
-                                        <th class="pb-2 text-right font-medium text-gray-500 cursor-pointer select-none" @click="toggleSort('impressions')">Impr. <span class="text-xs" x-text="sortIcon('impressions')"></span></th>
-                                        <th class="pb-2 text-right font-medium text-gray-500 cursor-pointer select-none" @click="toggleSort('ctr')">CTR <span class="text-xs" x-text="sortIcon('ctr')"></span></th>
-                                        <th class="pb-2 text-right font-medium text-gray-500 cursor-pointer select-none" @click="toggleSort('position')">Position <span class="text-xs" x-text="sortIcon('position')"></span></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <template x-for="(row, idx) in filtered" :key="idx">
-                                        <tr x-show="idx < limit">
-                                            <td class="py-2 max-w-xs truncate font-medium text-gray-700" :title="row.page" x-text="row.page"></td>
-                                            <td class="py-2 text-right text-gray-600 relative">
-                                                <div class="absolute inset-y-0 left-0 bg-purple-50 rounded-sm" :style="'width:' + (row.clicks / maxClicks * 100) + '%'"></div>
-                                                <span class="relative" x-text="row.clicks.toLocaleString()"></span>
-                                            </td>
-                                            <td class="py-2 text-right text-gray-600" x-text="row.impressions.toLocaleString()"></td>
-                                            <td class="py-2 text-right text-gray-600" x-text="row.ctr + '%'"></td>
-                                            <td class="py-2 text-right text-gray-600" x-text="row.position"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                        <template x-if="total > 10">
-                            <div class="mt-3 text-center">
-                                <button x-show="limit < total" @click="limit = total" class="text-sm text-purple-600 hover:text-purple-800">
-                                    Show all <span x-text="total"></span> pages
-                                </button>
-                                <button x-show="limit >= total" @click="limit = 10" class="text-sm text-purple-600 hover:text-purple-800">
-                                    Show less
-                                </button>
-                            </div>
-                        </template>
-                    </x-ui.card>
-                </div>
-            @endif
-
-            {{-- Disconnect link --}}
-            <div class="mt-6 text-center">
-                <button wire:click="disconnectSearchConsole" wire:confirm="Disconnect Search Console? Cached data will be removed." class="text-sm text-gray-400 hover:text-red-600 transition">
-                    Disconnect Search Console
-                </button>
-            </div>
-        @else
-            {{-- Connected but no data yet --}}
-            @if($connection->last_error)
-                <x-ui.card>
-                    <x-ui.empty-state
-                        title="Failed to fetch Search Console data"
-                        :description="$connection->last_error"
-                        icon="alert-triangle"
-                    >
-                        <x-slot:action>
-                            <x-ui.button wire:click="refreshData">Retry</x-ui.button>
-                        </x-slot:action>
-                    </x-ui.empty-state>
-                </x-ui.card>
             @else
-                <x-ui.card>
-                    <x-ui.empty-state
-                        title="Fetching Search Console data"
-                        description="Data is being fetched from Google Search Console. This may take a moment. Try refreshing the page."
-                        icon="search"
-                    />
-                </x-ui.card>
+                {{-- Connected but no data yet --}}
+                @if($connection->last_error)
+                    <x-ui.card>
+                        <x-ui.empty-state
+                            title="Failed to fetch Search Console data"
+                            :description="$connection->last_error"
+                            icon="alert-triangle"
+                        >
+                            <x-slot:action>
+                                <x-ui.button wire:click="refreshData">
+                                    <span wire:loading.remove wire:target="refreshData">Retry</span>
+                                    <span wire:loading wire:target="refreshData">Retrying...</span>
+                                </x-ui.button>
+                            </x-slot:action>
+                        </x-ui.empty-state>
+                    </x-ui.card>
+                @else
+                    <x-ui.card>
+                        <x-ui.empty-state
+                            title="Fetching Search Console data"
+                            description="Data is being fetched from Google Search Console. This may take a moment. Try refreshing the page."
+                            icon="search"
+                        />
+                    </x-ui.card>
+                @endif
             @endif
-        @endif
+        @endif {{-- end google_active check --}}
     @else
-        {{-- Not connected empty state --}}
+        {{-- Not connected — show appropriate guidance --}}
         <x-ui.card>
-            <x-ui.empty-state
-                title="Google Search Console not connected"
-                description="Connect a Search Console property to view search queries, impressions, clicks, and ranking data for this site."
-                icon="search"
-            >
-                <x-slot:action>
-                    <x-ui.button wire:click="connectSearchConsole">Connect Google Search Console</x-ui.button>
-                </x-slot:action>
-            </x-ui.empty-state>
+            @if(!$this->hasGoogleCredentials)
+                <x-ui.empty-state
+                    title="Google API credentials not configured"
+                    description="Set up Google OAuth credentials in Settings > Integrations before connecting Search Console."
+                    icon="search"
+                >
+                    <x-slot:action>
+                        <x-ui.button :href="route('settings.integrations')" variant="primary">Go to Integrations</x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @elseif(!$this->hasGoogleAccounts)
+                <x-ui.empty-state
+                    title="No Google account connected"
+                    description="Connect a Google account first, then select a Search Console property for this site."
+                    icon="search"
+                >
+                    <x-slot:action>
+                        <x-ui.button wire:click="reconnectGoogle" variant="primary">
+                            <span wire:loading.remove wire:target="reconnectGoogle">Connect Google Account</span>
+                            <span wire:loading wire:target="reconnectGoogle">Redirecting...</span>
+                        </x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @else
+                <x-ui.empty-state
+                    title="Google Search Console not connected"
+                    description="Select a Search Console property to view search queries, impressions, clicks, and ranking data."
+                    icon="search"
+                >
+                    <x-slot:action>
+                        <x-ui.button wire:click="connectSearchConsole" variant="primary">
+                            <span wire:loading.remove wire:target="connectSearchConsole">Select Property</span>
+                            <span wire:loading wire:target="connectSearchConsole">Loading properties...</span>
+                        </x-ui.button>
+                    </x-slot:action>
+                </x-ui.empty-state>
+            @endif
         </x-ui.card>
     @endif
 

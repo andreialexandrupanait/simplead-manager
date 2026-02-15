@@ -22,7 +22,6 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = 'performance';
     public int $timeout = 300;
     public int $tries = 2;
     public array $backoff = [60, 180];
@@ -30,7 +29,9 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
     public function __construct(
         public PerformanceMonitor $monitor,
         public string $device = 'both'
-    ) {}
+    ) {
+        $this->onQueue('performance');
+    }
 
     public function uniqueId(): string
     {

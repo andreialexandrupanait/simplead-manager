@@ -284,7 +284,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
                 SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_365d,
                 AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response
             FROM uptime_checks
-            WHERE uptime_monitor_id = ? AND checked_at >= ?
+            WHERE monitor_id = ? AND checked_at >= ?
         ", [
             $now->copy()->subHours(24),
             $now->copy()->subHours(24),

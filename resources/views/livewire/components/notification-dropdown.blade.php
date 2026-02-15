@@ -59,7 +59,7 @@
             <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
             @if($this->count > 0)
                 <button wire:click="dismissAll" class="text-xs font-medium text-gray-400 hover:text-gray-600 transition">
-                    Dismiss all
+                    Mark all as read
                 </button>
             @endif
         </div>
@@ -99,22 +99,22 @@
                             @if($alert['url'])
                                 <a href="{{ $alert['url'] }}" class="text-xs font-medium text-purple-600 hover:text-purple-800 transition">View</a>
                             @endif
-                            @if(($alert['action'] ?? null) === 'retry_backups')
+                            @if(str_starts_with($alert['action'] ?? '', 'retry_backup_'))
                                 <button
-                                    wire:click="retryFailedBackups"
+                                    wire:click="retrySiteBackup({{ str_replace('retry_backup_', '', $alert['action']) }})"
                                     class="text-xs font-medium text-red-600 hover:text-red-800 transition"
                                 >
-                                    Retry All
+                                    Retry
                                 </button>
                             @endif
                         </div>
                     </div>
 
-                    {{-- Dismiss button --}}
+                    {{-- Mark as read button --}}
                     <button
                         wire:click="dismissAlert('{{ $alert['key'] }}')"
                         class="flex-shrink-0 rounded p-1 text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition"
-                        title="Dismiss"
+                        title="Mark as read"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

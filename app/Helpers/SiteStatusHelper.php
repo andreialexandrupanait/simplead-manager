@@ -14,23 +14,43 @@ class SiteStatusHelper
     {
         $updates = $site->pending_updates_count ?? 0;
 
+        // Compute the 6 health-bar dimensions
+        $uptime = static::uptime($site);
+        $ssl = static::ssl($site);
+        $performance = static::performance($site);
+        $backup = static::backup($site);
+        $plugins = static::plugins($site, $updates);
+        $wpVersion = static::wpVersion($site);
+
+        // Calculate health score from dimension colors
+        $possible = 0;
+        $earned = 0;
+        foreach ([$uptime, $ssl, $performance, $backup, $plugins, $wpVersion] as $dim) {
+            if ($dim['color'] === 'text-gray-300') continue;
+            $possible++;
+            if ($dim['color'] === 'text-green-500') $earned += 1;
+            elseif ($dim['color'] === 'text-yellow-500') $earned += 0.5;
+        }
+        $healthScore = $possible > 0 ? (int) round(($earned / $possible) * 100) : 0;
+
         return [
-            'uptime' => static::uptime($site),
-            'ssl' => static::ssl($site),
+            'uptime' => $uptime,
+            'ssl' => $ssl,
             'response' => static::responseTime($site),
-            'performance' => static::performance($site),
+            'performance' => $performance,
             'links' => static::links($site),
             'domain' => static::domain($site),
-            'plugins' => static::plugins($site, $updates),
+            'plugins' => $plugins,
             'users' => static::users($site),
             'wpConn' => static::wpConnection($site),
-            'backup' => static::backup($site),
-            'wpVersion' => static::wpVersion($site),
+            'backup' => $backup,
+            'wpVersion' => $wpVersion,
             'reports' => static::reports($site),
+            'searchConsole' => static::searchConsole($site),
             'updates' => $updates,
             'updateBadgeColor' => $updates === 0 ? 'bg-green-500' : ($updates <= 5 ? 'bg-orange-500' : 'bg-red-500'),
-            'healthScore' => $site->health_score ?? 0,
-            'healthBarColor' => ($site->health_score ?? 0) >= 90 ? 'bg-green-500' : (($site->health_score ?? 0) >= 70 ? 'bg-yellow-500' : 'bg-red-500'),
+            'healthScore' => $healthScore,
+            'healthBarColor' => $healthScore >= 90 ? 'bg-green-500' : ($healthScore >= 70 ? 'bg-yellow-500' : 'bg-red-500'),
         ];
     }
 
@@ -228,6 +248,31 @@ class SiteStatusHelper
         $count = $site->report_schedules_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
         $tip = $count > 0 ? $count . ' report schedule' . ($count > 1 ? 's' : '') : 'Reports';
+
+        return compact('color', 'tip');
+    }
+
+    private static function searchConsole(Site $site): array
+    {
+        $color = 'text-gray-300';
+        $tip = 'Search Console: Not connected';
+
+        $conn = $site->searchConsoleConnection;
+        if ($conn) {
+            if (!$conn->is_active) {
+                $color = 'text-gray-300';
+                $tip = 'Search Console: Disabled';
+            } elseif ($conn->last_error) {
+                $color = 'text-red-500';
+                $tip = 'Search Console: Error';
+            } elseif ($conn->last_sync_at) {
+                $color = 'text-green-500';
+                $tip = 'Search Console: Synced ' . $conn->last_sync_at->diffForHumans();
+            } else {
+                $color = 'text-yellow-500';
+                $tip = 'Search Console: Pending first sync';
+            }
+        }
 
         return compact('color', 'tip');
     }

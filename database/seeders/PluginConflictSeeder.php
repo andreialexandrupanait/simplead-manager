@@ -10,11 +10,6 @@ class PluginConflictSeeder extends Seeder
     public function run(): void
     {
         $conflicts = [
-            // SEO conflicts
-            ['wordpress-seo', 'all-in-one-seo-pack', 'functionality', 'Both plugins manage SEO meta tags, sitemaps, and schema markup. Running both causes duplicate meta tags and conflicting sitemaps.', 'high'],
-            ['wordpress-seo', 'seo-by-rank-math', 'functionality', 'Both plugins manage SEO meta tags and sitemaps. Running both causes duplicate output and configuration conflicts.', 'high'],
-            ['all-in-one-seo-pack', 'seo-by-rank-math', 'functionality', 'Both plugins provide the same SEO functionality. Running both leads to duplicate meta tags.', 'high'],
-
             // Caching conflicts
             ['w3-total-cache', 'wp-super-cache', 'performance', 'Both plugins implement page caching. Running both causes caching conflicts and potential white screens.', 'critical'],
             ['w3-total-cache', 'wp-fastest-cache', 'performance', 'Both plugins implement page caching. Running both leads to conflicts and performance degradation.', 'critical'],

@@ -13,7 +13,7 @@
                 </p>
             @endif
         </div>
-        <a href="{{ route('status-pages.index') }}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to list</a>
+        <a href="{{ route('settings.status-pages') }}" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to list</a>
     </div>
 
     <div class="space-y-6">

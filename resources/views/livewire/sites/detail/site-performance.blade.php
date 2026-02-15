@@ -147,15 +147,6 @@
 
     @if($this->monitor && ($this->latestMobileTest || $this->latestDesktopTest))
 
-        {{-- Page Selector Tabs --}}
-        @if($this->pages->isNotEmpty())
-            <x-performance.page-selector
-                :pages="$this->pages"
-                :selectedPageId="$selectedPageId"
-                :showAddPage="$showAddPage"
-            />
-        @endif
-
         {{-- Score Gauges --}}
         <div class="mb-6 grid grid-cols-2 gap-6">
             {{-- Mobile --}}
@@ -198,11 +189,6 @@
                 </div>
             </x-ui.card>
         </div>
-
-        {{-- Budget Status --}}
-        @if(!empty($this->budgetViolations))
-            <x-performance.budget-status :violations="$this->budgetViolations" />
-        @endif
 
         {{-- Field Data (CrUX) --}}
         @if($this->hasFieldData)

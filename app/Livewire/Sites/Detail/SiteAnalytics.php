@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\UpdateLog;
 use App\Services\GoogleAnalyticsService;
 use Carbon\Carbon;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteAnalytics extends Component
@@ -23,11 +24,61 @@ class SiteAnalytics extends Component
     public ?string $customEnd = null;
     public array $availableProperties = [];
     public ?array $realtimeData = null;
+    public ?int $selectedGoogleConnectionId = null;
 
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+
+        // Auto-trigger property picker after OAuth return
+        if (session('success') && !$this->site->analyticsConnection) {
+            $this->connectAnalytics();
+        }
+    }
+
+    #[Computed]
+    public function hasGoogleCredentials(): bool
+    {
+        return !empty(config('services.google.client_id'));
+    }
+
+    #[Computed]
+    public function hasGoogleAccounts(): bool
+    {
+        return GoogleConnection::where('is_active', true)->exists();
+    }
+
+    #[Computed]
+    public function googleConnectionStatus(): ?array
+    {
+        $conn = $this->site->analyticsConnection;
+        if (!$conn) return null;
+
+        $google = $conn->googleConnection;
+        return [
+            'email' => $google?->email,
+            'property' => $conn->property_name ?? $conn->property_id,
+            'google_active' => $google?->is_active ?? false,
+            'last_error' => $conn->last_error,
+            'last_sync' => $conn->last_sync_at,
+        ];
+    }
+
+    public function reconnectGoogle(): void
+    {
+        $this->redirect(route('google.auth', ['return_url' => route('sites.analytics', $this->site)]));
+    }
+
+    public function changeProperty(): void
+    {
+        $this->connectAnalytics();
+    }
+
+    public function switchGoogleAccount(int $connectionId): void
+    {
+        $this->selectedGoogleConnectionId = $connectionId;
+        $this->connectAnalytics();
     }
 
     public function setDateRange(string $range): void
@@ -91,6 +142,10 @@ class SiteAnalytics extends Component
         try {
             $service = new GoogleAnalyticsService($googleConnection);
             $this->availableProperties = $service->listProperties();
+
+            if (empty($this->availableProperties)) {
+                session()->flash('error', 'No GA4 properties found for this Google account. Make sure the account has access to a GA4 property.');
+            }
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to list properties: ' . $e->getMessage());
         }
@@ -148,6 +203,16 @@ class SiteAnalytics extends Component
 
     private function resolveGoogleConnection(): ?GoogleConnection
     {
+        // Use explicitly selected account if set
+        if ($this->selectedGoogleConnectionId) {
+            $selected = GoogleConnection::where('id', $this->selectedGoogleConnectionId)
+                ->where('is_active', true)
+                ->first();
+            if ($selected) {
+                return $selected;
+            }
+        }
+
         // Use the site's existing connection's Google account if available
         $existing = $this->site->analyticsConnection?->googleConnection;
         if ($existing && $existing->is_active) {

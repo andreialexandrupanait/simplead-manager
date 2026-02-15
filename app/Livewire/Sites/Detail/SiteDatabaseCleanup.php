@@ -7,6 +7,7 @@ use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\DatabaseCleanupService;
+use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -39,6 +40,18 @@ class SiteDatabaseCleanup extends Component
         $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
+    }
+
+    #[Computed]
+    public function isModuleActive(): bool
+    {
+        return app(ModuleConfigService::class)->isModuleActive($this->site, 'database_cleanup');
+    }
+
+    public function activateModule(): void
+    {
+        app(ModuleConfigService::class)->toggleModule($this->site, 'database_cleanup', true);
+        unset($this->isModuleActive);
     }
 
     #[Computed]

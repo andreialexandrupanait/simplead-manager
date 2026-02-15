@@ -192,7 +192,7 @@
 
             {{-- Page content --}}
             <main id="main-content" class="flex-1 p-6 lg:p-8">
-                <div class="mx-auto max-w-7xl">
+                <div class="mx-auto {{ $maxWidth ?? 'max-w-7xl' }}">
                     {{ $slot }}
                 </div>
             </main>

@@ -49,7 +49,6 @@
             'sites.cron' => __('Cron Jobs'),
             'sites.database' => __('Database'),
             'sites.resources' => __('Resources'),
-            'sites.seo' => __('SEO'),
             'sites.woocommerce' => __('WooCommerce'),
             'sites.audit-log' => __('Audit Log'),
             'sites.firewall' => __('Firewall'),

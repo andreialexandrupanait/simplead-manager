@@ -1,4 +1,4 @@
-<x-ui.card :padding="false">
+<x-ui.card :padding="false" class="flex flex-col">
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-3">
@@ -15,7 +15,7 @@
     </div>
 
     {{-- Card Content --}}
-    <div class="p-4">
+    <div class="flex flex-1 flex-col p-4">
         {{-- Period Selector --}}
         <div class="mb-4 flex gap-2 border-b border-gray-100 pb-3">
             <button
@@ -52,8 +52,8 @@
                 $usersChange = ($previous['total_users'] ?? 0) > 0
                     ? round((($overview['total_users'] ?? 0) - $previous['total_users']) / $previous['total_users'] * 100, 1)
                     : null;
-                $sessionsChange = ($previous['sessions'] ?? 0) > 0
-                    ? round((($overview['sessions'] ?? 0) - $previous['sessions']) / $previous['sessions'] * 100, 1)
+                $bounceRateChange = ($previous['bounce_rate'] ?? 0) > 0
+                    ? round((($overview['bounce_rate'] ?? 0) - $previous['bounce_rate']) / $previous['bounce_rate'] * 100, 1)
                     : null;
                 $pageviewsChange = ($previous['pageviews'] ?? 0) > 0
                     ? round((($overview['pageviews'] ?? 0) - $previous['pageviews']) / $previous['pageviews'] * 100, 1)
@@ -84,24 +84,25 @@
                     @endif
                 </div>
 
-                {{-- Sessions --}}
+                {{-- Bounce Rate --}}
                 <div class="flex items-center justify-between rounded-lg border border-gray-100 p-4">
                     <div>
-                        <div class="text-sm text-gray-600">Sessions</div>
+                        <div class="text-sm text-gray-600">Bounce Rate</div>
                         <div class="mt-1 text-2xl font-bold text-gray-900">
-                            {{ number_format($overview['sessions'] ?? 0) }}
+                            {{ round($overview['bounce_rate'] ?? 0, 1) }}%
                         </div>
                     </div>
-                    @if($sessionsChange !== null)
-                        <div class="flex items-center gap-1 text-sm {{ $sessionsChange >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                    @if($bounceRateChange !== null)
+                        @php $brPositive = $bounceRateChange <= 0; @endphp
+                        <div class="flex items-center gap-1 text-sm {{ $brPositive ? 'text-green-600' : 'text-red-600' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                @if($sessionsChange >= 0)
+                                @if($bounceRateChange >= 0)
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
                                 @else
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
                                 @endif
                             </svg>
-                            {{ abs($sessionsChange) }}%
+                            {{ abs($bounceRateChange) }}%
                         </div>
                     @endif
                 </div>

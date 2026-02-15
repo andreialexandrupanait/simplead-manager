@@ -221,10 +221,11 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_PATH', 'message' => 'Invalid plugin path.']], 400);
         }
 
-        if (!function_exists('delete_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-        }
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        // Initialize WP_Filesystem (required by delete_plugins)
+        WP_Filesystem();
 
         // Deactivate first if active
         if (is_plugin_active($plugin_file)) {

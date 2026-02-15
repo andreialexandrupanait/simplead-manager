@@ -8,20 +8,35 @@ class GoogleAnalyticsService extends GoogleApiService
 
     public function listProperties(): array
     {
-        $response = $this->api()->get('https://analyticsadmin.googleapis.com/v1beta/accountSummaries');
-
-        if ($response->failed()) {
-            throw new \Exception('Failed to list Analytics properties: ' . $response->body());
-        }
-
         $properties = [];
-        foreach ($response->json('accountSummaries', []) as $account) {
-            foreach ($account['propertySummaries'] ?? [] as $property) {
-                $properties[] = [
-                    'property_id' => $property['property'],
-                    'property_name' => $property['displayName'],
-                    'account_name' => $account['displayName'] ?? '',
-                ];
+        $pageToken = null;
+        $maxPages = 20;
+
+        for ($page = 0; $page < $maxPages; $page++) {
+            $params = ['pageSize' => 200];
+            if ($pageToken) {
+                $params['pageToken'] = $pageToken;
+            }
+
+            $response = $this->api()->get('https://analyticsadmin.googleapis.com/v1beta/accountSummaries', $params);
+
+            if ($response->failed()) {
+                throw new \Exception('Failed to list Analytics properties: ' . $response->body());
+            }
+
+            foreach ($response->json('accountSummaries', []) as $account) {
+                foreach ($account['propertySummaries'] ?? [] as $property) {
+                    $properties[] = [
+                        'property_id' => $property['property'],
+                        'property_name' => $property['displayName'],
+                        'account_name' => $account['displayName'] ?? '',
+                    ];
+                }
+            }
+
+            $pageToken = $response->json('nextPageToken');
+            if (!$pageToken) {
+                break;
             }
         }
 

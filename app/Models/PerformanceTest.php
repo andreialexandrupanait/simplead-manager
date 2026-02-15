@@ -16,7 +16,6 @@ class PerformanceTest extends Model
         'performance_score',
         'accessibility_score',
         'best_practices_score',
-        'seo_score',
         'fcp',
         'lcp',
         'cls',

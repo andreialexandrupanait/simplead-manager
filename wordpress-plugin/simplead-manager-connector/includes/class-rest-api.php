@@ -26,11 +26,12 @@ class SAM_REST_API {
             new SAM_Cron_Endpoint(),
             new SAM_Monitoring_Endpoint(),
             new SAM_Error_Log_Endpoint(),
-            new SAM_SEO_Endpoint(),
             new SAM_Audit_Endpoint(),
             new SAM_Firewall_Endpoint(),
             new SAM_Login_Endpoint(),
             new SAM_WooCommerce_Endpoint(),
+            new SAM_Self_Update_Endpoint(),
+            new SAM_Cache_Endpoint(),
         ];
     }
 

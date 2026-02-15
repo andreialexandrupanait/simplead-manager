@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
 class SAM_Rate_Limiter {
 
     private const GENERAL_LIMIT    = 60;  // requests per minute
-    private const DESTRUCTIVE_LIMIT = 5;  // requests per minute for destructive ops
+    private const DESTRUCTIVE_LIMIT = 30; // requests per minute for destructive ops
     private const WINDOW            = 60; // seconds
 
     /**

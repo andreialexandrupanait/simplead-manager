@@ -40,165 +40,108 @@ class DashboardService
 
     public function getAlerts(): array
     {
-        $groups = [];
+        $alerts = [];
 
-        // Sites down — group all into one alert
+        // Sites down — one alert per site
         $sitesDown = Site::where('is_up', false)->with('uptimeMonitor')->get();
-        if ($sitesDown->isNotEmpty()) {
-            $names = $sitesDown->pluck('name')->toArray();
-            $groups[] = [
-                'key' => 'sites_down',
+        foreach ($sitesDown as $site) {
+            $alerts[] = [
+                'key' => "sites_down_{$site->id}",
                 'severity' => 'critical',
                 'icon' => 'activity',
-                'title' => $sitesDown->count() === 1
-                    ? "{$names[0]} is down"
-                    : "{$sitesDown->count()} sites are down",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $sitesDown->count(),
-                'items' => $sitesDown->pluck('id')->toArray(),
-                'url' => route('uptime.index'),
-                'timestamp' => $sitesDown->max(fn ($s) => $s->uptimeMonitor?->last_checked_at),
+                'title' => "{$site->name} is down",
+                'description' => null,
+                'url' => route('sites.uptime', $site),
+                'timestamp' => $site->uptimeMonitor?->last_checked_at,
             ];
         }
 
-        // SSL — group expired separate from expiring-soon
+        // SSL — one alert per expired cert, one per expiring-soon cert
         $sslExpiring = SslCertificate::whereHas('site')
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(14))
             ->with('site')
             ->get();
 
-        $sslExpired = $sslExpiring->filter(fn ($cert) => $cert->expires_at->isPast());
-        $sslExpiringSoon = $sslExpiring->filter(fn ($cert) => !$cert->expires_at->isPast());
-
-        if ($sslExpired->isNotEmpty()) {
-            $names = $sslExpired->map(fn ($c) => $c->site->name)->toArray();
-            $groups[] = [
-                'key' => 'ssl_expired',
-                'severity' => 'critical',
-                'icon' => 'shield',
-                'title' => $sslExpired->count() === 1
-                    ? "SSL expired for {$names[0]}"
-                    : "{$sslExpired->count()} SSL certificates expired",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $sslExpired->count(),
-                'items' => $sslExpired->map(fn ($c) => $c->site->id)->toArray(),
-                'url' => route('uptime.index'),
-                'timestamp' => $sslExpired->max('updated_at'),
-            ];
+        foreach ($sslExpiring as $cert) {
+            if ($cert->expires_at->isPast()) {
+                $alerts[] = [
+                    'key' => "ssl_expired_{$cert->site->id}",
+                    'severity' => 'critical',
+                    'icon' => 'shield',
+                    'title' => "SSL expired for {$cert->site->name}",
+                    'description' => null,
+                    'url' => route('sites.security', $cert->site),
+                    'timestamp' => $cert->updated_at,
+                ];
+            } else {
+                $alerts[] = [
+                    'key' => "ssl_expiring_{$cert->site->id}",
+                    'severity' => 'warning',
+                    'icon' => 'shield',
+                    'title' => "SSL expiring soon for {$cert->site->name}",
+                    'description' => "Expires {$cert->expires_at->diffForHumans()}",
+                    'url' => route('sites.security', $cert->site),
+                    'timestamp' => $cert->updated_at,
+                ];
+            }
         }
 
-        if ($sslExpiringSoon->isNotEmpty()) {
-            $names = $sslExpiringSoon->map(fn ($c) => $c->site->name)->toArray();
-            $groups[] = [
-                'key' => 'ssl_expiring',
-                'severity' => 'warning',
-                'icon' => 'shield',
-                'title' => $sslExpiringSoon->count() === 1
-                    ? "SSL expiring soon for {$names[0]}"
-                    : "{$sslExpiringSoon->count()} SSL certificates expiring soon",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $sslExpiringSoon->count(),
-                'items' => $sslExpiringSoon->map(fn ($c) => $c->site->id)->toArray(),
-                'url' => route('uptime.index'),
-                'timestamp' => $sslExpiringSoon->max('updated_at'),
-            ];
-        }
-
-        // Domains — group expired separate from expiring-soon
+        // Domains — one alert per expired domain, one per expiring-soon domain
         $domainsExpiring = DomainMonitor::whereHas('site')
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now()->addDays(30))
             ->with('site')
             ->get();
 
-        $domainsExpired = $domainsExpiring->filter(fn ($d) => $d->expires_at->isPast());
-        $domainsExpiringSoon = $domainsExpiring->filter(fn ($d) => !$d->expires_at->isPast());
-
-        if ($domainsExpired->isNotEmpty()) {
-            $names = $domainsExpired->pluck('domain')->toArray();
-            $groups[] = [
-                'key' => 'domains_expired',
-                'severity' => 'critical',
-                'icon' => 'globe',
-                'title' => $domainsExpired->count() === 1
-                    ? "Domain expired: {$names[0]}"
-                    : "{$domainsExpired->count()} domains expired",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $domainsExpired->count(),
-                'items' => $domainsExpired->map(fn ($d) => $d->site->id)->toArray(),
-                'url' => route('uptime.index'),
-                'timestamp' => $domainsExpired->max('updated_at'),
-            ];
+        foreach ($domainsExpiring as $domain) {
+            if ($domain->expires_at->isPast()) {
+                $alerts[] = [
+                    'key' => "domains_expired_{$domain->site->id}",
+                    'severity' => 'critical',
+                    'icon' => 'globe',
+                    'title' => "Domain expired: {$domain->domain}",
+                    'description' => null,
+                    'url' => route('sites.overview', $domain->site),
+                    'timestamp' => $domain->updated_at,
+                ];
+            } else {
+                $alerts[] = [
+                    'key' => "domains_expiring_{$domain->site->id}",
+                    'severity' => 'warning',
+                    'icon' => 'globe',
+                    'title' => "Domain expiring soon: {$domain->domain}",
+                    'description' => "Expires {$domain->expires_at->diffForHumans()}",
+                    'url' => route('sites.overview', $domain->site),
+                    'timestamp' => $domain->updated_at,
+                ];
+            }
         }
 
-        if ($domainsExpiringSoon->isNotEmpty()) {
-            $names = $domainsExpiringSoon->pluck('domain')->toArray();
-            $groups[] = [
-                'key' => 'domains_expiring',
-                'severity' => 'warning',
-                'icon' => 'globe',
-                'title' => $domainsExpiringSoon->count() === 1
-                    ? "Domain expiring soon: {$names[0]}"
-                    : "{$domainsExpiringSoon->count()} domains expiring soon",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $domainsExpiringSoon->count(),
-                'items' => $domainsExpiringSoon->map(fn ($d) => $d->site->id)->toArray(),
-                'url' => route('uptime.index'),
-                'timestamp' => $domainsExpiringSoon->max('updated_at'),
-            ];
-        }
-
-        // Backup failures (last 24h) — group all with retry action
+        // Backup failures (last 24h) — one alert per site (deduped)
         $failedBackups = Backup::whereHas('site')
             ->where('status', 'failed')
             ->where('created_at', '>=', now()->subDay())
             ->with('site')
             ->get();
 
-        if ($failedBackups->isNotEmpty()) {
-            $siteNames = $failedBackups->map(fn ($b) => $b->site->name)->unique()->toArray();
-            $siteIds = $failedBackups->map(fn ($b) => $b->site->id)->unique()->values()->toArray();
-            $groups[] = [
-                'key' => 'backup_failed',
+        $failedBysite = $failedBackups->groupBy('site_id');
+        foreach ($failedBysite as $siteId => $backups) {
+            $site = $backups->first()->site;
+            $alerts[] = [
+                'key' => "backup_failed_{$site->id}",
                 'severity' => 'critical',
                 'icon' => 'hard-drive',
-                'title' => $failedBackups->count() === 1
-                    ? "Backup failed for {$siteNames[0]}"
-                    : "{$failedBackups->count()} backup failures",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $siteNames), 120),
-                'count' => $failedBackups->count(),
-                'items' => $siteIds,
-                'url' => route('backups.index'),
-                'timestamp' => $failedBackups->max('created_at'),
-                'action' => 'retry_backups',
-            ];
-        }
-
-        // Broken links (>5) — group all
-        $brokenLinkSites = Site::whereHas('linkMonitor', function ($q) {
-            $q->where('broken_links', '>', 5);
-        })->with('linkMonitor')->get();
-
-        if ($brokenLinkSites->isNotEmpty()) {
-            $names = $brokenLinkSites->pluck('name')->toArray();
-            $groups[] = [
-                'key' => 'broken_links',
-                'severity' => 'warning',
-                'icon' => 'link',
-                'title' => $brokenLinkSites->count() === 1
-                    ? "Broken links on {$names[0]}"
-                    : "{$brokenLinkSites->count()} sites with broken links",
-                'description' => \Illuminate\Support\Str::limit(implode(', ', $names), 120),
-                'count' => $brokenLinkSites->count(),
-                'items' => $brokenLinkSites->pluck('id')->toArray(),
-                'url' => route('dashboard'),
-                'timestamp' => $brokenLinkSites->max(fn ($s) => $s->linkMonitor->last_scan_at),
+                'title' => "Backup failed for {$site->name}",
+                'description' => null,
+                'url' => route('sites.backups', $site),
+                'timestamp' => $backups->max('created_at'),
+                'action' => "retry_backup_{$site->id}",
             ];
         }
 
         // Sort: critical first, then warning, then by timestamp desc
-        usort($groups, function ($a, $b) {
+        usort($alerts, function ($a, $b) {
             $severityOrder = ['critical' => 0, 'warning' => 1, 'info' => 2];
             $aSev = $severityOrder[$a['severity']] ?? 2;
             $bSev = $severityOrder[$b['severity']] ?? 2;
@@ -206,7 +149,7 @@ class DashboardService
             return ($b['timestamp'] ?? now()) <=> ($a['timestamp'] ?? now());
         });
 
-        return $groups;
+        return $alerts;
     }
 
     public function getSitesOverview(int $perPage = 12, string $search = '', string $filter = 'all', ?int $statusId = null, ?int $clientId = null, string $sort = 'health-asc'): LengthAwarePaginator
@@ -224,7 +167,9 @@ class DashboardService
             'sitePlugins' => fn($q) => $q->where('has_update', true),
             'siteThemes' => fn($q) => $q->where('has_update', true),
             'analyticsConnection',
+            'searchConsoleConnection',
             'reportSchedules' => fn($q) => $q->where('is_active', true),
+            'healthState',
         ];
 
         if (Schema::hasTable('site_statuses')) {

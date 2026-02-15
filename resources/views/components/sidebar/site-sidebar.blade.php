@@ -117,7 +117,7 @@
         </x-sidebar.sidebar-item>
     </div>
 
-    <x-sidebar.sidebar-section title="Monitoring">
+    <x-sidebar.sidebar-section title="Management">
         <x-sidebar.sidebar-item
             :href="route('sites.plugins', $site)"
             icon="puzzle"
@@ -135,6 +135,17 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
+            :href="route('sites.database', $site)"
+            icon="database"
+            :active="request()->routeIs('sites.database')"
+            :inactive="!$moduleService->isModuleActive($site, 'database_cleanup')"
+        >
+            Database
+        </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
+
+    <x-sidebar.sidebar-section title="Monitoring">
+        <x-sidebar.sidebar-item
             :href="route('sites.uptime', $site)"
             icon="activity"
             :active="request()->routeIs('sites.uptime')"
@@ -149,61 +160,45 @@
         >
             Performance
         </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.analytics', $site)"
+            icon="bar-chart-2"
+            :active="request()->routeIs('sites.analytics')"
+            :inactive="!$moduleService->isModuleActive($site, 'analytics')"
+        >
+            Analytics
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.search-console', $site)"
+            icon="search"
+            :active="request()->routeIs('sites.search-console')"
+            :inactive="!$moduleService->isModuleActive($site, 'search_console')"
+        >
+            Search Console
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.security', $site)"
+            icon="shield"
+            :active="request()->routeIs('sites.security')"
+            :inactive="!$moduleService->isModuleActive($site, 'security')"
+        >
+            Security
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.cloudflare', $site)"
+            icon="cloud"
+            :active="request()->routeIs('sites.cloudflare')"
+            :inactive="!$moduleService->isModuleActive($site, 'cloudflare')"
+        >
+            Cloudflare
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
-    <x-sidebar.sidebar-section title="Integrations">
-        @if($moduleService->isModuleActive($site, 'analytics'))
-            <x-sidebar.sidebar-item
-                :href="route('sites.analytics', $site)"
-                icon="bar-chart-2"
-                :active="request()->routeIs('sites.analytics')"
-            >
-                Analytics
-            </x-sidebar.sidebar-item>
-        @endif
-
-        @if($moduleService->isModuleActive($site, 'search_console'))
-            <x-sidebar.sidebar-item
-                :href="route('sites.search-console', $site)"
-                icon="search"
-                :active="request()->routeIs('sites.search-console')"
-            >
-                Search Console
-            </x-sidebar.sidebar-item>
-        @endif
-
-        @if($moduleService->isModuleActive($site, 'security'))
-            <x-sidebar.sidebar-item
-                :href="route('sites.security', $site)"
-                icon="shield"
-                :active="request()->routeIs('sites.security')"
-            >
-                Security
-            </x-sidebar.sidebar-item>
-        @endif
-
-        @if($site->siteCloudflare)
-            <x-sidebar.sidebar-item
-                :href="route('sites.cloudflare', $site)"
-                icon="cloud"
-                :active="request()->routeIs('sites.cloudflare')"
-            >
-                Cloudflare
-            </x-sidebar.sidebar-item>
-        @endif
-
-        @if($moduleService->isModuleActive($site, 'database_cleanup'))
-            <x-sidebar.sidebar-item
-                :href="route('sites.database', $site)"
-                icon="database"
-                :active="request()->routeIs('sites.database')"
-            >
-                Database
-            </x-sidebar.sidebar-item>
-        @endif
-    </x-sidebar.sidebar-section>
-
-    <x-sidebar.sidebar-section title="Reports">
+    <x-sidebar.sidebar-section title="System">
         <x-sidebar.sidebar-item
             :href="route('sites.reports', $site)"
             icon="file-text"
@@ -211,16 +206,13 @@
         >
             Reports
         </x-sidebar.sidebar-item>
-    </x-sidebar.sidebar-section>
 
-    {{-- Settings --}}
-    <div class="space-y-1">
         <x-sidebar.sidebar-item
             :href="route('sites.settings', $site)"
             icon="settings"
             :active="request()->routeIs('sites.settings')"
         >
-            Settings
+            Configuration
         </x-sidebar.sidebar-item>
-    </div>
+    </x-sidebar.sidebar-section>
 </div>

@@ -1,4 +1,4 @@
-<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     {{-- Header actions --}}
     <div class="mb-6 flex justify-end">
         <div class="flex items-center gap-2">

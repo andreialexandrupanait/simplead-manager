@@ -3,7 +3,7 @@
  * Plugin Name: SimpleAd Manager Connector
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 1.2.0
+ * Version: 1.4.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,11 +17,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '1.2.0');
+define('SAM_VERSION', '1.4.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
 define('SAM_REST_NAMESPACE', 'simplead/v1');
+define('SAM_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 // Always-needed core classes
 require_once SAM_PLUGIN_DIR . 'includes/class-authentication.php';
@@ -48,11 +49,12 @@ spl_autoload_register(function ($class) {
         'SAM_Cron_Endpoint'         => 'endpoints/class-cron-endpoint.php',
         'SAM_Monitoring_Endpoint'   => 'endpoints/class-monitoring-endpoint.php',
         'SAM_Error_Log_Endpoint'    => 'endpoints/class-error-log-endpoint.php',
-        'SAM_SEO_Endpoint'          => 'endpoints/class-seo-endpoint.php',
         'SAM_Audit_Endpoint'        => 'endpoints/class-audit-endpoint.php',
         'SAM_Firewall_Endpoint'     => 'endpoints/class-firewall-endpoint.php',
         'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
         'SAM_WooCommerce_Endpoint'  => 'endpoints/class-woocommerce-endpoint.php',
+        'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
+        'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
         // Admin
         'SAM_Admin'                 => 'class-admin.php',
     ];

@@ -3,8 +3,6 @@ import './bootstrap';
 import Chart from 'chart.js/auto';
 window.Chart = Chart;
 
-import Sortable from 'sortablejs';
-
 // Alpine.js comes with Livewire 3 — no manual import needed
 document.addEventListener('alpine:init', () => {
     Alpine.data('tooltip', () => ({
@@ -82,55 +80,6 @@ document.addEventListener('alpine:init', () => {
                 this.panelEl.style.top = Math.round(rect.bottom + 4) + 'px';
             }
             this.panelEl.style.left = Math.round(this._alignRight ? rect.right - pw : rect.left) + 'px';
-        },
-    }));
-
-    Alpine.data('sortableList', () => ({
-        enabled: false,
-        sortableInstance: null,
-
-        init() {
-            this.$watch('enabled', (val) => {
-                if (val) {
-                    this.$nextTick(() => this.createSortable());
-                } else {
-                    this.destroySortable();
-                }
-            });
-        },
-
-        createSortable() {
-            let container = this.$refs.sortableContainer;
-            if (!container || this.sortableInstance) return;
-            this.sortableInstance = Sortable.create(container, {
-                handle: '.drag-handle',
-                animation: 150,
-                ghostClass: 'opacity-30',
-            });
-        },
-
-        destroySortable() {
-            if (this.sortableInstance) {
-                this.sortableInstance.destroy();
-                this.sortableInstance = null;
-            }
-        },
-
-        saveOrder() {
-            let container = this.$refs.sortableContainer;
-            if (!container) return;
-            let orderedIds = [];
-            for (let i = 0; i < container.children.length; i++) {
-                let id = container.children[i].getAttribute('data-site-id');
-                if (id) orderedIds.push(parseInt(id, 10));
-            }
-            if (orderedIds.length > 0) {
-                this.$wire.saveReorder(orderedIds);
-            }
-        },
-
-        destroy() {
-            this.destroySortable();
         },
     }));
 

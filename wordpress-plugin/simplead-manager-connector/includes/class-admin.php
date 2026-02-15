@@ -62,7 +62,6 @@ class SAM_Admin {
             'sam_cron_disable',
             'sam_cron_enable',
             'sam_error_logs',
-            'sam_seo_check',
             'sam_audit_logs',
             'sam_ip_rules_list',
             'sam_ip_rules_save',
@@ -230,15 +229,6 @@ class SAM_Admin {
         wp_send_json($response->get_data());
     }
 
-    /* ─── SEO ─── */
-
-    public function ajax_sam_seo_check(): void {
-        $this->verify_request();
-        $endpoint = new SAM_SEO_Endpoint();
-        $response = $endpoint->seo_check(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
     /* ─── Audit ─── */
 
     public function ajax_sam_audit_logs(): void {
@@ -383,7 +373,6 @@ class SAM_Admin {
             'database'    => 'Database',
             'cron'        => 'Cron Jobs',
             'server'      => 'Server',
-            'seo'         => 'SEO',
             'audit'       => 'Audit Log',
             'firewall'    => 'Firewall',
         ];

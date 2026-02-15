@@ -124,8 +124,25 @@ class DropboxDriver implements StorageDriver
             mkdir($dir, 0755, true);
         }
 
+        $response = $this->makeDownloadRequest($fullPath, $localPath, $accessToken);
+
+        // If token expired, refresh and retry once
+        if ($response->status() === 401) {
+            $accessToken = $this->refreshAccessToken();
+            $response = $this->makeDownloadRequest($fullPath, $localPath, $accessToken);
+        }
+
+        if ($response->failed()) {
+            throw new RuntimeException("Dropbox download failed: " . $response->body());
+        }
+    }
+
+    protected function makeDownloadRequest(string $dropboxPath, string $localPath, string $accessToken)
+    {
+        $request = Http::withToken($accessToken)->timeout(600);
+
         $headers = [
-            'Dropbox-API-Arg' => json_encode(['path' => $fullPath]),
+            'Dropbox-API-Arg' => json_encode(['path' => $dropboxPath]),
         ];
 
         $teamMemberId = $this->config['team_member_id'] ?? null;
@@ -141,15 +158,10 @@ class DropboxDriver implements StorageDriver
             ]);
         }
 
-        $response = Http::withToken($accessToken)
-            ->withHeaders($headers)
-            ->timeout(600)
+        return $request->withHeaders($headers)
             ->sink($localPath)
+            ->withBody('', 'application/octet-stream')
             ->post('https://content.dropboxapi.com/2/files/download');
-
-        if ($response->failed()) {
-            throw new RuntimeException("Dropbox download failed: " . $response->body());
-        }
     }
 
     public function delete(string $remotePath): void

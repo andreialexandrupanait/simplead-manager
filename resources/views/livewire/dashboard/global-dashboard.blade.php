@@ -267,28 +267,6 @@
                     </button>
                 @endif
 
-            {{-- View Mode Toggle --}}
-            <div class="flex items-center gap-0.5 rounded-lg border border-gray-300 bg-white p-0.5">
-                <button
-                    wire:click="$set('viewMode', 'list')"
-                    class="rounded px-2 py-1.5 transition {{ $viewMode === 'list' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700' }}"
-                    title="List view"
-                >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                    </svg>
-                </button>
-                <button
-                    wire:click="$set('viewMode', 'grid')"
-                    class="rounded px-2 py-1.5 transition {{ $viewMode === 'grid' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700' }}"
-                    title="Grid view"
-                >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-                    </svg>
-                </button>
-            </div>
-
             <x-ui.search-input
                 wire:model.live.debounce.300ms="search"
                 placeholder="Search sites..."
@@ -302,28 +280,18 @@
                 <x-ui.empty-state title="No sites yet" description="Add your first site to get started." icon="globe" />
             </x-ui.card>
         @else
-            @if($viewMode === 'list')
-                {{-- List View --}}
-                <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)" x-on:save-sort-order.window="saveOrder()">
-                    <div id="sortable-site-list" x-ref="sortableContainer">
-                    @foreach($this->sites as $site)
-                        <x-dashboard.site-row
-                            :site="$site"
-                            :selected-sites="$selectedSites"
-                            :reordering="$this->reordering"
-                            :site-statuses="$this->siteStatuses"
-                        />
-                    @endforeach
-                    </div>
+            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)" x-on:save-sort-order.window="saveOrder()">
+                <div id="sortable-site-list" x-ref="sortableContainer">
+                @foreach($this->sites as $site)
+                    <x-dashboard.site-row
+                        :site="$site"
+                        :selected-sites="$selectedSites"
+                        :reordering="$this->reordering"
+                        :site-statuses="$this->siteStatuses"
+                    />
+                @endforeach
                 </div>
-            @else
-                {{-- Grid View --}}
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach($this->sites as $site)
-                        <livewire:components.site-card :site="$site" :key="'site-'.$site->id" />
-                    @endforeach
-                </div>
-            @endif
+            </div>
 
             <div class="mt-4">
                 {{ $this->sites->links() }}

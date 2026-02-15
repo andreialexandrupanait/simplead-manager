@@ -1,4 +1,15 @@
-<div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
+    {{-- Module not active banner --}}
+    @if(!$this->isModuleActive)
+        <x-ui.module-activation-banner
+            title="Database cleanup module is not active"
+            description="Enable automatic database cleanup scheduling for this site."
+            icon="database"
+        >
+            <x-ui.button size="sm" wire:click="activateModule">Activate</x-ui.button>
+        </x-ui.module-activation-banner>
+    @endif
+
     {{-- Flash messages --}}
     <x-ui.flash-alert type="success" key="db-success" />
     <x-ui.flash-alert type="error" key="db-error" />

@@ -10,6 +10,7 @@ use App\Models\SearchConsoleCache;
 use App\Models\SearchConsoleConnection;
 use App\Models\Site;
 use App\Services\GoogleSearchConsoleService;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteSearchConsole extends Component
@@ -32,6 +33,49 @@ class SiteSearchConsole extends Component
         $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
+
+        // Auto-trigger property picker after OAuth return
+        if (session('success') && !$this->site->searchConsoleConnection) {
+            $this->connectSearchConsole();
+        }
+    }
+
+    #[Computed]
+    public function hasGoogleCredentials(): bool
+    {
+        return !empty(config('services.google.client_id'));
+    }
+
+    #[Computed]
+    public function hasGoogleAccounts(): bool
+    {
+        return GoogleConnection::where('is_active', true)->exists();
+    }
+
+    #[Computed]
+    public function googleConnectionStatus(): ?array
+    {
+        $conn = $this->site->searchConsoleConnection;
+        if (!$conn) return null;
+
+        $google = $conn->googleConnection;
+        return [
+            'email' => $google?->email,
+            'property' => $conn->property_url,
+            'google_active' => $google?->is_active ?? false,
+            'last_error' => $conn->last_error,
+            'last_sync' => $conn->last_sync_at,
+        ];
+    }
+
+    public function reconnectGoogle(): void
+    {
+        $this->redirect(route('google.auth', ['return_url' => route('sites.search-console', $this->site)]));
+    }
+
+    public function changeProperty(): void
+    {
+        $this->connectSearchConsole();
     }
 
     public function setDateRange(string $range): void
@@ -99,6 +143,10 @@ class SiteSearchConsole extends Component
         try {
             $service = new GoogleSearchConsoleService($googleConnection);
             $this->availableProperties = $service->listProperties();
+
+            if (empty($this->availableProperties)) {
+                session()->flash('error', 'No Search Console properties found for this Google account. Make sure the account has access to a Search Console property.');
+            }
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to list properties: ' . $e->getMessage());
         }
@@ -157,7 +205,6 @@ class SiteSearchConsole extends Component
         $overview = null;
         $performanceOverTime = [];
         $queries = [];
-        $pages = [];
         $cache = null;
 
         if ($connection && $connection->is_active) {
@@ -174,7 +221,6 @@ class SiteSearchConsole extends Component
             $overview = $cache?->data;
             $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
             $queries = $caches->get('queries')?->data ?? [];
-            $pages = $caches->get('pages')?->data ?? [];
         }
 
         $googleConnections = GoogleConnection::where('is_active', true)->get();
@@ -185,7 +231,6 @@ class SiteSearchConsole extends Component
             'overview' => $overview,
             'performanceOverTime' => $performanceOverTime,
             'queries' => $queries,
-            'pages' => $pages,
             'googleConnections' => $googleConnections,
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,

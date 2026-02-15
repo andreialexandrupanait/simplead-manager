@@ -6,6 +6,7 @@ use App\Jobs\CreateBackup;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Services\DashboardService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -14,6 +15,11 @@ class NotificationDropdown extends Component
 {
     public bool $sidebarMode = false;
     public array $dismissedAlerts = [];
+
+    public function mount(): void
+    {
+        $this->dismissedAlerts = $this->getPersistedDismissals();
+    }
 
     #[Computed]
     public function alerts(): array
@@ -34,15 +40,47 @@ class NotificationDropdown extends Component
         if (!in_array($key, $this->dismissedAlerts)) {
             $this->dismissedAlerts[] = $key;
         }
+        $this->persistDismissals();
         unset($this->alerts);
         unset($this->count);
     }
 
     public function dismissAll(): void
     {
-        $this->dismissedAlerts = collect($this->alerts)->pluck('key')->merge($this->dismissedAlerts)->unique()->values()->toArray();
+        Cache::forget('global_alerts');
+        $freshAlerts = app(DashboardService::class)->getAlerts();
+        $allKeys = collect($freshAlerts)->pluck('key')->toArray();
+        $this->dismissedAlerts = array_values(array_unique(array_merge($this->dismissedAlerts, $allKeys)));
+        $this->persistDismissals();
         unset($this->alerts);
         unset($this->count);
+    }
+
+    private function getCacheKey(): string
+    {
+        return 'user:' . Auth::id() . ':dismissed_alerts';
+    }
+
+    private function getPersistedDismissals(): array
+    {
+        return Cache::get($this->getCacheKey(), []);
+    }
+
+    private function persistDismissals(): void
+    {
+        Cache::put($this->getCacheKey(), $this->dismissedAlerts, now()->addDays(7));
+    }
+
+    public function retrySiteBackup(int $siteId): void
+    {
+        $site = Site::findOrFail($siteId);
+        CreateBackup::dispatch($site, 'full', 'manual');
+
+        Cache::forget('global_alerts');
+        unset($this->alerts);
+        unset($this->count);
+
+        session()->flash('message', "Retry dispatched for {$site->name}.");
     }
 
     public function retryFailedBackups(): void

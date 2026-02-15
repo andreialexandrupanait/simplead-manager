@@ -1,4 +1,4 @@
-<div @if(($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) wire:poll.5s="refreshProgress" @endif>
+<div {!! (($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) ? 'wire:poll.5s="refreshProgress"' : '' !!}>
     {{-- Header --}}
     <x-ui.page-header title="Backups" subtitle="Create, schedule, and restore site backups" />
 
@@ -139,8 +139,8 @@
                 status = newStatus;
                 message = newMsg;
                 stage = newStage;
-                if ((status === 'completed' || status === 'failed') && !timer) {
-                    if (status === 'completed') { pct = 100; }
+                if (status === 'completed' && !timer) {
+                    pct = 100;
                     timer = setTimeout(() => { dismissed = true; $wire.dismissProgress(); }, 5000);
                 }
             "
@@ -178,6 +178,11 @@
                             @if($abStarted)
                                 <span>{{ $abStarted->diffForHumans(null, true) }} elapsed</span>
                             @endif
+                            <button @click="dismissed = true; $wire.dismissProgress()" class="text-gray-400 hover:text-gray-600" title="Dismiss">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
 
@@ -196,13 +201,14 @@
 
                     {{-- Footer --}}
                     <div class="flex items-center justify-between text-xs text-gray-500">
-                        <span x-text="pct + '%'"></span>
-                        <span x-show="status === 'failed' && message" x-text="message" class="text-red-600"></span>
+                        <span x-show="status !== 'failed'" x-text="pct + '%'"></span>
                         <span x-show="status !== 'failed' && message" x-text="message"></span>
                         @if($abStatus === 'completed' && $ab->duration_seconds)
                             <span>Completed in {{ $ab->duration_seconds }}s</span>
                         @endif
                     </div>
+                    {{-- Error detail for failed backups --}}
+                    <div x-show="status === 'failed'" x-cloak class="rounded-md bg-red-50 border border-red-200 p-2.5 text-xs text-red-700" x-text="message"></div>
                 </div>
             </x-ui.card>
         </div>
@@ -338,10 +344,41 @@
                                 </td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
                                 <td class="px-3 py-3">
-                                    <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
-                                    @if($backup->is_locked)
-                                        <x-ui.badge variant="purple" class="ml-1">Locked</x-ui.badge>
-                                    @endif
+                                    <div class="flex items-center gap-1.5">
+                                        <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
+                                        @if($backup->is_locked)
+                                            <x-ui.badge variant="purple">Locked</x-ui.badge>
+                                        @endif
+                                        @if($backup->status === 'failed' && $backup->error_message)
+                                            <div x-data="{ open: false }" class="relative">
+                                                <button @click="open = !open" class="text-red-500 hover:text-red-700" title="View error details">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                </button>
+                                                <div x-show="open" x-cloak @click.outside="open = false"
+                                                    class="absolute z-50 left-0 mt-1 w-80 rounded-lg bg-white border border-red-200 shadow-lg p-3">
+                                                    <p class="text-xs font-medium text-red-800 mb-1">Error Details</p>
+                                                    <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $backup->error_message }}</p>
+                                                </div>
+                                            </div>
+                                        @endif
+                                        @if($backup->restore_status === 'failed')
+                                            <x-ui.badge variant="red">Restore failed</x-ui.badge>
+                                            @if($backup->restore_error_message)
+                                                <div x-data="{ open: false }" class="relative">
+                                                    <button @click="open = !open" class="text-red-500 hover:text-red-700" title="View restore error">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    </button>
+                                                    <div x-show="open" x-cloak @click.outside="open = false"
+                                                        class="absolute z-50 left-0 mt-1 w-80 rounded-lg bg-white border border-red-200 shadow-lg p-3">
+                                                        <p class="text-xs font-medium text-red-800 mb-1">Restore Error</p>
+                                                        <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $backup->restore_error_message }}</p>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @elseif($backup->last_restored_at)
+                                            <x-ui.badge variant="blue" title="Restored {{ $backup->last_restored_at->diffForHumans() }}">Restored</x-ui.badge>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-3 py-3 text-sm max-w-[150px]"
                                     x-data="{ editing: false, notes: @js($backup->notes ?? '') }"

@@ -6,6 +6,7 @@ use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\BackupBrowserService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
@@ -143,6 +144,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
             $fileSize = filesize($combinedPath);
             $checksum = hash_file('sha256', $combinedPath);
+
+            // Pre-cache the file list for selective restore browsing
+            BackupBrowserService::precache($this->backup->id, $filesPath, true);
 
             // Upload to storage
             $this->reportProgress('uploading', 75, 'Uploading to storage...');

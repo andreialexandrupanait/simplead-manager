@@ -1,4 +1,4 @@
-<div @if($hasRunningJobs) wire:poll.1s="checkJobProgress" @endif>
+<div {!! $hasRunningJobs ? 'wire:poll.1s="checkJobProgress"' : '' !!}>
     <x-ui.page-header
         title="Overview"
         subtitle="Site health, status, and key metrics"
@@ -9,6 +9,17 @@
                         class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
                     <x-icons.globe class="h-4 w-4" />
                     Open WP Admin
+                </button>
+                <button wire:click="clearCache"
+                        wire:confirm="Clear all caches on this site?"
+                        wire:loading.attr="disabled"
+                        wire:target="clearCache"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span wire:loading.remove wire:target="clearCache">Clear Cache</span>
+                    <span wire:loading wire:target="clearCache">Clearing...</span>
                 </button>
                 <button wire:click="syncNow"
                         class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
@@ -35,28 +46,32 @@
         </x-slot:actions>
     </x-ui.page-header>
 
+    <x-ui.circuit-breaker-banner :site="$site" />
+
     <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
-    {{-- 3-Column Responsive Grid --}}
-    <div class="grid gap-4 lg:grid-cols-12">
+    {{-- Two-column layout --}}
+    <div class="grid gap-4 lg:grid-cols-4">
 
-        {{-- Left Column (Narrow) - 3 columns --}}
-        <div class="space-y-4 lg:col-span-3">
-            @include('livewire.sites.detail.overview._site-info-card')
-            @include('livewire.sites.detail.overview._reports-card')
-            @include('livewire.sites.detail.overview._client-card')
+        {{-- Main Content (left, 3/4 width) --}}
+        <div class="lg:col-span-3 space-y-6">
+            <livewire:sites.detail.site-plugins :site="$site" :embedded="true" />
+            @include('livewire.sites.detail.overview._database-card')
+            @include('livewire.sites.detail.overview._analytics-performance-card')
+            @include('livewire.sites.detail.overview._search-console-card')
         </div>
 
-        {{-- Center Column (Wide) - 5 columns --}}
-        <div class="space-y-4 lg:col-span-5">
-            @include('livewire.sites.detail.overview._uptime-card')
-            @include('livewire.sites.detail.overview._analytics-card')
-        </div>
-
-        {{-- Right Column (Medium) - 4 columns --}}
-        <div class="space-y-4 lg:col-span-4">
-            @include('livewire.sites.detail.overview._updates-card')
-            @include('livewire.sites.detail.overview._backups-card')
+        {{-- Overview Sidebar (right, 1/3 width) --}}
+        <div>
+            <div class="sticky top-20 space-y-4">
+                @include('livewire.sites.detail.overview._health-bar')
+                @include('livewire.sites.detail.overview._site-info-card')
+                @include('livewire.sites.detail.overview._uptime-card')
+                @include('livewire.sites.detail.overview._backups-card')
+                @include('livewire.sites.detail.overview._security-card')
+                @include('livewire.sites.detail.overview._reports-card')
+                @include('livewire.sites.detail.overview._client-card')
+            </div>
         </div>
 
     </div>

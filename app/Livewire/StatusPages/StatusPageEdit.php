@@ -156,7 +156,7 @@ class StatusPageEdit extends Component
             return;
         }
 
-        $this->redirect(route('status-pages.edit', $this->statusPage), navigate: true);
+        $this->redirect(route('settings.status-pages.edit', $this->statusPage), navigate: true);
     }
 
     public function createIncident(): void

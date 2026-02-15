@@ -220,10 +220,10 @@ return [
             'queue' => ['sync', 'backups', 'performance', 'reports', 'notifications', 'default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
-            'maxProcesses' => 1,
+            'maxProcesses' => 2,
             'maxTime' => 0,
             'maxJobs' => 0,
-            'memory' => 128,
+            'memory' => 1024,
             'tries' => 3,
             'timeout' => 3600,
             'nice' => 0,
@@ -233,10 +233,10 @@ return [
     'environments' => [
         'production' => [
             'supervisor-uptime' => [
-                'maxProcesses' => (int) env('HORIZON_UPTIME_WORKERS', 2),
+                'maxProcesses' => (int) env('HORIZON_UPTIME_WORKERS', 1),
             ],
             'supervisor-general' => [
-                'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 3),
+                'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 2),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

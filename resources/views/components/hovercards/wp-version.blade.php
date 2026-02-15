@@ -34,7 +34,7 @@
         @endif
     </div>
     <div class="mt-3 border-t border-gray-100 pt-3">
-        <a href="{{ route('sites.updates', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Updates</a>
+        <a href="{{ route('sites.plugins', $site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">View Updates</a>
     </div>
 @else
     <p class="text-sm text-gray-500">Unknown</p>

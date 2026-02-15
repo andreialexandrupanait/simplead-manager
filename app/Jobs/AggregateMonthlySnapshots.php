@@ -62,7 +62,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
                 END as uptime_pct,
                 SUM(CASE WHEN NOT uc.is_up THEN 1 ELSE 0 END) as down_checks
             FROM uptime_checks uc
-            JOIN uptime_monitors um ON um.id = uc.uptime_monitor_id
+            JOIN uptime_monitors um ON um.id = uc.monitor_id
             WHERE uc.checked_at BETWEEN ? AND ?
             GROUP BY um.site_id
         ", [$start, $end]);
@@ -207,7 +207,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
         $rows = DB::select("
             SELECT um.site_id, COUNT(*) as incident_count
             FROM uptime_incidents ui
-            JOIN uptime_monitors um ON um.id = ui.uptime_monitor_id
+            JOIN uptime_monitors um ON um.id = ui.monitor_id
             WHERE ui.started_at BETWEEN ? AND ?
             GROUP BY um.site_id
         ", [$start, $end]);

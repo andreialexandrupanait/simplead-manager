@@ -2,17 +2,13 @@
 
 namespace App\Livewire\Sites\Detail;
 
-use App\Jobs\CheckAbandonedPluginsJob;
 use App\Jobs\CreateBackup;
-use App\Jobs\RunSafeUpdate;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UpdateLog;
 use App\Services\ActivityLogger;
-use App\Services\PluginConflictService;
-use App\Services\SafeUpdateService;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -24,15 +20,15 @@ class SitePlugins extends Component
     use WithJobTracking, WithSiteAuthorization;
 
     private static ?bool $hasSiteUsersTable = null;
-    private static ?bool $hasSitePluginConflictsTable = null;
 
     public Site $site;
+    public bool $embedded = false;
 
     public string $tab = 'plugins';
     public string $filter = 'all';
     public string $search = '';
 
-    // Fix 1: Per-item update results
+    // Per-item update results
     public array $updateResults = [];
 
     // Delete confirmation state
@@ -42,13 +38,6 @@ class SitePlugins extends Component
     public ?string $confirmingDeleteThemeName = null;
     public array $confirmingDeleteThemeChildren = [];
 
-    // Rollback state
-    public ?int $rollbackItemId = null;
-    public ?string $rollbackType = null;
-
-    // Safe Update Mode
-    public bool $safeUpdateMode = false;
-
     // Detail modal
     public ?array $detailItem = null;
 
@@ -56,16 +45,19 @@ class SitePlugins extends Component
     {
         return [
             'sync' => 'sync-wp-' . $this->site->id,
-            'abandoned' => 'abandoned-plugins-' . $this->site->id,
-            'safe-update' => 'safe-update-' . $this->site->id,
+            'backup' => 'backup-' . $this->site->id,
         ];
     }
 
-    public function mount(Site $site): void
+    public function mount(Site $site, bool $embedded = false): void
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        $this->embedded = $embedded;
         $this->initJobTracking();
+
+        // In embedded mode, show all plugins (no auto-filter)
+
     }
 
     #[Computed]
@@ -79,8 +71,6 @@ class SitePlugins extends Component
             $query->where('is_active', false);
         } elseif ($this->filter === 'updates') {
             $query->where('has_update', true);
-        } elseif ($this->filter === 'abandoned') {
-            $query->problematic();
         }
 
         if ($this->search) {
@@ -145,6 +135,11 @@ class SitePlugins extends Component
         return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
+    private function cleanErrorMessage(string $message): string
+    {
+        return \Illuminate\Support\Str::limit(trim(strip_tags($message)), 200);
+    }
+
     #[Computed]
     public function pluginCounts()
     {
@@ -153,8 +148,7 @@ class SitePlugins extends Component
                 COUNT(*) as total,
                 SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
                 SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as inactive,
-                SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates,
-                SUM(CASE WHEN is_abandoned = true OR is_closed = true THEN 1 ELSE 0 END) as issues
+                SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates
             ")
             ->first();
 
@@ -163,36 +157,7 @@ class SitePlugins extends Component
             'active' => (int) $counts->active,
             'inactive' => (int) $counts->inactive,
             'updates' => (int) $counts->updates,
-            'issues' => (int) $counts->issues,
         ];
-    }
-
-    #[Computed]
-    public function abandonedCounts()
-    {
-        return [
-            'abandoned' => $this->site->sitePlugins()->abandoned()->count(),
-            'closed' => $this->site->sitePlugins()->closed()->count(),
-        ];
-    }
-
-    #[Computed]
-    public function lastAbandonedCheck()
-    {
-        return $this->site->sitePlugins()->max('abandoned_checked_at');
-    }
-
-    #[Computed]
-    public function activeConflicts()
-    {
-        if (!(static::$hasSitePluginConflictsTable ??= Schema::hasTable('site_plugin_conflicts'))) {
-            return collect();
-        }
-
-        return $this->site->sitePluginConflicts()
-            ->where('status', 'active')
-            ->with('conflict')
-            ->get();
     }
 
     #[Computed]
@@ -240,12 +205,14 @@ class SitePlugins extends Component
         $this->tab = $tab;
         $this->filter = 'all';
         $this->search = '';
+        $this->dispatch('bulk-selection-reset');
         unset($this->plugins, $this->themes, $this->users, $this->updateHistory);
     }
 
     public function setFilter(string $filter): void
     {
         $this->filter = $filter;
+        $this->dispatch('bulk-selection-reset');
         unset($this->plugins, $this->themes, $this->updateHistory);
     }
 
@@ -309,13 +276,19 @@ class SitePlugins extends Component
                 'success' => $success,
                 'message' => $success
                     ? "Updated to v" . ($updateResult['to_version'] ?? $updateVersion)
-                    : ($updateResult['error'] ?? 'Update failed'),
+                    : $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
                 'version' => $updateResult['to_version'] ?? $updateVersion,
             ];
         } catch (\Exception $e) {
+            Log::warning("{$type} update failed: {$name} on site {$this->site->name}", [
+                'type' => $type,
+                'slug' => $slug,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
             return [
                 'success' => false,
-                'message' => "Failed: {$e->getMessage()}",
+                'message' => "Failed: " . $this->cleanErrorMessage($e->getMessage()),
                 'version' => null,
             ];
         }
@@ -353,9 +326,14 @@ class SitePlugins extends Component
                 'version' => null,
             ];
         } catch (\Exception $e) {
+            Log::warning("Plugin activation failed: {$plugin->name} on site {$this->site->name}", [
+                'plugin' => $plugin->file,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
             $this->updateResults['plugin_' . $id] = [
                 'success' => false,
-                'message' => "Activate failed: {$e->getMessage()}",
+                'message' => "Activate failed: " . $this->cleanErrorMessage($e->getMessage()),
                 'version' => null,
             ];
         }
@@ -378,9 +356,14 @@ class SitePlugins extends Component
                 'version' => null,
             ];
         } catch (\Exception $e) {
+            Log::warning("Plugin deactivation failed: {$plugin->name} on site {$this->site->name}", [
+                'plugin' => $plugin->file,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
             $this->updateResults['plugin_' . $id] = [
                 'success' => false,
-                'message' => "Deactivate failed: {$e->getMessage()}",
+                'message' => "Deactivate failed: " . $this->cleanErrorMessage($e->getMessage()),
                 'version' => null,
             ];
         }
@@ -435,9 +418,14 @@ class SitePlugins extends Component
                 'version' => null,
             ];
         } catch (\Exception $e) {
+            Log::warning("Theme activation failed: {$theme->name} on site {$this->site->name}", [
+                'theme' => $theme->slug,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
             $this->updateResults['theme_' . $id] = [
                 'success' => false,
-                'message' => "Activate failed: {$e->getMessage()}",
+                'message' => "Activate failed: " . $this->cleanErrorMessage($e->getMessage()),
                 'version' => null,
             ];
         }
@@ -486,130 +474,182 @@ class SitePlugins extends Component
         unset($this->themes, $this->themeCounts);
     }
 
-    // ── Rollback ──
+    // ── Bulk Actions ──
 
-    #[Computed]
-    public function rollbackHistory()
+    public function deletePluginDirect(int $id): array
     {
-        if (!$this->rollbackItemId || !$this->rollbackType) {
-            return collect();
-        }
-
-        $query = UpdateLog::where('site_id', $this->site->id)
-            ->where('type', $this->rollbackType)
-            ->where('success', true)
-            ->orderByDesc('performed_at');
-
-        if ($this->rollbackType === 'plugin') {
-            $plugin = $this->site->sitePlugins()->find($this->rollbackItemId);
-            if ($plugin) {
-                $query->where('slug', $plugin->slug);
-            }
-        } else {
-            $theme = $this->site->siteThemes()->find($this->rollbackItemId);
-            if ($theme) {
-                $query->where('slug', $theme->slug);
-            }
-        }
-
-        return $query->limit(10)->get();
-    }
-
-    public function showRollback(string $type, int $id): void
-    {
-        $this->rollbackType = $type;
-        $this->rollbackItemId = $id;
-        unset($this->rollbackHistory);
-        $this->dispatch('open-modal-rollback');
-    }
-
-    public function rollbackTo(int $logId): void
-    {
-        $log = UpdateLog::where('site_id', $this->site->id)->findOrFail($logId);
+        $plugin = $this->site->sitePlugins()->findOrFail($id);
 
         try {
             $api = new WordPressApiService($this->site);
-            $api->rollback($log->type, $log->slug, $log->from_version);
+            $api->deletePlugin($plugin->file);
+            ActivityLogger::pluginDeleted($this->site, $plugin->name);
+            unset($this->plugins, $this->pluginCounts);
+            return ['success' => true, 'message' => "{$plugin->name} deleted.", 'name' => $plugin->name];
+        } catch (\Exception $e) {
+            Log::warning("Plugin delete failed: {$plugin->name} on site {$this->site->name}", [
+                'plugin' => $plugin->file,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
+            $msg = "Delete failed: " . $this->cleanErrorMessage($e->getMessage());
+            $this->updateResults['plugin_' . $id] = ['success' => false, 'message' => $msg, 'version' => null];
+            unset($this->plugins, $this->pluginCounts);
+            return ['success' => false, 'message' => $msg, 'name' => $plugin->name];
+        }
+    }
 
-            ActivityLogger::pluginRolledBack(
-                $this->site,
-                $log->name,
-                $log->to_version ?? 'current',
-                $log->from_version,
-            );
+    public function deleteThemeDirect(int $id): array
+    {
+        $theme = $this->site->siteThemes()->findOrFail($id);
+
+        try {
+            $api = new WordPressApiService($this->site);
+            $api->deleteTheme($theme->slug);
+            ActivityLogger::themeDeleted($this->site, $theme->name);
+            unset($this->themes, $this->themeCounts);
+            return ['success' => true, 'message' => "{$theme->name} deleted.", 'name' => $theme->name];
+        } catch (\Exception $e) {
+            Log::warning("Theme delete failed: {$theme->name} on site {$this->site->name}", [
+                'theme' => $theme->slug,
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
+            $msg = "Delete failed: " . $this->cleanErrorMessage($e->getMessage());
+            $this->updateResults['theme_' . $id] = ['success' => false, 'message' => $msg, 'version' => null];
+            unset($this->themes, $this->themeCounts);
+            return ['success' => false, 'message' => $msg, 'name' => $theme->name];
+        }
+    }
+
+    public function bulkUpdatePlugins(array $ids): array
+    {
+        $plugins = $this->site->sitePlugins()->whereIn('id', $ids)->where('has_update', true)->get();
+        if ($plugins->isEmpty()) {
+            return ['success' => 0, 'failed' => 0];
+        }
+
+        $this->runPreUpdateBackup();
+        $api = new WordPressApiService($this->site);
+
+        try {
+            $result = $api->updatePlugins($plugins->pluck('file')->toArray());
+            $apiResults = $result['results'] ?? [];
+        } catch (\Exception $e) {
+            return ['success' => 0, 'failed' => count($plugins), 'error' => $e->getMessage()];
+        }
+
+        $success = 0;
+        $failed = 0;
+
+        foreach ($plugins as $plugin) {
+            $updateResult = $apiResults[$plugin->file] ?? [];
+            $wasSuccess = $updateResult['success'] ?? false;
 
             UpdateLog::create([
                 'site_id' => $this->site->id,
                 'user_id' => auth()->id(),
-                'type' => $log->type,
-                'name' => $log->name,
-                'slug' => $log->slug,
-                'from_version' => $log->to_version,
-                'to_version' => $log->from_version,
-                'success' => true,
-                'error_message' => null,
+                'type' => 'plugin',
+                'name' => $plugin->name,
+                'slug' => $plugin->slug,
+                'from_version' => $plugin->version,
+                'to_version' => $plugin->update_version,
+                'success' => $wasSuccess,
+                'error_message' => $updateResult['error'] ?? null,
                 'performed_at' => now(),
             ]);
 
-            SyncWordPressSite::dispatch($this->site);
-            session()->flash('update-success', "{$log->name} rolled back to v{$log->from_version}.");
-        } catch (\Exception $e) {
-            session()->flash('update-error', "Rollback failed: {$e->getMessage()}");
+            if ($wasSuccess) {
+                $success++;
+                $this->updateResults['plugin_' . $plugin->id] = [
+                    'success' => true,
+                    'message' => "Updated to v{$plugin->update_version}",
+                    'version' => $plugin->update_version,
+                ];
+            } else {
+                $failed++;
+                $this->updateResults['plugin_' . $plugin->id] = [
+                    'success' => false,
+                    'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
+                    'version' => null,
+                ];
+            }
         }
 
-        $this->rollbackItemId = null;
-        $this->rollbackType = null;
-        $this->dispatch('close-modal-rollback');
-        unset($this->plugins, $this->themes, $this->pluginCounts, $this->themeCounts, $this->updateHistory);
+        SyncWordPressSite::dispatch($this->site);
+        unset($this->plugins, $this->pluginCounts);
+
+        return ['success' => $success, 'failed' => $failed];
     }
 
-    // ── Conflict resolution ──
-
-    public function deactivateConflictPlugin(string $slug): void
+    public function bulkUpdateThemes(array $ids): array
     {
-        $plugin = $this->site->sitePlugins()->where('slug', $slug)->first();
-
-        if (!$plugin) {
-            session()->flash('update-error', "Plugin not found: {$slug}");
-            return;
+        $themes = $this->site->siteThemes()->whereIn('id', $ids)->where('has_update', true)->get();
+        if ($themes->isEmpty()) {
+            return ['success' => 0, 'failed' => 0];
         }
+
+        $this->runPreUpdateBackup();
+        $api = new WordPressApiService($this->site);
 
         try {
-            $api = new WordPressApiService($this->site);
-            $api->deactivatePlugin($plugin->file);
-            ActivityLogger::pluginDeactivated($this->site, $plugin->name);
-            SyncWordPressSite::dispatch($this->site);
-            session()->flash('update-success', "{$plugin->name} deactivated to resolve conflict.");
+            $result = $api->updateThemes($themes->pluck('slug')->toArray());
+            $apiResults = $result['results'] ?? [];
         } catch (\Exception $e) {
-            session()->flash('update-error', "Deactivate failed: {$e->getMessage()}");
+            return ['success' => 0, 'failed' => count($themes), 'error' => $e->getMessage()];
         }
 
-        unset($this->plugins, $this->pluginCounts, $this->activeConflicts);
-    }
+        $success = 0;
+        $failed = 0;
 
-    public function checkAbandonedNow(): void
-    {
-        $this->dispatchTrackedJob('abandoned', new CheckAbandonedPluginsJob($this->site), 'Checking for abandoned plugins...');
-        unset($this->abandonedCounts, $this->lastAbandonedCheck, $this->plugins, $this->pluginCounts);
-    }
+        foreach ($themes as $theme) {
+            $updateResult = $apiResults[$theme->slug] ?? [];
+            $wasSuccess = $updateResult['success'] ?? false;
 
-    public function checkConflictsNow(): void
-    {
-        try {
-            PluginConflictService::checkSite($this->site);
-            session()->flash('update-success', 'Plugin conflict check completed.');
-        } catch (\Exception $e) {
-            session()->flash('update-error', "Conflict check failed: {$e->getMessage()}");
+            UpdateLog::create([
+                'site_id' => $this->site->id,
+                'user_id' => auth()->id(),
+                'type' => 'theme',
+                'name' => $theme->name,
+                'slug' => $theme->slug,
+                'from_version' => $theme->version,
+                'to_version' => $theme->update_version,
+                'success' => $wasSuccess,
+                'error_message' => $updateResult['error'] ?? null,
+                'performed_at' => now(),
+            ]);
+
+            if ($wasSuccess) {
+                $success++;
+                $this->updateResults['theme_' . $theme->id] = [
+                    'success' => true,
+                    'message' => "Updated to v{$theme->update_version}",
+                    'version' => $theme->update_version,
+                ];
+            } else {
+                $failed++;
+                $this->updateResults['theme_' . $theme->id] = [
+                    'success' => false,
+                    'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
+                    'version' => null,
+                ];
+            }
         }
 
-        unset($this->activeConflicts);
+        SyncWordPressSite::dispatch($this->site);
+        unset($this->themes, $this->themeCounts);
+
+        return ['success' => $success, 'failed' => $failed];
     }
 
-    public function dismissConflict(int $id): void
+    public function getFilteredPluginIds(): array
     {
-        $conflict = $this->site->sitePluginConflicts()->findOrFail($id);
-        PluginConflictService::dismiss($conflict);
-        unset($this->activeConflicts);
+        return $this->plugins->pluck('id')->toArray();
+    }
+
+    public function getFilteredThemeIds(): array
+    {
+        return $this->themes->pluck('id')->toArray();
     }
 
     public function syncNow(): void
@@ -638,62 +678,7 @@ class SitePlugins extends Component
 
     public function quickBackup(): void
     {
-        dispatch(new CreateBackup($this->site, 'full', 'manual'));
-        $this->dispatch('notify', type: 'success', message: 'Backup started in background.');
-    }
-
-    // ── Safe Update Methods ──
-
-    public function safeUpdatePlugin(int $pluginId): void
-    {
-        $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
-
-        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
-            $this->site, 'plugin', $plugin->file, $plugin->name,
-            $plugin->version, $plugin->update_version
-        );
-
-        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
-
-        session()->flash('update-success', "Safe update initiated for {$plugin->name}. Backup → Update → Health Check will run automatically.");
-        unset($this->activeSafeUpdates);
-    }
-
-    public function safeUpdateTheme(int $themeId): void
-    {
-        $theme = $this->site->siteThemes()->findOrFail($themeId);
-
-        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
-            $this->site, 'theme', $theme->slug, $theme->name,
-            $theme->version, $theme->update_version
-        );
-
-        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
-
-        session()->flash('update-success', "Safe update initiated for {$theme->name}. Backup → Update → Health Check will run automatically.");
-        unset($this->activeSafeUpdates);
-    }
-
-    public function safeUpdateCore(): void
-    {
-        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
-            $this->site, 'core', 'wordpress', 'WordPress Core',
-            $this->site->wp_version, $this->site->core_update_version
-        );
-
-        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
-
-        session()->flash('update-success', 'Safe core update initiated. Backup → Update → Health Check will run automatically.');
-        unset($this->activeSafeUpdates);
-    }
-
-    #[Computed]
-    public function activeSafeUpdates()
-    {
-        return $this->site->safeUpdates()
-            ->whereIn('status', ['pending', 'backing_up', 'updating', 'health_checking', 'rolling_back'])
-            ->orderByDesc('started_at')
-            ->get();
+        $this->dispatchTrackedJob('backup', new CreateBackup($this->site, 'full', 'manual'), 'Creating backup...');
     }
 
     // ── Core Update ──
@@ -788,16 +773,21 @@ class SitePlugins extends Component
 
     protected function onJobFinished(string $jobName, array $data): void
     {
-        unset($this->plugins, $this->themes, $this->users, $this->pluginCounts, $this->themeCounts, $this->userCount, $this->abandonedCounts, $this->lastAbandonedCheck, $this->activeConflicts, $this->updateHistory, $this->activeSafeUpdates);
+        unset($this->plugins, $this->themes, $this->users, $this->pluginCounts, $this->themeCounts, $this->userCount, $this->updateHistory);
         $this->site->refresh();
     }
 
     public function render()
     {
-        return view('livewire.sites.detail.site-plugins')
-            ->layout('components.layouts.app', [
+        $view = view('livewire.sites.detail.site-plugins');
+
+        if (!$this->embedded) {
+            $view->layout('components.layouts.app', [
                 'siteContext' => $this->site,
                 'title' => $this->site->name . ' — Plugins & Themes',
             ]);
+        }
+
+        return $view;
     }
 }

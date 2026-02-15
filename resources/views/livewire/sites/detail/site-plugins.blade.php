@@ -1,11 +1,14 @@
 <div
-    @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif
+    {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}
     x-data="{
+        selected: [],
+        bulkAction: '',
         bulkUpdating: false,
         bulkTotal: 0,
         bulkCompleted: 0,
         bulkFailed: 0,
         bulkType: '',
+        bulkSummary: null,
         async updateAllPlugins() {
             const ids = await $wire.getUpdatablePluginIds();
             if (!ids.length) return;
@@ -46,13 +49,111 @@
             await $wire.syncNow();
             this.bulkUpdating = false;
         },
+        async applyBulkAction(tab) {
+            if (!this.selected.length || !this.bulkAction) return;
+            const action = this.bulkAction;
+            if (action === 'delete' && !confirm('Delete ' + this.selected.length + ' selected item(s)? This cannot be undone.')) return;
+            this.bulkUpdating = true;
+            this.bulkSummary = null;
+            this.bulkTotal = this.selected.length;
+            this.bulkCompleted = 0;
+            this.bulkFailed = 0;
+            this.bulkType = action;
+            const ids = [...this.selected];
+            const errors = [];
+
+            if (action === 'update') {
+                // Batch update — single API call, no rate limit issue
+                try {
+                    const result = tab === 'plugins'
+                        ? await $wire.bulkUpdatePlugins(ids)
+                        : await $wire.bulkUpdateThemes(ids);
+                    this.bulkCompleted = ids.length;
+                    this.bulkFailed = result.failed || 0;
+                    if (result.error) errors.push(result.error);
+                } catch (e) {
+                    this.bulkCompleted = ids.length;
+                    this.bulkFailed = ids.length;
+                    errors.push(e.message || 'Update request failed');
+                }
+            } else {
+                // One-by-one for activate/deactivate/delete
+                for (const id of ids) {
+                    try {
+                        let result;
+                        if (tab === 'plugins') {
+                            if (action === 'activate') result = await $wire.activatePlugin(id);
+                            else if (action === 'deactivate') result = await $wire.deactivatePlugin(id);
+                            else if (action === 'delete') result = await $wire.deletePluginDirect(id);
+                        } else {
+                            if (action === 'activate') result = await $wire.activateTheme(id);
+                            else if (action === 'delete') result = await $wire.deleteThemeDirect(id);
+                        }
+                        if (result && result.success === false) {
+                            this.bulkFailed++;
+                            errors.push((result.name || 'Item') + ': ' + (result.message || 'Failed'));
+                        }
+                    } catch (e) {
+                        this.bulkFailed++;
+                        errors.push(e.message || 'Request failed');
+                    }
+                    this.bulkCompleted++;
+                    if (action === 'delete' && this.bulkCompleted < ids.length) {
+                        await new Promise(r => setTimeout(r, 3000));
+                    }
+                }
+            }
+
+            const summary = {
+                action: action,
+                success: this.bulkTotal - this.bulkFailed,
+                failed: this.bulkFailed,
+                errors: errors
+            };
+
+            this.selected = [];
+            this.bulkAction = '';
+            this.bulkUpdating = false;
+            this.bulkSummary = summary;
+            await $wire.syncNow();
+        },
         autoDismiss(key) {
-            setTimeout(() => { $wire.clearResult(key); }, 5000);
+            const result = $wire.updateResults[key];
+            if (result && result.success) {
+                setTimeout(() => { $wire.clearResult(key); }, 5000);
+            }
         }
     }"
+    x-on:bulk-selection-reset.window="selected = []; bulkAction = ''"
 >
-    {{-- Header --}}
-    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes" />
+    @if(!$embedded)
+    {{-- Full page header with quick actions --}}
+    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes">
+        <x-slot:actions>
+            <x-ui.button variant="secondary" wire:click="openWpAdmin" wire:loading.attr="disabled" wire:target="openWpAdmin">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+                <span wire:loading.remove wire:target="openWpAdmin">WP Admin</span>
+                <span wire:loading wire:target="openWpAdmin">Opening...</span>
+            </x-ui.button>
+            <x-ui.button variant="secondary" wire:click="quickBackup" wire:loading.attr="disabled" wire:target="quickBackup">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                </svg>
+                <span wire:loading.remove wire:target="quickBackup">Backup Now</span>
+                <span wire:loading wire:target="quickBackup">Starting...</span>
+            </x-ui.button>
+            <x-ui.button variant="secondary" wire:click="syncNow" wire:loading.attr="disabled">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span wire:loading.remove wire:target="syncNow">Sync Now</span>
+                <span wire:loading wire:target="syncNow">Syncing...</span>
+            </x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
+    @endif
 
     {{-- Indeterminate progress bar styles --}}
     <style>
@@ -66,112 +167,22 @@
         }
     </style>
 
-    {{-- Quick Actions Toolbar --}}
-    <div class="mb-6 flex flex-wrap items-center gap-2">
-        {{-- WP Admin --}}
-        <x-ui.button variant="secondary" wire:click="openWpAdmin" wire:loading.attr="disabled" wire:target="openWpAdmin">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-            </svg>
-            <span wire:loading.remove wire:target="openWpAdmin">WP Admin</span>
-            <span wire:loading wire:target="openWpAdmin">Opening...</span>
-        </x-ui.button>
-
-        {{-- Quick Backup --}}
-        <x-ui.button variant="secondary" wire:click="quickBackup" wire:loading.attr="disabled" wire:target="quickBackup">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-            </svg>
-            <span wire:loading.remove wire:target="quickBackup">Backup Now</span>
-            <span wire:loading wire:target="quickBackup">Starting...</span>
-        </x-ui.button>
-
-        {{-- Sync Now --}}
-        <x-ui.button variant="secondary" wire:click="syncNow" wire:loading.attr="disabled">
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-            <span wire:loading.remove wire:target="syncNow">Sync Now</span>
-            <span wire:loading wire:target="syncNow">Syncing...</span>
-        </x-ui.button>
-
-        <div class="flex-1"></div>
-
-        {{-- Safe Update Mode Toggle --}}
-        <label class="flex items-center gap-2 cursor-pointer">
-            <div class="relative">
-                <input type="checkbox" wire:model.live="safeUpdateMode" class="sr-only peer">
-                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-            </div>
-            <span class="text-sm font-medium text-gray-700">Safe Update Mode</span>
-            @if($safeUpdateMode)
-                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-            @endif
-        </label>
-    </div>
-
+    @if(!$embedded)
     {{-- Flash messages --}}
     <x-ui.flash-alert type="success" key="update-success" />
     <x-ui.flash-alert type="error" key="update-error" />
 
     {{-- Job Progress --}}
     <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
-    <x-ui.job-progress job-key="abandoned" :jobs="$trackedJobs" title="Checking for abandoned plugins..." />
-    <x-ui.job-progress job-key="safe-update" :jobs="$trackedJobs" title="Running safe update..." />
-
-    {{-- Safe Updates in Progress --}}
-    @if($this->activeSafeUpdates->count() > 0)
-        <div class="mb-4 rounded-lg border border-purple-200 bg-purple-50 p-4">
-            <h4 class="text-sm font-semibold text-purple-900 mb-3">Safe Updates in Progress</h4>
-            <div class="space-y-3">
-                @foreach($this->activeSafeUpdates as $safeUpdate)
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-sm font-medium text-purple-900">{{ $safeUpdate->name }}</span>
-                            <x-ui.badge :variant="match($safeUpdate->status) {
-                                'pending' => 'gray',
-                                'backing_up' => 'yellow',
-                                'updating' => 'purple',
-                                'health_checking' => 'purple',
-                                'rolling_back' => 'yellow',
-                                'completed' => 'green',
-                                'failed' => 'red',
-                                default => 'gray',
-                            }">
-                                {{ ucfirst(str_replace('_', ' ', $safeUpdate->status)) }}
-                            </x-ui.badge>
-                        </div>
-                        <div class="flex items-center gap-1 text-xs text-gray-500">
-                            @foreach(['pending', 'backing_up', 'updating', 'health_checking', 'completed'] as $step)
-                                @php
-                                    $steps = ['pending', 'backing_up', 'updating', 'health_checking', 'completed'];
-                                    $currentIndex = array_search($safeUpdate->status, $steps);
-                                    $stepIndex = array_search($step, $steps);
-                                    $isActive = $currentIndex !== false && $stepIndex <= $currentIndex;
-                                @endphp
-                                <div class="flex items-center gap-1">
-                                    <div class="h-2 w-2 rounded-full {{ $isActive ? 'bg-purple-500' : 'bg-gray-200' }}"></div>
-                                    <span class="{{ $isActive ? 'text-purple-600' : '' }}">{{ ucfirst(str_replace('_', ' ', $step)) }}</span>
-                                </div>
-                                @if(!$loop->last)
-                                    <div class="h-px w-4 {{ $isActive ? 'bg-purple-300' : 'bg-gray-200' }}"></div>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
+    <x-ui.job-progress job-key="backup" :jobs="$trackedJobs" title="Creating backup..." />
     @endif
 
+    @if(!$embedded)
     {{-- Bulk update progress bar --}}
     <div x-show="bulkUpdating" x-cloak class="mb-4 rounded-lg bg-blue-50 p-4">
         <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium text-blue-700">
-                Updating <span x-text="bulkCompleted"></span> of <span x-text="bulkTotal"></span>
-                <span x-text="bulkType"></span>...
+            <span class="text-sm font-medium text-blue-700"
+                x-text="({plugins: 'Updating plugins', themes: 'Updating themes', activate: 'Activating', deactivate: 'Deactivating', 'delete': 'Deleting', update: 'Updating'}[bulkType] || 'Processing') + '... ' + bulkCompleted + ' of ' + bulkTotal">
             </span>
             <span x-show="bulkFailed > 0" class="text-xs text-red-600" x-text="bulkFailed + ' failed'"></span>
         </div>
@@ -181,136 +192,45 @@
         </div>
     </div>
 
-    {{-- Plugin Conflict Warnings --}}
-    @if($tab === 'plugins' && $this->activeConflicts->count() > 0)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div class="flex items-center justify-between mb-3">
-                <h4 class="text-sm font-semibold text-red-800">
-                    {{ $this->activeConflicts->count() }} Plugin Conflict{{ $this->activeConflicts->count() > 1 ? 's' : '' }} Detected
-                </h4>
-                <x-ui.button variant="secondary" size="sm" wire:click="checkConflictsNow" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="checkConflictsNow">Re-check</span>
-                    <span wire:loading wire:target="checkConflictsNow">Checking...</span>
-                </x-ui.button>
+    {{-- Bulk action results summary --}}
+    <div x-show="bulkSummary" x-cloak class="mb-4 rounded-lg border p-4"
+         :class="bulkSummary?.failed > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-sm font-medium"
+                   :class="bulkSummary?.failed > 0 ? 'text-red-800' : 'text-green-800'"
+                   x-text="(bulkSummary?.action ? bulkSummary.action.charAt(0).toUpperCase() + bulkSummary.action.slice(1) : '') + ' complete: ' + (bulkSummary?.success || 0) + ' succeeded' + (bulkSummary?.failed > 0 ? ', ' + bulkSummary.failed + ' failed' : '')">
+                </p>
+                <template x-if="bulkSummary?.errors?.length > 0">
+                    <ul class="mt-2 text-xs text-red-700 list-disc pl-4 space-y-0.5">
+                        <template x-for="(err, i) in bulkSummary.errors" :key="i">
+                            <li x-text="err"></li>
+                        </template>
+                    </ul>
+                </template>
             </div>
-            <div class="space-y-2">
-                @foreach($this->activeConflicts as $siteConflict)
-                    <div class="flex items-start justify-between gap-3 rounded-lg bg-white/60 p-3">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-sm font-medium text-red-900">{{ $siteConflict->plugin_a_slug }}</span>
-                                <span class="text-xs text-red-400">&times;</span>
-                                <span class="text-sm font-medium text-red-900">{{ $siteConflict->plugin_b_slug }}</span>
-                                @if($siteConflict->conflict)
-                                    @php
-                                        $sevColor = match($siteConflict->conflict->severity ?? '') {
-                                            'critical' => 'red',
-                                            'high' => 'red',
-                                            'medium' => 'yellow',
-                                            default => 'gray',
-                                        };
-                                    @endphp
-                                    <x-ui.badge :variant="$sevColor">{{ ucfirst($siteConflict->conflict->severity ?? 'unknown') }}</x-ui.badge>
-                                @endif
-                            </div>
-                            @if($siteConflict->conflict?->description)
-                                <p class="mt-1 text-xs text-red-700">{{ $siteConflict->conflict->description }}</p>
-                            @endif
-                        </div>
-                        <div class="flex shrink-0 items-center gap-1">
-                            <button
-                                wire:click="deactivateConflictPlugin('{{ $siteConflict->plugin_b_slug }}')"
-                                wire:loading.attr="disabled"
-                                class="rounded px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition"
-                                title="Deactivate {{ $siteConflict->plugin_b_slug }}"
-                            >
-                                Deactivate
-                            </button>
-                            <button
-                                wire:click="dismissConflict({{ $siteConflict->id }})"
-                                class="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition"
-                            >
-                                Dismiss
-                            </button>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            <button @click="bulkSummary = null" class="text-gray-400 hover:text-gray-600 ml-4 shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
-    @endif
+    </div>
 
-    {{-- Abandoned Plugin Warning Banner --}}
-    @if($tab === 'plugins' && ($this->abandonedCounts['abandoned'] > 0 || $this->abandonedCounts['closed'] > 0))
-        <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="text-sm font-semibold text-yellow-800">Plugin Health Issues</h4>
-                    <p class="mt-1 text-xs text-yellow-700">
-                        {{ $this->abandonedCounts['abandoned'] }} abandoned and {{ $this->abandonedCounts['closed'] }} closed plugin(s) detected.
-                        @if($this->lastAbandonedCheck)
-                            <span class="text-yellow-500">Last checked {{ \Carbon\Carbon::parse($this->lastAbandonedCheck)->diffForHumans() }}</span>
-                        @endif
-                    </p>
-                </div>
-                <x-ui.button variant="secondary" size="sm" wire:click="checkAbandonedNow" wire:loading.attr="disabled">
-                    <x-ui.spinner size="xs" class="hidden" wire:loading.class.remove="hidden" wire:target="checkAbandonedNow" />
-                    <span wire:loading.remove wire:target="checkAbandonedNow">Check Now</span>
-                    <span wire:loading wire:target="checkAbandonedNow">Checking...</span>
-                </x-ui.button>
-            </div>
-        </div>
-    @elseif($tab === 'plugins' && !$this->lastAbandonedCheck)
-        <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="text-sm font-medium text-gray-700">Abandoned Plugin Detection</h4>
-                    <p class="mt-0.5 text-xs text-gray-500">Check if any installed plugins are abandoned or closed on WordPress.org.</p>
-                </div>
-                <x-ui.button variant="secondary" size="sm" wire:click="checkAbandonedNow" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="checkAbandonedNow">Check Now</span>
-                    <span wire:loading wire:target="checkAbandonedNow">Checking...</span>
-                </x-ui.button>
-            </div>
-        </div>
-    @endif
+    @endif {{-- !$embedded bulk progress/results --}}
 
-    {{-- WordPress Core Update Banner --}}
-    @if($site->core_update_version)
-        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-                        <svg class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-semibold text-blue-900">WordPress Core Update Available</h4>
-                        <p class="text-xs text-blue-700">{{ $site->wp_version }} &rarr; {{ $site->core_update_version }}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    @if($safeUpdateMode)
-                        <x-ui.button size="sm" variant="secondary" class="!bg-purple-50 !text-purple-700 !border-purple-200 hover:!bg-purple-100" wire:click="safeUpdateCore" wire:loading.attr="disabled" wire:target="safeUpdateCore">
-                            <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                            </svg>
-                            <span wire:loading.remove wire:target="safeUpdateCore">Safe Update Core</span>
-                            <span wire:loading wire:target="safeUpdateCore">Starting...</span>
-                        </x-ui.button>
-                    @else
-                        <x-ui.button size="sm" wire:click="updateCore" wire:loading.attr="disabled" wire:target="updateCore">
-                            <span wire:loading.remove wire:target="updateCore">Update Core</span>
-                            <span wire:loading wire:target="updateCore">Updating...</span>
-                        </x-ui.button>
-                    @endif
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Tab switcher --}}
+    @if(!$embedded)
+    {{-- Tab switcher (full page only) --}}
     <div class="mb-4 flex items-center gap-1 rounded-lg bg-gray-100 p-1 w-fit">
+        <button
+            wire:click="setTab('wordpress')"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+        >
+            WordPress
+            @if($site->core_update_version)
+                <span class="ml-1 h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
+            @endif
+        </button>
         <button
             wire:click="setTab('plugins')"
             class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
@@ -325,6 +245,7 @@
             Themes
             <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->themeCounts['total'] }}</span>
         </button>
+        @if(!$embedded)
         <button
             wire:click="setTab('users')"
             class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'users' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
@@ -338,31 +259,114 @@
         >
             History
         </button>
+        @endif
     </div>
+    @endif {{-- !$embedded tab switcher --}}
 
     <x-ui.card :padding="false">
-        {{-- Summary bar + filter + search --}}
-        <div class="border-b p-4">
+        @if($embedded)
+        {{-- Embedded card header (matches overview card pattern) --}}
+        <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+            <div class="flex items-center gap-2">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-900">Plugins & Themes</h3>
+            </div>
+            <div class="flex items-center gap-3">
+                {{-- Compact tab switcher --}}
+                <div class="flex items-center gap-0.5 rounded-md bg-gray-100 p-0.5">
+                    <button
+                        wire:click="setTab('wordpress')"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                    >
+                        WP
+                        @if($site->core_update_version)
+                            <span class="ml-0.5 h-1.5 w-1.5 rounded-full bg-blue-500 inline-block"></span>
+                        @endif
+                    </button>
+                    <button
+                        wire:click="setTab('plugins')"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                    >
+                        Plugins
+                    </button>
+                    <button
+                        wire:click="setTab('themes')"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                    >
+                        Themes
+                    </button>
+                </div>
+                <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:text-purple-700" wire:navigate>
+                    View All →
+                </a>
+            </div>
+        </div>
+        @endif
+
+        {{-- Action loading status bar --}}
+        <div wire:loading.flex wire:target="updateCore, updatePlugin, updateTheme, activatePlugin, deactivatePlugin, activateTheme, toggleAutoUpdate, syncNow, deletePlugin, deleteTheme"
+             class="items-center gap-2 border-b bg-blue-50 px-4 py-2">
+            <svg class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <div class="h-1 w-16 shrink-0 rounded-full bg-blue-200 overflow-hidden">
+                <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
+            </div>
+            <span class="text-xs font-medium text-blue-700">
+                <span wire:loading wire:target="updateCore">Updating WordPress...</span>
+                <span wire:loading wire:target="updatePlugin">Updating plugin...</span>
+                <span wire:loading wire:target="updateTheme">Updating theme...</span>
+                <span wire:loading wire:target="activatePlugin">Activating plugin...</span>
+                <span wire:loading wire:target="deactivatePlugin">Deactivating plugin...</span>
+                <span wire:loading wire:target="activateTheme">Activating theme...</span>
+                <span wire:loading wire:target="toggleAutoUpdate">Toggling auto-update...</span>
+                <span wire:loading wire:target="syncNow">Syncing site data...</span>
+                <span wire:loading wire:target="deletePlugin">Deleting plugin...</span>
+                <span wire:loading wire:target="deleteTheme">Deleting theme...</span>
+            </span>
+        </div>
+
+        {{-- Summary bar + filter + search (not shown on WordPress tab) --}}
+        <div class="border-b p-4" @if($tab === 'wordpress') style="display: none;" @endif>
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-4">
                     @if($tab === 'plugins')
+                        @if(!$embedded)
+                            <input type="checkbox"
+                                :checked="selected.length === {{ count($this->plugins) }} && selected.length > 0"
+                                @change="selected = $event.target.checked ? @js($this->plugins->pluck('id')->values()->toArray()) : []"
+                                class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                title="Select all">
+                        @endif
                         <span class="text-sm text-gray-600">
                             {{ $this->pluginCounts['active'] }} active,
                             {{ $this->pluginCounts['inactive'] }} inactive,
                             {{ $this->pluginCounts['updates'] }} updates
                         </span>
-                        @if($this->pluginCounts['updates'] > 0)
+                        @if(!$embedded && $this->pluginCounts['updates'] > 0)
                             <x-ui.button size="sm" x-on:click="updateAllPlugins()" x-bind:disabled="bulkUpdating">
                                 <span x-show="!bulkUpdating || bulkType !== 'plugins'">Update All ({{ $this->pluginCounts['updates'] }})</span>
                                 <span x-show="bulkUpdating && bulkType === 'plugins'" x-cloak>Updating...</span>
                             </x-ui.button>
                         @endif
                     @elseif($tab === 'themes')
+                        @if(!$embedded)
+                            <input type="checkbox"
+                                :checked="selected.length === {{ count($this->themes) }} && selected.length > 0"
+                                @change="selected = $event.target.checked ? @js($this->themes->pluck('id')->values()->toArray()) : []"
+                                class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                title="Select all">
+                        @endif
                         <span class="text-sm text-gray-600">
                             {{ $this->themeCounts['active'] }} active,
                             {{ $this->themeCounts['updates'] }} updates
                         </span>
-                        @if($this->themeCounts['updates'] > 0)
+                        @if(!$embedded && $this->themeCounts['updates'] > 0)
                             <x-ui.button size="sm" x-on:click="updateAllThemes()" x-bind:disabled="bulkUpdating">
                                 <span x-show="!bulkUpdating || bulkType !== 'themes'">Update All ({{ $this->themeCounts['updates'] }})</span>
                                 <span x-show="bulkUpdating && bulkType === 'themes'" x-cloak>Updating...</span>
@@ -379,31 +383,38 @@
                     @endif
                 </div>
 
-                {{-- Filter pills --}}
+                {{-- Filter --}}
                 @if($tab !== 'users')
                     @php
                         if ($tab === 'plugins') {
                             $filters = ['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'updates' => 'Updates'];
-                            if ($this->pluginCounts['issues'] > 0) {
-                                $filters['abandoned'] = 'Issues (' . $this->pluginCounts['issues'] . ')';
-                            }
                         } elseif ($tab === 'history') {
                             $filters = ['all' => 'All', 'plugins' => 'Plugins', 'themes' => 'Themes'];
                         } else {
                             $filters = ['all' => 'All', 'active' => 'Active', 'updates' => 'Updates'];
                         }
                     @endphp
-                    <div class="flex rounded-lg bg-gray-100 p-1">
-                        @foreach($filters as $key => $label)
-                            <button
-                                wire:click="setFilter('{{ $key }}')"
-                                class="rounded-md px-3 py-1 text-xs font-medium transition
-                                    {{ $filter === $key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
-                            >
-                                {{ $label }}
-                            </button>
-                        @endforeach
-                    </div>
+                    @if($embedded)
+                        {{-- Compact dropdown filter for embedded mode --}}
+                        <select wire:model.live="filter" class="rounded-md border-gray-300 text-xs py-1 pl-2 pr-7 focus:border-purple-500 focus:ring-purple-500">
+                            @foreach($filters as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        {{-- Filter pills for full page --}}
+                        <div class="flex rounded-lg bg-gray-100 p-1">
+                            @foreach($filters as $key => $label)
+                                <button
+                                    wire:click="setFilter('{{ $key }}')"
+                                    class="rounded-md px-3 py-1 text-xs font-medium transition
+                                        {{ $filter === $key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                                >
+                                    {{ $label }}
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
                 @endif
 
                 <x-ui.search-input
@@ -414,6 +425,146 @@
             </div>
         </div>
 
+        {{-- Bulk action bar (full page only) --}}
+        @if(!$embedded && ($tab === 'plugins' || $tab === 'themes'))
+            <div x-show="selected.length > 0" x-cloak class="border-b bg-purple-50 px-4 py-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
+                    <select x-model="bulkAction" class="rounded-md border-gray-300 text-sm py-1 pl-2 pr-8 focus:border-purple-500 focus:ring-purple-500">
+                        <option value="">Bulk Actions</option>
+                        <option value="activate">Activate</option>
+                        @if($tab === 'plugins')
+                            <option value="deactivate">Deactivate</option>
+                        @endif
+                        <option value="delete">Delete</option>
+                        <option value="update">Update</option>
+                    </select>
+                    <x-ui.button size="sm" x-on:click="applyBulkAction('{{ $tab }}')" x-bind:disabled="!bulkAction || bulkUpdating">
+                        Apply
+                    </x-ui.button>
+                    <button @click="selected = []; bulkAction = ''" class="text-sm text-gray-500 hover:text-gray-700">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        @endif
+
+        {{-- WordPress tab --}}
+        @if($tab === 'wordpress')
+            @if($embedded)
+                {{-- Compact embedded WordPress view --}}
+                <div class="divide-y">
+                    {{-- WP Version row --}}
+                    <div class="flex items-center justify-between px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-500">WordPress</span>
+                            <span class="text-sm font-semibold text-gray-900">{{ $site->wp_version ?? '—' }}</span>
+                            @if(!$site->core_update_version)
+                                <x-ui.badge variant="green">Up to date</x-ui.badge>
+                            @endif
+                        </div>
+                        @if($site->core_update_version)
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-blue-600">{{ $site->wp_version }} &rarr; {{ $site->core_update_version }}</span>
+                                <x-ui.button size="sm" wire:click="updateCore" wire:loading.attr="disabled" wire:target="updateCore">
+                                    <span wire:loading.remove wire:target="updateCore">Update</span>
+                                    <span wire:loading wire:target="updateCore">Updating...</span>
+                                </x-ui.button>
+                            </div>
+                        @endif
+                    </div>
+                    {{-- PHP Version row --}}
+                    <div class="flex items-center justify-between px-4 py-3">
+                        <span class="text-sm text-gray-500">PHP</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $site->php_version ?? '—' }}</span>
+                    </div>
+                    {{-- Server row --}}
+                    <div class="flex items-center justify-between px-4 py-3">
+                        <span class="text-sm text-gray-500">Server</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $site->server_software ?? '—' }}</span>
+                    </div>
+                </div>
+            @else
+                {{-- Full page WordPress view --}}
+                <div class="p-6 space-y-6">
+                    {{-- Update banner or up-to-date badge --}}
+                    @if($site->core_update_version)
+                        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                                        <svg class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-blue-900">WordPress Core Update Available</h4>
+                                        <p class="text-xs text-blue-700">{{ $site->wp_version }} &rarr; {{ $site->core_update_version }}</p>
+                                    </div>
+                                </div>
+                                <x-ui.button size="sm" wire:click="updateCore" wire:loading.attr="disabled" wire:target="updateCore">
+                                    <span wire:loading.remove wire:target="updateCore">Update to {{ $site->core_update_version }}</span>
+                                    <span wire:loading wire:target="updateCore">Updating...</span>
+                                </x-ui.button>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Environment info grid --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {{-- WordPress Version --}}
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">WordPress Version</p>
+                                    <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->wp_version ?? '—' }}</p>
+                                </div>
+                                @if(!$site->core_update_version)
+                                    <x-ui.badge variant="green">Up to date</x-ui.badge>
+                                @else
+                                    <x-ui.badge variant="blue">Update available</x-ui.badge>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- PHP Version --}}
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">PHP Version</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->php_version ?? '—' }}</p>
+                        </div>
+
+                        {{-- Server Software --}}
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Server Software</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->server_software ?? '—' }}</p>
+                        </div>
+
+                        {{-- Multisite --}}
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Multisite</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->is_multisite ? 'Yes' : 'No' }}</p>
+                        </div>
+
+                        {{-- Database Size --}}
+                        @if($site->db_size_mb)
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Database Size</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ number_format($site->db_size_mb, 1) }} MB</p>
+                        </div>
+                        @endif
+
+                        {{-- Uploads Size --}}
+                        @if($site->uploads_size_mb)
+                        <div class="rounded-lg border border-gray-200 p-4">
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Uploads Size</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ number_format($site->uploads_size_mb, 1) }} MB</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        @endif
+
         {{-- Plugin rows --}}
         @if($tab === 'plugins')
             <div class="divide-y">
@@ -423,6 +574,10 @@
                         class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50"
                         wire:loading.class="!bg-blue-50" wire:target="updatePlugin({{ $plugin->id }}), activatePlugin({{ $plugin->id }}), deactivatePlugin({{ $plugin->id }})"
                     >
+                        @if(!$embedded)
+                        <input type="checkbox" :value="{{ $plugin->id }}" x-model="selected"
+                            class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3 shrink-0">
+                        @endif
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
                                 <button wire:click="showDetail('plugin', {{ $plugin->id }})" class="text-sm font-medium text-gray-900 hover:text-purple-700 hover:underline text-left">
@@ -438,15 +593,6 @@
                                 >
                                     {{ $plugin->auto_update ? 'Auto ✓' : 'Auto' }}
                                 </button>
-                                @if($plugin->is_closed)
-                                    <span class="group relative">
-                                        <x-ui.badge variant="red">Closed{{ $plugin->closed_reason ? ': ' . str_replace('_', ' ', $plugin->closed_reason) : '' }}</x-ui.badge>
-                                    </span>
-                                @elseif($plugin->is_abandoned)
-                                    <span class="group relative">
-                                        <x-ui.badge variant="yellow">Abandoned{{ $plugin->wp_org_last_updated ? ' — last updated ' . $plugin->wp_org_last_updated->format('M Y') : '' }}</x-ui.badge>
-                                    </span>
-                                @endif
                             </div>
                             <div class="mt-0.5 text-xs text-gray-500">
                                 {{ $plugin->author ? 'by ' . $plugin->author . ' — ' : '' }}v{{ $plugin->version }}
@@ -461,14 +607,27 @@
 
                             {{-- Inline result message --}}
                             @if(isset($updateResults[$resultKey]))
-                                <div
-                                    x-data="{ show: true }"
-                                    x-init="autoDismiss('{{ $resultKey }}')"
-                                    x-show="show"
-                                    class="mt-1 text-xs font-medium {{ $updateResults[$resultKey]['success'] ? 'text-green-600' : 'text-red-600' }}"
-                                >
-                                    {{ $updateResults[$resultKey]['message'] }}
-                                </div>
+                                @if($updateResults[$resultKey]['success'])
+                                    {{-- Success: small green text, auto-dismiss --}}
+                                    <div x-data="{ show: true }" x-init="autoDismiss('{{ $resultKey }}')" x-show="show"
+                                         class="mt-1 text-xs font-medium text-green-600">
+                                        {{ $updateResults[$resultKey]['message'] }}
+                                    </div>
+                                @else
+                                    {{-- Error: styled alert box --}}
+                                    <div x-data="{ show: true }" x-show="show"
+                                         class="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                                        <svg class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                        </svg>
+                                        <span class="text-xs font-medium text-red-700 flex-1">{{ $updateResults[$resultKey]['message'] }}</span>
+                                        <button wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @endif
                             @endif
                         </div>
                         <div class="flex items-center gap-2 ml-4">
@@ -501,32 +660,13 @@
                                 </button>
                             @endif
 
-                            {{-- Rollback button --}}
-                            <button
-                                wire:click="showRollback('plugin', {{ $plugin->id }})"
-                                class="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 transition"
-                                title="Rollback to previous version"
-                            >
-                                Rollback
-                            </button>
-
                             {{-- Update button --}}
                             @if($plugin->has_update)
                                 <span class="text-xs text-yellow-600">{{ $plugin->version }} &rarr; {{ $plugin->update_version }}</span>
-                                @if($safeUpdateMode)
-                                    <x-ui.button size="sm" variant="secondary" class="!bg-purple-50 !text-purple-700 !border-purple-200 hover:!bg-purple-100" wire:click="safeUpdatePlugin({{ $plugin->id }})" wire:loading.attr="disabled" wire:target="safeUpdatePlugin({{ $plugin->id }})">
-                                        <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                                        </svg>
-                                        <span wire:loading.remove wire:target="safeUpdatePlugin({{ $plugin->id }})">Safe Update</span>
-                                        <span wire:loading wire:target="safeUpdatePlugin({{ $plugin->id }})">Starting...</span>
-                                    </x-ui.button>
-                                @else
-                                    <x-ui.button size="sm" wire:click="updatePlugin({{ $plugin->id }})" wire:loading.attr="disabled" wire:target="updatePlugin({{ $plugin->id }})">
-                                        <span wire:loading.remove wire:target="updatePlugin({{ $plugin->id }})">Update</span>
-                                        <span wire:loading wire:target="updatePlugin({{ $plugin->id }})">Updating...</span>
-                                    </x-ui.button>
-                                @endif
+                                <x-ui.button size="sm" wire:click="updatePlugin({{ $plugin->id }})" wire:loading.attr="disabled" wire:target="updatePlugin({{ $plugin->id }})">
+                                    <span wire:loading.remove wire:target="updatePlugin({{ $plugin->id }})">Update</span>
+                                    <span wire:loading wire:target="updatePlugin({{ $plugin->id }})">Updating...</span>
+                                </x-ui.button>
                             @else
                                 <span class="text-xs text-green-600">Up to date</span>
                             @endif
@@ -549,6 +689,10 @@
                         class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50"
                         wire:loading.class="!bg-blue-50" wire:target="updateTheme({{ $theme->id }}), activateTheme({{ $theme->id }})"
                     >
+                        @if(!$embedded)
+                        <input type="checkbox" :value="{{ $theme->id }}" x-model="selected"
+                            class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3 shrink-0">
+                        @endif
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             @if($theme->screenshot_url)
                                 <img src="{{ $theme->screenshot_url }}" alt="" class="h-10 w-16 rounded object-cover ring-1 ring-gray-200">
@@ -594,14 +738,27 @@
 
                                 {{-- Inline result message --}}
                                 @if(isset($updateResults[$resultKey]))
-                                    <div
-                                        x-data="{ show: true }"
-                                        x-init="autoDismiss('{{ $resultKey }}')"
-                                        x-show="show"
-                                        class="mt-1 text-xs font-medium {{ $updateResults[$resultKey]['success'] ? 'text-green-600' : 'text-red-600' }}"
-                                    >
-                                        {{ $updateResults[$resultKey]['message'] }}
-                                    </div>
+                                    @if($updateResults[$resultKey]['success'])
+                                        {{-- Success: small green text, auto-dismiss --}}
+                                        <div x-data="{ show: true }" x-init="autoDismiss('{{ $resultKey }}')" x-show="show"
+                                             class="mt-1 text-xs font-medium text-green-600">
+                                            {{ $updateResults[$resultKey]['message'] }}
+                                        </div>
+                                    @else
+                                        {{-- Error: styled alert box --}}
+                                        <div x-data="{ show: true }" x-show="show"
+                                             class="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                                            <svg class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                            </svg>
+                                            <span class="text-xs font-medium text-red-700 flex-1">{{ $updateResults[$resultKey]['message'] }}</span>
+                                            <button wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -625,32 +782,13 @@
                                 </button>
                             @endif
 
-                            {{-- Rollback button --}}
-                            <button
-                                wire:click="showRollback('theme', {{ $theme->id }})"
-                                class="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 transition"
-                                title="Rollback to previous version"
-                            >
-                                Rollback
-                            </button>
-
                             {{-- Update button --}}
                             @if($theme->has_update)
                                 <span class="text-xs text-yellow-600">{{ $theme->version }} &rarr; {{ $theme->update_version }}</span>
-                                @if($safeUpdateMode)
-                                    <x-ui.button size="sm" variant="secondary" class="!bg-purple-50 !text-purple-700 !border-purple-200 hover:!bg-purple-100" wire:click="safeUpdateTheme({{ $theme->id }})" wire:loading.attr="disabled" wire:target="safeUpdateTheme({{ $theme->id }})">
-                                        <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                                        </svg>
-                                        <span wire:loading.remove wire:target="safeUpdateTheme({{ $theme->id }})">Safe Update</span>
-                                        <span wire:loading wire:target="safeUpdateTheme({{ $theme->id }})">Starting...</span>
-                                    </x-ui.button>
-                                @else
-                                    <x-ui.button size="sm" wire:click="updateTheme({{ $theme->id }})" wire:loading.attr="disabled" wire:target="updateTheme({{ $theme->id }})">
-                                        <span wire:loading.remove wire:target="updateTheme({{ $theme->id }})">Update</span>
-                                        <span wire:loading wire:target="updateTheme({{ $theme->id }})">Updating...</span>
-                                    </x-ui.button>
-                                @endif
+                                <x-ui.button size="sm" wire:click="updateTheme({{ $theme->id }})" wire:loading.attr="disabled" wire:target="updateTheme({{ $theme->id }})">
+                                    <span wire:loading.remove wire:target="updateTheme({{ $theme->id }})">Update</span>
+                                    <span wire:loading wire:target="updateTheme({{ $theme->id }})">Updating...</span>
+                                </x-ui.button>
                             @else
                                 <span class="text-xs text-green-600">Up to date</span>
                             @endif
@@ -756,11 +894,13 @@
         @endif
     </x-ui.card>
 
+    @if(!$embedded)
     {{-- Last synced --}}
     @if($site->last_synced_at)
         <p class="mt-3 text-xs text-gray-400 text-right">
             Last synced {{ $site->last_synced_at->diffForHumans() }}
         </p>
+    @endif
     @endif
 
     {{-- Delete Plugin Confirmation Modal --}}
@@ -770,6 +910,17 @@
             <p class="mt-2 text-sm text-gray-600">
                 Are you sure you want to delete <strong>{{ $confirmingDeleteName ?? 'this plugin' }}</strong>? This action cannot be undone.
             </p>
+            <div wire:loading.flex wire:target="deletePlugin"
+                 class="mt-4 items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
+                <svg class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <div class="h-1 w-16 shrink-0 rounded-full bg-blue-200 overflow-hidden">
+                    <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
+                </div>
+                <span class="text-xs font-medium text-blue-700">Deleting plugin...</span>
+            </div>
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-delete-plugin')">
                     Cancel
@@ -800,6 +951,17 @@
                     <p class="mt-1 text-xs text-yellow-600">Deleting this parent theme will break these child themes.</p>
                 </div>
             @endif
+            <div wire:loading.flex wire:target="deleteTheme"
+                 class="mt-4 items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
+                <svg class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <div class="h-1 w-16 shrink-0 rounded-full bg-blue-200 overflow-hidden">
+                    <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
+                </div>
+                <span class="text-xs font-medium text-blue-700">Deleting theme...</span>
+            </div>
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-delete-theme')">
                     Cancel
@@ -808,44 +970,6 @@
                     <span wire:loading.remove wire:target="deleteTheme">Delete Theme</span>
                     <span wire:loading wire:target="deleteTheme">Deleting...</span>
                 </x-ui.button>
-            </div>
-        </div>
-    </x-ui.modal>
-
-    {{-- Rollback Modal --}}
-    <x-ui.modal name="rollback" maxWidth="md">
-        <div class="p-2">
-            <h3 class="text-lg font-semibold text-gray-900">Rollback to Previous Version</h3>
-            <p class="mt-1 text-sm text-gray-600">Select a previous version to restore.</p>
-
-            @if($rollbackItemId && $this->rollbackHistory->count() > 0)
-                <div class="mt-4 divide-y rounded-lg border">
-                    @foreach($this->rollbackHistory as $log)
-                        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                            <div>
-                                <div class="text-sm font-medium text-gray-900">v{{ $log->from_version }}</div>
-                                <div class="text-xs text-gray-500">
-                                    Updated to v{{ $log->to_version }} on {{ $log->performed_at->format('M j, Y H:i') }}
-                                    @if($log->user)
-                                        by {{ $log->user->name }}
-                                    @endif
-                                </div>
-                            </div>
-                            <x-ui.button size="sm" variant="secondary" wire:click="rollbackTo({{ $log->id }})" wire:loading.attr="disabled" wire:target="rollbackTo({{ $log->id }})">
-                                <span wire:loading.remove wire:target="rollbackTo({{ $log->id }})">Restore v{{ $log->from_version }}</span>
-                                <span wire:loading wire:target="rollbackTo({{ $log->id }})">Rolling back...</span>
-                            </x-ui.button>
-                        </div>
-                    @endforeach
-                </div>
-            @elseif($rollbackItemId)
-                <div class="mt-4 rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-500">
-                    No update history found for this item. Rollback requires a previous update record.
-                </div>
-            @endif
-
-            <div class="mt-4 flex justify-end">
-                <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-rollback')">Close</x-ui.button>
             </div>
         </div>
     </x-ui.modal>
@@ -896,7 +1020,7 @@
 
                 {{-- Quick links --}}
                 <div class="mt-4 flex items-center gap-2 border-t pt-3">
-                    <a href="{{ route('sites.updates', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Updates</a>
+                    <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Plugins</a>
                     <span class="text-gray-300">|</span>
                     <a href="{{ route('sites.security', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Security</a>
                     @if($detailItem['url'])

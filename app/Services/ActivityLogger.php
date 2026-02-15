@@ -100,7 +100,7 @@ class ActivityLogger
             site: $site,
             metadata: ['plugin' => $name, 'from' => $from, 'to' => $to],
             icon: 'refresh-cw',
-            url: route('sites.updates', $site),
+            url: route('sites.plugins', $site),
         );
     }
 
@@ -114,7 +114,7 @@ class ActivityLogger
             site: $site,
             metadata: ['theme' => $name, 'from' => $from, 'to' => $to],
             icon: 'refresh-cw',
-            url: route('sites.updates', $site),
+            url: route('sites.plugins', $site),
         );
     }
 
@@ -212,7 +212,7 @@ class ActivityLogger
             site: $site,
             metadata: ['from' => $from, 'to' => $to],
             icon: 'refresh-cw',
-            url: route('sites.updates', $site),
+            url: route('sites.plugins', $site),
         );
     }
 

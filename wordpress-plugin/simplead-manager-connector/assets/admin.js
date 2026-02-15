@@ -118,7 +118,6 @@
             database: loadDatabase,
             cron: loadCron,
             server: loadServer,
-            seo: loadSeo,
             audit: loadAudit,
             firewall: loadFirewall,
             woocommerce: loadWooCommerce
@@ -438,39 +437,6 @@
             pane.innerHTML = html;
         }).catch(function (err) {
             pane.innerHTML = errorBox('Failed to load server info: ' + err.message);
-        });
-    }
-
-    /* ──────────── SEO ──────────── */
-
-    function loadSeo() {
-        var pane = $('#sam-pane-seo');
-        pane.innerHTML = loading();
-
-        ajax('sam_seo_check').then(function (res) {
-            var d = res.data || res;
-            var html = '';
-
-            html += '<div class="sam-score-inline">' + (d.score || 0) + '%</div>';
-            html += '<div class="sam-score-label">SEO Score</div>';
-            html += scoreBar(d.score || 0);
-
-            var checks = d.checks || {};
-            html += '<ul class="sam-checks-list">';
-            Object.keys(checks).forEach(function (key) {
-                var c = checks[key];
-                html += '<li>';
-                html += badge(c.pass ? 'PASS' : 'FAIL', c.pass ? 'pass' : 'fail');
-                html += '<span class="sam-check-label">' + escHtml(c.label) + '</span>';
-                html += '<span class="sam-check-msg">' + escHtml(c.message) + '</span>';
-                html += '</li>';
-            });
-            html += '</ul>';
-
-            html += '<div class="sam-actions"><button class="button" onclick="samReload(\'seo\')">Refresh</button></div>';
-            pane.innerHTML = html;
-        }).catch(function (err) {
-            pane.innerHTML = errorBox('Failed to load SEO audit: ' + err.message);
         });
     }
 

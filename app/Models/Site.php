@@ -419,16 +419,6 @@ class Site extends Model
         return $this->hasOne(ResourceCheck::class)->latestOfMany('checked_at');
     }
 
-    public function seoChecks(): HasMany
-    {
-        return $this->hasMany(SeoCheck::class);
-    }
-
-    public function latestSeoCheck(): HasOne
-    {
-        return $this->hasOne(SeoCheck::class)->latestOfMany('checked_at');
-    }
-
     public function wooCommerceStats(): HasMany
     {
         return $this->hasMany(WooCommerceStat::class);
