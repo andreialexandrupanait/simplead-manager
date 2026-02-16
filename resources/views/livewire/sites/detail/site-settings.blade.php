@@ -21,7 +21,7 @@
                         @endforeach
                     </x-ui.select>
                 </div>
-                <x-ui.button wire:click="applyPreset">
+                <x-ui.button wire:click="applyPreset" wire:loading.attr="disabled">
                     <span wire:loading.remove wire:target="applyPreset">Apply Preset</span>
                     <span wire:loading wire:target="applyPreset">Applying...</span>
                 </x-ui.button>

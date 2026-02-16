@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SiteHealthState extends Model
 {
+    use HasFactory;
     protected $table = 'site_health_state';
 
     protected $fillable = [

@@ -9,6 +9,7 @@ use App\Models\PerformancePage;
 use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -493,6 +494,12 @@ class SitePerformance extends Component
 
     public function runTest(): void
     {
+        $rateLimitKey = "performance-test:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            session()->flash('error', 'Too many performance test requests. Please wait before trying again.');
+            return;
+        }
+
         $monitor = $this->monitor;
 
         if (!$monitor) {

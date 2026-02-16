@@ -80,6 +80,7 @@
                 <x-ui.button
                     wire:click="openCreateModal"
                     class="w-full"
+                    wire:loading.attr="disabled"
                     :disabled="$awaitingBackup || ($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress']))"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -376,7 +377,10 @@
                     </div>
 
                     <div class="flex justify-end pt-2">
-                        <x-ui.button type="submit">Save Configuration</x-ui.button>
+                        <x-ui.button type="submit" wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="saveConfig">Save Configuration</span>
+                            <span wire:loading wire:target="saveConfig">Saving...</span>
+                        </x-ui.button>
                     </div>
                 </form>
             </div>
@@ -441,7 +445,8 @@
                                         @if($backup->status === 'completed')
                                             {{-- Download --}}
                                             <button wire:click="downloadBackup({{ $backup->id }})"
-                                                class="rounded p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50"
+                                                wire:loading.attr="disabled"
+                                                class="rounded p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 disabled:opacity-50"
                                                 title="Download">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                             </button>

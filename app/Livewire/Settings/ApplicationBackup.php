@@ -8,6 +8,7 @@ use App\Models\AppBackupConfig;
 use App\Models\StorageDestination;
 use App\Services\AppBackup\AppBackupService;
 use App\Services\Backup\Storage\StorageFactory;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -191,6 +192,12 @@ class ApplicationBackup extends Component
 
     public function createBackup(): void
     {
+        $rateLimitKey = 'app-backup:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
         $options = [];
         if ($this->createIncludeLogs) $options['include_logs'] = true;
         if ($this->createIncludeCodebase) $options['include_codebase'] = true;
@@ -260,6 +267,12 @@ class ApplicationBackup extends Component
 
     public function restoreDatabase(): void
     {
+        $rateLimitKey = 'app-restore:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many restore requests. Please wait before trying again.');
+            return;
+        }
+
         if (!$this->restoreConfirmed) {
             $this->dispatch('notify', type: 'error', message: 'Please confirm you understand the risks.');
             return;

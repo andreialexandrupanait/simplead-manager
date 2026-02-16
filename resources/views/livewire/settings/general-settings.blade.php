@@ -104,7 +104,10 @@
         </x-ui.card>
 
         <div class="flex justify-end">
-            <x-ui.button type="submit">{{ __('Save Settings') }}</x-ui.button>
+            <x-ui.button type="submit" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="save">{{ __('Save Settings') }}</span>
+                <span wire:loading wire:target="save">{{ __('Saving...') }}</span>
+            </x-ui.button>
         </div>
     </form>
 
@@ -183,8 +186,9 @@
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-status-form')">
                     {{ __('Cancel') }}
                 </x-ui.button>
-                <x-ui.button type="submit">
-                    {{ $editingStatusId ? __('Save Changes') : __('Add Status') }}
+                <x-ui.button type="submit" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="saveStatus">{{ $editingStatusId ? __('Save Changes') : __('Add Status') }}</span>
+                    <span wire:loading wire:target="saveStatus">{{ __('Saving...') }}</span>
                 </x-ui.button>
             </div>
         </form>
@@ -195,8 +199,9 @@
         <x-ui.card class="border-red-200 ring-red-100">
             <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Danger Zone') }}</h3>
             <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete all monitoring check and incident data. This action cannot be undone.') }}</p>
-            <x-ui.button variant="danger" wire:click="purgeMonitoringData" wire:confirm="{{ __('Are you sure? This will delete ALL monitoring data and cannot be undone.') }}">
-                {{ __('Purge Monitoring Data') }}
+            <x-ui.button variant="danger" wire:click="purgeMonitoringData" wire:confirm="{{ __('Are you sure? This will delete ALL monitoring data and cannot be undone.') }}" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="purgeMonitoringData">{{ __('Purge Monitoring Data') }}</span>
+                <span wire:loading wire:target="purgeMonitoringData">{{ __('Purging...') }}</span>
             </x-ui.button>
         </x-ui.card>
     </div>

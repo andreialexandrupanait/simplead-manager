@@ -164,10 +164,14 @@ document.addEventListener('alpine:init', () => {
 
             let sidebar = document.querySelector('[data-sidebar]');
             let minLeft = sidebar ? sidebar.getBoundingClientRect().right + 4 : 8;
+            let maxRight = window.innerWidth - 8;
 
             let left = this._alignRight ? rect.right - pw : rect.left;
+
+            // Clamp to viewport boundaries
             if (left < minLeft) left = minLeft;
-            if (!this._alignRight && left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+            if (left + pw > maxRight) left = maxRight - pw;
+
             panel.style.left = Math.round(left) + 'px';
         },
     }));

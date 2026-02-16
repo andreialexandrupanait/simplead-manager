@@ -77,8 +77,9 @@
 
             {{-- Update All Button --}}
             <div class="mt-4 border-t border-gray-100 pt-4">
-                <x-ui.button wire:click="updateAll" color="purple" size="sm" class="w-full">
-                    Update All
+                <x-ui.button wire:click="updateAll" color="purple" size="sm" class="w-full" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="updateAll">Update All</span>
+                    <span wire:loading wire:target="updateAll">Updating...</span>
                 </x-ui.button>
             </div>
         @else

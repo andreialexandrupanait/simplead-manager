@@ -150,23 +150,27 @@
                                 Edit
                             </button>
                             <button wire:click="testMonitor({{ $monitor->id }})"
-                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                                 Test Now
                             </button>
                             @if($isPaused)
                                 <button wire:click="resumeMonitor({{ $monitor->id }})"
-                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                        wire:loading.attr="disabled"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                                     Resume
                                 </button>
                             @else
                                 <button wire:click="pauseMonitor({{ $monitor->id }})"
-                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                        wire:loading.attr="disabled"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                                     Pause
                                 </button>
                             @endif
                             <button wire:click="deleteMonitor({{ $monitor->id }})"
                                     wire:confirm="Are you sure you want to delete this monitor?"
-                                    class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                                    wire:loading.attr="disabled"
+                                    class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
                                 Delete
                             </button>
                         </x-ui.dropdown>

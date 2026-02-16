@@ -8,6 +8,7 @@ use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -145,6 +146,12 @@ class SiteBackups extends Component
 
     public function backupDatabase(): void
     {
+        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
         $destination = $this->resolveDestination();
         if (!$destination) {
             session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
@@ -177,6 +184,12 @@ class SiteBackups extends Component
 
     public function backupFull(): void
     {
+        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
         $destination = $this->resolveDestination();
         if (!$destination) {
             session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');

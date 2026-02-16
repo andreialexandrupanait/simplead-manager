@@ -33,7 +33,7 @@
                 ];
             @endphp
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-4 gap-3">
                 @foreach($scMetrics as $metric)
                     <div class="rounded-lg border border-gray-100 p-3 text-center">
                         <div class="text-xs text-gray-500">{{ $metric['label'] }}</div>

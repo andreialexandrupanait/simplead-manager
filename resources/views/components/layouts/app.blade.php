@@ -101,11 +101,12 @@
             <div class="border-t border-white/10 mt-auto">
                 {{-- Action buttons container --}}
                 <div class="p-2 space-y-0.5">
-                    {{-- Settings --}}
+                    {{-- Settings (admin only) --}}
+                    @if(auth()->user()->isAdmin())
                     <a href="{{ route('settings.general') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') ? 'bg-sidebar-hover text-white' : '' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" />
                         <span class="whitespace-nowrap transition-all duration-300"
@@ -113,6 +114,7 @@
                             {{ __('Settings') }}
                         </span>
                     </a>
+                    @endif
 
                     {{-- Profile --}}
                     <a href="{{ route('settings.profile') }}"

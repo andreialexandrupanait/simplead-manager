@@ -40,6 +40,6 @@ class UptimeCheck extends Model
 
     public function prunable()
     {
-        return static::where('checked_at', '<', now()->subDays(90));
+        return static::where('checked_at', '<', now()->subDays(45));
     }
 }

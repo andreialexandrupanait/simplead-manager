@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'site.context' => \App\Http\Middleware\SetCurrentSite::class,
+            'role' => \App\Http\Middleware\RequireRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

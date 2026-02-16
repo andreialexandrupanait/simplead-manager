@@ -58,8 +58,9 @@
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
             @if($this->count > 0)
-                <button wire:click="dismissAll" class="text-xs font-medium text-gray-400 hover:text-gray-600 transition">
-                    Mark all as read
+                <button wire:click="dismissAll" wire:loading.attr="disabled" class="text-xs font-medium text-gray-400 hover:text-gray-600 transition disabled:opacity-50">
+                    <span wire:loading.remove wire:target="dismissAll">Mark all as read</span>
+                    <span wire:loading wire:target="dismissAll">Clearing...</span>
                 </button>
             @endif
         </div>

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PluginConflict extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'plugin_a_slug',
         'plugin_b_slug',

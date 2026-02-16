@@ -32,6 +32,11 @@ Route::get('/restore-download/{token}', function (string $token) {
     return response()->file($path);
 })->middleware('throttle:10,1');
 
+// Report download via signed URL (for client emails — no auth required)
+Route::get('/reports/{report}/download/signed', ReportDownloadController::class)
+    ->name('reports.download.signed')
+    ->middleware(['signed', 'throttle:30,1']);
+
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
 
@@ -61,18 +66,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
 
-        // Deprecated routes — redirect to overview (keep named routes for backwards compat)
-        Route::get('/updates', fn ($site) => redirect()->route('sites.plugins', $site))->name('sites.updates');
-        Route::get('/core-integrity', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.core-integrity');
-        Route::get('/audit-log', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.audit-log');
-        Route::get('/firewall', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.firewall');
-        Route::get('/links', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.links');
-        Route::get('/maintenance', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.maintenance');
-        Route::get('/cron', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.cron');
-        Route::get('/dns', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.dns');
-        Route::get('/errors', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.errors');
-        Route::get('/resources', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.resources');
-        Route::get('/woocommerce', fn ($site) => redirect()->route('sites.overview', $site))->name('sites.woocommerce');
     });
 
     // Backups — global view
@@ -81,7 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Backup download (signed URL for local storage)
     Route::get('/backups/{backup}/download', BackupDownloadController::class)->name('backups.download')->middleware('signed');
 
-    // Report download & preview
+    // Report download & preview (authenticated users)
     Route::get('/reports/{report}/download', ReportDownloadController::class)->name('reports.download');
 
     // Performance — global view
@@ -90,10 +83,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
 
-    // Deprecated global views — redirect to dashboard
-    Route::get('/updates', fn () => redirect()->route('dashboard'))->name('updates.index');
-    Route::get('/activity', fn () => redirect()->route('dashboard'))->name('activity.index');
-    Route::get('/errors', fn () => redirect()->route('dashboard'))->name('errors.index');
 
     // Clients
     Route::prefix('clients')->group(function () {
@@ -106,10 +95,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Reports
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
 
-    // Status Pages — deprecated routes, redirect to settings
-    Route::get('/status-pages', fn () => redirect()->route('settings.status-pages'))->name('status-pages.index');
-    Route::get('/status-pages/create', fn () => redirect()->route('settings.status-pages.create'))->name('status-pages.create');
-    Route::get('/status-pages/{statusPage}/edit', fn ($statusPage) => redirect()->route('settings.status-pages.edit', $statusPage))->name('status-pages.edit');
 
     // Plugin download
     Route::get('/download/connector-plugin', function () {
@@ -118,11 +103,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return response()->download($path, 'simplead-connector.zip');
     })->name('download.connector-plugin');
 
-    // Settings
+    // Settings — Profile accessible to all roles
     Route::prefix('/settings')->group(function () {
+        Route::get('/profile', Settings\ProfileSettings::class)->name('settings.profile');
+    });
+
+    // Settings — Admin-only pages
+    Route::prefix('/settings')->middleware('role:admin')->group(function () {
         Route::get('/', Settings\GeneralSettings::class)->name('settings.general');
         Route::get('/notifications', Settings\NotificationSettings::class)->name('settings.notifications');
-        Route::get('/profile', Settings\ProfileSettings::class)->name('settings.profile');
 
         // Integrations
         Route::get('/integrations', Settings\IntegrationsSettings::class)->name('settings.integrations');

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -23,6 +24,7 @@ class User extends Authenticatable
         "email",
         "password",
         "is_admin",
+        "role",
         "timezone",
         "date_format",
         "language",
@@ -56,6 +58,7 @@ class User extends Authenticatable
             "password" => "hashed",
             "two_factor_enabled" => "boolean",
             "is_admin" => "boolean",
+            "role" => UserRole::class,
             "two_factor_secret" => "encrypted",
             "two_factor_recovery_codes" => "encrypted:array",
         ];
@@ -74,6 +77,26 @@ class User extends Authenticatable
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role === UserRole::Manager;
+    }
+
+    public function isViewer(): bool
+    {
+        return $this->role === UserRole::Viewer;
+    }
+
+    public function canManageSites(): bool
+    {
+        return $this->role->canManageSites();
     }
 
     public function getInitialsAttribute(): string

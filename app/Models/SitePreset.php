@@ -13,13 +13,11 @@ class SitePreset extends Model
     protected $fillable = [
         'name',
         'description',
-        'modules',
         'is_default',
         'sort_order',
     ];
 
     protected $casts = [
-        'modules' => 'array',
         'is_default' => 'boolean',
         'sort_order' => 'integer',
     ];
@@ -27,6 +25,19 @@ class SitePreset extends Model
     public function sites(): HasMany
     {
         return $this->hasMany(Site::class, 'applied_preset_id');
+    }
+
+    public function presetModules(): HasMany
+    {
+        return $this->hasMany(SitePresetModule::class);
+    }
+
+    public function getEnabledModuleKeysAttribute(): array
+    {
+        return $this->presetModules
+            ->where('is_enabled', true)
+            ->pluck('module_key')
+            ->all();
     }
 
     public static function getDefault(): ?self

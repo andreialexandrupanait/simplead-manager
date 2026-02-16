@@ -14,8 +14,9 @@ class TelegramNotificationSender
         array $fields = [],
         string $severity = 'warning'
     ): array {
-        $botToken = $channel->config['bot_token'] ?? null;
-        $chatId = $channel->config['chat_id'] ?? null;
+        $config = $channel->getDecryptedConfig();
+        $botToken = $config['bot_token'] ?? null;
+        $chatId = $config['chat_id'] ?? null;
 
         if (!$botToken || !$chatId) {
             return ['success' => false, 'response_code' => null, 'error' => 'Bot token or chat ID not configured'];

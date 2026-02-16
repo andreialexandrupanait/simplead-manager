@@ -14,7 +14,7 @@ class ClientPolicy
 
     public function view(User $user, Client $client): bool
     {
-        if ($user->is_admin) {
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -23,12 +23,16 @@ class ClientPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canManageSites();
     }
 
     public function update(User $user, Client $client): bool
     {
-        if ($user->is_admin) {
+        if ($user->isViewer()) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -37,6 +41,6 @@ class ClientPolicy
 
     public function delete(User $user, Client $client): bool
     {
-        return $user->is_admin;
+        return $user->isAdmin();
     }
 }

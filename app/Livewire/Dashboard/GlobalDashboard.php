@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\Client;
 use App\Models\SiteStatus;
 use App\Services\DashboardService;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -157,6 +158,12 @@ class GlobalDashboard extends Component
 
     public function runBackup(int $siteId): void
     {
+        $rateLimitKey = "backup:{$siteId}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
         $site = Site::findOrFail($siteId);
         CreateBackup::dispatch($site, 'full', 'manual');
         $this->dispatch('notify', type: 'success', message: "Backup queued for {$site->name}.");
@@ -164,6 +171,12 @@ class GlobalDashboard extends Component
 
     public function checkNow(int $siteId): void
     {
+        $rateLimitKey = "uptime-check:{$siteId}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many uptime check requests. Please wait before trying again.');
+            return;
+        }
+
         $site = Site::findOrFail($siteId);
         if ($site->uptimeMonitor) {
             CheckUptime::dispatch($site->uptimeMonitor);
@@ -173,6 +186,12 @@ class GlobalDashboard extends Component
 
     public function syncSite(int $siteId): void
     {
+        $rateLimitKey = "sync:{$siteId}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many sync requests. Please wait before trying again.');
+            return;
+        }
+
         $site = Site::findOrFail($siteId);
         SyncWordPressSite::dispatch($site);
         $this->dispatch('notify', type: 'success', message: "Sync queued for {$site->name}.");
@@ -180,6 +199,12 @@ class GlobalDashboard extends Component
 
     public function generateQuickReport(int $siteId): void
     {
+        $rateLimitKey = "report:{$siteId}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many report requests. Please wait before trying again.');
+            return;
+        }
+
         $site = Site::findOrFail($siteId);
         $template = ReportTemplate::where('is_default', true)->first() ?? ReportTemplate::first();
         if (!$template) {
@@ -261,6 +286,12 @@ class GlobalDashboard extends Component
 
     public function bulkSync(): void
     {
+        $rateLimitKey = 'bulk-sync:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many bulk sync requests. Please wait before trying again.');
+            return;
+        }
+
         $sites = Site::whereIn('id', $this->selectedSites)->get();
         foreach ($sites as $site) {
             SyncWordPressSite::dispatch($site);
@@ -272,6 +303,12 @@ class GlobalDashboard extends Component
 
     public function bulkBackup(): void
     {
+        $rateLimitKey = 'bulk-backup:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many bulk backup requests. Please wait before trying again.');
+            return;
+        }
+
         $sites = Site::whereIn('id', $this->selectedSites)->get();
         foreach ($sites as $site) {
             CreateBackup::dispatch($site, 'full', 'manual');
@@ -283,6 +320,12 @@ class GlobalDashboard extends Component
 
     public function bulkCheckUptime(): void
     {
+        $rateLimitKey = 'bulk-uptime:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many bulk uptime check requests. Please wait before trying again.');
+            return;
+        }
+
         $sites = Site::whereIn('id', $this->selectedSites)->with('uptimeMonitor')->get();
         $count = 0;
         foreach ($sites as $site) {

@@ -23,7 +23,7 @@ class SiteSettings extends Component
     #[Computed]
     public function presets()
     {
-        return SitePreset::orderBy('sort_order')->get();
+        return SitePreset::with('presetModules')->orderBy('sort_order')->get();
     }
 
     #[Computed]

@@ -3,70 +3,85 @@
 namespace Database\Seeders;
 
 use App\Models\SitePreset;
+use App\Models\SitePresetModule;
 use Illuminate\Database\Seeder;
 
 class SitePresetSeeder extends Seeder
 {
     public function run(): void
     {
-        SitePreset::updateOrCreate(
-            ['name' => 'Full Monitoring'],
+        $presets = [
             [
+                'name' => 'Full Monitoring',
                 'description' => 'All modules enabled — uptime, backups, performance, security, analytics, search console, cloudflare, and database cleanup.',
-                'modules' => [
-                    'uptime' => ['enabled' => true, 'interval' => 5],
-                    'backup' => ['enabled' => true],
-                    'ssl' => ['enabled' => true],
-                    'performance' => ['enabled' => true],
-                    'security' => ['enabled' => true, 'interval' => 10080],
-                    'analytics' => ['enabled' => true],
-                    'search_console' => ['enabled' => true],
-                    'cloudflare' => ['enabled' => true],
-                    'database_cleanup' => ['enabled' => true],
-                ],
                 'is_default' => true,
                 'sort_order' => 1,
-            ]
-        );
-
-        SitePreset::updateOrCreate(
-            ['name' => 'Standard Maintenance'],
-            [
-                'description' => 'Core monitoring and maintenance — uptime, backups, performance, and security. No analytics or external integrations.',
                 'modules' => [
-                    'uptime' => ['enabled' => true, 'interval' => 5],
-                    'backup' => ['enabled' => true],
-                    'ssl' => ['enabled' => true],
-                    'performance' => ['enabled' => true],
-                    'security' => ['enabled' => true, 'interval' => 10080],
-                    'analytics' => ['enabled' => false],
-                    'search_console' => ['enabled' => false],
-                    'cloudflare' => ['enabled' => false],
-                    'database_cleanup' => ['enabled' => false],
+                    'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
+                    'backup' => ['is_enabled' => true],
+                    'ssl' => ['is_enabled' => true],
+                    'performance' => ['is_enabled' => true],
+                    'security' => ['is_enabled' => true, 'interval_minutes' => 10080],
+                    'analytics' => ['is_enabled' => true],
+                    'search_console' => ['is_enabled' => true],
+                    'cloudflare' => ['is_enabled' => true],
+                    'database_cleanup' => ['is_enabled' => true],
                 ],
+            ],
+            [
+                'name' => 'Standard Maintenance',
+                'description' => 'Core monitoring and maintenance — uptime, backups, performance, and security. No analytics or external integrations.',
                 'is_default' => false,
                 'sort_order' => 2,
-            ]
-        );
-
-        SitePreset::updateOrCreate(
-            ['name' => 'Basic'],
-            [
-                'description' => 'Minimal setup — uptime monitoring and SSL checks only.',
                 'modules' => [
-                    'uptime' => ['enabled' => true, 'interval' => 5],
-                    'backup' => ['enabled' => false],
-                    'ssl' => ['enabled' => true],
-                    'performance' => ['enabled' => false],
-                    'security' => ['enabled' => false],
-                    'analytics' => ['enabled' => false],
-                    'search_console' => ['enabled' => false],
-                    'cloudflare' => ['enabled' => false],
-                    'database_cleanup' => ['enabled' => false],
+                    'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
+                    'backup' => ['is_enabled' => true],
+                    'ssl' => ['is_enabled' => true],
+                    'performance' => ['is_enabled' => true],
+                    'security' => ['is_enabled' => true, 'interval_minutes' => 10080],
+                    'analytics' => ['is_enabled' => false],
+                    'search_console' => ['is_enabled' => false],
+                    'cloudflare' => ['is_enabled' => false],
+                    'database_cleanup' => ['is_enabled' => false],
                 ],
+            ],
+            [
+                'name' => 'Basic',
+                'description' => 'Minimal setup — uptime monitoring and SSL checks only.',
                 'is_default' => false,
                 'sort_order' => 3,
-            ]
-        );
+                'modules' => [
+                    'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
+                    'backup' => ['is_enabled' => false],
+                    'ssl' => ['is_enabled' => true],
+                    'performance' => ['is_enabled' => false],
+                    'security' => ['is_enabled' => false],
+                    'analytics' => ['is_enabled' => false],
+                    'search_console' => ['is_enabled' => false],
+                    'cloudflare' => ['is_enabled' => false],
+                    'database_cleanup' => ['is_enabled' => false],
+                ],
+            ],
+        ];
+
+        foreach ($presets as $presetData) {
+            $modules = $presetData['modules'];
+            unset($presetData['modules']);
+
+            $preset = SitePreset::updateOrCreate(
+                ['name' => $presetData['name']],
+                $presetData
+            );
+
+            foreach ($modules as $moduleKey => $config) {
+                SitePresetModule::updateOrCreate(
+                    ['site_preset_id' => $preset->id, 'module_key' => $moduleKey],
+                    [
+                        'is_enabled' => $config['is_enabled'],
+                        'interval_minutes' => $config['interval_minutes'] ?? null,
+                    ]
+                );
+            }
+        }
     }
 }

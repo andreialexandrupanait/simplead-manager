@@ -14,21 +14,25 @@ class StatusPagePolicy
 
     public function view(User $user, StatusPage $statusPage): bool
     {
-        return $user->is_admin || $statusPage->user_id === $user->id;
+        return $user->isAdmin() || $statusPage->user_id === $user->id;
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canManageSites();
     }
 
     public function update(User $user, StatusPage $statusPage): bool
     {
-        return $user->is_admin || $statusPage->user_id === $user->id;
+        if ($user->isViewer()) {
+            return false;
+        }
+
+        return $user->isAdmin() || $statusPage->user_id === $user->id;
     }
 
     public function delete(User $user, StatusPage $statusPage): bool
     {
-        return $user->is_admin || $statusPage->user_id === $user->id;
+        return $user->isAdmin();
     }
 }

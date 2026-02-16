@@ -14,7 +14,7 @@ class SlackNotificationSender
         array $fields = [],
         string $severity = 'warning'
     ): array {
-        $webhookUrl = $channel->config['webhook_url'] ?? null;
+        $webhookUrl = $channel->getDecryptedConfig()['webhook_url'] ?? null;
         if (!$webhookUrl) {
             return ['success' => false, 'response_code' => null, 'error' => 'No webhook URL configured'];
         }

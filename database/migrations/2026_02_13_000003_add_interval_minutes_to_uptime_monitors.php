@@ -14,10 +14,17 @@ return new class extends Migration
         });
 
         // Backfill from existing interval column (seconds → minutes)
-        DB::table('uptime_monitors')
-            ->whereNotNull('interval')
-            ->where('interval', '>', 0)
-            ->update(['interval_minutes' => DB::raw('GREATEST(ROUND(interval / 60), 1)')]);
+        if (DB::getDriverName() === 'sqlite') {
+            DB::table('uptime_monitors')
+                ->whereNotNull('interval')
+                ->where('interval', '>', 0)
+                ->update(['interval_minutes' => DB::raw('MAX(ROUND(interval / 60), 1)')]);
+        } else {
+            DB::table('uptime_monitors')
+                ->whereNotNull('interval')
+                ->where('interval', '>', 0)
+                ->update(['interval_minutes' => DB::raw('GREATEST(ROUND(interval / 60), 1)')]);
+        }
     }
 
     public function down(): void

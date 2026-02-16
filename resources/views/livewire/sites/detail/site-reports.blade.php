@@ -136,7 +136,8 @@
                                         @endif
                                         <button wire:click="deleteReport({{ $report->id }})"
                                                 wire:confirm="Are you sure you want to delete this report?"
-                                                class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                                                wire:loading.attr="disabled"
+                                                class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
                                                 title="Delete">
                                             <x-icons.x class="h-3.5 w-3.5" />
                                         </button>

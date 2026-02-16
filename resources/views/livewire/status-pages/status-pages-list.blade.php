@@ -75,7 +75,10 @@
         <p class="mt-2 text-sm text-gray-600">Are you sure you want to delete this status page? This will also remove all associated incidents and updates. This action cannot be undone.</p>
         <div class="mt-4 flex justify-end gap-2">
             <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-status-page')">Cancel</x-ui.button>
-            <x-ui.button variant="danger" wire:click="deleteStatusPage">Delete</x-ui.button>
+            <x-ui.button variant="danger" wire:click="deleteStatusPage" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="deleteStatusPage">Delete</span>
+                <span wire:loading wire:target="deleteStatusPage">Deleting...</span>
+            </x-ui.button>
         </div>
     </x-ui.modal>
 </div>

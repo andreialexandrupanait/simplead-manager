@@ -8,6 +8,7 @@ use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -28,6 +29,12 @@ class BackupsOverview extends Component
 
     public function backupAllSites(): void
     {
+        $rateLimitKey = 'bulk-backup-all:' . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many bulk backup requests. Please wait before trying again.');
+            return;
+        }
+
         $configs = BackupConfig::whereHas('site')
             ->where('is_enabled', true)
             ->with('site')

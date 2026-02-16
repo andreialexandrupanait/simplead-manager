@@ -25,6 +25,7 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
+    public int $memory = 512;
     public int $tries = 2;
     public array $backoff = [60, 120];
 

@@ -57,8 +57,9 @@
 
             {{-- Run Backup Button --}}
             <div class="mt-3 border-t border-gray-100 pt-3">
-                <x-ui.button wire:click="runBackup" color="teal" size="sm" class="w-full">
-                    Run Backup Now
+                <x-ui.button wire:click="runBackup" color="teal" size="sm" class="w-full" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="runBackup">Run Backup Now</span>
+                    <span wire:loading wire:target="runBackup">Starting...</span>
                 </x-ui.button>
             </div>
         @else

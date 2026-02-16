@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class ReportGeneratedMail extends Mailable
 {
@@ -38,7 +39,11 @@ class ReportGeneratedMail extends Mailable
                 'report' => $this->report,
                 'site' => $this->site,
                 'schedule' => $this->schedule,
-                'downloadUrl' => route('reports.download', $this->report),
+                'downloadUrl' => URL::temporarySignedRoute(
+                    'reports.download.signed',
+                    now()->addDays(7),
+                    ['report' => $this->report->id],
+                ),
             ],
         );
     }

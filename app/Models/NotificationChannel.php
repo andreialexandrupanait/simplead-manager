@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationChannel extends Model
 {
@@ -30,6 +31,21 @@ class NotificationChannel extends Model
         'event_subscriptions' => 'array',
         'last_error_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updated(fn (self $model) => Cache::forget("notification_channel:{$model->id}:config"));
+        static::deleted(fn (self $model) => Cache::forget("notification_channel:{$model->id}:config"));
+    }
+
+    public function getDecryptedConfig(): array
+    {
+        return Cache::remember(
+            "notification_channel:{$this->id}:config",
+            600,
+            fn () => $this->config ?? []
+        );
+    }
 
     public function logs(): HasMany
     {

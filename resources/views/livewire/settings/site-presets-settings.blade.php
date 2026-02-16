@@ -105,10 +105,10 @@
 
                                 {{-- Active modules --}}
                                 <div class="mt-2 flex flex-wrap gap-1.5">
-                                    @foreach($preset->modules as $key => $mod)
-                                        @if($mod['enabled'] ?? false)
+                                    @foreach($preset->presetModules as $mod)
+                                        @if($mod->is_enabled)
                                             <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                                {{ $this->moduleLabels[$key] ?? $key }}
+                                                {{ $this->moduleLabels[$mod->module_key] ?? $mod->module_key }}
                                             </span>
                                         @endif
                                     @endforeach

@@ -69,23 +69,27 @@
                     <div class="flex items-center gap-2 ml-4">
                         @if(!$template->is_default)
                             <button wire:click="setDefault({{ $template->id }})"
-                                    class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+                                    wire:loading.attr="disabled"
+                                    class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
                                     title="Set as default">
                                 Set Default
                             </button>
                         @endif
                         <button wire:click="editTemplate({{ $template->id }})"
-                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
+                                wire:loading.attr="disabled"
+                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
                             Edit
                         </button>
                         <button wire:click="duplicateTemplate({{ $template->id }})"
-                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
+                                wire:loading.attr="disabled"
+                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
                             Duplicate
                         </button>
                         @if($template->schedules_count === 0)
                             <button wire:click="deleteTemplate({{ $template->id }})"
                                     wire:confirm="Are you sure you want to delete this template?"
-                                    class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition">
+                                    wire:loading.attr="disabled"
+                                    class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50">
                                 Delete
                             </button>
                         @endif
@@ -93,14 +97,17 @@
                 </div>
             </div>
         @empty
-            <div class="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                <x-icons.file-text class="mx-auto h-8 w-8 text-gray-400" />
-                <p class="mt-2 text-sm font-medium text-gray-900">No templates yet</p>
-                <p class="mt-1 text-sm text-gray-500">Create a template to start generating PDF reports</p>
-                <button wire:click="openCreateForm" class="mt-3 text-sm font-medium text-purple-600 hover:text-purple-700">
-                    Create your first template
-                </button>
-            </div>
+            <x-ui.card>
+                <x-ui.empty-state
+                    title="No templates yet"
+                    description="Create a template to start generating PDF reports."
+                    icon="file-text"
+                >
+                    <x-ui.button wire:click="openCreateForm" size="sm">
+                        Create your first template
+                    </x-ui.button>
+                </x-ui.empty-state>
+            </x-ui.card>
         @endforelse
     </div>
 
@@ -200,8 +207,9 @@
 
         <div class="mt-6 flex justify-end gap-3">
             <x-ui.button variant="secondary" wire:click="cancelForm">Cancel</x-ui.button>
-            <x-ui.button wire:click="saveTemplate">
-                {{ $editingTemplateId ? 'Update Template' : 'Create Template' }}
+            <x-ui.button wire:click="saveTemplate" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="saveTemplate">{{ $editingTemplateId ? 'Update Template' : 'Create Template' }}</span>
+                <span wire:loading wire:target="saveTemplate">Saving...</span>
             </x-ui.button>
         </div>
     </x-ui.modal>

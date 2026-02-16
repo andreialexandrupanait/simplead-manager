@@ -12,6 +12,7 @@ use App\Models\Site;
 use App\Models\VulnerabilityAlert;
 use App\Services\ModuleConfigService;
 use App\Services\SecurityScanService;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -86,6 +87,12 @@ class SiteSecurity extends Component
 
     public function scanNow(): void
     {
+        $rateLimitKey = "security-scan:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('error', 'Too many scan requests. Please wait before trying again.');
+            return;
+        }
+
         $this->dispatchTrackedJob('scan', new RunSecurityScan($this->site), 'Running security scan...');
         unset($this->latestScan, $this->activeIssues, $this->vulnerabilities);
     }
@@ -110,6 +117,12 @@ class SiteSecurity extends Component
 
     public function checkSslNow(): void
     {
+        $rateLimitKey = "ssl-check:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('error', 'Too many SSL check requests. Please wait before trying again.');
+            return;
+        }
+
         if ($this->site->sslCertificate) {
             CheckSslCertificate::dispatch($this->site->sslCertificate);
             $this->site->sslCertificate->update(['last_checked_at' => now()]);
@@ -120,6 +133,12 @@ class SiteSecurity extends Component
 
     public function checkCoreIntegrityNow(): void
     {
+        $rateLimitKey = "integrity-check:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('error', 'Too many integrity check requests. Please wait before trying again.');
+            return;
+        }
+
         $this->dispatchTrackedJob('integrity', new CheckCoreFileIntegrity($this->site), 'Checking core file integrity...');
         unset($this->latestCoreCheck);
     }

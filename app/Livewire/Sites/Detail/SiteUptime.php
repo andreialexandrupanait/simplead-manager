@@ -7,6 +7,7 @@ use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -71,6 +72,12 @@ class SiteUptime extends Component
     public function testNow(): void
     {
         if ($this->monitor) {
+            $rateLimitKey = "uptime-check:{$this->site->id}:" . auth()->id();
+            if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+                session()->flash('error', 'Too many uptime check requests. Please wait before trying again.');
+                return;
+            }
+
             $this->dispatchTrackedJob('uptime', new CheckUptime($this->monitor), 'Checking uptime...');
         }
     }

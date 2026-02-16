@@ -34,31 +34,23 @@ class PerformanceOverview extends Component
     #[Computed]
     public function stats(): array
     {
-        $monitors = PerformanceMonitor::where('is_active', true)->whereHas('site');
+        // Single query to get all active monitors with their latest tests
+        $monitors = PerformanceMonitor::where('is_active', true)
+            ->whereHas('site')
+            ->with('latestMobileTest')
+            ->get();
+
         $total = $monitors->count();
 
-        $avgMobile = PerformanceMonitor::where('is_active', true)
-            ->whereHas('site')
-            ->whereNotNull('latest_mobile_score')
-            ->avg('latest_mobile_score');
+        $avgMobile = $monitors->whereNotNull('latest_mobile_score')->avg('latest_mobile_score');
+        $avgDesktop = $monitors->whereNotNull('latest_desktop_score')->avg('latest_desktop_score');
 
-        $avgDesktop = PerformanceMonitor::where('is_active', true)
-            ->whereHas('site')
-            ->whereNotNull('latest_desktop_score')
-            ->avg('latest_desktop_score');
+        $poorCount = $monitors->filter(fn ($m) =>
+            ($m->latest_mobile_score !== null && $m->latest_mobile_score < 50) ||
+            ($m->latest_desktop_score !== null && $m->latest_desktop_score < 50)
+        )->count();
 
-        $poorCount = PerformanceMonitor::where('is_active', true)
-            ->whereHas('site')
-            ->where(function ($q) {
-                $q->where('latest_mobile_score', '<', 50)
-                    ->orWhere('latest_desktop_score', '<', 50);
-            })
-            ->count();
-
-        $budgetViolations = PerformanceMonitor::where('is_active', true)
-            ->whereHas('site')
-            ->whereNotNull('budgets')
-            ->get()
+        $budgetViolations = $monitors
             ->filter(function ($monitor) {
                 $budgets = $monitor->budgets;
                 if (empty($budgets)) {

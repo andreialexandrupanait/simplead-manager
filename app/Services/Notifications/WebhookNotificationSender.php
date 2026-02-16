@@ -14,13 +14,14 @@ class WebhookNotificationSender
         ?Site $site,
         array $payload
     ): array {
-        $url = $channel->config['url'] ?? null;
+        $config = $channel->getDecryptedConfig();
+        $url = $config['url'] ?? null;
         if (!$url) {
             return ['success' => false, 'response_code' => null, 'error' => 'No webhook URL configured'];
         }
 
-        $method = strtolower($channel->config['method'] ?? 'POST');
-        $headers = $channel->config['headers'] ?? [];
+        $method = strtolower($config['method'] ?? 'POST');
+        $headers = $config['headers'] ?? [];
 
         $data = array_merge($payload, [
             'event' => $event,

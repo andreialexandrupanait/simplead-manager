@@ -32,7 +32,7 @@ class BudgetViolationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.budget-violation',
+            view: 'mail.budget-violation',
             with: [
                 'monitor' => $this->monitor,
                 'site' => $this->monitor->site,

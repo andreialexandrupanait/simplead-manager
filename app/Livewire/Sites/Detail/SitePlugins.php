@@ -11,6 +11,7 @@ use App\Models\UpdateLog;
 use App\Services\ActivityLogger;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -331,6 +332,7 @@ class SitePlugins extends Component
                 'message' => "{$plugin->name} activated.",
                 'version' => null,
             ];
+            $this->dispatch('notify', type: 'success', message: "{$plugin->name} activated.");
         } catch (\Exception $e) {
             Log::warning("Plugin activation failed: {$plugin->name} on site {$this->site->name}", [
                 'plugin' => $plugin->file,
@@ -363,6 +365,7 @@ class SitePlugins extends Component
                 'message' => "{$plugin->name} deactivated.",
                 'version' => null,
             ];
+            $this->dispatch('notify', type: 'success', message: "{$plugin->name} deactivated.");
         } catch (\Exception $e) {
             Log::warning("Plugin deactivation failed: {$plugin->name} on site {$this->site->name}", [
                 'plugin' => $plugin->file,
@@ -689,6 +692,12 @@ class SitePlugins extends Component
 
     public function syncNow(): void
     {
+        $rateLimitKey = "sync:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            session()->flash('update-error', 'Too many sync requests. Please wait before trying again.');
+            return;
+        }
+
         $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
     }
 
@@ -713,6 +722,12 @@ class SitePlugins extends Component
 
     public function quickBackup(): void
     {
+        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('update-error', 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
         $this->dispatchTrackedJob('backup', new CreateBackup($this->site, 'full', 'manual'), 'Creating backup...');
     }
 

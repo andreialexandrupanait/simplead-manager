@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Models\SitePreset;
+use App\Models\SitePresetModule;
 use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -29,7 +30,7 @@ class SitePresetsSettings extends Component
     #[Computed]
     public function presets()
     {
-        return SitePreset::withCount('sites')->orderBy('sort_order')->get();
+        return SitePreset::with('presetModules')->withCount('sites')->orderBy('sort_order')->get();
     }
 
     #[Computed]
@@ -62,15 +63,23 @@ class SitePresetsSettings extends Component
 
     public function openEdit(int $id): void
     {
-        $preset = SitePreset::findOrFail($id);
+        $preset = SitePreset::with('presetModules')->findOrFail($id);
 
         $this->editingId = $preset->id;
         $this->presetName = $preset->name;
         $this->presetDescription = $preset->description ?? '';
-        $this->presetModules = $preset->modules;
         $this->presetIsDefault = $preset->is_default;
         $this->presetSortOrder = $preset->sort_order;
         $this->showForm = true;
+
+        // Build presetModules array from relationship rows
+        $this->presetModules = [];
+        foreach (ModuleConfigService::getModuleKeys() as $key) {
+            $this->presetModules[$key] = ['enabled' => false];
+        }
+        foreach ($preset->presetModules as $mod) {
+            $this->presetModules[$mod->module_key] = ['enabled' => $mod->is_enabled];
+        }
     }
 
     public function save(): void
@@ -88,21 +97,29 @@ class SitePresetsSettings extends Component
                 ->update(['is_default' => false]);
         }
 
-        SitePreset::updateOrCreate(
+        $preset = SitePreset::updateOrCreate(
             ['id' => $this->editingId],
             [
                 'name' => $this->presetName,
                 'description' => $this->presetDescription,
-                'modules' => $this->presetModules,
                 'is_default' => $this->presetIsDefault,
                 'sort_order' => $this->presetSortOrder,
             ]
         );
 
+        // Sync module rows
+        foreach ($this->presetModules as $key => $config) {
+            SitePresetModule::updateOrCreate(
+                ['site_preset_id' => $preset->id, 'module_key' => $key],
+                ['is_enabled' => $config['enabled'] ?? false]
+            );
+        }
+
+        $wasEditing = $this->editingId;
         $this->showForm = false;
         $this->resetForm();
         unset($this->presets);
-        $this->dispatch('notify', type: 'success', message: $this->editingId ? 'Preset updated.' : 'Preset created.');
+        $this->dispatch('notify', type: 'success', message: $wasEditing ? 'Preset updated.' : 'Preset created.');
     }
 
     public function confirmDelete(int $id): void

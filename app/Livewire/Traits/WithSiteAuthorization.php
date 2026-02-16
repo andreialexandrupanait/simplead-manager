@@ -15,7 +15,7 @@ trait WithSiteAuthorization
             throw new AuthorizationException('Unauthenticated.');
         }
 
-        if ($user->is_admin) {
+        if ($user->isAdmin()) {
             return;
         }
 
@@ -26,6 +26,16 @@ trait WithSiteAuthorization
 
     protected function authorizeSiteModification(Site $site): void
     {
+        $user = auth()->user();
+
+        if (!$user) {
+            throw new AuthorizationException('Unauthenticated.');
+        }
+
+        if ($user->isViewer()) {
+            abort(403, 'Viewers cannot modify sites.');
+        }
+
         $this->authorizeSiteAccess($site);
     }
 }

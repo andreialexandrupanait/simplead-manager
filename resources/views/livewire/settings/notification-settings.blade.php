@@ -52,10 +52,11 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button wire:click="testChannel({{ $channel->id }})" class="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100">
-                                    Test
+                                <button wire:click="testChannel({{ $channel->id }})" wire:loading.attr="disabled" wire:target="testChannel({{ $channel->id }})" class="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-50">
+                                    <span wire:loading.remove wire:target="testChannel({{ $channel->id }})">Test</span>
+                                    <span wire:loading wire:target="testChannel({{ $channel->id }})">Testing...</span>
                                 </button>
-                                <button wire:click="toggleChannel({{ $channel->id }})" class="rounded-lg px-2 py-1 text-xs {{ $channel->is_active ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50' }}">
+                                <button wire:click="toggleChannel({{ $channel->id }})" wire:loading.attr="disabled" wire:target="toggleChannel({{ $channel->id }})" class="rounded-lg px-2 py-1 text-xs {{ $channel->is_active ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50' }} disabled:opacity-50">
                                     {{ $channel->is_active ? 'Disable' : 'Enable' }}
                                 </button>
                                 <button wire:click="$dispatch('open-channel-form', { channelId: {{ $channel->id }} })" class="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100">
@@ -63,7 +64,8 @@
                                 </button>
                                 <button wire:click="deleteChannel({{ $channel->id }})"
                                         wire:confirm="Delete this notification channel?"
-                                        class="rounded-lg px-2 py-1 text-xs text-red-500 hover:bg-red-50">
+                                        wire:loading.attr="disabled"
+                                        class="rounded-lg px-2 py-1 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50">
                                     Delete
                                 </button>
                             </div>

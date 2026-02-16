@@ -118,11 +118,13 @@ class ModuleConfigService
      */
     public function applyPreset(Site $site, SitePreset $preset): void
     {
-        $modules = $preset->modules;
+        $preset->loadMissing('presetModules');
+        $presetModules = $preset->presetModules->keyBy('module_key');
 
         foreach (self::MODULE_MAP as $moduleKey => $config) {
-            $enabled = $modules[$moduleKey]['enabled'] ?? false;
-            $interval = $modules[$moduleKey]['interval'] ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
+            $mod = $presetModules->get($moduleKey);
+            $enabled = $mod?->is_enabled ?? false;
+            $interval = $mod?->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
 
             $this->configureModule($site, $moduleKey, $enabled, $interval);
         }

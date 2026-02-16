@@ -56,7 +56,10 @@
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <x-ui.button type="submit">{{ __('Save Profile') }}</x-ui.button>
+                    <x-ui.button type="submit" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="saveProfile">{{ __('Save Profile') }}</span>
+                        <span wire:loading wire:target="saveProfile">{{ __('Saving...') }}</span>
+                    </x-ui.button>
                 </div>
             </x-ui.card>
         </form>
@@ -86,7 +89,10 @@
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <x-ui.button type="submit">{{ __('Change Password') }}</x-ui.button>
+                    <x-ui.button type="submit" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="changePassword">{{ __('Change Password') }}</span>
+                        <span wire:loading wire:target="changePassword">{{ __('Updating...') }}</span>
+                    </x-ui.button>
                 </div>
             </x-ui.card>
         </form>
@@ -100,7 +106,10 @@
                 {{-- Not enabled — show enable button --}}
                 <div class="flex items-center gap-3">
                     <x-ui.badge variant="gray">{{ __('Not enabled') }}</x-ui.badge>
-                    <x-ui.button wire:click="enableTwoFactor" variant="secondary">{{ __('Enable 2FA') }}</x-ui.button>
+                    <x-ui.button wire:click="enableTwoFactor" variant="secondary" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="enableTwoFactor">{{ __('Enable 2FA') }}</span>
+                        <span wire:loading wire:target="enableTwoFactor">{{ __('Setting up...') }}</span>
+                    </x-ui.button>
                 </div>
             @elseif($showingQrCode)
                 {{-- QR code setup phase --}}
@@ -184,8 +193,9 @@
                 <x-ui.input type="password" wire:model="deleteAccountPassword" label="{{ __('Confirm your password') }}" placeholder="{{ __('Enter your password to confirm') }}" />
                 @error('deleteAccountPassword') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
-            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}">
-                {{ __('Delete Account') }}
+            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="deleteAccount">{{ __('Delete Account') }}</span>
+                <span wire:loading wire:target="deleteAccount">{{ __('Deleting...') }}</span>
             </x-ui.button>
         </x-ui.card>
     </div>

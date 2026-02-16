@@ -8,6 +8,12 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     volumes:
       # Mount entire codebase for live editing (includes storage, vendor, node_modules)
       - .:/var/www/html
@@ -27,7 +33,11 @@ services:
     restart: unless-stopped
     command: php artisan horizon
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "php artisan horizon:status | grep -q running"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     stop_grace_period: 30s
     volumes:
       - .:/var/www/html
@@ -47,14 +57,18 @@ services:
     restart: unless-stopped
     command: php artisan schedule:work
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "php -r 'echo 1;'"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     volumes:
       - .:/var/www/html
     networks:
       - simplead
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -88,7 +102,7 @@ services:
       - simplead
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
 
   certbot:
     image: certbot/certbot
@@ -140,6 +154,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Connection pooler — set DB_HOST=pgbouncer in .env to use
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1-p2
+    container_name: simplead-pgbouncer-dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://simplead:${DB_PASSWORD}@pgsql:5432/simplead_manager"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_IDLE_TIMEOUT: 600
+      SERVER_LIFETIME: 3600
+      LOG_CONNECTIONS: 0
+      LOG_DISCONNECTIONS: 0
+      AUTH_TYPE: scram-sha-256
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U simplead"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - simplead
+    depends_on:
+      pgsql:
+        condition: service_healthy
 
   redis:
     image: redis:7-alpine

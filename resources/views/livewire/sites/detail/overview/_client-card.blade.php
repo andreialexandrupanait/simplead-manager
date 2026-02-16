@@ -55,7 +55,7 @@
         @else
             <div class="py-2 text-center">
                 <p class="text-sm text-gray-500">No client assigned</p>
-                <x-ui.button wire:click="openAssignClientModal" color="purple" size="sm" class="mt-2">
+                <x-ui.button wire:click="openAssignClientModal" color="purple" size="sm" class="mt-2" wire:loading.attr="disabled">
                     Assign Client
                 </x-ui.button>
             </div>

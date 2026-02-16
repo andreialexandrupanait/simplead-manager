@@ -32,7 +32,7 @@ class PerformanceAlertMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.performance-alert',
+            view: 'mail.performance-alert',
             with: [
                 'monitor' => $this->monitor,
                 'site' => $this->monitor->site,

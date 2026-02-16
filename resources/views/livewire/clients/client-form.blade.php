@@ -104,8 +104,9 @@
             <a href="{{ $client ? route('clients.show', $client) : route('clients.index') }}">
                 <x-ui.button type="button" variant="secondary">Cancel</x-ui.button>
             </a>
-            <x-ui.button type="submit">
-                {{ $client ? 'Update Client' : 'Create Client' }}
+            <x-ui.button type="submit" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="save">{{ $client ? 'Update Client' : 'Create Client' }}</span>
+                <span wire:loading wire:target="save">Saving...</span>
             </x-ui.button>
         </div>
     </form>

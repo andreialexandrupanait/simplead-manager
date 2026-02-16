@@ -9,10 +9,9 @@ return new class extends Migration
 {
     private function indexExists(string $table, string $indexName): bool
     {
-        return DB::selectOne(
-            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
-            [$table, $indexName]
-        ) !== null;
+        $indexes = Schema::getIndexes($table);
+
+        return collect($indexes)->contains(fn ($idx) => $idx['name'] === $indexName);
     }
 
     public function up(): void

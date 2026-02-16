@@ -9,21 +9,25 @@ class BackupPolicy
 {
     public function view(User $user, Backup $backup): bool
     {
-        return $user->is_admin || $backup->site?->user_id === $user->id;
+        return $user->isAdmin() || $backup->site?->user_id === $user->id;
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canManageSites();
     }
 
     public function delete(User $user, Backup $backup): bool
     {
-        return $user->is_admin || $backup->site?->user_id === $user->id;
+        return $user->isAdmin();
     }
 
     public function restore(User $user, Backup $backup): bool
     {
-        return $user->is_admin || $backup->site?->user_id === $user->id;
+        if ($user->isViewer()) {
+            return false;
+        }
+
+        return $user->isAdmin() || $backup->site?->user_id === $user->id;
     }
 }

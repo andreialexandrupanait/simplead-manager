@@ -73,6 +73,18 @@ Schedule::command('queue:prune-failed', ['--hours' => 168])
     ->name('failed-jobs-prune')
     ->onOneServer();
 
+// Prune MassPrunable models (UptimeCheck 45-day retention)
+Schedule::command('model:prune', ['--model' => [\App\Models\UptimeCheck::class]])
+    ->dailyAt('03:30')
+    ->name('model-prune')
+    ->onOneServer();
+
+// Daily PostgreSQL dump (independent database backup)
+Schedule::command('db:dump', ['--keep' => 7])
+    ->dailyAt('02:30')
+    ->name('database-dump')
+    ->onOneServer();
+
 // VACUUM ANALYZE — weekly Sunday 3 AM
 Schedule::call(fn () => DB::statement('VACUUM ANALYZE'))
     ->weekly()
@@ -139,6 +151,19 @@ Schedule::call(function () {
         \Illuminate\Support\Facades\Log::warning('Horizon health check failed: ' . $e->getMessage());
     }
 })->everyFiveMinutes()->name('horizon-health-check')->withoutOverlapping()->onOneServer();
+
+// Validate external connections (Google, Cloudflare, Dropbox, WordPress)
+Schedule::job(new \App\Jobs\ValidateExternalConnections)
+    ->dailyAt('06:00')
+    ->name('validate-external-connections')
+    ->onOneServer();
+
+// Process buffered notifications (grouping/batching)
+Schedule::job(new \App\Jobs\ProcessNotificationBatch)
+    ->everyMinute()
+    ->name('process-notification-batch')
+    ->onOneServer()
+    ->withoutOverlapping();
 
 // Daily health digest email
 Schedule::job(new \App\Jobs\SendDailyDigest)

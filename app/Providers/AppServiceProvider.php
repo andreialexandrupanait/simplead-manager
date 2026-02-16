@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Events\LongWaitDetected;
 
@@ -29,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Model::preventLazyLoading(! app()->isProduction());
+
         RateLimiter::for('login', function (Request $request) {
             $key = $request->input('email', '') . '|' . $request->ip();
 

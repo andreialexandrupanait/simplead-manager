@@ -11,6 +11,7 @@ use App\Models\ReportTemplate;
 use App\Models\Site;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -68,6 +69,12 @@ class SiteReports extends Component
 
     public function generateReport(): void
     {
+        $rateLimitKey = "report:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            session()->flash('report-error', 'Too many report requests. Please wait before trying again.');
+            return;
+        }
+
         $this->validate([
             'selectedTemplateId' => 'required|exists:report_templates,id',
             'period' => 'required|in:last_7_days,last_30_days,last_month,custom',

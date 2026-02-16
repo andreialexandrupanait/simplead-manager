@@ -102,7 +102,7 @@ class CreateSite extends Component
     {
         return view('livewire.sites.create-site', [
             'clients' => Client::where('status', 'active')->orderBy('name')->get(),
-            'presets' => SitePreset::orderBy('sort_order')->get(),
+            'presets' => SitePreset::with('presetModules')->orderBy('sort_order')->get(),
         ])->layout('components.layouts.app', ['title' => 'Add New Site']);
     }
 }

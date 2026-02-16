@@ -128,8 +128,9 @@
                 <x-ui.card>
                     <h3 class="text-sm font-semibold text-gray-900 mb-4">Purge Everything</h3>
                     <p class="text-sm text-gray-500 mb-4">Remove all cached files from Cloudflare's edge servers. This may temporarily slow down your site.</p>
-                    <x-ui.button variant="danger" wire:click="purgeEverything" wire:confirm="Purge all cached files? This cannot be undone.">
-                        Purge Everything
+                    <x-ui.button variant="danger" wire:click="purgeEverything" wire:confirm="Purge all cached files? This cannot be undone." wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="purgeEverything">Purge Everything</span>
+                        <span wire:loading wire:target="purgeEverything">Purging...</span>
                     </x-ui.button>
                 </x-ui.card>
 
@@ -138,7 +139,10 @@
                     <p class="text-sm text-gray-500 mb-2">Enter one URL per line to purge specific pages.</p>
                     <textarea wire:model="purgeUrls" rows="4" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="https://example.com/page-1&#10;https://example.com/page-2"></textarea>
                     <div class="mt-3 flex justify-end">
-                        <x-ui.button wire:click="purgeByUrls" size="sm">Purge URLs</x-ui.button>
+                        <x-ui.button wire:click="purgeByUrls" size="sm" wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="purgeByUrls">Purge URLs</span>
+                            <span wire:loading wire:target="purgeByUrls">Purging...</span>
+                        </x-ui.button>
                     </div>
                 </x-ui.card>
             </div>

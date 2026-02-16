@@ -160,11 +160,11 @@
                         @if($preset->description)
                             <p class="mt-1 text-xs text-gray-500">{{ $preset->description }}</p>
                         @endif
-                        @if($preset->modules)
+                        @if($preset->presetModules->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-1">
-                                @foreach($preset->modules as $module)
-                                    @if($module['enabled'] ?? false)
-                                        <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ ucfirst(str_replace('_', ' ', $module['key'] ?? '')) }}</span>
+                                @foreach($preset->presetModules as $mod)
+                                    @if($mod->is_enabled)
+                                        <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ ucfirst(str_replace('_', ' ', $mod->module_key)) }}</span>
                                     @endif
                                 @endforeach
                             </div>

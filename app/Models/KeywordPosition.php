@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class KeywordPosition extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['tracked_keyword_id', 'date', 'position', 'clicks', 'impressions', 'ctr'];
 
     protected $casts = [
