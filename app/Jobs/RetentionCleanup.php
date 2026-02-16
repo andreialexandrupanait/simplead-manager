@@ -81,38 +81,11 @@ class RetentionCleanup implements ShouldQueue
         }
         $cleaned['expired_backups'] = count($expiredBackups);
 
-        // Expired IP rules
-        $cleaned['expired_ip_rules'] = DB::table('ip_rules')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now())
-            ->delete();
-
-        // Old audit logs — 90 days
-        if (DB::getSchemaBuilder()->hasTable('wp_audit_logs')) {
-            $cleaned['wp_audit_logs'] = DB::table('wp_audit_logs')
-                ->where('action_at', '<=', now()->subDays(90))
-                ->delete();
-        }
-
-        // Old blocked requests — 30 days
-        if (DB::getSchemaBuilder()->hasTable('blocked_requests')) {
-            $cleaned['blocked_requests'] = DB::table('blocked_requests')
-                ->where('blocked_at', '<=', now()->subDays(30))
-                ->delete();
-        }
-
         // Expired rollback points
         try {
             app(\App\Services\RollbackService::class)->cleanExpired();
         } catch (\Exception $e) {
             // Ignore if service doesn't exist
-        }
-
-        // Resource checks — 90 days
-        if (DB::getSchemaBuilder()->hasTable('resource_checks')) {
-            $cleaned['resource_checks'] = DB::table('resource_checks')
-                ->where('checked_at', '<=', now()->subDays(90))
-                ->delete();
         }
 
         $total = array_sum($cleaned);
