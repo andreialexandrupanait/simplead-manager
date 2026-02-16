@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\DomainMonitor;
-use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,11 +29,6 @@ class CheckDomainExpiry implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        if (MaintenanceService::isSiteInMaintenance($this->domainMonitor->site, 'ssl')) {
-            $this->domainMonitor->update(['next_check_at' => now()->addDay()]);
-            return;
-        }
-
         $domain = $this->domainMonitor->domain;
 
         try {

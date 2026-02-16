@@ -14,7 +14,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Services\ActivityLogger;
 use App\Services\JobTracker;
-use App\Services\MaintenanceService;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\NotifyIncident;
 use App\Jobs\CreateStatusPageIncident;
@@ -41,12 +40,6 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         JobTracker::start($this->uniqueId(), 'Checking uptime...');
-
-        if (MaintenanceService::isSiteInMaintenance($this->monitor->site, 'uptime')) {
-            $this->monitor->update(['next_check_at' => now()->addMinutes($this->monitor->interval_minutes)]);
-            JobTracker::complete($this->uniqueId(), 'Skipped — site in maintenance');
-            return;
-        }
 
         $result = $this->performCheck();
 

@@ -92,9 +92,6 @@ class ReportGeneratorService
             $this->data['performance'] = $this->gatherPerformanceData();
         }
 
-        if (in_array('links', $sections)) {
-            $this->data['links'] = $this->gatherLinksData();
-        }
     }
 
     protected function gatherOverviewData(): array
@@ -156,11 +153,6 @@ class ReportGeneratorService
             $overview['total_clicks'] = $scData['clicks'] ?? null;
             $overview['total_impressions'] = $scData['impressions'] ?? null;
         }
-
-        // Links
-        $linkMonitor = $this->site->linkMonitor;
-        $overview['broken_links'] = $linkMonitor?->broken_links ?? 0;
-        $overview['total_links'] = $linkMonitor?->total_links ?? 0;
 
         return $overview;
     }
@@ -407,37 +399,6 @@ class ReportGeneratorService
         }
 
         return $data;
-    }
-
-    protected function gatherLinksData(): ?array
-    {
-        $linkMonitor = $this->site->linkMonitor;
-        if (!$linkMonitor) {
-            return null;
-        }
-
-        $scan = $linkMonitor->latestCompletedScan;
-        if (!$scan) {
-            return null;
-        }
-
-        $brokenLinks = $scan->brokenLinks()
-            ->limit(50)
-            ->get();
-
-        return [
-            'total_links' => $scan->total_links,
-            'broken_links' => $scan->broken_links,
-            'redirects' => $scan->redirects,
-            'pages_scanned' => $scan->pages_scanned,
-            'scanned_at' => $scan->completed_at?->format('M d, Y H:i'),
-            'broken_links_list' => $brokenLinks->map(fn ($link) => [
-                'url' => $link->url,
-                'http_code' => $link->http_code,
-                'source_url' => $link->source_url,
-                'anchor_text' => $link->anchor_text,
-            ])->toArray(),
-        ];
     }
 
     protected function formatBytes(int $bytes): string

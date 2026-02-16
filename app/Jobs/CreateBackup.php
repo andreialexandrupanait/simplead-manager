@@ -11,7 +11,6 @@ use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
-use App\Services\MaintenanceService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -51,11 +50,6 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         JobTracker::start($this->uniqueId(), 'Creating backup...');
-
-        if (MaintenanceService::isSiteInMaintenance($this->site, 'backups')) {
-            JobTracker::complete($this->uniqueId(), 'Backup skipped (maintenance mode)');
-            return;
-        }
 
         $this->tempDir = storage_path('app/temp/backup-' . uniqid());
         mkdir($this->tempDir, 0755, true);

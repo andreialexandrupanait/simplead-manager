@@ -161,7 +161,6 @@ class DashboardService
             'sslCertificate',
             'domainMonitor',
             'performanceMonitor',
-            'linkMonitor',
             'backupConfig',
             'latestCompletedBackup',
             'sitePlugins' => fn($q) => $q->where('has_update', true),

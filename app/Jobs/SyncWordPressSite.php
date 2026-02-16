@@ -46,10 +46,6 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
             // Sync site info
             $info = $api->getInfo();
 
-            // Detect WooCommerce from active plugins
-            $activePlugins = $info['active_plugins'] ?? [];
-            $hasWooCommerce = in_array('woocommerce/woocommerce.php', $activePlugins);
-
             $this->site->update([
                 'wp_version' => $info['wp_version'] ?? $this->site->wp_version,
                 'php_version' => $info['php_version'] ?? $this->site->php_version,
@@ -58,7 +54,6 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 'db_size_mb' => $info['db_size_mb'] ?? $this->site->db_size_mb,
                 'uploads_size_mb' => $info['uploads_size_mb'] ?? $this->site->uploads_size_mb,
                 'core_update_version' => $info['core_new_version'] ?? null,
-                'has_woocommerce' => $hasWooCommerce,
                 'is_connected' => true,
                 'last_synced_at' => now(),
             ]);

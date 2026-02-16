@@ -17,7 +17,7 @@ class SitesList extends Component
         $user = auth()->user();
 
         $sites = Site::query()
-            ->when(!$user->is_admin, fn ($q) => $q->where('user_id', $user->id))
+            ->when(!$user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
                   ->orWhere('url', 'like', "%{$this->search}%");
@@ -32,7 +32,7 @@ class SitesList extends Component
                     default => $q,
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'sslCertificate', 'linkMonitor', 'analyticsConnection', 'domainMonitor', 'searchConsoleConnection')
+            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'sslCertificate', 'analyticsConnection', 'domainMonitor', 'searchConsoleConnection')
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
             ->latest()
             ->paginate(16);

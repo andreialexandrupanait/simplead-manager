@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\SslCertificate;
-use App\Services\MaintenanceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,11 +29,6 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        if (MaintenanceService::isSiteInMaintenance($this->certificate->site, 'ssl')) {
-            $this->certificate->update(['next_check_at' => now()->addHours(12)]);
-            return;
-        }
-
         $domain = $this->certificate->domain;
         $startTime = microtime(true);
 

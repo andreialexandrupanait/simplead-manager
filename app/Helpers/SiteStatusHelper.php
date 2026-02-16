@@ -38,7 +38,6 @@ class SiteStatusHelper
             'ssl' => $ssl,
             'response' => static::responseTime($site),
             'performance' => $performance,
-            'links' => static::links($site),
             'domain' => static::domain($site),
             'plugins' => $plugins,
             'users' => static::users($site),
@@ -122,20 +121,6 @@ class SiteStatusHelper
                 $color = $score >= 90 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
                 $tip = 'Performance: ' . $score;
             }
-        }
-
-        return compact('color', 'tip');
-    }
-
-    private static function links(Site $site): array
-    {
-        $color = 'text-gray-300';
-        $tip = 'Links: Not monitored';
-
-        if ($site->linkMonitor) {
-            $broken = $site->linkMonitor->broken_links ?? 0;
-            $color = $broken === 0 ? 'text-green-500' : ($broken <= 5 ? 'text-yellow-500' : 'text-red-500');
-            $tip = $broken === 0 ? 'No broken links' : $broken . ' broken link' . ($broken > 1 ? 's' : '');
         }
 
         return compact('color', 'tip');

@@ -48,7 +48,6 @@ class Site extends Model
         "db_size_mb",
         "uploads_size_mb",
         "core_update_version",
-        "has_woocommerce",
         "favicon_path",
         "screenshot_path",
         "applied_preset_id",
@@ -61,7 +60,6 @@ class Site extends Model
         "ssl_ok" => "boolean",
         "backup_ok" => "boolean",
         "is_connected" => "boolean",
-        "has_woocommerce" => "boolean",
         "ssl_expiry" => "date",
         "last_backup_at" => "datetime",
         "last_synced_at" => "datetime",
@@ -110,8 +108,8 @@ class Site extends Model
 
             // Apply preset via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
             $preset = $site->applied_preset_id
-                ? SitePreset::find($site->applied_preset_id)
-                : SitePreset::getDefault();
+                ? SitePreset::with('presetModules')->find($site->applied_preset_id)
+                : SitePreset::with('presetModules')->where('is_default', true)->first();
 
             if ($preset) {
                 app(ModuleConfigService::class)->applyPreset($site, $preset);
@@ -254,11 +252,6 @@ class Site extends Model
         return $this->hasOne(PerformanceMonitor::class);
     }
 
-    public function linkMonitor(): HasOne
-    {
-        return $this->hasOne(LinkMonitor::class);
-    }
-
     public function backups(): HasMany
     {
         return $this->hasMany(Backup::class);
@@ -294,21 +287,6 @@ class Site extends Model
         return $this->hasMany(ActivityLog::class);
     }
 
-    public function maintenanceWindows(): HasMany
-    {
-        return $this->hasMany(MaintenanceWindow::class);
-    }
-
-    public function activeMaintenanceWindow(): HasOne
-    {
-        return $this->hasOne(MaintenanceWindow::class)->where('status', 'active');
-    }
-
-    public function dnsRecordCache(): HasOne
-    {
-        return $this->hasOne(DnsRecordCache::class);
-    }
-
     public function coreFileChecks(): HasMany
     {
         return $this->hasMany(CoreFileCheck::class);
@@ -324,19 +302,9 @@ class Site extends Model
         return $this->hasMany(SitePluginConflict::class);
     }
 
-    public function siteCronJobs(): HasMany
-    {
-        return $this->hasMany(SiteCronJob::class);
-    }
-
     public function databaseCleanups(): HasMany
     {
         return $this->hasMany(DatabaseCleanup::class);
-    }
-
-    public function errorLogs(): HasMany
-    {
-        return $this->hasMany(ErrorLog::class);
     }
 
     public function databaseHealthChecks(): HasMany
@@ -384,16 +352,6 @@ class Site extends Model
         return $this->hasMany(VulnerabilityAlert::class);
     }
 
-    public function wpAuditLogs(): HasMany
-    {
-        return $this->hasMany(WpAuditLog::class);
-    }
-
-    public function ipRules(): HasMany
-    {
-        return $this->hasMany(IpRule::class);
-    }
-
     public function siteCloudflare(): HasOne
     {
         return $this->hasOne(SiteCloudflare::class);
@@ -407,26 +365,6 @@ class Site extends Model
     public function safeUpdates(): HasMany
     {
         return $this->hasMany(SafeUpdate::class);
-    }
-
-    public function resourceChecks(): HasMany
-    {
-        return $this->hasMany(ResourceCheck::class);
-    }
-
-    public function latestResourceCheck(): HasOne
-    {
-        return $this->hasOne(ResourceCheck::class)->latestOfMany('checked_at');
-    }
-
-    public function wooCommerceStats(): HasMany
-    {
-        return $this->hasMany(WooCommerceStat::class);
-    }
-
-    public function wooCommerceAlerts(): HasMany
-    {
-        return $this->hasMany(WooCommerceAlert::class);
     }
 
     public function trackedKeywords(): HasMany

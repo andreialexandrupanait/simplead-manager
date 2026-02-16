@@ -333,16 +333,6 @@ class WordPressApiService
     }
 
     /**
-     * Get error logs.
-     */
-    public function getErrorLogs(): array
-    {
-        $response = $this->request('GET', '/error-logs');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
      * Get database health information.
      */
     public function getDatabaseHealth(): array
@@ -380,40 +370,6 @@ class WordPressApiService
         $response = $this->request('POST', '/security-fix', [
             'key' => $key,
         ]);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get audit logs.
-     */
-    public function getAuditLogs(?string $since = null): array
-    {
-        $queryParams = $since ? ['since' => $since] : [];
-        $response = $this->request('GET', '/audit-logs', [], $queryParams);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Sync IP rules to the site.
-     */
-    public function syncIpRules(array $rules): array
-    {
-        $response = $this->request('POST', '/ip-rules/sync', [
-            'rules' => $rules,
-        ]);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get blocked requests from the site.
-     */
-    public function getBlockedRequests(?string $since = null): array
-    {
-        $queryParams = $since ? ['since' => $since] : [];
-        $response = $this->request('GET', '/blocked-requests', [], $queryParams);
         $response->throw();
         return $response->json();
     }

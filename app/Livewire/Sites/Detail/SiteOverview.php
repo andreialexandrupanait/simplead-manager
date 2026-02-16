@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Services\WordPressApiService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use Livewire\Attributes\Computed;
@@ -30,6 +31,21 @@ class SiteOverview extends Component
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
+        $site->loadMissing([
+            'uptimeMonitor',
+            'securityMonitor',
+            'sslCertificate',
+            'backupConfig.storageDestination',
+            'latestCompletedBackup',
+            'client',
+            'performanceMonitor.latestMobileTest',
+            'performanceMonitor.latestDesktopTest',
+            'databaseCleanupConfig',
+            'healthState',
+            'siteCloudflare',
+            'searchConsoleConnection',
+            'analyticsConnection',
+        ]);
         $this->site = $site;
         $this->initJobTracking();
     }
@@ -175,14 +191,24 @@ class SiteOverview extends Component
 
     public function runBackup(): void
     {
-        // Dispatch backup job
-        dispatch(new \App\Jobs\CreateBackup($this->site, 'full', 'manual'));
+        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
 
+        dispatch(new \App\Jobs\CreateBackup($this->site, 'full', 'manual'));
         $this->dispatch('notify', type: 'success', message: 'Backup started');
     }
 
     public function syncNow(): void
     {
+        $rateLimitKey = "sync:{$this->site->id}:" . auth()->id();
+        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many sync requests. Please wait before trying again.');
+            return;
+        }
+
         $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
     }
 
