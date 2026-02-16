@@ -48,11 +48,8 @@ spl_autoload_register(function ($class) {
         'SAM_Database_Endpoint'     => 'endpoints/class-database-endpoint.php',
         'SAM_Cron_Endpoint'         => 'endpoints/class-cron-endpoint.php',
         'SAM_Monitoring_Endpoint'   => 'endpoints/class-monitoring-endpoint.php',
-        'SAM_Error_Log_Endpoint'    => 'endpoints/class-error-log-endpoint.php',
         'SAM_Audit_Endpoint'        => 'endpoints/class-audit-endpoint.php',
-        'SAM_Firewall_Endpoint'     => 'endpoints/class-firewall-endpoint.php',
         'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
-        'SAM_WooCommerce_Endpoint'  => 'endpoints/class-woocommerce-endpoint.php',
         'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
         'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
         // Admin
@@ -106,9 +103,6 @@ final class SimpleAd_Manager_Connector {
     public function activate(): void {
         SAM_Audit_Logger::create_table();
 
-        // Create firewall tables
-        SAM_Firewall_Endpoint::create_tables();
-
         // Generate API credentials if not set
         if (!get_option('sam_api_key')) {
             update_option('sam_api_key', wp_generate_password(32, false));
@@ -131,8 +125,6 @@ final class SimpleAd_Manager_Connector {
         delete_option('sam_settings');
 
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_audit_logs");
-        $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_ip_rules");
-        $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_blocked_requests");
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_login_tokens");
     }
 

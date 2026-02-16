@@ -42,7 +42,6 @@ class SAM_Admin {
         wp_localize_script('sam-admin', 'samAdmin', [
             'ajaxUrl'   => admin_url('admin-ajax.php'),
             'nonce'     => wp_create_nonce('sam_admin_nonce'),
-            'wooActive' => class_exists('WooCommerce'),
         ]);
     }
 
@@ -61,15 +60,7 @@ class SAM_Admin {
             'sam_cron_run',
             'sam_cron_disable',
             'sam_cron_enable',
-            'sam_error_logs',
             'sam_audit_logs',
-            'sam_ip_rules_list',
-            'sam_ip_rules_save',
-            'sam_ip_rules_delete',
-            'sam_blocked_requests',
-            'sam_woo_stats',
-            'sam_woo_low_stock',
-            'sam_woo_out_of_stock',
         ];
 
         foreach ($actions as $action) {
@@ -220,15 +211,6 @@ class SAM_Admin {
         wp_send_json($response->get_data());
     }
 
-    /* ─── Server / Error Logs ─── */
-
-    public function ajax_sam_error_logs(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Error_Log_Endpoint();
-        $response = $endpoint->get_error_logs(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
     /* ─── Audit ─── */
 
     public function ajax_sam_audit_logs(): void {
@@ -239,117 +221,6 @@ class SAM_Admin {
         }
         $endpoint = new SAM_Audit_Endpoint();
         $response = $endpoint->get_audit_logs($request);
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── Firewall ─── */
-
-    public function ajax_sam_ip_rules_list(): void {
-        $this->verify_request();
-        global $wpdb;
-        $table = $wpdb->prefix . 'sam_ip_rules';
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
-        if (!$table_exists) {
-            wp_send_json(['success' => true, 'rules' => []]);
-            return;
-        }
-        $rules = $wpdb->get_results("SELECT * FROM {$table} ORDER BY created_at DESC", ARRAY_A);
-        wp_send_json(['success' => true, 'rules' => $rules ?: []]);
-    }
-
-    public function ajax_sam_ip_rules_save(): void {
-        $this->verify_request();
-        global $wpdb;
-
-        $ip     = sanitize_text_field($_POST['ip'] ?? '');
-        $action = in_array($_POST['fw_action'] ?? '', ['allow', 'block'], true) ? $_POST['fw_action'] : 'block';
-        $note   = sanitize_text_field($_POST['note'] ?? '');
-
-        if (empty($ip)) {
-            wp_send_json_error(['message' => 'IP address is required.']);
-            return;
-        }
-
-        $table = $wpdb->prefix . 'sam_ip_rules';
-        $wpdb->insert($table, [
-            'ip'         => $ip,
-            'action'     => $action,
-            'note'       => $note,
-            'created_at' => current_time('mysql', true),
-        ], ['%s', '%s', '%s', '%s']);
-
-        // Update .htaccess
-        $firewall = new SAM_Firewall_Endpoint();
-        $firewall->update_htaccess_rules();
-
-        SAM_Audit_Logger::log('ip_rule_added', 'firewall', $ip, "{$action} rule added via admin");
-
-        wp_send_json(['success' => true]);
-    }
-
-    public function ajax_sam_ip_rules_delete(): void {
-        $this->verify_request();
-        global $wpdb;
-
-        $rule_id = absint($_POST['rule_id'] ?? 0);
-        if (!$rule_id) {
-            wp_send_json_error(['message' => 'Invalid rule ID.']);
-            return;
-        }
-
-        $table = $wpdb->prefix . 'sam_ip_rules';
-        $wpdb->delete($table, ['id' => $rule_id], ['%d']);
-
-        // Update .htaccess
-        $firewall = new SAM_Firewall_Endpoint();
-        $firewall->update_htaccess_rules();
-
-        SAM_Audit_Logger::log('ip_rule_deleted', 'firewall', (string) $rule_id, 'Rule deleted via admin');
-
-        wp_send_json(['success' => true]);
-    }
-
-    public function ajax_sam_blocked_requests(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Firewall_Endpoint();
-        $response = $endpoint->get_blocked_requests(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── WooCommerce ─── */
-
-    public function ajax_sam_woo_stats(): void {
-        $this->verify_request();
-        if (!class_exists('WooCommerce')) {
-            wp_send_json_error(['message' => 'WooCommerce not active.']);
-            return;
-        }
-        $request = new WP_REST_Request('GET');
-        $request->set_param('period', sanitize_text_field($_POST['period'] ?? 'month'));
-        $endpoint = new SAM_WooCommerce_Endpoint();
-        $response = $endpoint->get_stats($request);
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_woo_low_stock(): void {
-        $this->verify_request();
-        if (!class_exists('WooCommerce')) {
-            wp_send_json_error(['message' => 'WooCommerce not active.']);
-            return;
-        }
-        $endpoint = new SAM_WooCommerce_Endpoint();
-        $response = $endpoint->get_low_stock(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_woo_out_of_stock(): void {
-        $this->verify_request();
-        if (!class_exists('WooCommerce')) {
-            wp_send_json_error(['message' => 'WooCommerce not active.']);
-            return;
-        }
-        $endpoint = new SAM_WooCommerce_Endpoint();
-        $response = $endpoint->get_out_of_stock(new WP_REST_Request('GET'));
         wp_send_json($response->get_data());
     }
 
@@ -374,14 +245,8 @@ class SAM_Admin {
             'cron'        => 'Cron Jobs',
             'server'      => 'Server',
             'audit'       => 'Audit Log',
-            'firewall'    => 'Firewall',
+            'connection'  => 'Connection',
         ];
-
-        if (class_exists('WooCommerce')) {
-            $tabs['woocommerce'] = 'WooCommerce';
-        }
-
-        $tabs['connection'] = 'Connection';
         ?>
         <div class="wrap" id="sam-admin-wrap">
             <h1>SimpleAd Manager</h1>

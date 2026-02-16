@@ -388,46 +388,6 @@ class WordPressApiService
     }
 
     /**
-     * Get server resource usage (CPU, memory, disk).
-     */
-    public function getServerResources(): array
-    {
-        $response = $this->request('GET', '/server-resources');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get WooCommerce stats.
-     */
-    public function getWooStats(?string $period = 'today'): array
-    {
-        $response = $this->request('GET', '/woo/stats', [], ['period' => $period]);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get WooCommerce low stock products.
-     */
-    public function getWooLowStock(): array
-    {
-        $response = $this->request('GET', '/woo/low-stock');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get WooCommerce out of stock products.
-     */
-    public function getWooOutOfStock(): array
-    {
-        $response = $this->request('GET', '/woo/out-of-stock');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
      * Download a large file from the WordPress API (streaming).
      */
     public function streamDownload(string $endpoint, string $saveTo): void

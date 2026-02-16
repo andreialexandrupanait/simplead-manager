@@ -134,14 +134,6 @@
                             <div class="gsc-metric-value">{{ isset($o['total_impressions']) ? number_format($o['total_impressions']) : 'N/A' }}</div>
                             <div class="gsc-metric-label">Impresii</div>
                         </td>
-                        <td class="gsc-metric-box green">
-                            <div class="gsc-metric-value">{{ $o['broken_links'] ?? 0 }}</div>
-                            <div class="gsc-metric-label">Link-uri rupte</div>
-                        </td>
-                        <td class="gsc-metric-box orange">
-                            <div class="gsc-metric-value">{{ $o['total_links'] ?? 0 }}</div>
-                            <div class="gsc-metric-label">Total link-uri</div>
-                        </td>
                     </tr>
                 </table>
             </div>
