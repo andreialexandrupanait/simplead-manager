@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\MaintenanceWindow;
 use App\Models\Site;
 use App\Models\StatusPage;
 use App\Models\StatusPageIncident;
@@ -59,53 +58,6 @@ class StatusPageService
             $incident->updates()->create([
                 'status' => 'resolved',
                 'message' => "{$site->name} has recovered and is operating normally.",
-            ]);
-        }
-    }
-
-    public static function createMaintenanceIncident(StatusPage $statusPage, MaintenanceWindow $window): StatusPageIncident
-    {
-        $site = $window->site;
-
-        $incident = $statusPage->incidents()->create([
-            'site_id' => $site->id,
-            'title' => "Scheduled Maintenance: {$window->title}",
-            'description' => $window->description,
-            'status' => 'investigating',
-            'severity' => 'minor',
-            'is_scheduled' => true,
-            'scheduled_start_at' => $window->scheduled_start_at,
-            'scheduled_end_at' => $window->scheduled_end_at,
-            'started_at' => now(),
-            'auto_created' => true,
-        ]);
-
-        $incident->updates()->create([
-            'status' => 'investigating',
-            'message' => "Scheduled maintenance has started: {$window->title}",
-        ]);
-
-        return $incident;
-    }
-
-    public static function resolveMaintenanceIncident(StatusPage $statusPage, MaintenanceWindow $window): void
-    {
-        $incidents = $statusPage->incidents()
-            ->where('site_id', $window->site_id)
-            ->where('is_scheduled', true)
-            ->where('auto_created', true)
-            ->active()
-            ->get();
-
-        foreach ($incidents as $incident) {
-            $incident->update([
-                'status' => 'resolved',
-                'resolved_at' => now(),
-            ]);
-
-            $incident->updates()->create([
-                'status' => 'resolved',
-                'message' => 'Scheduled maintenance has been completed.',
             ]);
         }
     }

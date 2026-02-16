@@ -230,22 +230,6 @@ class ActivityLogger
         );
     }
 
-    public static function linkScanCompleted(Site $site, int $brokenCount, int $totalCount): ActivityLog
-    {
-        $severity = $brokenCount > 5 ? 'warning' : 'info';
-
-        return static::log(
-            type: 'links',
-            severity: $severity,
-            title: "Link scan completed for {$site->name}",
-            description: "{$brokenCount} broken out of {$totalCount} links",
-            site: $site,
-            metadata: ['broken_count' => $brokenCount, 'total_count' => $totalCount],
-            icon: 'link',
-            url: route('sites.links', $site),
-        );
-    }
-
     public static function reportGenerated(Site $site, string $title): ActivityLog
     {
         return static::log(

@@ -109,7 +109,7 @@ class EmailDeliverabilityService
             description: "Score: {$score}/100, Status: {$status}",
             site: $site,
             icon: 'mail',
-            url: route('sites.dns', $site),
+            url: route('sites.overview', $site),
         );
 
         return $healthCheck;

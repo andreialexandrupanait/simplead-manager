@@ -46,7 +46,6 @@
                                     'analytics' => 'Analytics',
                                     'search_console' => 'Search Console',
                                     'performance' => 'Performance',
-                                    'links' => 'Links',
                                 ];
                             @endphp
                             @foreach($template->sections ?? [] as $section)
@@ -152,7 +151,6 @@
                                     'analytics' => 'Google Analytics',
                                     'search_console' => 'Search Console',
                                     'performance' => 'Performance (PageSpeed)',
-                                    'links' => 'Broken Links',
                                 ];
                             @endphp
                             @foreach($availableSections as $key => $label)
