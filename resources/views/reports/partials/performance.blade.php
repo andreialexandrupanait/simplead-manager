@@ -16,10 +16,10 @@
 ])
 
 {{-- Two-column: Mobile | Desktop --}}
-<table class="two-col">
+<table style="width: 100%; border-collapse: collapse;">
     <tr>
         {{-- Mobile Card --}}
-        <td class="perf-card">
+        <td style="width: 50%; padding: 0 5px 0 0; vertical-align: top;"><div class="perf-card">
             <div class="perf-card-title">{{ __('report.performance_mobile', [], $lang) }}</div>
             @if(isset($p['mobile']))
                 <div class="perf-card-subtitle">
@@ -61,10 +61,10 @@
                     {{ __('report.not_tested', [], $lang) }}
                 </div>
             @endif
-        </td>
+        </div></td>
 
         {{-- Desktop Card --}}
-        <td class="perf-card">
+        <td style="width: 50%; padding: 0 0 0 5px; vertical-align: top;"><div class="perf-card">
             <div class="perf-card-title">{{ __('report.performance_desktop', [], $lang) }}</div>
             @if(isset($p['desktop']))
                 <div class="perf-card-subtitle">
@@ -106,7 +106,7 @@
                     {{ __('report.not_tested', [], $lang) }}
                 </div>
             @endif
-        </td>
+        </div></td>
     </tr>
 </table>
 

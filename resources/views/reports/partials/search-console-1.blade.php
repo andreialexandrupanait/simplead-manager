@@ -41,34 +41,42 @@
 @endif
 
 {{-- KPI cards (4-column single row) --}}
-<table class="kpi-grid mb-4">
+@php
+    $clicks = $overview['total_clicks'] ?? 0;
+    $impressions = $overview['total_impressions'] ?? 0;
+    $ctr = $overview['avg_ctr'] ?? 0;
+    $ctrDisplay = $ctr == 0 ? '< 0.1%' : number_format($ctr * 100, 2, $lang === 'ro' ? ',' : '.', '') . '%';
+    $pos = $overview['avg_position'] ?? 0;
+@endphp
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
     <tr>
-        <td class="kpi-card" style="width: 25%;">
-            @php $clicks = $overview['total_clicks'] ?? 0; @endphp
-            <div class="kpi-value {{ $clicks == 0 ? 'value-muted' : '' }}">{{ $clicks == 0 ? '—' : number_format($clicks) }}</div>
-            <div class="kpi-label">{{ __('report.search_total_clicks', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['clicks_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px 0 0; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $clicks == 0 ? 'value-muted' : '' }}">{{ $clicks == 0 ? '—' : number_format($clicks) }}</div>
+                <div class="kpi-label">{{ __('report.search_total_clicks', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['clicks_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php $impressions = $overview['total_impressions'] ?? 0; @endphp
-            <div class="kpi-value {{ $impressions == 0 ? 'value-muted' : '' }}">{{ $impressions == 0 ? '—' : number_format($impressions) }}</div>
-            <div class="kpi-label">{{ __('report.search_impressions', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['impressions_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $impressions == 0 ? 'value-muted' : '' }}">{{ $impressions == 0 ? '—' : number_format($impressions) }}</div>
+                <div class="kpi-label">{{ __('report.search_impressions', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['impressions_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php
-                $ctr = $overview['avg_ctr'] ?? 0;
-                $ctrDisplay = $ctr == 0 ? '< 0.1%' : number_format($ctr * 100, 2, $lang === 'ro' ? ',' : '.', '') . '%';
-            @endphp
-            <div class="kpi-value {{ $ctr == 0 ? 'value-muted' : '' }}">{{ $ctr == 0 ? '< 0,1%' : $ctrDisplay }}</div>
-            <div class="kpi-label">{{ __('report.search_avg_ctr', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['ctr_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $ctr == 0 ? 'value-muted' : '' }}">{{ $ctr == 0 ? '< 0,1%' : $ctrDisplay }}</div>
+                <div class="kpi-label">{{ __('report.search_avg_ctr', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['ctr_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php $pos = $overview['avg_position'] ?? 0; @endphp
-            <div class="kpi-value {{ $pos == 0 ? 'value-muted' : '' }}">{{ $pos == 0 ? '—' : number_format($pos, 1, $lang === 'ro' ? ',' : '.', '') }}</div>
-            <div class="kpi-label">{{ __('report.search_avg_position', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['position_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 0 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $pos == 0 ? 'value-muted' : '' }}">{{ $pos == 0 ? '—' : number_format($pos, 1, $lang === 'ro' ? ',' : '.', '') }}</div>
+                <div class="kpi-label">{{ __('report.search_avg_position', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['position_trend'] ?? null])</div>
+            </div>
         </td>
     </tr>
 </table>

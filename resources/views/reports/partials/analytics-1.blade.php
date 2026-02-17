@@ -25,31 +25,41 @@
 @endif
 
 {{-- KPI cards (4 columns) --}}
-<table class="kpi-grid mb-4">
+@php
+    $pv = $a['total_pageviews'] ?? 0;
+    $users = $a['total_users'] ?? 0;
+    $br = $a['bounce_rate'] ?? 0;
+    $dur = $a['avg_session_duration'] ?? 0;
+@endphp
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
     <tr>
-        <td class="kpi-card" style="width: 25%;">
-            @php $pv = $a['total_pageviews'] ?? 0; @endphp
-            <div class="kpi-value {{ $pv == 0 ? 'value-muted' : '' }}">{{ $pv == 0 ? '—' : number_format($pv) }}</div>
-            <div class="kpi-label">{{ __('report.analytics_pageviews', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['pageviews_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px 0 0; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $pv == 0 ? 'value-muted' : '' }}">{{ $pv == 0 ? '—' : number_format($pv) }}</div>
+                <div class="kpi-label">{{ __('report.analytics_pageviews', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $a['pageviews_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php $users = $a['total_users'] ?? 0; @endphp
-            <div class="kpi-value {{ $users == 0 ? 'value-muted' : '' }}">{{ $users == 0 ? '—' : number_format($users) }}</div>
-            <div class="kpi-label">{{ __('report.analytics_users', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['users_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $users == 0 ? 'value-muted' : '' }}">{{ $users == 0 ? '—' : number_format($users) }}</div>
+                <div class="kpi-label">{{ __('report.analytics_users', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $a['users_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php $br = $a['bounce_rate'] ?? 0; @endphp
-            <div class="kpi-value {{ $br == 0 ? 'value-muted' : '' }}">{{ $br == 0 ? '—' : number_format($br, 1, $lang === 'ro' ? ',' : '.', '') . '%' }}</div>
-            <div class="kpi-label">{{ __('report.analytics_bounce_rate', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['bounce_rate_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $br == 0 ? 'value-muted' : '' }}">{{ $br == 0 ? '—' : number_format($br, 1, $lang === 'ro' ? ',' : '.', '') . '%' }}</div>
+                <div class="kpi-label">{{ __('report.analytics_bounce_rate', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $a['bounce_rate_trend'] ?? null])</div>
+            </div>
         </td>
-        <td class="kpi-card" style="width: 25%;">
-            @php $dur = $a['avg_session_duration'] ?? 0; @endphp
-            <div class="kpi-value {{ $dur == 0 ? 'value-muted' : '' }}">{{ $dur == 0 ? '—' : gmdate('i:s', (int) $dur) }}</div>
-            <div class="kpi-label">{{ __('report.analytics_session_duration', [], $lang) }}</div>
-            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['duration_trend'] ?? null])</div>
+        <td style="width: 25%; padding: 0 0 0 5px; vertical-align: top;">
+            <div class="kpi-card">
+                <div class="kpi-value {{ $dur == 0 ? 'value-muted' : '' }}">{{ $dur == 0 ? '—' : gmdate('i:s', (int) $dur) }}</div>
+                <div class="kpi-label">{{ __('report.analytics_session_duration', [], $lang) }}</div>
+                <div class="card-trend">@include('reports.components.trend', ['trend' => $a['duration_trend'] ?? null])</div>
+            </div>
         </td>
     </tr>
 </table>

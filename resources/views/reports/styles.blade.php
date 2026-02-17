@@ -25,7 +25,7 @@
     body {
         font-family: 'DejaVu Sans', sans-serif;
         font-size: 8.5pt;
-        line-height: 1.5;
+        line-height: 1.7;
         color: #334155;
         background: #ffffff;
     }
@@ -217,7 +217,9 @@
 
     /* --- Section header --- */
     .section-header {
-        margin-bottom: 14px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e2e8f0;
     }
     .section-number {
         font-size: 7pt;
@@ -228,33 +230,33 @@
         margin-bottom: 4px;
     }
     .section-header-title {
-        font-size: 14pt;
+        font-size: 15pt;
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 6px;
     }
     .section-header-line {
-        width: 40px;
-        height: 4px;
-        border-radius: 2px;
-        background-color: #0f172a;
+        width: 50px;
+        height: 3px;
+        border-radius: 0;
+        background-color: #2563eb;
     }
 
     /* --- Card grid (overview, KPI rows) --- */
     .card-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .overview-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .overview-card {
         background: #f1f5f9;
         border: none;
-        border-radius: 6px;
+        border-radius: 0;
         padding: 10px 12px;
         vertical-align: top;
     }
@@ -314,10 +316,11 @@
         border-bottom: 2px solid #e2e8f0;
     }
     .data-table td {
-        padding: 8px 12px;
+        padding: 9px 12px;
         color: #334155;
         border-bottom: 1px solid #e2e8f0;
         font-size: 8pt;
+        line-height: 1.6;
     }
     .data-table thead tr {
         page-break-inside: avoid;
@@ -330,40 +333,45 @@
     .kpi-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .kpi-card {
-        background: #f1f5f9;
-        border: none;
-        border-radius: 6px;
-        padding: 12px 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-top: 3px solid #2563eb;
+        border-radius: 0;
+        padding: 14px 16px;
         vertical-align: top;
         text-align: center;
+        height: 80px;
     }
     .kpi-value {
-        font-size: 16pt;
+        font-size: 18pt;
         font-weight: 700;
         color: #0f172a;
+        line-height: 1.1;
+        height: 24px;
         margin-bottom: 2px;
     }
     .kpi-label {
-        font-size: 8pt;
+        font-size: 7.5pt;
         color: #64748b;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 4px;
+        letter-spacing: 0.4px;
+        height: 16px;
+        margin-bottom: 0;
     }
 
     /* --- Summary badges --- */
     .summary-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .summary-card {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 0;
         padding: 10px 14px;
         text-align: center;
         vertical-align: top;
@@ -396,7 +404,7 @@
         width: 100%;
         height: 10px;
         background: #e2e8f0;
-        border-radius: 4px;
+        border-radius: 0;
         overflow: hidden;
         margin-bottom: 12px;
     }
@@ -422,29 +430,33 @@
     .perf-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 14px;
+        border-top: 3px solid #2563eb;
+        border-radius: 0;
+        padding: 18px;
         vertical-align: top;
     }
     .perf-card-title {
-        font-size: 12pt;
+        font-size: 11pt;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }
     .perf-card-subtitle {
-        font-size: 8pt;
+        font-size: 7.5pt;
         color: #94a3b8;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
     }
     .perf-metric-row {
         width: 100%;
         border-collapse: collapse;
     }
     .perf-metric-row td {
-        padding: 5px 0;
+        padding: 6px 0;
         border-bottom: 1px solid #f1f5f9;
         font-size: 8.5pt;
+    }
+    .perf-metric-row tr:last-child td {
+        border-bottom: none;
     }
     .perf-legend {
         font-size: 8pt;
@@ -458,12 +470,12 @@
         width: 100%;
         height: 6px;
         background: #e2e8f0;
-        border-radius: 3px;
+        border-radius: 0;
         overflow: hidden;
     }
     .progress-fill {
         height: 6px;
-        border-radius: 3px;
+        border-radius: 0;
     }
     .progress-fill.primary { background: #2563eb; }
     .progress-fill.blue { background: #2563eb; }
@@ -474,14 +486,14 @@
     .quad-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .quad-grid td {
         width: 50%;
         vertical-align: top;
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 0;
         padding: 12px;
     }
     .quad-grid h3 {
@@ -508,7 +520,7 @@
     .two-col {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px 0;
+        border-spacing: 8px 0;
     }
     .two-col td {
         width: 50%;
@@ -518,11 +530,12 @@
     /* --- Badges --- */
     .badge {
         display: inline-block;
-        padding: 2px 6px;
+        padding: 3px 8px;
         border-radius: 3px;
         font-size: 7pt;
         font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
     }
     .badge-success { background: #dcfce7; color: #16a34a; }
     .badge-warning { background: #fef3c7; color: #d97706; }
@@ -539,27 +552,27 @@
     /* --- Thank you / Closing page --- */
     .closing-page {
         text-align: center;
-        padding-top: 80px;
+        padding-top: 60px;
     }
     .closing-title {
-        font-size: 24pt;
+        font-size: 22pt;
         font-weight: 700;
         color: #0f172a;
         line-height: 1.3;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     .closing-divider {
-        width: 60px;
+        width: 50px;
         height: 3px;
-        margin: 24px auto;
-        background-color: #0f172a;
+        margin: 20px auto;
+        background-color: #2563eb;
     }
     .closing-text {
-        font-size: 10pt;
+        font-size: 9.5pt;
         color: #64748b;
         line-height: 1.8;
         max-width: 100%;
-        margin: 0 auto 24px auto;
+        margin: 0 auto 28px auto;
     }
     .closing-logo {
         max-width: 200px;
@@ -576,7 +589,7 @@
     .chart-container {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 0;
         padding: 16px;
         margin-bottom: 16px;
     }
@@ -591,9 +604,10 @@
     .highlight-box {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 14px;
-        margin-bottom: 14px;
+        border-left: 4px solid #2563eb;
+        border-radius: 0;
+        padding: 16px 18px;
+        margin-bottom: 16px;
     }
 
     /* --- Info rows --- */
@@ -602,8 +616,11 @@
         border-collapse: collapse;
     }
     .info-row td {
-        padding: 5px 0;
+        padding: 7px 0;
         border-bottom: 1px solid #f1f5f9;
+    }
+    .info-row tr:last-child td {
+        border-bottom: none;
     }
     .info-label { color: #64748b; width: 40%; font-size: 8.5pt; }
     .info-value { font-weight: 600; font-size: 8.5pt; }
@@ -660,7 +677,7 @@
         text-align: center;
         padding: 14px;
         background: #f1f5f9;
-        border-radius: 6px;
+        border-radius: 0;
         vertical-align: top;
     }
     .security-summary-table {
@@ -695,40 +712,41 @@
     .section-description {
         font-size: 8.5pt;
         color: #64748b;
-        margin-bottom: 14px;
+        line-height: 1.7;
+        margin-bottom: 16px;
     }
 
     /* --- Executive Snapshot grid --- */
     .snapshot-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .snapshot-card {
-        background: #f8fafc;
+        background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 10px 12px;
+        border-radius: 0;
+        padding: 14px 16px;
         vertical-align: top;
         width: 25%;
     }
     .snapshot-value {
-        font-size: 16pt;
+        font-size: 18pt;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
     }
     .snapshot-label {
-        font-size: 8pt;
+        font-size: 7.5pt;
         font-weight: 600;
         color: #64748b;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.4px;
     }
     .snapshot-note {
         font-size: 7pt;
         color: #94a3b8;
-        margin-top: 2px;
+        margin-top: 4px;
     }
     .snapshot-status-good { border-left: 4px solid #10b981; }
     .snapshot-status-warning { border-left: 4px solid #f59e0b; }
@@ -739,34 +757,34 @@
     .snapshot-hero-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 6px;
+        border-spacing: 8px;
     }
     .snapshot-hero-card {
-        background: #f8fafc;
+        background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 14px 16px;
+        border-radius: 0;
+        padding: 18px 20px;
         vertical-align: top;
         width: 50%;
     }
     .snapshot-hero-value {
-        font-size: 22pt;
+        font-size: 24pt;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
     }
 
     /* --- Recommendation cards --- */
     .rec-card {
-        background: #f8fafc;
+        background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
+        border-radius: 0;
+        padding: 12px 16px;
+        margin-bottom: 10px;
         page-break-inside: avoid;
     }
     .rec-title {
-        font-size: 8.5pt;
+        font-size: 9pt;
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 4px;
@@ -774,7 +792,7 @@
     .rec-description {
         font-size: 8pt;
         color: #64748b;
-        line-height: 1.5;
+        line-height: 1.6;
     }
     .rec-priority-high { border-left: 4px solid #ef4444; }
     .rec-priority-medium { border-left: 4px solid #f59e0b; }
@@ -784,24 +802,28 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 8px;
-        padding-bottom: 4px;
+        margin-bottom: 10px;
+        margin-top: 16px;
+        padding-bottom: 6px;
     }
 
     /* --- Sub-cards (for security/database inside Technical Stability) --- */
     .subcard {
-        background: #f8fafc;
+        background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 12px 14px;
-        margin-bottom: 12px;
+        border-left: 4px solid #2563eb;
+        border-radius: 0;
+        padding: 14px 16px;
+        margin-bottom: 14px;
         page-break-inside: avoid;
     }
     .subcard-title {
         font-size: 10pt;
         font-weight: 700;
         color: #0f172a;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #f1f5f9;
     }
 
     /* --- Chart legend --- */
@@ -818,7 +840,7 @@
         display: inline-block;
         width: 10px;
         height: 10px;
-        border-radius: 2px;
+        border-radius: 0;
         vertical-align: middle;
         margin-right: 4px;
     }

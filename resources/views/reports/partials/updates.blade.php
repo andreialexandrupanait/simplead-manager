@@ -11,7 +11,7 @@
     <p style="color: #94a3b8; font-size: 8.5pt;">{{ __('report.updates_no_updates', [], $lang) }}</p>
 @else
     {{-- WP Core status line --}}
-    <p style="font-size: 8.5pt; color: #334155; margin-bottom: 10px;">
+    <p style="font-size: 8.5pt; color: #334155; margin-bottom: 2px;">
         <span class="check-success">&#10003;</span>
         {{ __('report.updates_wp_latest', [], $lang) }} (v{{ $u['wp_version'] ?? '—' }})
     </p>
@@ -41,7 +41,6 @@
                     <th>{{ __('report.updates_type', [], $lang) }}</th>
                     <th>{{ __('report.updates_version', [], $lang) }}</th>
                     <th>{{ __('report.updates_date', [], $lang) }}</th>
-                    <th>{{ __('report.updates_status', [], $lang) }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -65,13 +64,6 @@
                             <span class="version-new">{{ $update['to_version'] ?? '—' }}</span>
                         </td>
                         <td>{{ isset($update['performed_at']) ? \Carbon\Carbon::parse($update['performed_at'])->format('d/m/Y') : '—' }}</td>
-                        <td style="text-align: center;">
-                            @if($update['success'] ?? true)
-                                <span style="color: #10b981; font-weight: 700;">&#10003;</span>
-                            @else
-                                <span style="color: #ef4444; font-weight: 700;">&#10007;</span>
-                            @endif
-                        </td>
                     </tr>
                 @endforeach
             </tbody>

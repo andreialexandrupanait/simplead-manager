@@ -15,7 +15,7 @@
         <div class="subcard-title">{{ __('report.tech_ssl_subcard', [], $lang) }}</div>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.ssl_status', [], $lang) }}</div>
                     @php
                         $sslBadge = match($ssl['status'] ?? '') {
@@ -31,22 +31,22 @@
                             default => $ssl['status_label'] ?? '—',
                         };
                     @endphp
-                    <span class="badge {{ $sslBadge }}">{{ $sslLabel }}</span>
+                    <div style="font-size: 9pt; font-weight: 600; color: #0f172a;"><span class="badge {{ $sslBadge }}">{{ $sslLabel }}</span></div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.ssl_issuer', [], $lang) }}</div>
                     <div style="font-size: 9pt; font-weight: 600; color: #0f172a;">{{ $ssl['issuer'] ?? '—' }}</div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.ssl_expires', [], $lang) }}</div>
                     <div style="font-size: 9pt; font-weight: 600; color: #0f172a;">{{ $ssl['expires_at'] ?? '—' }}</div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.ssl_days_remaining', [], $lang) }}</div>
                     @php
                         $daysColor = ($ssl['days_remaining'] ?? 0) > 30 ? '#10b981' : (($ssl['days_remaining'] ?? 0) > 7 ? '#f59e0b' : '#ef4444');
                     @endphp
-                    <div style="font-size: 14pt; font-weight: 700; color: {{ $daysColor }};">{{ $ssl['days_remaining'] ?? '—' }}</div>
+                    <div style="font-size: 9pt; font-weight: 700; color: {{ $daysColor }};">{{ $ssl['days_remaining'] ?? '—' }}</div>
                 </td>
             </tr>
         </table>
@@ -59,22 +59,22 @@
         <div class="subcard-title">{{ __('report.tech_domain_subcard', [], $lang) }}</div>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.domain_registrar', [], $lang) }}</div>
                     <div style="font-size: 9pt; font-weight: 600; color: #0f172a;">{{ $domain['registrar'] ?? '—' }}</div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.domain_expires', [], $lang) }}</div>
                     <div style="font-size: 9pt; font-weight: 600; color: #0f172a;">{{ $domain['expires_at'] ?? '—' }}</div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.domain_days_remaining', [], $lang) }}</div>
                     @php
                         $domDaysColor = ($domain['days_remaining'] ?? 0) > 60 ? '#10b981' : (($domain['days_remaining'] ?? 0) > 14 ? '#f59e0b' : '#ef4444');
                     @endphp
-                    <div style="font-size: 14pt; font-weight: 700; color: {{ $domDaysColor }};">{{ $domain['days_remaining'] ?? '—' }}</div>
+                    <div style="font-size: 9pt; font-weight: 700; color: {{ $domDaysColor }};">{{ $domain['days_remaining'] ?? '—' }}</div>
                 </td>
-                <td style="padding: 4px 10px; width: 25%;">
+                <td style="padding: 6px 10px; width: 25%; vertical-align: top;">
                     <div class="kpi-label">{{ __('report.domain_dns_provider', [], $lang) }}</div>
                     <div style="font-size: 9pt; font-weight: 600; color: #0f172a;">{{ $domain['dns_provider'] ?? '—' }}</div>
                 </td>
