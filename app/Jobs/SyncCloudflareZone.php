@@ -67,4 +67,9 @@ class SyncCloudflareZone implements ShouldQueue, ShouldBeUnique
             }
         }
     }
+
+    public function failed(?\Throwable $exception): void
+    {
+        \Illuminate\Support\Facades\Log::error("Cloudflare zone sync failed for SiteCloudflare {$this->siteCloudflare->id}: " . ($exception?->getMessage() ?? 'Unknown error'));
+    }
 }

@@ -174,7 +174,7 @@
     "minutes": "minute",
     "hour": "oră",
     "Square image, at least 64x64px. Used in sidebar and as favicon.": "Imagine pătrată, minim 64x64px. Folosită în bara laterală și ca favicon.",
-    "Group sites by custom statuses like \"Maintenance\" or \"Miscellaneous\".": "Grupează site-urile după statusuri personalizate precum „Mentenanță" sau „Diverse".",
+    "Group sites by custom statuses like \"Maintenance\" or \"Miscellaneous\".": "Grupează site-urile după statusuri personalizate precum \u201EMentenanță\u201D sau \u201EDiverse\u201D.",
     "No site statuses configured.": "Nu sunt statusuri configurate.",
     "Delete this status?": "Ștergi acest status?",
     "Consecutive failures before alerting": "Eșecuri consecutive înainte de alertare",

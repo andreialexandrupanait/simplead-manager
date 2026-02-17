@@ -1,129 +1,84 @@
-@php $u = $data['updates']; @endphp
+@php
+    $u = $data['updates'];
+    $lang = $language ?? 'ro';
+@endphp
 
-<h2>Actualizări</h2>
-
-{{-- Summary badges --}}
-<table class="update-badges mb-6">
-    <tr>
-        <td class="update-badge">
-            <div class="update-badge-label">Plugin-uri</div>
-            <div class="update-badge-value">{{ count($u['plugin_updates'] ?? []) }}</div>
-        </td>
-        <td class="update-badge">
-            <div class="update-badge-label">Teme</div>
-            <div class="update-badge-value">{{ count($u['theme_updates'] ?? []) }}</div>
-        </td>
-        <td class="update-badge">
-            <div class="update-badge-label">WordPress</div>
-            <div class="update-badge-value">{{ $u['wp_version'] ?? 'N/A' }}</div>
-        </td>
-    </tr>
-</table>
-
-@if(count($u['core_updates'] ?? []) > 0)
-    <h3>Actualizări WordPress Core</h3>
-    <table class="data-table mb-6">
-        <thead>
-            <tr>
-                <th>Nume</th>
-                <th>Dată</th>
-                <th>Versiune</th>
-                <th style="width: 40px; text-align: center;">Stare</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($u['core_updates'] as $update)
-                <tr>
-                    <td>WordPress Core</td>
-                    <td>{{ \Carbon\Carbon::parse($update['performed_at'])->format('d/m/Y') }}</td>
-                    <td>
-                        {{ $update['from_version'] ?? '—' }}
-                        <span class="version-arrow">&rarr;</span>
-                        {{ $update['to_version'] ?? '—' }}
-                    </td>
-                    <td style="text-align: center;">
-                        @if($update['success'])
-                            <span class="check-success">&#10003;</span>
-                        @else
-                            <span class="text-danger">&#10007;</span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-@if(count($u['plugin_updates'] ?? []) > 0)
-    <h3>Actualizări Plugin-uri</h3>
-    <table class="data-table mb-6">
-        <thead>
-            <tr>
-                <th>Nume</th>
-                <th>Dată</th>
-                <th>Versiune</th>
-                <th style="width: 40px; text-align: center;">Stare</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($u['plugin_updates'] as $update)
-                <tr>
-                    <td>{{ $update['name'] ?? $update['slug'] ?? '—' }}</td>
-                    <td>{{ \Carbon\Carbon::parse($update['performed_at'])->format('d/m/Y') }}</td>
-                    <td>
-                        {{ $update['from_version'] ?? '—' }}
-                        <span class="version-arrow">&rarr;</span>
-                        {{ $update['to_version'] ?? '—' }}
-                    </td>
-                    <td style="text-align: center;">
-                        @if($update['success'])
-                            <span class="check-success">&#10003;</span>
-                        @else
-                            <span class="text-danger">&#10007;</span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-@if(count($u['theme_updates'] ?? []) > 0)
-    <h3>Actualizări Teme</h3>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Nume</th>
-                <th>Dată</th>
-                <th>Versiune</th>
-                <th style="width: 40px; text-align: center;">Stare</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($u['theme_updates'] as $update)
-                <tr>
-                    <td>{{ $update['name'] ?? $update['slug'] ?? '—' }}</td>
-                    <td>{{ \Carbon\Carbon::parse($update['performed_at'])->format('d/m/Y') }}</td>
-                    <td>
-                        {{ $update['from_version'] ?? '—' }}
-                        <span class="version-arrow">&rarr;</span>
-                        {{ $update['to_version'] ?? '—' }}
-                    </td>
-                    <td style="text-align: center;">
-                        @if($update['success'])
-                            <span class="check-success">&#10003;</span>
-                        @else
-                            <span class="text-danger">&#10007;</span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
+@include('reports.components.section-header', [
+    'title' => __('report.section_updates', [], $lang),
+])
 
 @if($u['total_count'] === 0)
-    <div style="text-align: center; padding: 30px; color: #6b7280;">
-        Nu au fost efectuate actualizări în această perioadă.
-    </div>
+    <p style="color: #94a3b8; font-size: 8.5pt;">{{ __('report.updates_no_updates', [], $lang) }}</p>
+@else
+    {{-- WP Core status line --}}
+    <p style="font-size: 8.5pt; color: #334155; margin-bottom: 10px;">
+        <span class="check-success">&#10003;</span>
+        {{ __('report.updates_wp_latest', [], $lang) }} (v{{ $u['wp_version'] ?? '—' }})
+    </p>
+
+    {{-- Summary text line --}}
+    <p style="font-size: 8.5pt; color: #64748b; margin-bottom: 14px;">
+        {{ __('report.updates_summary_line', [
+            'total' => $u['total_count'],
+            'plugins' => $u['plugin_count'],
+            'themes' => $u['theme_count'],
+            'core' => $u['core_count'],
+        ], $lang) }}
+    </p>
+
+    {{-- Consolidated update table --}}
+    @php
+        $consolidated = $u['consolidated_updates'] ?? [];
+        $totalConsolidated = count($consolidated);
+        $displayUpdates = array_slice($consolidated, 0, 15);
+    @endphp
+
+    @if(count($displayUpdates) > 0)
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ __('report.updates_name', [], $lang) }}</th>
+                    <th>{{ __('report.updates_type', [], $lang) }}</th>
+                    <th>{{ __('report.updates_version', [], $lang) }}</th>
+                    <th>{{ __('report.updates_date', [], $lang) }}</th>
+                    <th>{{ __('report.updates_status', [], $lang) }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($displayUpdates as $update)
+                    <tr>
+                        <td>{{ $update['name'] ?? '—' }}</td>
+                        <td>
+                            @php
+                                $typeBadge = match($update['type'] ?? '') {
+                                    'plugin' => 'badge-info',
+                                    'theme' => 'badge-warning',
+                                    'core' => 'badge-success',
+                                    default => 'badge-info',
+                                };
+                            @endphp
+                            <span class="badge {{ $typeBadge }}">{{ ucfirst($update['type'] ?? '—') }}</span>
+                        </td>
+                        <td>
+                            {{ $update['from_version'] ?? '—' }}
+                            <span class="version-arrow">&rarr;</span>
+                            <span class="version-new">{{ $update['to_version'] ?? '—' }}</span>
+                        </td>
+                        <td>{{ isset($update['performed_at']) ? \Carbon\Carbon::parse($update['performed_at'])->format('d/m/Y') : '—' }}</td>
+                        <td style="text-align: center;">
+                            @if($update['success'] ?? true)
+                                <span style="color: #10b981; font-weight: 700;">&#10003;</span>
+                            @else
+                                <span style="color: #ef4444; font-weight: 700;">&#10007;</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        @if($totalConsolidated > 15)
+            <div class="table-footnote">{{ __('report.showing_of', ['shown' => 15, 'total' => $totalConsolidated], $lang) }}</div>
+        @endif
+    @endif
 @endif

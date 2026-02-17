@@ -1,458 +1,441 @@
 <style>
     /* ============================================================
-       PDF Report Styles — DomPDF Compatible
+       PDF Report Styles — Premium Redesign (Navy/Slate palette)
+       DomPDF Compatible — @page margin with page_script header
        ============================================================ */
 
-    /* --- @page rules --- */
+    /* --- @page --- */
     @page {
         size: A4 portrait;
-        margin: 20mm 18mm 25mm 18mm;
-        @top-center { content: element(page-header); }
-        @bottom-center { content: element(page-footer); }
+        margin: 24mm 0 10mm 0;
     }
     @page :first {
         margin: 0;
-        @top-center { content: none; }
-        @bottom-center { content: none; }
     }
 
     /* --- Reset --- */
-    * {
+    html, body, div, table, thead, tbody, tr, th, td,
+    h1, h2, h3, h4, h5, h6, p, span, img, svg {
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
         font-family: 'DejaVu Sans', sans-serif;
-    }
-
-    /* --- Running header / footer --- */
-    .running-header {
-        position: running(page-header);
-        width: 100%;
-        padding: 0 0 6px 0;
-        border-bottom: 1px solid #e5e7eb;
-        font-size: 8px;
-        color: #6b7280;
-    }
-    .running-header table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .running-header td {
-        padding: 0;
-        vertical-align: middle;
-    }
-    .running-header .header-logo {
-        max-height: 22px;
-    }
-    .running-header .header-title {
-        text-align: right;
-        font-size: 8px;
-        color: #6b7280;
-        letter-spacing: 0.3px;
-    }
-
-    .running-footer {
-        position: running(page-footer);
-        width: 100%;
-        padding: 6px 0 0 0;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-        font-size: 7px;
-        color: #9ca3af;
     }
 
     /* --- Typography --- */
     body {
-        font-family: DejaVu Sans, sans-serif;
-        font-size: 10pt;
+        font-family: 'DejaVu Sans', sans-serif;
+        font-size: 8.5pt;
         line-height: 1.5;
-        color: #1f2937;
-    }
-
-    h1 {
-        font-size: 24pt;
-        font-weight: 700;
-        color: #1e1b4b;
-        margin-bottom: 8px;
+        color: #334155;
+        background: #ffffff;
     }
 
     h2 {
         font-size: 14pt;
-        font-weight: 600;
-        color: #1e1b4b;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 14px;
-        padding-bottom: 0;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 12px;
     }
 
     h3 {
-        font-size: 11pt;
-        font-weight: 600;
-        color: #6b7280;
-        margin-bottom: 8px;
-    }
-
-    .page {
-        page-break-after: always;
-    }
-    .page:last-child {
-        page-break-after: auto;
-    }
-
-    /* --- Cover page --- */
-    .cover-page {
-        background: #f8f9fc;
-        width: 100%;
-        height: 100%;
-        text-align: center;
-        padding: 60mm 20mm 30mm 20mm;
-        position: relative;
-    }
-    .cover-logo {
-        max-width: 200px;
-        max-height: 80px;
-        margin-bottom: 30px;
-    }
-    .cover-company-name {
-        font-size: 26pt;
+        font-size: 10pt;
         font-weight: 700;
-        color: #1e1b4b;
-        margin-bottom: 30px;
+        color: #334155;
+        margin-bottom: 10px;
     }
-    .cover-divider {
+
+    /* --- Page structure --- */
+    .page {
+        padding: 0 14mm 0 14mm;
+    }
+
+    .page-first {
+        /* cover's page-break-after is sufficient */
+    }
+
+    /* Prevent awkward splits inside cards, tables, sections */
+    .no-break,
+    .kpi-grid,
+    .overview-grid,
+    .highlight-box,
+    .chart-container,
+    .summary-grid,
+    .section-header {
+        page-break-inside: avoid;
+    }
+
+    .report-section {
+        page-break-inside: avoid;
+    }
+
+    /* --- Page header (drawn by page_script) --- */
+    .page-header {
+        width: 100%;
+        margin-bottom: 16px;
+    }
+    .page-header table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .page-header td {
+        padding: 0 0 6px 0;
+        vertical-align: middle;
+    }
+    .page-header .header-logo {
+        max-height: 26px;
+    }
+    .page-header .header-title {
+        text-align: right;
+        font-size: 8pt;
+        color: #64748b;
+    }
+
+    /* --- Page footer --- */
+    .page-footer {
+        text-align: center;
+        font-size: 7pt;
+        color: #94a3b8;
+        padding-top: 16px;
+        margin-top: 24px;
+        border-top: 1px solid #e2e8f0;
+    }
+    .page-footer .footer-logo {
+        max-height: 18px;
+        margin-bottom: 2px;
+    }
+
+    /* --- Cover page (full bleed via negative margin into @page margin area) --- */
+    .cover-page {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+        page-break-after: always;
+        position: relative;
+        overflow: hidden;
+        background: #0f172a;
+        color: #ffffff;
+        text-align: center;
+    }
+    .cover-content {
+        padding: 60mm 23mm 20mm 23mm;
+    }
+    .cover-client-logo {
+        max-width: 180px;
+        max-height: 80px;
+        margin-bottom: 20px;
+    }
+    .cover-site-name {
+        font-size: 22pt;
+        font-weight: 700;
+        color: #ffffff;
+        opacity: 0.95;
+        margin-bottom: 20px;
+    }
+    .cover-accent-line {
         width: 60px;
         height: 3px;
-        background: #6366f1;
-        margin: 0 auto 30px auto;
+        background: #2563eb;
+        margin: 0 auto 20px auto;
     }
     .cover-title {
         font-size: 32pt;
         font-weight: 700;
-        color: #1e1b4b;
-        margin-bottom: 12px;
         line-height: 1.2;
+        margin-bottom: 10px;
     }
     .cover-url {
         font-size: 14pt;
-        color: #6b7280;
-        margin-bottom: 6px;
+        opacity: 0.8;
+        margin-bottom: 8px;
     }
-    .cover-period {
-        font-size: 14pt;
-        color: #6b7280;
-        margin-top: 12px;
+    .cover-date {
+        font-size: 12pt;
+        opacity: 0.65;
+        margin-bottom: 24px;
     }
-    .cover-bottom {
-        position: absolute;
-        bottom: 40mm;
-        left: 0;
-        right: 0;
-        text-align: center;
-    }
-    .cover-bottom-name {
+    .cover-intro {
         font-size: 10pt;
-        color: #9ca3af;
+        line-height: 1.6;
+        opacity: 0.6;
+        margin-top: 16px;
+        max-width: none;
+        margin-left: 0;
+        text-align: left;
+    }
+    .cover-sections {
+        margin-top: 16px;
+        font-size: 9pt;
+        opacity: 0.5;
+        text-align: left;
+    }
+    .cover-sections-item {
+        padding: 2px 0;
+        text-align: left;
+    }
+    .cover-company-logo {
+        position: absolute;
+        bottom: 20mm;
+        left: 50%;
+        margin-left: -60px;
+        max-height: 50px;
     }
 
     /* --- Intro page --- */
     .intro-title {
-        font-size: 28pt;
+        font-size: 24pt;
         font-weight: 700;
-        color: #1e1b4b;
+        color: #0f172a;
         line-height: 1.25;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
+        margin-top: 30px;
     }
     .intro-body {
-        font-size: 10pt;
+        font-size: 8.5pt;
         line-height: 1.8;
-        color: #374151;
-        margin-bottom: 20px;
+        color: #334155;
+        margin-bottom: 24px;
     }
     .intro-sections-title {
-        font-size: 11pt;
+        font-size: 8pt;
         font-weight: 600;
-        color: #6b7280;
-        margin-bottom: 10px;
+        color: #64748b;
+        margin-bottom: 12px;
         text-transform: uppercase;
         letter-spacing: 0.3px;
     }
     .intro-section-item {
-        padding: 5px 8px;
-        font-size: 10pt;
-        color: #374151;
-        border-bottom: 1px solid #f3f4f6;
+        padding: 7px 10px;
+        font-size: 8.5pt;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
     }
     .intro-section-check {
-        color: #6366f1;
         font-weight: 700;
         margin-right: 8px;
     }
 
-    /* --- Overview cards --- */
+    /* --- Section header --- */
+    .section-header {
+        margin-bottom: 14px;
+    }
+    .section-number {
+        font-size: 7pt;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+    }
+    .section-header-title {
+        font-size: 14pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+    .section-header-line {
+        width: 40px;
+        height: 4px;
+        border-radius: 2px;
+        background-color: #0f172a;
+    }
+
+    /* --- Card grid (overview, KPI rows) --- */
+    .card-grid {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 6px;
+    }
     .overview-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 8px;
+        border-spacing: 6px;
     }
     .overview-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 0;
+        background: #f1f5f9;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 12px;
         vertical-align: top;
     }
-    .overview-card-inner {
-        padding: 14px;
-    }
-    .overview-card-title {
-        font-size: 9px;
-        font-weight: 600;
+    .card-label {
+        font-size: 8pt;
+        font-weight: 700;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #6b7280;
-        border-bottom: 1px solid #f3f4f6;
-        padding-bottom: 8px;
-        margin-bottom: 10px;
+        margin-bottom: 4px;
     }
-    .overview-metric-table {
-        width: 100%;
-        border-collapse: collapse;
+    .card-value {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 2px;
     }
-    .overview-metric-table td {
-        padding: 3px 0;
-        font-size: 9px;
+    .card-value-sm {
+        font-size: 14pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 2px;
     }
-    .overview-metric-label {
-        color: #6b7280;
+    .card-sublabel {
+        font-size: 8pt;
+        color: #94a3b8;
+        margin-bottom: 4px;
     }
-    .overview-metric-value {
-        text-align: right;
-        font-weight: 600;
-        color: #1f2937;
-    }
-
-    /* --- Score circles --- */
-    .score-circle {
-        display: inline-block;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        border: 3px solid;
-        text-align: center;
-        line-height: 54px;
-        font-size: 18px;
+    .card-trend {
+        font-size: 7pt;
         font-weight: 700;
     }
-    .score-circle-lg {
-        display: inline-block;
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: 4px solid;
-        text-align: center;
-        line-height: 72px;
-        font-size: 24px;
-        font-weight: 700;
-    }
-    .score-green {
-        border-color: #22c55e;
-        background: #dcfce7;
-        color: #16a34a;
-    }
-    .score-orange {
-        border-color: #f59e0b;
-        background: #fef3c7;
-        color: #d97706;
-    }
-    .score-red {
-        border-color: #ef4444;
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    .score-na {
-        border-color: #9ca3af;
-        background: #f3f4f6;
-        color: #9ca3af;
-    }
 
-    /* --- Data tables --- */
+    /* --- Trend colors --- */
+    .trend-up { color: #10b981; }
+    .trend-down { color: #ef4444; }
+    .trend-neutral { color: #64748b; }
+
+    /* --- Score gauge (number + progress bar) --- */
+    /* No special CSS needed — fully inline-styled in the component */
+
+    /* --- Data tables (light header, subtle borders) --- */
     .data-table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: 12px;
+        font-size: 8pt;
     }
     .data-table th {
-        background: #f8fafc;
-        color: #6b7280;
-        padding: 7px 8px;
         text-align: left;
-        font-size: 8px;
+        font-size: 7.5pt;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        border-bottom: 2px solid #e5e7eb;
+        color: #334155;
+        letter-spacing: 0.5px;
+        padding: 8px 12px;
+        background: #f1f5f9;
+        border-bottom: 2px solid #e2e8f0;
     }
     .data-table td {
-        padding: 6px 8px;
-        border-bottom: 1px solid #f3f4f6;
-        font-size: 9px;
-        color: #374151;
+        padding: 8px 12px;
+        color: #334155;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 8pt;
+    }
+    .data-table thead tr {
+        page-break-inside: avoid;
+    }
+    .data-table tbody tr {
+        page-break-inside: avoid;
     }
 
-    /* --- Search Console metric boxes --- */
-    .gsc-metrics {
+    /* --- KPI grid --- */
+    .kpi-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 8px;
+        border-spacing: 6px;
     }
-    .gsc-metric-box {
-        background: #f8fafc;
-        border-left: 4px solid #e5e7eb;
-        padding: 10px 12px;
-        vertical-align: top;
-        width: 25%;
-    }
-    .gsc-metric-box.blue { border-left-color: #3b82f6; }
-    .gsc-metric-box.red { border-left-color: #ef4444; }
-    .gsc-metric-box.green { border-left-color: #22c55e; }
-    .gsc-metric-box.orange { border-left-color: #f59e0b; }
-    .gsc-metric-value {
-        font-size: 18px;
-        font-weight: 700;
-        color: #1f2937;
-    }
-    .gsc-metric-label {
-        font-size: 8px;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-top: 2px;
-    }
-
-    /* --- Analytics metric cards --- */
-    .analytics-metrics {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 8px;
-    }
-    .analytics-metric-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-top: 4px solid #e5e7eb;
-        border-radius: 0 0 6px 6px;
+    .kpi-card {
+        background: #f1f5f9;
+        border: none;
+        border-radius: 6px;
         padding: 12px 14px;
         vertical-align: top;
-        width: 25%;
+        text-align: center;
     }
-    .analytics-metric-card.purple { border-top-color: #7c3aed; }
-    .analytics-metric-card.blue { border-top-color: #3b82f6; }
-    .analytics-metric-card.green { border-top-color: #22c55e; }
-    .analytics-metric-card.amber { border-top-color: #f59e0b; }
-    .analytics-metric-value {
-        font-size: 18px;
+    .kpi-value {
+        font-size: 16pt;
         font-weight: 700;
-        color: #1f2937;
+        color: #0f172a;
+        margin-bottom: 2px;
     }
-    .analytics-metric-label {
-        font-size: 8px;
-        color: #6b7280;
+    .kpi-label {
+        font-size: 8pt;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        margin-top: 2px;
+        margin-bottom: 4px;
     }
 
-    /* --- Update badges --- */
-    .update-badges {
+    /* --- Summary badges --- */
+    .summary-grid {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 8px;
+        border-spacing: 6px;
     }
-    .update-badge {
+    .summary-card {
         background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 14px;
         text-align: center;
         vertical-align: top;
     }
-    .update-badge-label {
-        font-size: 9px;
-        color: #6366f1;
+    .summary-label {
+        font-size: 8pt;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        font-weight: 600;
         margin-bottom: 4px;
     }
-    .update-badge-value {
-        font-size: 20px;
+    .summary-value {
+        font-size: 18pt;
         font-weight: 700;
-        color: #1f2937;
+        color: #0f172a;
     }
 
     /* --- Uptime styles --- */
     .uptime-percentage {
-        font-size: 48px;
+        font-size: 28pt;
         font-weight: 700;
         line-height: 1;
         margin-bottom: 4px;
     }
-    .uptime-percentage.good { color: #16a34a; }
-    .uptime-percentage.warning { color: #d97706; }
-    .uptime-percentage.bad { color: #dc2626; }
+    .uptime-percentage.good { color: #10b981; }
+    .uptime-percentage.warning { color: #f59e0b; }
+    .uptime-percentage.bad { color: #ef4444; }
 
     .uptime-bar {
         width: 100%;
-        height: 20px;
-        background: #e5e7eb;
+        height: 10px;
+        background: #e2e8f0;
         border-radius: 4px;
         overflow: hidden;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
     .uptime-segment {
         float: left;
-        height: 20px;
+        height: 10px;
     }
-    .uptime-segment.up { background: #22c55e; }
+    .uptime-segment.up { background: #10b981; }
     .uptime-segment.down { background: #ef4444; }
 
-    .status-up {
-        color: #16a34a;
-        font-weight: 600;
-        font-size: 9px;
-    }
-    .status-down {
-        color: #dc2626;
-        font-weight: 600;
-        font-size: 9px;
-    }
+    .status-up { color: #10b981; font-weight: 600; font-size: 8.5pt; }
+    .status-down { color: #ef4444; font-weight: 600; font-size: 8.5pt; }
 
     /* --- Performance indicators --- */
     .perf-indicator {
         font-weight: 700;
         margin-right: 4px;
     }
-    .perf-indicator.good { color: #16a34a; }
-    .perf-indicator.moderate { color: #d97706; }
-    .perf-indicator.poor { color: #dc2626; }
+    .perf-indicator.good { color: #10b981; }
+    .perf-indicator.moderate { color: #f59e0b; }
+    .perf-indicator.poor { color: #ef4444; }
 
     .perf-card {
         background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px;
         vertical-align: top;
     }
     .perf-card-title {
-        font-size: 13pt;
-        font-weight: 600;
-        color: #1e1b4b;
+        font-size: 12pt;
+        font-weight: 700;
+        color: #0f172a;
         margin-bottom: 4px;
     }
     .perf-card-subtitle {
-        font-size: 8px;
-        color: #9ca3af;
-        margin-bottom: 14px;
+        font-size: 8pt;
+        color: #94a3b8;
+        margin-bottom: 12px;
     }
     .perf-metric-row {
         width: 100%;
@@ -460,107 +443,76 @@
     }
     .perf-metric-row td {
         padding: 5px 0;
-        border-bottom: 1px solid #f3f4f6;
-        font-size: 9px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 8.5pt;
     }
     .perf-legend {
-        font-size: 8px;
-        color: #9ca3af;
-        margin-top: 16px;
+        font-size: 8pt;
+        color: #94a3b8;
+        margin-top: 14px;
         text-align: center;
     }
 
     /* --- Progress bars --- */
     .progress-bar {
         width: 100%;
-        height: 8px;
-        background: #e5e7eb;
-        border-radius: 4px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
         overflow: hidden;
     }
     .progress-fill {
-        height: 8px;
-        border-radius: 4px;
+        height: 6px;
+        border-radius: 3px;
     }
-    .progress-fill.primary { background: #6366f1; }
-    .progress-fill.blue { background: #3b82f6; }
-    .progress-fill.green { background: #22c55e; }
+    .progress-fill.primary { background: #2563eb; }
+    .progress-fill.blue { background: #2563eb; }
+    .progress-fill.green { background: #10b981; }
     .progress-fill.amber { background: #f59e0b; }
 
-    /* --- Bar chart (inline) --- */
-    .bar-container {
-        background: #e5e7eb;
-        border-radius: 3px;
-        height: 12px;
+    /* --- 2x2 quad grid layout --- */
+    .quad-grid {
         width: 100%;
+        border-collapse: separate;
+        border-spacing: 6px;
     }
-    .bar-fill {
-        height: 12px;
-        border-radius: 3px;
-        background: #6366f1;
+    .quad-grid td {
+        width: 50%;
+        vertical-align: top;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 12px;
+    }
+    .quad-grid h3 {
+        font-size: 10pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 6px;
+    }
+    .quad-grid .data-table {
+        margin-bottom: 0;
+    }
+    .quad-grid .data-table th {
+        font-size: 7pt;
+        padding: 5px 6px;
+        background: #f1f5f9;
+        color: #334155;
+    }
+    .quad-grid .data-table td {
+        font-size: 8pt;
+        padding: 5px 6px;
     }
 
-    /* --- Thank-you page --- */
-    .thankyou-page {
-        text-align: center;
-        padding-top: 120px;
+    /* --- Two-column layout --- */
+    .two-col {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 6px 0;
     }
-    .thankyou-title {
-        font-size: 28pt;
-        font-weight: 700;
-        color: #1e1b4b;
-        line-height: 1.3;
-        margin-bottom: 20px;
-    }
-    .thankyou-text {
-        font-size: 11pt;
-        color: #6b7280;
-        line-height: 1.8;
-        max-width: 400px;
-        margin: 0 auto;
-    }
-    .thankyou-divider {
-        width: 60px;
-        height: 3px;
-        background: #6366f1;
-        margin: 30px auto;
-    }
-    .thankyou-company {
-        font-size: 12pt;
-        font-weight: 600;
-        color: #1e1b4b;
-        margin-top: 10px;
-    }
-    .thankyou-website {
-        font-size: 9pt;
-        color: #9ca3af;
-        margin-top: 4px;
-    }
-
-    /* --- Final branding page --- */
-    .final-page {
-        text-align: center;
-        background: #f8f9fc;
-        padding-top: 200px;
-        height: 100%;
-    }
-    .final-logo {
-        max-width: 220px;
-        max-height: 90px;
-        margin-bottom: 20px;
-    }
-    .final-company {
-        font-size: 30pt;
-        font-weight: 700;
-        color: #1e1b4b;
-        margin-bottom: 8px;
-    }
-    .final-subtitle {
-        font-size: 11pt;
-        color: #6366f1;
-        text-transform: uppercase;
-        letter-spacing: 3px;
-        font-weight: 600;
+    .two-col td {
+        width: 50%;
+        vertical-align: top;
     }
 
     /* --- Badges --- */
@@ -568,114 +520,313 @@
         display: inline-block;
         padding: 2px 6px;
         border-radius: 3px;
-        font-size: 8px;
+        font-size: 7pt;
         font-weight: 600;
         text-transform: uppercase;
     }
-    .badge-success {
-        background: #dcfce7;
-        color: #16a34a;
+    .badge-success { background: #dcfce7; color: #16a34a; }
+    .badge-warning { background: #fef3c7; color: #d97706; }
+    .badge-danger { background: #fee2e2; color: #dc2626; }
+    .badge-info { background: #dbeafe; color: #2563eb; }
+
+    /* --- Version arrow --- */
+    .version-arrow { color: #94a3b8; }
+    .version-new { font-weight: 700; color: #0f172a; }
+
+    /* --- Check marks --- */
+    .check-success { color: #10b981; font-weight: 700; }
+
+    /* --- Thank you / Closing page --- */
+    .closing-page {
+        text-align: center;
+        padding-top: 80px;
     }
-    .badge-warning {
-        background: #fef3c7;
-        color: #d97706;
+    .closing-title {
+        font-size: 24pt;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
+        margin-bottom: 20px;
     }
-    .badge-danger {
-        background: #fee2e2;
-        color: #dc2626;
+    .closing-divider {
+        width: 60px;
+        height: 3px;
+        margin: 24px auto;
+        background-color: #0f172a;
     }
-    .badge-info {
-        background: #ede9fe;
-        color: #6366f1;
+    .closing-text {
+        font-size: 10pt;
+        color: #64748b;
+        line-height: 1.8;
+        max-width: 100%;
+        margin: 0 auto 24px auto;
+    }
+    .closing-logo {
+        max-width: 200px;
+        max-height: 80px;
+        margin-bottom: 8px;
+    }
+    .closing-company {
+        font-size: 12pt;
+        font-weight: 600;
+        color: #0f172a;
     }
 
-    /* --- Two-column layout --- */
-    .two-col {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 8px 0;
+    /* --- Chart containers --- */
+    .chart-container {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 16px;
     }
-    .two-col td {
-        width: 50%;
-        vertical-align: top;
+    .chart-title {
+        font-size: 10pt;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 10px;
     }
 
-    /* --- Info row --- */
+    /* --- Highlight box --- */
+    .highlight-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+
+    /* --- Info rows --- */
     .info-row {
         width: 100%;
         border-collapse: collapse;
     }
     .info-row td {
-        padding: 4px 0;
-        border-bottom: 1px solid #f3f4f6;
+        padding: 5px 0;
+        border-bottom: 1px solid #f1f5f9;
     }
-    .info-label {
-        color: #6b7280;
-        width: 40%;
-        font-size: 9px;
-    }
-    .info-value {
-        font-weight: 600;
-        font-size: 9px;
-    }
-
-    /* --- Links metric cards --- */
-    .links-metrics {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 8px;
-    }
-    .links-metric-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 14px;
-        text-align: center;
-        vertical-align: top;
-        width: 25%;
-    }
-    .links-metric-value {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1f2937;
-    }
-    .links-metric-label {
-        font-size: 8px;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-top: 2px;
-    }
+    .info-label { color: #64748b; width: 40%; font-size: 8.5pt; }
+    .info-value { font-weight: 600; font-size: 8.5pt; }
 
     /* --- Text utilities --- */
-    .text-success { color: #16a34a; }
-    .text-warning { color: #d97706; }
-    .text-danger { color: #dc2626; }
-    .text-muted { color: #6b7280; }
-    .text-sm { font-size: 9px; }
-    .text-xs { font-size: 8px; }
+    .text-success { color: #10b981; }
+    .text-warning { color: #f59e0b; }
+    .text-danger { color: #ef4444; }
+    .text-muted { color: #64748b; }
+    .text-light { color: #94a3b8; }
+    .text-sm { font-size: 8.5pt; }
+    .text-xs { font-size: 8pt; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
 
-    /* --- Margin utilities --- */
-    .mb-2 { margin-bottom: 6px; }
-    .mb-4 { margin-bottom: 12px; }
-    .mb-6 { margin-bottom: 16px; }
-    .mb-8 { margin-bottom: 20px; }
-    .mt-2 { margin-top: 6px; }
-    .mt-4 { margin-top: 12px; }
-    .mt-8 { margin-top: 20px; }
+    /* --- Value muted (zero/weak/no data) --- */
+    .value-muted { color: #94a3b8 !important; }
 
-    /* --- Version arrow (for updates) --- */
-    .version-arrow {
-        color: #22c55e;
-        font-weight: 700;
-        margin: 0 2px;
+    /* --- Margin utilities --- */
+    .mb-2 { margin-bottom: 4px; }
+    .mb-4 { margin-bottom: 10px; }
+    .mb-6 { margin-bottom: 14px; }
+    .mb-8 { margin-bottom: 18px; }
+    .mt-2 { margin-top: 4px; }
+    .mt-4 { margin-top: 10px; }
+    .mt-6 { margin-top: 14px; }
+    .mt-8 { margin-top: 18px; }
+
+    .no-break {
+        page-break-inside: avoid;
     }
 
-    /* --- Checkmark --- */
-    .check-success {
-        color: #16a34a;
+    /* --- Overview group labels --- */
+    .overview-group-label {
+        font-size: 7pt;
         font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-top: 14px;
+        margin-bottom: 4px;
+    }
+    .overview-group-label:first-child {
+        margin-top: 0;
+    }
+    .overview-divider {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 12px 0 6px 0;
+    }
+
+    /* --- Security section --- */
+    .security-score-box {
+        text-align: center;
+        padding: 14px;
+        background: #f1f5f9;
+        border-radius: 6px;
+        vertical-align: top;
+    }
+    .security-summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+    }
+    .security-summary-table td {
+        padding: 6px 10px;
+        font-size: 8.5pt;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .severity-critical { color: #dc2626; font-weight: 700; }
+    .severity-high { color: #ea580c; font-weight: 700; }
+    .severity-medium { color: #d97706; font-weight: 600; }
+    .severity-low { color: #64748b; }
+
+    /* --- Section spacing for flowing content --- */
+    .section-block {
+        margin-bottom: 28px;
+    }
+    .section-break {
+        page-break-before: always;
+    }
+
+    /* --- Header spacer (pushes content below the page_script header bar) --- */
+    .header-spacer {
+        height: 22mm;
+    }
+
+    /* --- Section description text --- */
+    .section-description {
+        font-size: 8.5pt;
+        color: #64748b;
+        margin-bottom: 14px;
+    }
+
+    /* --- Executive Snapshot grid --- */
+    .snapshot-grid {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 6px;
+    }
+    .snapshot-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 12px;
+        vertical-align: top;
+        width: 25%;
+    }
+    .snapshot-value {
+        font-size: 16pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 2px;
+    }
+    .snapshot-label {
+        font-size: 8pt;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .snapshot-note {
+        font-size: 7pt;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+    .snapshot-status-good { border-left: 4px solid #10b981; }
+    .snapshot-status-warning { border-left: 4px solid #f59e0b; }
+    .snapshot-status-danger { border-left: 4px solid #ef4444; }
+    .snapshot-status-neutral { border-left: 4px solid #94a3b8; }
+
+    /* --- Executive Snapshot hero cards --- */
+    .snapshot-hero-grid {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 6px;
+    }
+    .snapshot-hero-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 14px 16px;
+        vertical-align: top;
+        width: 50%;
+    }
+    .snapshot-hero-value {
+        font-size: 22pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 2px;
+    }
+
+    /* --- Recommendation cards --- */
+    .rec-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        page-break-inside: avoid;
+    }
+    .rec-title {
+        font-size: 8.5pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+    .rec-description {
+        font-size: 8pt;
+        color: #64748b;
+        line-height: 1.5;
+    }
+    .rec-priority-high { border-left: 4px solid #ef4444; }
+    .rec-priority-medium { border-left: 4px solid #f59e0b; }
+    .rec-priority-low { border-left: 4px solid #94a3b8; }
+    .rec-category-label {
+        font-size: 8pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+    }
+
+    /* --- Sub-cards (for security/database inside Technical Stability) --- */
+    .subcard {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+    }
+    .subcard-title {
+        font-size: 10pt;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 8px;
+    }
+
+    /* --- Chart legend --- */
+    .chart-legend {
+        font-size: 8pt;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+    .chart-legend-item {
+        display: inline-block;
+        margin-right: 14px;
+    }
+    .chart-legend-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        vertical-align: middle;
+        margin-right: 4px;
+    }
+
+    /* --- Footnote --- */
+    .table-footnote {
+        font-size: 7pt;
+        color: #94a3b8;
+        margin-top: 4px;
     }
 </style>

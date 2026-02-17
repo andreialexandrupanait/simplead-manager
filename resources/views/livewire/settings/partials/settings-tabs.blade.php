@@ -7,6 +7,7 @@
                 $tabs = array_merge([
                     ['route' => 'settings.general', 'label' => __('General')],
                     ['route' => 'settings.notifications', 'label' => __('Notifications')],
+                    ['route' => 'settings.email', 'label' => __('Email')],
                     ['route' => 'settings.integrations', 'label' => __('Integrations')],
                     ['route' => 'settings.site-presets', 'label' => __('Site Presets')],
                     ['route' => 'settings.status-pages', 'label' => __('Status Pages')],

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="{{ $language ?? 'ro' }}">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
@@ -7,137 +7,102 @@
 </head>
 <body>
     @php
-        $sections = $template->sections ?? [];
+        $primaryColor = $branding['primary_color'] ?? '#3b82f6';
+        $companyLogo = $branding['company_logo'] ?? null;
+        $companyName = $branding['company_name'] ?? 'SimpleAd';
+        $clientLogo = $branding['client_logo'] ?? null;
+        $lang = $language ?? 'ro';
     @endphp
 
-    {{-- Running Header (appears on pages 2+) --}}
-    <div class="running-header">
-        <table>
-            <tr>
-                <td style="text-align: left;">
-                    @if($template->company_logo_path && file_exists(storage_path('app/' . $template->company_logo_path)))
-                        <img src="{{ storage_path('app/' . $template->company_logo_path) }}" class="header-logo" alt="">
-                    @else
-                        <span style="font-weight: 600; color: #1e1b4b;">{{ $template->company_name ?? 'SimpleAd' }}</span>
-                    @endif
-                </td>
-                <td class="header-title">
-                    Raport {{ $site->name }} &bull; {{ $periodStart->format('M Y') }}
-                </td>
-            </tr>
-        </table>
-    </div>
+    {{-- Cover Page (full bleed, NO header/footer, includes intro text) --}}
+    @include('reports.partials.cover')
 
-    {{-- Running Footer (appears on pages 2+) --}}
-    <div class="running-footer">
-        {{ $template->company_name ?? 'SimpleAd' }}
-    </div>
+    {{-- All content sections flow naturally in a single .page wrapper --}}
+    <div class="page page-first">
 
-    {{-- Cover Page --}}
-    <div class="page">
-        @include('reports.partials.cover')
-    </div>
-
-    {{-- Intro Page --}}
-    @if($template->intro_text)
-        <div class="page">
-            @include('reports.partials.intro')
-        </div>
-    @endif
-
-    {{-- Overview --}}
-    @if(in_array('overview', $sections) && isset($data['overview']))
-        <div class="page">
-            @include('reports.partials.overview')
-        </div>
-    @endif
-
-    {{-- Updates --}}
-    @if(in_array('updates', $sections) && isset($data['updates']))
-        <div class="page">
-            @include('reports.partials.updates')
-        </div>
-    @endif
-
-    {{-- Uptime --}}
-    @if(in_array('uptime', $sections) && isset($data['uptime']) && ($data['uptime']['available'] ?? false))
-        <div class="page">
-            @include('reports.partials.uptime')
-        </div>
-    @endif
-
-    {{-- Backups --}}
-    @if(in_array('backups', $sections) && isset($data['backups']))
-        <div class="page">
-            @include('reports.partials.backups')
-        </div>
-    @endif
-
-    {{-- Analytics --}}
-    @if(in_array('analytics', $sections) && isset($data['analytics']) && $data['analytics'])
-        <div class="page">
-            @include('reports.partials.analytics-1')
-        </div>
-        <div class="page">
-            @include('reports.partials.analytics-2')
-        </div>
-    @endif
-
-    {{-- Search Console --}}
-    @if(in_array('search_console', $sections) && isset($data['search_console']) && $data['search_console'])
-        <div class="page">
-            @include('reports.partials.search-console-1')
-        </div>
-        <div class="page">
-            @include('reports.partials.search-console-2')
-        </div>
-    @endif
-
-    {{-- Performance --}}
-    @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
-        <div class="page">
-            @include('reports.partials.performance')
-        </div>
-    @endif
-
-    {{-- Links --}}
-    @if(in_array('links', $sections) && isset($data['links']) && $data['links'])
-        <div class="page">
-            @include('reports.partials.links')
-        </div>
-    @endif
-
-    {{-- Thank You Page --}}
-    <div class="page">
-        <div class="thankyou-page">
-            <div class="thankyou-title">Mulțumim pentru<br>colaborare!</div>
-            <div class="thankyou-divider"></div>
-            <div class="thankyou-text">
-                @if($template->closing_text)
-                    {!! nl2br(e($template->closing_text)) !!}
-                @else
-                    Vă mulțumim pentru încrederea acordată. Dacă aveți întrebări despre acest raport sau doriți să discutăm despre oportunități de optimizare, nu ezitați să ne contactați.
-                @endif
+        {{-- Executive Snapshot (replaces overview) --}}
+        @if(in_array('overview', $sections) && isset($data['executive_snapshot']))
+            <div class="section-block">
+                <div class="header-spacer"></div>
+                @include('reports.partials.executive-snapshot')
             </div>
-            @if($template->company_name)
-                <div class="thankyou-company">{{ $template->company_name }}</div>
-            @endif
-            @if($template->company_website)
-                <div class="thankyou-website">{{ $template->company_website }}</div>
-            @endif
-        </div>
-    </div>
+        @endif
 
-    {{-- Final Branding Page --}}
-    <div class="page">
-        <div class="final-page">
-            @if($template->company_logo_path && file_exists(storage_path('app/' . $template->company_logo_path)))
-                <img src="{{ storage_path('app/' . $template->company_logo_path) }}" class="final-logo" alt="">
-            @else
-                <div class="final-company">{{ $template->company_name ?? 'SimpleAd' }}</div>
-            @endif
-            <div class="final-subtitle">GRAFICĂ & MARKETING DIGITAL</div>
+        {{-- Technical Stability (replaces uptime, absorbs security + database) --}}
+        @if(in_array('uptime', $sections) && isset($data['uptime']))
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.technical-stability')
+            </div>
+        @endif
+
+        {{-- Infrastructure (SSL, Domain, Email) --}}
+        @if(($data['ssl'] ?? null) || ($data['domain'] ?? null) || ($data['email'] ?? null))
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.infrastructure')
+            </div>
+        @endif
+
+        {{-- Updates --}}
+        @if(in_array('updates', $sections) && isset($data['updates']))
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.updates')
+            </div>
+        @endif
+
+        {{-- Backups --}}
+        @if(in_array('backups', $sections) && isset($data['backups']))
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.backups')
+            </div>
+        @endif
+
+        {{-- Analytics (single section, no analytics-2) --}}
+        @if(in_array('analytics', $sections) && isset($data['analytics']) && $data['analytics'])
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.analytics-1')
+            </div>
+        @endif
+
+        {{-- Search Console (single section, no search-console-2) --}}
+        @if(in_array('search_console', $sections) && isset($data['search_console']) && $data['search_console'])
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.search-console-1')
+            </div>
+        @endif
+
+        {{-- Performance --}}
+        @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.performance')
+            </div>
+        @endif
+
+        {{-- Recommendations (always shown when data exists) --}}
+        @if(isset($data['recommendations']) && (
+            count($data['recommendations']['technical'] ?? []) > 0 ||
+            count($data['recommendations']['performance'] ?? []) > 0 ||
+            count($data['recommendations']['seo'] ?? []) > 0
+        ))
+            <div class="section-block section-break">
+                <div class="header-spacer"></div>
+                @include('reports.partials.recommendations')
+            </div>
+        @endif
+
+        {{-- Closing --}}
+        <div class="section-block section-break">
+            <div class="header-spacer"></div>
+            @include('reports.partials.closing')
         </div>
+
+        @include('reports.components.page-footer')
     </div>
 </body>
 </html>

@@ -287,7 +287,7 @@
                         </div>
 
                         {{-- Day of week (weekly) --}}
-                        <div x-show="$wire.frequency === 'weekly'">
+                        <div x-show="$wire.frequency === 'weekly'" x-cloak>
                             <label class="block text-sm font-medium text-gray-700">Day of Week</label>
                             <x-ui.select wire:model="dayOfWeek" class="mt-1">
                                 <option value="0">Sunday</option>
@@ -301,7 +301,7 @@
                         </div>
 
                         {{-- Day of month (monthly) --}}
-                        <div x-show="$wire.frequency === 'monthly'">
+                        <div x-show="$wire.frequency === 'monthly'" x-cloak>
                             <label class="block text-sm font-medium text-gray-700">Day of Month</label>
                             <x-ui.select wire:model="dayOfMonth" class="mt-1">
                                 @for($d = 1; $d <= 28; $d++)

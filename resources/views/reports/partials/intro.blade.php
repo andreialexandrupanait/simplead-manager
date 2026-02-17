@@ -1,45 +1,27 @@
+@php
+    $lang = $language ?? 'ro';
+@endphp
+
 <div class="intro-title">
-    Raport lunar de<br>
-    Mentenanță și<br>
-    Performanță website
+    {!! nl2br(e(__('report.intro_title', [], $lang))) !!}
 </div>
 
 <div class="intro-body">
-    @if($template->intro_text)
-        {!! nl2br(e($template->intro_text)) !!}
-    @else
-        Acest raport oferă o privire de ansamblu completă asupra sănătății, performanței și activităților de mentenanță ale website-ului dumneavoastră pentru perioada de raportare. Toate datele sunt colectate automat din sistemele de monitorizare ale site-ului.
-    @endif
+    {!! nl2br(e($introText)) !!}
 </div>
 
-<div class="intro-sections-title">Secțiuni incluse</div>
+<div class="intro-sections-title">{{ __('report.intro_sections_included', [], $lang) }}</div>
 
-@php
-    $sectionLabels = [
-        'overview' => 'Privire de ansamblu',
-        'updates' => 'Actualizări WordPress',
-        'uptime' => 'Monitorizare timp de funcționare',
-        'backups' => 'Copii de rezervă',
-        'analytics' => 'Google Analytics',
-        'search_console' => 'Google Console de Căutare',
-        'performance' => 'Performanță (PageSpeed)',
-        'links' => 'Link-uri verificate',
-    ];
-@endphp
-
-<table style="width: 60%; border-collapse: collapse;">
-    @foreach($template->sections ?? [] as $section)
-        <tr>
-            <td class="intro-section-item">
-                <span class="intro-section-check">&#10003;</span>
-                {{ $sectionLabels[$section] ?? ucfirst($section) }}
-            </td>
-        </tr>
+<table style="width: 70%; border-collapse: collapse;">
+    @foreach($sections as $section)
+        @php $sectionLabel = __('report.section_label_' . $section, [], $lang); @endphp
+        @if($sectionLabel !== 'report.section_label_' . $section)
+            <tr>
+                <td class="intro-section-item">
+                    <span class="intro-section-check" style="color: #2563eb;">&#10003;</span>
+                    {{ $sectionLabel }}
+                </td>
+            </tr>
+        @endif
     @endforeach
 </table>
-
-@if($template->company_website)
-    <div class="mt-8 text-muted text-sm">
-        {{ $template->company_name ?? '' }} &mdash; {{ $template->company_website }}
-    </div>
-@endif

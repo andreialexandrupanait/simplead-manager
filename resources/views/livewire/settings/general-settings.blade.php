@@ -12,23 +12,47 @@
                     @error('appName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Logo Upload --}}
+                {{-- Favicon Upload --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Company Logo') }}</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Favicon') }}</label>
                     <div class="flex items-center gap-4">
-                        <div class="h-16 w-16 rounded-lg bg-purple-500 flex items-center justify-center text-white text-lg font-bold overflow-hidden shrink-0">
-                            @if($logo)
-                                <img src="{{ $logo->temporaryUrl() }}" alt="Preview" class="h-full w-full object-cover">
-                            @elseif($logoPath)
-                                <img src="{{ Storage::url($logoPath) }}" alt="Logo" class="h-full w-full object-cover">
+                        <div class="h-12 w-12 rounded-lg {{ ($favicon || $faviconPath) ? 'bg-white' : 'bg-purple-500' }} flex items-center justify-center text-white text-sm font-bold overflow-hidden shrink-0">
+                            @if($favicon)
+                                <img src="{{ $favicon->temporaryUrl() }}" alt="Preview" class="h-full w-full object-contain">
+                            @elseif($faviconPath)
+                                <img src="{{ Storage::url($faviconPath) }}" alt="Favicon" class="h-full w-full object-contain">
                             @else
                                 SA
                             @endif
                         </div>
                         <div>
-                            <input type="file" wire:model="logo" accept="image/*" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                            <input type="file" wire:model="favicon" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                            @error('favicon') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400">{{ __('Square image or SVG. Used in browser tab and sidebar icon.') }}</p>
+                            @if($faviconPath)
+                                <button type="button" wire:click="removeFavicon" class="mt-1 text-xs text-red-600 hover:text-red-700">{{ __('Remove favicon') }}</button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Logo Upload --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Logo') }}</label>
+                    <div class="flex items-center gap-4">
+                        <div class="h-10 max-w-[10rem] flex items-center overflow-hidden shrink-0">
+                            @if($logo)
+                                <img src="{{ $logo->temporaryUrl() }}" alt="Preview" class="h-full object-contain">
+                            @elseif($logoPath)
+                                <img src="{{ Storage::url($logoPath) }}" alt="Logo" class="h-full object-contain">
+                            @else
+                                <span class="text-sm text-gray-400 italic">{{ __('No logo') }}</span>
+                            @endif
+                        </div>
+                        <div>
+                            <input type="file" wire:model="logo" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
                             @error('logo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            <p class="mt-1 text-xs text-gray-400">{{ __('Square image, at least 64x64px. Used in sidebar and as favicon.') }}</p>
+                            <p class="mt-1 text-xs text-gray-400">{{ __('Image or SVG. Replaces the application name in the sidebar.') }}</p>
                             @if($logoPath)
                                 <button type="button" wire:click="removeLogo" class="mt-1 text-xs text-red-600 hover:text-red-700">{{ __('Remove logo') }}</button>
                             @endif

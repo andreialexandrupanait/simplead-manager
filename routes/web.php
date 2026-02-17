@@ -112,6 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('/settings')->middleware('role:admin')->group(function () {
         Route::get('/', Settings\GeneralSettings::class)->name('settings.general');
         Route::get('/notifications', Settings\NotificationSettings::class)->name('settings.notifications');
+        Route::get('/email', Settings\EmailSettings::class)->name('settings.email');
 
         // Integrations
         Route::get('/integrations', Settings\IntegrationsSettings::class)->name('settings.integrations');

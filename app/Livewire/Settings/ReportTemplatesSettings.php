@@ -14,7 +14,7 @@ class ReportTemplatesSettings extends Component
     public array $sections = [];
     public string $company_name = '';
     public string $company_website = '';
-    public string $primary_color = '#7C3AED';
+    public string $primary_color = '#3b82f6';
     public string $intro_text = '';
     public string $closing_text = '';
 
@@ -47,7 +47,7 @@ class ReportTemplatesSettings extends Component
         $this->sections = $template->sections ?? [];
         $this->company_name = $template->company_name ?? '';
         $this->company_website = $template->company_website ?? '';
-        $this->primary_color = $template->primary_color ?? '#7C3AED';
+        $this->primary_color = $template->primary_color ?? '#3b82f6';
         $this->intro_text = $template->intro_text ?? '';
         $this->closing_text = $template->closing_text ?? '';
         $this->dispatch('open-modal-template-form');
@@ -115,10 +115,10 @@ class ReportTemplatesSettings extends Component
         $this->editingTemplateId = null;
         $this->name = '';
         $this->description = '';
-        $this->sections = ['overview', 'updates', 'uptime', 'backups', 'analytics', 'search_console', 'performance', 'links'];
+        $this->sections = ['overview', 'updates', 'uptime', 'backups', 'analytics', 'search_console', 'performance'];
         $this->company_name = '';
         $this->company_website = '';
-        $this->primary_color = '#7C3AED';
+        $this->primary_color = '#3b82f6';
         $this->intro_text = '';
         $this->closing_text = '';
     }

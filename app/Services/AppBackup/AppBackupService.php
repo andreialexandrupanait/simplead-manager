@@ -736,8 +736,10 @@ class AppBackupService
 
         foreach ($tables as $table) {
             try {
-                $result = DB::selectOne("SELECT COUNT(*) as cnt FROM \"{$table->tablename}\"");
-                $counts[$table->tablename] = $result->cnt;
+                if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table->tablename)) {
+                    continue;
+                }
+                $counts[$table->tablename] = DB::table($table->tablename)->count();
             } catch (\Exception $e) {
                 // Skip tables that can't be counted
             }

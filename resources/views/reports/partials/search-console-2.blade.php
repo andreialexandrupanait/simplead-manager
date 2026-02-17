@@ -1,46 +1,49 @@
-@php $sc = $data['search_console']; @endphp
+@php
+    $sc = $data['search_console'];
+    $lang = $language ?? 'ro';
+@endphp
 
-<h2>Google Console de Căutare (continuare)</h2>
-
-@if(isset($sc['pages']) && is_array($sc['pages']) && count($sc['pages']) > 0)
-    <h3>Top pagini</h3>
-    <table class="data-table mb-6">
-        <thead>
-            <tr>
-                <th>Pagină</th>
-                <th>Clicuri</th>
-                <th>Impresii</th>
-                <th>CTR</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(array_slice($sc['pages'], 0, 10) as $page)
-                <tr>
-                    <td style="word-break: break-all; font-size: 8px;">{{ $page['page'] ?? $page['keys'][0] ?? '—' }}</td>
-                    <td>{{ number_format($page['clicks'] ?? 0) }}</td>
-                    <td>{{ number_format($page['impressions'] ?? 0) }}</td>
-                    <td>{{ isset($page['ctr']) ? number_format($page['ctr'] * 100, 1) . '%' : '—' }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-<table class="two-col">
+{{-- 2x2 grid: Top pages, Top countries, Devices, Top dates --}}
+<table class="quad-grid">
     <tr>
+        {{-- Top pages --}}
         <td>
-            @if(isset($sc['countries']) && is_array($sc['countries']) && count($sc['countries']) > 0)
-                <h3>Top țări</h3>
+            <h3>{{ __('report.search_top_pages', [], $lang) }}</h3>
+            @if(isset($sc['pages']) && count($sc['pages']) > 0)
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Țară</th>
-                            <th>Clicuri</th>
-                            <th>Impresii</th>
+                            <th>{{ __('report.search_page', [], $lang) }}</th>
+                            <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                            <th>{{ __('report.search_ctr', [], $lang) }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach(array_slice($sc['countries'], 0, 8) as $country)
+                        @foreach(array_slice($sc['pages'], 0, 5) as $page)
+                            <tr>
+                                <td style="word-break: break-all;">{{ $page['page'] ?? $page['keys'][0] ?? '—' }}</td>
+                                <td>{{ number_format($page['clicks'] ?? 0) }}</td>
+                                <td>{{ isset($page['ctr']) ? number_format($page['ctr'] * 100, 1) . '%' : '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </td>
+        {{-- Top countries --}}
+        <td>
+            <h3>{{ __('report.search_top_countries', [], $lang) }}</h3>
+            @if(isset($sc['countries']) && count($sc['countries']) > 0)
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('report.search_country', [], $lang) }}</th>
+                            <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                            <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(array_slice($sc['countries'], 0, 5) as $country)
                             <tr>
                                 <td>{{ $country['country'] ?? $country['keys'][0] ?? '—' }}</td>
                                 <td>{{ number_format($country['clicks'] ?? 0) }}</td>
@@ -51,15 +54,18 @@
                 </table>
             @endif
         </td>
+    </tr>
+    <tr>
+        {{-- Devices --}}
         <td>
-            @if(isset($sc['devices']) && is_array($sc['devices']) && count($sc['devices']) > 0)
-                <h3>Dispozitive</h3>
+            <h3>{{ __('report.search_top_devices', [], $lang) }}</h3>
+            @if(isset($sc['devices']) && count($sc['devices']) > 0)
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Dispozitiv</th>
-                            <th>Clicuri</th>
-                            <th>Impresii</th>
+                            <th>{{ __('report.search_device', [], $lang) }}</th>
+                            <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                            <th>{{ __('report.search_impressions', [], $lang) }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -68,6 +74,33 @@
                                 <td>{{ ucfirst($device['device'] ?? $device['keys'][0] ?? '—') }}</td>
                                 <td>{{ number_format($device['clicks'] ?? 0) }}</td>
                                 <td>{{ number_format($device['impressions'] ?? 0) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </td>
+        {{-- Top dates --}}
+        <td>
+            @if(isset($sc['overview']['daily_data']) && count($sc['overview']['daily_data']) > 0)
+                <h3>{{ __('report.search_top_dates', [], $lang) }}</h3>
+                @php
+                    $topDates = collect($sc['overview']['daily_data'])->sortByDesc('clicks')->take(5)->values();
+                @endphp
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('report.search_date', [], $lang) }}</th>
+                            <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                            <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($topDates as $day)
+                            <tr>
+                                <td>{{ isset($day['date']) ? \Carbon\Carbon::parse($day['date'])->format('d/m/Y') : '—' }}</td>
+                                <td>{{ number_format($day['clicks'] ?? 0) }}</td>
+                                <td>{{ number_format($day['impressions'] ?? 0) }}</td>
                             </tr>
                         @endforeach
                     </tbody>

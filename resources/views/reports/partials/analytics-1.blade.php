@@ -1,121 +1,139 @@
-@php $a = $data['analytics']; @endphp
+@php
+    $a = $data['analytics'];
+    $lang = $language ?? 'ro';
+@endphp
 
-<h2>Analitică</h2>
+@include('reports.components.section-header', [
+    'title' => __('report.section_analytics', [], $lang),
+])
 
-{{-- Color-bar metric cards --}}
-<table class="analytics-metrics mb-6">
+<p class="section-description">{{ __('report.analytics_description', [], $lang) }}</p>
+
+{{-- Daily users SVG chart --}}
+@if(!empty($a['chart_points']['line_points'] ?? ''))
+    <div class="chart-container">
+        <div class="chart-title">{{ __('report.analytics_daily_users', [], $lang) }}</div>
+        @include('reports.components.chart-line', [
+            'points' => $a['chart_points'],
+            'primaryColor' => '#2563eb',
+            'areaColor' => '#dbeafe',
+            'yLabels' => $a['chart_y_labels'] ?? [],
+            'xLabels' => $a['chart_x_labels'] ?? [],
+            'legendLabel' => __('report.analytics_users', [], $lang),
+        ])
+    </div>
+@endif
+
+{{-- KPI cards (4 columns) --}}
+<table class="kpi-grid mb-4">
     <tr>
-        <td class="analytics-metric-card purple">
-            <div class="analytics-metric-value">{{ isset($a['total_pageviews']) ? number_format($a['total_pageviews']) : 'N/A' }}</div>
-            <div class="analytics-metric-label">Pagini vizualizate</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $pv = $a['total_pageviews'] ?? 0; @endphp
+            <div class="kpi-value {{ $pv == 0 ? 'value-muted' : '' }}">{{ $pv == 0 ? '—' : number_format($pv) }}</div>
+            <div class="kpi-label">{{ __('report.analytics_pageviews', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['pageviews_trend'] ?? null])</div>
         </td>
-        <td class="analytics-metric-card blue">
-            <div class="analytics-metric-value">{{ isset($a['total_users']) ? number_format($a['total_users']) : 'N/A' }}</div>
-            <div class="analytics-metric-label">Utilizatori</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $users = $a['total_users'] ?? 0; @endphp
+            <div class="kpi-value {{ $users == 0 ? 'value-muted' : '' }}">{{ $users == 0 ? '—' : number_format($users) }}</div>
+            <div class="kpi-label">{{ __('report.analytics_users', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['users_trend'] ?? null])</div>
         </td>
-        <td class="analytics-metric-card green">
-            <div class="analytics-metric-value">{{ isset($a['bounce_rate']) ? number_format($a['bounce_rate'], 1) . '%' : 'N/A' }}</div>
-            <div class="analytics-metric-label">Rata respingere</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $br = $a['bounce_rate'] ?? 0; @endphp
+            <div class="kpi-value {{ $br == 0 ? 'value-muted' : '' }}">{{ $br == 0 ? '—' : number_format($br, 1, $lang === 'ro' ? ',' : '.', '') . '%' }}</div>
+            <div class="kpi-label">{{ __('report.analytics_bounce_rate', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['bounce_rate_trend'] ?? null])</div>
         </td>
-        <td class="analytics-metric-card amber">
-            <div class="analytics-metric-value">{{ isset($a['avg_session_duration']) ? gmdate('i:s', (int) $a['avg_session_duration']) : 'N/A' }}</div>
-            <div class="analytics-metric-label">Durata sesiune</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $dur = $a['avg_session_duration'] ?? 0; @endphp
+            <div class="kpi-value {{ $dur == 0 ? 'value-muted' : '' }}">{{ $dur == 0 ? '—' : gmdate('i:s', (int) $dur) }}</div>
+            <div class="kpi-label">{{ __('report.analytics_session_duration', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $a['duration_trend'] ?? null])</div>
         </td>
     </tr>
 </table>
 
-{{-- Users over time bar chart --}}
-@if(isset($a['daily_users']) && is_array($a['daily_users']) && count($a['daily_users']) > 0)
-    <h3>Utilizatori în timp</h3>
-    <table class="data-table mb-6">
+{{-- Traffic by channel bar chart --}}
+@if(!empty($a['traffic_bar_chart']['bars'] ?? []))
+    <div class="chart-container">
+        <div class="chart-title">{{ __('report.analytics_traffic_sources', [], $lang) }}</div>
+        @include('reports.components.chart-bar', [
+            'chartData' => $a['traffic_bar_chart'],
+            'primaryColor' => '#2563eb',
+        ])
+    </div>
+@endif
+
+{{-- Top pages table (capped at 10, no 0-view pages) --}}
+@if(isset($a['top_pages']) && count($a['top_pages']) > 0)
+    <h3>{{ __('report.analytics_top_pages', [], $lang) }}</h3>
+    <table class="data-table mb-4">
         <thead>
             <tr>
-                <th style="width: 90px;">Dată</th>
-                <th style="width: 60px;">Utilizatori</th>
-                <th>Grafic</th>
+                <th>{{ __('report.analytics_page_col', [], $lang) }}</th>
+                <th>{{ __('report.analytics_views', [], $lang) }}</th>
             </tr>
         </thead>
         <tbody>
-            @php
-                $maxUsers = max(array_column($a['daily_users'], 'users'));
-                $maxUsers = max($maxUsers, 1);
-            @endphp
-            @foreach(array_slice($a['daily_users'], -14) as $day)
+            @foreach($a['top_pages'] as $page)
+                @php
+                    $pagePath = $page['page'] ?? $page['path'] ?? '—';
+                    $pagePath = preg_replace('#^https?://[^/]+#', '', $pagePath);
+                    $pagePath = \Illuminate\Support\Str::limit($pagePath, 50);
+                @endphp
                 <tr>
-                    <td>{{ isset($day['date']) ? \Carbon\Carbon::parse($day['date'])->format('d/m') : '—' }}</td>
-                    <td>{{ number_format($day['users'] ?? 0) }}</td>
-                    <td>
-                        <div class="bar-container">
-                            <div class="bar-fill" style="width: {{ min(100, (($day['users'] ?? 0) / $maxUsers) * 100) }}%;"></div>
-                        </div>
-                    </td>
+                    <td style="word-break: break-all;">{{ $pagePath }}</td>
+                    <td>{{ number_format($page['pageviews'] ?? $page['views'] ?? 0) }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 @endif
 
-{{-- Two-column: Users breakdown + Device distribution --}}
-<table class="two-col">
-    <tr>
-        <td>
-            <h3>Utilizatori</h3>
-            @php
-                $newUsers = $a['new_users'] ?? 0;
-                $returningUsers = $a['returning_users'] ?? 0;
-                $totalUserSplit = max($newUsers + $returningUsers, 1);
-            @endphp
-            <table style="width: 100%; border-collapse: collapse;">
+{{-- Device distribution --}}
+<h3>{{ __('report.analytics_device_distribution', [], $lang) }}</h3>
+@if(isset($a['devices']) && is_array($a['devices']) && count($a['devices']) > 0)
+    @php
+        $totalDeviceUsers = max(1, array_sum(array_column($a['devices'], 'users')));
+        $deviceColors = ['primary', 'blue', 'green', 'amber'];
+    @endphp
+    <table style="width: 100%; border-collapse: collapse;">
+        @foreach($a['devices'] as $idx => $device)
+            <tr>
+                <td style="font-size: 8.5pt; padding: 3px 0; width: 30%;">{{ ucfirst($device['device'] ?? '—') }}</td>
+                <td style="padding: 3px 0; width: 50%;">
+                    <div class="progress-bar">
+                        <div class="progress-fill {{ $deviceColors[$idx] ?? 'primary' }}" style="width: {{ min(100, (($device['users'] ?? 0) / $totalDeviceUsers) * 100) }}%;"></div>
+                    </div>
+                </td>
+                <td style="font-size: 8.5pt; font-weight: 600; text-align: right; padding: 3px 0; width: 20%;">
+                    {{ number_format((($device['users'] ?? 0) / $totalDeviceUsers) * 100, 1) }}%
+                </td>
+            </tr>
+        @endforeach
+    </table>
+@else
+    <p style="color: #94a3b8; font-size: 8.5pt;">{{ __('report.no_data', [], $lang) }}</p>
+@endif
+
+{{-- Countries table (compact 5-row, capped in service) --}}
+@if(isset($a['countries']) && is_array($a['countries']) && count($a['countries']) > 0)
+    <h3 class="mt-6">{{ __('report.analytics_top_countries', [], $lang) }}</h3>
+    <table class="data-table mb-4">
+        <thead>
+            <tr>
+                <th>{{ __('report.analytics_country', [], $lang) }}</th>
+                <th>{{ __('report.analytics_user_count', [], $lang) }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($a['countries'] as $country)
                 <tr>
-                    <td style="font-size: 9px; padding: 4px 0;">Utilizatori noi</td>
-                    <td style="font-size: 9px; font-weight: 600; text-align: right; padding: 4px 0;">{{ number_format($newUsers) }}</td>
+                    <td>{{ $country['country'] ?? '—' }}</td>
+                    <td>{{ number_format($country['users'] ?? $country['sessions'] ?? 0) }}</td>
                 </tr>
-                <tr>
-                    <td colspan="2" style="padding: 2px 0 8px 0;">
-                        <div class="progress-bar">
-                            <div class="progress-fill primary" style="width: {{ min(100, ($newUsers / $totalUserSplit) * 100) }}%;"></div>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="font-size: 9px; padding: 4px 0;">Utilizatori revenind</td>
-                    <td style="font-size: 9px; font-weight: 600; text-align: right; padding: 4px 0;">{{ number_format($returningUsers) }}</td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="padding: 2px 0 8px 0;">
-                        <div class="progress-bar">
-                            <div class="progress-fill blue" style="width: {{ min(100, ($returningUsers / $totalUserSplit) * 100) }}%;"></div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </td>
-        <td>
-            @if(isset($a['devices']) && is_array($a['devices']) && count($a['devices']) > 0)
-                <h3>Distribuție dispozitiv</h3>
-                @php
-                    $totalDeviceUsers = array_sum(array_column($a['devices'], 'users'));
-                    $totalDeviceUsers = max($totalDeviceUsers, 1);
-                    $deviceColors = ['primary', 'blue', 'green', 'amber'];
-                @endphp
-                <table style="width: 100%; border-collapse: collapse;">
-                    @foreach($a['devices'] as $idx => $device)
-                        <tr>
-                            <td style="font-size: 9px; padding: 4px 0;">{{ ucfirst($device['device'] ?? $device['name'] ?? '—') }}</td>
-                            <td style="font-size: 9px; font-weight: 600; text-align: right; padding: 4px 0;">
-                                {{ number_format((($device['users'] ?? 0) / $totalDeviceUsers) * 100, 1) }}%
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="padding: 2px 0 8px 0;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill {{ $deviceColors[$idx] ?? 'primary' }}" style="width: {{ min(100, (($device['users'] ?? 0) / $totalDeviceUsers) * 100) }}%;"></div>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </table>
-            @endif
-        </td>
-    </tr>
-</table>
+            @endforeach
+        </tbody>
+    </table>
+@endif

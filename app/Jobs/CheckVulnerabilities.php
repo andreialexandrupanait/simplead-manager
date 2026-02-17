@@ -32,4 +32,9 @@ class CheckVulnerabilities implements ShouldQueue, ShouldBeUnique
     {
         VulnerabilityCheckService::check($this->site);
     }
+
+    public function failed(?\Throwable $exception): void
+    {
+        \Illuminate\Support\Facades\Log::error("Vulnerability check failed for site {$this->site->id}: " . ($exception?->getMessage() ?? 'Unknown error'));
+    }
 }

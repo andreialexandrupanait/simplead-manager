@@ -1,21 +1,54 @@
+@php
+    $companyLogo = $branding['company_logo'] ?? null;
+    $clientLogo = $branding['client_logo'] ?? null;
+    $lang = $language ?? 'ro';
+@endphp
+
 <div class="cover-page">
-    @if($template->company_logo_path && file_exists(storage_path('app/' . $template->company_logo_path)))
-        <img src="{{ storage_path('app/' . $template->company_logo_path) }}" class="cover-logo" alt="">
-    @elseif($template->company_name)
-        <div class="cover-company-name">{{ $template->company_name }}</div>
+    <div class="cover-content">
+        {{-- Client logo or site name --}}
+        @if($clientLogo && file_exists($clientLogo))
+            <img src="{{ $clientLogo }}" class="cover-client-logo" alt="">
+        @else
+            <div class="cover-site-name">{{ $site->name }}</div>
+        @endif
+
+        {{-- Accent line --}}
+        <div class="cover-accent-line"></div>
+
+        {{-- Report title --}}
+        <div class="cover-title">{{ __('report.cover_title', [], $lang) }}</div>
+
+        {{-- Site URL --}}
+        <div class="cover-url">{{ $site->url }}</div>
+
+        {{-- Date range --}}
+        <div class="cover-date">
+            {{ $periodStart->format('d/m/Y') }} &mdash; {{ $periodEnd->format('d/m/Y') }}
+        </div>
+
+        {{-- Intro text --}}
+        @if(!empty($introText))
+            <div class="cover-intro">
+                {{ $introText }}
+            </div>
+        @endif
+
+        {{-- Section list --}}
+        @if(isset($sections) && count($sections) > 0)
+            <div class="cover-sections">
+                @foreach($sections as $section)
+                    @php $sectionLabel = __('report.section_label_' . $section, [], $lang); @endphp
+                    @if($sectionLabel !== 'report.section_label_' . $section)
+                        <div class="cover-sections-item">&#10003; {{ $sectionLabel }}</div>
+                    @endif
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    {{-- Company logo at bottom --}}
+    @if($companyLogo && file_exists($companyLogo))
+        <img src="{{ $companyLogo }}" class="cover-company-logo" alt="">
     @endif
-
-    <div class="cover-divider"></div>
-
-    <div class="cover-title">Raport {{ $site->client->name ?? $site->name }}</div>
-
-    <div class="cover-url">{{ $site->url }}</div>
-
-    <div class="cover-period">
-        {{ $periodStart->format('d.m.Y') }} &mdash; {{ $periodEnd->format('d.m.Y') }}
-    </div>
-
-    <div class="cover-bottom">
-        <div class="cover-bottom-name">{{ $template->company_name ?? 'SimpleAd' }}</div>
-    </div>
 </div>

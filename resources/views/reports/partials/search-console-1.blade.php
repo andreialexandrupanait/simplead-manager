@@ -1,76 +1,93 @@
-@php $sc = $data['search_console']; $overview = $sc['overview'] ?? []; @endphp
+@php
+    $sc = $data['search_console'];
+    $overview = $sc['overview'] ?? [];
+    $lang = $language ?? 'ro';
+@endphp
 
-<h2>Google Console de Căutare</h2>
+@include('reports.components.section-header', [
+    'title' => __('report.section_search_console', [], $lang),
+])
 
-{{-- Colored left-border metric boxes --}}
-<table class="gsc-metrics mb-6">
+{{-- Dual-line chart: clicks + impressions --}}
+@if(!empty($sc['dual_line_chart']['line1']['line_points'] ?? '') || !empty($sc['dual_line_chart']['line2']['line_points'] ?? ''))
+    <div class="chart-container">
+        <div class="chart-title">{{ __('report.search_performance_over_time', [], $lang) }}</div>
+        @include('reports.components.chart-dual-line', [
+            'line1' => $sc['dual_line_chart']['line1'] ?? [],
+            'line2' => $sc['dual_line_chart']['line2'] ?? [],
+            'color1' => '#2563eb',
+            'color2' => '#10b981',
+            'areaColor1' => '#dbeafe',
+            'areaColor2' => '#d1fae5',
+            'color2Light' => '#6ee7b7',
+            'legend1' => __('report.search_clicks', [], $lang),
+            'legend2' => __('report.search_impressions', [], $lang),
+            'yLabels' => $sc['dual_line_y_labels'] ?? [],
+            'xLabels' => $sc['dual_line_x_labels'] ?? [],
+        ])
+    </div>
+@elseif(!empty($overview['chart_points']['line_points'] ?? ''))
+    <div class="chart-container">
+        <div class="chart-title">{{ __('report.search_performance_over_time', [], $lang) }}</div>
+        @include('reports.components.chart-line', [
+            'points' => $overview['chart_points'],
+            'primaryColor' => '#2563eb',
+            'areaColor' => '#dbeafe',
+            'yLabels' => $overview['chart_y_labels'] ?? [],
+            'xLabels' => $overview['chart_x_labels'] ?? [],
+            'legendLabel' => __('report.search_clicks', [], $lang),
+        ])
+    </div>
+@endif
+
+{{-- KPI cards (4-column single row) --}}
+<table class="kpi-grid mb-4">
     <tr>
-        <td class="gsc-metric-box blue">
-            <div class="gsc-metric-value">{{ isset($overview['total_clicks']) ? number_format($overview['total_clicks']) : 'N/A' }}</div>
-            <div class="gsc-metric-label">Total clicuri</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $clicks = $overview['total_clicks'] ?? 0; @endphp
+            <div class="kpi-value {{ $clicks == 0 ? 'value-muted' : '' }}">{{ $clicks == 0 ? '—' : number_format($clicks) }}</div>
+            <div class="kpi-label">{{ __('report.search_total_clicks', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['clicks_trend'] ?? null])</div>
         </td>
-        <td class="gsc-metric-box red">
-            <div class="gsc-metric-value">{{ isset($overview['total_impressions']) ? number_format($overview['total_impressions']) : 'N/A' }}</div>
-            <div class="gsc-metric-label">Impresii</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $impressions = $overview['total_impressions'] ?? 0; @endphp
+            <div class="kpi-value {{ $impressions == 0 ? 'value-muted' : '' }}">{{ $impressions == 0 ? '—' : number_format($impressions) }}</div>
+            <div class="kpi-label">{{ __('report.search_impressions', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['impressions_trend'] ?? null])</div>
         </td>
-        <td class="gsc-metric-box green">
-            <div class="gsc-metric-value">{{ isset($overview['avg_ctr']) ? number_format($overview['avg_ctr'] * 100, 1) . '%' : 'N/A' }}</div>
-            <div class="gsc-metric-label">CTR mediu</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php
+                $ctr = $overview['avg_ctr'] ?? 0;
+                $ctrDisplay = $ctr == 0 ? '< 0.1%' : number_format($ctr * 100, 2, $lang === 'ro' ? ',' : '.', '') . '%';
+            @endphp
+            <div class="kpi-value {{ $ctr == 0 ? 'value-muted' : '' }}">{{ $ctr == 0 ? '< 0,1%' : $ctrDisplay }}</div>
+            <div class="kpi-label">{{ __('report.search_avg_ctr', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['ctr_trend'] ?? null])</div>
         </td>
-        <td class="gsc-metric-box orange">
-            <div class="gsc-metric-value">{{ isset($overview['avg_position']) ? number_format($overview['avg_position'], 1) : 'N/A' }}</div>
-            <div class="gsc-metric-label">Poziție medie</div>
+        <td class="kpi-card" style="width: 25%;">
+            @php $pos = $overview['avg_position'] ?? 0; @endphp
+            <div class="kpi-value {{ $pos == 0 ? 'value-muted' : '' }}">{{ $pos == 0 ? '—' : number_format($pos, 1, $lang === 'ro' ? ',' : '.', '') }}</div>
+            <div class="kpi-label">{{ __('report.search_avg_position', [], $lang) }}</div>
+            <div class="card-trend">@include('reports.components.trend', ['trend' => $overview['position_trend'] ?? null])</div>
         </td>
     </tr>
 </table>
 
-{{-- Performance over time bar chart --}}
-@if(isset($overview['daily_data']) && is_array($overview['daily_data']) && count($overview['daily_data']) > 0)
-    <h3>Performanță în timp</h3>
-    <table class="data-table mb-6">
-        <thead>
-            <tr>
-                <th style="width: 80px;">Dată</th>
-                <th style="width: 60px;">Clicuri</th>
-                <th style="width: 80px;">Impresii</th>
-                <th>Grafic clicuri</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $maxClicks = max(1, max(array_column($overview['daily_data'], 'clicks')));
-            @endphp
-            @foreach(array_slice($overview['daily_data'], -14) as $day)
-                <tr>
-                    <td>{{ isset($day['date']) ? \Carbon\Carbon::parse($day['date'])->format('d/m') : '—' }}</td>
-                    <td>{{ number_format($day['clicks'] ?? 0) }}</td>
-                    <td>{{ number_format($day['impressions'] ?? 0) }}</td>
-                    <td>
-                        <div class="bar-container">
-                            <div class="bar-fill" style="width: {{ min(100, (($day['clicks'] ?? 0) / $maxClicks) * 100) }}%;"></div>
-                        </div>
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-@endif
-
-{{-- Top 10 queries --}}
+{{-- Top queries (capped at 10 in service) --}}
 @if(isset($sc['queries']) && is_array($sc['queries']) && count($sc['queries']) > 0)
-    <h3>Top 10 căutări</h3>
+    <h3 class="mt-4">{{ __('report.search_top_queries', [], $lang) }}</h3>
     <table class="data-table">
         <thead>
             <tr>
-                <th>Căutare</th>
-                <th>Clicuri</th>
-                <th>Impresii</th>
-                <th>CTR</th>
-                <th>Poziție</th>
+                <th>{{ __('report.search_query', [], $lang) }}</th>
+                <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                <th>{{ __('report.search_ctr', [], $lang) }}</th>
+                <th>{{ __('report.search_position', [], $lang) }}</th>
             </tr>
         </thead>
         <tbody>
-            @foreach(array_slice($sc['queries'], 0, 10) as $query)
+            @foreach($sc['queries'] as $query)
                 <tr>
                     <td>{{ $query['query'] ?? $query['keys'][0] ?? '—' }}</td>
                     <td>{{ number_format($query['clicks'] ?? 0) }}</td>

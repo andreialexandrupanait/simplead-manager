@@ -132,4 +132,8 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
         }
     }
 
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error("Report generation job permanently failed for site {$this->site->id}: " . ($exception?->getMessage() ?? 'Unknown error'));
+    }
 }

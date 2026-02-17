@@ -107,7 +107,7 @@
                         <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         How to get your Dropbox API credentials
                     </button>
-                    <div x-show="showInstructions" x-collapse class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
+                    <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
                         <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
                             <li>Go to the <a href="https://www.dropbox.com/developers/apps" target="_blank" class="font-medium underline hover:text-blue-900">Dropbox App Console</a></li>
                             <li>Click <strong>Create app</strong> (or select an existing one)</li>
@@ -158,7 +158,7 @@
                     <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                     How to get your Google API credentials
                 </button>
-                <div x-show="showInstructions" x-collapse class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
+                <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
                     <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
                         <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="font-medium underline hover:text-blue-900">Google Cloud Console &rarr; Credentials</a></li>
                         <li>Create or select an <strong>OAuth 2.0 Client ID</strong> (type: Web application)</li>
@@ -263,7 +263,7 @@
                     <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                     How to get your Cloudflare API token
                 </button>
-                <div x-show="showInstructions" x-collapse class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
+                <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
                     <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
                         <li>Log in to your <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" class="font-medium underline hover:text-blue-900">Cloudflare dashboard</a> and go to <strong>My Profile &rarr; API Tokens</strong></li>
                         <li>Click <strong>Create Token</strong></li>

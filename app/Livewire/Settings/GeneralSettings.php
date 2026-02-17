@@ -30,7 +30,11 @@ class GeneralSettings extends Component
     public int $alertAfterFailures = 3;
     public int $dataRetentionDays = 90;
 
-    // Logo
+    // Favicon (small square icon — browser tab + sidebar icon)
+    public $favicon;
+    public ?string $faviconPath = null;
+
+    // Logo (wider image — replaces app name text in sidebar)
     public $logo;
     public ?string $logoPath = null;
 
@@ -50,6 +54,7 @@ class GeneralSettings extends Component
         $this->defaultTimeout = (int) $settings->get('default_timeout', 30);
         $this->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
         $this->dataRetentionDays = (int) $settings->get('data_retention_days', 90);
+        $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
     }
 
@@ -74,7 +79,8 @@ class GeneralSettings extends Component
             'defaultTimeout' => 'required|integer|min:5|max:120',
             'alertAfterFailures' => 'required|integer|min:1|max:10',
             'dataRetentionDays' => 'required|integer|min:7|max:365',
-            'logo' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048|dimensions:max_width=2000,max_height=2000',
+            'favicon' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,ico,svg|max:1024',
+            'logo' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg|max:2048',
         ]);
 
         $settings->set('app_name', $this->appName, 'general', 'string');
@@ -86,8 +92,18 @@ class GeneralSettings extends Component
         $settings->set('alert_after_failures', $this->alertAfterFailures, 'monitoring', 'integer');
         $settings->set('data_retention_days', $this->dataRetentionDays, 'monitoring', 'integer');
 
+        if ($this->favicon) {
+            if ($this->faviconPath) {
+                Storage::disk('public')->delete($this->faviconPath);
+            }
+
+            $path = $this->favicon->storeAs('branding', uniqid('favicon_') . '.' . $this->favicon->getClientOriginalExtension(), 'public');
+            $settings->set('branding.favicon', $path, 'branding', 'string');
+            $this->faviconPath = $path;
+            $this->favicon = null;
+        }
+
         if ($this->logo) {
-            // Delete old logo if exists
             if ($this->logoPath) {
                 Storage::disk('public')->delete($this->logoPath);
             }
@@ -99,6 +115,15 @@ class GeneralSettings extends Component
         }
 
         $this->dispatch('notify', type: 'success', message: 'Settings saved successfully.');
+    }
+
+    public function removeFavicon(SettingsService $settings): void
+    {
+        if ($this->faviconPath) {
+            Storage::disk('public')->delete($this->faviconPath);
+            $settings->set('branding.favicon', null, 'branding', 'string');
+            $this->faviconPath = null;
+        }
     }
 
     public function removeLogo(SettingsService $settings): void

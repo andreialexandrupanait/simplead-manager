@@ -66,11 +66,18 @@ class ClientsList extends Component
     #[Computed]
     public function statusCounts(): array
     {
+        $counts = Client::query()
+            ->selectRaw("count(*) as total")
+            ->selectRaw("count(*) filter (where status = 'active') as active")
+            ->selectRaw("count(*) filter (where status = 'inactive') as inactive")
+            ->selectRaw("count(*) filter (where status = 'archived') as archived")
+            ->first();
+
         return [
-            'all' => Client::count(),
-            'active' => Client::where('status', 'active')->count(),
-            'inactive' => Client::where('status', 'inactive')->count(),
-            'archived' => Client::where('status', 'archived')->count(),
+            'all' => (int) $counts->total,
+            'active' => (int) $counts->active,
+            'inactive' => (int) $counts->inactive,
+            'archived' => (int) $counts->archived,
         ];
     }
 

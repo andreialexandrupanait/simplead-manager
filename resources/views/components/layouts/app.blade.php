@@ -4,10 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    @php $brandingLogo = app(\App\Services\SettingsService::class)->get('branding.logo'); @endphp
-    <title>{{ $title ?? 'SimpleAd Manager' }}</title>
-    @if($brandingLogo)
-        <link rel="icon" type="image/png" href="{{ Storage::url($brandingLogo) }}">
+    @php
+        $settingsService = app(\App\Services\SettingsService::class);
+        $brandingFavicon = $settingsService->get('branding.favicon');
+        $brandingLogo = $settingsService->get('branding.logo');
+    @endphp
+    <title>{{ $settingsService->get('app_name', 'SimpleAd Manager') }}{{ isset($title) ? ' - ' . $title : '' }}</title>
+    @if($brandingFavicon)
+        <link rel="icon" type="image/png" href="{{ Storage::url($brandingFavicon) }}">
     @endif
     {{-- Pre-Alpine sidebar state to prevent flash --}}
     <script>
@@ -71,19 +75,13 @@
                ]">
 
             {{-- Logo area --}}
-            <div class="flex h-16 items-center px-4 gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-3 min-w-0">
-                    <div class="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
-                        @if($brandingLogo)
-                            <img src="{{ Storage::url($brandingLogo) }}" alt="" class="h-full w-full object-cover">
-                        @else
-                            SA
-                        @endif
-                    </div>
-                    <span class="text-lg font-bold text-white whitespace-nowrap transition-all duration-300"
-                          :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                        {{ app(\App\Services\SettingsService::class)->get('app_name', 'SimpleAd Manager') }}
-                    </span>
+            <div class="flex h-16 items-center px-5 border-b border-white/10">
+                <a href="{{ route('dashboard') }}" class="block" style="width: 80%;">
+                    @if($brandingLogo)
+                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="h-7 w-full object-contain object-left" style="filter: brightness(0) invert(1);">
+                    @else
+                        <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
+                    @endif
                 </a>
             </div>
 
