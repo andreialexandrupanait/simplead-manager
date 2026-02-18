@@ -206,6 +206,18 @@ services:
     networks:
       - simplead
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: simplead-gotenberg-dev
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--api-timeout=120s"
+      - "--log-level=warn"
+    networks:
+      - simplead
+
 networks:
   simplead:
     driver: bridge

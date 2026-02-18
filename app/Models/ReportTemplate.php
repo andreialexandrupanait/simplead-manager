@@ -13,6 +13,8 @@ class ReportTemplate extends Model
         'name',
         'description',
         'sections',
+        'section_overrides',
+        'section_options',
         'company_name',
         'company_logo_path',
         'company_website',
@@ -24,8 +26,32 @@ class ReportTemplate extends Model
 
     protected $casts = [
         'sections' => 'array',
+        'section_overrides' => 'array',
+        'section_options' => 'array',
         'is_default' => 'boolean',
     ];
+
+    public function getSectionTitle(string $key, string $lang = 'ro'): string
+    {
+        return $this->section_overrides[$key]['title'] ?? __("report.section_{$key}", [], $lang);
+    }
+
+    public function getSectionDescription(string $key, string $lang = 'ro'): ?string
+    {
+        if (isset($this->section_overrides[$key]['description'])) {
+            return $this->section_overrides[$key]['description'];
+        }
+
+        $translationKey = "report.{$key}_description";
+        $translated = __($translationKey, [], $lang);
+
+        return $translated !== $translationKey ? $translated : null;
+    }
+
+    public function isSectionOptionEnabled(string $key, string $option): bool
+    {
+        return $this->section_options[$key][$option] ?? true;
+    }
 
     public function schedules(): HasMany
     {

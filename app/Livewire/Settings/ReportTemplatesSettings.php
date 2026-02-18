@@ -12,11 +12,85 @@ class ReportTemplatesSettings extends Component
     public string $name = '';
     public string $description = '';
     public array $sections = [];
+    public array $section_overrides = [];
+    public array $section_options = [];
+    public array $expandedSections = [];
     public string $company_name = '';
     public string $company_website = '';
     public string $primary_color = '#3b82f6';
     public string $intro_text = '';
     public string $closing_text = '';
+
+    /**
+     * Maps section keys used in the $sections array to the section_options keys
+     * used in partials. Some keys differ (e.g. 'uptime' -> 'technical_stability').
+     */
+    protected static array $sectionKeyMap = [
+        'overview' => 'executive_snapshot',
+        'uptime' => 'technical_stability',
+        'updates' => 'updates',
+        'backups' => 'backups',
+        'analytics' => 'analytics',
+        'search_console' => 'search_console',
+        'performance' => 'performance',
+        'database' => null, // No standalone sub-options; database is part of technical_stability
+    ];
+
+    /**
+     * Single source of truth for sub-section toggles per section.
+     */
+    public static function sectionSubOptions(): array
+    {
+        return [
+            'executive_snapshot' => [],
+            'technical_stability' => [
+                'show_incidents_table' => 'Incidents Table',
+                'show_security' => 'Security Sub-card',
+                'show_database' => 'Database Sub-card',
+            ],
+            'updates' => [
+                'show_breakdown_chart' => 'Breakdown Chart',
+                'show_log_table' => 'Update Log Table',
+            ],
+            'backups' => [
+                'show_chart' => 'Donut Chart',
+                'show_history_table' => 'Backup History Table',
+            ],
+            'analytics' => [
+                'show_daily_chart' => 'Daily Users Chart',
+                'show_traffic_sources' => 'Traffic Sources Chart',
+                'show_top_pages' => 'Top Pages Table',
+                'show_devices' => 'Device Distribution',
+                'show_countries' => 'Top Countries',
+            ],
+            'search_console' => [
+                'show_performance_chart' => 'Performance Chart',
+                'show_queries_table' => 'Top Queries Table',
+            ],
+            'performance' => [
+                'show_mobile' => 'Mobile Score',
+                'show_desktop' => 'Desktop Score',
+            ],
+            'infrastructure' => [
+                'show_ssl' => 'SSL Certificate',
+                'show_domain' => 'Domain Registration',
+                'show_email' => 'Email Deliverability',
+            ],
+            'recommendations' => [
+                'show_technical' => 'Technical Recommendations',
+                'show_performance' => 'Performance Recommendations',
+                'show_seo' => 'SEO Recommendations',
+            ],
+        ];
+    }
+
+    /**
+     * Get the options key for a given section key from the sections array.
+     */
+    public static function optionsKeyForSection(string $sectionKey): ?string
+    {
+        return static::$sectionKeyMap[$sectionKey] ?? $sectionKey;
+    }
 
     protected function rules(): array
     {
@@ -24,6 +98,9 @@ class ReportTemplatesSettings extends Component
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'sections' => 'required|array|min:1',
+            'section_overrides.*.title' => 'nullable|string|max:255',
+            'section_overrides.*.description' => 'nullable|string|max:1000',
+            'section_options.*.*' => 'boolean',
             'company_name' => 'nullable|string|max:255',
             'company_website' => 'nullable|string|max:255',
             'primary_color' => 'required|string|max:7',
@@ -32,9 +109,19 @@ class ReportTemplatesSettings extends Component
         ];
     }
 
+    public function toggleSectionExpand(string $key): void
+    {
+        if (in_array($key, $this->expandedSections)) {
+            $this->expandedSections = array_values(array_diff($this->expandedSections, [$key]));
+        } else {
+            $this->expandedSections[] = $key;
+        }
+    }
+
     public function openCreateForm(): void
     {
         $this->resetForm();
+        $this->initializeSubOptionDefaults();
         $this->dispatch('open-modal-template-form');
     }
 
@@ -45,11 +132,15 @@ class ReportTemplatesSettings extends Component
         $this->name = $template->name;
         $this->description = $template->description ?? '';
         $this->sections = $template->sections ?? [];
+        $this->section_overrides = $template->section_overrides ?? [];
+        $this->section_options = $template->section_options ?? [];
         $this->company_name = $template->company_name ?? '';
         $this->company_website = $template->company_website ?? '';
         $this->primary_color = $template->primary_color ?? '#3b82f6';
         $this->intro_text = $template->intro_text ?? '';
         $this->closing_text = $template->closing_text ?? '';
+        $this->expandedSections = [];
+        $this->initializeSubOptionDefaults();
         $this->dispatch('open-modal-template-form');
     }
 
@@ -61,6 +152,8 @@ class ReportTemplatesSettings extends Component
             'name' => $this->name,
             'description' => $this->description ?: null,
             'sections' => $this->sections,
+            'section_overrides' => $this->cleanSectionOverrides() ?: null,
+            'section_options' => $this->cleanSectionOptions() ?: null,
             'company_name' => $this->company_name ?: null,
             'company_website' => $this->company_website ?: null,
             'primary_color' => $this->primary_color,
@@ -116,6 +209,9 @@ class ReportTemplatesSettings extends Component
         $this->name = '';
         $this->description = '';
         $this->sections = ['overview', 'updates', 'uptime', 'backups', 'analytics', 'search_console', 'performance'];
+        $this->section_overrides = [];
+        $this->section_options = [];
+        $this->expandedSections = [];
         $this->company_name = '';
         $this->company_website = '';
         $this->primary_color = '#3b82f6';
@@ -129,12 +225,72 @@ class ReportTemplatesSettings extends Component
         $this->resetForm();
     }
 
+    /**
+     * Fill missing sub-option keys with true (default) for checkbox binding.
+     */
+    protected function initializeSubOptionDefaults(): void
+    {
+        foreach (static::sectionSubOptions() as $key => $options) {
+            foreach ($options as $optionKey => $label) {
+                if (! isset($this->section_options[$key][$optionKey])) {
+                    $this->section_options[$key][$optionKey] = true;
+                }
+            }
+        }
+    }
+
+    /**
+     * Strip empty override entries before saving (only store non-defaults).
+     */
+    protected function cleanSectionOverrides(): array
+    {
+        $cleaned = [];
+        foreach ($this->section_overrides as $key => $override) {
+            $title = trim($override['title'] ?? '');
+            $desc = trim($override['description'] ?? '');
+            if ($title !== '' || $desc !== '') {
+                $entry = [];
+                if ($title !== '') {
+                    $entry['title'] = $title;
+                }
+                if ($desc !== '') {
+                    $entry['description'] = $desc;
+                }
+                $cleaned[$key] = $entry;
+            }
+        }
+
+        return $cleaned;
+    }
+
+    /**
+     * Strip all-true entries before saving (only store non-defaults).
+     */
+    protected function cleanSectionOptions(): array
+    {
+        $cleaned = [];
+        foreach ($this->section_options as $key => $options) {
+            $nonDefaults = [];
+            foreach ($options as $optionKey => $value) {
+                if (! (bool) $value) {
+                    $nonDefaults[$optionKey] = false;
+                }
+            }
+            if (! empty($nonDefaults)) {
+                $cleaned[$key] = $nonDefaults;
+            }
+        }
+
+        return $cleaned;
+    }
+
     public function render()
     {
         $templates = ReportTemplate::withCount('schedules')->orderBy('name')->get();
 
         return view('livewire.settings.report-templates-settings', [
             'templates' => $templates,
+            'sectionSubOptions' => static::sectionSubOptions(),
         ])->layout('components.layouts.app', ['title' => 'Report Templates']);
     }
 }

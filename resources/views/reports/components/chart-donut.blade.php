@@ -36,10 +36,10 @@
 
     {{-- Center text --}}
     @if(isset($centerText))
-        <text x="{{ $cx }}" y="{{ $cy + (isset($centerSubtext) ? -2 : 5) }}" text-anchor="middle" font-size="20" font-weight="bold" fill="#111827">{{ $centerText }}</text>
+        <text x="{{ $cx }}" y="{{ $cy + (isset($centerSubtext) ? -2 : 5) }}" text-anchor="middle" font-size="20" font-weight="bold" fill="#111827" font-family="Inter, sans-serif">{{ $centerText }}</text>
     @endif
     @if(isset($centerSubtext))
-        <text x="{{ $cx }}" y="{{ $cy + 14 }}" text-anchor="middle" font-size="8" fill="#6b7280">{{ $centerSubtext }}</text>
+        <text x="{{ $cx }}" y="{{ $cy + 14 }}" text-anchor="middle" font-size="8" fill="#6b7280" font-family="Inter, sans-serif">{{ $centerSubtext }}</text>
     @endif
 </svg>
 @endif

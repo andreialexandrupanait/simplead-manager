@@ -13,9 +13,9 @@ use App\Models\UpdateLog;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Services\ReportRecommendationService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
 
 class ReportGeneratorService
 {
@@ -57,110 +57,57 @@ class ReportGeneratorService
 
         $sections = $this->template->sections ?? [];
 
-        $pdf = Pdf::loadView('reports.maintenance-report', [
+        // Pre-resolve section title/description overrides
+        $sectionOverrides = [];
+        foreach (['executive_snapshot', 'technical_stability', 'updates', 'backups', 'analytics', 'search_console', 'performance', 'infrastructure', 'recommendations'] as $key) {
+            $sectionOverrides[$key] = [
+                'title' => $this->template->getSectionTitle($key, $this->language),
+                'description' => $this->template->getSectionDescription($key, $this->language),
+            ];
+        }
+
+        $viewData = [
             'site' => $this->site,
             'data' => $this->data,
             'sections' => $sections,
+            'sectionOverrides' => $sectionOverrides,
+            'sectionOptions' => $this->template->section_options ?? [],
             'branding' => $branding,
             'language' => $this->language,
             'periodStart' => $this->periodStart,
             'periodEnd' => $this->periodEnd,
             'introText' => $this->template->intro_text ?: __('report.default_intro', [], $this->language),
             'closingText' => $this->template->closing_text ?: __('report.default_closing', [], $this->language),
-        ]);
+        ];
 
-        $pdf->setPaper('a4');
-        $pdf->setOptions([
-            'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled' => true,
-            'defaultFont' => 'DejaVu Sans',
-            'isFontSubsettingEnabled' => true,
-        ]);
+        // Prepare logo (white version for dark backgrounds)
+        $logoBase64 = $this->getLogoAsBase64();
+        $viewData['logoBase64White'] = $logoBase64;
 
-        // Render the PDF so we can access the canvas for page_script
-        $pdf->render();
+        // Render cover HTML (standalone document, full-bleed, no header/footer)
+        $coverHtml = View::make('reports.report-cover', $viewData)->render();
 
-        $dompdf = $pdf->getDomPDF();
-        $canvas = $dompdf->getCanvas();
+        // Render body HTML (in-flow header bars per section)
+        $bodyHtml = View::make('reports.maintenance-report', $viewData)->render();
 
-        // Prepare header data
-        $headerTitle = __('report.title', [], $this->language);
-        $clientName = $branding['client_name'];
-        $rightText = $headerTitle . '  |  ' . $clientName;
-        $dateRange = $this->periodStart->format('d/m/Y') . ' – ' . $this->periodEnd->format('d/m/Y');
-        $generatedAt = __('report.generated_at', [], $this->language) . ': ' . now()->format('d/m/Y H:i');
+        // Render closing HTML (standalone document, full-bleed like cover)
+        $closingHtml = View::make('reports.report-closing', $viewData)->render();
 
-        // Resolve the white company logo for the header
-        $companyLogoPath = $this->resolveWhiteLogo();
+        // Footer for page numbers only (body pages)
+        $footerHtml = View::make('reports.gotenberg-footer', [
+            'companyName' => $branding['company_name'],
+        ])->render();
 
-        // Pre-compute ALL colors outside the closure (no $this inside)
-        $bgColor = [15/255, 23/255, 42/255]; // #0f172a as RGB floats
-        $whiteColor = [1, 1, 1];
-        $lightColor = [0.85, 0.85, 0.88];
-
-        // Dark header bar on every page except the cover (page 1)
-        $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($bgColor, $whiteColor, $lightColor, $rightText, $dateRange, $generatedAt, $companyLogoPath) {
-            if ($pageNumber <= 1) {
-                return; // Cover page handled by CSS
-            }
-
-            try {
-                $pageWidth = $canvas->get_width();
-                $barHeight = 52;
-
-                // Header bar at physical page top
-                $canvas->filled_rectangle(0, -1, $pageWidth, $barHeight + 1, $bgColor);
-
-                $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-                $fontBold = $fontMetrics->getFont('DejaVu Sans', 'bold');
-
-                $leftX = 40.0; // ~14mm from left edge
-                $rightX = $pageWidth - 40.0;
-
-                // Left side: company logo (white SVG)
-                if ($companyLogoPath && file_exists($companyLogoPath)) {
-                    try {
-                        // Logo aspect ratio ~967:177 ≈ 5.45:1
-                        $logoH = 18;
-                        $logoW = $logoH * 5.45;
-                        $logoY = ($barHeight - $logoH) / 2; // vertically centered
-                        $canvas->image($companyLogoPath, $leftX, $logoY, $logoW, $logoH);
-                    } catch (\Exception $e) {
-                        // Fallback: text
-                        $canvas->text($leftX, ($barHeight - 9) / 2, 'Simplead', $fontBold, 10, $whiteColor);
-                    }
-                } else {
-                    $canvas->text($leftX, ($barHeight - 9) / 2, 'Simplead', $fontBold, 10, $whiteColor);
-                }
-
-                // Right side: "Report Title  |  Client Name" + date range + generated at
-                // Vertically center the 3-line text block in the bar
-                $titleSize = 8;
-                $subSize = 6.5;
-                $lineGap1 = 12;
-                $lineGap2 = 10;
-                $blockHeight = $titleSize + $lineGap1 + $lineGap2;
-                $startY = ($barHeight - $blockHeight) / 2;
-
-                $titleWidth = $fontMetrics->getTextWidth($rightText, $font, $titleSize);
-                $canvas->text($rightX - $titleWidth, $startY, $rightText, $font, $titleSize, $lightColor);
-
-                $dateWidth = $fontMetrics->getTextWidth($dateRange, $font, $subSize);
-                $canvas->text($rightX - $dateWidth, $startY + $titleSize + ($lineGap1 - $subSize) / 2, $dateRange, $font, $subSize, $lightColor);
-
-                $genWidth = $fontMetrics->getTextWidth($generatedAt, $font, $subSize);
-                $canvas->text($rightX - $genWidth, $startY + $titleSize + $lineGap1 + ($lineGap2 - $subSize) / 2, $generatedAt, $font, $subSize, $lightColor);
-            } catch (\Throwable $e) {
-                // Silent fail - don't crash the PDF
-            }
-        });
+        // Generate PDF via Gotenberg (cover + body + closing, then merge)
+        $gotenberg = app(GotenbergService::class);
+        $pdfBinary = $gotenberg->htmlToPdf($coverHtml, $bodyHtml, $closingHtml, $footerHtml);
 
         $directory = 'reports/' . $this->site->id;
         $fileName = 'report-' . $this->site->id . '-' . now()->format('Y-m-d-His') . '.pdf';
         $filePath = $directory . '/' . $fileName;
 
         Storage::disk('local')->makeDirectory($directory);
-        Storage::disk('local')->put($filePath, $dompdf->output());
+        Storage::disk('local')->put($filePath, $pdfBinary);
 
         return $filePath;
     }
@@ -301,7 +248,10 @@ class ReportGeneratorService
         return null;
     }
 
-    protected function resolveWhiteLogo(): ?string
+    /**
+     * Read the company logo and return as a base64 data URI with white fills (for dark header).
+     */
+    protected function getLogoAsBase64(): ?string
     {
         $settingsService = app(SettingsService::class);
         $logoPath = $settingsService->get('branding.logo');
@@ -315,25 +265,20 @@ class ReportGeneratorService
             return null;
         }
 
-        // For SVG: create a white version by replacing all fills with white
+        $contents = file_get_contents($fullPath);
+
         if (str_ends_with(strtolower($fullPath), '.svg')) {
-            $whitePath = storage_path('app/cache/logo-white.svg');
-            if (! is_dir(dirname($whitePath))) {
-                mkdir(dirname($whitePath), 0755, true);
-            }
+            // Replace all fill colors with white for dark background
+            $contents = preg_replace('/fill:\s*#[0-9a-fA-F]{3,6}/', 'fill: #ffffff', $contents);
+            $contents = preg_replace('/fill:\s*url\([^)]+\)/', 'fill: #ffffff', $contents);
+            $contents = preg_replace('/fill="#[0-9a-fA-F]{3,6}"/', 'fill="#ffffff"', $contents);
 
-            $svg = file_get_contents($fullPath);
-            // Replace all fill colors with white
-            $svg = preg_replace('/fill:\s*#[0-9a-fA-F]{3,6}/', 'fill: #ffffff', $svg);
-            $svg = preg_replace('/fill:\s*url\([^)]+\)/', 'fill: #ffffff', $svg);
-            $svg = preg_replace('/fill="#[0-9a-fA-F]{3,6}"/', 'fill="#ffffff"', $svg);
-            file_put_contents($whitePath, $svg);
-
-            return $whitePath;
+            return 'data:image/svg+xml;base64,' . base64_encode($contents);
         }
 
-        // Non-SVG: return the original (can't easily make white)
-        return $fullPath;
+        $mime = mime_content_type($fullPath) ?: 'image/png';
+
+        return 'data:' . $mime . ';base64,' . base64_encode($contents);
     }
 
     protected function resolveClientLogo(): ?string
@@ -1151,18 +1096,6 @@ class ReportGeneratorService
         }
 
         return $score >= 90 ? 'good' : ($score >= 50 ? 'warning' : 'danger');
-    }
-
-    // ─── Color Helpers ────────────────────────────────────────────────
-
-    protected function hexToRgbArray(string $hex): array
-    {
-        $hex = ltrim($hex, '#');
-        $r = hexdec(substr($hex, 0, 2)) / 255;
-        $g = hexdec(substr($hex, 2, 2)) / 255;
-        $b = hexdec(substr($hex, 4, 2)) / 255;
-
-        return [$r, $g, $b];
     }
 
     // ─── Quick Helpers ───────────────────────────────────────────────

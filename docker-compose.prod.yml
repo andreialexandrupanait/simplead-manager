@@ -255,6 +255,23 @@ services:
           memory: 320M
           cpus: "0.5"
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: simplead-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--api-timeout=120s"
+      - "--log-level=warn"
+    networks:
+      - simplead
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
 networks:
   simplead:
     driver: bridge

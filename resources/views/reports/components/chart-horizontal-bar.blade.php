@@ -19,6 +19,7 @@
             font-size="9"
             fill="#374151"
             text-anchor="end"
+            font-family="Inter, sans-serif"
         >{{ $bar['label'] ?? '' }}</text>
 
         {{-- Horizontal bar --}}
@@ -39,6 +40,7 @@
             font-size="9"
             font-weight="bold"
             fill="#374151"
+            font-family="Inter, sans-serif"
         >{{ round($bar['value']) }}</text>
     @endforeach
 </svg>

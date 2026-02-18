@@ -54,4 +54,8 @@ return [
         'api_url' => env('CLOUDFLARE_API_URL', 'https://api.cloudflare.com/client/v4'),
     ],
 
+    'gotenberg' => [
+        'url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
+    ],
+
 ];

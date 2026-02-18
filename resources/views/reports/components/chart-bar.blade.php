@@ -12,7 +12,7 @@
     $area = $chartData['chart_area'] ?? [];
 @endphp
 @if(!empty($bars))
-<svg width="{{ $w }}" height="{{ $h }}" viewBox="0 0 {{ $w }} {{ $h }}" style="margin: 8px 0;">
+<svg width="100%" height="{{ $h }}" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMidYMid meet" style="margin: 8px 0;">
     {{-- Y-axis labels + grid lines --}}
     @if(!empty($yLabels) && !empty($area))
         @php $labelCount = count($yLabels); @endphp
@@ -22,7 +22,7 @@
                     ? $area['y'] + ($i / ($labelCount - 1)) * $area['height']
                     : $area['y'] + $area['height'] / 2;
             @endphp
-            <text x="0" y="{{ $yPos + 3 }}" font-size="8" fill="#9ca3af">{{ $yLabel }}</text>
+            <text x="0" y="{{ $yPos + 3 }}" font-size="8" fill="#9ca3af" font-family="Inter, sans-serif">{{ $yLabel }}</text>
             <line x1="{{ $area['x'] }}" y1="{{ $yPos }}" x2="{{ $w - 10 }}" y2="{{ $yPos }}" stroke="#e5e7eb" stroke-width="0.5"/>
         @endforeach
     @endif

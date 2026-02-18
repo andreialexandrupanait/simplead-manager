@@ -1,6 +1,6 @@
 {{--
     SVG line chart. Receives:
-    $points - array from ReportChartService: ['line_points', 'area_points', 'y_max']
+    $points - array from ReportChartService: ['line_points', 'area_points', 'smooth_line_path', 'smooth_area_path', 'y_max']
     $primaryColor - line/fill color
     $areaColor - solid fill for area (default #dbeafe)
     $yLabels - array of Y-axis label strings (top to bottom)
@@ -10,16 +10,16 @@
 --}}
 @php
     $w = $width ?? 500;
-    $h = $height ?? 220;
+    $h = $height ?? 180;
     $pl = 40; // padding left
     $pb = 30; // padding bottom
     $chartH = $h - $pb - 10;
     $chartW = $w - $pl - 10;
     $linePoints = $points['line_points'] ?? '';
-    $areaPoints = $points['area_points'] ?? '';
     $smoothLinePath = $points['smooth_line_path'] ?? '';
     $smoothAreaPath = $points['smooth_area_path'] ?? '';
     $areaFill = $areaColor ?? '#dbeafe';
+    $useSmooth = !empty($smoothLinePath);
 @endphp
 @if(!empty($linePoints))
 {{-- Legend --}}
@@ -29,7 +29,7 @@
         {{ $legendLabel }}
     </div>
 @endif
-<svg width="{{ $w }}" height="{{ $h }}" viewBox="0 0 {{ $w }} {{ $h }}" style="margin: 8px 0;">
+<svg width="100%" height="{{ $h }}" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMidYMid meet" style="margin: 8px 0;">
     {{-- Y-axis labels + grid lines --}}
     @if(isset($yLabels) && is_array($yLabels))
         @php $labelCount = count($yLabels); @endphp
@@ -39,16 +39,22 @@
                     ? 5 + ($i / ($labelCount - 1)) * $chartH
                     : 5 + $chartH / 2;
             @endphp
-            <text x="0" y="{{ $yPos + 3 }}" font-size="8" fill="#9ca3af">{{ $yLabel }}</text>
-            <line x1="{{ $pl }}" y1="{{ $yPos }}" x2="{{ $w - 10 }}" y2="{{ $yPos }}" stroke="#d1d5db" stroke-width="0.5"/>
+            <text x="0" y="{{ $yPos + 3 }}" font-size="8" fill="#9ca3af" font-family="Inter, sans-serif">{{ $yLabel }}</text>
+            <line x1="{{ $pl }}" y1="{{ $yPos }}" x2="{{ $w - 10 }}" y2="{{ $yPos }}" stroke="#e2e8f0" stroke-width="0.5"/>
         @endforeach
     @endif
 
-    {{-- Area fill --}}
-    <polygon points="{{ $areaPoints }}" fill="{{ $areaFill }}"/>
-
-    {{-- Data line --}}
-    <polyline points="{{ $linePoints }}" fill="none" stroke="{{ $primaryColor }}" stroke-width="2"/>
+    @if($useSmooth)
+        {{-- Smooth area fill --}}
+        <path d="{{ $smoothAreaPath }}" fill="{{ $areaFill }}" opacity="0.5"/>
+        {{-- Smooth data line --}}
+        <path d="{{ $smoothLinePath }}" fill="none" stroke="{{ $primaryColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    @else
+        {{-- Fallback: straight line area fill --}}
+        <polygon points="{{ $points['area_points'] ?? '' }}" fill="{{ $areaFill }}" opacity="0.5"/>
+        {{-- Fallback: straight data line --}}
+        <polyline points="{{ $linePoints }}" fill="none" stroke="{{ $primaryColor }}" stroke-width="2"/>
+    @endif
 
     {{-- Data point dots --}}
     @php
@@ -62,7 +68,7 @@
                 $cx = $coords[0] ?? 0;
                 $cy = $coords[1] ?? 0;
             @endphp
-            <circle cx="{{ $cx }}" cy="{{ $cy }}" r="3" fill="{{ $primaryColor }}" stroke="#ffffff" stroke-width="1"/>
+            <circle cx="{{ $cx }}" cy="{{ $cy }}" r="3" fill="{{ $primaryColor }}" stroke="#ffffff" stroke-width="1.5"/>
         @endif
     @endforeach
 
@@ -76,7 +82,7 @@
             @php
                 $xPos = $pl + ($xLabel['index'] * $xStep);
             @endphp
-            <text x="{{ $xPos }}" y="{{ $h - 4 }}" font-size="8" fill="#9ca3af" text-anchor="middle">{{ $xLabel['label'] }}</text>
+            <text x="{{ $xPos }}" y="{{ $h - 4 }}" font-size="8" fill="#9ca3af" text-anchor="middle" font-family="Inter, sans-serif">{{ $xLabel['label'] }}</text>
         @endforeach
     @endif
 </svg>

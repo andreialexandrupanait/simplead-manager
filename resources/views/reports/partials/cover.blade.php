@@ -1,16 +1,14 @@
 @php
-    $companyLogo = $branding['company_logo'] ?? null;
-    $clientLogo = $branding['client_logo'] ?? null;
     $lang = $language ?? 'ro';
 @endphp
 
 <div class="cover-page">
     <div class="cover-content">
-        {{-- Client logo or site name --}}
-        @if($clientLogo && file_exists($clientLogo))
-            <img src="{{ $clientLogo }}" class="cover-client-logo" alt="">
+        {{-- Company logo (white version for dark background) --}}
+        @if(!empty($logoBase64White))
+            <img src="{{ $logoBase64White }}" class="cover-client-logo" alt="">
         @else
-            <div class="cover-site-name">{{ $site->name }}</div>
+            <div class="cover-site-name">{{ $branding['company_name'] ?? 'SimpleAd' }}</div>
         @endif
 
         {{-- Accent line --}}
@@ -34,7 +32,7 @@
             </div>
         @endif
 
-        {{-- Section list --}}
+        {{-- Section list as pill badges --}}
         @if(isset($sections) && count($sections) > 0)
             <div class="cover-sections">
                 @foreach($sections as $section)
@@ -46,9 +44,4 @@
             </div>
         @endif
     </div>
-
-    {{-- Company logo at bottom --}}
-    @if($companyLogo && file_exists($companyLogo))
-        <img src="{{ $companyLogo }}" class="cover-company-logo" alt="">
-    @endif
 </div>

@@ -4,17 +4,17 @@
 @endphp
 
 @include('reports.components.section-header', [
-    'title' => __('report.section_updates', [], $lang),
+    'title' => $sectionOverrides['updates']['title'] ?? __('report.section_updates', [], $lang),
 ])
 
 @if($u['total_count'] === 0)
     <p style="color: #94a3b8; font-size: 8.5pt;">{{ __('report.updates_no_updates', [], $lang) }}</p>
 @else
-    {{-- WP Core status line --}}
-    <p style="font-size: 8.5pt; color: #334155; margin-bottom: 2px;">
+    {{-- WP Core status card --}}
+    <div class="wp-core-card">
         <span class="check-success">&#10003;</span>
         {{ __('report.updates_wp_latest', [], $lang) }} (v{{ $u['wp_version'] ?? '—' }})
-    </p>
+    </div>
 
     {{-- Summary text line --}}
     <p style="font-size: 8.5pt; color: #64748b; margin-bottom: 14px;">
@@ -26,6 +26,16 @@
         ], $lang) }}
     </p>
 
+    {{-- Horizontal bar chart for update breakdown --}}
+    @if(($sectionOptions['updates']['show_breakdown_chart'] ?? true) && !empty($u['horizontal_bar_chart']['bars'] ?? []))
+        <div class="chart-container mb-4">
+            <div class="chart-title">{{ __('report.updates_breakdown', [], $lang) }}</div>
+            @include('reports.components.chart-horizontal-bar', [
+                'chartData' => $u['horizontal_bar_chart'],
+            ])
+        </div>
+    @endif
+
     {{-- Consolidated update table --}}
     @php
         $consolidated = $u['consolidated_updates'] ?? [];
@@ -33,7 +43,7 @@
         $displayUpdates = array_slice($consolidated, 0, 15);
     @endphp
 
-    @if(count($displayUpdates) > 0)
+    @if(($sectionOptions['updates']['show_log_table'] ?? true) && count($displayUpdates) > 0)
         <table class="data-table">
             <thead>
                 <tr>
