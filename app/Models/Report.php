@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Report extends Model
 {
@@ -54,6 +55,11 @@ class Report extends Model
     public function reportSchedule(): BelongsTo
     {
         return $this->belongsTo(ReportSchedule::class);
+    }
+
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(ReportRecommendation::class);
     }
 
     public function getFileSizeFormattedAttribute(): string

@@ -2,12 +2,46 @@
 
 namespace App\Services;
 
+use App\Models\ReportRecommendation;
+use App\Models\Site;
+
 class ReportRecommendationService
 {
     public function __construct(
         protected array $data,
         protected string $language = 'ro'
     ) {}
+
+    /**
+     * Generate recommendations and persist them as draft rows for a site.
+     * Clears existing auto-generated drafts first.
+     */
+    public function generateAndPersist(Site $site): void
+    {
+        // Delete existing auto-generated drafts (not yet linked to a report)
+        ReportRecommendation::where('site_id', $site->id)
+            ->whereNull('report_id')
+            ->where('is_auto_generated', true)
+            ->delete();
+
+        $allRecs = $this->generate();
+        $sortOrder = 0;
+
+        foreach ($allRecs as $category => $recs) {
+            foreach ($recs as $rec) {
+                ReportRecommendation::create([
+                    'site_id' => $site->id,
+                    'category' => $category,
+                    'priority' => $rec['priority'] ?? 'medium',
+                    'title' => $rec['title'],
+                    'description' => $rec['description'],
+                    'is_auto_generated' => true,
+                    'is_included' => true,
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+        }
+    }
 
     /**
      * Generate rule-based recommendations grouped by category.
@@ -188,7 +222,7 @@ class ReportRecommendationService
     }
 
     /**
-     * Sort by priority (high first), take top $max, fill with fallbacks if needed.
+     * Sort by priority (high first), take top $max. No fallback filler recs.
      */
     protected function prioritySortAndFill(array $recs, int $max, string $category): array
     {
@@ -198,35 +232,6 @@ class ReportRecommendationService
             return ($priorityOrder[$a['priority']] ?? 2) <=> ($priorityOrder[$b['priority']] ?? 2);
         });
 
-        $recs = array_slice($recs, 0, $max);
-
-        // Fill with generic fallbacks if fewer rules triggered
-        $fallbacks = $this->getFallbacks($category);
-        $idx = 0;
-        while (count($recs) < $max && $idx < count($fallbacks)) {
-            $recs[] = $fallbacks[$idx];
-            $idx++;
-        }
-
-        return $recs;
-    }
-
-    protected function getFallbacks(string $category): array
-    {
-        return match ($category) {
-            'technical' => [
-                ['title' => __('report.rec_generic_monitoring', [], $this->language), 'description' => __('report.rec_generic_monitoring_desc', [], $this->language), 'priority' => 'low'],
-                ['title' => __('report.rec_generic_updates', [], $this->language), 'description' => __('report.rec_generic_updates_desc', [], $this->language), 'priority' => 'low'],
-                ['title' => __('report.rec_generic_backups', [], $this->language), 'description' => __('report.rec_generic_backups_desc', [], $this->language), 'priority' => 'low'],
-            ],
-            'performance' => [
-                ['title' => __('report.rec_generic_performance', [], $this->language), 'description' => __('report.rec_generic_performance_desc', [], $this->language), 'priority' => 'low'],
-                ['title' => __('report.rec_generic_caching', [], $this->language), 'description' => __('report.rec_generic_caching_desc', [], $this->language), 'priority' => 'low'],
-            ],
-            'seo' => [
-                ['title' => __('report.rec_generic_seo', [], $this->language), 'description' => __('report.rec_generic_seo_desc', [], $this->language), 'priority' => 'low'],
-                ['title' => __('report.rec_generic_content', [], $this->language), 'description' => __('report.rec_generic_content_desc', [], $this->language), 'priority' => 'low'],
-            ],
-        };
+        return array_slice($recs, 0, $max);
     }
 }

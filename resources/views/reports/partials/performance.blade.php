@@ -13,6 +13,7 @@
 
 @include('reports.components.section-header', [
     'title' => $sectionOverrides['performance']['title'] ?? __('report.section_performance', [], $lang),
+    'number' => $sectionNumber ?? null,
 ])
 
 {{-- Two-column flex: Mobile | Desktop --}}
@@ -42,11 +43,11 @@
                         <td>
                             @php $color = $p['mobile'][$key . '_color'] ?? 'gray'; @endphp
                             @if($color === 'green')
-                                <span class="perf-indicator good">&#9679;</span>
+                                <span class="perf-indicator good"></span>
                             @elseif($color === 'orange')
-                                <span class="perf-indicator moderate">&#9632;</span>
+                                <span class="perf-indicator moderate"></span>
                             @else
-                                <span class="perf-indicator poor">&#9650;</span>
+                                <span class="perf-indicator poor"></span>
                             @endif
                             {{ $label }}
                         </td>
@@ -89,11 +90,11 @@
                         <td>
                             @php $color = $p['desktop'][$key . '_color'] ?? 'gray'; @endphp
                             @if($color === 'green')
-                                <span class="perf-indicator good">&#9679;</span>
+                                <span class="perf-indicator good"></span>
                             @elseif($color === 'orange')
-                                <span class="perf-indicator moderate">&#9632;</span>
+                                <span class="perf-indicator moderate"></span>
                             @else
-                                <span class="perf-indicator poor">&#9650;</span>
+                                <span class="perf-indicator poor"></span>
                             @endif
                             {{ $label }}
                         </td>
@@ -116,9 +117,9 @@
 <div class="perf-legend">
     {{ __('report.performance_legend', [], $lang) }}:
     &nbsp;&nbsp;
-    <span class="perf-indicator poor">&#9650;</span> 0–49
+    <span class="perf-indicator poor" style="display: inline-block; vertical-align: middle;"></span> 0–49
     &nbsp;&nbsp;&nbsp;
-    <span class="perf-indicator moderate">&#9632;</span> 50–89
+    <span class="perf-indicator moderate" style="display: inline-block; vertical-align: middle;"></span> 50–89
     &nbsp;&nbsp;&nbsp;
-    <span class="perf-indicator good">&#9679;</span> 90–100
+    <span class="perf-indicator good" style="display: inline-block; vertical-align: middle;"></span> 90–100
 </div>

@@ -5,13 +5,13 @@ namespace App\Livewire\Sites\Detail;
 use App\Jobs\GenerateReport;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Mail\ReportGeneratedMail;
-use App\Models\Report;
+use App\Models\ReportRecommendation;
 use App\Models\ReportSchedule;
 use App\Models\ReportTemplate;
 use App\Models\Site;
+use App\Services\ReportRecommendationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -21,13 +21,7 @@ class SiteReports extends Component
 
     public Site $site;
 
-    // Generate modal
-    public bool $showGenerateModal = false;
     public ?int $selectedTemplateId = null;
-    public string $period = 'last_30_days';
-    public ?string $customStart = null;
-    public ?string $customEnd = null;
-    public string $recipientEmails = '';
 
     // Schedule modal
     public bool $showScheduleModal = false;
@@ -51,6 +45,15 @@ class SiteReports extends Component
     public ?int $sendReportId = null;
     public string $sendToEmail = '';
 
+    // Generate modal
+    public bool $showGenerateModal = false;
+    public $draftRecommendations = [];
+    public string $newRecTitle = '';
+    public string $newRecDescription = '';
+    public string $newRecPriority = 'medium';
+    public string $newRecCategory = 'technical';
+    public bool $loadingRecommendations = false;
+
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
@@ -62,48 +65,184 @@ class SiteReports extends Component
         $this->scheduleTemplateId = $defaultTemplate?->id;
     }
 
+    // ─── Generate Report Modal Flow ─────────────────────────────────
+
     public function openGenerateModal(): void
     {
         $this->showGenerateModal = true;
+        $this->loadingRecommendations = true;
+
+        // Regenerate auto-suggestions based on current site data
+        $data = $this->gatherSiteDataForRecs();
+        $language = $this->site->reportConfig?->language ?? 'ro';
+        $recService = new ReportRecommendationService($data, $language);
+        $recService->generateAndPersist($this->site);
+
+        $this->loadDraftRecommendations();
+        $this->loadingRecommendations = false;
     }
 
-    public function generateReport(): void
+    public function confirmGenerate(): void
     {
-        $rateLimitKey = "report:{$this->site->id}:" . auth()->id();
-        if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
-            session()->flash('report-error', 'Too many report requests. Please wait before trying again.');
-            return;
-        }
-
-        $this->validate([
-            'selectedTemplateId' => 'required|exists:report_templates,id',
-            'period' => 'required|in:last_7_days,last_30_days,last_month,custom',
-            'customStart' => 'required_if:period,custom|nullable|date',
-            'customEnd' => 'required_if:period,custom|nullable|date|after_or_equal:customStart',
-        ]);
-
         $template = ReportTemplate::findOrFail($this->selectedTemplateId);
-        [$periodStart, $periodEnd] = $this->calculatePeriod($this->period, $this->customStart, $this->customEnd);
 
-        $recipients = $this->recipientEmails
-            ? array_map('trim', explode(',', $this->recipientEmails))
-            : [];
-        $recipients = array_filter($recipients);
+        $periodEnd = Carbon::today();
+        $periodStart = $periodEnd->copy()->subDays(30);
 
         GenerateReport::dispatch(
-            $this->site,
-            $template,
-            $periodStart,
-            $periodEnd,
-            'manual',
-            null,
-            count($recipients) > 0 ? $recipients : null,
+            site: $this->site,
+            template: $template,
+            periodStart: $periodStart,
+            periodEnd: $periodEnd,
+            trigger: 'manual',
         );
 
         $this->showGenerateModal = false;
-        $this->recipientEmails = '';
-        session()->flash('report-success', 'Report generation started. It will appear in the history once completed.');
+        session()->flash('report-success', 'Report generation started. It will appear in the list when ready.');
     }
+
+    public function toggleRecommendation(int $id): void
+    {
+        $rec = ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->findOrFail($id);
+
+        $rec->update(['is_included' => !$rec->is_included]);
+        $this->loadDraftRecommendations();
+    }
+
+    public function removeRecommendation(int $id): void
+    {
+        ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->where('id', $id)
+            ->delete();
+
+        $this->loadDraftRecommendations();
+    }
+
+    public function addCustomRecommendation(): void
+    {
+        $this->validate([
+            'newRecTitle' => 'required|string|max:255',
+            'newRecDescription' => 'required|string|max:1000',
+            'newRecPriority' => 'required|in:high,medium,low',
+            'newRecCategory' => 'required|in:technical,performance,seo',
+        ]);
+
+        $maxSort = ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->max('sort_order') ?? -1;
+
+        ReportRecommendation::create([
+            'site_id' => $this->site->id,
+            'category' => $this->newRecCategory,
+            'priority' => $this->newRecPriority,
+            'title' => $this->newRecTitle,
+            'description' => $this->newRecDescription,
+            'is_auto_generated' => false,
+            'is_included' => true,
+            'sort_order' => $maxSort + 1,
+        ]);
+
+        $this->newRecTitle = '';
+        $this->newRecDescription = '';
+        $this->newRecPriority = 'medium';
+        $this->newRecCategory = 'technical';
+
+        $this->loadDraftRecommendations();
+    }
+
+    protected function loadDraftRecommendations(): void
+    {
+        $this->draftRecommendations = ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->orderBy('sort_order')
+            ->get()
+            ->toArray();
+    }
+
+    protected function gatherSiteDataForRecs(): array
+    {
+        $data = [];
+
+        // Uptime
+        $monitor = $this->site->uptimeMonitor;
+        if ($monitor) {
+            $data['uptime'] = [
+                'uptime_percentage' => $monitor->uptime_30d,
+                'avg_response_time' => $monitor->avg_response_time,
+                'incidents_count' => $monitor->incidents_count_30d ?? 0,
+            ];
+        }
+
+        // Backups
+        $config = $this->site->backupConfig;
+        $data['backups'] = [
+            'schedule_enabled' => (bool) ($config?->is_enabled),
+            'failed_count' => 0,
+        ];
+
+        // Security
+        $secMon = $this->site->securityMonitor;
+        if ($secMon) {
+            $data['security'] = [
+                'score' => $secMon->latest_score,
+                'critical_count' => 0,
+            ];
+        }
+
+        // Performance
+        $perfMon = $this->site->performanceMonitor;
+        if ($perfMon) {
+            $mobileTest = $perfMon->latestMobileTest;
+            $desktopTest = $perfMon->latestDesktopTest;
+            $data['performance'] = [
+                'mobile_score' => $mobileTest?->performance_score,
+                'desktop_score' => $desktopTest?->performance_score,
+                'mobile' => $mobileTest ? [
+                    'lcp_color' => $mobileTest->metricColor('lcp'),
+                    'cls_color' => $mobileTest->metricColor('cls'),
+                    'tbt_color' => $mobileTest->metricColor('tbt'),
+                ] : [],
+            ];
+        }
+
+        // Analytics
+        $analyticsCache = $this->site->analyticsCaches()
+            ->where('date_range', '28d')
+            ->latest('fetched_at')
+            ->first();
+
+        if ($analyticsCache) {
+            $overview = $analyticsCache->data['overview'] ?? [];
+            $data['analytics'] = [
+                'bounce_rate' => $overview['bounce_rate'] ?? null,
+                'avg_session_duration' => $overview['avg_session_duration'] ?? null,
+            ];
+        }
+
+        // Search Console
+        $scCache = $this->site->searchConsoleCaches()
+            ->where('data_type', 'overview')
+            ->where('date_range', '28d')
+            ->latest()
+            ->first();
+
+        if ($scCache) {
+            $scData = $scCache->data ?? [];
+            $data['search_console'] = [
+                'overview' => [
+                    'avg_position' => $scData['position'] ?? null,
+                    'avg_ctr' => ($scData['ctr'] ?? 0) / 100,
+                ],
+            ];
+        }
+
+        return $data;
+    }
+
+    // ─── Schedule Modal ─────────────────────────────────────────────
 
     public function openScheduleModal(): void
     {
@@ -186,6 +325,8 @@ class SiteReports extends Component
         }
     }
 
+    // ─── Send Report ────────────────────────────────────────────────
+
     public function openSendModal(int $reportId): void
     {
         $this->sendReportId = $reportId;
@@ -226,17 +367,6 @@ class SiteReports extends Component
 
         $report->delete();
         session()->flash('report-success', 'Report deleted.');
-    }
-
-    protected function calculatePeriod(string $period, ?string $customStart, ?string $customEnd): array
-    {
-        return match ($period) {
-            'last_7_days' => [now()->subDays(7)->startOfDay(), now()->endOfDay()],
-            'last_30_days' => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-            'last_month' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
-            'custom' => [Carbon::parse($customStart)->startOfDay(), Carbon::parse($customEnd)->endOfDay()],
-            default => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-        };
     }
 
     public function render()

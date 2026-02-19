@@ -11,7 +11,7 @@
 --}}
 @php
     $w = $width ?? 500;
-    $h = $height ?? 180;
+    $h = $height ?? 200;
     $pl = 40;
     $pb = 30;
     $chartH = $h - $pb - 10;
@@ -39,7 +39,7 @@
         {{ $legend2 }}
     @endif
 </div>
-<svg width="100%" height="{{ $h }}" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMidYMid meet" style="margin: 8px 0;">
+<svg width="100%" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMinYMin meet" style="margin: 8px 0;">
     {{-- Y-axis labels + grid lines --}}
     @if(isset($yLabels) && is_array($yLabels))
         @php $labelCount = count($yLabels); @endphp

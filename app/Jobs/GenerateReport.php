@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\ReportGeneratedMail;
 use App\Models\Report;
+use App\Models\ReportRecommendation;
 use App\Models\ReportSchedule;
 use App\Models\ReportTemplate;
 use App\Models\Site;
@@ -58,6 +59,11 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
             'status' => 'generating',
             'trigger' => $this->trigger,
         ]);
+
+        // Link draft recommendations to this report
+        ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->update(['report_id' => $report->id]);
 
         try {
             $service = new ReportGeneratorService(

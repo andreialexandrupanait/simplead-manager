@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Models\AnalyticsCache;
 use App\Models\Backup;
 use App\Models\DatabaseCleanup;
+use App\Models\DatabaseHealthCheck;
 use App\Models\ReportTemplate;
 use App\Models\SearchConsoleCache;
+use App\Models\SecurityRecommendation;
 use App\Models\Site;
+use App\Models\SiteCloudflare;
 use App\Models\SiteMonthlySnapshot;
+use App\Models\SitePlugin;
+use App\Models\SiteTheme;
+use App\Models\SiteUser;
 use App\Models\UpdateLog;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
@@ -50,7 +56,7 @@ class ReportGeneratorService
             'company_name' => $this->template->company_name ?? 'SimpleAd',
             'company_logo' => $this->resolveLogoPath($this->template->company_logo_path),
             'company_website' => $this->template->company_website,
-            'primary_color' => $this->template->primary_color ?? '#3b82f6',
+            'primary_color' => $this->template->primary_color ?? '#7C3AED',
             'client_name' => $this->site->client?->name ?? $this->site->name,
             'client_logo' => $this->resolveClientLogo(),
         ];
@@ -59,7 +65,7 @@ class ReportGeneratorService
 
         // Pre-resolve section title/description overrides
         $sectionOverrides = [];
-        foreach (['executive_snapshot', 'technical_stability', 'updates', 'backups', 'analytics', 'search_console', 'performance', 'infrastructure', 'recommendations'] as $key) {
+        foreach (['executive_snapshot', 'technical_stability', 'updates', 'backups', 'analytics', 'search_console', 'performance', 'infrastructure', 'recommendations', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks'] as $key) {
             $sectionOverrides[$key] = [
                 'title' => $this->template->getSectionTitle($key, $this->language),
                 'description' => $this->template->getSectionDescription($key, $this->language),
@@ -84,6 +90,9 @@ class ReportGeneratorService
         $logoBase64 = $this->getLogoAsBase64();
         $viewData['logoBase64White'] = $logoBase64;
 
+        // Client logo as base64 (for cover page)
+        $viewData['clientLogoBase64'] = $this->getClientLogoAsBase64();
+
         // Render cover HTML (standalone document, full-bleed, no header/footer)
         $coverHtml = View::make('reports.report-cover', $viewData)->render();
 
@@ -93,14 +102,30 @@ class ReportGeneratorService
         // Render closing HTML (standalone document, full-bleed like cover)
         $closingHtml = View::make('reports.report-closing', $viewData)->render();
 
-        // Footer for page numbers only (body pages)
-        $footerHtml = View::make('reports.gotenberg-footer', [
-            'companyName' => $branding['company_name'],
-        ])->render();
+        // Footer HTML for body pages (Chrome native page numbering)
+        // Chrome footer context is very limited: no flex, no float, no border on divs.
+        // Use a table with inline styles for maximum compatibility.
+        $pc = e($branding['primary_color'] ?? '#7C3AED');
+        $reportTitle = mb_strtoupper(__('report.title', [], $this->language));
+        $clientName = mb_strtoupper(e($branding['client_name'] ?? ''));
+        $footerHtml = '<html><head><style>'
+            . '#f { width: 100%; border-collapse: collapse; font-family: Inter, Arial, sans-serif; font-size: 7pt; color: #94a3b8; }'
+            . '#f td { padding: 4px 12mm; vertical-align: middle; }'
+            . '</style></head><body>'
+            . '<table id="f"><tr>'
+            . '<td style="text-align:left;">' . e($branding['company_website'] ?? 'simplead.ro') . '</td>'
+            . '<td style="text-align:center;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">' . $reportTitle . ' &middot; ' . $clientName . '</td>'
+            . '<td style="text-align:right;">'
+            . '<span style="background:' . $pc . ';color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;font-size:7pt;">'
+            . '<span class="pageNumber"></span> / <span class="totalPages"></span>'
+            . '</span></td>'
+            . '</tr></table>'
+            . '</body></html>';
 
         // Generate PDF via Gotenberg (cover + body + closing, then merge)
+        // No native header — replaced by inline section-top-bar in each section
         $gotenberg = app(GotenbergService::class);
-        $pdfBinary = $gotenberg->htmlToPdf($coverHtml, $bodyHtml, $closingHtml, $footerHtml);
+        $pdfBinary = $gotenberg->htmlToPdf($coverHtml, $bodyHtml, $closingHtml, $footerHtml, null);
 
         $directory = 'reports/' . $this->site->id;
         $fileName = 'report-' . $this->site->id . '-' . now()->format('Y-m-d-His') . '.pdf';
@@ -145,7 +170,7 @@ class ReportGeneratorService
             return [
                 'direction' => 'neutral',
                 'value' => null,
-                'display' => '—',
+                'display' => '',
                 'color' => '#6b7280',
             ];
         }
@@ -157,7 +182,7 @@ class ReportGeneratorService
             return [
                 'direction' => 'neutral',
                 'value' => 0,
-                'display' => '— 0%',
+                'display' => '0%',
                 'color' => '#6b7280',
             ];
         }
@@ -295,6 +320,34 @@ class ReportGeneratorService
         return null;
     }
 
+    /**
+     * Read the client logo and return as a base64 data URI (for Gotenberg).
+     */
+    protected function getClientLogoAsBase64(): ?string
+    {
+        $client = $this->site->client;
+        if (! $client || ! $client->logo_path) {
+            return null;
+        }
+
+        $fullPath = storage_path('app/public/' . $client->logo_path);
+        if (! file_exists($fullPath)) {
+            $fullPath = $this->resolveLogoPath($client->logo_path);
+        }
+
+        if (! $fullPath || ! file_exists($fullPath)) {
+            return null;
+        }
+
+        $contents = file_get_contents($fullPath);
+        if (str_ends_with(strtolower($fullPath), '.svg')) {
+            return 'data:image/svg+xml;base64,' . base64_encode($contents);
+        }
+
+        $mime = mime_content_type($fullPath) ?: 'image/png';
+        return 'data:' . $mime . ';base64,' . base64_encode($contents);
+    }
+
     // ─── Data Gathering ──────────────────────────────────────────────
 
     protected function gatherData(): void
@@ -337,6 +390,26 @@ class ReportGeneratorService
             $this->data['security'] = $this->gatherSecurityData();
         }
 
+        if (in_array('plugin_inventory', $sections)) {
+            $this->data['plugin_inventory'] = $this->gatherPluginInventoryData();
+        }
+
+        if (in_array('database_health', $sections)) {
+            $this->data['database_health'] = $this->gatherDatabaseHealthData();
+        }
+
+        if (in_array('cloudflare', $sections)) {
+            $this->data['cloudflare'] = $this->gatherCloudflareData();
+        }
+
+        if (in_array('wp_users', $sections)) {
+            $this->data['wp_users'] = $this->gatherWpUsersData();
+        }
+
+        if (in_array('security_checks', $sections)) {
+            $this->data['security_checks'] = $this->gatherSecurityChecksData();
+        }
+
         // Always gather SSL, domain, email data (shown inside technical stability)
         $this->data['ssl'] = $this->gatherSslData();
         $this->data['domain'] = $this->gatherDomainData();
@@ -350,6 +423,17 @@ class ReportGeneratorService
         // Recommendations (rule-based, from all gathered data)
         $recService = new ReportRecommendationService($this->data, $this->language);
         $this->data['recommendations'] = $recService->generate();
+
+        // Check for approved DB recommendations (from the approval UI)
+        $approvedRecs = \App\Models\ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->where('is_included', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($approvedRecs->isNotEmpty()) {
+            $this->data['recommendations_approved'] = $approvedRecs;
+        }
     }
 
     protected function gatherOverviewData(): array
@@ -1127,5 +1211,240 @@ class ReportGeneratorService
         return (int) DatabaseCleanup::where('site_id', $this->site->id)
             ->whereBetween('cleaned_at', [$this->periodStart, $this->periodEnd])
             ->sum('space_saved');
+    }
+
+    // ─── Plugin & Theme Inventory ───────────────────────────────────
+
+    protected function gatherPluginInventoryData(): array
+    {
+        $plugins = SitePlugin::where('site_id', $this->site->id)->get();
+        $themes = SiteTheme::where('site_id', $this->site->id)->get();
+
+        $activePlugins = $plugins->where('is_active', true)->count();
+        $inactivePlugins = $plugins->where('is_active', false)->count();
+        $withUpdates = $plugins->where('has_update', true)->count();
+        $abandoned = $plugins->where('is_abandoned', true)->count();
+        $closed = $plugins->where('is_closed', true)->count();
+
+        $activeTheme = $themes->where('is_active', true)->first();
+
+        // Horizontal bar chart: active vs inactive vs needs-update
+        $barData = $this->chartService->generateHorizontalBarData([
+            ['value' => $activePlugins, 'label' => __('report.plugin_status_active', [], $this->language), 'color' => '#10b981'],
+            ['value' => $inactivePlugins, 'label' => __('report.plugin_status_inactive', [], $this->language), 'color' => '#94a3b8'],
+            ['value' => $withUpdates, 'label' => __('report.plugins_with_updates', [], $this->language), 'color' => '#f59e0b'],
+        ]);
+
+        return [
+            'total_plugins' => $plugins->count(),
+            'active_plugins' => $activePlugins,
+            'inactive_plugins' => $inactivePlugins,
+            'with_updates' => $withUpdates,
+            'abandoned' => $abandoned,
+            'closed' => $closed,
+            'abandoned_or_closed' => $abandoned + $closed,
+            'plugins' => $plugins->map(fn ($p) => [
+                'name' => $p->name,
+                'version' => $p->version,
+                'is_active' => $p->is_active,
+                'has_update' => $p->has_update,
+                'update_version' => $p->update_version,
+                'is_abandoned' => $p->is_abandoned,
+                'is_closed' => $p->is_closed,
+                'auto_update' => $p->auto_update,
+            ])->sortByDesc('is_active')->values()->toArray(),
+            'total_themes' => $themes->count(),
+            'active_theme' => $activeTheme ? $activeTheme->name : null,
+            'active_theme_version' => $activeTheme ? $activeTheme->version : null,
+            'active_theme_is_child' => $activeTheme ? $activeTheme->is_child_theme : false,
+            'active_theme_parent' => $activeTheme ? $activeTheme->parent_theme : null,
+            'themes_with_updates' => $themes->where('has_update', true)->count(),
+            'themes' => $themes->map(fn ($t) => [
+                'name' => $t->name,
+                'version' => $t->version,
+                'is_active' => $t->is_active,
+                'has_update' => $t->has_update,
+                'update_version' => $t->update_version,
+                'is_child_theme' => $t->is_child_theme,
+                'parent_theme' => $t->parent_theme,
+            ])->sortByDesc('is_active')->values()->toArray(),
+            'horizontal_bar_chart' => $barData,
+        ];
+    }
+
+    // ─── Database Health Details ────────────────────────────────────
+
+    protected function gatherDatabaseHealthData(): ?array
+    {
+        $check = DatabaseHealthCheck::where('site_id', $this->site->id)
+            ->latest('checked_at')
+            ->first();
+
+        if (! $check) {
+            return null;
+        }
+
+        $largestTables = collect($check->largest_tables ?? [])->take(5)->map(fn ($t) => [
+            'name' => $t['table'] ?? $t['name'] ?? '—',
+            'rows' => $t['rows'] ?? 0,
+            'data_size' => $t['data_length'] ?? $t['data_size'] ?? $t['size'] ?? 0,
+            'index_size' => $t['index_length'] ?? $t['index_size'] ?? 0,
+        ])->toArray();
+
+        $tablesWithOverhead = collect($check->tables_with_overhead ?? [])->map(fn ($t) => [
+            'name' => $t['table'] ?? $t['name'] ?? '—',
+            'overhead' => $t['data_free'] ?? $t['overhead'] ?? 0,
+        ])->toArray();
+
+        return [
+            'total_size' => $check->formatted_total_size,
+            'total_size_raw' => $check->total_size,
+            'total_tables' => $check->total_tables,
+            'autoload_size' => $check->formatted_autoload_size,
+            'autoload_size_raw' => $check->autoload_size,
+            'myisam_count' => $check->myisam_count,
+            'status' => $check->status,
+            'status_label' => $check->status_label,
+            'status_color' => $check->status_color,
+            'issues' => $check->issues,
+            'largest_tables' => $largestTables,
+            'tables_with_overhead' => $tablesWithOverhead,
+            'checked_at' => $check->checked_at?->format('d/m/Y H:i'),
+        ];
+    }
+
+    // ─── Cloudflare / CDN Metrics ───────────────────────────────────
+
+    protected function gatherCloudflareData(): ?array
+    {
+        $cf = SiteCloudflare::where('site_id', $this->site->id)->first();
+
+        if (! $cf || ! $cf->is_active) {
+            return null;
+        }
+
+        $cur = $this->currentSnapshot;
+        $prev = $this->previousSnapshot;
+
+        $requests = $cur?->cloudflare_requests;
+        $bandwidth = $cur?->cloudflare_bandwidth_bytes;
+        $cacheRatio = $cur?->cloudflare_cache_hit_ratio;
+
+        return [
+            'zone_name' => $cf->zone_name,
+            'plan_type' => $cf->plan_label,
+            'ssl_mode' => $cf->ssl_mode ? strtoupper($cf->ssl_mode) : '—',
+            'cache_level' => $cf->cache_level ? ucfirst($cf->cache_level) : '—',
+            'status' => $cf->status,
+            'total_requests' => $requests,
+            'total_requests_formatted' => $requests !== null ? $this->formatNumber($requests) : __('report.not_available', [], $this->language),
+            'bandwidth' => $bandwidth,
+            'bandwidth_formatted' => $bandwidth !== null ? $this->formatBytes((int) $bandwidth) : __('report.not_available', [], $this->language),
+            'cache_hit_ratio' => $cacheRatio,
+            'cache_hit_ratio_formatted' => $cacheRatio !== null ? $this->formatNumber($cacheRatio, 1) . '%' : __('report.not_available', [], $this->language),
+            'requests_trend' => $this->calculateTrend($requests, $prev?->cloudflare_requests),
+            'bandwidth_trend' => $this->calculateTrend($bandwidth, $prev?->cloudflare_bandwidth_bytes),
+            'cache_ratio_trend' => $this->calculateTrend($cacheRatio, $prev?->cloudflare_cache_hit_ratio),
+        ];
+    }
+
+    // ─── WordPress Users Summary ────────────────────────────────────
+
+    protected function gatherWpUsersData(): ?array
+    {
+        $users = SiteUser::where('site_id', $this->site->id)->get();
+
+        if ($users->isEmpty()) {
+            return null;
+        }
+
+        $byRole = $users->groupBy('role')->map->count()->sortDesc()->toArray();
+
+        $admins = $users->where('role', 'administrator')->values();
+        $recentLogins = $users->filter(fn ($u) => $u->last_login_at && $u->last_login_at->greaterThan(now()->subDays(30)))->count();
+        $neverLoggedIn = $users->filter(fn ($u) => $u->last_login_at === null)->count();
+
+        // Horizontal bar chart for roles
+        $roleColors = ['#2563eb', '#0d9488', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        $roleBarData = [];
+        $idx = 0;
+        foreach ($byRole as $role => $count) {
+            $roleBarData[] = [
+                'value' => $count,
+                'label' => ucfirst($role),
+                'color' => $roleColors[$idx % count($roleColors)],
+            ];
+            $idx++;
+        }
+        $roleBarChart = $this->chartService->generateHorizontalBarData($roleBarData);
+
+        return [
+            'total_users' => $users->count(),
+            'administrators' => $admins->count(),
+            'recent_logins' => $recentLogins,
+            'never_logged_in' => $neverLoggedIn,
+            'by_role' => $byRole,
+            'admin_list' => $admins->map(fn ($u) => [
+                'username' => $u->username,
+                'email' => $u->email,
+                'last_login_at' => $u->last_login_at?->format('d/m/Y'),
+            ])->toArray(),
+            'role_bar_chart' => $roleBarChart,
+        ];
+    }
+
+    // ─── Security Checks Detail ─────────────────────────────────────
+
+    protected function gatherSecurityChecksData(): ?array
+    {
+        $checks = SecurityRecommendation::where('site_id', $this->site->id)->get();
+
+        if ($checks->isEmpty()) {
+            return null;
+        }
+
+        $categories = [
+            'file_security' => [],
+            'login_security' => [],
+            'database_security' => [],
+            'http_headers' => [],
+            'ssl_https' => [],
+        ];
+
+        foreach ($checks as $check) {
+            $cat = $check->category;
+            if (! isset($categories[$cat])) {
+                $categories[$cat] = [];
+            }
+            $categories[$cat][] = [
+                'key' => $check->key,
+                'title' => $check->title,
+                'status' => $check->status, // passed, failed, unchecked
+            ];
+        }
+
+        $totalChecks = $checks->count();
+        $passed = $checks->where('status', 'passed')->count();
+        $failed = $checks->where('status', 'failed')->count();
+        $score = $totalChecks > 0 ? round(($passed / $totalChecks) * 100) : 0;
+
+        $categorySummary = [];
+        foreach ($categories as $cat => $items) {
+            $catCollection = collect($items);
+            $categorySummary[$cat] = [
+                'total' => $catCollection->count(),
+                'passed' => $catCollection->where('status', 'passed')->count(),
+                'failed' => $catCollection->where('status', 'failed')->count(),
+                'checks' => $items,
+            ];
+        }
+
+        return [
+            'overall_score' => $score,
+            'total_checks' => $totalChecks,
+            'passed' => $passed,
+            'failed' => $failed,
+            'categories' => $categorySummary,
+        ];
     }
 }

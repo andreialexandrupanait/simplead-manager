@@ -105,6 +105,7 @@ return [
     'uptime_no_monitoring' => 'Uptime monitoring is not configured.',
     'uptime_no_incidents' => 'No incidents during this period.',
     'uptime_response_chart' => 'Response Time',
+    'uptime_cause' => 'Cause',
 
     // Backups section
     'backups_status' => 'Status',
@@ -147,6 +148,7 @@ return [
     'analytics_sessions' => 'Sessions',
     'analytics_percent' => 'Percent',
     'analytics_views' => 'Views',
+    'analytics_engagement_rate' => 'Engagement Rate',
     'analytics_not_connected' => 'Google Analytics is not connected.',
 
     // Search Console section
@@ -267,6 +269,7 @@ return [
     'ssl_issuer' => 'Issuer',
     'ssl_expires' => 'Expires',
     'ssl_days_remaining' => 'Days Remaining',
+    'ssl_key_size' => 'Key Size',
     'ssl_valid' => 'Valid',
     'ssl_expiring_soon' => 'Expiring Soon',
     'ssl_expired' => 'Expired',
@@ -374,4 +377,132 @@ return [
     'rec_generic_seo_desc' => 'Regularly review and update meta tags, content structure, and internal linking for search engine visibility.',
     'rec_generic_content' => 'Publish Fresh Content',
     'rec_generic_content_desc' => 'Regular content updates signal freshness to search engines and give users a reason to return.',
+
+    // Priority labels
+    'priority_high' => 'High Priority',
+    'priority_medium' => 'Medium Priority',
+    'priority_info' => 'Informational',
+
+    // No recommendations
+    'no_recommendations' => 'Your site is performing optimally. No immediate action is needed — keep up the excellent work!',
+
+    // Closing page
+    'closing_thanks' => 'Thank You!',
+    'closing_text' => 'We appreciate the opportunity to maintain and optimize your website. Our team is always available to discuss improvements or address any questions you may have.',
+    'closing_copyright' => 'All rights reserved.',
+
+    // Days remaining
+    'days_remaining' => ':count days remaining',
+
+    // Executive summary
+    'executive_summary' => 'Executive Summary',
+    'executive_summary_description' => 'A high-level snapshot of your website\'s health and performance for the reporting period.',
+
+    // Overview environment
+    'overview_environment' => 'Technical Environment',
+    'overview_server' => 'Server',
+
+    // Technical stability infra summary
+    'tech_infra_summary' => 'Infrastructure',
+
+    // Updates pending
+    'updates_pending' => ':count pending updates',
+    'updates_pending_desc' => 'There are available updates that have not been applied yet. These will be managed in the next maintenance cycle.',
+
+    // Plugin Inventory
+    'section_plugin_inventory' => 'Plugin & Theme Inventory',
+    'section_label_plugin_inventory' => 'Plugin & Theme Inventory',
+    'plugin_inventory_description' => 'Current status of all installed plugins and themes on your WordPress site.',
+    'plugins_total' => 'Total Plugins',
+    'plugins_active' => 'Active',
+    'plugins_inactive' => 'Inactive',
+    'plugins_with_updates' => 'Updates Available',
+    'plugins_abandoned' => 'Abandoned / Closed',
+    'plugin_name' => 'Plugin',
+    'plugin_version' => 'Version',
+    'plugin_status' => 'Status',
+    'plugin_auto_update' => 'Auto-Update',
+    'plugin_status_active' => 'Active',
+    'plugin_status_inactive' => 'Inactive',
+    'plugin_update_available' => 'Update to :version',
+    'themes_title' => 'Themes',
+    'themes_total' => 'Total Themes',
+    'themes_active_theme' => 'Active Theme',
+    'theme_name' => 'Theme',
+    'theme_version' => 'Version',
+    'theme_status' => 'Status',
+    'theme_child_of' => 'Child of :parent',
+    'plugins_no_issues' => 'All plugins are up to date and healthy.',
+
+    // Database Health
+    'section_database_health' => 'Database Health',
+    'section_label_database_health' => 'Database Health',
+    'database_health_description' => 'Detailed analysis of your WordPress database size, structure, and optimization opportunities.',
+    'db_total_size' => 'Database Size',
+    'db_total_tables' => 'Tables',
+    'db_autoload_size' => 'Autoload Size',
+    'db_status' => 'Status',
+    'db_status_healthy' => 'Healthy',
+    'db_status_warning' => 'Warning',
+    'db_status_critical' => 'Critical',
+    'db_issues_found' => 'Issues Detected',
+    'db_largest_tables' => 'Largest Tables',
+    'db_table_name' => 'Table',
+    'db_table_rows' => 'Rows',
+    'db_table_size' => 'Size',
+    'db_tables_overhead' => 'Tables with Overhead',
+    'db_overhead_size' => 'Overhead',
+    'db_myisam_warning' => ':count tables using MyISAM engine',
+    'db_no_health_data' => 'No database health check data available.',
+
+    // Cloudflare
+    'section_cloudflare' => 'CDN & Caching (Cloudflare)',
+    'section_label_cloudflare' => 'Cloudflare CDN',
+    'cloudflare_description' => 'Cloudflare CDN performance metrics including traffic, bandwidth, and cache efficiency.',
+    'cf_total_requests' => 'Total Requests',
+    'cf_bandwidth' => 'Bandwidth',
+    'cf_cache_ratio' => 'Cache Hit Ratio',
+    'cf_plan' => 'Plan',
+    'cf_ssl_mode' => 'SSL Mode',
+    'cf_cache_level' => 'Cache Level',
+    'cf_zone' => 'Zone',
+    'cf_status' => 'Status',
+    'cf_config' => 'CDN Configuration',
+    'cf_not_connected' => 'Cloudflare is not connected.',
+
+    // WordPress Users
+    'section_wp_users' => 'WordPress Users',
+    'section_label_wp_users' => 'WordPress Users',
+    'wp_users_description' => 'Summary of WordPress user accounts, roles, and recent login activity.',
+    'wp_total_users' => 'Total Users',
+    'wp_administrators' => 'Administrators',
+    'wp_recent_logins' => 'Recent Logins',
+    'wp_never_logged_in' => 'Never Logged In',
+    'wp_users_by_role' => 'Users by Role',
+    'wp_admin_list' => 'Administrator Accounts',
+    'wp_username' => 'Username',
+    'wp_email' => 'Email',
+    'wp_last_login' => 'Last Login',
+    'wp_role' => 'Role',
+    'wp_never' => 'Never',
+    'wp_no_users' => 'No WordPress user data available.',
+
+    // Security Checks
+    'section_security_checks' => 'Security Hardening',
+    'section_label_security_checks' => 'Security Hardening',
+    'security_checks_description' => 'Detailed results of security hardening checks across file security, login, database, HTTP headers, and SSL.',
+    'sec_overall_score' => 'Hardening Score',
+    'sec_passed' => 'Passed',
+    'sec_failed' => 'Failed',
+    'sec_check' => 'Check',
+    'sec_status' => 'Status',
+    'sec_status_passed' => 'Passed',
+    'sec_status_failed' => 'Failed',
+    'sec_status_unchecked' => 'Not Checked',
+    'sec_cat_file_security' => 'File Security',
+    'sec_cat_login_security' => 'Login Security',
+    'sec_cat_database_security' => 'Database Security',
+    'sec_cat_http_headers' => 'HTTP Headers',
+    'sec_cat_ssl_https' => 'SSL & HTTPS',
+    'sec_no_data' => 'No security check data available.',
 ];

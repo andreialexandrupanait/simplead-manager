@@ -41,6 +41,22 @@ RUN pecl install imagick redis \
 # Remove build dependencies to keep image small
 RUN apk del $PHPIZE_DEPS
 
+# Install Chromium + Node.js for Browsershot PDF generation
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto \
+    nodejs \
+    npm \
+    && npm install -g puppeteer@latest --unsafe-perm=true
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Copy PHP configuration
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/10-opcache.ini

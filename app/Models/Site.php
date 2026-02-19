@@ -282,6 +282,11 @@ class Site extends Model
         return $this->hasMany(Report::class);
     }
 
+    public function reportRecommendations(): HasMany
+    {
+        return $this->hasMany(ReportRecommendation::class);
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);

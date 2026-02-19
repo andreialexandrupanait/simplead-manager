@@ -7,7 +7,6 @@
                 Schedule
             </x-ui.button>
             <x-ui.button wire:click="openGenerateModal">
-                <x-icons.file-text class="h-4 w-4" />
                 Generate Report
             </x-ui.button>
         </div>
@@ -70,180 +69,206 @@
     @endif
 
     {{-- Report History --}}
+    @if($reports->count() > 0)
     <div class="rounded-xl border border-gray-200 bg-white">
         <div class="border-b border-gray-200 px-5 py-4">
             <h2 class="font-medium text-gray-900">Report History</h2>
         </div>
 
-        @if($reports->count() > 0)
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
-                            <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Period</th>
-                            <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Template</th>
-                            <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                            <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Size</th>
-                            <th class="px-5 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @foreach($reports as $report)
-                            <tr class="hover:bg-gray-50">
-                                <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-900">
-                                    {{ $report->created_at->format('M d, Y H:i') }}
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
-                                    {{ $report->period_start->format('M d') }} — {{ $report->period_end->format('M d, Y') }}
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
-                                    {{ $report->reportTemplate?->name ?? '—' }}
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-sm">
-                                    @php
-                                        $statusVariant = match($report->status) {
-                                            'completed' => 'green',
-                                            'generating' => 'blue',
-                                            'pending' => 'yellow',
-                                            default => 'red',
-                                        };
-                                    @endphp
-                                    <x-ui.badge :variant="$statusVariant">{{ ucfirst($report->status) }}</x-ui.badge>
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
-                                    {{ $report->file_size ? $report->file_size_formatted : '—' }}
-                                </td>
-                                <td class="whitespace-nowrap px-5 py-3 text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        @if($report->status === 'completed' && $report->file_path)
-                                            <a href="{{ route('reports.download', ['report' => $report, 'preview' => 1]) }}"
-                                               target="_blank"
-                                               class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-                                               title="Preview">
-                                                <x-icons.search class="h-3.5 w-3.5" />
-                                            </a>
-                                            <a href="{{ route('reports.download', $report) }}"
-                                               class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-                                               title="Download">
-                                                <x-icons.hard-drive class="h-3.5 w-3.5" />
-                                            </a>
-                                            <button wire:click="openSendModal({{ $report->id }})"
-                                                    class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-                                                    title="Send via email">
-                                                <x-icons.inbox class="h-3.5 w-3.5" />
-                                            </button>
-                                        @endif
-                                        <button wire:click="deleteReport({{ $report->id }})"
-                                                wire:confirm="Are you sure you want to delete this report?"
-                                                wire:loading.attr="disabled"
-                                                class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                                                title="Delete">
-                                            <x-icons.x class="h-3.5 w-3.5" />
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Period</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Template</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Size</th>
+                        <th class="px-5 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach($reports as $report)
+                        <tr class="hover:bg-gray-50">
+                            <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-900">
+                                {{ $report->created_at->format('M d, Y H:i') }}
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
+                                {{ $report->period_start->format('M d') }} — {{ $report->period_end->format('M d, Y') }}
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
+                                {{ $report->reportTemplate?->name ?? '—' }}
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3 text-sm">
+                                @php
+                                    $statusVariant = match($report->status) {
+                                        'completed' => 'green',
+                                        'generating' => 'blue',
+                                        'pending' => 'yellow',
+                                        default => 'red',
+                                    };
+                                @endphp
+                                <x-ui.badge :variant="$statusVariant">{{ ucfirst($report->status) }}</x-ui.badge>
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
+                                {{ $report->file_size ? $report->file_size_formatted : '—' }}
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    @if($report->status === 'completed' && $report->file_path)
+                                        <a href="{{ route('reports.download', ['report' => $report, 'preview' => 1]) }}"
+                                           target="_blank"
+                                           class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                                           title="Preview">
+                                            <x-icons.search class="h-3.5 w-3.5" />
+                                        </a>
+                                        <a href="{{ route('reports.download', $report) }}"
+                                           class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                                           title="Download">
+                                            <x-icons.hard-drive class="h-3.5 w-3.5" />
+                                        </a>
+                                        <button wire:click="openSendModal({{ $report->id }})"
+                                                class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                                                title="Send via email">
+                                            <x-icons.inbox class="h-3.5 w-3.5" />
                                         </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                                    @endif
+                                    <button wire:click="deleteReport({{ $report->id }})"
+                                            wire:confirm="Are you sure you want to delete this report?"
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                                            title="Delete">
+                                        <x-icons.x class="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
 
-            @if($reports->hasPages())
-                <div class="border-t border-gray-200 px-5 py-3">
-                    {{ $reports->links() }}
-                </div>
-            @endif
-        @else
-            <x-ui.empty-state
-                title="No reports generated yet"
-                description="Generate your first report to get started."
-                icon="file-text"
-            >
-                <x-slot:action>
-                    <x-ui.button wire:click="openGenerateModal">Generate Report</x-ui.button>
-                </x-slot:action>
-            </x-ui.empty-state>
+        @if($reports->hasPages())
+            <div class="border-t border-gray-200 px-5 py-3">
+                {{ $reports->links() }}
+            </div>
         @endif
     </div>
+    @endif
 
     {{-- Generate Report Modal --}}
     @if($showGenerateModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/50" wire:click="$set('showGenerateModal', false)"></div>
-            <div class="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-                <div class="mb-5 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Generate Report</h3>
+            <div class="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl">
+                {{-- Header --}}
+                <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 rounded-t-xl">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Generate Report</h3>
+                        <p class="text-sm text-gray-500">Review recommendations before generating</p>
+                    </div>
                     <button wire:click="$set('showGenerateModal', false)" class="text-gray-400 hover:text-gray-600">
                         <x-icons.x class="h-5 w-5" />
                     </button>
                 </div>
 
-                <div class="space-y-4">
-                    {{-- Template --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Report Template</label>
-                        <x-ui.select wire:model="selectedTemplateId">
-                            @foreach($templates as $tpl)
-                                <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
+                {{-- Body --}}
+                <div class="px-6 py-4">
+                    {{-- Recommendations list --}}
+                    @if(count($draftRecommendations) > 0)
+                        <div class="space-y-2 mb-4">
+                            @foreach($draftRecommendations as $rec)
+                                <div class="flex items-start gap-3 rounded-lg border {{ $rec['is_included'] ? 'border-gray-200' : 'border-gray-100 bg-gray-50 opacity-60' }} p-3 group">
+                                    <div class="flex-shrink-0 pt-0.5">
+                                        <input type="checkbox"
+                                               wire:click="toggleRecommendation({{ $rec['id'] }})"
+                                               {{ $rec['is_included'] ? 'checked' : '' }}
+                                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-0.5">
+                                            <span class="font-medium text-sm text-gray-900">{{ $rec['title'] }}</span>
+                                            @php
+                                                $prioVariant = match($rec['priority']) { 'high' => 'red', 'medium' => 'yellow', default => 'gray' };
+                                            @endphp
+                                            <x-ui.badge :variant="$prioVariant">{{ ucfirst($rec['priority']) }}</x-ui.badge>
+                                            <x-ui.badge variant="blue">{{ ucfirst($rec['category']) }}</x-ui.badge>
+                                            @if($rec['is_auto_generated'])
+                                                <span class="text-xs text-gray-400">auto</span>
+                                            @endif
+                                        </div>
+                                        <p class="text-sm text-gray-500 line-clamp-2">{{ $rec['description'] }}</p>
+                                    </div>
+                                    <button wire:click="removeRecommendation({{ $rec['id'] }})"
+                                            class="flex-shrink-0 text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"
+                                            title="Remove">
+                                        <x-icons.x class="h-4 w-4" />
+                                    </button>
+                                </div>
                             @endforeach
-                        </x-ui.select>
-                    </div>
-
-                    {{-- Period --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Report Period</label>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="radio" wire:model="period" value="last_7_days" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Last 7 days</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="radio" wire:model="period" value="last_30_days" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Last 30 days</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="radio" wire:model="period" value="last_month" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Last month</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="radio" wire:model.live="period" value="custom" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Custom dates</span>
-                            </label>
                         </div>
+                    @else
+                        <div class="text-center py-8 text-gray-400">
+                            <p class="text-sm">No recommendations for this report.</p>
+                            <p class="text-xs mt-1">Add a custom one below or generate will proceed without recommendations.</p>
+                        </div>
+                    @endif
 
-                        @if($period === 'custom')
-                            <div class="mt-3 grid grid-cols-2 gap-3">
+                    {{-- Add custom recommendation --}}
+                    <div x-data="{ showForm: false }">
+                        <button @click="showForm = !showForm"
+                                class="flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 mb-3">
+                            <svg x-show="!showForm" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <svg x-show="showForm" x-cloak class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                            Add Custom Recommendation
+                        </button>
+
+                        <div x-show="showForm" x-cloak class="rounded-lg border border-dashed border-gray-300 p-4">
+                            <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">Start Date</label>
-                                    <x-ui.input type="date" wire:model="customStart" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <x-ui.input type="text" wire:model="newRecTitle" placeholder="Recommendation title" />
+                                    @error('newRecTitle') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                        <x-ui.select wire:model="newRecPriority">
+                                            <option value="high">High</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="low">Low</option>
+                                        </x-ui.select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                        <x-ui.select wire:model="newRecCategory">
+                                            <option value="technical">Technical</option>
+                                            <option value="performance">Performance</option>
+                                            <option value="seo">SEO</option>
+                                        </x-ui.select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-gray-500 mb-1">End Date</label>
-                                    <x-ui.input type="date" wire:model="customEnd" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea wire:model="newRecDescription" rows="2"
+                                              placeholder="Detailed recommendation description"
+                                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                                    @error('newRecDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 </div>
+                                <x-ui.button wire:click="addCustomRecommendation" size="sm">
+                                    Add
+                                </x-ui.button>
                             </div>
-                        @endif
+                        </div>
                     </div>
-
-                    {{-- Recipients --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Send to (optional)</label>
-                        <x-ui.input type="text" wire:model="recipientEmails"
-                               placeholder="email@example.com, another@example.com" />
-                        <p class="mt-1 text-xs text-gray-500">Comma-separated email addresses. Leave empty to just generate.</p>
-                    </div>
-
-                    @error('selectedTemplateId') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-                    @error('customStart') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-                    @error('customEnd') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                <div class="mt-6 flex justify-end gap-3">
+                {{-- Footer --}}
+                <div class="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 rounded-b-xl">
                     <x-ui.button variant="secondary" wire:click="$set('showGenerateModal', false)">
                         Cancel
                     </x-ui.button>
-                    <x-ui.button wire:click="generateReport">
+                    <x-ui.button wire:click="confirmGenerate">
                         Generate Report
                     </x-ui.button>
                 </div>

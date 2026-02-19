@@ -16,20 +16,18 @@ class GotenbergService
 
     /**
      * Convert separate cover + body + closing HTML into a single merged PDF.
-     *
-     * Cover & closing are rendered full-bleed with no header/footer.
-     * Body is rendered with an optional Gotenberg footer for page numbers.
      */
-    public function htmlToPdf(string $coverHtml, string $bodyHtml, ?string $closingHtml = null, ?string $footerHtml = null): string
+    public function htmlToPdf(string $coverHtml, string $bodyHtml, ?string $closingHtml = null, ?string $bodyFooterHtml = null, ?string $bodyHeaderHtml = null): string
     {
         // Cover: no margins (full bleed), no header/footer
         $coverPdf = $this->render($coverHtml, null, null, [
             'margins' => ['0mm', '0mm', '0mm', '0mm'],
         ]);
 
-        // Body: 0mm top (header is in-flow), 12mm bottom for footer
-        $bodyPdf = $this->render($bodyHtml, null, $footerHtml, [
-            'margins' => ['0mm', '12mm', '0mm', '0mm'],
+        // Body: no native header (replaced by inline section-top-bar), footer with page numbering
+        // Sides=0 so section-top-bar bleeds full-width; CSS padding handles inner margins
+        $bodyPdf = $this->render($bodyHtml, null, $bodyFooterHtml, [
+            'margins' => ['14mm', '12mm', '14mm', '12mm'],
         ]);
 
         // Closing: no margins (full bleed), no header/footer

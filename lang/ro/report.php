@@ -105,6 +105,7 @@ return [
     'uptime_no_monitoring' => 'Monitorizarea nu este configurată.',
     'uptime_no_incidents' => 'Niciun incident în această perioadă.',
     'uptime_response_chart' => 'Timp de răspuns',
+    'uptime_cause' => 'Cauza',
 
     // Backups section
     'backups_status' => 'Status',
@@ -147,6 +148,7 @@ return [
     'analytics_sessions' => 'Sesiuni',
     'analytics_percent' => 'Procent',
     'analytics_views' => 'Vizualizări',
+    'analytics_engagement_rate' => 'Rata de angajament',
     'analytics_not_connected' => 'Google Analytics nu este conectat.',
 
     // Search Console section
@@ -267,6 +269,7 @@ return [
     'ssl_issuer' => 'Emitent',
     'ssl_expires' => 'Expiră',
     'ssl_days_remaining' => 'Zile rămase',
+    'ssl_key_size' => 'Dimensiune cheie',
     'ssl_valid' => 'Valid',
     'ssl_expiring_soon' => 'Expiră curând',
     'ssl_expired' => 'Expirat',
@@ -374,4 +377,132 @@ return [
     'rec_generic_seo_desc' => 'Revizuiți și actualizați regulat meta tag-urile, structura conținutului și linkurile interne pentru vizibilitate în motoarele de căutare.',
     'rec_generic_content' => 'Publicare conținut proaspăt',
     'rec_generic_content_desc' => 'Actualizările regulate de conținut semnalează prospețime motoarelor de căutare și oferă utilizatorilor un motiv să revină.',
+
+    // Priority labels
+    'priority_high' => 'Prioritate ridicată',
+    'priority_medium' => 'Prioritate medie',
+    'priority_info' => 'Informativ',
+
+    // No recommendations
+    'no_recommendations' => 'Site-ul dvs. funcționează optim. Nu sunt necesare acțiuni imediate — continuați la fel de bine!',
+
+    // Closing page
+    'closing_thanks' => 'Mulțumim!',
+    'closing_text' => 'Apreciem oportunitatea de a menține și optimiza website-ul dvs. Echipa noastră este mereu disponibilă pentru a discuta îmbunătățiri sau pentru a răspunde la orice întrebări.',
+    'closing_copyright' => 'Toate drepturile rezervate.',
+
+    // Days remaining
+    'days_remaining' => ':count zile rămase',
+
+    // Executive summary
+    'executive_summary' => 'Sumar executiv',
+    'executive_summary_description' => 'O privire de ansamblu asupra sănătății și performanței website-ului dvs. pentru perioada raportată.',
+
+    // Overview environment
+    'overview_environment' => 'Mediu tehnic',
+    'overview_server' => 'Server',
+
+    // Technical stability infra summary
+    'tech_infra_summary' => 'Infrastructură',
+
+    // Updates pending
+    'updates_pending' => ':count actualizări în așteptare',
+    'updates_pending_desc' => 'Există actualizări disponibile care nu au fost încă aplicate. Acestea vor fi gestionate în următorul ciclu de mentenanță.',
+
+    // Plugin Inventory
+    'section_plugin_inventory' => 'Inventar Plugin-uri și Teme',
+    'section_label_plugin_inventory' => 'Inventar Plugin-uri și Teme',
+    'plugin_inventory_description' => 'Starea curentă a tuturor plugin-urilor și temelor instalate pe site-ul dvs. WordPress.',
+    'plugins_total' => 'Total Plugin-uri',
+    'plugins_active' => 'Active',
+    'plugins_inactive' => 'Inactive',
+    'plugins_with_updates' => 'Actualizări disponibile',
+    'plugins_abandoned' => 'Abandonate / Închise',
+    'plugin_name' => 'Plugin',
+    'plugin_version' => 'Versiune',
+    'plugin_status' => 'Status',
+    'plugin_auto_update' => 'Auto-actualizare',
+    'plugin_status_active' => 'Activ',
+    'plugin_status_inactive' => 'Inactiv',
+    'plugin_update_available' => 'Actualizare la :version',
+    'themes_title' => 'Teme',
+    'themes_total' => 'Total Teme',
+    'themes_active_theme' => 'Temă activă',
+    'theme_name' => 'Temă',
+    'theme_version' => 'Versiune',
+    'theme_status' => 'Status',
+    'theme_child_of' => 'Copil al :parent',
+    'plugins_no_issues' => 'Toate plugin-urile sunt la zi și funcționale.',
+
+    // Database Health
+    'section_database_health' => 'Sănătatea bazei de date',
+    'section_label_database_health' => 'Sănătatea bazei de date',
+    'database_health_description' => 'Analiză detaliată a dimensiunii, structurii și oportunităților de optimizare a bazei de date WordPress.',
+    'db_total_size' => 'Dimensiune BD',
+    'db_total_tables' => 'Tabele',
+    'db_autoload_size' => 'Dimensiune Autoload',
+    'db_status' => 'Status',
+    'db_status_healthy' => 'Sănătos',
+    'db_status_warning' => 'Avertizare',
+    'db_status_critical' => 'Critic',
+    'db_issues_found' => 'Probleme detectate',
+    'db_largest_tables' => 'Cele mai mari tabele',
+    'db_table_name' => 'Tabel',
+    'db_table_rows' => 'Rânduri',
+    'db_table_size' => 'Dimensiune',
+    'db_tables_overhead' => 'Tabele cu overhead',
+    'db_overhead_size' => 'Overhead',
+    'db_myisam_warning' => ':count tabele folosesc motorul MyISAM',
+    'db_no_health_data' => 'Nu sunt disponibile date de verificare a bazei de date.',
+
+    // Cloudflare
+    'section_cloudflare' => 'CDN și Cache (Cloudflare)',
+    'section_label_cloudflare' => 'Cloudflare CDN',
+    'cloudflare_description' => 'Metrici de performanță Cloudflare CDN incluzând trafic, lățime de bandă și eficiența cache-ului.',
+    'cf_total_requests' => 'Total cereri',
+    'cf_bandwidth' => 'Lățime de bandă',
+    'cf_cache_ratio' => 'Rata cache hit',
+    'cf_plan' => 'Plan',
+    'cf_ssl_mode' => 'Mod SSL',
+    'cf_cache_level' => 'Nivel cache',
+    'cf_zone' => 'Zonă',
+    'cf_status' => 'Status',
+    'cf_config' => 'Configurare CDN',
+    'cf_not_connected' => 'Cloudflare nu este conectat.',
+
+    // WordPress Users
+    'section_wp_users' => 'Utilizatori WordPress',
+    'section_label_wp_users' => 'Utilizatori WordPress',
+    'wp_users_description' => 'Sumar al conturilor de utilizatori WordPress, rolurilor și activității recente de autentificare.',
+    'wp_total_users' => 'Total utilizatori',
+    'wp_administrators' => 'Administratori',
+    'wp_recent_logins' => 'Autentificări recente',
+    'wp_never_logged_in' => 'Nu s-au autentificat',
+    'wp_users_by_role' => 'Utilizatori pe rol',
+    'wp_admin_list' => 'Conturi de administrator',
+    'wp_username' => 'Utilizator',
+    'wp_email' => 'Email',
+    'wp_last_login' => 'Ultima autentificare',
+    'wp_role' => 'Rol',
+    'wp_never' => 'Niciodată',
+    'wp_no_users' => 'Nu sunt disponibile date despre utilizatorii WordPress.',
+
+    // Security Checks
+    'section_security_checks' => 'Întărire securitate',
+    'section_label_security_checks' => 'Întărire securitate',
+    'security_checks_description' => 'Rezultatele detaliate ale verificărilor de întărire a securității pentru fișiere, autentificare, bază de date, header-e HTTP și SSL.',
+    'sec_overall_score' => 'Scor întărire',
+    'sec_passed' => 'Trecut',
+    'sec_failed' => 'Eșuat',
+    'sec_check' => 'Verificare',
+    'sec_status' => 'Status',
+    'sec_status_passed' => 'Trecut',
+    'sec_status_failed' => 'Eșuat',
+    'sec_status_unchecked' => 'Neverificat',
+    'sec_cat_file_security' => 'Securitate fișiere',
+    'sec_cat_login_security' => 'Securitate autentificare',
+    'sec_cat_database_security' => 'Securitate bază de date',
+    'sec_cat_http_headers' => 'Header-e HTTP',
+    'sec_cat_ssl_https' => 'SSL și HTTPS',
+    'sec_no_data' => 'Nu sunt disponibile date de verificare a securității.',
 ];

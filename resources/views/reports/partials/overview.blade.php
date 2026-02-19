@@ -5,147 +5,135 @@
 
 @include('reports.components.section-header', [
     'title' => __('report.section_overview', [], $lang),
+    'number' => $sectionNumber ?? null,
 ])
 
-{{-- Group 1: Monitoring — Updates, Uptime, Backups --}}
-<div class="overview-group-label">{{ __('report.overview_group_monitoring', [], $lang) }}</div>
-<table class="overview-grid">
-    <tr>
-        @include('reports.components.metric-card', [
-            'label' => __('report.overview_updates', [], $lang),
-            'value' => $o['updates']['count'] ?? 0,
-            'sublabel' => __('report.overview_total', [], $lang),
-            'trend' => $o['updates']['trend'] ?? null,
-            'width' => '33%',
-        ])
-        @include('reports.components.metric-card', [
-            'label' => __('report.overview_uptime', [], $lang),
-            'value' => isset($o['uptime']['percentage']) ? number_format($o['uptime']['percentage'], 2, $lang === 'ro' ? ',' : '.', '') . '%' : __('report.not_available', [], $lang),
-            'sublabel' => __('report.overview_incidents', ['count' => $o['uptime']['incidents'] ?? 0], $lang),
-            'trend' => $o['uptime']['trend'] ?? null,
-            'width' => '33%',
-        ])
-        @include('reports.components.metric-card', [
-            'label' => __('report.overview_backups', [], $lang),
-            'value' => ($o['backups']['successful'] ?? 0) . ' / ' . ($o['backups']['total'] ?? 0),
-            'trend' => $o['backups']['trend'] ?? null,
-            'width' => '33%',
-        ])
-    </tr>
-</table>
+<div class="overview-grid">
+    {{-- Updates --}}
+    @if(in_array('updates', $sections))
+        <div class="overview-card">
+            <div class="overview-value">{{ $o['updates']['count'] ?? 0 }}</div>
+            <div class="overview-label">{{ __('report.overview_updates', [], $lang) }}</div>
+            <div class="overview-detail">{{ __('report.overview_total', [], $lang) }}</div>
+        </div>
+    @endif
 
-{{-- Divider --}}
-<div class="overview-divider"></div>
+    {{-- Uptime --}}
+    @if(in_array('uptime', $sections) && isset($o['uptime']['percentage']))
+        @php
+            $uptimePct = $o['uptime']['percentage'];
+            $uptimeCardClass = $uptimePct >= 99.5 ? 'card-good' : ($uptimePct >= 99 ? 'card-warning' : 'card-danger');
+        @endphp
+        <div class="overview-card {{ $uptimeCardClass }}">
+            <div class="overview-value">{{ number_format($uptimePct, 2, $lang === 'ro' ? ',' : '.', '') }}%</div>
+            <div class="overview-label">Uptime</div>
+            <div class="overview-detail">{{ __('report.overview_incidents', ['count' => $o['uptime']['incidents'] ?? 0], $lang) }}</div>
+        </div>
+    @endif
 
-{{-- Group 2: Performance --}}
-<div class="overview-group-label">{{ __('report.overview_group_performance', [], $lang) }}</div>
-<table class="overview-grid">
-    <tr>
-        <td class="overview-card" style="width: 50%;">
-            <div class="card-label">{{ __('report.overview_performance', [], $lang) }}</div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="text-align: center; padding: 4px; width: 50%;">
-                        @php
-                            $mScore = $o['performance']['mobile'] ?? null;
-                            $mClass = $mScore === null ? 'score-na' : ($mScore >= 90 ? 'score-green' : ($mScore >= 50 ? 'score-orange' : 'score-red'));
-                        @endphp
-                        <div class="score-circle {{ $mClass }}">{{ $mScore !== null ? round($mScore) : '—' }}</div>
-                        <div class="text-xs text-muted" style="margin-top: 6px;">{{ __('report.overview_mobile', [], $lang) }}</div>
-                        <div class="card-trend">@include('reports.components.trend', ['trend' => $o['performance']['mobile_trend'] ?? null])</div>
-                    </td>
-                    <td style="text-align: center; padding: 4px; width: 50%;">
-                        @php
-                            $dScore = $o['performance']['desktop'] ?? null;
-                            $dClass = $dScore === null ? 'score-na' : ($dScore >= 90 ? 'score-green' : ($dScore >= 50 ? 'score-orange' : 'score-red'));
-                        @endphp
-                        <div class="score-circle {{ $dClass }}">{{ $dScore !== null ? round($dScore) : '—' }}</div>
-                        <div class="text-xs text-muted" style="margin-top: 6px;">{{ __('report.overview_desktop', [], $lang) }}</div>
-                        <div class="card-trend">@include('reports.components.trend', ['trend' => $o['performance']['desktop_trend'] ?? null])</div>
-                    </td>
-                </tr>
-            </table>
-        </td>
-        {{-- Security score in overview (if available) --}}
-        @if(isset($o['security']) && $o['security']['score'] !== null)
-            <td class="overview-card" style="width: 50%;">
-                <div class="card-label">{{ __('report.overview_security', [], $lang) }}</div>
-                @php
-                    $secScore = $o['security']['score'];
-                    $secClass = $secScore >= 80 ? 'score-green' : ($secScore >= 50 ? 'score-orange' : 'score-red');
-                @endphp
-                <div style="text-align: center; padding: 4px;">
-                    <div class="score-circle {{ $secClass }}">{{ round($secScore) }}</div>
-                    <div class="text-xs text-muted" style="margin-top: 6px;">{{ __('report.security_score', [], $lang) }}</div>
-                    <div class="card-trend">@include('reports.components.trend', ['trend' => $o['security']['trend'] ?? null])</div>
-                </div>
-            </td>
-        @else
-            @if($o['database']['was_cleaned'] ?? false)
-                @include('reports.components.metric-card', [
-                    'label' => __('report.overview_database', [], $lang),
-                    'value' => __('report.overview_cleaned', [], $lang),
-                    'sublabel' => __('report.overview_saved', ['size' => \App\Helpers\FormatHelper::bytes($o['database']['space_saved'] ?? 0)], $lang),
-                    'width' => '50%',
-                ])
-            @else
-                <td class="overview-card" style="width: 50%;">
-                    <div class="card-label">{{ __('report.overview_database', [], $lang) }}</div>
-                    <div class="card-value-sm" style="color: #9ca3af;">—</div>
-                </td>
-            @endif
-        @endif
-    </tr>
-</table>
+    {{-- Backups --}}
+    @if(in_array('backups', $sections))
+        <div class="overview-card">
+            <div class="overview-value">{{ $o['backups']['successful'] ?? 0 }}<span class="overview-value-small"> / {{ $o['backups']['total'] ?? 0 }}</span></div>
+            <div class="overview-label">{{ __('report.overview_backups', [], $lang) }}</div>
+            <div class="overview-detail">&nbsp;</div>
+        </div>
+    @endif
 
-{{-- Divider --}}
-<div class="overview-divider"></div>
+    {{-- Performance --}}
+    @if(in_array('performance', $sections) && ($o['performance']['mobile'] !== null || $o['performance']['desktop'] !== null))
+        @php
+            $mScore = $o['performance']['mobile'];
+            $dScore = $o['performance']['desktop'];
+            $mClass = $mScore === null ? '' : ($mScore >= 90 ? 'score-good' : ($mScore >= 50 ? 'score-warning' : 'score-danger'));
+            $dClass = $dScore === null ? '' : ($dScore >= 90 ? 'score-good' : ($dScore >= 50 ? 'score-warning' : 'score-danger'));
+        @endphp
+        <div class="overview-card">
+            <div class="overview-value">
+                <span class="perf-score {{ $mClass }}">{{ $mScore !== null ? round($mScore) : '—' }}</span>
+                <span class="perf-separator">/</span>
+                <span class="perf-score {{ $dClass }}">{{ $dScore !== null ? round($dScore) : '—' }}</span>
+            </div>
+            <div class="overview-label">{{ __('report.overview_performance', [], $lang) }}</div>
+            <div class="overview-detail">{{ __('report.overview_mobile', [], $lang) }} / {{ __('report.overview_desktop', [], $lang) }}</div>
+        </div>
+    @endif
 
-{{-- Group 3: Traffic & SEO --}}
-<div class="overview-group-label">{{ __('report.overview_group_traffic', [], $lang) }}</div>
-<table class="overview-grid">
-    <tr>
-        <td class="overview-card" style="width: 50%;">
-            <div class="card-label">{{ __('report.overview_analytics', [], $lang) }}</div>
-            @if($o['analytics']['pageviews'] ?? null)
-                <div class="card-value-sm">{{ number_format($o['analytics']['pageviews']) }}</div>
-                <div class="card-sublabel">{{ __('report.overview_pageviews', [], $lang) }}</div>
-                <div class="card-trend">@include('reports.components.trend', ['trend' => $o['analytics']['pageviews_trend'] ?? null])</div>
-                <div style="margin-top: 4px;">
-                    <span style="font-size: 9pt; font-weight: 600; color: #111827;">{{ number_format($o['analytics']['users'] ?? 0) }}</span>
-                    <span class="text-xs text-muted">{{ __('report.overview_users', [], $lang) }}</span>
-                </div>
-            @else
-                <div class="card-value-sm" style="color: #9ca3af;">{{ __('report.not_available', [], $lang) }}</div>
-            @endif
-        </td>
-        <td class="overview-card" style="width: 50%;">
-            <div class="card-label">{{ __('report.overview_search_console', [], $lang) }}</div>
-            @if($o['search_console']['clicks'] ?? null)
-                <div class="card-value-sm">{{ number_format($o['search_console']['clicks']) }}</div>
-                <div class="card-sublabel">{{ __('report.overview_clicks', [], $lang) }}</div>
-                <div class="card-trend">@include('reports.components.trend', ['trend' => $o['search_console']['clicks_trend'] ?? null])</div>
-                <div style="margin-top: 4px;">
-                    <span style="font-size: 9pt; font-weight: 600; color: #111827;">{{ number_format($o['search_console']['impressions'] ?? 0) }}</span>
-                    <span class="text-xs text-muted">{{ __('report.overview_impressions', [], $lang) }}</span>
-                </div>
-            @else
-                <div class="card-value-sm" style="color: #9ca3af;">{{ __('report.not_available', [], $lang) }}</div>
-            @endif
-        </td>
-    </tr>
-</table>
+    {{-- Analytics (only if data exists) --}}
+    @if(in_array('analytics', $sections) && ($o['analytics']['pageviews'] ?? null) !== null)
+        <div class="overview-card">
+            <div class="overview-value">{{ number_format($o['analytics']['users'] ?? 0) }}</div>
+            <div class="overview-label">{{ __('report.overview_analytics', [], $lang) }}</div>
+            <div class="overview-detail">{{ number_format($o['analytics']['pageviews'] ?? 0) }} {{ __('report.overview_pageviews', [], $lang) }}</div>
+        </div>
+    @endif
 
-{{-- Database row (only if we have security above and database was cleaned) --}}
-@if(isset($o['security']) && $o['security']['score'] !== null && ($o['database']['was_cleaned'] ?? false))
-    <table class="overview-grid" style="margin-top: 4px;">
-        <tr>
-            @include('reports.components.metric-card', [
-                'label' => __('report.overview_database', [], $lang),
-                'value' => __('report.overview_cleaned', [], $lang),
-                'sublabel' => __('report.overview_saved', ['size' => \App\Helpers\FormatHelper::bytes($o['database']['space_saved'] ?? 0)], $lang),
-                'width' => '100%',
-            ])
-        </tr>
-    </table>
+    {{-- Search Console (only if data exists) --}}
+    @if(in_array('search_console', $sections) && ($o['search_console']['impressions'] ?? null) !== null)
+        <div class="overview-card">
+            <div class="overview-value">{{ number_format($o['search_console']['impressions']) }}</div>
+            <div class="overview-label">{{ __('report.overview_search_console', [], $lang) }}</div>
+            <div class="overview-detail">{{ number_format($o['search_console']['clicks'] ?? 0) }} {{ __('report.overview_clicks', [], $lang) }}</div>
+        </div>
+    @endif
+
+    {{-- Database (only if cleaned) --}}
+    @if($o['database']['was_cleaned'] ?? false)
+        <div class="overview-card">
+            <div class="overview-value">{{ \App\Helpers\FormatHelper::bytes($o['database']['space_saved'] ?? 0) }}</div>
+            <div class="overview-label">{{ __('report.overview_database', [], $lang) }}</div>
+            <div class="overview-detail">{{ __('report.overview_cleaned', [], $lang) }}</div>
+        </div>
+    @endif
+</div>
+
+{{-- Executive Snapshot cards --}}
+@if(isset($data['executive_snapshot']) && count($data['executive_snapshot']) > 0)
+    <hr class="subsection-divider">
+    <h3>{{ __('report.executive_summary', [], $lang) }}</h3>
+    <p class="section-description" style="margin-bottom: 12px;">{{ __('report.executive_summary_description', [], $lang) }}</p>
+
+    <div class="snapshot-grid" style="flex-wrap: wrap;">
+        @foreach($data['executive_snapshot'] as $snap)
+            @php
+                $statusClass = match($snap['status'] ?? 'neutral') {
+                    'good' => 'snapshot-status-good',
+                    'warning' => 'snapshot-status-warning',
+                    'danger' => 'snapshot-status-danger',
+                    default => 'snapshot-status-neutral',
+                };
+            @endphp
+            <div class="snapshot-card {{ $statusClass }}">
+                <div class="snapshot-value">{{ $snap['value'] }}</div>
+                <div class="snapshot-label">{{ $snap['label'] }}</div>
+                @if(!empty($snap['note']))
+                    <div class="snapshot-note">{{ $snap['note'] }}</div>
+                @endif
+            </div>
+        @endforeach
+    </div>
 @endif
+
+{{-- Site environment info --}}
+<hr class="subsection-divider">
+<h3>{{ __('report.overview_environment', [], $lang) }}</h3>
+<div class="kpi-row">
+    <div class="kpi-card">
+        <div class="kpi-value" style="font-size: 14pt;">{{ $site->wp_version ?? '—' }}</div>
+        <div class="kpi-label">WordPress</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value" style="font-size: 14pt;">{{ $site->php_version ?? '—' }}</div>
+        <div class="kpi-label">PHP</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value" style="font-size: 14pt;">{{ $site->server_software ?? '—' }}</div>
+        <div class="kpi-label">{{ __('report.overview_server', [], $lang) }}</div>
+    </div>
+    @if($site->has_woocommerce)
+        <div class="kpi-card">
+            <div class="kpi-value" style="font-size: 14pt;">{{ __('report.yes', [], $lang) }}</div>
+            <div class="kpi-label">WooCommerce</div>
+        </div>
+    @endif
+</div>

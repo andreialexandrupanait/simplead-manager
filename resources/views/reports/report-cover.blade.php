@@ -10,7 +10,7 @@
 </head>
 <body>
     @php
-        $primaryColor = $branding['primary_color'] ?? '#3b82f6';
+        $primaryColor = $branding['primary_color'] ?? '#7C3AED';
         $companyLogo = $branding['company_logo'] ?? null;
         $companyName = $branding['company_name'] ?? 'SimpleAd';
         $clientLogo = $branding['client_logo'] ?? null;

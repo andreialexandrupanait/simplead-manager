@@ -7,6 +7,7 @@
 
 @include('reports.components.section-header', [
     'title' => $sectionOverrides['technical_stability']['title'] ?? __('report.section_technical_stability', [], $lang),
+    'number' => $sectionNumber ?? null,
 ])
 
 <p class="section-description">{{ $sectionOverrides['technical_stability']['description'] ?? __('report.technical_stability_description', [], $lang) }}</p>
@@ -23,28 +24,44 @@
     @endphp
     <div class="kpi-row">
         <div class="kpi-card">
-            <div class="kpi-value uptime-percentage {{ $uptimeClass }}" style="font-size: 16pt;">
+            <div class="kpi-value uptime-percentage {{ $uptimeClass }}">
                 {{ $uptimePct !== null ? number_format($uptimePct, 2, $lang === 'ro' ? ',' : '.', '') . '%' : '—' }}
             </div>
             <div class="kpi-label">{{ __('report.uptime_average', [], $lang) }}</div>
             <div class="card-trend">@include('reports.components.trend', ['trend' => $ut['uptime_trend'] ?? null])</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value {{ $incCount == 0 ? 'value-muted' : '' }}" style="font-size: 16pt;">{{ $incCount == 0 ? '—' : $incCount }}</div>
+            <div class="kpi-value {{ $incCount == 0 ? 'value-muted' : '' }}">{{ $incCount }}</div>
             <div class="kpi-label">{{ __('report.uptime_incidents', [], $lang) }}</div>
             <div class="card-trend">@include('reports.components.trend', ['trend' => $ut['incidents_trend'] ?? null])</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value {{ $avgResp === null ? 'value-muted' : '' }}" style="font-size: 16pt;">{{ $avgResp ? $avgResp . 'ms' : '—' }}</div>
+            <div class="kpi-value {{ $avgResp === null ? 'value-muted' : '' }}">{{ $avgResp ? $avgResp . 'ms' : '—' }}</div>
             <div class="kpi-label">{{ __('report.uptime_response_time', [], $lang) }}</div>
             <div class="card-trend">@include('reports.components.trend', ['trend' => $ut['response_time_trend'] ?? null])</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-value" style="font-size: 16pt;">{{ $ut['formatted_downtime'] ?? '0 min' }}</div>
+            <div class="kpi-value">{{ $ut['formatted_downtime'] ?? '0 min' }}</div>
             <div class="kpi-label">{{ __('report.uptime_downtime', [], $lang) }}</div>
             <div class="card-trend">&nbsp;</div>
         </div>
     </div>
+
+    {{-- Response Time chart --}}
+    @if(!empty($ut['chart_points']['line_points'] ?? ''))
+        <hr class="subsection-divider">
+        <div class="chart-container">
+            <div class="chart-title">{{ __('report.uptime_response_chart', [], $lang) }}</div>
+            @include('reports.components.chart-line', [
+                'points' => $ut['chart_points'],
+                'primaryColor' => $primaryColor ?? '#7C3AED',
+                'areaColor' => '#EDE9FE',
+                'yLabels' => $ut['chart_y_labels'] ?? [],
+                'xLabels' => $ut['chart_x_labels'] ?? [],
+                'legendLabel' => __('report.uptime_response_chart', [], $lang),
+            ])
+        </div>
+    @endif
 
     {{-- Incidents table (capped at 5) --}}
     @if(($sectionOptions['technical_stability']['show_incidents_table'] ?? true) && count($ut['incidents'] ?? []) > 0)
@@ -53,6 +70,7 @@
             $totalIncidents = count($incidents);
             $displayIncidents = array_slice($incidents, 0, 5);
         @endphp
+        <hr class="subsection-divider">
         <h3>{{ __('report.uptime_activity_changes', [], $lang) }}</h3>
         <table class="data-table mb-4">
             <thead>
@@ -61,15 +79,17 @@
                     <th>{{ __('report.uptime_from', [], $lang) }}</th>
                     <th>{{ __('report.uptime_to', [], $lang) }}</th>
                     <th>{{ __('report.uptime_duration', [], $lang) }}</th>
+                    <th>{{ __('report.uptime_cause', [], $lang) }}</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($displayIncidents as $incident)
                     <tr>
                         <td><span class="status-down">&#8600; {{ __('report.uptime_status_down', [], $lang) }}</span></td>
-                        <td>{{ \Carbon\Carbon::parse($incident['started_at'])->format('d/m/Y H:i') }}</td>
-                        <td>{{ $incident['resolved_at'] ? \Carbon\Carbon::parse($incident['resolved_at'])->format('d/m/Y H:i') : '—' }}</td>
+                        <td>{{ \Carbon\Carbon::parse($incident['started_at'])->format('d.m.Y, H:i') }}</td>
+                        <td>{{ $incident['resolved_at'] ? \Carbon\Carbon::parse($incident['resolved_at'])->format('d.m.Y, H:i') : '—' }}</td>
                         <td>{{ $incident['duration'] }}</td>
+                        <td>{{ $incident['cause'] ?? '—' }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -85,9 +105,23 @@
     @endif
 @endif
 
+{{-- Security & Database sub-cards side-by-side --}}
+@php
+    $showSec = $sec && ($sectionOptions['technical_stability']['show_security'] ?? true);
+    $showDb = $db && ($sectionOptions['technical_stability']['show_database'] ?? true);
+@endphp
+
+@if($showSec && $showDb)
+    <hr class="subsection-divider">
+    <div class="two-col">
+@endif
+
 {{-- Security sub-card --}}
-@if($sec && ($sectionOptions['technical_stability']['show_security'] ?? true))
-    <div class="subcard mt-4">
+@if($showSec)
+    @if(!($showSec && $showDb))
+        <hr class="subsection-divider">
+    @endif
+    <div class="subcard" style="margin-top: 0;">
         <div class="subcard-title">{{ __('report.tech_security_subcard', [], $lang) }}</div>
         @if(($sec['total_issues'] ?? 0) === 0)
             <p style="color: #10b981; font-size: 8.5pt; font-weight: 600;">{{ __('report.security_no_issues', [], $lang) }}</p>
@@ -115,12 +149,49 @@
                 </div>
             </div>
         @endif
+        {{-- Vulnerabilities table --}}
+        @if(!empty($sec['vulnerabilities']))
+            <h3 style="margin-top: 12px;">{{ __('report.security_vulnerabilities', [], $lang) }}</h3>
+            <table class="data-table" style="margin-bottom: 8px;">
+                <thead>
+                    <tr>
+                        <th>{{ __('report.security_vulnerability', [], $lang) }}</th>
+                        <th>{{ __('report.security_severity_col', [], $lang) }}</th>
+                        <th>{{ __('report.security_fix_version', [], $lang) }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sec['vulnerabilities'] as $vuln)
+                        @php
+                            $sevClass = match($vuln['severity'] ?? '') {
+                                'critical' => 'badge-danger',
+                                'high' => 'badge-warning',
+                                'medium' => 'badge-info',
+                                default => 'badge-info',
+                            };
+                        @endphp
+                        <tr>
+                            <td class="cell-break">{{ $vuln['title'] ?? ($vuln['software_slug'] ?? '—') }}</td>
+                            <td><span class="badge {{ $sevClass }}">{{ ucfirst($vuln['severity'] ?? '—') }}</span></td>
+                            <td>{{ $vuln['fixed_in_version'] ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+        {{-- Scan date --}}
+        @if(!empty($sec['scanned_at']))
+            <div class="table-footnote">{{ __('report.security_scanned_at', [], $lang) }}: {{ \Carbon\Carbon::parse($sec['scanned_at'])->format('d/m/Y H:i') }}</div>
+        @endif
     </div>
 @endif
 
 {{-- Database sub-card --}}
-@if($db && ($sectionOptions['technical_stability']['show_database'] ?? true))
-    <div class="subcard mt-4">
+@if($showDb)
+    @if(!($showSec && $showDb))
+        <hr class="subsection-divider">
+    @endif
+    <div class="subcard" style="margin-top: 0;">
         <div class="subcard-title">{{ __('report.tech_database_subcard', [], $lang) }}</div>
         <div class="subcard-inner">
             <div class="subcard-field">
@@ -134,5 +205,98 @@
                 </div>
             </div>
         </div>
+        {{-- Database categories breakdown --}}
+        @if(!empty($db['categories']))
+            @php
+                $activeCats = collect($db['categories'])->filter(fn($cat) => ($cat['deleted'] ?? 0) > 0);
+            @endphp
+            @if($activeCats->count() > 0)
+                <h3 style="margin-top: 12px;">{{ __('report.database_cleanup_title', [], $lang) }}</h3>
+                <table class="data-table" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>{{ __('report.database_category', [], $lang) }}</th>
+                            <th>{{ __('report.database_deleted', [], $lang) }}</th>
+                            <th>{{ __('report.database_space_saved', [], $lang) }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($activeCats as $cat)
+                            @php
+                                $catLabel = __('report.database_' . ($cat['key'] ?? 'orphaned'), [], $lang);
+                            @endphp
+                            <tr>
+                                <td>{{ $catLabel }}</td>
+                                <td>{{ number_format($cat['deleted']) }}</td>
+                                <td>{{ \App\Helpers\FormatHelper::bytes($cat['saved'] ?? 0) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        @endif
+    </div>
+@endif
+
+@if($showSec && $showDb)
+    </div>
+@endif
+
+{{-- SSL / Domain / Email quick summary --}}
+@php
+    $ssl = $data['ssl'] ?? null;
+    $domain = $data['domain'] ?? null;
+    $email = $data['email'] ?? null;
+    $hasInfraInfo = $ssl || $domain || $email;
+@endphp
+
+@if($hasInfraInfo)
+    <hr class="subsection-divider">
+    <h3>{{ __('report.tech_infra_summary', [], $lang) }}</h3>
+    <div class="kpi-row">
+        @if($ssl)
+            @php
+                $sslDays = $ssl['days_remaining'] ?? null;
+                $sslOk = $ssl['status'] === 'valid';
+            @endphp
+            <div class="kpi-card">
+                <div class="kpi-value" style="font-size: 14pt; color: {{ $sslOk ? '#10b981' : '#ef4444' }};">
+                    {{ $sslOk ? __('report.ssl_valid', [], $lang) : __('report.ssl_expired', [], $lang) }}
+                </div>
+                <div class="kpi-label">{{ __('report.tech_ssl_subcard', [], $lang) }}</div>
+                @if($sslDays !== null)
+                    <div class="card-sublabel">{{ __('report.days_remaining', ['count' => $sslDays], $lang) }}</div>
+                @endif
+            </div>
+        @endif
+
+        @if($domain)
+            @php
+                $domainDays = $domain['days_remaining'] ?? null;
+            @endphp
+            <div class="kpi-card">
+                <div class="kpi-value" style="font-size: 14pt;">{{ $domain['registrar'] ?? '—' }}</div>
+                <div class="kpi-label">{{ __('report.tech_domain_subcard', [], $lang) }}</div>
+                @if($domainDays !== null)
+                    <div class="card-sublabel">{{ __('report.days_remaining', ['count' => $domainDays], $lang) }}</div>
+                @endif
+            </div>
+        @endif
+
+        @if($email)
+            @php
+                $emailScore = $email['score'] ?? null;
+                $emailColor = $emailScore >= 80 ? '#10b981' : ($emailScore >= 50 ? '#f59e0b' : '#ef4444');
+            @endphp
+            <div class="kpi-card">
+                <div class="kpi-value" style="font-size: 14pt; color: {{ $emailColor }};">{{ $emailScore !== null ? $emailScore . '/100' : '—' }}</div>
+                <div class="kpi-label">{{ __('report.tech_email_subcard', [], $lang) }}</div>
+                <div class="card-sublabel">
+                    SPF {!! ($email['spf_exists'] ?? false) ? '✓' : '✗' !!}
+                    &nbsp; DKIM {!! ($email['dkim_exists'] ?? false) ? '✓' : '✗' !!}
+                    &nbsp; DMARC {!! ($email['dmarc_exists'] ?? false) ? '✓' : '✗' !!}
+                </div>
+            </div>
+        @endif
     </div>
 @endif

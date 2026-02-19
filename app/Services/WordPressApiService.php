@@ -26,15 +26,18 @@ class WordPressApiService
             $url .= '?' . http_build_query($queryParams);
         }
         $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
         $body = !empty($data) ? json_encode($data) : '';
 
         // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
+        // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
         $stringToSign = implode('|', [
             strtoupper($method),
             $path,
             $timestamp,
+            $nonce,
             $body,
         ]);
 
@@ -43,8 +46,9 @@ class WordPressApiService
         $request = Http::withHeaders([
             'X-SAM-Key'       => $apiKey,
             'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Nonce'     => $nonce,
             'X-SAM-Signature' => $signature,
-            'User-Agent'      => 'SimpleAD-Manager/1.0',
+            'User-Agent'      => 'SimpleAD-Manager/2.0',
             'Accept'          => 'application/json',
         ])->timeout($timeout);
 
@@ -398,13 +402,16 @@ class WordPressApiService
 
         $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
         $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
 
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
+        // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
         $stringToSign = implode('|', [
             'POST',
             $path,
             $timestamp,
+            $nonce,
             '',
         ]);
 
@@ -418,8 +425,9 @@ class WordPressApiService
         $response = Http::withHeaders([
             'X-SAM-Key'       => $apiKey,
             'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Nonce'     => $nonce,
             'X-SAM-Signature' => $signature,
-            'User-Agent'      => 'SimpleAD-Manager/1.0',
+            'User-Agent'      => 'SimpleAD-Manager/2.0',
         ])->timeout(600)->withBody('', 'application/json')->sink($saveTo)->post($url);
 
         $response->throw();

@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Admin interface — tabbed management page + AJAX handlers.
+ * Admin interface — connection credentials + IP whitelist management.
  */
 class SAM_Admin {
 
@@ -38,190 +38,6 @@ class SAM_Admin {
         }
 
         wp_enqueue_style('sam-admin', SAM_PLUGIN_URL . 'assets/admin.css', [], SAM_VERSION);
-        wp_enqueue_script('sam-admin', SAM_PLUGIN_URL . 'assets/admin.js', [], SAM_VERSION, true);
-        wp_localize_script('sam-admin', 'samAdmin', [
-            'ajaxUrl'   => admin_url('admin-ajax.php'),
-            'nonce'     => wp_create_nonce('sam_admin_nonce'),
-        ]);
-    }
-
-    public function register_ajax_handlers(): void {
-        $actions = [
-            'sam_health_check',
-            'sam_server_resources',
-            'sam_site_info',
-            'sam_security_check',
-            'sam_security_fix',
-            'sam_core_integrity',
-            'sam_database_health',
-            'sam_cleanup_stats',
-            'sam_cleanup_run',
-            'sam_cron_list',
-            'sam_cron_run',
-            'sam_cron_disable',
-            'sam_cron_enable',
-            'sam_audit_logs',
-        ];
-
-        foreach ($actions as $action) {
-            add_action("wp_ajax_{$action}", [$this, "ajax_{$action}"]);
-        }
-    }
-
-    /* ─── Request verification ─── */
-
-    private function verify_request(): void {
-        check_ajax_referer('sam_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized'], 403);
-        }
-    }
-
-    /* ─── Dashboard ─── */
-
-    public function ajax_sam_health_check(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Health_Endpoint();
-        $response = $endpoint->health_check(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_server_resources(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Monitoring_Endpoint();
-        $response = $endpoint->server_resources(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_site_info(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Info_Endpoint();
-        $response = $endpoint->get_info(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── Security ─── */
-
-    public function ajax_sam_security_check(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Security_Endpoint();
-        $response = $endpoint->security_check(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_security_fix(): void {
-        $this->verify_request();
-        $request = new WP_REST_Request('POST');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body(wp_json_encode([
-            'key' => sanitize_text_field($_POST['key'] ?? ''),
-        ]));
-        $endpoint = new SAM_Security_Endpoint();
-        $response = $endpoint->security_fix($request);
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_core_integrity(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Security_Endpoint();
-        $response = $endpoint->core_integrity_check(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── Database ─── */
-
-    public function ajax_sam_database_health(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Database_Endpoint();
-        $response = $endpoint->database_health(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_cleanup_stats(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Database_Endpoint();
-        $response = $endpoint->cleanup_stats(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_cleanup_run(): void {
-        $this->verify_request();
-        $fields = [
-            'revisions', 'auto_drafts', 'trashed_posts', 'spam_comments',
-            'trashed_comments', 'expired_transients', 'orphaned_postmeta',
-            'orphaned_commentmeta', 'orphaned_usermeta', 'orphaned_termmeta',
-        ];
-        $body = [];
-        foreach ($fields as $f) {
-            if (!empty($_POST[$f])) {
-                $body[$f] = true;
-            }
-        }
-        $request = new WP_REST_Request('POST');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body(wp_json_encode($body));
-        $endpoint = new SAM_Database_Endpoint();
-        $response = $endpoint->cleanup_run($request);
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── Cron ─── */
-
-    public function ajax_sam_cron_list(): void {
-        $this->verify_request();
-        $endpoint = new SAM_Cron_Endpoint();
-        $response = $endpoint->list_crons(new WP_REST_Request('GET'));
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_cron_run(): void {
-        $this->verify_request();
-        $request = new WP_REST_Request('POST');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body(wp_json_encode([
-            'hook' => sanitize_text_field($_POST['hook'] ?? ''),
-        ]));
-        $endpoint = new SAM_Cron_Endpoint();
-        $response = $endpoint->run_cron($request);
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_cron_disable(): void {
-        $this->verify_request();
-        $request = new WP_REST_Request('POST');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body(wp_json_encode([
-            'hook' => sanitize_text_field($_POST['hook'] ?? ''),
-        ]));
-        $endpoint = new SAM_Cron_Endpoint();
-        $response = $endpoint->disable_cron($request);
-        wp_send_json($response->get_data());
-    }
-
-    public function ajax_sam_cron_enable(): void {
-        $this->verify_request();
-        $request = new WP_REST_Request('POST');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body(wp_json_encode([
-            'hook'     => sanitize_text_field($_POST['hook'] ?? ''),
-            'schedule' => sanitize_text_field($_POST['schedule'] ?? 'daily'),
-        ]));
-        $endpoint = new SAM_Cron_Endpoint();
-        $response = $endpoint->enable_cron($request);
-        wp_send_json($response->get_data());
-    }
-
-    /* ─── Audit ─── */
-
-    public function ajax_sam_audit_logs(): void {
-        $this->verify_request();
-        $request = new WP_REST_Request('GET');
-        if (!empty($_POST['since'])) {
-            $request->set_param('since', sanitize_text_field($_POST['since']));
-        }
-        $endpoint = new SAM_Audit_Endpoint();
-        $response = $endpoint->get_audit_logs($request);
-        wp_send_json($response->get_data());
     }
 
     /* ─── Page Render ─── */
@@ -231,61 +47,56 @@ class SAM_Admin {
             return;
         }
 
-        // Handle regenerate keys (Connection tab)
+        // Handle regenerate keys
         if (isset($_POST['sam_regenerate_keys']) && check_admin_referer('sam_regenerate_keys_action')) {
             update_option('sam_api_key', wp_generate_password(32, false));
             update_option('sam_api_secret', wp_generate_password(64, false));
             echo '<div class="notice notice-success"><p>API credentials regenerated successfully.</p></div>';
         }
 
-        $tabs = [
-            'dashboard'   => 'Dashboard',
-            'security'    => 'Security',
-            'database'    => 'Database',
-            'cron'        => 'Cron Jobs',
-            'server'      => 'Server',
-            'audit'       => 'Audit Log',
-            'connection'  => 'Connection',
-        ];
+        // Handle IP whitelist add
+        if (isset($_POST['sam_add_ip']) && check_admin_referer('sam_ip_whitelist_action')) {
+            $ip = sanitize_text_field($_POST['sam_ip_address'] ?? '');
+            if ($ip !== '') {
+                $result = SAM_IP_Whitelist::add_ip($ip);
+                if ($result === true) {
+                    echo '<div class="notice notice-success"><p>IP address added to whitelist.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>' . esc_html($result) . '</p></div>';
+                }
+            }
+        }
+
+        // Handle IP whitelist remove
+        if (isset($_POST['sam_remove_ip']) && check_admin_referer('sam_ip_whitelist_action')) {
+            $ip = sanitize_text_field($_POST['sam_remove_ip_address'] ?? '');
+            if ($ip !== '') {
+                SAM_IP_Whitelist::remove_ip($ip);
+                echo '<div class="notice notice-success"><p>IP address removed from whitelist.</p></div>';
+            }
+        }
+
         ?>
         <div class="wrap" id="sam-admin-wrap">
             <h1>SimpleAd Manager</h1>
 
-            <nav class="nav-tab-wrapper">
-                <?php foreach ($tabs as $slug => $label) : ?>
-                    <a href="#<?php echo esc_attr($slug); ?>"
-                       class="nav-tab sam-nav-tab"
-                       data-tab="<?php echo esc_attr($slug); ?>">
-                        <?php echo esc_html($label); ?>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
-
-            <?php foreach ($tabs as $slug => $label) : ?>
-                <div id="sam-pane-<?php echo esc_attr($slug); ?>" class="sam-tab-pane">
-                    <?php if ($slug === 'connection') : ?>
-                        <?php $this->render_connection_tab(); ?>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
+            <?php $this->render_connection_card(); ?>
+            <?php $this->render_ip_whitelist_card(); ?>
+            <?php $this->render_request_log_card(); ?>
+            <?php $this->render_cloudflare_card(); ?>
         </div>
         <?php
     }
 
-    private function render_connection_tab(): void {
+    private function render_connection_card(): void {
         $api_key    = get_option('sam_api_key', '');
         $api_secret = get_option('sam_api_secret', '');
         $rest_url   = rest_url(SAM_REST_NAMESPACE);
         ?>
         <div class="card" style="max-width: 800px; padding: 20px; margin-top: 12px;">
-            <h2>Connection Status</h2>
+            <h2>Connection</h2>
             <p><strong>REST API Endpoint:</strong> <code><?php echo esc_html($rest_url); ?></code></p>
             <p><strong>Plugin Version:</strong> <code><?php echo esc_html(SAM_VERSION); ?></code></p>
-        </div>
-
-        <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
-            <h2>API Credentials</h2>
-            <p>Use these credentials in your SimpleAd Manager dashboard to connect this site.</p>
 
             <table class="form-table">
                 <tr>
@@ -327,7 +138,97 @@ class SAM_Admin {
                 </p>
             </form>
         </div>
+        <?php
+    }
 
+    private function render_ip_whitelist_card(): void {
+        $whitelist = SAM_IP_Whitelist::get_whitelist();
+        ?>
+        <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+            <h2>IP Whitelist</h2>
+            <p>Only allow API requests from these IP addresses. Leave empty to allow all IPs (not recommended for production).</p>
+
+            <?php if (!empty($whitelist)) : ?>
+                <table class="sam-table" style="margin-bottom: 16px;">
+                    <thead>
+                        <tr><th>IP Address</th><th style="width: 100px;">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($whitelist as $ip) : ?>
+                            <tr>
+                                <td><code><?php echo esc_html($ip); ?></code></td>
+                                <td>
+                                    <form method="post" style="display: inline;">
+                                        <?php wp_nonce_field('sam_ip_whitelist_action'); ?>
+                                        <input type="hidden" name="sam_remove_ip_address" value="<?php echo esc_attr($ip); ?>" />
+                                        <input type="submit" name="sam_remove_ip" class="button button-small"
+                                               value="Remove"
+                                               onclick="return confirm('Remove this IP from the whitelist?');" />
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else : ?>
+                <p><em>No IPs whitelisted — all IPs are currently allowed.</em></p>
+            <?php endif; ?>
+
+            <form method="post" style="display: flex; gap: 8px; align-items: flex-end;">
+                <?php wp_nonce_field('sam_ip_whitelist_action'); ?>
+                <div>
+                    <label for="sam-ip-address" style="display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;">IP Address (CIDR supported)</label>
+                    <input type="text" name="sam_ip_address" id="sam-ip-address" placeholder="203.0.113.50 or 10.0.0.0/24" class="regular-text" />
+                </div>
+                <input type="submit" name="sam_add_ip" class="button button-primary" value="Add IP" />
+            </form>
+        </div>
+        <?php
+    }
+
+    private function render_request_log_card(): void {
+        $logs = SAM_Request_Logger::get_recent(20);
+        ?>
+        <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+            <h2>Recent API Requests</h2>
+            <p>Last 20 API requests to this site. Logs are retained for 30 days.</p>
+
+            <?php if (!empty($logs)) : ?>
+                <table class="sam-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>IP</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($logs as $log) : ?>
+                            <tr>
+                                <td><?php echo esc_html($log->created_at); ?></td>
+                                <td><code><?php echo esc_html($log->ip); ?></code></td>
+                                <td><code><?php echo esc_html($log->method . ' ' . $log->endpoint); ?></code></td>
+                                <td>
+                                    <?php
+                                    $code = (int) $log->status_code;
+                                    $class = $code >= 400 ? 'sam-badge-fail' : 'sam-badge-pass';
+                                    ?>
+                                    <span class="sam-badge <?php echo $class; ?>"><?php echo esc_html($code); ?></span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else : ?>
+                <p><em>No API requests logged yet.</em></p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    private function render_cloudflare_card(): void {
+        ?>
         <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
             <h2>Cloudflare Notice</h2>
             <p>If this site uses Cloudflare, you may need to add a WAF exception rule for the path <code>/wp-json/simplead/v1/*</code> to prevent Cloudflare from blocking API requests from SimpleAd Manager.</p>

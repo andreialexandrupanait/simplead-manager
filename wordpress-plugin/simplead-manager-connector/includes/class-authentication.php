@@ -6,10 +6,12 @@ if (!defined('ABSPATH')) {
 
 /**
  * Handles HMAC-based authentication for all REST API requests.
+ * Supports optional nonce-based anti-replay protection (v2.0+).
  */
 class SAM_Authentication {
 
     private const TIMESTAMP_TOLERANCE = 300; // 5 minutes
+    private const NONCE_TTL = 300; // Nonce expiry matches timestamp tolerance
 
     /**
      * Validate an incoming REST API request.
@@ -50,18 +52,46 @@ class SAM_Authentication {
             );
         }
 
+        // Check for nonce (v2.0+ anti-replay)
+        $nonce = $request->get_header('X-SAM-Nonce');
+        $has_nonce = !empty($nonce);
+
+        // If nonce is present, check for reuse BEFORE HMAC validation
+        if ($has_nonce) {
+            $nonce_key = 'sam_nonce_' . hash('sha256', $nonce);
+            if (get_transient($nonce_key)) {
+                return new WP_Error(
+                    'NONCE_REUSED',
+                    'Request nonce has already been used.',
+                    ['status' => 401]
+                );
+            }
+        }
+
         // Validate HMAC signature
         $stored_secret = get_option('sam_api_secret');
         $method = strtoupper($request->get_method());
         $path = $request->get_route();
         $body = $request->get_body();
 
-        $string_to_sign = implode('|', [
-            $method,
-            $path,
-            $timestamp,
-            $body,
-        ]);
+        if ($has_nonce) {
+            // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
+            $string_to_sign = implode('|', [
+                $method,
+                $path,
+                $timestamp,
+                $nonce,
+                $body,
+            ]);
+        } else {
+            // Legacy format: METHOD|PATH|TIMESTAMP|BODY
+            $string_to_sign = implode('|', [
+                $method,
+                $path,
+                $timestamp,
+                $body,
+            ]);
+        }
 
         $expected_signature = hash_hmac('sha256', $string_to_sign, $stored_secret);
 
@@ -71,6 +101,11 @@ class SAM_Authentication {
                 'Request signature validation failed.',
                 ['status' => 401]
             );
+        }
+
+        // Mark nonce as used AFTER successful HMAC validation
+        if ($has_nonce) {
+            set_transient($nonce_key, 1, self::NONCE_TTL);
         }
 
         return true;

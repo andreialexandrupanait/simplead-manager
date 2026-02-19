@@ -6,6 +6,7 @@
 
 @include('reports.components.section-header', [
     'title' => $sectionOverrides['backups']['title'] ?? __('report.section_backups', [], $lang),
+    'number' => $sectionNumber ?? null,
 ])
 
 @if($totalBackups === 0 && !($b['schedule_enabled'] ?? false))
@@ -64,7 +65,7 @@
     @php
         $backupList = $b['backups'] ?? [];
         $totalHistory = count($backupList);
-        $displayBackups = array_slice($backupList, 0, 8);
+        $displayBackups = array_slice($backupList, 0, 15);
     @endphp
 
     @if(($sectionOptions['backups']['show_history_table'] ?? true) && count($displayBackups) > 0)
@@ -101,8 +102,8 @@
             </tbody>
         </table>
 
-        @if($totalHistory > 8)
-            <div class="table-footnote">{{ __('report.showing_of', ['shown' => 8, 'total' => $totalHistory], $lang) }}</div>
+        @if($totalHistory > 15)
+            <div class="table-footnote">{{ __('report.showing_of', ['shown' => 15, 'total' => $totalHistory], $lang) }}</div>
         @endif
     @endif
 @endif

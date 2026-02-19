@@ -36,6 +36,32 @@ class SAM_REST_API {
         foreach ($this->endpoints as $endpoint) {
             $endpoint->register_routes();
         }
+
+        // Log all requests to the simplead/v1 namespace
+        add_filter('rest_post_dispatch', [$this, 'log_request'], 10, 3);
+    }
+
+    /**
+     * Log REST API requests targeting our namespace.
+     */
+    public function log_request(WP_REST_Response $response, WP_REST_Server $server, WP_REST_Request $request): WP_REST_Response {
+        $route = $request->get_route();
+
+        // Only log requests to our namespace
+        if (strpos($route, '/' . SAM_REST_NAMESPACE) !== 0) {
+            return $response;
+        }
+
+        SAM_Request_Logger::log(
+            SAM_Request_Logger::get_client_ip(),
+            $route,
+            $request->get_method(),
+            $response->get_status(),
+            $request->get_header('X-SAM-Key'),
+            $request->get_header('User-Agent')
+        );
+
+        return $response;
     }
 }
 
@@ -47,15 +73,22 @@ abstract class SAM_Endpoint_Base {
     abstract public function register_routes(): void;
 
     /**
-     * Standard permission callback using HMAC authentication + rate limiting.
+     * Standard permission callback: IP Whitelist → Rate Limiter → HMAC Auth
      */
     public function check_permission(WP_REST_Request $request) {
-        // Rate limit check first (cheap, avoids HMAC computation on abuse)
+        // IP whitelist check first (cheapest — array lookup)
+        $ip_check = SAM_IP_Whitelist::check();
+        if (is_wp_error($ip_check)) {
+            return $ip_check;
+        }
+
+        // Rate limit check (transient lookup)
         $rate_check = SAM_Rate_Limiter::check($request);
         if (is_wp_error($rate_check)) {
             return $rate_check;
         }
 
+        // HMAC authentication (crypto — most expensive)
         return SAM_Authentication::validate($request);
     }
 

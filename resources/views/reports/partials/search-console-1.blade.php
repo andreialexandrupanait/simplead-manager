@@ -6,6 +6,7 @@
 
 @include('reports.components.section-header', [
     'title' => $sectionOverrides['search_console']['title'] ?? __('report.section_search_console', [], $lang),
+    'number' => $sectionNumber ?? null,
 ])
 
 {{-- Dual-line chart: clicks + impressions --}}
@@ -15,9 +16,9 @@
         @include('reports.components.chart-dual-line', [
             'line1' => $sc['dual_line_chart']['line1'] ?? [],
             'line2' => $sc['dual_line_chart']['line2'] ?? [],
-            'color1' => '#2563eb',
+            'color1' => $primaryColor ?? '#7C3AED',
             'color2' => '#10b981',
-            'areaColor1' => '#dbeafe',
+            'areaColor1' => '#EDE9FE',
             'areaColor2' => '#d1fae5',
             'color2Light' => '#6ee7b7',
             'legend1' => __('report.search_clicks', [], $lang),
@@ -31,8 +32,8 @@
         <div class="chart-title">{{ __('report.search_performance_over_time', [], $lang) }}</div>
         @include('reports.components.chart-line', [
             'points' => $overview['chart_points'],
-            'primaryColor' => '#2563eb',
-            'areaColor' => '#dbeafe',
+            'primaryColor' => $primaryColor ?? '#7C3AED',
+            'areaColor' => '#EDE9FE',
             'yLabels' => $overview['chart_y_labels'] ?? [],
             'xLabels' => $overview['chart_x_labels'] ?? [],
             'legendLabel' => __('report.search_clicks', [], $lang),
@@ -73,7 +74,8 @@
 
 {{-- Top queries with color-coded positions --}}
 @if(($sectionOptions['search_console']['show_queries_table'] ?? true) && isset($sc['queries']) && is_array($sc['queries']) && count($sc['queries']) > 0)
-    <h3 class="mt-4">{{ __('report.search_top_queries', [], $lang) }}</h3>
+    <hr class="subsection-divider">
+    <h3>{{ __('report.search_top_queries', [], $lang) }}</h3>
     <table class="data-table">
         <thead>
             <tr>
@@ -91,7 +93,7 @@
                     $posClass = $qPos > 0 && $qPos <= 10 ? 'position-good' : ($qPos <= 20 ? 'position-moderate' : 'position-poor');
                 @endphp
                 <tr>
-                    <td>{{ $query['query'] ?? $query['keys'][0] ?? '—' }}</td>
+                    <td class="cell-break">{{ $query['query'] ?? $query['keys'][0] ?? '—' }}</td>
                     <td>{{ number_format($query['clicks'] ?? 0) }}</td>
                     <td>{{ number_format($query['impressions'] ?? 0) }}</td>
                     <td>{{ isset($query['ctr']) ? number_format($query['ctr'] * 100, 1) . '%' : '—' }}</td>
@@ -100,4 +102,104 @@
             @endforeach
         </tbody>
     </table>
+@endif
+
+{{-- Top Pages table --}}
+@if(isset($sc['pages']) && is_array($sc['pages']) && count($sc['pages']) > 0)
+    <hr class="subsection-divider">
+    <h3>{{ __('report.search_top_pages', [], $lang) }}</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>{{ __('report.search_page', [], $lang) }}</th>
+                <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                <th>{{ __('report.search_ctr', [], $lang) }}</th>
+                <th>{{ __('report.search_position', [], $lang) }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($sc['pages'] as $page)
+                @php
+                    $pageUrl = $page['page'] ?? $page['keys'][0] ?? '—';
+                    $pageUrl = preg_replace('#^https?://[^/]+#', '', $pageUrl);
+                    $pageUrl = \Illuminate\Support\Str::limit($pageUrl, 45);
+                    $pPos = $page['position'] ?? 0;
+                    $pPosClass = $pPos > 0 && $pPos <= 10 ? 'position-good' : ($pPos <= 20 ? 'position-moderate' : 'position-poor');
+                @endphp
+                <tr>
+                    <td class="cell-truncate" title="{{ $page['page'] ?? '' }}">{{ $pageUrl }}</td>
+                    <td>{{ number_format($page['clicks'] ?? 0) }}</td>
+                    <td>{{ number_format($page['impressions'] ?? 0) }}</td>
+                    <td>{{ isset($page['ctr']) ? number_format($page['ctr'] * 100, 1) . '%' : '—' }}</td>
+                    <td class="{{ $pPosClass }}">{{ isset($page['position']) ? number_format($page['position'], 1) : '—' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+@endif
+
+{{-- Countries + Devices side-by-side --}}
+@php
+    $hasCountries = isset($sc['countries']) && is_array($sc['countries']) && count($sc['countries']) > 0;
+    $hasDevices = isset($sc['devices']) && is_array($sc['devices']) && count($sc['devices']) > 0;
+@endphp
+
+@if($hasCountries || $hasDevices)
+    <hr class="subsection-divider">
+    @if($hasCountries && $hasDevices)
+        <div class="two-col">
+    @endif
+
+    @if($hasCountries)
+        <div>
+            <h3 style="margin-top: 0;">{{ __('report.search_top_countries', [], $lang) }}</h3>
+            <table class="data-table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>{{ __('report.search_country', [], $lang) }}</th>
+                        <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                        <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sc['countries'] as $country)
+                        <tr>
+                            <td>{{ $country['country'] ?? $country['keys'][0] ?? '—' }}</td>
+                            <td>{{ number_format($country['clicks'] ?? 0) }}</td>
+                            <td>{{ number_format($country['impressions'] ?? 0) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    @if($hasDevices)
+        <div>
+            <h3 style="margin-top: 0;">{{ __('report.search_top_devices', [], $lang) }}</h3>
+            <table class="data-table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>{{ __('report.search_device', [], $lang) }}</th>
+                        <th>{{ __('report.search_clicks', [], $lang) }}</th>
+                        <th>{{ __('report.search_impressions', [], $lang) }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sc['devices'] as $device)
+                        <tr>
+                            <td>{{ ucfirst($device['device'] ?? $device['keys'][0] ?? '—') }}</td>
+                            <td>{{ number_format($device['clicks'] ?? 0) }}</td>
+                            <td>{{ number_format($device['impressions'] ?? 0) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    @if($hasCountries && $hasDevices)
+        </div>
+    @endif
 @endif
