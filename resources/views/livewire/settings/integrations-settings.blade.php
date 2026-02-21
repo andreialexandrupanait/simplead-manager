@@ -11,10 +11,11 @@
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-semibold text-gray-900">Storage Destinations</h3>
-                <x-ui.button variant="secondary" size="sm" x-on:click="$dispatch('open-storage-form')">
-                    <x-icons.plus class="mr-1 h-3.5 w-3.5" />
+                <button x-on:click="$dispatch('open-storage-form')"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="w-4 h-4 text-[#0061FE]" fill="currentColor" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
                     Add Storage
-                </x-ui.button>
+                </button>
             </div>
 
             @if($this->destinations->isEmpty())
