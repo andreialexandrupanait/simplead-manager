@@ -17,12 +17,15 @@ class DropboxAuthController extends Controller
                 ->with('error', 'Dropbox App Key is not configured. Add your API credentials in Integrations settings.');
         }
 
+        $state = bin2hex(random_bytes(32));
+        session(['dropbox_oauth_state' => $state]);
+
         $params = http_build_query([
             'client_id' => $appKey,
             'response_type' => 'code',
             'redirect_uri' => route('dropbox.callback'),
             'token_access_type' => 'offline',
-            'state' => csrf_token(),
+            'state' => $state,
             'scope' => 'account_info.read files.metadata.read files.content.read files.content.write',
         ]);
 
@@ -35,6 +38,8 @@ class DropboxAuthController extends Controller
             return redirect()->route('settings.integrations')
                 ->with('error', 'Dropbox authorization was denied: ' . $request->input('error_description', 'Unknown error'));
         }
+
+        abort_unless($request->get('state') === session()->pull('dropbox_oauth_state'), 403);
 
         $code = $request->input('code');
         $appKey = config('services.dropbox.app_key');

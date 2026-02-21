@@ -224,6 +224,22 @@ class DropboxDriver implements StorageDriver
             ];
         }
 
+        while (!empty($response['has_more'])) {
+            $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder/continue', [
+                'json' => ['cursor' => $response['cursor']],
+            ]);
+
+            foreach ($response['entries'] ?? [] as $entry) {
+                $files[] = [
+                    'name' => $entry['name'],
+                    'path' => $entry['path_display'],
+                    'size' => $entry['size'] ?? 0,
+                    'is_dir' => $entry['.tag'] === 'folder',
+                    'modified_at' => $entry['server_modified'] ?? null,
+                ];
+            }
+        }
+
         return $files;
     }
 
