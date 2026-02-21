@@ -1,5 +1,6 @@
 .git
 .github
+.claude
 .env
 .env.*
 !.env.example
@@ -10,8 +11,13 @@ storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
 tests
+database/factories
 phpunit.xml
+.editorconfig
 *.md
 features/
 docker-compose*.yml
 deploy.sh
+scripts/dev-*.sh
+scripts/backfill-screenshots.php
+docker/certbot/conf/

@@ -1,58 +1,110 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 # SimpleAD Manager — Production Deployment Script
 # All containers (app, horizon, scheduler) share the same image.
 # Rebuilds the image and recreates containers for consistent deployment.
+#
+# Usage: ./deploy.sh
 
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE="docker compose -f $APP_DIR/$COMPOSE_FILE"
 
-echo "==> Pulling latest code..."
-git pull origin main
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-echo "==> Installing NPM dependencies and building assets..."
-npm ci
+log()  { echo -e "${GREEN}==>${NC} $1"; }
+warn() { echo -e "${YELLOW}==>${NC} $1"; }
+fail() { echo -e "${RED}==>${NC} $1"; exit 1; }
+
+cd "$APP_DIR"
+
+# ── Pre-flight checks ────────────────────────────────────────────────────────
+
+[ -f .env ] || fail ".env file not found"
+command -v docker >/dev/null 2>&1 || fail "docker not found"
+docker compose version >/dev/null 2>&1 || fail "docker compose plugin not found"
+command -v node >/dev/null 2>&1 || fail "node not found (needed for Vite build)"
+
+# ── Step 1: Pull latest code ─────────────────────────────────────────────────
+
+log "Pulling latest code..."
+git pull --ff-only || fail "git pull failed — resolve conflicts manually"
+
+# ── Step 2: Build frontend assets ────────────────────────────────────────────
+
+log "Installing NPM dependencies and building assets..."
+npm ci --no-audit --no-fund
 npm run build
 rm -rf node_modules
 
-echo "==> Building new Docker image..."
-docker compose -f "$COMPOSE_FILE" build app
+# ── Step 3: Build Docker image ───────────────────────────────────────────────
 
-echo "==> Terminating Horizon gracefully..."
-docker compose -f "$COMPOSE_FILE" exec app php artisan horizon:terminate 2>/dev/null || true
+log "Building new Docker image..."
+$COMPOSE build app
+
+# ── Step 4: Gracefully stop Horizon ──────────────────────────────────────────
+
+log "Terminating Horizon gracefully..."
+$COMPOSE exec app php artisan horizon:terminate 2>/dev/null || warn "Horizon not running (skipped)"
 sleep 5
 
-echo "==> Recreating containers with new image..."
-docker compose -f "$COMPOSE_FILE" up -d app horizon scheduler
+# ── Step 5: Maintenance mode ─────────────────────────────────────────────────
 
-echo "==> Waiting for app container to be healthy..."
-timeout=60
-elapsed=0
-until docker compose -f "$COMPOSE_FILE" exec app php -r 'echo "ok";' 2>/dev/null | grep -q ok; do
-    sleep 2
-    elapsed=$((elapsed + 2))
-    if [ $elapsed -ge $timeout ]; then
-        echo "ERROR: App container did not become healthy within ${timeout}s"
-        exit 1
+log "Entering maintenance mode..."
+$COMPOSE exec app php artisan down 2>/dev/null || true
+
+# ── Step 6: Recreate containers with new image ───────────────────────────────
+
+log "Recreating containers with new image..."
+$COMPOSE up -d app horizon scheduler
+
+log "Waiting for app container to be healthy..."
+TIMEOUT=90
+ELAPSED=0
+until $COMPOSE exec app php -r 'echo "ok";' 2>/dev/null | grep -q ok; do
+    sleep 3
+    ELAPSED=$((ELAPSED + 3))
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        fail "App container did not become healthy within ${TIMEOUT}s"
     fi
 done
-echo "    App container is ready."
+log "App container is ready."
 
-echo "==> Running database migrations..."
-docker compose -f "$COMPOSE_FILE" exec app php artisan migrate --force
+# ── Step 7: Run migrations ───────────────────────────────────────────────────
 
-echo "==> Caching configuration..."
-docker compose -f "$COMPOSE_FILE" exec app php artisan config:cache
-docker compose -f "$COMPOSE_FILE" exec app php artisan route:cache
-docker compose -f "$COMPOSE_FILE" exec app php artisan view:cache
-docker compose -f "$COMPOSE_FILE" exec app php artisan event:cache
+log "Running database migrations..."
+$COMPOSE exec app php artisan migrate --force
 
-echo "==> Restarting Horizon..."
-docker compose -f "$COMPOSE_FILE" exec app php artisan horizon:terminate 2>/dev/null || true
+# ── Step 8: Cache configuration ──────────────────────────────────────────────
 
-echo "==> Restarting queue workers..."
-docker compose -f "$COMPOSE_FILE" exec app php artisan queue:restart
+log "Caching configuration..."
+$COMPOSE exec app php artisan config:cache
+$COMPOSE exec app php artisan route:cache
+$COMPOSE exec app php artisan view:cache
+$COMPOSE exec app php artisan event:cache
+
+# ── Step 9: Restart queue workers ────────────────────────────────────────────
+
+log "Restarting queue workers..."
+$COMPOSE exec app php artisan queue:restart
+
+# ── Step 10: Leave maintenance mode ──────────────────────────────────────────
+
+log "Leaving maintenance mode..."
+$COMPOSE exec app php artisan up
+
+# ── Step 11: Restart Nginx (picks up any new static files) ───────────────────
+
+log "Restarting Nginx..."
+$COMPOSE restart nginx
+
+# ── Verify ────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "==> Deploy complete!"
-echo "    Verify: docker compose -f $COMPOSE_FILE ps"
+log "Deploy complete!"
+echo "    Verify: $COMPOSE ps"
+echo "    Logs:   $COMPOSE logs --tail=20 app horizon scheduler"
