@@ -230,7 +230,9 @@ class StorageDestinationForm extends Component
             $this->browserCurrentPath = $path;
         } catch (\RuntimeException $e) {
             $message = $e->getMessage();
-            if (str_contains($message, '401') || str_contains($message, 'expired')) {
+            if (str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
+                $this->browserError = 'Dropbox credentials could not be decrypted. The APP_KEY may have changed. Please reconnect Dropbox.';
+            } elseif (str_contains($message, '401') || str_contains($message, 'expired')) {
                 $this->browserError = 'Dropbox token expired. Please reconnect Dropbox.';
             } elseif (str_contains($message, 'not_found')) {
                 $this->browserError = 'Folder not found.';

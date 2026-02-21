@@ -3,6 +3,7 @@
 namespace App\Services\Backup\Storage;
 
 use App\Models\StorageDestination;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -284,14 +285,22 @@ class DropboxDriver implements StorageDriver
 
     protected function getAccessToken(): string
     {
-        return decrypt($this->config['access_token'] ?? '');
+        try {
+            return decrypt($this->config['access_token'] ?? '');
+        } catch (DecryptException) {
+            throw new RuntimeException('Dropbox credentials could not be decrypted. The APP_KEY may have changed. Please reconnect Dropbox.');
+        }
     }
 
     protected function refreshAccessToken(): string
     {
-        $appKey = decrypt($this->config['app_key'] ?? '');
-        $appSecret = decrypt($this->config['app_secret'] ?? '');
-        $refreshToken = decrypt($this->config['refresh_token'] ?? '');
+        try {
+            $appKey = decrypt($this->config['app_key'] ?? '');
+            $appSecret = decrypt($this->config['app_secret'] ?? '');
+            $refreshToken = decrypt($this->config['refresh_token'] ?? '');
+        } catch (DecryptException) {
+            throw new RuntimeException('Dropbox credentials could not be decrypted. The APP_KEY may have changed. Please reconnect Dropbox.');
+        }
 
         $response = Http::asForm()->post('https://api.dropbox.com/oauth2/token', [
             'grant_type' => 'refresh_token',
