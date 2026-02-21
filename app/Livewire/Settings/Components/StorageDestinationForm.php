@@ -4,6 +4,7 @@ namespace App\Livewire\Settings\Components;
 
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -228,10 +229,13 @@ class StorageDestinationForm extends Component
             $driver = StorageFactory::make($destination);
             $this->browserFolders = $driver->listFolders($path);
             $this->browserCurrentPath = $path;
-        } catch (\RuntimeException $e) {
+        } catch (DecryptException) {
+            $this->browserError = 'Dropbox credentials could not be decrypted. Please reconnect Dropbox.';
+            $this->browserFolders = [];
+        } catch (\Throwable $e) {
             $message = $e->getMessage();
-            if (str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
-                $this->browserError = 'Dropbox credentials could not be decrypted. The APP_KEY may have changed. Please reconnect Dropbox.';
+            if ($e instanceof DecryptException || str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
+                $this->browserError = 'Dropbox credentials could not be decrypted. Please reconnect Dropbox.';
             } elseif (str_contains($message, '401') || str_contains($message, 'expired')) {
                 $this->browserError = 'Dropbox token expired. Please reconnect Dropbox.';
             } elseif (str_contains($message, 'not_found')) {

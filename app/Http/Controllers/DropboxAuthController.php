@@ -13,8 +13,8 @@ class DropboxAuthController extends Controller
         $appKey = config('services.dropbox.app_key');
 
         if (empty($appKey)) {
-            return redirect()->route('settings.general')
-                ->with('error', 'Dropbox App Key is not configured. Set DROPBOX_APP_KEY in your .env file.');
+            return redirect()->route('settings.integrations')
+                ->with('error', 'Dropbox App Key is not configured. Add your API credentials in Integrations settings.');
         }
 
         $params = http_build_query([
@@ -32,7 +32,7 @@ class DropboxAuthController extends Controller
     public function callback(Request $request)
     {
         if ($request->has('error')) {
-            return redirect()->route('settings.general')
+            return redirect()->route('settings.integrations')
                 ->with('error', 'Dropbox authorization was denied: ' . $request->input('error_description', 'Unknown error'));
         }
 
@@ -50,7 +50,7 @@ class DropboxAuthController extends Controller
         ]);
 
         if ($response->failed()) {
-            return redirect()->route('settings.general')
+            return redirect()->route('settings.integrations')
                 ->with('error', 'Failed to exchange Dropbox authorization code for tokens.');
         }
 
@@ -65,7 +65,7 @@ class DropboxAuthController extends Controller
             ]);
         }
         $accountResponse = $accountRequest
-            ->withBody('', 'application/json')
+            ->withBody('null', 'application/json')
             ->post('https://api.dropboxapi.com/2/users/get_current_account');
 
         $accountName = 'Dropbox';
@@ -86,16 +86,18 @@ class DropboxAuthController extends Controller
             }
         }
 
-        // Preserve existing base_path if the destination already exists
+        // Preserve existing paths if the destination already exists
         $existing = StorageDestination::where('type', 'dropbox')->first();
-        $basePath = $existing?->config['base_path'] ?? '/#1 SAD Workspace/4. Backup';
+        $existingConfig = $existing?->config ?? [];
 
         $config = [
             'access_token' => encrypt($data['access_token']),
             'refresh_token' => encrypt($data['refresh_token']),
             'app_key' => encrypt($appKey),
             'app_secret' => encrypt($appSecret),
-            'base_path' => $basePath,
+            'base_path' => $existingConfig['base_path'] ?? '/#1 SAD Workspace/4. Backup',
+            'reports_path' => $existingConfig['reports_path'] ?? '',
+            'app_backups_path' => $existingConfig['app_backups_path'] ?? '',
         ];
 
         if ($rootNamespaceId) {
@@ -125,7 +127,7 @@ class DropboxAuthController extends Controller
             ]);
         }
         $spaceResponse = $spaceRequest
-            ->withBody('', 'application/json')
+            ->withBody('null', 'application/json')
             ->post('https://api.dropboxapi.com/2/users/get_space_usage');
 
         if ($spaceResponse->ok()) {
@@ -136,7 +138,7 @@ class DropboxAuthController extends Controller
             ]);
         }
 
-        return redirect()->route('settings.general')
-            ->with('settings-saved', 'Dropbox storage connected successfully.');
+        return redirect()->route('settings.integrations')
+            ->with('success', 'Dropbox storage connected successfully.');
     }
 }
