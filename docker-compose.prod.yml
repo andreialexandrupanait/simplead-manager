@@ -299,4 +299,4 @@ volumes:
     name: simplead-manager_certbot_data
   app-storage:
     external: true
-    name: simplead-manager_app_storage
+    name: simplead-manager_app-storage
