@@ -24,7 +24,7 @@ class GoogleAuthController extends Controller
 
         $params = http_build_query([
             'client_id' => $clientId,
-            'redirect_uri' => config('services.google.redirect_uri'),
+            'redirect_uri' => route('google.callback'),
             'response_type' => 'code',
             'scope' => implode(' ', [
                 'openid',
@@ -55,7 +55,7 @@ class GoogleAuthController extends Controller
         $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.client_id'),
             'client_secret' => config('services.google.client_secret'),
-            'redirect_uri' => config('services.google.redirect_uri'),
+            'redirect_uri' => route('google.callback'),
             'grant_type' => 'authorization_code',
             'code' => $code,
         ]);

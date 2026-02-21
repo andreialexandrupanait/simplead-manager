@@ -265,7 +265,7 @@
                         <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
                             <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="font-medium underline hover:text-blue-900">Google Cloud Console &rarr; Credentials</a></li>
                             <li>Create or select an <strong>OAuth 2.0 Client ID</strong> (type: Web application)</li>
-                            <li>Under <strong>Authorized redirect URIs</strong>, add: <code class="bg-blue-100 px-1 rounded text-xs">{{ config('services.google.redirect_uri') ?: url('/google/callback') }}</code></li>
+                            <li>Under <strong>Authorized redirect URIs</strong>, add: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('google.callback') }}</code></li>
                             <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below</li>
                         </ol>
                         <p class="mt-2 text-xs text-blue-600">Make sure the <strong>Google Analytics API</strong> and <strong>Google Search Console API</strong> are enabled in your project.</p>
