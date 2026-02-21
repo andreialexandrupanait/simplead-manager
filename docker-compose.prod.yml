@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   app:
@@ -141,6 +140,8 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - simplead-certbot:/var/www/certbot
+    networks:
+      - simplead
     deploy:
       resources:
         limits:
@@ -152,8 +153,8 @@ services:
     container_name: simplead-pgsql
     restart: unless-stopped
     environment:
-      POSTGRES_DB: simplead_manager
-      POSTGRES_USER: simplead
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
     command:
@@ -267,6 +268,13 @@ services:
       - "--chromium-disable-javascript=true"
       - "--api-timeout=120s"
       - "--log-level=warn"
+      - "--api-health-uri=/health"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       - simplead
     deploy:
@@ -290,4 +298,5 @@ volumes:
     external: true
     name: simplead-manager_certbot_data
   app-storage:
-    driver: local
+    external: true
+    name: simplead-manager_app_storage
