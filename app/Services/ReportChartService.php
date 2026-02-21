@@ -28,7 +28,7 @@ class ReportChartService
 
         $chartWidth = $width - $paddingLeft - 10;
         $chartHeight = $height - $paddingBottom - 10;
-        $yMax = $forceYMax ?? (max($values) ?: 1);
+        $yMax = $forceYMax ?? ((max($values) ?: 1) * 1.1);
         $count = count($values);
         $xStep = $count > 1 ? $chartWidth / ($count - 1) : $chartWidth;
 
@@ -95,9 +95,9 @@ class ReportChartService
 
             // Catmull-Rom to Bézier control points
             $cp1x = round($p1['x'] + ($p2['x'] - $p0['x']) * $tension, 2);
-            $cp1y = round($p1['y'] + ($p2['y'] - $p0['y']) * $tension, 2);
+            $cp1y = round(max(2, $p1['y'] + ($p2['y'] - $p0['y']) * $tension), 2);
             $cp2x = round($p2['x'] - ($p3['x'] - $p1['x']) * $tension, 2);
-            $cp2y = round($p2['y'] - ($p3['y'] - $p1['y']) * $tension, 2);
+            $cp2y = round(max(2, $p2['y'] - ($p3['y'] - $p1['y']) * $tension), 2);
 
             $path .= " C {$cp1x},{$cp1y} {$cp2x},{$cp2y} {$p2['x']},{$p2['y']}";
         }

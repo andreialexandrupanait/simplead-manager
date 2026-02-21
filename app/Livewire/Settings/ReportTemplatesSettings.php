@@ -26,14 +26,20 @@ class ReportTemplatesSettings extends Component
      * used in partials. Some keys differ (e.g. 'uptime' -> 'technical_stability').
      */
     protected static array $sectionKeyMap = [
-        'overview' => 'executive_snapshot',
-        'uptime' => 'technical_stability',
-        'updates' => 'updates',
-        'backups' => 'backups',
-        'analytics' => 'analytics',
-        'search_console' => 'search_console',
-        'performance' => 'performance',
-        'database' => null, // No standalone sub-options; database is part of technical_stability
+        'overview'          => 'executive_snapshot',
+        'uptime'            => 'technical_stability',
+        'updates'           => 'updates',
+        'backups'           => 'backups',
+        'analytics'         => 'analytics',
+        'search_console'    => 'search_console',
+        'performance'       => 'performance',
+        'infrastructure'    => 'infrastructure',
+        'plugin_inventory'  => 'plugin_inventory',
+        'database_health'   => 'database_health',
+        'cloudflare'        => 'cloudflare',
+        'wp_users'          => 'wp_users',
+        'security_checks'   => 'security_checks',
+        'recommendations'   => 'recommendations',
     ];
 
     /**
@@ -42,7 +48,16 @@ class ReportTemplatesSettings extends Component
     public static function sectionSubOptions(): array
     {
         return [
-            'executive_snapshot' => [],
+            'executive_snapshot' => [
+                'show_uptime'       => 'Uptime',
+                'show_downtime'     => 'Downtime',
+                'show_updates'      => 'Updates',
+                'show_backups'      => 'Backups',
+                'show_desktop_perf' => 'Desktop Performance',
+                'show_mobile_perf'  => 'Mobile Performance',
+                'show_users'        => 'Users (Analytics)',
+                'show_impressions'  => 'Impressions (Search Console)',
+            ],
             'technical_stability' => [
                 'show_incidents_table' => 'Incidents Table',
                 'show_security' => 'Security Sub-card',
@@ -81,6 +96,11 @@ class ReportTemplatesSettings extends Component
                 'show_performance' => 'Performance Recommendations',
                 'show_seo' => 'SEO Recommendations',
             ],
+            'plugin_inventory'  => [],
+            'database_health'   => [],
+            'cloudflare'        => [],
+            'wp_users'          => [],
+            'security_checks'   => [],
         ];
     }
 
@@ -208,7 +228,7 @@ class ReportTemplatesSettings extends Component
         $this->editingTemplateId = null;
         $this->name = '';
         $this->description = '';
-        $this->sections = ['overview', 'updates', 'uptime', 'backups', 'analytics', 'search_console', 'performance'];
+        $this->sections = ['overview', 'updates', 'uptime', 'infrastructure', 'backups', 'analytics', 'search_console', 'performance', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks', 'recommendations'];
         $this->section_overrides = [];
         $this->section_options = [];
         $this->expandedSections = [];

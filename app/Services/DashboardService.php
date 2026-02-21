@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ActivityLog;
 use App\Models\Backup;
-use App\Models\Client;
 use App\Models\Site;
 use App\Models\SslCertificate;
 use App\Models\DomainMonitor;
@@ -17,10 +16,7 @@ class DashboardService
 {
     public function getStats(): array
     {
-        $totalSites = Site::count();
-        $sitesUp = Site::where('is_up', true)->count();
         $sitesDown = Site::where('is_up', false)->count();
-        $totalClients = Client::count();
 
         $avgUptime = UptimeMonitor::whereHas('site')->whereNotNull('uptime_30d')->avg('uptime_30d');
         $avgResponseTime = UptimeMonitor::whereHas('site')
@@ -28,13 +24,38 @@ class DashboardService
             ->where('avg_response_time', '>', 0)
             ->avg('avg_response_time');
 
+        $pendingPluginUpdates = \App\Models\SitePlugin::whereHas('site')->where('has_update', true)->count();
+        $pendingThemeUpdates = \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count();
+        $pendingCoreUpdates = Site::whereNotNull('core_update_version')->count();
+
+        $failedBackups = Backup::whereHas('site')
+            ->where('status', 'failed')
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
+
+        $sslExpiring = SslCertificate::whereHas('site')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now()->addDays(30))
+            ->where('expires_at', '>', now())
+            ->count();
+
+        $domainsExpiring = DomainMonitor::whereHas('site')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now()->addDays(30))
+            ->where('expires_at', '>', now())
+            ->count();
+
         return [
-            'total_sites' => $totalSites,
-            'sites_up' => $sitesUp,
             'sites_down' => $sitesDown,
-            'total_clients' => $totalClients,
             'avg_uptime' => $avgUptime ? round($avgUptime, 2) : null,
             'avg_response_time' => $avgResponseTime ? (int) round($avgResponseTime) : null,
+            'pending_updates' => $pendingPluginUpdates + $pendingThemeUpdates + $pendingCoreUpdates,
+            'pending_plugin_updates' => $pendingPluginUpdates,
+            'pending_theme_updates' => $pendingThemeUpdates,
+            'pending_core_updates' => $pendingCoreUpdates,
+            'failed_backups' => $failedBackups,
+            'ssl_expiring' => $sslExpiring,
+            'domains_expiring' => $domainsExpiring,
         ];
     }
 
@@ -182,6 +203,7 @@ class DashboardService
                 'siteThemes as themes_with_updates_count' => fn($q) => $q->where('has_update', true),
                 'siteUsers',
                 'backups',
+                'reportSchedules',
             ]);
 
         if ($search !== '') {

@@ -28,7 +28,6 @@ class GeneralSettings extends Component
     public int $defaultInterval = 300;
     public int $defaultTimeout = 30;
     public int $alertAfterFailures = 3;
-    public int $dataRetentionDays = 90;
 
     // Favicon (small square icon — browser tab + sidebar icon)
     public $favicon;
@@ -53,7 +52,6 @@ class GeneralSettings extends Component
         $this->defaultInterval = (int) $settings->get('default_interval', 300);
         $this->defaultTimeout = (int) $settings->get('default_timeout', 30);
         $this->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
-        $this->dataRetentionDays = (int) $settings->get('data_retention_days', 90);
         $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
     }
@@ -78,7 +76,6 @@ class GeneralSettings extends Component
             'defaultInterval' => 'required|integer|min:60|max:3600',
             'defaultTimeout' => 'required|integer|min:5|max:120',
             'alertAfterFailures' => 'required|integer|min:1|max:10',
-            'dataRetentionDays' => 'required|integer|min:7|max:365',
             'favicon' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,ico,svg|max:1024',
             'logo' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg|max:2048',
         ]);
@@ -90,7 +87,6 @@ class GeneralSettings extends Component
         $settings->set('default_interval', $this->defaultInterval, 'monitoring', 'integer');
         $settings->set('default_timeout', $this->defaultTimeout, 'monitoring', 'integer');
         $settings->set('alert_after_failures', $this->alertAfterFailures, 'monitoring', 'integer');
-        $settings->set('data_retention_days', $this->dataRetentionDays, 'monitoring', 'integer');
 
         if ($this->favicon) {
             if ($this->faviconPath) {

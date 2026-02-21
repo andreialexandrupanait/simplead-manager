@@ -3,13 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UptimeCheck extends Model
 {
-    use HasFactory, MassPrunable;
+    use HasFactory;
 
     public $timestamps = false;
 
@@ -38,8 +37,4 @@ class UptimeCheck extends Model
         return $this->belongsTo(UptimeMonitor::class, 'monitor_id');
     }
 
-    public function prunable()
-    {
-        return static::where('checked_at', '<', now()->subDays(45));
-    }
 }

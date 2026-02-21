@@ -34,13 +34,19 @@ class CheckEmailDeliverabilityJob implements ShouldQueue, ShouldBeUnique
         try {
             EmailDeliverabilityService::check($this->site);
         } catch (\Exception $e) {
-            Log::warning("Email deliverability check failed for site {$this->site->id}: {$e->getMessage()}");
+            Log::warning("Email deliverability check failed for site {$this->site->id}", [
+                'exception' => get_class($e),
+                'code' => $e->getCode(),
+            ]);
             throw $e;
         }
     }
 
     public function failed(?\Throwable $exception): void
     {
-        Log::error("Email deliverability check permanently failed for site {$this->site->id}: " . ($exception?->getMessage() ?? 'Unknown error'));
+        Log::error("Email deliverability check permanently failed for site {$this->site->id}", [
+            'exception' => $exception ? get_class($exception) : 'Unknown',
+            'code' => $exception?->getCode(),
+        ]);
     }
 }

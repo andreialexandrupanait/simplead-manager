@@ -146,7 +146,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             SyncWordPressSite::dispatch($site);
 
         } catch (\Exception $e) {
-            Log::error("Restore failed for backup {$this->backup->id}: {$e->getMessage()}");
+            Log::error("Restore failed for backup {$this->backup->id}", [
+                'exception' => get_class($e),
+                'code' => $e->getCode(),
+            ]);
 
             $this->backup->update([
                 'restore_status' => 'failed',

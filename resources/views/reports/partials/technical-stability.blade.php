@@ -291,10 +291,13 @@
             <div class="kpi-card">
                 <div class="kpi-value" style="font-size: 14pt; color: {{ $emailColor }};">{{ $emailScore !== null ? $emailScore . '/100' : '—' }}</div>
                 <div class="kpi-label">{{ __('report.tech_email_subcard', [], $lang) }}</div>
+                @php
+                    $dmarcEffective = ($email['dmarc_exists'] ?? false) && !in_array(strtolower($email['dmarc_policy'] ?? ''), ['none', '']);
+                @endphp
                 <div class="card-sublabel">
                     SPF {!! ($email['spf_exists'] ?? false) ? '✓' : '✗' !!}
                     &nbsp; DKIM {!! ($email['dkim_exists'] ?? false) ? '✓' : '✗' !!}
-                    &nbsp; DMARC {!! ($email['dmarc_exists'] ?? false) ? '✓' : '✗' !!}
+                    &nbsp; DMARC {!! $dmarcEffective ? '✓' : '✗' !!}
                 </div>
             </div>
         @endif

@@ -223,11 +223,14 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        \Illuminate\Support\Facades\Log::error("SSL certificate check failed for {$this->certificate->domain}: " . ($exception?->getMessage() ?? 'Unknown error'));
+        \Illuminate\Support\Facades\Log::error("SSL certificate check failed for {$this->certificate->domain}", [
+            'exception' => $exception ? get_class($exception) : 'Unknown',
+            'code' => $exception?->getCode(),
+        ]);
 
         $this->certificate->update([
             'status' => 'error',
-            'error_message' => 'Job failed: ' . ($exception?->getMessage() ?? 'Unknown error'),
+            'error_message' => 'Job failed: ' . ($exception ? get_class($exception) : 'Unknown error'),
             'last_checked_at' => now(),
             'next_check_at' => now()->addHours(1),
         ]);

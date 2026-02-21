@@ -7,24 +7,21 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "anthropic-ai/sdk": "^0.5.0",
         "aws/aws-sdk-php": "^3.369",
         "bacon/bacon-qr-code": "^3.0",
         "gotenberg/gotenberg-php": "^2.0",
         "guzzlehttp/guzzle": "^7.10",
         "laravel/framework": "^11.31",
         "laravel/horizon": "^5.43",
-        "laravel/tinker": "^2.9",
         "livewire/livewire": "^4.1",
-        "pragmarx/google2fa-laravel": "^2.3",
-        "spatie/browsershot": "^5.2"
+        "pragmarx/google2fa-laravel": "^2.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.3",
         "laravel/pail": "^1.1",
         "laravel/pint": "^1.13",
-        "laravel/sail": "^1.26",
+        "laravel/tinker": "^2.9",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.1",
         "phpunit/phpunit": "^11.0.1"

@@ -148,7 +148,15 @@ class AppBackupService
 
             if ($destination) {
                 $driver = StorageFactory::make($destination);
-                $driver->upload($archivePath, $remotePath);
+                $appBackupsPath = $destination->config['app_backups_path'] ?? null;
+
+                if ($appBackupsPath) {
+                    $absoluteRemotePath = rtrim($appBackupsPath, '/') . '/' . $fileName;
+                    $driver->uploadToAbsolutePath($archivePath, $absoluteRemotePath);
+                    $remotePath = $absoluteRemotePath;
+                } else {
+                    $driver->upload($archivePath, $remotePath);
+                }
                 $destination->increment('used_bytes', $fileSize);
             } else {
                 // Local fallback

@@ -27,7 +27,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1800;
-    public int $tries = 1;
+    public int $tries = 2;
+    public array $backoff = [120];
 
     protected ?Backup $backup = null;
     protected ?string $tempDir = null;
@@ -192,7 +193,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             JobTracker::complete($this->uniqueId(), 'Backup complete');
 
         } catch (\Exception $e) {
-            Log::error("Backup failed for site {$this->site->id}: {$e->getMessage()}");
+            Log::error("Backup failed for site {$this->site->id}", [
+                'exception' => get_class($e),
+                'code' => $e->getCode(),
+            ]);
 
             if ($this->backup) {
                 $this->backup->update([
@@ -297,7 +301,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                     $oldBackup->delete();
                 });
             } catch (\Exception $e) {
-                Log::warning("Failed to delete old backup {$oldBackup->id}: {$e->getMessage()}");
+                Log::warning("Failed to delete old backup {$oldBackup->id}", [
+                    'exception' => get_class($e),
+                    'code' => $e->getCode(),
+                ]);
             }
         }
     }
@@ -318,7 +325,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Backup failed');
-        JobTracker::fail($this->uniqueId(), 'Backup failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        $exceptionClass = $exception ? get_class($exception) : 'Unknown';
+        CircuitBreakerService::recordFailure($this->site, "Backup failed: {$exceptionClass}");
+        JobTracker::fail($this->uniqueId(), "Backup failed: {$exceptionClass}");
     }
 }

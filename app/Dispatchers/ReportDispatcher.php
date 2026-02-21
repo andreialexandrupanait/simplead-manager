@@ -3,6 +3,7 @@
 namespace App\Dispatchers;
 
 use App\Jobs\GenerateReport;
+use App\Jobs\NotifyUpcomingReport;
 use App\Models\ReportSchedule;
 
 class ReportDispatcher
@@ -14,6 +15,21 @@ class ReportDispatcher
      */
     public function __invoke(): void
     {
+        // Send 3-day reminder notifications for upcoming reports
+        ReportSchedule::query()
+            ->where('is_active', true)
+            ->whereNotNull('next_run_at')
+            ->where('next_run_at', '>', now())
+            ->where('next_run_at', '<=', now()->addDays(3))
+            ->where(fn ($q) => $q->whereNull('reminder_sent_at')->orWhere('reminder_sent_at', '<', now()->subDays(3)))
+            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            ->with('site')
+            ->each(function (ReportSchedule $schedule) {
+                NotifyUpcomingReport::dispatch($schedule);
+                $schedule->update(['reminder_sent_at' => now()]);
+            });
+
+        // Dispatch due report generation jobs
         ReportSchedule::query()
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_run_at')->orWhere('next_run_at', '<=', now()))

@@ -4,10 +4,13 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Rules\RomanianCui;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 class ClientForm extends Component
 {
+    use AuthorizesRequests;
+
     public ?Client $client = null;
 
     public string $name = '';
@@ -26,6 +29,7 @@ class ClientForm extends Component
     public function mount(?Client $client = null): void
     {
         if ($client?->exists) {
+            $this->authorize('update', $client);
             $this->client = $client;
             $this->name = $client->name ?? '';
             $this->email = $client->email ?? '';
@@ -39,6 +43,8 @@ class ClientForm extends Component
             $this->registration_number = $client->registration_number ?? '';
             $this->notes = $client->notes ?? '';
             $this->status = $client->status ?? 'active';
+        } else {
+            $this->authorize('create', Client::class);
         }
     }
 
@@ -65,9 +71,11 @@ class ClientForm extends Component
         $validated = $this->validate();
 
         if ($this->client) {
+            $this->authorize('update', $this->client);
             $this->client->update($validated);
             session()->flash('success', 'Client updated successfully.');
         } else {
+            $this->authorize('create', Client::class);
             $client = Client::create($validated);
             session()->flash('success', 'Client created successfully.');
             $this->redirect(route('clients.show', $client), navigate: true);

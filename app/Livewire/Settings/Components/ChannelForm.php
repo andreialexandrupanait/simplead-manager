@@ -18,6 +18,7 @@ class ChannelForm extends Component
     public string $webhookUrl = '';
     public string $webhookMethod = 'POST';
     public string $webhookHeaders = '';
+    public string $webhookSigningSecret = '';
 
     // Telegram fields
     public string $telegramBotToken = '';
@@ -54,6 +55,7 @@ class ChannelForm extends Component
                     $this->webhookUrl = $channel->config['url'] ?? '';
                     $this->webhookMethod = $channel->config['method'] ?? 'POST';
                     $this->webhookHeaders = isset($channel->config['headers']) ? json_encode($channel->config['headers'], JSON_PRETTY_PRINT) : '';
+                    $this->webhookSigningSecret = $channel->config['signing_secret'] ?? '';
                 })(),
                 default => null,
             };
@@ -73,6 +75,7 @@ class ChannelForm extends Component
         $this->webhookUrl = '';
         $this->webhookMethod = 'POST';
         $this->webhookHeaders = '';
+        $this->webhookSigningSecret = '';
         $this->telegramBotToken = '';
         $this->telegramChatId = '';
         $this->eventSubscriptions = [];
@@ -112,11 +115,12 @@ class ChannelForm extends Component
                 'bot_token' => encrypt($this->telegramBotToken),
                 'chat_id' => $this->telegramChatId,
             ],
-            'webhook' => [
+            'webhook' => array_filter([
                 'url' => $this->webhookUrl,
                 'method' => $this->webhookMethod,
                 'headers' => $this->webhookHeaders ? json_decode($this->webhookHeaders, true) : [],
-            ],
+                'signing_secret' => $this->webhookSigningSecret ?: null,
+            ]),
             default => [],
         };
 

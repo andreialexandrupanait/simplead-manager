@@ -156,33 +156,14 @@
             @endif
         </x-ui.card>
 
-        {{-- Active Sessions --}}
+        {{-- Data Export (GDPR) --}}
         <x-ui.card>
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">{{ __('Active Sessions') }}</h3>
-                    <p class="text-sm text-gray-500">{{ __('Manage your active sessions across devices.') }}</p>
-                </div>
-                <x-ui.button variant="secondary" wire:click="logoutOtherSessions" wire:confirm="{{ __('Log out all other sessions?') }}">
-                    {{ __('Log Out Others') }}
-                </x-ui.button>
-            </div>
-
-            <div class="divide-y divide-gray-100">
-                @foreach($this->sessions as $session)
-                    <div class="flex items-center justify-between py-3">
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">
-                                {{ Str::limit($session->user_agent, 60) }}
-                                @if($session->is_current)
-                                    <x-ui.badge variant="green">{{ __('Current') }}</x-ui.badge>
-                                @endif
-                            </p>
-                            <p class="text-xs text-gray-500">{{ $session->ip_address }} &middot; {{ $session->last_activity }}</p>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            <h3 class="text-base font-semibold text-gray-900 mb-2">{{ __('Download My Data') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('Export a copy of all your personal data including profile, sites, report metadata, and activity logs.') }}</p>
+            <x-ui.button variant="secondary" wire:click="exportData" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="exportData">{{ __('Download My Data') }}</span>
+                <span wire:loading wire:target="exportData">{{ __('Preparing export...') }}</span>
+            </x-ui.button>
         </x-ui.card>
 
         {{-- Danger Zone --}}

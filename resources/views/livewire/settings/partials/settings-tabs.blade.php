@@ -12,6 +12,7 @@
                     ['route' => 'settings.site-presets', 'label' => __('Site Presets')],
                     ['route' => 'settings.status-pages', 'label' => __('Status Pages')],
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
+                    ['route' => 'settings.data-retention', 'label' => __('Data Retention')],
                     ['route' => 'settings.application-backup', 'label' => __('Application Backup')],
                 ], $tabs);
             }

@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\PluginConflictService;
+use App\Services\SecurityRecommendationService;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -134,10 +135,10 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                     $this->site->siteUsers()->updateOrCreate(
                         ['wp_user_id' => $user['id']],
                         [
-                            'username' => $user['username'] ?? '',
+                            'username' => $user['login'] ?? $user['username'] ?? '',
                             'email' => $user['email'] ?? null,
                             'display_name' => $user['display_name'] ?? null,
-                            'role' => $user['role'] ?? null,
+                            'role' => $user['roles'][0] ?? $user['role'] ?? null,
                             'avatar_url' => $user['avatar_url'] ?? null,
                             'posts_count' => $user['posts_count'] ?? 0,
                             'registered_at' => $user['registered'] ?? null,
@@ -179,6 +180,13 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 PluginConflictService::checkSite($this->site);
             } catch (\Exception $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
+
+            // Run security checks
+            try {
+                SecurityRecommendationService::check($this->site);
+            } catch (\Exception $e) {
+                Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Fetch DB cleanup stats for overview card

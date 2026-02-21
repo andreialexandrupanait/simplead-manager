@@ -33,6 +33,18 @@ class DropboxDriver implements StorageDriver
         }
     }
 
+    public function uploadToAbsolutePath(string $localPath, string $absoluteDropboxPath): void
+    {
+        $fileSize = filesize($localPath);
+        $path = '/' . ltrim($absoluteDropboxPath, '/');
+
+        if ($fileSize > self::LARGE_FILE_THRESHOLD) {
+            $this->uploadChunked($localPath, $path);
+        } else {
+            $this->uploadSimple($localPath, $path);
+        }
+    }
+
     protected function uploadSimple(string $localPath, string $dropboxPath): void
     {
         $this->apiRequest('https://content.dropboxapi.com/2/files/upload', [

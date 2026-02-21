@@ -41,7 +41,7 @@
             || (($data['domain'] ?? null) && ($sectionOptions['infrastructure']['show_domain'] ?? true))
             || (($data['email'] ?? null) && ($sectionOptions['infrastructure']['show_email'] ?? true));
     @endphp
-    @if($hasVisibleInfra)
+    @if($hasVisibleInfra && in_array('infrastructure', $sections))
         @php $sectionNumber++; @endphp
         <div class="report-section">
             @include('reports.partials.infrastructure')
@@ -128,11 +128,13 @@
         </div>
     @endif
 
-    {{-- Recommendations (always shown) --}}
-    @php $sectionNumber++; @endphp
-    <div class="report-section">
-        @include('reports.partials.recommendations')
-    </div>
+    {{-- Recommendations --}}
+    @if(in_array('recommendations', $sections))
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.recommendations')
+        </div>
+    @endif
 
 </body>
 </html>

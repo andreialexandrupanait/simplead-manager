@@ -272,6 +272,16 @@ class Site extends Model
         return $this->hasOne(SearchConsoleConnection::class);
     }
 
+    public function analyticsCaches(): HasMany
+    {
+        return $this->hasMany(AnalyticsCache::class);
+    }
+
+    public function searchConsoleCaches(): HasMany
+    {
+        return $this->hasMany(SearchConsoleCache::class);
+    }
+
     public function reportSchedules(): HasMany
     {
         return $this->hasMany(ReportSchedule::class);

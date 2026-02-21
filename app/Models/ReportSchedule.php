@@ -30,6 +30,7 @@ class ReportSchedule extends Model
         'last_generated_at',
         'last_sent_at',
         'next_run_at',
+        'reminder_sent_at',
     ];
 
     protected $casts = [
@@ -39,6 +40,7 @@ class ReportSchedule extends Model
         'last_generated_at' => 'datetime',
         'last_sent_at' => 'datetime',
         'next_run_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
     ];
 
     public function site(): BelongsTo

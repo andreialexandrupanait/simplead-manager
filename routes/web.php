@@ -5,6 +5,7 @@ use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\DropboxAuthController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
+use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ReportDownloadController;
 use App\Livewire\Backups;
 use App\Livewire\Dashboard;
@@ -64,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
+        Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
 
     });
@@ -96,9 +98,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
 
 
-    // Plugin download
+    // Plugin download (served from storage, not public)
     Route::get('/download/connector-plugin', function () {
-        $path = public_path('simplead-manager-connector.zip');
+        $path = storage_path('app/simplead-manager-connector.zip');
         abort_unless(file_exists($path), 404);
         return response()->download($path, 'simplead-connector.zip');
     })->name('download.connector-plugin');
@@ -119,6 +121,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Report Templates
         Route::get('/report-templates', Settings\ReportTemplatesSettings::class)->name('settings.report-templates');
+
+        // Data Retention
+        Route::get('/data-retention', Settings\DataRetentionSettings::class)->name('settings.data-retention');
 
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
@@ -146,5 +151,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Public status pages (no auth)
 Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show')->middleware('throttle:status-page');
-Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:login');
+Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:status-page-auth');
 Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api')->middleware('throttle:status-page');

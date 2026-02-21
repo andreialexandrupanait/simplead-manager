@@ -714,6 +714,8 @@
     .text-xs { font-size: 8pt; }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
+    .data-table th.text-center, .data-table td.text-center { text-align: center; }
+    .data-table th.text-right, .data-table td.text-right { text-align: right; }
     .value-muted { color: var(--slate-400) !important; }
 
     /* --- Margin utilities --- */

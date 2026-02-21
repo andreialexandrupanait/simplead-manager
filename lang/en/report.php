@@ -254,6 +254,7 @@ return [
     // Technical Stability
     'section_technical_stability' => 'Technical Stability',
     'section_infrastructure' => 'Infrastructure',
+    'section_label_infrastructure' => 'Infrastructure (SSL/Domain/Email)',
     'section_label_technical_stability' => 'Technical Stability',
     'technical_stability_description' => 'Server availability, response times, security posture, and database health during the reporting period.',
     'tech_downtime_per_incident' => 'Downtime per Incident',
@@ -480,6 +481,7 @@ return [
     'wp_never_logged_in' => 'Never Logged In',
     'wp_users_by_role' => 'Users by Role',
     'wp_admin_list' => 'Administrator Accounts',
+    'wp_user_list' => 'All Users',
     'wp_username' => 'Username',
     'wp_email' => 'Email',
     'wp_last_login' => 'Last Login',

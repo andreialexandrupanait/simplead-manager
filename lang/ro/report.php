@@ -254,6 +254,7 @@ return [
     // Technical Stability
     'section_technical_stability' => 'Stabilitate tehnică',
     'section_infrastructure' => 'Infrastructură',
+    'section_label_infrastructure' => 'Infrastructură (SSL/Domeniu/Email)',
     'section_label_technical_stability' => 'Stabilitate tehnică',
     'technical_stability_description' => 'Disponibilitatea serverului, timpii de răspuns, securitatea și sănătatea bazei de date în perioada raportată.',
     'tech_downtime_per_incident' => 'Nefuncțional pe incident',
@@ -480,6 +481,7 @@ return [
     'wp_never_logged_in' => 'Nu s-au autentificat',
     'wp_users_by_role' => 'Utilizatori pe rol',
     'wp_admin_list' => 'Conturi de administrator',
+    'wp_user_list' => 'Toți utilizatorii',
     'wp_username' => 'Utilizator',
     'wp_email' => 'Email',
     'wp_last_login' => 'Ultima autentificare',

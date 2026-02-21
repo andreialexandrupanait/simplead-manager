@@ -120,8 +120,12 @@
                        @mouseleave="hideSidebarTooltip()"
                        class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                        <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0">
-                            {{ auth()->user()->initials }}
+                        <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
+                            @if(auth()->user()->avatar_path)
+                                <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                            @else
+                                {{ auth()->user()->initials }}
+                            @endif
                         </div>
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">

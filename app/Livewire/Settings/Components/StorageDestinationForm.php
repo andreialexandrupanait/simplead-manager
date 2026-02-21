@@ -27,9 +27,12 @@ class StorageDestinationForm extends Component
 
     // Dropbox
     public string $dropboxBasePath = '/#1 SAD Workspace/4. Backup';
+    public string $dropboxReportsPath = '';
+    public string $dropboxAppBackupsPath = '';
 
     // Dropbox folder browser
     public bool $showFolderBrowser = false;
+    public string $browserTarget = 'base_path';
     public string $browserCurrentPath = '';
     public array $browserFolders = [];
     public string $browserError = '';
@@ -57,7 +60,11 @@ class StorageDestinationForm extends Component
                     $this->s3Endpoint = $config['endpoint'] ?? '';
                     $this->s3BasePath = $config['base_path'] ?? '';
                 })(),
-                'dropbox' => $this->dropboxBasePath = $config['base_path'] ?? '/#1 SAD Workspace/4. Backup',
+                'dropbox' => (function () use ($config) {
+                    $this->dropboxBasePath = $config['base_path'] ?? '/#1 SAD Workspace/4. Backup';
+                    $this->dropboxReportsPath = $config['reports_path'] ?? '';
+                    $this->dropboxAppBackupsPath = $config['app_backups_path'] ?? '';
+                })(),
                 default => null,
             };
         } else {
@@ -80,7 +87,10 @@ class StorageDestinationForm extends Component
         $this->s3Endpoint = '';
         $this->s3BasePath = '';
         $this->dropboxBasePath = '/#1 SAD Workspace/4. Backup';
+        $this->dropboxReportsPath = '';
+        $this->dropboxAppBackupsPath = '';
         $this->showFolderBrowser = false;
+        $this->browserTarget = 'base_path';
         $this->browserCurrentPath = '';
         $this->browserFolders = [];
         $this->browserError = '';
@@ -178,11 +188,14 @@ class StorageDestinationForm extends Component
     {
         return [
             'base_path' => $this->dropboxBasePath,
+            'reports_path' => $this->dropboxReportsPath,
+            'app_backups_path' => $this->dropboxAppBackupsPath,
         ];
     }
 
-    public function openFolderBrowser(): void
+    public function openFolderBrowser(string $target = 'base_path'): void
     {
+        $this->browserTarget = $target;
         $this->showFolderBrowser = true;
         $this->browserError = '';
         $this->browseTo('');
@@ -191,6 +204,7 @@ class StorageDestinationForm extends Component
     public function closeFolderBrowser(): void
     {
         $this->showFolderBrowser = false;
+        $this->browserTarget = 'base_path';
         $this->browserCurrentPath = '';
         $this->browserFolders = [];
         $this->browserError = '';
@@ -239,14 +253,24 @@ class StorageDestinationForm extends Component
 
     public function selectCurrentFolder(): void
     {
-        $this->dropboxBasePath = $this->browserCurrentPath === '' ? '/' : $this->browserCurrentPath;
+        $selected = $this->browserCurrentPath === '' ? '/' : $this->browserCurrentPath;
+        $this->applyBrowserSelection($selected);
         $this->closeFolderBrowser();
     }
 
     public function selectFolder(string $path): void
     {
-        $this->dropboxBasePath = $path;
+        $this->applyBrowserSelection($path);
         $this->closeFolderBrowser();
+    }
+
+    protected function applyBrowserSelection(string $path): void
+    {
+        match ($this->browserTarget) {
+            'reports_path' => $this->dropboxReportsPath = $path,
+            'app_backups_path' => $this->dropboxAppBackupsPath = $path,
+            default => $this->dropboxBasePath = $path,
+        };
     }
 
     public function render()

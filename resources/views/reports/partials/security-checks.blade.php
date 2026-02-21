@@ -49,14 +49,14 @@
                 <thead>
                     <tr>
                         <th style="width: 70%;">{{ __('report.sec_check', [], $lang) }}</th>
-                        <th class="text-center">{{ __('report.sec_status', [], $lang) }}</th>
+                        <th class="text-center" style="text-align: center;">{{ __('report.sec_status', [], $lang) }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($cat['checks'] as $check)
                         <tr>
                             <td>{{ $check['title'] }}</td>
-                            <td class="text-center">
+                            <td class="text-center" style="text-align: center;">
                                 @if($check['status'] === 'passed')
                                     <span class="check-passed">✓ {{ __('report.sec_status_passed', [], $lang) }}</span>
                                 @elseif($check['status'] === 'failed')

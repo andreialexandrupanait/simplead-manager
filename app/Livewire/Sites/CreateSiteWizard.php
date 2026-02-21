@@ -40,7 +40,12 @@ class CreateSiteWizard extends Component
     #[Computed]
     public function clients()
     {
-        return Client::where('status', 'active')->orderBy('name')->get();
+        return Client::where('status', 'active')
+            ->when(!auth()->user()->isAdmin(), fn ($q) =>
+                $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
+            )
+            ->orderBy('name')
+            ->get();
     }
 
     #[Computed]

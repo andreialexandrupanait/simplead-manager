@@ -326,6 +326,28 @@ class ActivityLogger
         );
     }
 
+    public static function retentionCleanupCompleted(array $results, string $trigger): ActivityLog
+    {
+        $total = $results['total_deleted'] ?? 0;
+        $duration = $results['duration_seconds'] ?? 0;
+        $hitDeadline = $results['hit_deadline'] ?? false;
+
+        $description = "{$total} records cleaned in {$duration}s";
+        if ($hitDeadline) {
+            $description .= ' (hit time deadline — will continue next run)';
+        }
+
+        return static::log(
+            type: 'retention',
+            severity: $hitDeadline ? 'warning' : 'info',
+            title: 'Retention cleanup ' . ($trigger === 'manual' ? '(manual)' : 'completed'),
+            description: $description,
+            metadata: $results,
+            icon: 'trash-2',
+            url: route('settings.data-retention'),
+        );
+    }
+
     public static function userLoginFailed(string $email): ActivityLog
     {
         return ActivityLog::create([

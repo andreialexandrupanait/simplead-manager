@@ -29,7 +29,7 @@
         {{ $legendLabel }}
     </div>
 @endif
-<svg width="100%" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMinYMin meet" style="margin: 8px 0;">
+<svg width="100%" viewBox="0 0 {{ $w }} {{ $h }}" preserveAspectRatio="xMinYMin meet" style="margin: 8px 0; overflow: visible;">
     {{-- Y-axis labels + grid lines --}}
     @if(isset($yLabels) && is_array($yLabels))
         @php $labelCount = count($yLabels); @endphp

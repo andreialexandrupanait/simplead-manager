@@ -43,15 +43,20 @@ class CreateAppBackup implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::error('CreateAppBackup job failed: ' . $exception->getMessage());
+        $exceptionClass = get_class($exception);
 
-        ActivityLogger::appBackupFailed($exception->getMessage());
+        Log::error('CreateAppBackup job failed', [
+            'exception' => $exceptionClass,
+            'code' => $exception->getCode(),
+        ]);
+
+        ActivityLogger::appBackupFailed($exceptionClass);
 
         NotificationService::notifyAppEvent(
             'app_backup_failed',
             'Application Backup Failed',
-            'Application backup job failed: ' . Str::limit($exception->getMessage(), 200),
-            ['Type' => $this->type, 'Error' => Str::limit($exception->getMessage(), 200)],
+            "Application backup job failed: {$exceptionClass}",
+            ['Type' => $this->type, 'Error' => $exceptionClass],
             'critical',
         );
     }

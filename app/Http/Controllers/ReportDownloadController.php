@@ -11,8 +11,11 @@ class ReportDownloadController extends Controller
     public function __invoke(Request $request, Report $report)
     {
         // For authenticated routes, verify site ownership
-        if ($request->routeIs('reports.download') && (!$report->site || !$report->site->exists)) {
-            abort(403, 'Unauthorized.');
+        if ($request->routeIs('reports.download')) {
+            $site = $report->site;
+            if (!$site || (!$request->user()->isAdmin() && $site->user_id !== $request->user()->id)) {
+                abort(403, 'Unauthorized.');
+            }
         }
 
         if (!$report->file_path) {

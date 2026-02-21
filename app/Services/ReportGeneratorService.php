@@ -22,6 +22,7 @@ use App\Services\ReportRecommendationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 
 class ReportGeneratorService
 {
@@ -36,6 +37,7 @@ class ReportGeneratorService
         protected ReportTemplate $template,
         protected Carbon $periodStart,
         protected Carbon $periodEnd,
+        protected array $excludedSections = [],
     ) {
         $this->chartService = new ReportChartService();
     }
@@ -61,7 +63,7 @@ class ReportGeneratorService
             'client_logo' => $this->resolveClientLogo(),
         ];
 
-        $sections = $this->template->sections ?? [];
+        $sections = array_values(array_diff($this->template->sections ?? [], $this->excludedSections));
 
         // Pre-resolve section title/description overrides
         $sectionOverrides = [];
@@ -76,6 +78,7 @@ class ReportGeneratorService
             'site' => $this->site,
             'data' => $this->data,
             'sections' => $sections,
+            'excludedSections' => $this->excludedSections,
             'sectionOverrides' => $sectionOverrides,
             'sectionOptions' => $this->template->section_options ?? [],
             'branding' => $branding,
@@ -89,6 +92,9 @@ class ReportGeneratorService
         // Prepare logo (white version for dark backgrounds)
         $logoBase64 = $this->getLogoAsBase64();
         $viewData['logoBase64White'] = $logoBase64;
+
+        // Original logo (for light backgrounds, e.g. cover page)
+        $viewData['logoBase64Original'] = $this->getOriginalLogoAsBase64();
 
         // Client logo as base64 (for cover page)
         $viewData['clientLogoBase64'] = $this->getClientLogoAsBase64();
@@ -127,8 +133,14 @@ class ReportGeneratorService
         $gotenberg = app(GotenbergService::class);
         $pdfBinary = $gotenberg->htmlToPdf($coverHtml, $bodyHtml, $closingHtml, $footerHtml, null);
 
-        $directory = 'reports/' . $this->site->id;
-        $fileName = 'report-' . $this->site->id . '-' . now()->format('Y-m-d-His') . '.pdf';
+        $clientName = $this->site->name;
+        $safeName = Str::slug($clientName);
+        $month = $this->periodEnd->format('m');
+        $year = $this->periodEnd->format('Y');
+        $date = $this->periodEnd->format('d.m.Y');
+
+        $directory = 'reports/' . $safeName . '/' . $year;
+        $fileName = $month . '. Maintenance Report - ' . $clientName . ' - ' . $date . '.pdf';
         $filePath = $directory . '/' . $fileName;
 
         Storage::disk('local')->makeDirectory($directory);
@@ -274,10 +286,19 @@ class ReportGeneratorService
     }
 
     /**
-     * Read the company logo and return as a base64 data URI with white fills (for dark header).
+     * Resolve the company logo file path, preferring the template's logo over global settings.
      */
-    protected function getLogoAsBase64(): ?string
+    protected function resolveCompanyLogoFullPath(): ?string
     {
+        // Prefer template-specific logo
+        if ($this->template->company_logo_path) {
+            $resolved = $this->resolveLogoPath($this->template->company_logo_path);
+            if ($resolved) {
+                return $resolved;
+            }
+        }
+
+        // Fallback to global settings
         $settingsService = app(SettingsService::class);
         $logoPath = $settingsService->get('branding.logo');
 
@@ -286,7 +307,38 @@ class ReportGeneratorService
         }
 
         $fullPath = storage_path('app/public/' . $logoPath);
-        if (! file_exists($fullPath)) {
+
+        return file_exists($fullPath) ? $fullPath : null;
+    }
+
+    /**
+     * Read the company logo and return as a base64 data URI (original colors, for light backgrounds).
+     */
+    protected function getOriginalLogoAsBase64(): ?string
+    {
+        $fullPath = $this->resolveCompanyLogoFullPath();
+        if (! $fullPath) {
+            return null;
+        }
+
+        $contents = file_get_contents($fullPath);
+
+        if (str_ends_with(strtolower($fullPath), '.svg')) {
+            return 'data:image/svg+xml;base64,' . base64_encode($contents);
+        }
+
+        $mime = mime_content_type($fullPath) ?: 'image/png';
+
+        return 'data:' . $mime . ';base64,' . base64_encode($contents);
+    }
+
+    /**
+     * Read the company logo and return as a base64 data URI with white fills (for dark header).
+     */
+    protected function getLogoAsBase64(): ?string
+    {
+        $fullPath = $this->resolveCompanyLogoFullPath();
+        if (! $fullPath) {
             return null;
         }
 
@@ -352,7 +404,7 @@ class ReportGeneratorService
 
     protected function gatherData(): void
     {
-        $sections = $this->template->sections ?? [];
+        $sections = array_diff($this->template->sections ?? [], $this->excludedSections);
 
         if (in_array('overview', $sections)) {
             $this->data['overview'] = $this->gatherOverviewData();
@@ -425,13 +477,17 @@ class ReportGeneratorService
         $this->data['recommendations'] = $recService->generate();
 
         // Check for approved DB recommendations (from the approval UI)
-        $approvedRecs = \App\Models\ReportRecommendation::where('site_id', $this->site->id)
+        $hasDrafts = \App\Models\ReportRecommendation::where('site_id', $this->site->id)
             ->whereNull('report_id')
-            ->where('is_included', true)
-            ->orderBy('sort_order')
-            ->get();
+            ->exists();
 
-        if ($approvedRecs->isNotEmpty()) {
+        if ($hasDrafts) {
+            $approvedRecs = \App\Models\ReportRecommendation::where('site_id', $this->site->id)
+                ->whereNull('report_id')
+                ->where('is_included', true)
+                ->orderBy('sort_order')
+                ->get();
+
             $this->data['recommendations_approved'] = $approvedRecs;
         }
     }
@@ -1104,7 +1160,7 @@ class ReportGeneratorService
         $totalUsers = $analytics['total_users'] ?? null;
         $impressions = $sc['overview']['total_impressions'] ?? null;
 
-        return [
+        $allCards = [
             [
                 'key' => 'uptime',
                 'value' => $uptimePct !== null ? $this->formatNumber($uptimePct, 2) . '%' : __('report.snapshot_no_data', [], $this->language),
@@ -1162,6 +1218,25 @@ class ReportGeneratorService
                 'status' => 'neutral',
             ],
         ];
+
+        // Filter out excluded overview cards (keys like "overview:uptime", "overview:downtime", etc.)
+        $excludedCardKeys = collect($this->excludedSections)
+            ->filter(fn ($s) => str_starts_with($s, 'overview:'))
+            ->map(fn ($s) => str_replace('overview:', '', $s))
+            ->toArray();
+
+        if (! empty($excludedCardKeys)) {
+            $allCards = array_values(array_filter($allCards, fn ($card) => ! in_array($card['key'], $excludedCardKeys)));
+        }
+
+        // Filter by template section_options for executive_snapshot
+        $snapshotOptions = $this->template->section_options['executive_snapshot'] ?? [];
+        $allCards = array_values(array_filter($allCards, function ($card) use ($snapshotOptions) {
+            $optionKey = 'show_' . $card['key'];
+            return ($snapshotOptions[$optionKey] ?? true) !== false;
+        }));
+
+        return $allCards;
     }
 
     protected function getUptimeStatus(?float $pct): string
@@ -1384,9 +1459,10 @@ class ReportGeneratorService
             'recent_logins' => $recentLogins,
             'never_logged_in' => $neverLoggedIn,
             'by_role' => $byRole,
-            'admin_list' => $admins->map(fn ($u) => [
-                'username' => $u->username,
+            'user_list' => $users->map(fn ($u) => [
+                'username' => $u->username ?: ($u->display_name ?: (($u->email ? explode('@', $u->email)[0] : 'N/A'))),
                 'email' => $u->email,
+                'role' => $u->role ? ucfirst($u->role) : 'N/A',
                 'last_login_at' => $u->last_login_at?->format('d/m/Y'),
             ])->toArray(),
             'role_bar_chart' => $roleBarChart,
@@ -1426,7 +1502,8 @@ class ReportGeneratorService
         $totalChecks = $checks->count();
         $passed = $checks->where('status', 'passed')->count();
         $failed = $checks->where('status', 'failed')->count();
-        $score = $totalChecks > 0 ? round(($passed / $totalChecks) * 100) : 0;
+        $checked = $passed + $failed;
+        $score = $checked > 0 ? round(($passed / $checked) * 100) : 0;
 
         $categorySummary = [];
         foreach ($categories as $cat => $items) {

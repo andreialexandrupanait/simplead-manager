@@ -67,18 +67,6 @@ Schedule::command('horizon:snapshot')
     ->name('horizon-snapshot')
     ->onOneServer();
 
-// Prune failed jobs older than 7 days
-Schedule::command('queue:prune-failed', ['--hours' => 168])
-    ->daily()
-    ->name('failed-jobs-prune')
-    ->onOneServer();
-
-// Prune MassPrunable models (UptimeCheck 45-day retention)
-Schedule::command('model:prune', ['--model' => [\App\Models\UptimeCheck::class]])
-    ->dailyAt('03:30')
-    ->name('model-prune')
-    ->onOneServer();
-
 // Daily PostgreSQL dump (independent database backup)
 Schedule::command('db:dump', ['--keep' => 7])
     ->dailyAt('02:30')

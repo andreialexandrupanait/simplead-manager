@@ -35,8 +35,15 @@ class WebhookNotificationSender
             ];
         }
 
+        // Add HMAC signature if signing secret is configured
+        $signingSecret = $config['signing_secret'] ?? null;
+        if ($signingSecret) {
+            $body = json_encode($data);
+            $headers['X-Signature'] = hash_hmac('sha256', $body, $signingSecret);
+        }
+
         try {
-            $response = Http::withHeaders($headers)->$method($url, $data);
+            $response = Http::timeout(10)->withHeaders($headers)->$method($url, $data);
 
             return [
                 'success' => $response->successful(),

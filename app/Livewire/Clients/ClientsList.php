@@ -4,6 +4,7 @@ namespace App\Livewire\Clients;
 
 use App\Livewire\Traits\WithSorting;
 use App\Models\Client;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -11,6 +12,7 @@ use Livewire\WithPagination;
 
 class ClientsList extends Component
 {
+    use AuthorizesRequests;
     use WithPagination;
     use WithSorting;
 
@@ -47,7 +49,9 @@ class ClientsList extends Component
     public function delete(): void
     {
         if ($this->deletingId) {
-            Client::find($this->deletingId)?->delete();
+            $client = Client::findOrFail($this->deletingId);
+            $this->authorize('delete', $client);
+            $client->delete();
             $this->dispatch('notify', type: 'success', message: 'Client deleted successfully.');
         }
 
@@ -59,14 +63,24 @@ class ClientsList extends Component
     {
         if (!in_array($status, ['active', 'inactive', 'archived'])) return;
 
-        Client::where('id', $id)->update(['status' => $status]);
+        $client = Client::findOrFail($id);
+        $this->authorize('update', $client);
+        $client->update(['status' => $status]);
         $this->dispatch('notify', type: 'success', message: 'Client status updated.');
+    }
+
+    private function scopedQuery()
+    {
+        return Client::query()
+            ->when(!auth()->user()->isAdmin(), fn ($q) =>
+                $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
+            );
     }
 
     #[Computed]
     public function statusCounts(): array
     {
-        $counts = Client::query()
+        $counts = $this->scopedQuery()
             ->selectRaw("count(*) as total")
             ->selectRaw("count(*) filter (where status = 'active') as active")
             ->selectRaw("count(*) filter (where status = 'inactive') as inactive")
@@ -83,7 +97,7 @@ class ClientsList extends Component
 
     public function render()
     {
-        $clients = Client::query()
+        $clients = $this->scopedQuery()
             ->search($this->search)
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
             ->withCount('sites')

@@ -46,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->ip());
         });
 
+        RateLimiter::for('status-page-auth', function (Request $request) {
+            $slug = $request->route('slug', 'unknown');
+            return Limit::perMinute(5)->by($slug . '|' . $request->ip());
+        });
+
         // Load Google API credentials from DB if not set in env
         $this->app->booted(function () {
             try {

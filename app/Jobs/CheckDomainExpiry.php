@@ -226,11 +226,14 @@ class CheckDomainExpiry implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        \Illuminate\Support\Facades\Log::error("Domain expiry check failed for {$this->domainMonitor->domain}: " . ($exception?->getMessage() ?? 'Unknown error'));
+        \Illuminate\Support\Facades\Log::error("Domain expiry check failed for {$this->domainMonitor->domain}", [
+            'exception' => $exception ? get_class($exception) : 'Unknown',
+            'code' => $exception?->getCode(),
+        ]);
 
         $this->domainMonitor->update([
             'status' => 'error',
-            'error_message' => 'Job failed: ' . ($exception?->getMessage() ?? 'Unknown error'),
+            'error_message' => 'Job failed: ' . ($exception ? get_class($exception) : 'Unknown error'),
             'last_checked_at' => now(),
             'next_check_at' => now()->addHours(6),
         ]);

@@ -30,7 +30,7 @@ class GoogleApiService
             throw new \Exception('Google token encryption is invalid. Please reconnect your Google account in Settings > Integrations.');
         }
 
-        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+        $response = Http::timeout(10)->asForm()->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.client_id'),
             'client_secret' => config('services.google.client_secret'),
             'refresh_token' => $refreshToken,
@@ -54,6 +54,6 @@ class GoogleApiService
 
     protected function api(): \Illuminate\Http\Client\PendingRequest
     {
-        return Http::withToken($this->accessToken);
+        return Http::timeout(30)->withToken($this->accessToken);
     }
 }

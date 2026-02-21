@@ -7,13 +7,14 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 use PragmaRX\Google2FA\Google2FA;
 
 class ProfileSettings extends Component
@@ -102,16 +103,6 @@ class ProfileSettings extends Component
         $this->dispatch('notify', type: 'success', message: 'Password changed successfully.');
     }
 
-    public function logoutOtherSessions(): void
-    {
-        DB::table('sessions')
-            ->where('user_id', Auth::id())
-            ->where('id', '!=', session()->getId())
-            ->delete();
-
-        $this->dispatch('notify', type: 'success', message: 'Other sessions have been logged out.');
-    }
-
     public string $deleteAccountPassword = '';
 
     public function deleteAccount(): void
@@ -133,23 +124,6 @@ class ProfileSettings extends Component
         session()->regenerateToken();
 
         $this->redirect('/login');
-    }
-
-    public function getSessionsProperty()
-    {
-        return DB::table('sessions')
-            ->where('user_id', Auth::id())
-            ->orderByDesc('last_activity')
-            ->get()
-            ->map(function ($session) {
-                return (object) [
-                    'id' => $session->id,
-                    'ip_address' => $session->ip_address,
-                    'user_agent' => $session->user_agent,
-                    'last_activity' => \Carbon\Carbon::createFromTimestamp($session->last_activity)->diffForHumans(),
-                    'is_current' => $session->id === session()->getId(),
-                ];
-            });
     }
 
     public function enableTwoFactor(): void
@@ -247,6 +221,78 @@ class ProfileSettings extends Component
     {
         $this->recoveryCodes = Auth::user()->two_factor_recovery_codes ?? [];
         $this->showingRecoveryCodes = true;
+    }
+
+    public function exportData(): StreamedResponse
+    {
+        $user = Auth::user();
+        $zipPath = storage_path('app/temp/data-export-' . uniqid() . '.zip');
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+            $this->dispatch('notify', type: 'error', message: 'Failed to create export archive.');
+            return response()->noContent();
+        }
+
+        // User profile
+        $zip->addFromString('profile.json', json_encode([
+            'name' => $user->name,
+            'email' => $user->email,
+            'timezone' => $user->timezone,
+            'language' => $user->language,
+            'role' => $user->role?->value ?? $user->role,
+            'created_at' => $user->created_at?->toIso8601String(),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        // Sites
+        $sites = $user->sites()->select('id', 'name', 'url', 'status', 'created_at')->get();
+        $zip->addFromString('sites.json', json_encode(
+            $sites->map(fn ($s) => [
+                'name' => $s->name,
+                'url' => $s->url,
+                'status' => $s->status,
+                'created_at' => $s->created_at?->toIso8601String(),
+            ])->toArray(),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+        ));
+
+        // Reports metadata (not PDFs)
+        $siteIds = $sites->pluck('id');
+        $reports = \App\Models\Report::whereIn('site_id', $siteIds)
+            ->select('id', 'site_id', 'title', 'period_start', 'period_end', 'trigger', 'status', 'created_at')
+            ->get();
+        $zip->addFromString('reports.json', json_encode(
+            $reports->map(fn ($r) => [
+                'title' => $r->title,
+                'period_start' => $r->period_start?->toDateString(),
+                'period_end' => $r->period_end?->toDateString(),
+                'trigger' => $r->trigger,
+                'status' => $r->status,
+                'created_at' => $r->created_at?->toIso8601String(),
+            ])->toArray(),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+        ));
+
+        // Activity logs
+        $logs = $user->activityLogs()
+            ->select('id', 'action', 'description', 'created_at')
+            ->orderByDesc('created_at')
+            ->limit(5000)
+            ->get();
+        $zip->addFromString('activity-logs.json', json_encode(
+            $logs->map(fn ($l) => [
+                'action' => $l->action,
+                'description' => $l->description,
+                'created_at' => $l->created_at?->toIso8601String(),
+            ])->toArray(),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+        ));
+
+        $zip->close();
+
+        $fileName = 'my-data-' . now()->format('Y-m-d') . '.zip';
+
+        return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
     }
 
     public function render()

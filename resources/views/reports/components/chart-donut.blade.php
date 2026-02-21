@@ -15,7 +15,7 @@
     $circumference = $chartData['circumference'] ?? 0;
 @endphp
 @if(!empty($segments))
-<svg width="{{ $size }}" height="{{ $size }}" viewBox="0 0 {{ $size }} {{ $size }}">
+<svg width="{{ $size }}" height="{{ $size + 30 }}" viewBox="0 0 {{ $size }} {{ $size + 30 }}">
     {{-- Background ring --}}
     <circle cx="{{ $cx }}" cy="{{ $cy }}" r="{{ $radius }}" fill="none" stroke="#e5e7eb" stroke-width="{{ $sw }}"/>
 
@@ -41,5 +41,13 @@
     @if(isset($centerSubtext))
         <text x="{{ $cx }}" y="{{ $cy + 14 }}" text-anchor="middle" font-size="8" fill="#6b7280" font-family="Inter, sans-serif">{{ $centerSubtext }}</text>
     @endif
+
+    {{-- Segment labels --}}
+    @php $legendY = $size + 6; @endphp
+    @foreach($segments as $seg)
+        <circle cx="{{ 8 }}" cy="{{ $legendY }}" r="4" fill="{{ $seg['color'] ?? '#3b82f6' }}"/>
+        <text x="16" y="{{ $legendY + 3.5 }}" font-size="8" fill="#374151" font-family="Inter, sans-serif">{{ $seg['label'] ?? '' }} ({{ $seg['value'] ?? 0 }})</text>
+        @php $legendY += 14; @endphp
+    @endforeach
 </svg>
 @endif

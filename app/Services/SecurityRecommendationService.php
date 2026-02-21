@@ -13,17 +13,36 @@ class SecurityRecommendationService
         // Seed defaults if none exist
         static::seedDefaults($site);
 
+        // Map plugin keys to DEFINITIONS keys
+        $keyMap = [
+            'file_editor_disabled' => 'disable_file_editing',
+            'directory_listing_disabled' => 'disable_directory_listing',
+            'wp_config_permissions' => 'protect_wp_config',
+            'htaccess_permissions' => 'protect_htaccess',
+            'no_default_admin' => 'change_admin_username',
+            'custom_db_prefix' => 'change_table_prefix',
+            'xmlrpc_disabled' => 'disable_xmlrpc',
+            'ssl_active' => 'force_https',
+        ];
+
         try {
             $api = new WordPressApiService($site);
             $result = $api->getSecurityCheck();
 
             $checks = $result['checks'] ?? [];
 
-            foreach ($checks as $key => $status) {
+            foreach ($checks as $pluginKey => $status) {
+                $definitionKey = $keyMap[$pluginKey] ?? null;
+                if (!$definitionKey) {
+                    continue;
+                }
+
+                $passed = is_array($status) ? ($status['pass'] ?? false) : (bool) $status;
+
                 SecurityRecommendation::where('site_id', $site->id)
-                    ->where('key', $key)
+                    ->where('key', $definitionKey)
                     ->update([
-                        'status' => $status ? 'passed' : 'failed',
+                        'status' => $passed ? 'passed' : 'failed',
                         'last_checked_at' => now(),
                     ]);
             }

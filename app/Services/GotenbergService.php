@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use GuzzleHttp\Client;
 use Gotenberg\Gotenberg;
 use Gotenberg\Stream;
+use Illuminate\Support\Facades\Log;
 
 class GotenbergService
 {
     protected string $baseUrl;
+    protected Client $httpClient;
 
     public function __construct()
     {
         $this->baseUrl = config('services.gotenberg.url', 'http://gotenberg:3000');
+        $this->httpClient = new Client(['timeout' => 120]);
     }
 
     /**
@@ -64,9 +68,18 @@ class GotenbergService
         }
 
         $request = $chromium->html(Stream::string('index.html', $html));
-        $response = Gotenberg::send($request);
 
-        return $response->getBody()->getContents();
+        try {
+            $response = Gotenberg::send($request, $this->httpClient);
+
+            return $response->getBody()->getContents();
+        } catch (\Exception $e) {
+            Log::error('Gotenberg PDF render failed', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 
     protected function mergePdfs(string ...$pdfs): string
@@ -79,8 +92,17 @@ class GotenbergService
         $request = Gotenberg::pdfEngines($this->baseUrl)
             ->merge(...$streams);
 
-        $response = Gotenberg::send($request);
+        try {
+            $response = Gotenberg::send($request, $this->httpClient);
 
-        return $response->getBody()->getContents();
+            return $response->getBody()->getContents();
+        } catch (\Exception $e) {
+            Log::error('Gotenberg PDF merge failed', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'pdf_count' => count($pdfs),
+            ]);
+            throw $e;
+        }
     }
 }

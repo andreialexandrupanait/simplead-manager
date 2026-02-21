@@ -130,10 +130,4 @@
         <div class="kpi-value" style="font-size: 14pt;">{{ $site->server_software ?? '—' }}</div>
         <div class="kpi-label">{{ __('report.overview_server', [], $lang) }}</div>
     </div>
-    @if($site->has_woocommerce)
-        <div class="kpi-card">
-            <div class="kpi-value" style="font-size: 14pt;">{{ __('report.yes', [], $lang) }}</div>
-            <div class="kpi-label">WooCommerce</div>
-        </div>
-    @endif
 </div>

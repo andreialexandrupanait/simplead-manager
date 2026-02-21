@@ -2,7 +2,7 @@
     $lang = $language ?? 'ro';
 
     // Prefer approved DB recommendations (from the approval UI), fall back to auto-generated array
-    $useApproved = isset($data['recommendations_approved']) && $data['recommendations_approved']->count() > 0;
+    $useApproved = isset($data['recommendations_approved']);
 
     $allRecs = [];
 

@@ -14,30 +14,104 @@
     </div>
 
     {{-- Section 1: Stats Bar --}}
+    @php
+        $stats = $this->stats;
+
+        // Uptime color thresholds
+        $uptimeColor = 'text-gray-900';
+        if ($stats['avg_uptime'] !== null) {
+            $uptimeColor = $stats['avg_uptime'] >= 99 ? 'text-green-600' : ($stats['avg_uptime'] >= 95 ? 'text-yellow-600' : 'text-red-600');
+        }
+
+        // Response time color thresholds
+        $responseColor = 'text-gray-900';
+        if ($stats['avg_response_time'] !== null) {
+            $responseColor = $stats['avg_response_time'] < 500 ? 'text-green-600' : ($stats['avg_response_time'] <= 1500 ? 'text-yellow-600' : 'text-red-600');
+        }
+
+        // Pending updates color
+        $updatesColor = $stats['pending_updates'] === 0 ? 'text-green-600' : ($stats['pending_updates'] <= 10 ? 'text-yellow-600' : 'text-red-600');
+
+        // Expiring total
+        $expiringTotal = $stats['ssl_expiring'] + $stats['domains_expiring'];
+        $expiringColor = $expiringTotal === 0 ? 'text-green-600' : ($expiringTotal <= 2 ? 'text-yellow-600' : 'text-red-600');
+    @endphp
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Total Sites</div>
-            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $this->stats['total_sites'] }}</div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Sites Up</div>
-            <div class="mt-1 text-2xl font-bold text-green-600">{{ $this->stats['sites_up'] }}</div>
-        </x-ui.card>
+        {{-- Sites Down --}}
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Sites Down</div>
-            <div class="mt-1 text-2xl font-bold {{ $this->stats['sites_down'] > 0 ? 'text-red-600' : 'text-gray-900' }}">{{ $this->stats['sites_down'] }}</div>
+            <div class="mt-1 text-2xl font-bold {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['sites_down'] }}</div>
+            <div class="mt-1 text-xs text-gray-400">
+                @if($stats['sites_down'] === 0)
+                    All systems operational
+                @else
+                    {{ $stats['sites_down'] }} {{ Str::plural('site', $stats['sites_down']) }} need{{ $stats['sites_down'] === 1 ? 's' : '' }} attention
+                @endif
+            </div>
         </x-ui.card>
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Clients</div>
-            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $this->stats['total_clients'] }}</div>
-        </x-ui.card>
+
+        {{-- Avg Uptime --}}
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Avg Uptime</div>
-            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $this->stats['avg_uptime'] ? $this->stats['avg_uptime'] . '%' : '—' }}</div>
+            <div class="mt-1 text-2xl font-bold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
+            <div class="mt-1 text-xs text-gray-400">last 30 days</div>
         </x-ui.card>
+
+        {{-- Avg Response --}}
         <x-ui.card>
             <div class="text-sm font-medium text-gray-500">Avg Response</div>
-            <div class="mt-1 text-2xl font-bold text-gray-900">{{ $this->stats['avg_response_time'] ? $this->stats['avg_response_time'] . 'ms' : '—' }}</div>
+            <div class="mt-1 text-2xl font-bold {{ $responseColor }}">{{ $stats['avg_response_time'] !== null ? $stats['avg_response_time'] . 'ms' : '—' }}</div>
+            <div class="mt-1 text-xs text-gray-400">across all sites</div>
+        </x-ui.card>
+
+        {{-- Pending Updates --}}
+        <x-ui.card>
+            <div class="text-sm font-medium text-gray-500">Pending Updates</div>
+            <div class="mt-1 text-2xl font-bold {{ $updatesColor }}">{{ $stats['pending_updates'] }}</div>
+            <div class="mt-1 text-xs text-gray-400">
+                @if($stats['pending_updates'] === 0)
+                    Everything up to date
+                @else
+                    @php
+                        $parts = [];
+                        if ($stats['pending_plugin_updates'] > 0) $parts[] = $stats['pending_plugin_updates'] . ' ' . Str::plural('plugin', $stats['pending_plugin_updates']);
+                        if ($stats['pending_theme_updates'] > 0) $parts[] = $stats['pending_theme_updates'] . ' ' . Str::plural('theme', $stats['pending_theme_updates']);
+                        if ($stats['pending_core_updates'] > 0) $parts[] = $stats['pending_core_updates'] . ' core';
+                    @endphp
+                    {{ implode(', ', $parts) }}
+                @endif
+            </div>
+        </x-ui.card>
+
+        {{-- Failed Backups --}}
+        <x-ui.card>
+            <div class="text-sm font-medium text-gray-500">Failed Backups</div>
+            <div class="mt-1 text-2xl font-bold {{ $stats['failed_backups'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['failed_backups'] }}</div>
+            <div class="mt-1 text-xs text-gray-400">
+                @if($stats['failed_backups'] === 0)
+                    All backups healthy
+                @else
+                    last 24 hours
+                @endif
+            </div>
+        </x-ui.card>
+
+        {{-- SSL/Domain Expiring --}}
+        <x-ui.card>
+            <div class="text-sm font-medium text-gray-500">SSL/Domain Expiring</div>
+            <div class="mt-1 text-2xl font-bold {{ $expiringColor }}">{{ $expiringTotal }}</div>
+            <div class="mt-1 text-xs text-gray-400">
+                @if($expiringTotal === 0)
+                    All certificates valid
+                @else
+                    @php
+                        $expParts = [];
+                        if ($stats['ssl_expiring'] > 0) $expParts[] = $stats['ssl_expiring'] . ' SSL';
+                        if ($stats['domains_expiring'] > 0) $expParts[] = $stats['domains_expiring'] . ' ' . Str::plural('domain', $stats['domains_expiring']);
+                    @endphp
+                    {{ implode(', ', $expParts) }}
+                @endif
+            </div>
         </x-ui.card>
     </div>
 
@@ -299,37 +373,6 @@
         @endif
     </div>
 
-    {{-- Section 4: Bottom Action Buttons --}}
-    <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <a
-            href="{{ route('sites.create', ['mode' => 'connect']) }}"
-            class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-4 text-sm font-medium text-gray-500 transition hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600"
-        >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            Connect Existing Site
-        </a>
-        <a
-            href="{{ route('sites.create', ['mode' => 'create']) }}"
-            class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-4 text-sm font-medium text-gray-500 transition hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600"
-        >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Create New Site
-        </a>
-        <a
-            href="{{ route('sites.create', ['mode' => 'migrate']) }}"
-            class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-4 text-sm font-medium text-gray-500 transition hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600"
-        >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-            Migrate Existing Site
-        </a>
-        <a
-            href="{{ route('sites.create', ['mode' => 'clone']) }}"
-            class="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-4 text-sm font-medium text-gray-500 transition hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600"
-        >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-            Clone A Site
-        </a>
-    </div>
 
     {{-- Rename Site Modal --}}
     <x-ui.modal name="rename-site" maxWidth="sm">

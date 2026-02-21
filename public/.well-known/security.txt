@@ -1,0 +1,3 @@
+Contact: mailto:contact@simplead.ro
+Expires: 2027-02-21T00:00:00.000Z
+Preferred-Languages: en, ro

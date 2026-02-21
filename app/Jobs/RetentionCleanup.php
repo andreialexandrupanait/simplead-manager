@@ -2,69 +2,206 @@
 
 namespace App\Jobs;
 
+use App\Services\ActivityLogger;
+use App\Services\JobTracker;
+use App\Services\RetentionPolicyService;
+use App\Services\SettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RetentionCleanup implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 300;
-    public int $tries = 1;
+    public int $timeout = 900;
+    public int $tries = 2;
+    public array $backoff = [120];
 
-    public function handle(): void
+    public const JOB_KEY = 'retention-cleanup';
+
+    public function __construct(
+        public string $trigger = 'scheduled',
+    ) {}
+
+    public function handle(RetentionPolicyService $policy, SettingsService $settings): void
     {
-        $cleaned = [];
-
-        // Uptime checks — 45 days
-        $cleaned['uptime_checks'] = DB::table('uptime_checks')
-            ->where('checked_at', '<=', now()->subDays(45))
-            ->delete();
-
-        // Performance tests — 60 days
-        $cleaned['performance_tests'] = DB::table('performance_tests')
-            ->where('created_at', '<=', now()->subDays(60))
-            ->delete();
-
-        // Security scans — 90 days
-        $cleaned['security_scans'] = DB::table('security_scans')
-            ->where('scanned_at', '<=', now()->subDays(90))
-            ->delete();
-
-        // Analytics cache — 60 days
-        $cleaned['analytics_cache'] = DB::table('analytics_cache')
-            ->where('created_at', '<=', now()->subDays(60))
-            ->delete();
-
-        // Search console cache — 60 days
-        $cleaned['search_console_cache'] = DB::table('search_console_cache')
-            ->where('created_at', '<=', now()->subDays(60))
-            ->delete();
-
-        // Activity logs — 180 days
-        $cleaned['activity_logs'] = DB::table('activity_logs')
-            ->where('created_at', '<=', now()->subDays(180))
-            ->delete();
-
-        // Notification logs — 90 days
-        if (DB::getSchemaBuilder()->hasTable('notification_logs')) {
-            $cleaned['notification_logs'] = DB::table('notification_logs')
-                ->where('created_at', '<=', now()->subDays(90))
-                ->delete();
+        if (!$policy->isEnabled()) {
+            Log::info('Retention cleanup skipped: disabled');
+            return;
         }
 
-        // Expired backups
+        JobTracker::start(self::JOB_KEY, 'Starting retention cleanup...');
+        $startTime = microtime(true);
+        $deadline = now()->addMinutes(12);
+        $hitDeadline = false;
+
+        $categories = RetentionPolicyService::CATEGORIES;
+        $categoryKeys = array_keys($categories);
+        $totalCategories = count($categoryKeys);
+        $categoryResults = [];
+
+        foreach ($categoryKeys as $index => $categoryKey) {
+            if (now()->gte($deadline)) {
+                $hitDeadline = true;
+                Log::warning("Retention cleanup hit deadline at category: {$categoryKey}");
+                break;
+            }
+
+            $config = $categories[$categoryKey];
+            $days = $this->trigger === 'manual'
+                ? $policy->getDaysFresh($categoryKey)
+                : $policy->getDays($categoryKey);
+
+            $cutoff = now()->subDays($days);
+            $categoryDeleted = 0;
+
+            $progress = (int) round(($index / $totalCategories) * 100);
+            JobTracker::progress(self::JOB_KEY, $progress, "Cleaning {$config['label']}...");
+
+            foreach ($config['tables'] as $tableConfig) {
+                if ($tableConfig['hasTable'] && !Schema::hasTable($tableConfig['table'])) {
+                    continue;
+                }
+
+                if (now()->gte($deadline)) {
+                    $hitDeadline = true;
+                    break;
+                }
+
+                $deleted = $this->deleteInBatches(
+                    table: $tableConfig['table'],
+                    column: $tableConfig['column'],
+                    colType: $tableConfig['col_type'],
+                    cutoff: $cutoff,
+                    condition: $tableConfig['condition'],
+                    deadline: $deadline,
+                );
+
+                $categoryDeleted += $deleted;
+            }
+
+            $categoryResults[$categoryKey] = [
+                'days' => $days,
+                'deleted' => $categoryDeleted,
+            ];
+        }
+
+        // Expired backups (per-backup expires_at)
+        $expiredBackups = $this->cleanExpiredBackups($deadline);
+
+        // Expired rollback points
+        try {
+            app(\App\Services\RollbackService::class)->cleanExpired();
+        } catch (\Exception $e) {
+            // Ignore if service doesn't exist
+        }
+
+        $duration = (int) round(microtime(true) - $startTime);
+        $totalDeleted = array_sum(array_column($categoryResults, 'deleted'));
+
+        $result = [
+            'trigger' => $this->trigger,
+            'duration_seconds' => $duration,
+            'total_deleted' => $totalDeleted,
+            'categories' => $categoryResults,
+            'expired_backups' => $expiredBackups,
+            'hit_deadline' => $hitDeadline,
+        ];
+
+        // Persist result to app_settings
+        $settings->set('retention_last_run_at', now()->toISOString(), 'retention', 'string');
+        $settings->set('retention_last_run_result', $result, 'retention', 'json');
+
+        // Activity log
+        ActivityLogger::retentionCleanupCompleted($result, $this->trigger);
+
+        $message = "Retention cleanup complete: {$totalDeleted} records cleaned in {$duration}s";
+        if ($hitDeadline) {
+            $message .= ' (hit deadline)';
+            Log::warning($message, $result);
+        } else {
+            Log::info($message, $result);
+        }
+
+        JobTracker::complete(self::JOB_KEY, "Cleaned {$totalDeleted} records in {$duration}s");
+    }
+
+    private function deleteInBatches(
+        string $table,
+        string $column,
+        string $colType,
+        Carbon $cutoff,
+        ?array $condition,
+        Carbon $deadline,
+        int $batchSize = 5000,
+    ): int {
+        $total = 0;
+
+        $cutoffValue = $colType === 'date'
+            ? $cutoff->toDateString()
+            : $cutoff->toDateTimeString();
+
+        do {
+            if (now()->gte($deadline)) {
+                break;
+            }
+
+            $conditionSQL = '';
+            $params = [$cutoffValue];
+
+            if ($condition) {
+                if ($condition[1] === 'in') {
+                    $placeholders = implode(',', array_fill(0, count($condition[2]), '?'));
+                    $conditionSQL = "AND \"{$condition[0]}\" IN ({$placeholders})";
+                    $params = array_merge($params, $condition[2]);
+                } else {
+                    $conditionSQL = "AND \"{$condition[0]}\" {$condition[1]} ?";
+                    $params[] = $condition[2];
+                }
+            }
+
+            $deleted = DB::affectingStatement(
+                "DELETE FROM \"{$table}\" WHERE ctid IN (
+                    SELECT ctid FROM \"{$table}\"
+                    WHERE \"{$column}\" <= ?
+                    {$conditionSQL}
+                    ORDER BY \"{$column}\" ASC
+                    LIMIT {$batchSize}
+                )",
+                $params
+            );
+
+            $total += $deleted;
+
+            if ($deleted >= $batchSize) {
+                usleep(100_000); // 100ms pause
+            }
+        } while ($deleted >= $batchSize);
+
+        return $total;
+    }
+
+    private function cleanExpiredBackups(Carbon $deadline): int
+    {
         $expiredBackups = DB::table('backups')
             ->where('expires_at', '<=', now())
             ->where('is_locked', false)
-            ->get();
+            ->cursor();
+
+        $count = 0;
 
         foreach ($expiredBackups as $backup) {
+            if (now()->gte($deadline)) {
+                break;
+            }
+
             try {
                 if ($backup->storage_destination_id && $backup->file_path) {
                     $destination = \App\Models\StorageDestination::find($backup->storage_destination_id);
@@ -75,20 +212,25 @@ class RetentionCleanup implements ShouldQueue
                     }
                 }
                 DB::table('backups')->where('id', $backup->id)->delete();
+                $count++;
             } catch (\Exception $e) {
-                Log::warning("Failed to clean expired backup {$backup->id}: {$e->getMessage()}");
+                Log::warning("Failed to clean expired backup {$backup->id}", [
+                    'exception' => get_class($e),
+                    'code' => $e->getCode(),
+                ]);
             }
         }
-        $cleaned['expired_backups'] = count($expiredBackups);
 
-        // Expired rollback points
-        try {
-            app(\App\Services\RollbackService::class)->cleanExpired();
-        } catch (\Exception $e) {
-            // Ignore if service doesn't exist
-        }
+        return $count;
+    }
 
-        $total = array_sum($cleaned);
-        Log::info("Retention cleanup complete: {$total} records cleaned", $cleaned);
+    public function failed(\Throwable $exception): void
+    {
+        $exceptionClass = get_class($exception);
+        JobTracker::fail(self::JOB_KEY, "Retention cleanup failed: {$exceptionClass}");
+        Log::error('Retention cleanup failed', [
+            'exception' => $exceptionClass,
+            'code' => $exception->getCode(),
+        ]);
     }
 }

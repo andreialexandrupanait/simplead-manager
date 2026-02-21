@@ -54,11 +54,36 @@ class DatabaseDumpCommand extends Command
             return self::FAILURE;
         }
 
+        // Encrypt if BACKUP_ENCRYPTION_KEY is set
+        $encryptionKey = env('BACKUP_ENCRYPTION_KEY');
+        if ($encryptionKey) {
+            $encryptedPath = $filepath . '.enc';
+            $encCommand = sprintf(
+                'openssl enc -aes-256-cbc -salt -pbkdf2 -in %s -out %s -pass env:BACKUP_ENCRYPTION_KEY 2>&1',
+                escapeshellarg($filepath),
+                escapeshellarg($encryptedPath)
+            );
+
+            exec($encCommand, $encOutput, $encExit);
+
+            if ($encExit !== 0) {
+                $this->error('Encryption failed: ' . implode("\n", $encOutput));
+                Log::error('Database dump encryption failed', ['output' => $encOutput]);
+                unlink($filepath);
+                return self::FAILURE;
+            }
+
+            unlink($filepath);
+            $filepath = $encryptedPath;
+            $filename .= '.enc';
+            $this->info('Dump encrypted with AES-256-CBC.');
+        }
+
         $size = filesize($filepath);
         $sizeMb = round($size / 1024 / 1024, 2);
 
         $this->info("Dump created: {$filename} ({$sizeMb} MB)");
-        Log::info("Database dump created: {$filename}", ['size_bytes' => $size]);
+        Log::info("Database dump created: {$filename}", ['size_bytes' => $size, 'encrypted' => (bool) $encryptionKey]);
 
         // Retention: remove old dumps
         $keep = (int) $this->option('keep');
@@ -69,7 +94,10 @@ class DatabaseDumpCommand extends Command
 
     protected function cleanup(string $dir, int $keep): void
     {
-        $files = glob("{$dir}/db_dump_*.sql.gz");
+        $files = array_merge(
+            glob("{$dir}/db_dump_*.sql.gz"),
+            glob("{$dir}/db_dump_*.sql.gz.enc")
+        );
         rsort($files); // newest first
 
         $toDelete = array_slice($files, $keep);

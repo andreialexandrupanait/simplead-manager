@@ -112,17 +112,10 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Alert After Failures') }}</label>
-                        <x-ui.input wire:model="alertAfterFailures" type="number" min="1" max="10" class="mt-1" />
-                        <p class="mt-1 text-xs text-gray-400">{{ __('Consecutive failures before alerting') }}</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Data Retention (days)') }}</label>
-                        <x-ui.input wire:model="dataRetentionDays" type="number" min="7" max="365" class="mt-1" />
-                        <p class="mt-1 text-xs text-gray-400">{{ __('How long to keep check data') }}</p>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Alert After Failures') }}</label>
+                    <x-ui.input wire:model="alertAfterFailures" type="number" min="1" max="10" class="mt-1" />
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Consecutive failures before alerting') }}</p>
                 </div>
             </div>
         </x-ui.card>

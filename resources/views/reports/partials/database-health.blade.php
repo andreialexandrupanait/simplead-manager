@@ -56,16 +56,16 @@
         <thead>
             <tr>
                 <th>{{ __('report.db_table_name', [], $lang) }}</th>
-                <th class="text-right">{{ __('report.db_table_rows', [], $lang) }}</th>
-                <th class="text-right">{{ __('report.db_table_size', [], $lang) }}</th>
+                <th class="text-center">{{ __('report.db_table_rows', [], $lang) }}</th>
+                <th class="text-center">{{ __('report.db_table_size', [], $lang) }}</th>
             </tr>
         </thead>
         <tbody>
             @foreach($db['largest_tables'] as $table)
                 <tr>
                     <td class="cell-truncate">{{ $table['name'] }}</td>
-                    <td class="text-right">{{ number_format($table['rows']) }}</td>
-                    <td class="text-right">{{ \App\Helpers\FormatHelper::bytes(($table['data_size'] ?? 0) + ($table['index_size'] ?? 0)) }}</td>
+                    <td class="text-center">{{ number_format($table['rows']) }}</td>
+                    <td class="text-center">{{ \App\Helpers\FormatHelper::bytes(($table['data_size'] ?? 0) + ($table['index_size'] ?? 0)) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -79,14 +79,14 @@
         <thead>
             <tr>
                 <th>{{ __('report.db_table_name', [], $lang) }}</th>
-                <th class="text-right">{{ __('report.db_overhead_size', [], $lang) }}</th>
+                <th class="text-center">{{ __('report.db_overhead_size', [], $lang) }}</th>
             </tr>
         </thead>
         <tbody>
             @foreach($db['tables_with_overhead'] as $table)
                 <tr>
                     <td class="cell-truncate">{{ $table['name'] }}</td>
-                    <td class="text-right">{{ \App\Helpers\FormatHelper::bytes($table['overhead'] ?? 0) }}</td>
+                    <td class="text-center">{{ \App\Helpers\FormatHelper::bytes($table['overhead'] ?? 0) }}</td>
                 </tr>
             @endforeach
         </tbody>

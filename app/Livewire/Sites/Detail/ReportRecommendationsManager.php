@@ -268,7 +268,7 @@ class ReportRecommendationsManager extends Component
         $scCache = $this->site->searchConsoleCaches()
             ->where('data_type', 'overview')
             ->where('date_range', '28d')
-            ->latest()
+            ->latest('fetched_at')
             ->first();
 
         if ($scCache) {

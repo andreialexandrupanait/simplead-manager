@@ -4,21 +4,20 @@
 @endphp
 
 <div class="cover-page">
-    {{-- Left panel: white background, client logo centered --}}
+    {{-- Left panel: white background, company logo centered --}}
     <div class="cover-left">
-        @if(!empty($clientLogoBase64))
-            <img src="{{ $clientLogoBase64 }}" class="cover-client-logo" alt="">
+        @if(!empty($logoBase64Original))
+            <img src="{{ $logoBase64Original }}" class="cover-client-logo" alt="{{ $branding['company_name'] ?? 'SimpleAd' }}">
         @else
-            <div class="cover-site-name">{{ $site->name }}</div>
+            <div class="cover-site-name">{{ $branding['company_name'] ?? 'SimpleAd' }}</div>
         @endif
 
-        {{-- Company logo small at bottom-left --}}
-        @if(!empty($logoBase64White))
-            {{-- Use original (non-white) logo for white background --}}
+        {{-- Client logo small at bottom-left --}}
+        @if(!empty($clientLogoBase64))
+            <div style="position: absolute; bottom: 12mm; left: 14mm;">
+                <img src="{{ $clientLogoBase64 }}" style="max-height: 20mm; max-width: 40mm; object-fit: contain;" alt="">
+            </div>
         @endif
-        <div style="position: absolute; bottom: 15mm; left: 14mm; font-size: 8pt; color: #94a3b8; font-weight: 600;">
-            {{ $branding['company_name'] ?? 'SimpleAd' }}
-        </div>
     </div>
 
     {{-- Right panel: primary color background --}}

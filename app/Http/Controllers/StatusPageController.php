@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\StatusPage;
 use App\Services\StatusPageService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class StatusPageController extends Controller
 {
@@ -70,6 +71,11 @@ class StatusPageController extends Controller
             session(["status-page-auth.{$statusPage->id}" => true]);
             return redirect()->route('status-page.show', $slug);
         }
+
+        Log::warning('Failed status page auth attempt', [
+            'slug' => $slug,
+            'ip' => $request->ip(),
+        ]);
 
         return back()->withErrors(['password' => 'Incorrect password.']);
     }
