@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     libxml2-dev \
     libzip-dev \
     oniguruma-dev \
+    postgresql-client \
     postgresql-dev \
     $PHPIZE_DEPS
 

@@ -157,7 +157,7 @@ services:
 
   # Connection pooler — set DB_HOST=pgbouncer in .env to use
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1-p2
+    image: edoburu/pgbouncer:latest
     container_name: simplead-pgbouncer-dev
     restart: unless-stopped
     environment:

@@ -196,11 +196,14 @@ services:
   # Connection pooler — app containers connect here instead of directly to pgsql.
   # Set DB_HOST=pgbouncer in .env when enabling this service.
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1-p2
+    image: edoburu/pgbouncer:latest
     container_name: simplead-pgbouncer
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://simplead:${DB_PASSWORD}@pgsql:5432/simplead_manager"
+      DB_USER: "${DB_USERNAME}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_HOST: pgsql
+      DB_NAME: "${DB_DATABASE}"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 200
       DEFAULT_POOL_SIZE: 20
