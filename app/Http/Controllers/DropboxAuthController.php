@@ -65,7 +65,7 @@ class DropboxAuthController extends Controller
             ]);
         }
         $accountResponse = $accountRequest
-            ->withBody('null', 'application/json')
+            ->withBody('', 'application/json')
             ->post('https://api.dropboxapi.com/2/users/get_current_account');
 
         $accountName = 'Dropbox';
@@ -125,7 +125,7 @@ class DropboxAuthController extends Controller
             ]);
         }
         $spaceResponse = $spaceRequest
-            ->withBody('null', 'application/json')
+            ->withBody('', 'application/json')
             ->post('https://api.dropboxapi.com/2/users/get_space_usage');
 
         if ($spaceResponse->ok()) {

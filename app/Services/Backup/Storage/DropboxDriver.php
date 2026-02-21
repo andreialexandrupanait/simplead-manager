@@ -374,7 +374,7 @@ class DropboxDriver implements StorageDriver
 
         if (array_key_exists('json', $options)) {
             if ($options['json'] === null) {
-                return $request->withBody('null', 'application/json')->post($url);
+                return $request->withBody('', 'application/json')->post($url);
             }
             return $request->post($url, $options['json']);
         }
