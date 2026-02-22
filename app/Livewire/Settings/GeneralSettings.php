@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Settings;
 
+use App\Livewire\Forms\GeneralSettingsFormData;
+use App\Livewire\Forms\SiteStatusFormData;
 use App\Models\SiteStatus;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
@@ -18,40 +20,25 @@ class GeneralSettings extends Component
 
     private static ?bool $hasSiteStatusesTable = null;
 
-    // Application
-    public string $appName = 'SimpleAd Manager';
-    public string $appUrl = '';
-    public string $defaultTimezone = 'UTC';
-    public string $dateFormat = 'M d, Y';
+    public GeneralSettingsFormData $form;
+    public SiteStatusFormData $statusForm;
 
-    // Monitoring defaults
-    public int $defaultInterval = 300;
-    public int $defaultTimeout = 30;
-    public int $alertAfterFailures = 3;
-
-    // Favicon (small square icon — browser tab + sidebar icon)
-    public $favicon;
+    // Branding paths (not part of the form -- display-only state)
     public ?string $faviconPath = null;
-
-    // Logo (wider image — replaces app name text in sidebar)
-    public $logo;
     public ?string $logoPath = null;
 
-    // Site Status form
+    // Site Status form editing ID
     public ?int $editingStatusId = null;
-    public string $statusName = '';
-    public string $statusColor = '#6b7280';
-    public int $statusSortOrder = 0;
 
     public function mount(SettingsService $settings): void
     {
-        $this->appName = $settings->get('app_name', 'SimpleAd Manager');
-        $this->appUrl = $settings->get('app_url', config('app.url', ''));
-        $this->defaultTimezone = $settings->get('default_timezone', 'UTC');
-        $this->dateFormat = $settings->get('date_format', 'M d, Y');
-        $this->defaultInterval = (int) $settings->get('default_interval', 300);
-        $this->defaultTimeout = (int) $settings->get('default_timeout', 30);
-        $this->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
+        $this->form->appName = $settings->get('app_name', 'SimpleAd Manager');
+        $this->form->appUrl = $settings->get('app_url', config('app.url', ''));
+        $this->form->defaultTimezone = $settings->get('default_timezone', 'UTC');
+        $this->form->dateFormat = $settings->get('date_format', 'M d, Y');
+        $this->form->defaultInterval = (int) $settings->get('default_interval', 300);
+        $this->form->defaultTimeout = (int) $settings->get('default_timeout', 30);
+        $this->form->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
         $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
     }
@@ -68,46 +55,36 @@ class GeneralSettings extends Component
 
     public function save(SettingsService $settings): void
     {
-        $this->validate([
-            'appName' => 'required|string|max:255',
-            'appUrl' => 'nullable|url|max:255',
-            'defaultTimezone' => 'required|timezone',
-            'dateFormat' => 'required|string|max:50',
-            'defaultInterval' => 'required|integer|min:60|max:3600',
-            'defaultTimeout' => 'required|integer|min:5|max:120',
-            'alertAfterFailures' => 'required|integer|min:1|max:10',
-            'favicon' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,ico,svg|max:1024',
-            'logo' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg|max:2048',
-        ]);
+        $this->form->validate();
 
-        $settings->set('app_name', $this->appName, 'general', 'string');
-        $settings->set('app_url', $this->appUrl, 'general', 'string');
-        $settings->set('default_timezone', $this->defaultTimezone, 'general', 'string');
-        $settings->set('date_format', $this->dateFormat, 'general', 'string');
-        $settings->set('default_interval', $this->defaultInterval, 'monitoring', 'integer');
-        $settings->set('default_timeout', $this->defaultTimeout, 'monitoring', 'integer');
-        $settings->set('alert_after_failures', $this->alertAfterFailures, 'monitoring', 'integer');
+        $settings->set('app_name', $this->form->appName, 'general', 'string');
+        $settings->set('app_url', $this->form->appUrl, 'general', 'string');
+        $settings->set('default_timezone', $this->form->defaultTimezone, 'general', 'string');
+        $settings->set('date_format', $this->form->dateFormat, 'general', 'string');
+        $settings->set('default_interval', $this->form->defaultInterval, 'monitoring', 'integer');
+        $settings->set('default_timeout', $this->form->defaultTimeout, 'monitoring', 'integer');
+        $settings->set('alert_after_failures', $this->form->alertAfterFailures, 'monitoring', 'integer');
 
-        if ($this->favicon) {
+        if ($this->form->favicon) {
             if ($this->faviconPath) {
                 Storage::disk('public')->delete($this->faviconPath);
             }
 
-            $path = $this->favicon->storeAs('branding', uniqid('favicon_') . '.' . $this->favicon->getClientOriginalExtension(), 'public');
+            $path = $this->form->favicon->storeAs('branding', uniqid('favicon_') . '.' . $this->form->favicon->getClientOriginalExtension(), 'public');
             $settings->set('branding.favicon', $path, 'branding', 'string');
             $this->faviconPath = $path;
-            $this->favicon = null;
+            $this->form->favicon = null;
         }
 
-        if ($this->logo) {
+        if ($this->form->logo) {
             if ($this->logoPath) {
                 Storage::disk('public')->delete($this->logoPath);
             }
 
-            $path = $this->logo->storeAs('branding', uniqid('logo_') . '.' . $this->logo->getClientOriginalExtension(), 'public');
+            $path = $this->form->logo->storeAs('branding', uniqid('logo_') . '.' . $this->form->logo->getClientOriginalExtension(), 'public');
             $settings->set('branding.logo', $path, 'branding', 'string');
             $this->logoPath = $path;
-            $this->logo = null;
+            $this->form->logo = null;
         }
 
         $this->dispatch('notify', type: 'success', message: 'Settings saved successfully.');
@@ -141,14 +118,14 @@ class GeneralSettings extends Component
         if ($id) {
             $status = SiteStatus::findOrFail($id);
             $this->editingStatusId = $status->id;
-            $this->statusName = $status->name;
-            $this->statusColor = $status->color;
-            $this->statusSortOrder = $status->sort_order;
+            $this->statusForm->statusName = $status->name;
+            $this->statusForm->statusColor = $status->color;
+            $this->statusForm->statusSortOrder = $status->sort_order;
         } else {
             $this->editingStatusId = null;
-            $this->statusName = '';
-            $this->statusColor = '#6b7280';
-            $this->statusSortOrder = 0;
+            $this->statusForm->statusName = '';
+            $this->statusForm->statusColor = '#6b7280';
+            $this->statusForm->statusSortOrder = 0;
         }
 
         $this->resetValidation();
@@ -162,18 +139,14 @@ class GeneralSettings extends Component
             return;
         }
 
-        $this->validate([
-            'statusName' => 'required|string|max:255',
-            'statusColor' => 'required|string|max:7',
-            'statusSortOrder' => 'required|integer|min:0',
-        ]);
+        $this->statusForm->validate();
 
         SiteStatus::updateOrCreate(
             ['id' => $this->editingStatusId],
             [
-                'name' => $this->statusName,
-                'color' => $this->statusColor,
-                'sort_order' => $this->statusSortOrder,
+                'name' => $this->statusForm->statusName,
+                'color' => $this->statusForm->statusColor,
+                'sort_order' => $this->statusForm->statusSortOrder,
             ]
         );
 

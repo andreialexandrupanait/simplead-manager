@@ -43,6 +43,7 @@ class GoogleConnection extends Model
 
     public function sitesCount(): int
     {
-        return $this->analyticsConnections()->count() + $this->searchConsoleConnections()->count();
+        return ($this->analytics_connections_count ?? $this->analyticsConnections()->count())
+             + ($this->search_console_connections_count ?? $this->searchConsoleConnections()->count());
     }
 }

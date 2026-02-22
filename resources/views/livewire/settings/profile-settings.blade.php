@@ -25,34 +25,28 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
-                        <x-ui.input wire:model="name" class="mt-1" />
-                        @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('Name')" for="name" error="name">
+                        <x-ui.input wire:model="name" id="name" />
+                    </x-ui.form-group>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
-                        <x-ui.input wire:model="email" type="email" class="mt-1" />
-                        @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('Email')" for="email" error="email">
+                        <x-ui.input wire:model="email" id="email" type="email" />
+                    </x-ui.form-group>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Timezone') }}</label>
-                        <x-ui.select wire:model="timezone" class="mt-1">
+                    <x-ui.form-group :label="__('Timezone')" for="timezone">
+                        <x-ui.select wire:model="timezone" id="timezone">
                             @foreach(timezone_identifiers_list() as $tz)
                                 <option value="{{ $tz }}">{{ $tz }}</option>
                             @endforeach
                         </x-ui.select>
-                    </div>
+                    </x-ui.form-group>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Language') }}</label>
-                        <x-ui.select wire:model="language" class="mt-1">
+                    <x-ui.form-group :label="__('Language')" for="language">
+                        <x-ui.select wire:model="language" id="language">
                             <option value="en">{{ __('English') }}</option>
                             <option value="ro">{{ __('Romanian') }}</option>
                         </x-ui.select>
-                    </div>
+                    </x-ui.form-group>
                 </div>
 
                 <div class="mt-6 flex justify-end">
@@ -69,23 +63,17 @@
             <x-ui.card>
                 <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Change Password') }}</h3>
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Current Password') }}</label>
-                        <x-ui.input wire:model="currentPassword" type="password" class="mt-1" />
-                        @error('currentPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('Current Password')" for="currentPassword" error="currentPassword">
+                        <x-ui.input wire:model="currentPassword" id="currentPassword" type="password" />
+                    </x-ui.form-group>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('New Password') }}</label>
-                        <x-ui.input wire:model="newPassword" type="password" class="mt-1" />
-                        @error('newPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('New Password')" for="newPassword" error="newPassword">
+                        <x-ui.input wire:model="newPassword" id="newPassword" type="password" />
+                    </x-ui.form-group>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Confirm New Password') }}</label>
-                        <x-ui.input wire:model="newPasswordConfirmation" type="password" class="mt-1" />
-                        @error('newPasswordConfirmation') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('Confirm New Password')" for="newPasswordConfirmation" error="newPasswordConfirmation">
+                        <x-ui.input wire:model="newPasswordConfirmation" id="newPasswordConfirmation" type="password" />
+                    </x-ui.form-group>
                 </div>
 
                 <div class="mt-6 flex justify-end">
@@ -118,11 +106,9 @@
                     <div class="flex justify-center p-4 bg-white rounded-lg border border-gray-200">
                         {!! $twoFactorQrSvg !!}
                     </div>
-                    <div class="max-w-xs">
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Verification Code') }}</label>
-                        <x-ui.input wire:model="twoFactorCode" placeholder="000000" maxlength="6" class="mt-1" />
-                        @error('twoFactorCode') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    <x-ui.form-group :label="__('Verification Code')" for="twoFactorCode" error="twoFactorCode" class="max-w-xs">
+                        <x-ui.input wire:model="twoFactorCode" id="twoFactorCode" placeholder="000000" maxlength="6" />
+                    </x-ui.form-group>
                     <div class="flex items-center gap-3">
                         <x-ui.button wire:click="confirmTwoFactor">{{ __('Confirm & Enable') }}</x-ui.button>
                         <x-ui.button wire:click="$set('showingQrCode', false)" variant="secondary">{{ __('Cancel') }}</x-ui.button>
@@ -170,10 +156,9 @@
         <x-ui.card class="border-red-200 ring-red-100">
             <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Delete Account') }}</h3>
             <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete your account and all associated data. This action cannot be undone.') }}</p>
-            <div class="max-w-sm mb-4">
-                <x-ui.input type="password" wire:model="deleteAccountPassword" label="{{ __('Confirm your password') }}" placeholder="{{ __('Enter your password to confirm') }}" />
-                @error('deleteAccountPassword') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
+            <x-ui.form-group :label="__('Confirm your password')" for="deleteAccountPassword" error="deleteAccountPassword" class="max-w-sm mb-4">
+                <x-ui.input type="password" wire:model="deleteAccountPassword" id="deleteAccountPassword" placeholder="{{ __('Enter your password to confirm') }}" />
+            </x-ui.form-group>
             <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="deleteAccount">{{ __('Delete Account') }}</span>
                 <span wire:loading wire:target="deleteAccount">{{ __('Deleting...') }}</span>

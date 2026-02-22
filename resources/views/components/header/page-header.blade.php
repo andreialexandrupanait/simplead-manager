@@ -101,14 +101,14 @@
 <header class="sticky top-0 z-30 border-b bg-white shadow-sm">
     <div class="flex h-16 items-center px-6">
         {{-- Mobile menu toggle --}}
-        <button @click="mobileSidebarOpen = true" aria-label="Open menu" class="mr-3 lg:hidden text-gray-500">
-            <x-icons.menu class="h-6 w-6" />
+        <button @click="mobileSidebarOpen = true" aria-label="{{ __('Open menu') }}" class="mr-3 lg:hidden text-gray-500">
+            <x-icons.menu class="h-6 w-6" aria-hidden="true" />
         </button>
 
         {{-- Back button (shows when not on dashboard) --}}
         @if($showBackButton)
-            <a href="{{ $backUrl }}" class="mr-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
-                <x-icons.arrow-left class="h-5 w-5" />
+            <a href="{{ $backUrl }}" aria-label="{{ __('Go back') }}" class="mr-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+                <x-icons.arrow-left class="h-5 w-5" aria-hidden="true" />
             </a>
         @endif
 
@@ -120,14 +120,14 @@
             @else
                 <h1 class="text-sm font-bold tracking-wide text-gray-900 uppercase truncate leading-tight">{{ $pageTitle }}</h1>
                 @if(count($crumbs) > 0)
-                    <nav class="hidden sm:flex items-center gap-1 mt-0.5">
+                    <nav aria-label="{{ __('Breadcrumb') }}" class="hidden sm:flex items-center gap-1 mt-0.5">
                         @foreach($crumbs as $crumb)
                             <a href="{{ $crumb['url'] }}" class="text-xs text-gray-400 hover:text-gray-600 transition whitespace-nowrap">{{ $crumb['label'] }}</a>
-                            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="h-3 w-3 text-gray-300 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                             @if($loop->last)
-                                <span class="text-xs text-gray-400 whitespace-nowrap">{{ $pageTitle }}</span>
+                                <span class="text-xs text-gray-400 whitespace-nowrap" aria-current="page">{{ $pageTitle }}</span>
                             @endif
                         @endforeach
                     </nav>

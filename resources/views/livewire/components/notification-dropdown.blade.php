@@ -11,7 +11,7 @@
                 class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full relative"
                 :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
             <div class="relative shrink-0">
-                <x-icons.bell class="h-4 w-4" />
+                <x-icons.bell class="h-4 w-4" aria-hidden="true" />
                 @if($this->count > 0)
                     <span class="absolute -top-1 -right-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white px-0.5">
                         {{ $this->count > 9 ? '9+' : $this->count }}
@@ -28,8 +28,8 @@
         </button>
     @else
         {{-- Header button style (original) --}}
-        <button @click="open = !open" class="relative text-gray-400 hover:text-gray-600 transition">
-            <x-icons.bell class="h-5 w-5" />
+        <button @click="open = !open" aria-label="{{ __('Notifications') }}" class="relative text-gray-400 hover:text-gray-600 transition">
+            <x-icons.bell class="h-5 w-5" aria-hidden="true" />
             @if($this->count > 0)
                 <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {{ $this->count > 9 ? '9+' : $this->count }}
@@ -115,16 +115,16 @@
                     <button
                         wire:click="dismissAlert('{{ $alert['key'] }}')"
                         class="flex-shrink-0 rounded p-1 text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition"
-                        title="Mark as read"
+                        aria-label="{{ __('Mark as read') }}"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
             @empty
                 <div class="px-4 py-8 text-center">
-                    <svg class="mx-auto h-8 w-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="mx-auto h-8 w-8 text-gray-300" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <p class="mt-2 text-sm font-medium text-gray-500">All clear</p>

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ReportStatus;
+use App\Helpers\FormatHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +35,7 @@ class Report extends Model
     ];
 
     protected $casts = [
+        'status' => ReportStatus::class,
         'period_start' => 'date',
         'period_end' => 'date',
         'was_sent' => 'boolean',
@@ -64,12 +67,10 @@ class Report extends Model
 
     public function getFileSizeFormattedAttribute(): string
     {
-        $bytes = $this->file_size;
-        if (!$bytes) {
+        if (!$this->file_size) {
             return '0 B';
         }
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $i = floor(log($bytes, 1024));
-        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+
+        return FormatHelper::bytes($this->file_size);
     }
 }

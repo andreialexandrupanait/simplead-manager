@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,7 +33,7 @@ class SecurityScan extends Model
         'scanned_at' => 'datetime',
     ];
 
-    public function scopeForSite($query, int $siteId)
+    public function scopeForSite(Builder $query, int $siteId): Builder
     {
         return $query->where('site_id', $siteId);
     }

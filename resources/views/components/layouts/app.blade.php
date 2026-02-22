@@ -14,14 +14,17 @@
         <link rel="icon" type="image/png" href="{{ Storage::url($brandingFavicon) }}">
     @endif
     {{-- Pre-Alpine sidebar state to prevent flash --}}
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         (function() {
             document.documentElement.classList.add('no-transitions');
             var open = localStorage.getItem('sidebarOpen') !== 'false';
             var w = open ? '16rem' : '4rem';
             var s = document.createElement('style');
             s.id = 'sidebar-init';
-            s.textContent = '@media(min-width:1024px){[data-sidebar]{width:' + w + '!important}[data-main]{padding-left:' + w + '!important}}';
+            var rules = '@media(min-width:1024px){[data-sidebar]{width:' + w + '!important}[data-main]{padding-left:' + w + '!important}';
+            if (!open) rules += '[data-sidebar] span{opacity:0!important;width:0!important;overflow:hidden!important}[data-sidebar] [data-logo]{opacity:0!important;width:0!important;overflow:hidden!important}';
+            rules += '}';
+            s.textContent = rules;
             document.head.appendChild(s);
         })();
     </script>
@@ -62,11 +65,13 @@
         {{-- Mobile overlay --}}
         <div x-show="mobileSidebarOpen" x-transition.opacity
              class="fixed inset-0 z-40 bg-black/50 lg:hidden"
+             aria-hidden="true"
              @click="mobileSidebarOpen = false">
         </div>
 
         {{-- Sidebar --}}
         <aside data-sidebar
+               aria-label="{{ __('Main navigation') }}"
                class="fixed inset-y-0 left-0 z-50 flex flex-col bg-[#1A1A2E] overflow-hidden transition-all duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
@@ -77,7 +82,7 @@
             {{-- Logo area --}}
             <div class="flex h-16 items-center px-4 border-b border-white/10"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                <a href="{{ route('dashboard') }}" class="block transition-all duration-300"
+                <a href="{{ route('dashboard') }}" data-logo class="block transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="h-8 w-auto object-contain" style="filter: brightness(0) invert(1);">
@@ -85,14 +90,14 @@
                         <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
                 </a>
-                <button @click="toggleSidebar()" aria-label="Toggle sidebar" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
+                <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
                         :class="sidebarOpen ? '' : 'lg:ml-0'">
-                    <x-icons.menu class="h-5 w-5" />
+                    <x-icons.menu class="h-5 w-5" aria-hidden="true" />
                 </button>
             </div>
 
             {{-- Dynamic sidebar content --}}
-            <nav class="flex-1 overflow-y-auto scrollbar-thin px-2 py-2 transition-all duration-300"
+            <nav aria-label="{{ __('Sidebar') }}" class="flex-1 overflow-y-auto scrollbar-thin px-2 py-2 transition-all duration-300"
                  :class="sidebarOpen ? '' : 'lg:px-2'">
                 @if(isset($siteContext) && $siteContext)
                     <x-sidebar.site-sidebar :site="$siteContext" />
@@ -112,7 +117,7 @@
                        @mouseleave="hideSidebarTooltip()"
                        class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                        <x-icons.settings class="h-4 w-4 shrink-0" />
+                        <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                             {{ __('Settings') }}
@@ -147,7 +152,7 @@
                                 @mouseleave="hideSidebarTooltip()"
                                 class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full"
                                 :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                            <x-icons.log-out class="h-4 w-4 shrink-0" />
+                            <x-icons.log-out class="h-4 w-4 shrink-0" aria-hidden="true" />
                             <span class="whitespace-nowrap transition-all duration-300"
                                   :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                                 {{ __('Log Out') }}
@@ -212,6 +217,8 @@
     {{-- Global toast notification --}}
     <div x-data="toast" x-on:notify.window="notify($event.detail)" x-show="show" x-cloak
          x-transition.duration.200ms
+         role="status"
+         aria-live="polite"
          class="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg p-4 text-sm shadow-lg"
          :class="type === 'success' ? 'bg-green-50 text-green-800' : type === 'error' ? 'bg-red-50 text-red-800' : type === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-blue-50 text-blue-800'"
          x-text="message">

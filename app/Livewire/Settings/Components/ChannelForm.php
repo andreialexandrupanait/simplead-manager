@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings\Components;
 
+use App\Livewire\Forms\ChannelFormData;
 use App\Models\NotificationChannel;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -9,23 +10,8 @@ use Livewire\Component;
 class ChannelForm extends Component
 {
     public ?int $channelId = null;
-    public string $name = '';
-    public string $type = 'email';
-    public bool $is_default = false;
 
-    // Type-specific fields
-    public string $emailAddress = '';
-    public string $webhookUrl = '';
-    public string $webhookMethod = 'POST';
-    public string $webhookHeaders = '';
-    public string $webhookSigningSecret = '';
-
-    // Telegram fields
-    public string $telegramBotToken = '';
-    public string $telegramChatId = '';
-
-    // Event subscriptions
-    public array $eventSubscriptions = [];
+    public ChannelFormData $form;
 
     #[On('open-channel-form')]
     public function openModal(?int $channelId = null): void
@@ -35,101 +21,40 @@ class ChannelForm extends Component
 
         if ($channelId) {
             $channel = NotificationChannel::findOrFail($channelId);
-            $this->name = $channel->name;
-            $this->type = $channel->type;
-            $this->is_default = $channel->is_default;
-            $this->eventSubscriptions = $channel->event_subscriptions ?? [];
-
-            match ($channel->type) {
-                'email' => $this->emailAddress = $channel->config['address'] ?? '',
-                'slack', 'discord' => $this->webhookUrl = $channel->config['webhook_url'] ?? '',
-                'telegram' => (function () use ($channel) {
-                    $this->telegramChatId = $channel->config['chat_id'] ?? '';
-                    try {
-                        $this->telegramBotToken = decrypt($channel->config['bot_token'] ?? '');
-                    } catch (\Exception $e) {
-                        $this->telegramBotToken = '';
-                    }
-                })(),
-                'webhook' => (function () use ($channel) {
-                    $this->webhookUrl = $channel->config['url'] ?? '';
-                    $this->webhookMethod = $channel->config['method'] ?? 'POST';
-                    $this->webhookHeaders = isset($channel->config['headers']) ? json_encode($channel->config['headers'], JSON_PRETTY_PRINT) : '';
-                    $this->webhookSigningSecret = $channel->config['signing_secret'] ?? '';
-                })(),
-                default => null,
-            };
+            $this->form->setFromChannel($channel);
         } else {
-            $this->resetForm();
+            $this->form->resetFormData();
         }
 
         $this->dispatch('open-modal-channel-form');
     }
 
-    protected function resetForm(): void
-    {
-        $this->name = '';
-        $this->type = 'email';
-        $this->is_default = false;
-        $this->emailAddress = '';
-        $this->webhookUrl = '';
-        $this->webhookMethod = 'POST';
-        $this->webhookHeaders = '';
-        $this->webhookSigningSecret = '';
-        $this->telegramBotToken = '';
-        $this->telegramChatId = '';
-        $this->eventSubscriptions = [];
-    }
-
     public function save(): void
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:email,slack,discord,webhook,telegram',
-        ];
+        $this->form->validate();
 
-        $rules = match ($this->type) {
-            'email' => array_merge($rules, [
-                'emailAddress' => 'required|email|max:255',
-            ]),
-            'slack', 'discord' => array_merge($rules, [
-                'webhookUrl' => 'required|url|max:2048',
-            ]),
-            'telegram' => array_merge($rules, [
-                'telegramBotToken' => 'required|string|max:255',
-                'telegramChatId' => 'required|string|max:255',
-            ]),
-            'webhook' => array_merge($rules, [
-                'webhookUrl' => 'required|url|max:2048',
-                'webhookMethod' => 'required|in:GET,POST,PUT,PATCH',
-            ]),
-            default => $rules,
-        };
-
-        $this->validate($rules);
-
-        $config = match ($this->type) {
-            'email' => ['address' => $this->emailAddress],
-            'slack', 'discord' => ['webhook_url' => $this->webhookUrl],
+        $config = match ($this->form->type) {
+            'email' => ['address' => $this->form->emailAddress],
+            'slack', 'discord' => ['webhook_url' => $this->form->webhookUrl],
             'telegram' => [
-                'bot_token' => encrypt($this->telegramBotToken),
-                'chat_id' => $this->telegramChatId,
+                'bot_token' => encrypt($this->form->telegramBotToken),
+                'chat_id' => $this->form->telegramChatId,
             ],
             'webhook' => array_filter([
-                'url' => $this->webhookUrl,
-                'method' => $this->webhookMethod,
-                'headers' => $this->webhookHeaders ? json_decode($this->webhookHeaders, true) : [],
-                'signing_secret' => $this->webhookSigningSecret ?: null,
+                'url' => $this->form->webhookUrl,
+                'method' => $this->form->webhookMethod,
+                'headers' => $this->form->webhookHeaders ? json_decode($this->form->webhookHeaders, true) : [],
+                'signing_secret' => $this->form->webhookSigningSecret ?: null,
             ]),
             default => [],
         };
 
         $data = [
-            'name' => $this->name,
-            'type' => $this->type,
+            'name' => $this->form->name,
+            'type' => $this->form->type,
             'config' => $config,
-            'is_default' => $this->is_default,
-            'event_subscriptions' => !empty($this->eventSubscriptions) ? $this->eventSubscriptions : null,
+            'is_default' => $this->form->is_default,
+            'event_subscriptions' => !empty($this->form->eventSubscriptions) ? $this->form->eventSubscriptions : null,
         ];
 
         if ($this->channelId) {

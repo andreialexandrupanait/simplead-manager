@@ -9,26 +9,18 @@
         <x-ui.card>
             <h2 class="mb-4 text-lg font-medium text-gray-900">Contact Information</h2>
             <div class="grid gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Name *</label>
-                    <x-ui.input wire:model="name" id="name" type="text" class="w-full" />
-                    @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Email</label>
-                    <x-ui.input wire:model="email" id="email" type="email" class="w-full" />
-                    @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="phone" class="mb-1 block text-sm font-medium text-gray-700">Phone</label>
-                    <x-ui.input wire:model="phone" id="phone" type="text" class="w-full" />
-                    @error('phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div class="sm:col-span-2">
-                    <label for="website" class="mb-1 block text-sm font-medium text-gray-700">Website</label>
-                    <x-ui.input wire:model="website" id="website" type="url" placeholder="https://" class="w-full" />
-                    @error('website') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group label="Name" for="name" error="form.name" :required="true" class="sm:col-span-2">
+                    <x-ui.input wire:model="form.name" id="name" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group label="Email" for="email" error="form.email">
+                    <x-ui.input wire:model="form.email" id="email" type="email" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group label="Phone" for="phone" error="form.phone">
+                    <x-ui.input wire:model="form.phone" id="phone" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group label="Website" for="website" error="form.website" class="sm:col-span-2">
+                    <x-ui.input wire:model="form.website" id="website" type="url" placeholder="https://" class="w-full" />
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 
@@ -36,23 +28,15 @@
         <x-ui.card>
             <h2 class="mb-4 text-lg font-medium text-gray-900">Company Details</h2>
             <div class="grid gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label for="company" class="mb-1 block text-sm font-medium text-gray-700">Company Name</label>
-                    <x-ui.input wire:model="company" id="company" type="text" class="w-full" />
-                    @error('company') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="vat_number" class="mb-1 block text-sm font-medium text-gray-700">{{ __('VAT Number') }} (CUI)</label>
-                    <x-ui.input wire:model="vat_number" id="vat_number" type="text" class="w-full" placeholder="RO12345678" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('Romanian CUI, optionally prefixed with RO') }}</p>
-                    @error('vat_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="registration_number" class="mb-1 block text-sm font-medium text-gray-700">{{ __('Registration Number') }} (Nr. Reg. Com.)</label>
-                    <x-ui.input wire:model="registration_number" id="registration_number" type="text" class="w-full" placeholder="J40/12345/2024" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('Format: J{county}/{number}/{year}') }}</p>
-                    @error('registration_number') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group label="Company Name" for="company" error="form.company" class="sm:col-span-2">
+                    <x-ui.input wire:model="form.company" id="company" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group :label="__('VAT Number') . ' (CUI)'" for="vat_number" error="form.vat_number" :hint="__('Romanian CUI, optionally prefixed with RO')">
+                    <x-ui.input wire:model="form.vat_number" id="vat_number" type="text" class="w-full" placeholder="RO12345678" />
+                </x-ui.form-group>
+                <x-ui.form-group :label="__('Registration Number') . ' (Nr. Reg. Com.)'" for="registration_number" error="form.registration_number" :hint="__('Format: J{county}/{number}/{year}')">
+                    <x-ui.input wire:model="form.registration_number" id="registration_number" type="text" class="w-full" placeholder="J40/12345/2024" />
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 
@@ -60,21 +44,15 @@
         <x-ui.card>
             <h2 class="mb-4 text-lg font-medium text-gray-900">Address</h2>
             <div class="grid gap-4 sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Street Address</label>
-                    <x-ui.input wire:model="address" id="address" type="text" class="w-full" />
-                    @error('address') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="city" class="mb-1 block text-sm font-medium text-gray-700">City</label>
-                    <x-ui.input wire:model="city" id="city" type="text" class="w-full" />
-                    @error('city') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="country" class="mb-1 block text-sm font-medium text-gray-700">Country</label>
-                    <x-ui.input wire:model="country" id="country" type="text" class="w-full" />
-                    @error('country') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group label="Street Address" for="address" error="form.address" class="sm:col-span-2">
+                    <x-ui.input wire:model="form.address" id="address" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group label="City" for="city" error="form.city">
+                    <x-ui.input wire:model="form.city" id="city" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group label="Country" for="country" error="form.country">
+                    <x-ui.input wire:model="form.country" id="country" type="text" class="w-full" />
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 
@@ -82,20 +60,16 @@
         <x-ui.card>
             <h2 class="mb-4 text-lg font-medium text-gray-900">Additional</h2>
             <div class="space-y-4">
-                <div>
-                    <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Status</label>
-                    <x-ui.select wire:model="status" id="status" class="w-full sm:w-48">
+                <x-ui.form-group label="Status" for="status" error="form.status">
+                    <x-ui.select wire:model="form.status" id="status" class="w-full sm:w-48">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                         <option value="archived">Archived</option>
                     </x-ui.select>
-                    @error('status') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="notes" class="mb-1 block text-sm font-medium text-gray-700">Notes</label>
-                    <textarea wire:model="notes" id="notes" rows="4" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent"></textarea>
-                    @error('notes') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                </x-ui.form-group>
+                <x-ui.form-group label="Notes" for="notes" error="form.notes">
+                    <textarea wire:model="form.notes" id="notes" rows="4" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-accent focus:ring-1 focus:ring-accent"></textarea>
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 

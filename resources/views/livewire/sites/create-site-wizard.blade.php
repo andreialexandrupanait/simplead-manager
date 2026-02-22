@@ -35,13 +35,13 @@
                 <div>
                     <label for="url" class="block text-sm font-medium text-gray-700">Site URL</label>
                     <div class="mt-1 flex gap-2">
-                        <x-ui.input wire:model.live.debounce.500ms="url" id="url" type="url" placeholder="https://example.com" class="flex-1" />
+                        <x-ui.input wire:model.live.debounce.500ms="form.url" id="url" type="url" placeholder="https://example.com" class="flex-1" />
                         <x-ui.button variant="secondary" wire:click="checkConnectivity" wire:loading.attr="disabled" wire:target="checkConnectivity">
                             <span wire:loading.remove wire:target="checkConnectivity">Check</span>
                             <span wire:loading wire:target="checkConnectivity">Checking...</span>
                         </x-ui.button>
                     </div>
-                    @error('url') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    @error('form.url') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
 
                     @if($connectivityStatus === 'ok')
                         <p class="mt-2 flex items-center gap-1 text-sm text-green-600">
@@ -56,12 +56,9 @@
                     @endif
                 </div>
 
-                <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">Site Name</label>
-                    <x-ui.input wire:model="name" id="name" placeholder="My Website" class="mt-1" />
-                    <p class="mt-1 text-xs text-gray-400">Auto-filled from URL. You can change it.</p>
-                    @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group label="Site Name" for="name" error="form.name" hint="Auto-filled from URL. You can change it.">
+                    <x-ui.input wire:model="form.name" id="name" placeholder="My Website" />
+                </x-ui.form-group>
             </div>
 
             <div class="mt-6 flex items-center justify-between">
@@ -80,9 +77,9 @@
             <div class="mt-6 space-y-3">
                 {{-- No client option --}}
                 <button
-                    wire:click="$set('clientId', null)"
+                    wire:click="$set('form.clientId', null)"
                     class="w-full rounded-lg border p-3 text-left transition
-                        {{ $clientId === null ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                        {{ $form->clientId === null ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
                 >
                     <div class="text-sm font-medium text-gray-900">No client</div>
                     <div class="mt-0.5 text-xs text-gray-500">Skip client assignment for now.</div>
@@ -91,9 +88,9 @@
                 {{-- Existing clients --}}
                 @foreach($this->clients as $client)
                     <button
-                        wire:click="$set('clientId', {{ $client->id }})"
+                        wire:click="$set('form.clientId', {{ $client->id }})"
                         class="w-full rounded-lg border p-3 text-left transition
-                            {{ $clientId === $client->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                            {{ $form->clientId === $client->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
                     >
                         <div class="text-sm font-medium text-gray-900">{{ $client->name }}</div>
                         @if($client->email)
@@ -114,14 +111,12 @@
                     <div class="rounded-lg border border-purple-200 bg-purple-50/50 p-4">
                         <h4 class="text-sm font-medium text-gray-900 mb-3">New Client</h4>
                         <div class="space-y-3">
-                            <div>
-                                <x-ui.input wire:model="newClientName" placeholder="Client name" />
-                                @error('newClientName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <x-ui.input wire:model="newClientEmail" type="email" placeholder="Email (optional)" />
-                                @error('newClientEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
+                            <x-ui.form-group error="form.newClientName">
+                                <x-ui.input wire:model="form.newClientName" placeholder="Client name" />
+                            </x-ui.form-group>
+                            <x-ui.form-group error="form.newClientEmail">
+                                <x-ui.input wire:model="form.newClientEmail" type="email" placeholder="Email (optional)" />
+                            </x-ui.form-group>
                             <div class="flex gap-2">
                                 <x-ui.button size="sm" wire:click="createClient">Create</x-ui.button>
                                 <x-ui.button size="sm" variant="secondary" wire:click="$set('creatingClient', false)">Cancel</x-ui.button>
@@ -147,9 +142,9 @@
             <div class="mt-6 space-y-3">
                 @foreach($this->presets as $preset)
                     <button
-                        wire:click="$set('presetId', {{ $preset->id }})"
+                        wire:click="$set('form.presetId', {{ $preset->id }})"
                         class="w-full rounded-lg border p-4 text-left transition
-                            {{ $presetId === $preset->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                            {{ $form->presetId === $preset->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
                     >
                         <div class="flex items-center justify-between">
                             <div class="text-sm font-semibold text-gray-900">{{ $preset->name }}</div>
@@ -197,17 +192,17 @@
                 <div class="rounded-lg border border-gray-200 divide-y">
                     <div class="flex items-center justify-between px-4 py-3">
                         <span class="text-sm text-gray-500">Site URL</span>
-                        <span class="text-sm font-medium text-gray-900">{{ $url }}</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $form->url }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
                         <span class="text-sm text-gray-500">Name</span>
-                        <span class="text-sm font-medium text-gray-900">{{ $name }}</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $form->name }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
                         <span class="text-sm text-gray-500">Client</span>
                         <span class="text-sm font-medium text-gray-900">
-                            @if($clientId)
-                                {{ $this->clients->firstWhere('id', $clientId)?->name ?? 'Unknown' }}
+                            @if($form->clientId)
+                                {{ $this->clients->firstWhere('id', $form->clientId)?->name ?? 'Unknown' }}
                             @else
                                 <span class="text-gray-400">None</span>
                             @endif
@@ -216,8 +211,8 @@
                     <div class="flex items-center justify-between px-4 py-3">
                         <span class="text-sm text-gray-500">Preset</span>
                         <span class="text-sm font-medium text-gray-900">
-                            @if($presetId)
-                                {{ $this->presets->firstWhere('id', $presetId)?->name ?? 'Unknown' }}
+                            @if($form->presetId)
+                                {{ $this->presets->firstWhere('id', $form->presetId)?->name ?? 'Unknown' }}
                             @else
                                 <span class="text-gray-400">Default</span>
                             @endif

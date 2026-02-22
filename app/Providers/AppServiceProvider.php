@@ -22,7 +22,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\SettingsService::class);
+        $this->app->singleton(\App\Services\DashboardService::class);
+        $this->app->singleton(\App\Services\GotenbergService::class);
     }
 
     /**
@@ -40,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('authenticated', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
         RateLimiter::for('status-page', function (Request $request) {

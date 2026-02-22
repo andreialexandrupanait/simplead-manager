@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings\Components;
 
+use App\Livewire\Forms\StorageDestinationFormData;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -11,25 +12,8 @@ use Livewire\Component;
 class StorageDestinationForm extends Component
 {
     public ?int $destinationId = null;
-    public string $name = '';
-    public string $type = 'local';
-    public bool $is_default = false;
 
-    // Local
-    public string $localPath = '';
-
-    // S3
-    public string $s3Key = '';
-    public string $s3Secret = '';
-    public string $s3Bucket = '';
-    public string $s3Region = 'us-east-1';
-    public string $s3Endpoint = '';
-    public string $s3BasePath = '';
-
-    // Dropbox
-    public string $dropboxBasePath = '/#1 SAD Workspace/4. Backup';
-    public string $dropboxReportsPath = '';
-    public string $dropboxAppBackupsPath = '';
+    public StorageDestinationFormData $form;
 
     // Dropbox folder browser
     public bool $showFolderBrowser = false;
@@ -46,114 +30,59 @@ class StorageDestinationForm extends Component
 
         if ($destinationId) {
             $destination = StorageDestination::findOrFail($destinationId);
-            $this->name = $destination->name;
-            $this->type = $destination->type;
-            $this->is_default = $destination->is_default;
-            $config = $destination->config ?? [];
-
-            match ($destination->type) {
-                'local' => $this->localPath = $config['path'] ?? '',
-                's3' => (function () use ($config) {
-                    $this->s3Key = '';  // Don't show encrypted values
-                    $this->s3Secret = '';
-                    $this->s3Bucket = $config['bucket'] ?? '';
-                    $this->s3Region = $config['region'] ?? 'us-east-1';
-                    $this->s3Endpoint = $config['endpoint'] ?? '';
-                    $this->s3BasePath = $config['base_path'] ?? '';
-                })(),
-                'dropbox' => (function () use ($config) {
-                    $this->dropboxBasePath = $config['base_path'] ?? '/#1 SAD Workspace/4. Backup';
-                    $this->dropboxReportsPath = $config['reports_path'] ?? '';
-                    $this->dropboxAppBackupsPath = $config['app_backups_path'] ?? '';
-                })(),
-                default => null,
-            };
+            $this->form->setFromDestination($destination);
+            $this->form->isCreating = false;
         } else {
-            $this->resetForm();
+            $this->form->resetFormData();
+            $this->form->isCreating = true;
         }
 
-        $this->dispatch('open-modal-storage-form');
-    }
-
-    protected function resetForm(): void
-    {
-        $this->name = '';
-        $this->type = 'local';
-        $this->is_default = false;
-        $this->localPath = '';
-        $this->s3Key = '';
-        $this->s3Secret = '';
-        $this->s3Bucket = '';
-        $this->s3Region = 'us-east-1';
-        $this->s3Endpoint = '';
-        $this->s3BasePath = '';
-        $this->dropboxBasePath = '/#1 SAD Workspace/4. Backup';
-        $this->dropboxReportsPath = '';
-        $this->dropboxAppBackupsPath = '';
         $this->showFolderBrowser = false;
         $this->browserTarget = 'base_path';
         $this->browserCurrentPath = '';
         $this->browserFolders = [];
         $this->browserError = '';
+
+        $this->dispatch('open-modal-storage-form');
     }
 
     public function save(): void
     {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:local,s3,dropbox',
-        ]);
+        $this->form->validate();
 
-        if ($this->type === 'local') {
-            $this->validate(['localPath' => 'required|string']);
-        }
-
-        if ($this->type === 's3') {
-            $rules = [
-                's3Bucket' => 'required|string',
-                's3Region' => 'required|string',
-            ];
-            // Only require key/secret when creating new
-            if (!$this->destinationId) {
-                $rules['s3Key'] = 'required|string';
-                $rules['s3Secret'] = 'required|string';
-            }
-            $this->validate($rules);
-        }
-
-        $config = match ($this->type) {
-            'local' => ['path' => $this->localPath],
+        $config = match ($this->form->type) {
+            'local' => ['path' => $this->form->localPath],
             's3' => $this->buildS3Config(),
             'dropbox' => $this->buildDropboxConfig(),
             default => [],
         };
 
         $data = [
-            'name' => $this->name,
-            'type' => $this->type,
+            'name' => $this->form->name,
+            'type' => $this->form->type,
             'config' => $config,
-            'is_default' => $this->is_default,
+            'is_default' => $this->form->is_default,
         ];
 
-        if ($this->is_default) {
+        if ($this->form->is_default) {
             StorageDestination::where('is_default', true)->update(['is_default' => false]);
         }
 
         if ($this->destinationId) {
             $destination = StorageDestination::findOrFail($this->destinationId);
             // For S3: merge existing encrypted credentials if not re-entered
-            if ($this->type === 's3') {
+            if ($this->form->type === 's3') {
                 $existingConfig = $destination->config ?? [];
-                if (empty($this->s3Key) && isset($existingConfig['key'])) {
+                if (empty($this->form->s3Key) && isset($existingConfig['key'])) {
                     $config['key'] = $existingConfig['key'];
                 }
-                if (empty($this->s3Secret) && isset($existingConfig['secret'])) {
+                if (empty($this->form->s3Secret) && isset($existingConfig['secret'])) {
                     $config['secret'] = $existingConfig['secret'];
                 }
                 $data['config'] = $config;
             }
             // For Dropbox: merge existing tokens and root_namespace_id
-            if ($this->type === 'dropbox') {
+            if ($this->form->type === 'dropbox') {
                 $existingConfig = $destination->config ?? [];
                 $data['config'] = array_merge($existingConfig, $config);
             }
@@ -169,17 +98,17 @@ class StorageDestinationForm extends Component
     protected function buildS3Config(): array
     {
         $config = [
-            'bucket' => $this->s3Bucket,
-            'region' => $this->s3Region,
-            'endpoint' => $this->s3Endpoint,
-            'base_path' => $this->s3BasePath,
+            'bucket' => $this->form->s3Bucket,
+            'region' => $this->form->s3Region,
+            'endpoint' => $this->form->s3Endpoint,
+            'base_path' => $this->form->s3BasePath,
         ];
 
-        if (!empty($this->s3Key)) {
-            $config['key'] = encrypt($this->s3Key);
+        if (!empty($this->form->s3Key)) {
+            $config['key'] = encrypt($this->form->s3Key);
         }
-        if (!empty($this->s3Secret)) {
-            $config['secret'] = encrypt($this->s3Secret);
+        if (!empty($this->form->s3Secret)) {
+            $config['secret'] = encrypt($this->form->s3Secret);
         }
 
         return $config;
@@ -188,9 +117,9 @@ class StorageDestinationForm extends Component
     protected function buildDropboxConfig(): array
     {
         return [
-            'base_path' => $this->dropboxBasePath,
-            'reports_path' => $this->dropboxReportsPath,
-            'app_backups_path' => $this->dropboxAppBackupsPath,
+            'base_path' => $this->form->dropboxBasePath,
+            'reports_path' => $this->form->dropboxReportsPath,
+            'app_backups_path' => $this->form->dropboxAppBackupsPath,
         ];
     }
 
@@ -273,9 +202,9 @@ class StorageDestinationForm extends Component
     protected function applyBrowserSelection(string $path): void
     {
         match ($this->browserTarget) {
-            'reports_path' => $this->dropboxReportsPath = $path,
-            'app_backups_path' => $this->dropboxAppBackupsPath = $path,
-            default => $this->dropboxBasePath = $path,
+            'reports_path' => $this->form->dropboxReportsPath = $path,
+            'app_backups_path' => $this->form->dropboxAppBackupsPath = $path,
+            default => $this->form->dropboxBasePath = $path,
         };
     }
 

@@ -3,6 +3,7 @@
 <a href="{{ $href }}"
    @mouseenter="showSidebarTooltip($el)"
    @mouseleave="hideSidebarTooltip()"
+   @if($active) aria-current="page" @endif
    class="flex items-center gap-3 px-3 rounded-lg py-1.5 text-sm font-medium transition-all duration-200
           {{ $active
               ? 'bg-sidebar-hover text-white'
@@ -11,7 +12,7 @@
                   : 'text-white/70 hover:text-white hover:bg-sidebar-hover') }}"
    :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
 
-    <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" />
+    <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" aria-hidden="true" />
 
     <span class="flex items-center gap-2 whitespace-nowrap transition-all duration-300"
           :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">

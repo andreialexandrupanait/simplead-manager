@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,17 +41,17 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function scopeOfType($query, string $type)
+    public function scopeOfType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type);
     }
 
-    public function scopeOfSeverity($query, string $severity)
+    public function scopeOfSeverity(Builder $query, string $severity): Builder
     {
         return $query->where('severity', $severity);
     }
 
-    public function scopeRecent($query, int $limit = 15)
+    public function scopeRecent(Builder $query, int $limit = 15): Builder
     {
         return $query->orderByDesc('created_at')->limit($limit);
     }

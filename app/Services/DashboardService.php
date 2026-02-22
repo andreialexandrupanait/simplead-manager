@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\BackupStatus;
+use App\Enums\HealthLevel;
+use App\Enums\MonitorState;
 use App\Models\ActivityLog;
 use App\Models\Backup;
 use App\Models\Site;
@@ -10,11 +13,18 @@ use App\Models\DomainMonitor;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardService
 {
+    private const CACHE_TTL = 60; // seconds
+
     public function getStats(): array
+    {
+        return Cache::remember('dashboard:stats', self::CACHE_TTL, fn () => $this->computeStats());
+    }
+
+    private function computeStats(): array
     {
         $sitesDown = Site::where('is_up', false)->count();
 
@@ -29,7 +39,7 @@ class DashboardService
         $pendingCoreUpdates = Site::whereNotNull('core_update_version')->count();
 
         $failedBackups = Backup::whereHas('site')
-            ->where('status', 'failed')
+            ->where('status', BackupStatus::Failed)
             ->where('created_at', '>=', now()->subDay())
             ->count();
 
@@ -141,7 +151,7 @@ class DashboardService
 
         // Backup failures (last 24h) — one alert per site (deduped)
         $failedBackups = Backup::whereHas('site')
-            ->where('status', 'failed')
+            ->where('status', BackupStatus::Failed)
             ->where('created_at', '>=', now()->subDay())
             ->with('site')
             ->get();
@@ -192,9 +202,7 @@ class DashboardService
             'healthState',
         ];
 
-        if (Schema::hasTable('site_statuses')) {
-            $eagerLoads[] = 'siteStatus';
-        }
+        $eagerLoads[] = 'siteStatus';
 
         $query = Site::with($eagerLoads)
             ->withCount([
@@ -224,7 +232,7 @@ class DashboardService
             });
         }
 
-        if ($statusId && Schema::hasColumn('sites', 'site_status_id')) {
+        if ($statusId) {
             $query->where('site_status_id', $statusId);
         }
 
@@ -232,15 +240,13 @@ class DashboardService
             $query->where('client_id', $clientId);
         }
 
-        $hasSortOrder = Schema::hasColumn('sites', 'sort_order');
-
         match ($sort) {
-            'manual'      => $hasSortOrder ? $query->orderBy('sort_order', 'asc') : $query->orderBy('id', 'asc'),
+            'manual'      => $query->orderBy('sort_order', 'asc'),
             'name-asc'    => $query->orderBy('name', 'asc'),
             'name-desc'   => $query->orderBy('name', 'desc'),
             'health-asc'  => $query->orderByRaw('COALESCE(health_score, 0) ASC'),
             'health-desc' => $query->orderByRaw('COALESCE(health_score, 0) DESC'),
-            default       => $hasSortOrder ? $query->orderBy('sort_order', 'asc') : $query->orderBy('id', 'asc'),
+            default       => $query->orderBy('sort_order', 'asc'),
         };
 
         return $query->paginate($perPage);
@@ -250,9 +256,9 @@ class DashboardService
     {
         $monitors = UptimeMonitor::whereHas('site')->with('site')->get();
 
-        $up = $monitors->where('current_state', 'up')->count();
-        $down = $monitors->where('current_state', 'down')->count();
-        $degraded = $monitors->where('current_state', 'degraded')->count();
+        $up = $monitors->where('current_state', MonitorState::Up)->count();
+        $down = $monitors->where('current_state', MonitorState::Down)->count();
+        $degraded = $monitors->where('current_state', MonitorState::Degraded)->count();
 
         $avgUptime = $monitors->whereNotNull('uptime_30d')->avg('uptime_30d');
 
@@ -284,20 +290,25 @@ class DashboardService
     {
         return [
             'backups_today' => Backup::whereHas('site')
-                ->where('status', 'completed')
+                ->where('status', BackupStatus::Completed)
                 ->whereDate('completed_at', today())
                 ->count(),
             'failed_backups' => Backup::whereHas('site')
-                ->where('status', 'failed')
+                ->where('status', BackupStatus::Failed)
                 ->where('created_at', '>=', now()->subDay())
                 ->count(),
             'total_storage_bytes' => Backup::whereHas('site')
-                ->where('status', 'completed')
+                ->where('status', BackupStatus::Completed)
                 ->sum('file_size'),
         ];
     }
 
     public function getSummaryStats(): array
+    {
+        return Cache::remember('dashboard:summary_stats', self::CACHE_TTL, fn () => $this->computeSummaryStats());
+    }
+
+    private function computeSummaryStats(): array
     {
         $backups = $this->getBackupCounts();
 
@@ -330,11 +341,19 @@ class DashboardService
 
     public function getHealthDistribution(): array
     {
+        return Cache::remember('dashboard:health_distribution', self::CACHE_TTL, fn () => $this->computeHealthDistribution());
+    }
+
+    private function computeHealthDistribution(): array
+    {
+        $healthy = HealthLevel::HEALTHY_THRESHOLD;
+        $warning = HealthLevel::WARNING_THRESHOLD;
+
         $counts = Site::query()
             ->selectRaw("
-                SUM(CASE WHEN health_score >= 75 AND is_up = true THEN 1 ELSE 0 END) as healthy,
-                SUM(CASE WHEN health_score >= 50 AND health_score < 75 AND is_up = true THEN 1 ELSE 0 END) as warning,
-                SUM(CASE WHEN health_score < 50 AND is_up = true THEN 1 ELSE 0 END) as critical,
+                SUM(CASE WHEN health_score >= {$healthy} AND is_up = true THEN 1 ELSE 0 END) as healthy,
+                SUM(CASE WHEN health_score >= {$warning} AND health_score < {$healthy} AND is_up = true THEN 1 ELSE 0 END) as warning,
+                SUM(CASE WHEN health_score < {$warning} AND is_up = true THEN 1 ELSE 0 END) as critical,
                 SUM(CASE WHEN is_up = false THEN 1 ELSE 0 END) as down
             ")
             ->first();
@@ -379,6 +398,11 @@ class DashboardService
     }
 
     public function getBackupStatus(): array
+    {
+        return Cache::remember('dashboard:backup_status', self::CACHE_TTL, fn () => $this->computeBackupStatus());
+    }
+
+    private function computeBackupStatus(): array
     {
         $backups = $this->getBackupCounts();
 

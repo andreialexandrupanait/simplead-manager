@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\MonitorState;
+use App\Enums\MonitorStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +53,8 @@ class UptimeMonitor extends Model
     ];
 
     protected $casts = [
+        'status' => MonitorStatus::class,
+        'current_state' => MonitorState::class,
         'http_headers' => 'array',
         'accepted_status_codes' => 'array',
         'alert_contacts' => 'array',
@@ -95,12 +100,12 @@ class UptimeMonitor extends Model
         return $this->hasOne(UptimeIncident::class, 'monitor_id')->where('status', 'ongoing');
     }
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active');
+        return $query->where('status', MonitorStatus::Active);
     }
 
-    public function scopeDue($query)
+    public function scopeDue(Builder $query): Builder
     {
         return $query->where(function ($q) {
             $q->whereNull('next_check_at')

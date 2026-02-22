@@ -6,19 +6,17 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Application') }}</h3>
             <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Application Name') }}</label>
-                    <x-ui.input wire:model="appName" class="mt-1" />
-                    @error('appName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group :label="__('Application Name')" for="appName" error="form.appName">
+                    <x-ui.input wire:model="form.appName" id="appName" />
+                </x-ui.form-group>
 
                 {{-- Favicon Upload --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Favicon') }}</label>
                     <div class="flex items-center gap-4">
-                        <div class="h-12 w-12 rounded-lg {{ ($favicon || $faviconPath) ? 'bg-white' : 'bg-purple-500' }} flex items-center justify-center text-white text-sm font-bold overflow-hidden shrink-0">
-                            @if($favicon)
-                                <img src="{{ $favicon->temporaryUrl() }}" alt="Preview" class="h-full w-full object-contain">
+                        <div class="h-12 w-12 rounded-lg {{ ($form->favicon || $faviconPath) ? 'bg-white' : 'bg-purple-500' }} flex items-center justify-center text-white text-sm font-bold overflow-hidden shrink-0">
+                            @if($form->favicon)
+                                <img src="{{ $form->favicon->temporaryUrl() }}" alt="Preview" class="h-full w-full object-contain">
                             @elseif($faviconPath)
                                 <img src="{{ Storage::url($faviconPath) }}" alt="Favicon" class="h-full w-full object-contain">
                             @else
@@ -26,8 +24,8 @@
                             @endif
                         </div>
                         <div>
-                            <input type="file" wire:model="favicon" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
-                            @error('favicon') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            <input type="file" wire:model="form.favicon" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                            @error('form.favicon') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             <p class="mt-1 text-xs text-gray-400">{{ __('Square image or SVG. Used in browser tab and sidebar icon.') }}</p>
                             @if($faviconPath)
                                 <button type="button" wire:click="removeFavicon" class="mt-1 text-xs text-red-600 hover:text-red-700">{{ __('Remove favicon') }}</button>
@@ -41,8 +39,8 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Logo') }}</label>
                     <div class="flex items-center gap-4">
                         <div class="h-10 max-w-[10rem] flex items-center overflow-hidden shrink-0">
-                            @if($logo)
-                                <img src="{{ $logo->temporaryUrl() }}" alt="Preview" class="h-full object-contain">
+                            @if($form->logo)
+                                <img src="{{ $form->logo->temporaryUrl() }}" alt="Preview" class="h-full object-contain">
                             @elseif($logoPath)
                                 <img src="{{ Storage::url($logoPath) }}" alt="Logo" class="h-full object-contain">
                             @else
@@ -50,8 +48,8 @@
                             @endif
                         </div>
                         <div>
-                            <input type="file" wire:model="logo" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
-                            @error('logo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            <input type="file" wire:model="form.logo" accept="image/*,.svg" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                            @error('form.logo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             <p class="mt-1 text-xs text-gray-400">{{ __('Image or SVG. Replaces the application name in the sidebar.') }}</p>
                             @if($logoPath)
                                 <button type="button" wire:click="removeLogo" class="mt-1 text-xs text-red-600 hover:text-red-700">{{ __('Remove logo') }}</button>
@@ -60,31 +58,27 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Application URL') }}</label>
-                    <x-ui.input wire:model="appUrl" type="url" placeholder="https://your-app.com" class="mt-1" />
-                    @error('appUrl') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group :label="__('Application URL')" for="appUrl" error="form.appUrl">
+                    <x-ui.input wire:model="form.appUrl" id="appUrl" type="url" placeholder="https://your-app.com" />
+                </x-ui.form-group>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Default Timezone') }}</label>
-                        <x-ui.select wire:model="defaultTimezone" class="mt-1">
+                    <x-ui.form-group :label="__('Default Timezone')" for="defaultTimezone">
+                        <x-ui.select wire:model="form.defaultTimezone" id="defaultTimezone">
                             @foreach(timezone_identifiers_list() as $tz)
                                 <option value="{{ $tz }}">{{ $tz }}</option>
                             @endforeach
                         </x-ui.select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Date Format') }}</label>
-                        <x-ui.select wire:model="dateFormat" class="mt-1">
+                    </x-ui.form-group>
+                    <x-ui.form-group :label="__('Date Format')" for="dateFormat">
+                        <x-ui.select wire:model="form.dateFormat" id="dateFormat">
                             <option value="M d, Y">{{ now()->format('M d, Y') }} (M d, Y)</option>
                             <option value="d/m/Y">{{ now()->format('d/m/Y') }} (d/m/Y)</option>
                             <option value="d.m.Y">{{ now()->format('d.m.Y') }} (d.m.Y)</option>
                             <option value="m/d/Y">{{ now()->format('m/d/Y') }} (m/d/Y)</option>
                             <option value="Y-m-d">{{ now()->format('Y-m-d') }} (Y-m-d)</option>
                         </x-ui.select>
-                    </div>
+                    </x-ui.form-group>
                 </div>
             </div>
         </x-ui.card>
@@ -94,9 +88,8 @@
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Monitoring Defaults') }}</h3>
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Default Check Interval') }}</label>
-                        <x-ui.select wire:model="defaultInterval" class="mt-1">
+                    <x-ui.form-group :label="__('Default Check Interval')" for="defaultInterval">
+                        <x-ui.select wire:model="form.defaultInterval" id="defaultInterval">
                             <option value="60">1 {{ __('minute') }}</option>
                             <option value="120">2 {{ __('minutes') }}</option>
                             <option value="300">5 {{ __('minutes') }}</option>
@@ -105,18 +98,15 @@
                             <option value="1800">30 {{ __('minutes') }}</option>
                             <option value="3600">1 {{ __('hour') }}</option>
                         </x-ui.select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Default Timeout (seconds)') }}</label>
-                        <x-ui.input wire:model="defaultTimeout" type="number" min="5" max="120" class="mt-1" />
-                    </div>
+                    </x-ui.form-group>
+                    <x-ui.form-group :label="__('Default Timeout (seconds)')" for="defaultTimeout">
+                        <x-ui.input wire:model="form.defaultTimeout" id="defaultTimeout" type="number" min="5" max="120" />
+                    </x-ui.form-group>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Alert After Failures') }}</label>
-                    <x-ui.input wire:model="alertAfterFailures" type="number" min="1" max="10" class="mt-1" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('Consecutive failures before alerting') }}</p>
-                </div>
+                <x-ui.form-group :label="__('Alert After Failures')" for="alertAfterFailures" :hint="__('Consecutive failures before alerting')">
+                    <x-ui.input wire:model="form.alertAfterFailures" id="alertAfterFailures" type="number" min="1" max="10" />
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 
@@ -177,26 +167,20 @@
             <h2 class="text-lg font-semibold text-gray-900">{{ $editingStatusId ? __('Edit Status') : __('Add Status') }}</h2>
 
             <div class="mt-4 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
-                    <x-ui.input wire:model="statusName" class="mt-1" placeholder="e.g. Maintenance" />
-                    @error('statusName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group :label="__('Name')" for="statusName" error="statusForm.statusName">
+                    <x-ui.input wire:model="statusForm.statusName" id="statusName" placeholder="e.g. Maintenance" />
+                </x-ui.form-group>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Color') }}</label>
-                    <div class="mt-1 flex items-center gap-3">
-                        <input type="color" wire:model.live="statusColor" class="h-9 w-9 cursor-pointer rounded border border-gray-300 p-0.5">
-                        <x-ui.input wire:model.live="statusColor" class="flex-1" maxlength="7" placeholder="#6b7280" />
+                <x-ui.form-group :label="__('Color')" error="statusForm.statusColor">
+                    <div class="flex items-center gap-3">
+                        <input type="color" wire:model.live="statusForm.statusColor" class="h-9 w-9 cursor-pointer rounded border border-gray-300 p-0.5">
+                        <x-ui.input wire:model.live="statusForm.statusColor" class="flex-1" maxlength="7" placeholder="#6b7280" />
                     </div>
-                    @error('statusColor') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                </x-ui.form-group>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Sort Order') }}</label>
-                    <x-ui.input wire:model="statusSortOrder" type="number" min="0" class="mt-1" />
-                    @error('statusSortOrder') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.form-group :label="__('Sort Order')" for="statusSortOrder" error="statusForm.statusSortOrder">
+                    <x-ui.input wire:model="statusForm.statusSortOrder" id="statusSortOrder" type="number" min="0" />
+                </x-ui.form-group>
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">

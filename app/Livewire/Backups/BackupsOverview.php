@@ -37,22 +37,20 @@ class BackupsOverview extends Component
 
         $configs = BackupConfig::whereHas('site')
             ->where('is_enabled', true)
-            ->with('site')
+            ->with(['site', 'storageDestination'])
             ->get();
 
         $queued = 0;
+        $defaultDestination = null;
         foreach ($configs as $config) {
             $site = $config->site;
             if (!$site || !$site->is_connected) {
                 continue;
             }
 
-            $destination = null;
-            if ($config->storage_destination_id) {
-                $destination = StorageDestination::find($config->storage_destination_id);
-            }
+            $destination = $config->storageDestination;
             if (!$destination) {
-                $destination = StorageDestination::where('is_default', true)
+                $destination = $defaultDestination ??= StorageDestination::where('is_default', true)
                     ->where('is_active', true)
                     ->first();
             }

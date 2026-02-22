@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,34 +46,34 @@ class SitePlugin extends Model
         'abandoned_checked_at' => 'datetime',
     ];
 
-    public function scopeAbandoned($query)
+    public function scopeAbandoned(Builder $query): Builder
     {
         return $query->where('is_abandoned', true);
     }
 
-    public function scopeClosed($query)
+    public function scopeClosed(Builder $query): Builder
     {
         return $query->where('is_closed', true);
     }
 
-    public function scopeProblematic($query)
+    public function scopeProblematic(Builder $query): Builder
     {
         return $query->where(function ($q) {
             $q->where('is_abandoned', true)->orWhere('is_closed', true);
         });
     }
 
-    public function scopeWithUpdates($query)
+    public function scopeWithUpdates(Builder $query): Builder
     {
         return $query->where('has_update', true);
     }
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeInactive($query)
+    public function scopeInactive(Builder $query): Builder
     {
         return $query->where('is_active', false);
     }

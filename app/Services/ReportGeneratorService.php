@@ -38,8 +38,9 @@ class ReportGeneratorService
         protected Carbon $periodStart,
         protected Carbon $periodEnd,
         protected array $excludedSections = [],
+        ?ReportChartService $chartService = null,
     ) {
-        $this->chartService = new ReportChartService();
+        $this->chartService = $chartService ?? new ReportChartService();
     }
 
     public function generate(): string
@@ -176,7 +177,7 @@ class ReportGeneratorService
 
     // ─── Trend Helpers ───────────────────────────────────────────────
 
-    protected function calculateTrend($current, $previous): array
+    protected function calculateTrend(float|int|null $current, float|int|null $previous): array
     {
         if ($previous === null || $previous == 0) {
             return [
@@ -212,7 +213,7 @@ class ReportGeneratorService
     /**
      * For metrics where lower is better (response time, bounce rate, avg position).
      */
-    protected function calculateTrendInverse($current, $previous): array
+    protected function calculateTrendInverse(float|int|null $current, float|int|null $previous): array
     {
         $trend = $this->calculateTrend($current, $previous);
 
@@ -227,7 +228,7 @@ class ReportGeneratorService
 
     // ─── Number Formatting ───────────────────────────────────────────
 
-    protected function formatNumber($value, int $decimals = 0): string
+    protected function formatNumber(float|int|null $value, int $decimals = 0): string
     {
         if ($value === null) {
             return __('report.not_available', [], $this->language);

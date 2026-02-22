@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Clients;
 
+use App\Livewire\Forms\ClientFormData;
 use App\Models\Client;
-use App\Rules\RomanianCui;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
@@ -13,62 +13,22 @@ class ClientForm extends Component
 
     public ?Client $client = null;
 
-    public string $name = '';
-    public string $email = '';
-    public string $phone = '';
-    public string $company = '';
-    public string $website = '';
-    public string $address = '';
-    public string $city = '';
-    public string $country = '';
-    public string $vat_number = '';
-    public string $registration_number = '';
-    public string $notes = '';
-    public string $status = 'active';
+    public ClientFormData $form;
 
     public function mount(?Client $client = null): void
     {
         if ($client?->exists) {
             $this->authorize('update', $client);
             $this->client = $client;
-            $this->name = $client->name ?? '';
-            $this->email = $client->email ?? '';
-            $this->phone = $client->phone ?? '';
-            $this->company = $client->company ?? '';
-            $this->website = $client->website ?? '';
-            $this->address = $client->address ?? '';
-            $this->city = $client->city ?? '';
-            $this->country = $client->country ?? '';
-            $this->vat_number = $client->vat_number ?? '';
-            $this->registration_number = $client->registration_number ?? '';
-            $this->notes = $client->notes ?? '';
-            $this->status = $client->status ?? 'active';
+            $this->form->setFromClient($client);
         } else {
             $this->authorize('create', Client::class);
         }
     }
 
-    public function rules(): array
-    {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'company' => ['nullable', 'string', 'max:255'],
-            'website' => ['nullable', 'url', 'max:255'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'vat_number' => ['nullable', 'string', 'max:50', new RomanianCui],
-            'registration_number' => ['nullable', 'string', 'max:50', 'regex:/^J\d{1,2}\/\d+\/\d{4}$/'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'status' => ['required', 'in:active,inactive,archived'],
-        ];
-    }
-
     public function save(): void
     {
-        $validated = $this->validate();
+        $validated = $this->form->validate();
 
         if ($this->client) {
             $this->authorize('update', $this->client);

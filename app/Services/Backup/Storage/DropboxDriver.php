@@ -150,7 +150,7 @@ class DropboxDriver implements StorageDriver
         }
     }
 
-    protected function makeDownloadRequest(string $dropboxPath, string $localPath, string $accessToken)
+    protected function makeDownloadRequest(string $dropboxPath, string $localPath, string $accessToken): \Illuminate\Http\Client\Response
     {
         $request = Http::withToken($accessToken)->timeout(600);
 
@@ -365,7 +365,7 @@ class DropboxDriver implements StorageDriver
         return $response->json() ?? [];
     }
 
-    protected function makeRequest(string $url, array $options, string $accessToken)
+    protected function makeRequest(string $url, array $options, string $accessToken): \Illuminate\Http\Client\Response
     {
         $request = Http::withToken($accessToken)->timeout(600);
 

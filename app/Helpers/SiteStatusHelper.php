@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Enums\HealthLevel;
 use App\Models\Site;
 
 class SiteStatusHelper
@@ -49,7 +50,7 @@ class SiteStatusHelper
             'updates' => $updates,
             'updateBadgeColor' => $updates === 0 ? 'bg-green-500' : ($updates <= 5 ? 'bg-orange-500' : 'bg-red-500'),
             'healthScore' => $healthScore,
-            'healthBarColor' => $healthScore >= 75 ? 'bg-green-500' : ($healthScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'),
+            'healthBarColor' => HealthLevel::fromScore($healthScore)->bgColor(),
         ];
     }
 

@@ -10,7 +10,7 @@ $originClass = $align === 'right' ? 'origin-top-right' : 'origin-top-left';
 @endphp
 
 <div x-data="dropdown({ alignRight: {{ $align === 'right' ? 'true' : 'false' }} })" @click.window="close($event)">
-    <div x-ref="trigger" @click="toggle()">
+    <div x-ref="trigger" @click="toggle()" aria-haspopup="true" :aria-expanded="open">
         {{ $trigger }}
     </div>
 

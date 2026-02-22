@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\BackupStatus;
+use App\Helpers\FormatHelper;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,6 +50,8 @@ class Backup extends Model
     ];
 
     protected $casts = [
+        'status' => BackupStatus::class,
+        'restore_status' => BackupStatus::class,
         'progress_percent' => 'integer',
         'includes_files' => 'boolean',
         'includes_database' => 'boolean',
@@ -65,17 +70,17 @@ class Backup extends Model
 
     // Query Scopes
 
-    public function scopeCompleted($query)
+    public function scopeCompleted(Builder $query): Builder
     {
-        return $query->where('status', 'completed');
+        return $query->where('status', BackupStatus::Completed);
     }
 
-    public function scopeFailed($query)
+    public function scopeFailed(Builder $query): Builder
     {
-        return $query->where('status', 'failed');
+        return $query->where('status', BackupStatus::Failed);
     }
 
-    public function scopeForSite($query, int $siteId)
+    public function scopeForSite(Builder $query, int $siteId): Builder
     {
         return $query->where('site_id', $siteId);
     }
@@ -96,40 +101,22 @@ class Backup extends Model
     {
         if (!$this->file_size) return '—';
 
-        $bytes = $this->file_size;
-        if ($bytes === 0) return '0 B';
-
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = floor(log($bytes, 1024));
-
-        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+        return FormatHelper::bytes($this->file_size);
     }
 
     public function getStatusColorAttribute(): string
     {
-        return match ($this->status) {
-            'completed' => 'green',
-            'in_progress' => 'purple',
-            'pending' => 'yellow',
-            'failed' => 'red',
-            default => 'gray',
-        };
+        return $this->status?->color() ?? 'gray';
     }
 
     public function getRestoreStatusColorAttribute(): string
     {
-        return match ($this->restore_status) {
-            'completed' => 'green',
-            'in_progress' => 'purple',
-            'pending' => 'yellow',
-            'failed' => 'red',
-            default => 'gray',
-        };
+        return $this->restore_status?->color() ?? 'gray';
     }
 
     public function getIsRestoringAttribute(): bool
     {
-        return in_array($this->restore_status, ['pending', 'in_progress']);
+        return in_array($this->restore_status, [BackupStatus::Pending, BackupStatus::InProgress]);
     }
 
     public function getSizeDiffAttribute(): ?int

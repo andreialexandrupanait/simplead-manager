@@ -4,15 +4,9 @@
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Uptime</span>
         @php
-            $state = $site->uptimeMonitor->current_state ?? 'unknown';
-            $stateVariant = match($state) {
-                'up' => 'green',
-                'down' => 'red',
-                'degraded' => 'yellow',
-                default => 'gray',
-            };
+            $state = $site->uptimeMonitor->current_state ?? \App\Enums\MonitorState::Unknown;
         @endphp
-        <x-ui.badge :variant="$stateVariant">{{ ucfirst($state) }}</x-ui.badge>
+        <x-ui.badge :variant="$state->color()">{{ $state->label() }}</x-ui.badge>
     </div>
     <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div>

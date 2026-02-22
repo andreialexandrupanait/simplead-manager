@@ -42,7 +42,7 @@ Route::get('/reports/{report}/download/signed', ReportDownloadController::class)
 require __DIR__.'/auth.php';
 
 // Authenticated routes
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(function () {
 
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');

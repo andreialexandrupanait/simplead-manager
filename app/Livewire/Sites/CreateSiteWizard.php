@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Sites;
 
+use App\Livewire\Forms\SiteWizardFormData;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\SiteHealthState;
@@ -14,26 +15,19 @@ class CreateSiteWizard extends Component
 {
     public int $step = 1;
 
-    // Step 1: Site URL
-    public string $url = '';
-    public string $name = '';
+    public SiteWizardFormData $form;
+
     public ?string $connectivityStatus = null; // null, 'checking', 'ok', 'error'
     public ?string $connectivityMessage = null;
 
     // Step 2: Client
-    public ?int $clientId = null;
     public bool $creatingClient = false;
-    public string $newClientName = '';
-    public string $newClientEmail = '';
-
-    // Step 3: Preset
-    public ?int $presetId = null;
 
     public function mount(): void
     {
         $defaultPreset = SitePreset::getDefault();
         if ($defaultPreset) {
-            $this->presetId = $defaultPreset->id;
+            $this->form->presetId = $defaultPreset->id;
         }
     }
 
@@ -54,30 +48,28 @@ class CreateSiteWizard extends Component
         return SitePreset::with('presetModules')->orderBy('sort_order')->get();
     }
 
-    public function updatedUrl(): void
+    public function updatedFormUrl(): void
     {
         $this->connectivityStatus = null;
         $this->connectivityMessage = null;
 
         // Auto-fill name from URL hostname
-        if ($this->url && empty($this->name)) {
-            $host = parse_url($this->url, PHP_URL_HOST);
+        if ($this->form->url && empty($this->form->name)) {
+            $host = parse_url($this->form->url, PHP_URL_HOST);
             if ($host) {
-                $this->name = $host;
+                $this->form->name = $host;
             }
         }
     }
 
     public function checkConnectivity(): void
     {
-        $this->validate([
-            'url' => 'required|url',
-        ]);
+        $this->form->validateUrl();
 
         $this->connectivityStatus = 'checking';
 
         try {
-            $ch = curl_init($this->url);
+            $ch = curl_init($this->form->url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 10,
@@ -124,10 +116,7 @@ class CreateSiteWizard extends Component
         // Validate current step before advancing
         if ($step > $this->step) {
             if ($this->step === 1) {
-                $this->validate([
-                    'url' => 'required|url|max:255|unique:sites,url',
-                    'name' => 'required|string|max:255',
-                ]);
+                $this->form->validateStep1();
             }
         }
 
@@ -148,46 +137,38 @@ class CreateSiteWizard extends Component
 
     public function createClient(): void
     {
-        $this->validate([
-            'newClientName' => 'required|string|max:255',
-            'newClientEmail' => 'nullable|email|max:255',
-        ]);
+        $this->form->validateNewClient();
 
         $client = Client::create([
-            'name' => $this->newClientName,
-            'email' => $this->newClientEmail ?: null,
+            'name' => $this->form->newClientName,
+            'email' => $this->form->newClientEmail ?: null,
             'status' => 'active',
         ]);
 
-        $this->clientId = $client->id;
+        $this->form->clientId = $client->id;
         $this->creatingClient = false;
-        $this->newClientName = '';
-        $this->newClientEmail = '';
+        $this->form->newClientName = '';
+        $this->form->newClientEmail = '';
         unset($this->clients);
     }
 
     public function createSite(): void
     {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'url' => 'required|url|max:255|unique:sites,url',
-            'clientId' => 'nullable|exists:clients,id',
-            'presetId' => 'nullable|exists:site_presets,id',
-        ]);
+        $this->form->validate();
 
         $site = Site::create([
-            'name' => $this->name,
-            'url' => $this->url,
+            'name' => $this->form->name,
+            'url' => $this->form->url,
             'user_id' => auth()->id(),
-            'client_id' => $this->clientId,
-            'applied_preset_id' => $this->presetId,
+            'client_id' => $this->form->clientId,
+            'applied_preset_id' => $this->form->presetId,
             'type' => 'wordpress',
             'status' => 'pending',
         ]);
 
         // Apply preset if selected
-        if ($this->presetId) {
-            $preset = SitePreset::find($this->presetId);
+        if ($this->form->presetId) {
+            $preset = SitePreset::find($this->form->presetId);
             if ($preset) {
                 app(ModuleConfigService::class)->applyPreset($site, $preset);
             }
