@@ -98,7 +98,10 @@ class BackupsOverview extends Component
                 }
                 return $q->where('status', $this->filter);
             })
-            ->orderByDesc('created_at')
+            ->join('sites', 'backups.site_id', '=', 'sites.id')
+            ->orderBy('sites.sort_order', 'asc')
+            ->orderByDesc('backups.created_at')
+            ->select('backups.*')
             ->paginate(25);
 
         return view('livewire.backups.backups-overview', [

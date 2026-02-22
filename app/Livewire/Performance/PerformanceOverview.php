@@ -19,10 +19,10 @@ class PerformanceOverview extends Component
     {
         // Override trait defaults for this component
         if (!request()->has('sortBy')) {
-            $this->sortBy = 'mobile_score';
+            $this->sortBy = 'manual';
         }
         if (!request()->has('sortDir')) {
-            $this->sortDir = 'desc';
+            $this->sortDir = 'asc';
         }
     }
 
@@ -119,13 +119,21 @@ class PerformanceOverview extends Component
             });
 
         // Apply sorting
-        $sortColumn = match ($this->sortBy) {
-            'mobile_score' => 'latest_mobile_score',
-            'desktop_score' => 'latest_desktop_score',
-            default => 'latest_mobile_score',
-        };
+        if ($this->sortBy === 'manual') {
+            $monitors = $query
+                ->join('sites', 'performance_monitors.site_id', '=', 'sites.id')
+                ->orderBy('sites.sort_order', 'asc')
+                ->select('performance_monitors.*')
+                ->get();
+        } else {
+            $sortColumn = match ($this->sortBy) {
+                'mobile_score' => 'latest_mobile_score',
+                'desktop_score' => 'latest_desktop_score',
+                default => 'latest_mobile_score',
+            };
 
-        $monitors = $query->orderBy($sortColumn, $this->sortDir)->get();
+            $monitors = $query->orderBy($sortColumn, $this->sortDir)->get();
+        }
 
         // For LCP and trend sorting, sort in-memory since they're on related models
         if ($this->sortBy === 'lcp') {

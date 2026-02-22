@@ -106,7 +106,9 @@ class UptimeOverview extends Component
                 'paused' => $q->where('status', 'paused'),
                 default => $q,
             })
-            ->orderByDesc('updated_at')
+            ->join('sites', 'uptime_monitors.site_id', '=', 'sites.id')
+            ->orderBy('sites.sort_order', 'asc')
+            ->select('uptime_monitors.*')
             ->get();
 
         return view('livewire.uptime.uptime-overview', compact('monitors'))
