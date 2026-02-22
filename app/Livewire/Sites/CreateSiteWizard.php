@@ -83,17 +83,29 @@ class CreateSiteWizard extends Component
                 CURLOPT_TIMEOUT => 10,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_MAXREDIRS => 3,
-                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_NOBODY => true,
             ]);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
+            $errno = curl_errno($ch);
             curl_close($ch);
 
             if ($error) {
                 $this->connectivityStatus = 'error';
-                $this->connectivityMessage = "Could not connect: {$error}";
+                $isSslError = in_array($errno, [
+                    CURLE_SSL_CERTPROBLEM,
+                    CURLE_SSL_CIPHER,
+                    CURLE_PEER_FAILED_VERIFICATION,
+                    CURLE_SSL_PINNEDPUBKEYNOTMATCH,
+                    60, // CURLE_SSL_CACERT
+                    51, // CURLE_SSL_PEER_CERTIFICATE
+                ]);
+                $this->connectivityMessage = $isSslError
+                    ? "SSL certificate error: {$error}. Ensure the site has a valid SSL certificate."
+                    : "Could not connect: {$error}";
             } elseif ($httpCode >= 200 && $httpCode < 400) {
                 $this->connectivityStatus = 'ok';
                 $this->connectivityMessage = "Site is reachable (HTTP {$httpCode})";

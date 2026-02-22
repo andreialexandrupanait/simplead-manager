@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Client;
 use App\Models\Site;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class BulkAddSites extends Command
 {
@@ -14,6 +15,25 @@ class BulkAddSites extends Command
     public function handle(): int
     {
         $sites = [
+            'SimpleAD' => ['simplead.ro'],
+            'Matematica Interactiva' => ['matematica-interactiva.ro'],
+            'FasTracKids' => ['fastrackids.ro'],
+            'Florin Pasat' => ['florinpasat.com'],
+            'Rollshape' => ['rollshape.ro'],
+            'Priority Clinic' => ['priority-clinic.ro'],
+            'Georgiana Ungureanu' => ['georgianaungureanu.ro'],
+            'Hotel Simona Halep' => ['hotelsimonahalep.ro'],
+            'Manuela Sirbu' => ['manuelasirbu.ro'],
+            'GTA Energy' => ['gtaenergy.ro'],
+            'Paul Ardeleanu' => ['paulardeleanu.ro'],
+            'Pallady ICHB' => ['pallady.ichb.ro'],
+            'Universul Sacru' => ['universulsacru.ro'],
+            'ISOR' => ['isor.ro'],
+            'Premium Stone' => ['premiumstone.ro'],
+            'Metabolika' => ['metabolika.ro'],
+            'Marketing Deck' => ['marketingdeck.com'],
+            'FECO' => ['feco.ro'],
+            'Stefan Chelmu' => ['stefanchelmu.ro'],
             'M1 Med Beauty' => [
                 'm1-beauty.co.uk',
                 'm1-beauty.com.au',
@@ -27,50 +47,42 @@ class BulkAddSites extends Command
                 'm1-shop.de',
                 'm1-select.de',
             ],
-            'Matematica Interactiva' => ['matematica-interactiva.ro'],
-            'FasTracKids' => ['fastrackids.ro'],
-            'Florin Pasat' => ['florinpasat.com'],
-            'Rollshape' => ['rollshape.ro'],
-            'Priority Clinic' => ['priority-clinic.ro'],
-            'Georgiana Ungureanu' => ['georgianaungureanu.ro'],
-            'Hotel Simona Halep' => ['hotelsimonahalep.ro'],
-            'Manuela Sirbu' => ['manuelasirbu.ro'],
-            'GTA Energy' => ['gtaenergy.ro'],
-            'Paul Ardeleanu' => ['paulardleanu.ro'],
-            'Pallady ICHB' => ['pallady.ichb.ro'],
-            'Universul Sacru' => ['universulsacru.ro'],
-            'ISOR' => ['isor.ro'],
-            'Premium Stone' => ['premiumstone.ro'],
         ];
+
+        // Pre-fetch all existing site URLs to avoid N+1 queries
+        $allDomains = collect($sites)->flatten()->map(fn ($d) => 'https://' . $d)->all();
+        $existingUrls = Site::whereIn('url', $allDomains)->pluck('url')->flip();
 
         $created = 0;
         $skipped = 0;
 
-        foreach ($sites as $clientName => $domains) {
-            $client = Client::firstOrCreate(['name' => $clientName]);
-            $this->line("<fg=cyan>{$clientName}</> (client #{$client->id})");
+        DB::transaction(function () use ($sites, $existingUrls, &$created, &$skipped) {
+            foreach ($sites as $clientName => $domains) {
+                $client = Client::firstOrCreate(['name' => $clientName]);
+                $this->line("<fg=cyan>{$clientName}</> (client #{$client->id})");
 
-            foreach ($domains as $domain) {
-                $url = 'https://' . $domain;
+                foreach ($domains as $domain) {
+                    $url = 'https://' . $domain;
 
-                if (Site::where('url', $url)->exists()) {
-                    $this->line("  <comment>SKIP</comment>  {$domain} (already exists)");
-                    $skipped++;
-                    continue;
+                    if ($existingUrls->has($url)) {
+                        $this->line("  <comment>SKIP</comment>  {$domain} (already exists)");
+                        $skipped++;
+                        continue;
+                    }
+
+                    Site::create([
+                        'name' => $domain,
+                        'url' => $url,
+                        'client_id' => $client->id,
+                        'type' => 'wordpress',
+                        'status' => 'pending',
+                    ]);
+
+                    $this->line("  <info>ADDED</info> {$domain}");
+                    $created++;
                 }
-
-                Site::create([
-                    'name' => $domain,
-                    'url' => $url,
-                    'client_id' => $client->id,
-                    'type' => 'wordpress',
-                    'status' => 'pending',
-                ]);
-
-                $this->line("  <info>ADDED</info> {$domain}");
-                $created++;
             }
-        }
+        });
 
         $this->newLine();
         $this->info("Done. Created: {$created}, Skipped: {$skipped}");

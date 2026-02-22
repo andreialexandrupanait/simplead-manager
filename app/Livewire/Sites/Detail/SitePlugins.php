@@ -164,10 +164,18 @@ class SitePlugins extends Component
     #[Computed]
     public function themeCounts()
     {
+        $counts = $this->site->siteThemes()
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates
+            ")
+            ->first();
+
         return [
-            'total' => $this->site->siteThemes()->count(),
-            'active' => $this->site->siteThemes()->where('is_active', true)->count(),
-            'updates' => $this->site->siteThemes()->where('has_update', true)->count(),
+            'total' => (int) $counts->total,
+            'active' => (int) $counts->active,
+            'updates' => (int) $counts->updates,
         ];
     }
 

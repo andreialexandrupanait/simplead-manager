@@ -30,10 +30,22 @@ class DatabaseDumpCommand extends Command
 
         $filepath = "{$dumpDir}/{$filename}";
 
-        putenv("PGPASSWORD={$password}");
+        // Use a temporary .pgpass file instead of putenv() to avoid
+        // exposing the password via /proc/[pid]/environ
+        $pgpassPath = tempnam(sys_get_temp_dir(), 'pgpass_');
+        file_put_contents($pgpassPath, sprintf(
+            "%s:%s:%s:%s:%s\n",
+            $host,
+            $port,
+            $database,
+            $username,
+            str_replace(['\\', ':'], ['\\\\', '\\:'], $password),
+        ));
+        chmod($pgpassPath, 0600);
 
         $command = sprintf(
-            'pg_dump -h %s -p %s -U %s %s | gzip > %s',
+            'PGPASSFILE=%s pg_dump -h %s -p %s -U %s %s | gzip > %s',
+            escapeshellarg($pgpassPath),
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
@@ -45,7 +57,7 @@ class DatabaseDumpCommand extends Command
 
         exec($command . ' 2>&1', $output, $exitCode);
 
-        putenv('PGPASSWORD');
+        @unlink($pgpassPath);
 
         if ($exitCode !== 0) {
             $error = implode("\n", $output);

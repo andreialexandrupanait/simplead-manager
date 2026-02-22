@@ -17,7 +17,16 @@ class GoogleAuthController extends Controller
                 ->with('error', 'Google Client ID is not configured. Add your credentials in Settings > Integrations.');
         }
 
-        session(['google_return_url' => $request->get('return_url', route('settings.integrations'))]);
+        $returnUrl = $request->get('return_url', route('settings.integrations'));
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $returnHost = parse_url($returnUrl, PHP_URL_HOST);
+
+        // Only allow relative URLs or URLs matching the app's host
+        if ($returnHost !== null && $returnHost !== $appHost) {
+            $returnUrl = route('settings.integrations');
+        }
+
+        session(['google_return_url' => $returnUrl]);
 
         $state = bin2hex(random_bytes(32));
         session(['google_oauth_state' => $state]);

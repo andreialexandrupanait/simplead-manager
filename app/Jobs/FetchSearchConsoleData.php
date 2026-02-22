@@ -41,10 +41,16 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Fetching Search Console data...');
 
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (!$connection || !$connection->is_active) {
+            JobTracker::complete($this->uniqueId(), 'Skipped: no active Search Console connection');
+            return;
+        }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
+        if (!$google || !$google->is_active) {
+            JobTracker::complete($this->uniqueId(), 'Skipped: no active Google connection');
+            return;
+        }
 
         $siteUrl = $connection->property_url;
         [$startDate, $endDate] = $this->getDateRange();

@@ -65,7 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
-        Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download');
+        Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download')->middleware('throttle:10,1');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
 
     });
@@ -74,10 +74,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/backups', Backups\BackupsOverview::class)->name('backups.index');
 
     // Backup download (signed URL for local storage)
-    Route::get('/backups/{backup}/download', BackupDownloadController::class)->name('backups.download')->middleware('signed');
+    Route::get('/backups/{backup}/download', BackupDownloadController::class)->name('backups.download')->middleware(['signed', 'throttle:10,1']);
 
     // Report download & preview (authenticated users)
-    Route::get('/reports/{report}/download', ReportDownloadController::class)->name('reports.download');
+    Route::get('/reports/{report}/download', ReportDownloadController::class)->name('reports.download')->middleware('throttle:30,1');
 
     // Performance — global view
     Route::get('/performance', Performance\PerformanceOverview::class)->name('performance.index');
@@ -137,15 +137,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('settings.status-pages.edit');
 
         // App backup download (signed URL for local storage)
-        Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware('signed');
+        Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware(['signed', 'throttle:10,1']);
 
         // Dropbox OAuth
-        Route::get('/storage/dropbox/auth', [DropboxAuthController::class, 'redirect'])->name('dropbox.auth');
-        Route::get('/storage/dropbox/callback', [DropboxAuthController::class, 'callback'])->name('dropbox.callback');
+        Route::get('/storage/dropbox/auth', [DropboxAuthController::class, 'redirect'])->name('dropbox.auth')->middleware('throttle:10,1');
+        Route::get('/storage/dropbox/callback', [DropboxAuthController::class, 'callback'])->name('dropbox.callback')->middleware('throttle:10,1');
 
         // Google OAuth
-        Route::get('/google/auth', [GoogleAuthController::class, 'redirect'])->name('google.auth');
-        Route::get('/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
+        Route::get('/google/auth', [GoogleAuthController::class, 'redirect'])->name('google.auth')->middleware('throttle:10,1');
+        Route::get('/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback')->middleware('throttle:10,1');
     });
 });
 

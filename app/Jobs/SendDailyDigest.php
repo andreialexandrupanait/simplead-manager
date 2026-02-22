@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SendDailyDigest implements ShouldQueue
@@ -26,10 +27,18 @@ class SendDailyDigest implements ShouldQueue
     {
         $digest = $this->gatherDigest();
 
-        // Send to all users
-        User::all()->each(function (User $user) use ($digest) {
-            Mail::to($user->email)->queue(new DailyDigestMail($digest));
-        });
+        foreach (User::cursor() as $user) {
+            try {
+                Mail::to($user->email)->queue(new DailyDigestMail($digest));
+            } catch (\Throwable $e) {
+                Log::warning("Failed to queue daily digest for user {$user->id}: {$e->getMessage()}");
+            }
+        }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error('SendDailyDigest job failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
     }
 
     protected function gatherDigest(): array

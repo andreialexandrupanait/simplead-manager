@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Models\StatusPage;
 use App\Models\StatusPageIncident;
 use App\Models\StatusPageSite;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class StatusPageEdit extends Component
 {
+    use AuthorizesRequests;
+
     public ?StatusPage $statusPage = null;
 
     // Form fields
@@ -44,6 +47,7 @@ class StatusPageEdit extends Component
     public function mount(?StatusPage $statusPage = null): void
     {
         if ($statusPage?->exists) {
+            $this->authorize('update', $statusPage);
             $this->statusPage = $statusPage;
             $this->title = $statusPage->title;
             $this->slug = $statusPage->slug;
