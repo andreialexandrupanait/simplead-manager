@@ -44,7 +44,7 @@ rm -rf node_modules
 # ── Step 3: Build Docker image ───────────────────────────────────────────────
 
 log "Building new Docker image..."
-$COMPOSE build app
+$COMPOSE build app nginx
 
 # ── Step 4: Gracefully stop Horizon ──────────────────────────────────────────
 
@@ -97,10 +97,10 @@ $COMPOSE exec app php artisan queue:restart
 log "Leaving maintenance mode..."
 $COMPOSE exec app php artisan up
 
-# ── Step 11: Restart Nginx (picks up any new static files) ───────────────────
+# ── Step 11: Recreate Nginx with new image ─────────────────────────────────
 
-log "Restarting Nginx..."
-$COMPOSE restart nginx
+log "Recreating Nginx with new image..."
+$COMPOSE up -d nginx
 
 # ── Verify ────────────────────────────────────────────────────────────────────
 

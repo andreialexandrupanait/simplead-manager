@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
+      target: app
     image: simplead-app:latest
     container_name: simplead-app
     env_file:
@@ -88,7 +89,11 @@ services:
           cpus: "0.5"
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+      target: nginx
+    image: simplead-nginx:latest
     container_name: simplead-nginx
     restart: unless-stopped
     ports:
@@ -101,11 +106,7 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      - .:/var/www/html:ro
       - app-storage:/var/www/html/storage:ro
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/conf.d/app.conf:/etc/nginx/templates/http.conf:ro
-      - ./docker/nginx/conf.d.disabled/app.conf:/etc/nginx/templates/ssl.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - simplead-certbot:/var/www/certbot
     command: >
