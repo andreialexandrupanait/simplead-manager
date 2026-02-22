@@ -9,7 +9,7 @@
               : ($inactive
                   ? 'text-white/30 hover:text-white/50 hover:bg-white/5'
                   : 'text-white/70 hover:text-white hover:bg-sidebar-hover') }}"
-   :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+   :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
 
     <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" />
 

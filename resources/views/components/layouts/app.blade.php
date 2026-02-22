@@ -75,14 +75,20 @@
                ]">
 
             {{-- Logo area --}}
-            <div class="flex items-center justify-center px-4 py-5 border-b border-white/10">
-                <a href="{{ route('dashboard') }}" class="block w-full">
+            <div class="flex h-16 items-center px-4 border-b border-white/10"
+                 :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+                <a href="{{ route('dashboard') }}" class="block transition-all duration-300"
+                   :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                     @if($brandingLogo)
-                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-full object-contain" style="filter: brightness(0) invert(1);">
+                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="h-8 w-auto object-contain" style="filter: brightness(0) invert(1);">
                     @else
                         <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
                 </a>
+                <button @click="toggleSidebar()" aria-label="Toggle sidebar" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
+                        :class="sidebarOpen ? '' : 'lg:ml-0'">
+                    <x-icons.menu class="h-5 w-5" />
+                </button>
             </div>
 
             {{-- Dynamic sidebar content --}}
@@ -105,7 +111,7 @@
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
                        class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
-                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" />
                         <span class="whitespace-nowrap transition-all duration-300"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
@@ -119,7 +125,7 @@
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
                        class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
-                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
                             @if(auth()->user()->avatar_path)
                                 <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
@@ -140,7 +146,7 @@
                                 @mouseenter="showSidebarTooltip($el)"
                                 @mouseleave="hideSidebarTooltip()"
                                 class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full"
-                                :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
+                                :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                             <x-icons.log-out class="h-4 w-4 shrink-0" />
                             <span class="whitespace-nowrap transition-all duration-300"
                                   :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
@@ -175,7 +181,7 @@
                     </div>
 
                     {{-- When collapsed --}}
-                    <div x-show="!sidebarOpen"
+                    <div x-show="!sidebarOpen" x-cloak
                          @mouseenter="showSidebarTooltip($el)"
                          @mouseleave="hideSidebarTooltip()"
                          class="lg:flex hidden items-center justify-center">

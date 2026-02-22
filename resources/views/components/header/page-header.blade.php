@@ -100,11 +100,6 @@
 
 <header class="sticky top-0 z-30 border-b bg-white shadow-sm">
     <div class="flex h-16 items-center px-6">
-        {{-- Desktop sidebar toggle --}}
-        <button @click="toggleSidebar()" aria-label="Toggle sidebar" class="mr-3 hidden lg:block text-gray-500 hover:text-gray-700 transition">
-            <x-icons.menu class="h-5 w-5" />
-        </button>
-
         {{-- Mobile menu toggle --}}
         <button @click="mobileSidebarOpen = true" aria-label="Open menu" class="mr-3 lg:hidden text-gray-500">
             <x-icons.menu class="h-6 w-6" />
