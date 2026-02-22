@@ -563,15 +563,46 @@ class AppBackupService
     protected function backupEnv(string $tempDir): string
     {
         $envPath = base_path('.env');
-        if (!file_exists($envPath)) {
-            throw new \RuntimeException('.env file not found.');
+
+        if (file_exists($envPath)) {
+            $envContent = file_get_contents($envPath);
+        } else {
+            // In Docker, .env is excluded from the image and vars are injected
+            // via env_file in docker-compose. Reconstruct from the environment.
+            $envContent = $this->reconstructEnvFromEnvironment();
         }
 
         $outputPath = $tempDir . '/env.encrypted';
-        $encrypted = encrypt(file_get_contents($envPath));
+        $encrypted = encrypt($envContent);
         file_put_contents($outputPath, $encrypted);
 
         return $outputPath;
+    }
+
+    protected function reconstructEnvFromEnvironment(): string
+    {
+        $keys = [
+            'APP_NAME', 'APP_ENV', 'APP_KEY', 'APP_DEBUG', 'APP_URL',
+            'LOG_CHANNEL', 'LOG_LEVEL',
+            'DB_CONNECTION', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
+            'REDIS_HOST', 'REDIS_PASSWORD', 'REDIS_PORT',
+            'MAIL_MAILER', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD',
+            'MAIL_ENCRYPTION', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
+            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION', 'AWS_BUCKET',
+            'QUEUE_CONNECTION', 'SESSION_DRIVER', 'CACHE_STORE',
+            'FILESYSTEM_DISK',
+        ];
+
+        $lines = [];
+        foreach ($keys as $key) {
+            $value = env($key);
+            if ($value !== null) {
+                $value = str_contains((string) $value, ' ') ? "\"$value\"" : $value;
+                $lines[] = "$key=$value";
+            }
+        }
+
+        return implode("\n", $lines) . "\n";
     }
 
     protected function backupStorage(string $tempDir): string
