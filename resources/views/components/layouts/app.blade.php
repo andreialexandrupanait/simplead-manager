@@ -75,10 +75,10 @@
                ]">
 
             {{-- Logo area --}}
-            <div class="flex h-16 items-center px-5 border-b border-white/10">
-                <a href="{{ route('dashboard') }}" class="block" style="width: 80%;">
+            <div class="flex items-center justify-center px-4 py-5 border-b border-white/10">
+                <a href="{{ route('dashboard') }}" class="block w-full">
                     @if($brandingLogo)
-                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="h-7 w-full object-contain object-left" style="filter: brightness(0) invert(1);">
+                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-full object-contain" style="filter: brightness(0) invert(1);">
                     @else
                         <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif

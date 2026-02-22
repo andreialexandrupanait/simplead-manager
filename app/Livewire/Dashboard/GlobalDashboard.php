@@ -13,6 +13,7 @@ use App\Models\SiteStatus;
 use App\Services\DashboardService;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -266,6 +267,15 @@ class GlobalDashboard extends Component
     public function clearSelection(): void
     {
         $this->selectedSites = [];
+    }
+
+    public function bulkMoveToClient(int $clientId): void
+    {
+        Site::whereIn('id', $this->selectedSites)->update(['client_id' => $clientId]);
+        $count = count($this->selectedSites);
+        $this->selectedSites = [];
+        unset($this->sites, $this->clients);
+        $this->dispatch('notify', type: 'success', message: "{$count} " . Str::plural('site', $count) . " moved to client.");
     }
 
     public function bulkSetStatus(int $statusId): void
