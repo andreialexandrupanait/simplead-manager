@@ -269,7 +269,6 @@ services:
       - "--chromium-disable-javascript=true"
       - "--api-timeout=120s"
       - "--log-level=warn"
-      - "--api-health-uri=/health"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
