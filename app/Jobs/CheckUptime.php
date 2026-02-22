@@ -58,7 +58,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
         // Sync to site
         $this->monitor->site->update([
-            'is_up' => $this->monitor->current_state === 'up',
+            'is_up' => $this->monitor->current_state === \App\Enums\MonitorState::Up,
             'uptime_percentage' => $this->monitor->uptime_30d,
         ]);
 
