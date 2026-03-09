@@ -158,3 +158,29 @@ Schedule::job(new \App\Jobs\SendDailyDigest)
     ->dailyAt('07:00')
     ->name('daily-digest')
     ->onOneServer();
+
+// ==========================================================================
+// Security Hardening
+// ==========================================================================
+
+// Cleanup stale security commands (picked_up >30min)
+Schedule::call(function () {
+    app(\App\Services\SecurityCommandService::class)->cleanupStaleCommands();
+})->everyFifteenMinutes()->name('security-stale-commands-cleanup')->withoutOverlapping()->onOneServer();
+
+// Prune old security activity logs
+Schedule::call(function () {
+    app(\App\Services\SecurityActivityService::class)->pruneOldLogs(90);
+})->dailyAt('03:30')->name('security-activity-log-prune')->onOneServer();
+
+// Cleanup expired banned IPs
+Schedule::call(function () {
+    \App\Models\SecurityBannedIp::whereNotNull('expires_at')
+        ->where('expires_at', '<=', now())
+        ->delete();
+})->hourly()->name('security-expired-bans-cleanup')->onOneServer();
+
+// Recalculate all security hardening scores
+Schedule::call(function () {
+    app(\App\Services\SecuritySettingsService::class)->recalculateAllScores();
+})->dailyAt('06:00')->name('security-score-recalculation')->onOneServer();

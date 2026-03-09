@@ -90,6 +90,17 @@ class RetentionPolicyService
                 ['table' => 'safe_updates', 'column' => 'completed_at', 'col_type' => 'timestamp', 'label' => 'Safe updates', 'condition' => ['status', 'in', ['completed', 'failed']], 'hasTable' => false],
             ],
         ],
+        'security_hardening' => [
+            'label' => 'Security Hardening',
+            'default' => 90,
+            'min' => 30,
+            'max' => 365,
+            'tables' => [
+                ['table' => 'security_activity_logs', 'column' => 'occurred_at', 'col_type' => 'timestamp', 'label' => 'Security activity logs', 'condition' => null, 'hasTable' => true],
+                ['table' => 'security_commands', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security commands (completed)', 'condition' => ['status', 'in', ['completed', 'failed', 'cancelled']], 'hasTable' => true],
+                ['table' => 'security_banned_ips', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security banned IPs', 'condition' => null, 'hasTable' => true],
+            ],
+        ],
         'failed_jobs' => [
             'label' => 'Failed Jobs',
             'default' => 7,

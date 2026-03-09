@@ -1,18 +1,8 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
-    {{-- Module not active banner --}}
-    @if(!$this->isModuleActive)
-        <x-ui.module-activation-banner
-            title="Security monitoring is not active"
-            description="Enable automatic security scans and vulnerability monitoring for this site."
-            icon="shield"
-        >
-            <x-ui.button size="sm" wire:click="activateModule">Activate</x-ui.button>
-        </x-ui.module-activation-banner>
-    @endif
+    @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Flash Messages --}}
-    <x-ui.flash-alert type="success" key="rec-fixed" />
-    <x-ui.flash-alert type="error" key="rec-error" />
+    <x-ui.flash-alert type="error" key="error" />
 
     {{-- Job Progress --}}
     <x-ui.job-progress job-key="scan" :jobs="$trackedJobs" title="Running security scan..." />
@@ -23,26 +13,7 @@
         <x-ui.card>
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-6">
-                    {{-- Score Circle --}}
-                    <div class="relative flex h-24 w-24 shrink-0 items-center justify-center">
-                        <svg class="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="42" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-                            @if($this->latestScan)
-                                <circle cx="50" cy="50" r="42" fill="none"
-                                        stroke="{{ $this->latestScan->score_color === 'green' ? '#22c55e' : ($this->latestScan->score_color === 'yellow' ? '#eab308' : '#ef4444') }}"
-                                        stroke-width="8"
-                                        stroke-dasharray="{{ 2 * 3.14159 * 42 }}"
-                                        stroke-dashoffset="{{ 2 * 3.14159 * 42 * (1 - $this->latestScan->score / 100) }}"
-                                        stroke-linecap="round"/>
-                            @endif
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="text-2xl font-bold {{ $this->latestScan ? 'text-gray-900' : 'text-gray-400' }}">
-                                {{ $this->latestScan?->score ?? '—' }}
-                            </span>
-                            <span class="text-xs text-gray-500">/ 100</span>
-                        </div>
-                    </div>
+                    <x-security.score-circle :score="$this->latestScan?->score" />
 
                     <div>
                         @if($this->latestScan)

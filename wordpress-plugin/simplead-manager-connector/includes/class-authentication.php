@@ -57,6 +57,7 @@ class SAM_Authentication {
         $has_nonce = !empty($nonce);
 
         // If nonce is present, check for reuse BEFORE HMAC validation
+        // Uses wp_cache_add() for atomic set-if-not-exists to prevent race conditions
         if ($has_nonce) {
             $nonce_key = 'sam_nonce_' . hash('sha256', $nonce);
             if (get_transient($nonce_key)) {
@@ -104,7 +105,17 @@ class SAM_Authentication {
         }
 
         // Mark nonce as used AFTER successful HMAC validation
+        // wp_cache_add is atomic (returns false if key exists) to close the race window
         if ($has_nonce) {
+            $already_used = !wp_cache_add($nonce_key, 1, 'sam_nonces', self::NONCE_TTL);
+            if ($already_used) {
+                return new WP_Error(
+                    'NONCE_REUSED',
+                    'Request nonce has already been used.',
+                    ['status' => 401]
+                );
+            }
+            // Also set transient as durable fallback (cache may be non-persistent)
             set_transient($nonce_key, 1, self::NONCE_TTL);
         }
 

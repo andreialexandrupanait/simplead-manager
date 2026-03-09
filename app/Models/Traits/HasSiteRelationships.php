@@ -23,10 +23,16 @@ use App\Models\RollbackPoint;
 use App\Models\SafeUpdate;
 use App\Models\SearchConsoleCache;
 use App\Models\SearchConsoleConnection;
+use App\Models\SecurityActivityLog;
+use App\Models\SecurityBannedIp;
+use App\Models\SecurityCommand;
+use App\Models\SecurityIpList;
 use App\Models\SecurityIssue;
 use App\Models\SecurityMonitor;
+use App\Models\SecurityPreset;
 use App\Models\SecurityRecommendation;
 use App\Models\SecurityScan;
+use App\Models\SecuritySetting;
 use App\Models\SiteCloudflare;
 use App\Models\SiteHealthState;
 use App\Models\SiteMonthlySnapshot;
@@ -44,6 +50,7 @@ use App\Models\UptimeMonitor;
 use App\Models\User;
 use App\Models\VulnerabilityAlert;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -272,5 +279,38 @@ trait HasSiteRelationships
     public function reportConfig(): HasOne
     {
         return $this->hasOne(SiteReportConfig::class);
+    }
+
+    // Security Hardening relationships
+
+    public function securitySettings(): HasMany
+    {
+        return $this->hasMany(SecuritySetting::class);
+    }
+
+    public function securityCommands(): HasMany
+    {
+        return $this->hasMany(SecurityCommand::class);
+    }
+
+    public function securityPresets(): BelongsToMany
+    {
+        return $this->belongsToMany(SecurityPreset::class, 'security_preset_site')
+            ->withPivot('applied_at', 'applied_version');
+    }
+
+    public function securityActivityLogs(): HasMany
+    {
+        return $this->hasMany(SecurityActivityLog::class);
+    }
+
+    public function securityIpLists(): HasMany
+    {
+        return $this->hasMany(SecurityIpList::class);
+    }
+
+    public function securityBannedIps(): HasMany
+    {
+        return $this->hasMany(SecurityBannedIp::class);
     }
 }

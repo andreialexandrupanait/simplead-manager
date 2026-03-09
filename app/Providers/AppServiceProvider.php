@@ -25,6 +25,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SettingsService::class);
         $this->app->singleton(\App\Services\DashboardService::class);
         $this->app->singleton(\App\Services\GotenbergService::class);
+        $this->app->singleton(\App\Services\SecurityScanService::class);
+        $this->app->singleton(\App\Services\SecurityRecommendationService::class);
+        $this->app->singleton(\App\Services\SecuritySettingsService::class);
+        $this->app->singleton(\App\Services\SecurityCommandService::class);
+        $this->app->singleton(\App\Services\SecurityActivityService::class);
+        $this->app->singleton(\App\Services\SecurityPresetService::class);
     }
 
     /**
@@ -50,6 +56,16 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('status-page', function (Request $request) {
             return Limit::perMinute(30)->by($request->ip());
+        });
+
+        RateLimiter::for('agent', function (Request $request) {
+            $siteToken = $request->route('site_token', 'unknown');
+            return Limit::perMinute(120)->by('agent:' . $siteToken);
+        });
+
+        RateLimiter::for('agent-activity-logs', function (Request $request) {
+            $siteToken = $request->route('site_token', 'unknown');
+            return Limit::perMinute(1)->by('agent-logs:' . $siteToken);
         });
 
         RateLimiter::for('status-page-auth', function (Request $request) {

@@ -345,7 +345,7 @@
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
                                 <td class="px-3 py-3">
                                     <div class="flex items-center gap-1.5">
-                                        <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
+                                        <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                         @if($backup->is_locked)
                                             <x-ui.badge variant="purple">Locked</x-ui.badge>
                                         @endif

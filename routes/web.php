@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportDownloadController;
 use App\Livewire\Backups;
 use App\Livewire\Dashboard;
 use App\Livewire\Performance;
+use App\Livewire\Security;
 use App\Livewire\Sites;
 use App\Livewire\Uptime;
 use App\Livewire\Clients;
@@ -56,7 +57,14 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     Route::prefix('/sites/{site}')->group(function () {
         Route::get('/', Sites\Detail\SiteOverview::class)->name('sites.overview');
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
-        Route::get('/security', Sites\Detail\SiteSecurity::class)->name('sites.security');
+        Route::get('/security', Sites\Detail\Security\SecurityOverview::class)->name('sites.security');
+        Route::get('/security/hardening', Sites\Detail\Security\SecurityHardening::class)->name('sites.security.hardening');
+        Route::get('/security/login', Sites\Detail\Security\SecurityLogin::class)->name('sites.security.login');
+        Route::get('/security/captcha', Sites\Detail\Security\SecurityCaptcha::class)->name('sites.security.captcha');
+        Route::get('/security/scanning', Sites\Detail\Security\SecurityScanning::class)->name('sites.security.scanning');
+        Route::get('/security/activity', Sites\Detail\Security\SecurityActivity::class)->name('sites.security.activity');
+        Route::get('/security/users', Sites\Detail\Security\SecurityUsers::class)->name('sites.security.users');
+        Route::get('/security/ip-management', Sites\Detail\Security\SecurityIpManagement::class)->name('sites.security.ip-management');
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
@@ -81,6 +89,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Performance — global view
     Route::get('/performance', Performance\PerformanceOverview::class)->name('performance.index');
+
+    // Security — global views
+    Route::get('/security', Security\SecurityDashboard::class)->name('security.index');
+    Route::get('/security/presets', Security\PresetManager::class)->name('security.presets')->middleware('role:admin');
 
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');

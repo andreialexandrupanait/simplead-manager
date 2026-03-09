@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\SecuritySetting;
+use App\Models\Site;
+use App\Services\SecuritySettingsService;
+use App\Services\WordPressApiService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+
+class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+    public array $backoff = [10, 30, 60];
+    public int $timeout = 60;
+
+    public function __construct(
+        public Site $site,
+    ) {
+        $this->onQueue('security');
+    }
+
+    public function handle(): void
+    {
+        $settings = SecuritySetting::where('site_id', $this->site->id)
+            ->where('is_enabled', true)
+            ->get();
+
+        $payload = $this->buildPayload($settings);
+
+        if (empty($payload)) {
+            return;
+        }
+
+        try {
+            $api = new WordPressApiService($this->site);
+            $response = $api->request('POST', '/security-settings', $payload);
+
+            if ($response->successful()) {
+                $results = $response->json('results') ?? [];
+                $this->processResults($results);
+            } else {
+                Log::warning('PushSecuritySettings failed', [
+                    'site_id' => $this->site->id,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                $this->markAllFailed('Plugin returned HTTP ' . $response->status());
+            }
+        } catch (\Exception $e) {
+            Log::error('PushSecuritySettings exception', [
+                'site_id' => $this->site->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e; // Let the queue retry
+        }
+
+        // Recalculate security score
+        $score = app(SecuritySettingsService::class)->getSecurityScore($this->site);
+        $this->site->update(['security_hardening_score' => $score]);
+    }
+
+    protected function buildPayload($settings): array
+    {
+        $payload = [];
+
+        foreach ($settings as $setting) {
+            $category = $setting->category->value ?? $setting->category;
+            $key = $setting->setting_key;
+            $value = $setting->setting_value;
+
+            if ($category === 'hardening') {
+                $payload['hardening'][$key] = true;
+            } elseif ($category === 'htaccess') {
+                $payload['htaccess'][$key] = true;
+            } elseif ($category === 'login') {
+                $payload['login'][$key] = [
+                    'enabled' => true,
+                    ...(is_array($value) ? $value : []),
+                ];
+            } elseif ($category === 'captcha') {
+                $payload['captcha'] = is_array($value) ? $value : [];
+            } elseif ($category === 'ip_management') {
+                $payload['ip_management'] = is_array($value) ? $value : [];
+            }
+        }
+
+        // Also include disabled settings so the plugin stops enforcing them
+        $allDisabled = SecuritySetting::where('site_id', $this->site->id)
+            ->whereIn('category', ['hardening', 'htaccess', 'login', 'captcha', 'ip_management'])
+            ->where('is_enabled', false)
+            ->get();
+
+        foreach ($allDisabled as $setting) {
+            $category = $setting->category->value ?? $setting->category;
+            $key = $setting->setting_key;
+
+            if (in_array($category, ['hardening', 'htaccess'])) {
+                $payload[$category][$key] = false;
+            } elseif ($category === 'login') {
+                $payload['login'][$key] = ['enabled' => false];
+            } elseif ($category === 'captcha') {
+                // If captcha is fully disabled, send disabled flag
+                if (!isset($payload['captcha'])) {
+                    $payload['captcha'] = ['enabled' => false];
+                }
+            } elseif ($category === 'ip_management') {
+                if (!isset($payload['ip_management'])) {
+                    $payload['ip_management'] = ['enabled' => false];
+                }
+            }
+        }
+
+        return $payload;
+    }
+
+    protected function processResults(array $results): void
+    {
+        $now = now();
+        $reported = [];
+
+        // Hardening results
+        if (isset($results['hardening']['applied'])) {
+            foreach ($results['hardening']['applied'] as $key) {
+                $reported[] = ['category' => 'hardening', 'key' => $key, 'applied' => true];
+            }
+        }
+
+        // Htaccess results
+        if (isset($results['htaccess'])) {
+            foreach ($results['htaccess'] as $key => $result) {
+                $reported[] = [
+                    'category' => 'htaccess',
+                    'key' => $key,
+                    'applied' => $result['success'] ?? false,
+                    'failed' => !($result['success'] ?? false),
+                    'reason' => $result['message'] ?? null,
+                ];
+            }
+        }
+
+        // Login/captcha/ip_management — simple success flags
+        foreach (['login', 'captcha', 'ip_management'] as $cat) {
+            if (isset($results[$cat]['success']) && $results[$cat]['success']) {
+                $settings = SecuritySetting::where('site_id', $this->site->id)
+                    ->where('category', $cat)
+                    ->where('is_enabled', true)
+                    ->get();
+
+                foreach ($settings as $s) {
+                    $reported[] = ['category' => $cat, 'key' => $s->setting_key, 'applied' => true];
+                }
+            }
+        }
+
+        if (!empty($reported)) {
+            app(SecuritySettingsService::class)->syncSettingsFromAgent($this->site, $reported);
+        }
+    }
+
+    protected function markAllFailed(string $reason): void
+    {
+        SecuritySetting::where('site_id', $this->site->id)
+            ->where('is_enabled', true)
+            ->whereNull('applied_at')
+            ->update([
+                'failed_at' => now(),
+                'failure_reason' => $reason,
+            ]);
+    }
+
+    public function uniqueId(): string
+    {
+        return 'push-security-' . $this->site->id;
+    }
+}

@@ -27,6 +27,10 @@ define('SAM_PLUGIN_BASENAME', plugin_basename(__FILE__));
 // Always-needed core classes (need hooks registered at boot)
 require_once SAM_PLUGIN_DIR . 'includes/class-audit-logger.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-login-handler.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-security-hardening.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-security-login.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-security-captcha.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-security-ip-manager.php';
 
 // Autoloader for all other classes (loaded on demand)
 spl_autoload_register(function ($class) {
@@ -46,6 +50,8 @@ spl_autoload_register(function ($class) {
         'SAM_Core_Endpoint'         => 'endpoints/class-core-endpoint.php',
         'SAM_Health_Endpoint'       => 'endpoints/class-health-endpoint.php',
         'SAM_Security_Endpoint'     => 'endpoints/class-security-endpoint.php',
+        'SAM_Security_Settings_Endpoint' => 'endpoints/class-security-settings-endpoint.php',
+        'SAM_Security_Htaccess'     => 'class-security-htaccess.php',
         'SAM_Backup_Endpoint'       => 'endpoints/class-backup-endpoint.php',
         'SAM_Rollback_Endpoint'     => 'endpoints/class-rollback-endpoint.php',
         'SAM_Database_Endpoint'     => 'endpoints/class-database-endpoint.php',
@@ -86,6 +92,12 @@ final class SimpleAd_Manager_Connector {
         register_activation_hook(SAM_PLUGIN_FILE, [$this, 'activate']);
         register_deactivation_hook(SAM_PLUGIN_FILE, [$this, 'deactivate']);
         register_uninstall_hook(SAM_PLUGIN_FILE, [__CLASS__, 'uninstall']);
+
+        // Security enforcement — must run early
+        add_action('plugins_loaded', [$this, 'init_security_hardening'], 1);
+        add_action('plugins_loaded', [$this, 'init_security_ip_manager'], 2);
+        add_action('init', [$this, 'init_security_login'], 1);
+        add_action('init', [$this, 'init_security_captcha'], 2);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('init', [$this, 'handle_login_token']);
@@ -140,7 +152,35 @@ final class SimpleAd_Manager_Connector {
         }
     }
 
+    public function init_security_hardening(): void {
+        new SAM_Security_Hardening();
+    }
+
+    public function init_security_login(): void {
+        new SAM_Security_Login();
+    }
+
+    public function init_security_captcha(): void {
+        new SAM_Security_Captcha();
+    }
+
+    public function init_security_ip_manager(): void {
+        new SAM_Security_IP_Manager();
+    }
+
     public function deactivate(): void {
+        // Clean up htaccess rules on deactivation
+        $htaccess = new SAM_Security_Htaccess();
+        $htaccess->cleanup();
+
+        // Remove CAPTCHA and IP management enforcement
+        delete_option('sam_security_captcha');
+        delete_option('sam_security_ip_management');
+
+        // Clean up brute force transients
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_sam_bf_%' OR option_name LIKE '_transient_timeout_sam_bf_%'");
+
         flush_rewrite_rules();
     }
 
@@ -153,6 +193,11 @@ final class SimpleAd_Manager_Connector {
         delete_option('sam_settings');
         delete_option('sam_ip_whitelist');
         delete_option('sam_version');
+        delete_option('sam_security_settings');
+        delete_option('sam_security_login');
+        delete_option('sam_security_captcha');
+        delete_option('sam_security_ip_management');
+        delete_option('sam_banned_ips');
 
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_audit_logs");
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_login_tokens");

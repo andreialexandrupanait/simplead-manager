@@ -1,22 +1,25 @@
 <?php
 
-namespace App\Livewire\Sites\Detail;
+namespace App\Livewire\Sites\Detail\Security;
 
 use App\Jobs\CheckCoreFileIntegrity;
 use App\Jobs\CheckSslCertificate;
 use App\Jobs\RunSecurityScan;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Models\CoreFileCheck;
 use App\Models\SecurityIssue;
+use App\Models\SecurityScan;
 use App\Models\Site;
+use App\Models\SslCertificate;
 use App\Models\VulnerabilityAlert;
-use App\Services\ModuleConfigService;
 use App\Services\SecurityScanService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
-class SiteSecurity extends Component
+class SecurityScanning extends Component
 {
     use WithJobTracking, WithSiteAuthorization;
 
@@ -38,49 +41,37 @@ class SiteSecurity extends Component
     }
 
     #[Computed]
-    public function isModuleActive(): bool
-    {
-        return app(ModuleConfigService::class)->isModuleActive($this->site, 'security');
-    }
-
-    public function activateModule(): void
-    {
-        app(ModuleConfigService::class)->toggleModule($this->site, 'security', true);
-        unset($this->isModuleActive);
-    }
-
-    #[Computed]
-    public function sslCertificate()
+    public function sslCertificate(): ?SslCertificate
     {
         return $this->site->sslCertificate;
     }
 
     #[Computed]
-    public function latestScan()
+    public function latestScan(): ?SecurityScan
     {
         return $this->site->latestSecurityScan;
     }
 
     #[Computed]
-    public function activeIssues()
+    public function activeIssues(): Collection
     {
         return SecurityIssue::where('site_id', $this->site->id)
             ->active()
-            ->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->orderBySeverity()
             ->get();
     }
 
     #[Computed]
-    public function vulnerabilities()
+    public function vulnerabilities(): Collection
     {
         return VulnerabilityAlert::where('site_id', $this->site->id)
             ->active()
-            ->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->orderBySeverity()
             ->get();
     }
 
     #[Computed]
-    public function latestCoreCheck()
+    public function latestCoreCheck(): ?CoreFileCheck
     {
         return $this->site->latestCoreFileCheck;
     }
@@ -101,7 +92,7 @@ class SiteSecurity extends Component
     {
         $issue = SecurityIssue::find($id);
         if ($issue && $issue->site_id === $this->site->id) {
-            SecurityScanService::resolveIssue($issue);
+            app(SecurityScanService::class)->resolveIssue($issue);
         }
         unset($this->activeIssues, $this->latestScan);
     }
@@ -110,7 +101,7 @@ class SiteSecurity extends Component
     {
         $issue = SecurityIssue::find($id);
         if ($issue && $issue->site_id === $this->site->id) {
-            SecurityScanService::ignoreIssue($issue);
+            app(SecurityScanService::class)->ignoreIssue($issue);
         }
         unset($this->activeIssues, $this->latestScan);
     }
@@ -128,7 +119,7 @@ class SiteSecurity extends Component
             $this->site->sslCertificate->update(['last_checked_at' => now()]);
         }
 
-        unset($this->sslCertificate, $this->sslHistory);
+        unset($this->sslCertificate);
     }
 
     public function checkCoreIntegrityNow(): void
@@ -150,10 +141,10 @@ class SiteSecurity extends Component
 
     public function render()
     {
-        return view('livewire.sites.detail.site-security')
+        return view('livewire.sites.detail.security.security-scanning')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Security',
+                'title' => $this->site->name . ' — Scanning',
             ]);
     }
 }

@@ -184,7 +184,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
             // Run security checks
             try {
-                SecurityRecommendationService::check($this->site);
+                app(SecurityRecommendationService::class)->check($this->site);
             } catch (\Exception $e) {
                 Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
             }

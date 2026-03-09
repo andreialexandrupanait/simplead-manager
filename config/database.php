@@ -82,6 +82,9 @@ return [
             ]) : [],
         ],
 
+        // NOTE: PgBouncer in transaction mode does not support server-side prepared statements.
+        // Laravel uses emulated prepared statements by default (PDO::ATTR_EMULATE_PREPARES = true),
+        // which is compatible. Do NOT set PDO::ATTR_EMULATE_PREPARES to false.
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

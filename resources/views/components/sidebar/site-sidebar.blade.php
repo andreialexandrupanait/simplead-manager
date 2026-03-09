@@ -182,7 +182,7 @@
         <x-sidebar.sidebar-item
             :href="route('sites.security', $site)"
             icon="shield"
-            :active="request()->routeIs('sites.security')"
+            :active="request()->routeIs('sites.security*')"
             :inactive="!$moduleService->isModuleActive($site, 'security')"
         >
             Security

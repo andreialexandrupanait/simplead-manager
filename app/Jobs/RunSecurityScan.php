@@ -33,7 +33,7 @@ class RunSecurityScan implements ShouldQueue, ShouldBeUnique
     public function handle(): void
     {
         JobTracker::start($this->uniqueId(), 'Running security scan...');
-        SecurityScanService::scan($this->site, $this->uniqueId());
+        app(SecurityScanService::class)->scan($this->site, $this->uniqueId());
 
         // Update next scan time from security monitor
         $monitor = $this->site->securityMonitor;

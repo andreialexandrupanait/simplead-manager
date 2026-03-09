@@ -20,6 +20,7 @@ class SAM_REST_API {
             new SAM_Core_Endpoint(),
             new SAM_Health_Endpoint(),
             new SAM_Security_Endpoint(),
+            new SAM_Security_Settings_Endpoint(),
             new SAM_Backup_Endpoint(),
             new SAM_Rollback_Endpoint(),
             new SAM_Database_Endpoint(),

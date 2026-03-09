@@ -79,13 +79,13 @@ class HealthCheckController extends Controller
         $percentFree = round(($free / $total) * 100, 1);
 
         if ($percentFree < 5) {
-            return ['status' => 'fail', 'message' => "Only {$percentFree}% disk space free", 'percent_free' => $percentFree];
+            return ['status' => 'fail', 'message' => 'Critically low disk space'];
         }
 
         if ($percentFree < 10) {
-            return ['status' => 'degraded', 'message' => "Low disk space: {$percentFree}% free", 'percent_free' => $percentFree];
+            return ['status' => 'degraded', 'message' => 'Low disk space'];
         }
 
-        return ['status' => 'ok', 'percent_free' => $percentFree];
+        return ['status' => 'ok'];
     }
 }

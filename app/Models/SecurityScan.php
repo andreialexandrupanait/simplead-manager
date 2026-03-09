@@ -48,11 +48,16 @@ class SecurityScan extends Model
         return $this->hasMany(SecurityIssue::class);
     }
 
+    public static function scoreColor(int $score): string
+    {
+        if ($score >= 80) return 'green';
+        if ($score >= 50) return 'yellow';
+        return 'red';
+    }
+
     public function getScoreColorAttribute(): string
     {
-        if ($this->score >= 80) return 'green';
-        if ($this->score >= 50) return 'yellow';
-        return 'red';
+        return static::scoreColor($this->score);
     }
 
     public function getScoreLabelAttribute(): string

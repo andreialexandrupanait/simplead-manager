@@ -367,6 +367,26 @@ class WordPressApiService
     }
 
     /**
+     * Push security settings to the plugin.
+     */
+    public function pushSecuritySettings(array $settings): array
+    {
+        $response = $this->request('POST', '/security-settings', $settings);
+        $this->throwIfFailed($response);
+        return $response->json();
+    }
+
+    /**
+     * Get the full security state from the plugin.
+     */
+    public function getSecurityState(): array
+    {
+        $response = $this->request('GET', '/security-state');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
      * Apply a security fix.
      */
     public function applySecurityFix(string $key): array

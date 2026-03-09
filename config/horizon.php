@@ -104,6 +104,7 @@ return [
         'redis:sync' => 120,
         'redis:performance' => 120,
         'redis:reports' => 120,
+        'redis:security' => 60,
     ],
 
     /*
@@ -254,7 +255,7 @@ return [
         ],
         'supervisor-general' => [
             'connection' => 'redis',
-            'queue' => ['performance', 'reports', 'default'],
+            'queue' => ['security', 'performance', 'reports', 'default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 2,

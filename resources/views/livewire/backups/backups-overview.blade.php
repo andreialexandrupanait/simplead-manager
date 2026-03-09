@@ -91,7 +91,7 @@
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
                                 <td class="px-3 py-3">
-                                    <x-ui.badge :variant="$backup->status_color">{{ ucfirst($backup->status) }}</x-ui.badge>
+                                    <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                     @if($backup->is_locked)
                                         <x-ui.badge variant="purple" class="ml-1">Locked</x-ui.badge>
                                     @endif

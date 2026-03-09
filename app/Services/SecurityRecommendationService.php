@@ -8,12 +8,10 @@ use Illuminate\Support\Facades\Log;
 
 class SecurityRecommendationService
 {
-    public static function check(Site $site): array
+    public function check(Site $site): array
     {
-        // Seed defaults if none exist
-        static::seedDefaults($site);
+        $this->seedDefaults($site);
 
-        // Map plugin keys to DEFINITIONS keys
         $keyMap = [
             'file_editor_disabled' => 'disable_file_editing',
             'directory_listing_disabled' => 'disable_directory_listing',
@@ -58,7 +56,7 @@ class SecurityRecommendationService
         }
     }
 
-    public static function fix(Site $site, string $key): bool
+    public function fix(Site $site, string $key): bool
     {
         $rec = SecurityRecommendation::where('site_id', $site->id)->where('key', $key)->first();
 
@@ -96,12 +94,12 @@ class SecurityRecommendationService
         }
     }
 
-    public static function ignore(SecurityRecommendation $rec): void
+    public function ignore(SecurityRecommendation $rec): void
     {
         $rec->update(['status' => 'ignored']);
     }
 
-    public static function seedDefaults(Site $site): void
+    public function seedDefaults(Site $site): void
     {
         $existing = SecurityRecommendation::where('site_id', $site->id)->pluck('key')->toArray();
 

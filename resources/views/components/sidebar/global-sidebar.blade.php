@@ -25,6 +25,14 @@
     >
         {{ __('Performance') }}
     </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('security.index')"
+        icon="shield"
+        :active="request()->routeIs('security.*')"
+    >
+        {{ __('Security') }}
+    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Management')">
