@@ -66,6 +66,7 @@
             <div class="sticky top-20 space-y-4">
                 @include('livewire.sites.detail.overview._health-bar')
                 @include('livewire.sites.detail.overview._site-info-card')
+                @include('livewire.sites.detail.overview._server-resources-card')
                 @include('livewire.sites.detail.overview._uptime-card')
                 @include('livewire.sites.detail.overview._backups-card')
                 @include('livewire.sites.detail.overview._security-card')

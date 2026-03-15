@@ -212,6 +212,18 @@ class SiteOverview extends Component
         $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
     }
 
+    public ?array $serverResources = null;
+
+    public function loadServerResources(): void
+    {
+        try {
+            $api = new WordPressApiService($this->site);
+            $this->serverResources = $api->getServerResources();
+        } catch (\Exception $e) {
+            $this->dispatch('notify', type: 'error', message: 'Failed to load server resources: ' . $e->getMessage());
+        }
+    }
+
     public function clearCache(): void
     {
         try {

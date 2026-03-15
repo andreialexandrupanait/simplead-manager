@@ -72,6 +72,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
+        Route::get('/cron', Sites\Detail\SiteCron::class)->name('sites.cron');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download')->middleware('throttle:10,1');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
