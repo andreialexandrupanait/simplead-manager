@@ -61,6 +61,8 @@ spl_autoload_register(function ($class) {
         'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
         'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
         'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
+        // Direct upload helper
+        'SAM_Direct_Uploader'       => 'class-direct-uploader.php',
         // Admin
         'SAM_Admin'                 => 'class-admin.php',
     ];
@@ -112,6 +114,17 @@ final class SimpleAd_Manager_Connector {
             add_action('admin_init', [$this, 'maybe_upgrade']);
             add_action('admin_init', [$admin, 'register_settings']);
         }
+
+        // Async backup preparation via WP-Cron fallback
+        add_action('sam_async_backup_prepare', [$this, 'run_async_backup_prepare'], 10, 2);
+
+        // Daily cleanup of stale backup temp files
+        add_action('sam_cleanup_backup_temp', [$this, 'cleanup_backup_temp']);
+        add_action('init', function () {
+            if (!wp_next_scheduled('sam_cleanup_backup_temp')) {
+                wp_schedule_event(time(), 'daily', 'sam_cleanup_backup_temp');
+            }
+        });
 
         // Hook into various WP actions for audit logging
         SAM_Audit_Logger::register_hooks();
@@ -169,6 +182,12 @@ final class SimpleAd_Manager_Connector {
     }
 
     public function deactivate(): void {
+        // Remove scheduled events
+        $timestamp = wp_next_scheduled('sam_cleanup_backup_temp');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'sam_cleanup_backup_temp');
+        }
+
         // Clean up htaccess rules on deactivation
         $htaccess = new SAM_Security_Htaccess();
         $htaccess->cleanup();
@@ -212,6 +231,52 @@ final class SimpleAd_Manager_Connector {
     public function handle_login_token(): void {
         $handler = new SAM_Login_Handler();
         $handler->maybe_handle_login();
+    }
+
+    /**
+     * WP-Cron fallback for async backup preparation.
+     */
+    public function run_async_backup_prepare(string $token, string $type): void {
+        ignore_user_abort(true);
+        @set_time_limit(3600);
+
+        $endpoint = new SAM_Backup_Endpoint();
+        $request = new WP_REST_Request('POST');
+        $request->set_param('token', $token);
+        $request->set_param('type', $type);
+        $endpoint->prepare_execute($request);
+    }
+
+    /**
+     * Clean up stale backup temp files older than 4 hours.
+     */
+    public function cleanup_backup_temp(): void {
+        $token_dir = sys_get_temp_dir() . '/sam_prepared';
+        if (!is_dir($token_dir)) {
+            return;
+        }
+
+        $cutoff = time() - 14400; // 4 hours
+        $items = new \DirectoryIterator($token_dir);
+        foreach ($items as $item) {
+            if ($item->isDot()) continue;
+            if ($item->getMTime() < $cutoff) {
+                $path = $item->getPathname();
+                if ($item->isDir()) {
+                    // Work directories
+                    $files = new \RecursiveIteratorIterator(
+                        new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS),
+                        \RecursiveIteratorIterator::CHILD_FIRST
+                    );
+                    foreach ($files as $file) {
+                        $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+                    }
+                    @rmdir($path);
+                } else {
+                    @unlink($path);
+                }
+            }
+        }
     }
 }
 

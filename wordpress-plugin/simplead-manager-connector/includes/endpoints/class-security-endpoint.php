@@ -162,11 +162,17 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
         $params = $request->get_json_params();
         $key = sanitize_text_field($params['key'] ?? '');
 
-        $result = match ($key) {
-            'disable_file_editor' => $this->fix_disable_file_editor(),
-            'disable_xmlrpc'     => $this->fix_disable_xmlrpc(),
-            default              => ['success' => false, 'message' => 'Unknown fix key.'],
-        };
+        switch ($key) {
+            case 'disable_file_editor':
+                $result = $this->fix_disable_file_editor();
+                break;
+            case 'disable_xmlrpc':
+                $result = $this->fix_disable_xmlrpc();
+                break;
+            default:
+                $result = ['success' => false, 'message' => 'Unknown fix key.'];
+                break;
+        }
 
         if ($result['success']) {
             SAM_Audit_Logger::log('security_fix_applied', 'security', $key, 'Applied via SimpleAd Manager');

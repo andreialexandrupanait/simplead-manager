@@ -40,15 +40,19 @@ class SAM_Rollback_Endpoint extends SAM_Endpoint_Base {
 
         @set_time_limit(300);
 
-        return match ($type) {
-            'plugin' => $this->rollback_plugin($slug, $version),
-            'theme'  => $this->rollback_theme($slug, $version),
-            'core'   => $this->rollback_core($version),
-            default  => new WP_REST_Response([
-                'success' => false,
-                'error'   => ['code' => 'INVALID_TYPE', 'message' => 'Invalid rollback type.'],
-            ], 400),
-        };
+        switch ($type) {
+            case 'plugin':
+                return $this->rollback_plugin($slug, $version);
+            case 'theme':
+                return $this->rollback_theme($slug, $version);
+            case 'core':
+                return $this->rollback_core($version);
+            default:
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error'   => ['code' => 'INVALID_TYPE', 'message' => 'Invalid rollback type.'],
+                ], 400);
+        }
     }
 
     private function rollback_plugin(string $slug, string $version): WP_REST_Response {

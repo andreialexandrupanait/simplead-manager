@@ -43,40 +43,75 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
 
         // Hardening settings (stored as options, enforced at runtime)
         if (isset($params['hardening'])) {
-            $hardening_settings = [];
-            foreach ($params['hardening'] as $key => $enabled) {
-                $hardening_settings[$key] = (bool) $enabled;
+            try {
+                $hardening_settings = [];
+                foreach ($params['hardening'] as $key => $enabled) {
+                    $hardening_settings[$key] = (bool) $enabled;
+                }
+                SAM_Security_Hardening::update_settings($hardening_settings);
+                $results['hardening'] = [
+                    'success' => true,
+                    'applied' => array_keys(array_filter($hardening_settings)),
+                ];
+            } catch (\Throwable $e) {
+                $results['hardening'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
             }
-            SAM_Security_Hardening::update_settings($hardening_settings);
-            $results['hardening'] = [
-                'success' => true,
-                'applied' => array_keys(array_filter($hardening_settings)),
-            ];
         }
 
         // Htaccess settings (written to .htaccess file)
         if (isset($params['htaccess'])) {
-            $htaccess = new SAM_Security_Htaccess();
-            $htaccess_results = $htaccess->apply_settings($params['htaccess']);
-            $results['htaccess'] = $htaccess_results;
+            try {
+                $htaccess = new SAM_Security_Htaccess();
+                $htaccess_results = $htaccess->apply_settings($params['htaccess']);
+                $results['htaccess'] = $htaccess_results;
+            } catch (\Throwable $e) {
+                $results['htaccess'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
         }
 
         // Login settings
         if (isset($params['login'])) {
-            SAM_Security_Login::update_settings($params['login']);
-            $results['login'] = ['success' => true];
+            try {
+                SAM_Security_Login::update_settings($params['login']);
+                $results['login'] = ['success' => true];
+            } catch (\Throwable $e) {
+                $results['login'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
         }
 
         // Captcha settings
         if (isset($params['captcha'])) {
-            update_option('sam_security_captcha', $params['captcha']);
-            $results['captcha'] = ['success' => true];
+            try {
+                update_option('sam_security_captcha', $params['captcha']);
+                $results['captcha'] = ['success' => true];
+            } catch (\Throwable $e) {
+                $results['captcha'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
         }
 
         // IP management settings
         if (isset($params['ip_management'])) {
-            update_option('sam_security_ip_management', $params['ip_management']);
-            $results['ip_management'] = ['success' => true];
+            try {
+                update_option('sam_security_ip_management', $params['ip_management']);
+                $results['ip_management'] = ['success' => true];
+            } catch (\Throwable $e) {
+                $results['ip_management'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
         }
 
         SAM_Audit_Logger::log('security_settings_applied', 'security', 'settings', 'Security settings pushed from dashboard');

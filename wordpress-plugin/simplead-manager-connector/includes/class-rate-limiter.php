@@ -66,7 +66,7 @@ class SAM_Rate_Limiter {
         // Check destructive rate limit
         $is_destructive = false;
         foreach (self::DESTRUCTIVE_ROUTES as $pattern) {
-            if (str_ends_with($route, $pattern)) {
+            if (substr($route, -strlen($pattern)) === $pattern) {
                 $is_destructive = true;
                 break;
             }
