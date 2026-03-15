@@ -178,11 +178,18 @@
                             @if($abStarted)
                                 <span>{{ $abStarted->diffForHumans(null, true) }} elapsed</span>
                             @endif
-                            <button @click="dismissed = true; $wire.dismissProgress()" class="text-gray-400 hover:text-gray-600" title="Dismiss">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
+                            <template x-if="status === 'pending' || status === 'in_progress'">
+                                <button wire:click="cancelBackup" wire:confirm="Are you sure you want to cancel this backup?" class="text-red-400 hover:text-red-600 font-medium" title="Cancel backup">
+                                    Cancel
+                                </button>
+                            </template>
+                            <template x-if="status === 'completed' || status === 'failed'">
+                                <button @click="dismissed = true; $wire.dismissProgress()" class="text-gray-400 hover:text-gray-600" title="Dismiss">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </template>
                         </div>
                     </div>
 

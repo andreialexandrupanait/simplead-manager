@@ -44,6 +44,9 @@ services:
     container_name: simplead-horizon
     env_file:
       - .env
+    environment:
+      # Use storage volume for temp files instead of tmpfs (backup downloads can be >1GB)
+      TMPDIR: /var/www/html/storage/app/temp
     restart: unless-stopped
     command: php artisan horizon
     healthcheck:
@@ -67,7 +70,7 @@ services:
       - no-new-privileges:true
     read_only: true
     tmpfs:
-      - /tmp:size=64M,mode=1777
+      - /tmp:size=512M,mode=1777
       - /var/run:size=8M
     deploy:
       resources:

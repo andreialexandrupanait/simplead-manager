@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Site;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class WordPressApiService
 {
@@ -484,11 +485,33 @@ class WordPressApiService
     }
 
     /**
-     * Download a backup file in chunks using the WP plugin's /backup/prepare + /backup/chunk endpoints.
+     * Download a backup file in chunks using the WP plugin's prepare + chunk endpoints.
+     * Tries chunked prepare first (multi-request, works within timeout limits),
+     * falls back to sync prepare for older plugin versions.
      */
     public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null): void
     {
-        // Step 1: Prepare — creates archive on WP, returns token/size/checksum
+        // Try chunked prepare+download (each chunk downloaded immediately, minimal WP /tmp usage)
+        try {
+            $initResponse = $this->request('POST', '/backup/prepare-init', ['type' => $type], [], 30);
+            if ($initResponse->successful()) {
+                $init = $initResponse->json();
+                if (!empty($init['success']) && !empty($init['token'])) {
+                    $this->chunkedPrepareAndDownload(
+                        $init['token'],
+                        $init['type'] ?? $type,
+                        (int) $init['total_chunks'],
+                        $saveTo,
+                        $onProgress
+                    );
+                    return;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info("Chunked prepare not available: {$e->getMessage()}, falling back to sync");
+        }
+
+        // Fallback: sync prepare (single request, may timeout on restrictive hosts)
         $prepareResponse = $this->request('POST', '/backup/prepare', ['type' => $type], [], 600);
         $prepareResponse->throw();
         $prepare = $prepareResponse->json();
@@ -501,7 +524,153 @@ class WordPressApiService
         $totalSize = (int) $prepare['size'];
         $expectedChecksum = $prepare['checksum'];
 
-        // Step 2: Download in 25MB chunks
+        // Download the prepared file in 25MB chunks
+        $this->downloadPreparedFile($token, $totalSize, $expectedChecksum, $saveTo, $onProgress);
+    }
+
+    /**
+     * Chunked prepare + immediate download: exec each chunk on WP, download it right away,
+     * delete it from WP /tmp, then move to next chunk. Only ONE chunk exists on WP at a time.
+     * For DB: chunks are .sql.gz files that get concatenated (valid gzip concatenation).
+     */
+    private function chunkedPrepareAndDownload(string $token, string $type, int $totalChunks, string $saveTo, ?callable $onProgress = null): void
+    {
+        $dir = dirname($saveTo);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $fh = fopen($saveTo, 'wb');
+        if (!$fh) {
+            throw new \RuntimeException("Cannot open {$saveTo} for writing");
+        }
+
+        try {
+            for ($i = 0; $i < $totalChunks; $i++) {
+                // 1. Execute chunk on WP (creates chunk file in /tmp)
+                $execResponse = $this->request('POST', '/backup/prepare-chunk-exec', [
+                    'token' => $token,
+                    'chunk_index' => $i,
+                ], [], 300);
+
+                if (!$execResponse->successful() || empty($execResponse->json()['success'])) {
+                    $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
+                    throw new \RuntimeException("Chunk {$i} exec failed: {$error}");
+                }
+
+                $chunkSize = $execResponse->json()['chunk_size'] ?? 0;
+                Log::info("Chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}");
+
+                // 2. Download chunk from WP and delete it from WP /tmp
+                $chunkTempFile = $saveTo . '.chunk_' . $i . '.tmp';
+                $this->streamDownloadTo('/backup/prepare-chunk-download', [
+                    'token' => $token,
+                    'chunk_index' => $i,
+                    'delete' => true,
+                ], $chunkTempFile);
+
+                // 3. Append to final file
+                $cfh = fopen($chunkTempFile, 'rb');
+                if ($cfh) {
+                    stream_copy_to_stream($cfh, $fh);
+                    fclose($cfh);
+                }
+                @unlink($chunkTempFile);
+
+                Log::info("Chunk {$i}/{$totalChunks} downloaded and appended to local file");
+
+                if ($onProgress) {
+                    $onProgress($i + 1, $totalChunks);
+                }
+            }
+        } finally {
+            fclose($fh);
+        }
+
+        // Verify we got data
+        clearstatcache(true, $saveTo);
+        if (filesize($saveTo) === 0) {
+            @unlink($saveTo);
+            throw new \RuntimeException('Backup file is empty after chunked download');
+        }
+
+        // Cleanup session on WP
+        try {
+            $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
+        } catch (\Throwable) {
+            // Best effort
+        }
+    }
+
+    /**
+     * Stream-download from a WP endpoint to a local file (for binary data with POST body).
+     */
+    private function streamDownloadTo(string $endpoint, array $data, string $saveTo): void
+    {
+        $apiKey = $this->site->api_key;
+        $apiSecret = $this->site->api_secret;
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+
+        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
+        $body = !empty($data) ? json_encode($data) : '';
+
+        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+        $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $body]);
+        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+
+        $fh = fopen($saveTo, 'wb');
+        if (!$fh) {
+            throw new \RuntimeException("Cannot open {$saveTo} for writing");
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_FILE           => $fh,
+            CURLOPT_HTTPHEADER     => [
+                'X-SAM-Key: ' . $apiKey,
+                'X-SAM-Timestamp: ' . $timestamp,
+                'X-SAM-Nonce: ' . $nonce,
+                'X-SAM-Signature: ' . $signature,
+                'User-Agent: SimpleAD-Manager/2.0',
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT        => 600,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $success = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        fclose($fh);
+
+        if (!$success || $httpCode >= 400) {
+            // Read only first 1KB for error details (file could be huge)
+            $efh = fopen($saveTo, 'rb');
+            $errorBody = $efh ? fread($efh, 1024) : '';
+            if ($efh) fclose($efh);
+            @unlink($saveTo);
+            throw new \RuntimeException("Chunk download failed (HTTP {$httpCode}): " . ($error ?: substr($errorBody, 0, 500)));
+        }
+
+        clearstatcache(true, $saveTo);
+        if (filesize($saveTo) === 0) {
+            @unlink($saveTo);
+            throw new \RuntimeException("Chunk download returned empty file (HTTP {$httpCode})");
+        }
+    }
+
+    /**
+     * Download a prepared backup file from WP in 25MB chunks with checksum verification.
+     */
+    private function downloadPreparedFile(string $token, int $totalSize, string $expectedChecksum, string $saveTo, ?callable $onProgress = null): void
+    {
         $chunkSize = 25 * 1024 * 1024;
         $offset = 0;
 
@@ -540,14 +709,14 @@ class WordPressApiService
             fclose($fh);
         }
 
-        // Step 3: Verify checksum
+        // Verify checksum
         $actualChecksum = hash_file('sha256', $saveTo);
         if ($actualChecksum !== $expectedChecksum) {
             @unlink($saveTo);
             throw new \RuntimeException("Checksum mismatch: expected {$expectedChecksum}, got {$actualChecksum}");
         }
 
-        // Step 4: Cleanup prepared file on WP
+        // Cleanup prepared file on WP
         try {
             $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
         } catch (\Throwable) {
@@ -570,15 +739,7 @@ class WordPressApiService
 
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
-        // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
-        $stringToSign = implode('|', [
-            'POST',
-            $path,
-            $timestamp,
-            $nonce,
-            '',
-        ]);
-
+        $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, '']);
         $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
         $dir = dirname($saveTo);
@@ -586,14 +747,47 @@ class WordPressApiService
             mkdir($dir, 0755, true);
         }
 
-        $response = Http::withHeaders([
-            'X-SAM-Key'       => $apiKey,
-            'X-SAM-Timestamp' => $timestamp,
-            'X-SAM-Nonce'     => $nonce,
-            'X-SAM-Signature' => $signature,
-            'User-Agent'      => 'SimpleAD-Manager/2.0',
-        ])->timeout(1800)->withBody('', 'application/json')->sink($saveTo)->post($url);
+        // Use curl directly — WP endpoints use readfile()+exit which Http::sink() doesn't handle
+        $fh = fopen($saveTo, 'wb');
+        if (!$fh) {
+            throw new \RuntimeException("Cannot open {$saveTo} for writing");
+        }
 
-        $response->throw();
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => '',
+            CURLOPT_FILE           => $fh,
+            CURLOPT_HTTPHEADER     => [
+                'X-SAM-Key: ' . $apiKey,
+                'X-SAM-Timestamp: ' . $timestamp,
+                'X-SAM-Nonce: ' . $nonce,
+                'X-SAM-Signature: ' . $signature,
+                'User-Agent: SimpleAD-Manager/2.0',
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT        => 1800,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $success = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        fclose($fh);
+
+        if (!$success || $httpCode >= 400) {
+            $body = file_get_contents($saveTo);
+            @unlink($saveTo);
+            throw new \RuntimeException("Stream download failed (HTTP {$httpCode}): " . ($error ?: substr($body, 0, 500)));
+        }
+
+        $size = filesize($saveTo);
+        if ($size === 0) {
+            @unlink($saveTo);
+            throw new \RuntimeException("Stream download returned empty file (HTTP {$httpCode})");
+        }
     }
 }

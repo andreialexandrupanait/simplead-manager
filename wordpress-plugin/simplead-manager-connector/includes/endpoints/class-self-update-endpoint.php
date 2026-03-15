@@ -6,6 +6,7 @@ if (!defined('ABSPATH')) {
 
 /**
  * Self-update endpoint — allows the manager app to push plugin updates.
+ * Uses WordPress Plugin_Upgrader for maximum hosting compatibility.
  */
 class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
 
@@ -96,6 +97,9 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
 
         // Get new version
         wp_cache_delete('plugins', 'plugins');
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
         $all_plugins = get_plugins();
         $new_version = $all_plugins[$plugin_file]['Version'] ?? 'unknown';
 

@@ -33,6 +33,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     public int $timeout = 1800;
     public int $tries = 2;
     public array $backoff = [120];
+    public int $uniqueFor = 1800;
 
     protected ?Backup $backup = null;
     protected ?string $tempDir = null;
@@ -72,9 +73,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             $api = new WordPressApiService($this->site);
             $this->refreshCapabilities($api);
 
-            $useDirectUpload = $this->trigger !== 'pre_update'
-                && $this->type === 'full'
-                && $this->supportsDirectUpload($api);
+            // Direct upload disabled: combined ZIP fails for large sites (>1GB files.zip)
+            // because ZipArchive::close() fails when adding large files to combined archive.
+            // Pull-based flow downloads db and files separately, avoiding this issue.
+            $useDirectUpload = false;
 
             Log::info("Backup {$this->backupId}: flow decision", [
                 'site' => $this->site->domain,
@@ -107,10 +109,25 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         }
     }
 
+    protected function checkCancelled(): void
+    {
+        if (!$this->backupId) {
+            return;
+        }
+        $status = Backup::where('id', $this->backupId)->value('status');
+        if ($status === BackupStatus::Cancelled || $status === 'cancelled') {
+            Log::info("Backup {$this->backupId}: cancelled by user, aborting job");
+            throw new \RuntimeException('Backup cancelled by user');
+        }
+    }
+
     protected function prepare(StorageDestination $destination): void
     {
         if ($this->backupId) {
             $this->backup = Backup::findOrFail($this->backupId);
+            if ($this->backup->status === BackupStatus::Cancelled) {
+                throw new \RuntimeException('Backup cancelled by user');
+            }
             $this->backup->update([
                 'status' => BackupStatus::InProgress,
                 'stage' => 'initializing',
@@ -152,6 +169,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     protected function downloadData(): array
     {
+        $this->checkCancelled();
+
         $api = new WordPressApiService($this->site);
         $supportsChunked = $this->supportsChunkedDownload($api);
 
@@ -174,6 +193,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         $filesPath = null;
         if ($this->type === 'full') {
+            $this->checkCancelled();
             $this->reportProgress('downloading_files', 30, 'Downloading files...');
             $filesPath = $this->tempDir . '/files.zip';
 
@@ -618,7 +638,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         $zip->addFile($dbPath, 'database.sql.gz');
         if ($filesPath && file_exists($filesPath)) {
+            // Store without compression — files.zip is already compressed
             $zip->addFile($filesPath, 'files.zip');
+            $zip->setCompressionName('files.zip', ZipArchive::CM_STORE);
         }
 
         $zip->addFromString('backup-meta.json', json_encode([
@@ -630,7 +652,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             'created_at' => now()->toIso8601String(),
             'trigger' => $this->trigger,
         ], JSON_PRETTY_PRINT));
-        $zip->close();
+
+        if (!$zip->close()) {
+            throw new \RuntimeException('Failed to finalize backup archive (ZipArchive::close failed).');
+        }
 
         $this->reportProgress('creating_archive', 70, 'Archive created');
 
@@ -705,6 +730,10 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         ]);
 
         if ($this->backup) {
+            $this->backup->refresh();
+            if ($this->backup->status === BackupStatus::Cancelled) {
+                return; // Don't overwrite cancelled status
+            }
             $this->backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
@@ -856,7 +885,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         // Mark the backup record as failed so it doesn't stay stuck in "in_progress"
         $backup = $this->backupId ? Backup::find($this->backupId) : null;
-        if ($backup && $backup->status !== BackupStatus::Completed && $backup->status !== BackupStatus::Failed) {
+        if ($backup && !in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled])) {
             $backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',

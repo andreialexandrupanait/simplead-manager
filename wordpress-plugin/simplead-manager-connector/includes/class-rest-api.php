@@ -12,25 +12,35 @@ class SAM_REST_API {
     private array $endpoints = [];
 
     public function __construct() {
-        $this->endpoints = [
-            new SAM_Info_Endpoint(),
-            new SAM_Plugins_Endpoint(),
-            new SAM_Themes_Endpoint(),
-            new SAM_Users_Endpoint(),
-            new SAM_Core_Endpoint(),
-            new SAM_Health_Endpoint(),
-            new SAM_Security_Endpoint(),
-            new SAM_Security_Settings_Endpoint(),
-            new SAM_Backup_Endpoint(),
-            new SAM_Rollback_Endpoint(),
-            new SAM_Database_Endpoint(),
-            new SAM_Cron_Endpoint(),
-            new SAM_Monitoring_Endpoint(),
-            new SAM_Audit_Endpoint(),
-            new SAM_Login_Endpoint(),
-            new SAM_Self_Update_Endpoint(),
-            new SAM_Cache_Endpoint(),
+        $classes = [
+            'SAM_Info_Endpoint',
+            'SAM_Plugins_Endpoint',
+            'SAM_Themes_Endpoint',
+            'SAM_Users_Endpoint',
+            'SAM_Core_Endpoint',
+            'SAM_Health_Endpoint',
+            'SAM_Security_Endpoint',
+            'SAM_Security_Settings_Endpoint',
+            'SAM_Backup_Endpoint',
+            'SAM_Rollback_Endpoint',
+            'SAM_Database_Endpoint',
+            'SAM_Cron_Endpoint',
+            'SAM_Monitoring_Endpoint',
+            'SAM_Audit_Endpoint',
+            'SAM_Login_Endpoint',
+            'SAM_Self_Update_Endpoint',
+            'SAM_Cache_Endpoint',
         ];
+
+        foreach ($classes as $class) {
+            try {
+                if (class_exists($class)) {
+                    $this->endpoints[] = new $class();
+                }
+            } catch (\Throwable $e) {
+                // Skip broken endpoints so the rest (including self-update) keep working
+            }
+        }
     }
 
     public function register_routes(): void {

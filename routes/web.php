@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppBackupDownloadController;
 use App\Http\Controllers\BackupDownloadController;
+use App\Http\Controllers\ConnectorPluginDownloadController;
 use App\Http\Controllers\DropboxAuthController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
@@ -38,6 +39,11 @@ Route::get('/restore-download/{token}', function (string $token) {
 Route::get('/reports/{report}/download/signed', ReportDownloadController::class)
     ->name('reports.download.signed')
     ->middleware(['signed', 'throttle:30,1']);
+
+// Plugin download via signed URL (for WP self-update — no auth required)
+Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)
+    ->name('download.connector-plugin.signed')
+    ->middleware(['signed', 'throttle:10,1']);
 
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
@@ -111,12 +117,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
 
 
-    // Plugin download (served from storage, not public)
-    Route::get('/download/connector-plugin', function () {
-        $path = storage_path('app/simplead-manager-connector.zip');
-        abort_unless(file_exists($path), 404);
-        return response()->download($path, 'simplead-connector.zip');
-    })->name('download.connector-plugin');
+    // Plugin download (generated on-the-fly from source)
+    Route::get('/download/connector-plugin', ConnectorPluginDownloadController::class)
+        ->name('download.connector-plugin');
 
     // Settings — Profile accessible to all roles
     Route::prefix('/settings')->group(function () {

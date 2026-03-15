@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('backups', function (Blueprint $table) {
-            $table->string('preparation_method', 20)->nullable()->after('upload_method');
+            $table->string('preparation_method', 20)->nullable();
         });
     }
 

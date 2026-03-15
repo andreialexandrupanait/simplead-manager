@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Backup;
@@ -308,6 +309,31 @@ class SiteBackups extends Component
 
     public function refreshProgress(): void
     {
+        unset($this->activeBackup);
+    }
+
+    public function cancelBackup(): void
+    {
+        if (!$this->trackingBackupId) {
+            return;
+        }
+
+        $backup = Backup::find($this->trackingBackupId);
+        if ($backup && in_array($backup->status, [BackupStatus::Pending, BackupStatus::InProgress])) {
+            $backup->update([
+                'status' => BackupStatus::Cancelled,
+                'stage' => 'cancelled',
+                'progress_message' => 'Backup cancelled by user',
+                'completed_at' => now(),
+                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
+            ]);
+
+            // Release the uniqueness lock so a new backup can be started
+            $cacheKey = 'laravel_unique_job:' . \App\Jobs\CreateBackup::class . ':backup-' . $this->site->id;
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        }
+
+        $this->trackingBackupId = null;
         unset($this->activeBackup);
     }
 

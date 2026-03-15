@@ -8,6 +8,7 @@ enum BackupStatus: string
     case InProgress = 'in_progress';
     case Completed = 'completed';
     case Failed = 'failed';
+    case Cancelled = 'cancelled';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum BackupStatus: string
             self::InProgress => 'In Progress',
             self::Completed => 'Completed',
             self::Failed => 'Failed',
+            self::Cancelled => 'Cancelled',
         };
     }
 
@@ -26,6 +28,7 @@ enum BackupStatus: string
             self::InProgress => 'purple',
             self::Pending => 'yellow',
             self::Failed => 'red',
+            self::Cancelled => 'gray',
         };
     }
 
@@ -36,6 +39,7 @@ enum BackupStatus: string
             self::InProgress => 'loader',
             self::Pending => 'clock',
             self::Failed => 'x-circle',
+            self::Cancelled => 'x-circle',
         };
     }
 }

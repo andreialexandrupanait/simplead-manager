@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Backup endpoints — writes to temp file, serves as download.
+ * Backup endpoints — pure PHP implementations for maximum hosting compatibility.
  */
 class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
@@ -28,7 +28,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
-        // Chunked download endpoints for large backups
         register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare', [
             'methods'             => 'POST',
             'callback'            => [$this, 'prepare_backup'],
@@ -47,7 +46,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
-        // Direct upload endpoints
         register_rest_route(SAM_REST_NAMESPACE, '/backup/capabilities', [
             'methods'             => 'POST',
             'callback'            => [$this, 'get_capabilities'],
@@ -66,7 +64,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
-        // Async preparation endpoints
         register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-async', [
             'methods'             => 'POST',
             'callback'            => [$this, 'prepare_async'],
@@ -84,7 +81,33 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'prepare_status'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-init', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'prepare_chunked_init'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-chunk-exec', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'prepare_chunk_exec'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-finalize', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'prepare_chunk_finalize'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-chunk-download', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'prepare_chunk_download'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
+
+    // ── Streaming backup endpoints ──────────────────────────────────────
 
     public function backup_database(WP_REST_Request $request): void {
         global $wpdb;
@@ -101,33 +124,13 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             exit;
         }
 
-        // Database connection info
-        $host = DB_HOST;
-        $user = DB_USER;
-        $pass = DB_PASSWORD;
-        $name = DB_NAME;
+        $this->php_database_dump($wpdb, DB_NAME, $tmp_file);
 
-        $success = false;
-
-        // Try mysqldump first (most reliable and efficient)
-        $mysqldump = $this->find_mysqldump();
-        if ($mysqldump) {
-            $success = $this->exec_mysqldump($mysqldump, $host, $user, $pass, $name, $tmp_file);
-        }
-
-        // Fallback: PHP-based dump
-        if (!$success) {
-            $this->php_database_dump($wpdb, $name, $tmp_file);
-            $success = true;
-        }
-
-        // Gzip the dump to reduce transfer size (a 500MB SQL file compresses to ~50-80MB)
         $gz_file = $tmp_file . '.gz';
         if ($this->gzip_file($tmp_file, $gz_file)) {
             @unlink($tmp_file);
             $this->serve_and_cleanup($gz_file, 'backup-' . date('Y-m-d-His') . '.sql.gz', 'application/gzip');
         } else {
-            // Fallback: serve uncompressed if gzip fails
             $this->serve_and_cleanup($tmp_file, 'backup-' . date('Y-m-d-His') . '.sql', 'application/sql');
         }
     }
@@ -139,274 +142,18 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         SAM_Audit_Logger::log('backup_files_started', 'backup', 'files', 'File backup initiated via SimpleAd Manager');
 
         $source_dir = rtrim(ABSPATH, '/');
-        $tmp_file = tempnam(sys_get_temp_dir(), 'sam_files_backup_');
-        if (!$tmp_file) {
-            status_header(500);
-            echo '{"success":false,"error":{"code":"TEMP_FILE","message":"Failed to create temp file."}}';
-            exit;
-        }
-
-        $success = false;
-
-        // Try tar command (most efficient)
-        $tar = $this->find_binary('tar');
-        if ($tar) {
-            $success = $this->exec_tar($tar, $source_dir, $tmp_file);
-        }
-
-        if ($success) {
-            $this->serve_and_cleanup($tmp_file, 'backup-files-' . date('Y-m-d-His') . '.tar.gz', 'application/gzip');
-        }
-
-        // Fallback: PHP ZipArchive
-        @unlink($tmp_file); // Remove empty temp file
         $this->php_zip_backup($source_dir);
         exit;
     }
 
-    /**
-     * Execute mysqldump via proc_open with array args (no shell injection).
-     */
-    private function exec_mysqldump(string $binary, string $host, string $user, string $pass, string $name, string $output_file): bool {
-        $cmd = [
-            $binary,
-            '--host=' . $host,
-            '--user=' . $user,
-            '--password=' . $pass,
-            '--single-transaction',
-            '--quick',
-            '--lock-tables=false',
-            $name,
-        ];
+    // ── Chunked download endpoints ──────────────────────────────────────
 
-        $descriptors = [
-            0 => ['pipe', 'r'],       // stdin
-            1 => ['file', $output_file, 'w'], // stdout → file
-            2 => ['pipe', 'w'],       // stderr
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fclose($pipes[0]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $exit_code = proc_close($process);
-
-        return $exit_code === 0 && filesize($output_file) > 0;
-    }
-
-    /**
-     * Execute tar via proc_open with array args (no shell injection).
-     */
-    /**
-     * Directories and patterns to exclude from file backups.
-     */
-    private function get_backup_exclusions(): array {
-        return [
-            'wp-content/cache',
-            'wp-content/backup-*',
-            'wp-content/updraft',
-            'wp-content/ai1wm-backups',
-            'wp-content/uploads/backwpup-*',
-            'tmp/sam_*',
-            '.git',
-            'node_modules',
-            'error_log',
-            'wp-content/debug.log',
-        ];
-    }
-
-    /**
-     * Check if a relative path should be excluded from backup.
-     */
-    private function should_exclude(string $relative_path): bool {
-        foreach ($this->get_backup_exclusions() as $pattern) {
-            // Exact prefix match or wildcard match
-            if (strpos($pattern, '*') !== false) {
-                $regex = '/^' . str_replace('\\*', '.*', preg_quote($pattern, '/')) . '(\/|$)/';
-                if (preg_match($regex, $relative_path)) {
-                    return true;
-                }
-            } else {
-                if ($relative_path === $pattern || strpos($relative_path, $pattern . '/') === 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Execute tar via proc_open with array args (no shell injection).
-     */
-    private function exec_tar(string $binary, string $source_dir, string $output_file): bool {
-        $cmd = [
-            $binary,
-            'czf',
-            $output_file,
-            '-C',
-            $source_dir,
-        ];
-
-        foreach ($this->get_backup_exclusions() as $pattern) {
-            $cmd[] = '--exclude=' . $pattern;
-        }
-
-        $cmd[] = '.';
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fclose($pipes[0]);
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $exit_code = proc_close($process);
-
-        return $exit_code === 0 && file_exists($output_file) && filesize($output_file) > 0;
-    }
-
-    /**
-     * Serve a temp file as a download, then clean up.
-     */
-    private function serve_and_cleanup(string $file_path, string $filename, string $content_type): void {
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-
-        header('Content-Type: ' . $content_type);
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Content-Length: ' . filesize($file_path));
-        header('X-SAM-Backup-Type: ' . (strpos($content_type, 'sql') !== false ? 'database' : 'files'));
-
-        readfile($file_path);
-        @unlink($file_path);
-        exit;
-    }
-
-    private function find_mysqldump(): ?string {
-        if (!function_exists('proc_open')) {
-            return null;
-        }
-
-        $paths = [
-            'mysqldump',
-            '/usr/bin/mysqldump',
-            '/usr/local/bin/mysqldump',
-            '/usr/local/mysql/bin/mysqldump',
-        ];
-
-        foreach ($paths as $path) {
-            if ($this->binary_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
-    }
-
-    private function find_binary(string $name): ?string {
-        if (!function_exists('proc_open')) {
-            return null;
-        }
-
-        $paths = [
-            $name,
-            "/usr/bin/{$name}",
-            "/usr/local/bin/{$name}",
-            "/bin/{$name}",
-        ];
-
-        foreach ($paths as $path) {
-            if ($this->binary_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
-    }
-
-    private function binary_exists(string $binary): bool {
-        if (!function_exists('exec')) {
-            return false;
-        }
-        $output = [];
-        $code = 0;
-        @exec("which " . escapeshellarg($binary) . " 2>/dev/null", $output, $code);
-        return $code === 0;
-    }
-
-    private function php_database_dump($wpdb, string $db_name, string $output_file): void {
-        $fh = fopen($output_file, 'w');
-        if (!$fh) {
-            return;
-        }
-
-        fwrite($fh, "-- SimpleAd Manager Database Backup\n");
-        fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
-        fwrite($fh, "-- Database: {$db_name}\n\n");
-        fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
-
-        $tables = $wpdb->get_col("SHOW TABLES");
-
-        foreach ($tables as $table) {
-            // Table structure
-            $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
-            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
-            fwrite($fh, $create[1] . ";\n\n");
-
-            // Table data in chunks
-            $offset = 0;
-            $chunk = 500;
-
-            while (true) {
-                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$chunk}", ARRAY_A);
-                if (empty($rows)) {
-                    break;
-                }
-
-                foreach ($rows as $row) {
-                    $values = array_map(function ($v) use ($wpdb) {
-                        if ($v === null) return 'NULL';
-                        return "'" . $wpdb->_real_escape($v) . "'";
-                    }, array_values($row));
-
-                    $columns = array_map(function ($c) {
-                        return "`{$c}`";
-                    }, array_keys($row));
-
-                    fwrite($fh, "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n");
-                }
-
-                $offset += $chunk;
-            }
-
-            fwrite($fh, "\n");
-        }
-
-        fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
-        fclose($fh);
-    }
-
-    /**
-     * Prepare a backup archive and return a token for chunked download.
-     * This decouples archive creation from transfer, allowing reliable chunked retrieval.
-     */
     public function prepare_backup(WP_REST_Request $request): WP_REST_Response {
         global $wpdb;
 
-        @set_time_limit(600);
+        ignore_user_abort(true);
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
         @ini_set('memory_limit', '512M');
 
         $type = $request->get_param('type');
@@ -417,7 +164,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
-        // Generate a secure token for this prepared backup
         $token = bin2hex(random_bytes(32));
         $token_dir = sys_get_temp_dir() . '/sam_prepared';
         if (!is_dir($token_dir)) {
@@ -429,17 +175,14 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             SAM_Audit_Logger::log('backup_db_started', 'backup', 'database', 'Database backup (chunked) initiated');
 
             $tmp_sql = tempnam(sys_get_temp_dir(), 'sam_db_');
-
-            $success = false;
-            $mysqldump = $this->find_mysqldump();
-            if ($mysqldump) {
-                $success = $this->exec_mysqldump($mysqldump, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, $tmp_sql);
+            if (!$tmp_sql) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'TEMP_FAILED', 'message' => 'Cannot create temp file.'],
+                ], 500);
             }
-            if (!$success) {
-                $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
-            }
+            $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
 
-            // Gzip the dump
             if ($this->gzip_file($tmp_sql, $prepared_file)) {
                 @unlink($tmp_sql);
             } else {
@@ -449,48 +192,53 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             SAM_Audit_Logger::log('backup_files_started', 'backup', 'files', 'File backup (chunked) initiated');
 
             $source_dir = rtrim(ABSPATH, '/');
-            $tar = $this->find_binary('tar');
+            if (!class_exists('ZipArchive')) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'NO_ARCHIVER', 'message' => 'ZipArchive extension not available.'],
+                ], 500);
+            }
 
-            if ($tar) {
-                $this->exec_tar($tar, $source_dir, $prepared_file);
-            } else {
-                // ZipArchive fallback — write directly to the prepared path
-                if (!class_exists('ZipArchive')) {
-                    return new WP_REST_Response([
-                        'success' => false,
-                        'error' => ['code' => 'NO_ARCHIVER', 'message' => 'No tar or ZipArchive available.'],
-                    ], 500);
-                }
-
-                $zip = new \ZipArchive();
-                $zip->open($prepared_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-                $files = new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                    \RecursiveIteratorIterator::LEAVES_ONLY
-                );
-                foreach ($files as $file) {
-                    if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
-                        if (!$this->should_exclude($relative)) {
-                            $zip->addFile($file->getRealPath(), $relative);
-                        }
+            $zip = new \ZipArchive();
+            $zip->open($prepared_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+            $files = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::LEAVES_ONLY
+            );
+            foreach ($files as $file) {
+                if ($file->isFile()) {
+                    $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                    if (!$this->should_exclude($relative)) {
+                        $zip->addFile($file->getRealPath(), $relative);
                     }
                 }
-                $zip->close();
             }
+            $zip->close();
         }
 
+        clearstatcache(true, $prepared_file);
         if (!file_exists($prepared_file) || filesize($prepared_file) === 0) {
             return new WP_REST_Response([
                 'success' => false,
-                'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Failed to create backup archive.'],
+                'error' => [
+                    'code' => 'PREPARE_FAILED',
+                    'message' => 'Prepared file is empty or missing.',
+                    'debug' => [
+                        'type' => $type,
+                        'prepared_file' => $prepared_file,
+                        'file_exists' => file_exists($prepared_file),
+                        'temp_dir' => sys_get_temp_dir(),
+                        'temp_writable' => is_writable(sys_get_temp_dir()),
+                        'token_dir_exists' => is_dir($token_dir),
+                        'max_execution_time' => ini_get('max_execution_time'),
+                    ],
+                ],
             ], 500);
         }
 
         $size = filesize($prepared_file);
         $checksum = hash_file('sha256', $prepared_file);
 
-        // Store token metadata so we can validate chunk requests
         file_put_contents($prepared_file . '.meta', json_encode([
             'type' => $type,
             'size' => $size,
@@ -506,9 +254,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         ], 200);
     }
 
-    /**
-     * Serve a byte-range chunk of a previously prepared backup.
-     */
     public function download_chunk(WP_REST_Request $request): void {
         $token = $request->get_param('token');
         $offset = (int) $request->get_param('offset');
@@ -529,14 +274,13 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         $file_size = filesize($prepared_file);
 
-        // Clamp to valid range
         if ($offset < 0) $offset = 0;
         if ($offset >= $file_size) {
             status_header(416);
             echo '{"success":false,"error":{"code":"RANGE_ERROR","message":"Offset beyond file size."}}';
             exit;
         }
-        if ($length <= 0 || $length > 26214400) { // Max 25MB per chunk
+        if ($length <= 0 || $length > 26214400) {
             $length = 26214400;
         }
         $actual_length = min($length, $file_size - $offset);
@@ -555,7 +299,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         fseek($fh, $offset);
         $remaining = $actual_length;
         while ($remaining > 0) {
-            $read_size = min(524288, $remaining); // 512KB reads
+            $read_size = min(524288, $remaining);
             $data = fread($fh, $read_size);
             if ($data === false) break;
             echo $data;
@@ -565,9 +309,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         exit;
     }
 
-    /**
-     * Delete a previously prepared backup file.
-     */
     public function cleanup_prepared(WP_REST_Request $request): WP_REST_Response {
         $token = $request->get_param('token');
 
@@ -579,28 +320,33 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         @unlink($prepared_file);
         @unlink($prepared_file . '.meta');
 
+        // Also clean up chunked work directory if present
+        $chunked_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        if (is_dir($chunked_dir)) {
+            $this->recursive_delete($chunked_dir);
+        }
+
         return new WP_REST_Response(['success' => true], 200);
     }
 
-    /**
-     * Return capabilities of this plugin version. Manager uses this to decide upload strategy.
-     */
+    // ── Capabilities ────────────────────────────────────────────────────
+
     public function get_capabilities(WP_REST_Request $request): WP_REST_Response {
         return new WP_REST_Response([
             'success' => true,
+            'chunked_prepare' => true,
             'direct_upload' => true,
             'strategies' => ['s3_multipart', 'chunked_push'],
             'async_methods' => [
-                'cli'      => $this->can_spawn_cli_process(),
+                'cli'      => false,
                 'loopback' => $this->can_loopback(),
                 'cron'     => true,
             ],
             'tools' => [
-                'mysqldump' => (bool) $this->find_mysqldump(),
-                'tar'       => (bool) $this->find_binary('tar'),
+                'mysqldump' => false,
+                'tar'       => false,
                 'gzip'      => function_exists('gzopen'),
                 'zip'       => class_exists('ZipArchive'),
-                'proc_open' => function_exists('proc_open'),
             ],
             'limits' => [
                 'max_execution_time'  => (int) ini_get('max_execution_time'),
@@ -611,10 +357,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         ], 200);
     }
 
-    /**
-     * Prepare a full combined backup archive (db + files + meta) for direct upload.
-     * Returns token, size, and checksum so Manager can orchestrate the upload.
-     */
+    // ── Direct upload endpoints ─────────────────────────────────────────
+
     public function prepare_combined(WP_REST_Request $request): WP_REST_Response {
         global $wpdb;
 
@@ -641,18 +385,10 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         @mkdir($work_dir, 0755, true);
 
         try {
-            // 1. Create database dump
+            // 1. Database dump
             $db_file = $work_dir . '/database.sql.gz';
             $tmp_sql = tempnam(sys_get_temp_dir(), 'sam_db_');
-
-            $success = false;
-            $mysqldump = $this->find_mysqldump();
-            if ($mysqldump) {
-                $success = $this->exec_mysqldump($mysqldump, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, $tmp_sql);
-            }
-            if (!$success) {
-                $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
-            }
+            $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
 
             if ($this->gzip_file($tmp_sql, $db_file)) {
                 @unlink($tmp_sql);
@@ -660,43 +396,37 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 rename($tmp_sql, $db_file);
             }
 
-            // 2. Create files archive (if full backup)
+            // 2. Files archive (if full backup)
             $files_file = null;
             if ($type === 'full') {
                 $source_dir = rtrim(ABSPATH, '/');
-                $files_file = $work_dir . '/files.tar.gz';
+                $files_file = $work_dir . '/files.zip';
 
-                $tar = $this->find_binary('tar');
-                if ($tar) {
-                    $this->exec_tar($tar, $source_dir, $files_file);
-                } else {
-                    // Fallback to ZipArchive
-                    $files_file = $work_dir . '/files.zip';
-                    if (!class_exists('ZipArchive')) {
-                        return new WP_REST_Response([
-                            'success' => false,
-                            'error' => ['code' => 'NO_ARCHIVER', 'message' => 'No tar or ZipArchive available.'],
-                        ], 500);
-                    }
-                    $zip = new \ZipArchive();
-                    $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-                    $files = new \RecursiveIteratorIterator(
-                        new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                        \RecursiveIteratorIterator::LEAVES_ONLY
-                    );
-                    foreach ($files as $file) {
-                        if ($file->isFile()) {
-                            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
-                            if (!$this->should_exclude($relative)) {
-                                $zip->addFile($file->getRealPath(), $relative);
-                            }
+                if (!class_exists('ZipArchive')) {
+                    return new WP_REST_Response([
+                        'success' => false,
+                        'error' => ['code' => 'NO_ARCHIVER', 'message' => 'ZipArchive extension not available.'],
+                    ], 500);
+                }
+
+                $zip = new \ZipArchive();
+                $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($files as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        if (!$this->should_exclude($relative)) {
+                            $zip->addFile($file->getRealPath(), $relative);
                         }
                     }
-                    $zip->close();
                 }
+                $zip->close();
             }
 
-            // 3. Create metadata
+            // 3. Metadata
             $meta_file = $work_dir . '/backup-meta.json';
             file_put_contents($meta_file, json_encode([
                 'site_name' => get_bloginfo('name'),
@@ -708,32 +438,68 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'trigger' => 'direct_upload',
             ], JSON_PRETTY_PRINT));
 
-            // 4. Create combined ZIP
+            // 4. Combined ZIP
             $combined_file = $token_dir . '/sam_backup_' . $token;
 
             if (!class_exists('ZipArchive')) {
                 return new WP_REST_Response([
                     'success' => false,
-                    'error' => ['code' => 'NO_ZIP', 'message' => 'ZipArchive not available for creating combined archive.'],
+                    'error' => ['code' => 'NO_ZIP', 'message' => 'ZipArchive not available.'],
+                ], 500);
+            }
+
+            // Verify component files before combining
+            $debug = [];
+            $debug['db_file'] = file_exists($db_file) ? filesize($db_file) : 'MISSING';
+            $debug['meta_file'] = file_exists($meta_file) ? filesize($meta_file) : 'MISSING';
+            if ($files_file) {
+                $debug['files_file'] = file_exists($files_file) ? filesize($files_file) : 'MISSING';
+            }
+            $debug['temp_dir'] = sys_get_temp_dir();
+            $debug['temp_writable'] = is_writable(sys_get_temp_dir());
+            $debug['disk_free'] = @disk_free_space(sys_get_temp_dir());
+
+            if (!file_exists($db_file) || filesize($db_file) === 0) {
+                $this->recursive_delete($work_dir);
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Database dump is empty or missing.', 'debug' => $debug],
                 ], 500);
             }
 
             $zip = new \ZipArchive();
             if ($zip->open($combined_file, \ZipArchive::CREATE) !== true) {
+                $this->recursive_delete($work_dir);
                 return new WP_REST_Response([
                     'success' => false,
-                    'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create combined archive.'],
+                    'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create combined archive.', 'debug' => $debug],
                 ], 500);
             }
 
+            // addFile uses lazy reads at close() — work_dir must NOT be deleted before close()
             $zip->addFile($db_file, 'database.sql.gz');
             if ($files_file && file_exists($files_file)) {
                 $zip->addFile($files_file, basename($files_file));
             }
             $zip->addFile($meta_file, 'backup-meta.json');
-            $zip->close();
 
-            // Clean up work directory
+            $close_result = $zip->close();
+            $debug['zip_close'] = $close_result;
+
+            if (!$close_result) {
+                $this->recursive_delete($work_dir);
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'ZIP_CLOSE_FAILED', 'message' => 'ZipArchive::close() returned false.', 'debug' => $debug],
+                ], 500);
+            }
+
+            // Check file immediately after close before deleting work_dir
+            clearstatcache(true, $combined_file);
+            $debug['after_close_exists'] = file_exists($combined_file);
+            $debug['after_close_size'] = file_exists($combined_file) ? filesize($combined_file) : 0;
+
+            // Only delete work_dir AFTER close() has read all files
             $this->recursive_delete($work_dir);
 
         } catch (\Throwable $e) {
@@ -745,17 +511,18 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             ], 500);
         }
 
+        clearstatcache(true, $combined_file);
         if (!file_exists($combined_file) || filesize($combined_file) === 0) {
+            $debug['final_exists'] = file_exists($combined_file);
             return new WP_REST_Response([
                 'success' => false,
-                'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Combined archive is empty.'],
+                'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Combined archive is empty after close.', 'debug' => $debug],
             ], 500);
         }
 
         $size = filesize($combined_file);
         $checksum = hash_file('sha256', $combined_file);
 
-        // Store metadata for validation
         file_put_contents($combined_file . '.meta', json_encode([
             'type' => $type,
             'size' => $size,
@@ -771,9 +538,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         ], 200);
     }
 
-    /**
-     * Execute the actual direct upload based on strategy instructions from Manager.
-     */
     public function direct_upload(WP_REST_Request $request): WP_REST_Response {
         @set_time_limit(1800);
         @ini_set('memory_limit', '512M');
@@ -816,76 +580,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
     }
 
-    /**
-     * Upload parts directly to S3 via presigned URLs.
-     */
-    private function handle_s3_multipart_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {
-        $parts = $request->get_param('parts');
-        $callback_url = $request->get_param('callback_url') ?: '';
-        $callback_token = $request->get_param('callback_token') ?: '';
-        $backup_id = (int) $request->get_param('backup_id');
+    // ── Async preparation endpoints ─────────────────────────────────────
 
-        if (empty($parts) || !is_array($parts)) {
-            return new WP_REST_Response([
-                'success' => false,
-                'error' => ['code' => 'MISSING_PARTS', 'message' => 'No parts provided.'],
-            ], 400);
-        }
-
-        $etags = SAM_Direct_Uploader::upload_s3_multipart(
-            $file_path,
-            $parts,
-            $callback_url,
-            $callback_token,
-            $backup_id
-        );
-
-        SAM_Audit_Logger::log('direct_upload_s3_completed', 'backup', 'direct_upload', 'S3 multipart upload completed: ' . count($etags) . ' parts');
-
-        return new WP_REST_Response([
-            'success' => true,
-            'etags' => $etags,
-        ], 200);
-    }
-
-    /**
-     * Push chunks to Manager relay endpoint.
-     */
-    private function handle_chunked_push_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {
-        $upload_url = $request->get_param('upload_url');
-        $upload_token = $request->get_param('upload_token');
-        $chunk_size = (int) ($request->get_param('chunk_size') ?: 8388608); // 8MB default
-        $callback_url = $request->get_param('callback_url') ?: '';
-        $callback_token = $request->get_param('callback_token') ?: '';
-        $backup_id = (int) $request->get_param('backup_id');
-
-        if (empty($upload_url) || empty($upload_token)) {
-            return new WP_REST_Response([
-                'success' => false,
-                'error' => ['code' => 'MISSING_PARAMS', 'message' => 'upload_url and upload_token are required.'],
-            ], 400);
-        }
-
-        SAM_Direct_Uploader::upload_chunked_push(
-            $file_path,
-            $upload_url,
-            $upload_token,
-            $chunk_size,
-            $callback_url,
-            $callback_token,
-            $backup_id
-        );
-
-        SAM_Audit_Logger::log('direct_upload_relay_completed', 'backup', 'direct_upload', 'Chunked push upload completed');
-
-        return new WP_REST_Response([
-            'success' => true,
-        ], 200);
-    }
-
-    /**
-     * Accept backup request, spawn background process, return immediately.
-     */
     public function prepare_async(WP_REST_Request $request): WP_REST_Response {
         $type = $request->get_param('type') ?: 'full';
         if (!in_array($type, ['full', 'db'], true)) {
@@ -895,7 +591,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
-        // Check for existing in-progress task (idempotent — supports Manager job retries)
+        // Check for existing in-progress task
         $lock_key = 'sam_backup_lock';
         $existing_token = get_transient($lock_key);
         if ($existing_token) {
@@ -908,14 +604,12 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     'resumed' => true,
                 ], 200);
             }
-            // Previous task finished or stale — clear it
             delete_transient($lock_key);
             delete_transient('sam_backup_task_' . $existing_token);
         }
 
         $token = bin2hex(random_bytes(32));
 
-        // Store initial task state (2 hour TTL)
         set_transient('sam_backup_task_' . $token, [
             'status' => 'working',
             'progress' => 0,
@@ -928,28 +622,13 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'updated_at' => time(),
         ], 7200);
 
-        // Set lock (2 hour TTL)
         set_transient($lock_key, $token, 7200);
 
         SAM_Audit_Logger::log('backup_async_started', 'backup', 'combined', "Async backup preparation ({$type}) initiated");
 
-        // Manager can hint which method to try (e.g. 'cli', 'loopback', 'cron')
         $preferred_method = $request->get_param('preferred_method');
 
-        // 1. Try CLI spawn (most reliable — no web server timeout)
-        if ((!$preferred_method || $preferred_method === 'cli') && $this->can_spawn_cli_process()) {
-            $spawned = $this->spawn_cli_worker($token, $type);
-            if ($spawned) {
-                return new WP_REST_Response([
-                    'success' => true,
-                    'async'   => true,
-                    'token'   => $token,
-                    'method'  => 'cli',
-                ], 200);
-            }
-        }
-
-        // 2. Try to spawn background work via non-blocking loopback
+        // Try loopback (non-blocking HTTP request to self)
         if (!$preferred_method || $preferred_method === 'loopback') {
             $loopback_url = rest_url(SAM_REST_NAMESPACE . '/backup/prepare-execute');
             $body = wp_json_encode([
@@ -989,7 +668,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
-        // 3. Try WP-Cron as fallback
+        // Try WP-Cron as fallback
         if (!$preferred_method || $preferred_method === 'cron') {
             $hook = 'sam_async_backup_prepare';
             if (!wp_next_scheduled($hook, [$token, $type])) {
@@ -1007,7 +686,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
-        // All async methods failed — clean up and signal sync fallback
+        // All async methods failed
         delete_transient('sam_backup_task_' . $token);
         delete_transient($lock_key);
 
@@ -1018,10 +697,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         ], 200);
     }
 
-    /**
-     * Internal worker endpoint — performs the actual backup archive creation.
-     * Called by loopback or WP-Cron; not meant for direct Manager calls.
-     */
     public function prepare_execute(WP_REST_Request $request): WP_REST_Response {
         ignore_user_abort(true);
         @set_time_limit(3600);
@@ -1067,15 +742,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $this->update_task_progress($task_key, 5, 'Dumping database...');
             $db_file = $work_dir . '/database.sql.gz';
             $tmp_sql = tempnam(sys_get_temp_dir(), 'sam_db_');
-
-            $success = false;
-            $mysqldump = $this->find_mysqldump();
-            if ($mysqldump) {
-                $success = $this->exec_mysqldump($mysqldump, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, $tmp_sql);
-            }
-            if (!$success) {
-                $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
-            }
+            $this->php_database_dump($wpdb, DB_NAME, $tmp_sql);
 
             if ($this->gzip_file($tmp_sql, $db_file)) {
                 @unlink($tmp_sql);
@@ -1089,34 +756,28 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $files_file = null;
             if ($type === 'full') {
                 $source_dir = rtrim(ABSPATH, '/');
-                $files_file = $work_dir . '/files.tar.gz';
+                $files_file = $work_dir . '/files.zip';
 
                 $this->update_task_progress($task_key, 25, 'Archiving files...');
 
-                $tar = $this->find_binary('tar');
-                if ($tar) {
-                    $this->exec_tar($tar, $source_dir, $files_file);
-                } else {
-                    $files_file = $work_dir . '/files.zip';
-                    if (!class_exists('ZipArchive')) {
-                        throw new \RuntimeException('No tar or ZipArchive available.');
-                    }
-                    $zip = new \ZipArchive();
-                    $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-                    $files = new \RecursiveIteratorIterator(
-                        new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                        \RecursiveIteratorIterator::LEAVES_ONLY
-                    );
-                    foreach ($files as $file) {
-                        if ($file->isFile()) {
-                            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
-                            if (!$this->should_exclude($relative)) {
-                                $zip->addFile($file->getRealPath(), $relative);
-                            }
+                if (!class_exists('ZipArchive')) {
+                    throw new \RuntimeException('ZipArchive extension not available.');
+                }
+                $zip = new \ZipArchive();
+                $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($files as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        if (!$this->should_exclude($relative)) {
+                            $zip->addFile($file->getRealPath(), $relative);
                         }
                     }
-                    $zip->close();
                 }
+                $zip->close();
 
                 $this->update_task_progress($task_key, 85, 'Files archived');
             }
@@ -1151,18 +812,22 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 $zip->addFile($files_file, basename($files_file));
             }
             $zip->addFile($meta_file, 'backup-meta.json');
-            $zip->close();
 
+            if (!$zip->close()) {
+                throw new \RuntimeException('ZipArchive::close() failed for combined archive.');
+            }
+
+            // Only delete work_dir AFTER close() has read all files
             $this->recursive_delete($work_dir);
 
+            clearstatcache(true, $combined_file);
             if (!file_exists($combined_file) || filesize($combined_file) === 0) {
-                throw new \RuntimeException('Combined archive is empty.');
+                throw new \RuntimeException('Combined archive is empty after close.');
             }
 
             $size = filesize($combined_file);
             $checksum = hash_file('sha256', $combined_file);
 
-            // Store metadata for the download/upload phase
             file_put_contents($combined_file . '.meta', json_encode([
                 'type' => $type,
                 'size' => $size,
@@ -1201,16 +866,12 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'updated_at' => time(),
             ], 7200);
 
-            // Release lock
             delete_transient('sam_backup_lock');
 
             SAM_Audit_Logger::log('backup_async_failed', 'backup', 'combined', 'Async backup failed: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Return current state of async backup preparation.
-     */
     public function prepare_status(WP_REST_Request $request): WP_REST_Response {
         $token = $request->get_param('token');
 
@@ -1240,241 +901,303 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         ], 200);
     }
 
-    /**
-     * Check if we can spawn a CLI background process.
-     */
-    private function can_spawn_cli_process(): bool {
-        if (!function_exists('proc_open')) {
-            return false;
+    // ── Chunked prepare endpoints ───────────────────────────────────────
+    // Split large backup operations into multiple HTTP requests so each
+    // completes within shared-hosting max_execution_time limits.
+
+    public function prepare_chunked_init(WP_REST_Request $request): WP_REST_Response {
+        $type = $request->get_param('type');
+        if (!in_array($type, ['db', 'files'], true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TYPE', 'message' => 'Type must be "db" or "files".'],
+            ], 400);
         }
 
-        $php = $this->find_php_binary();
-        if (!$php) {
-            return false;
+        $token = bin2hex(random_bytes(32));
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        if (!@mkdir($token_dir, 0755, true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'MKDIR_FAILED', 'message' => 'Cannot create work directory.'],
+            ], 500);
         }
 
-        // Check nohup is available
-        $nohup = $this->find_binary('nohup');
-        if (!$nohup) {
-            return false;
+        if ($type === 'db') {
+            $chunks = $this->group_tables_into_chunks();
+        } else {
+            $chunks = $this->group_directories_into_chunks();
         }
 
-        return true;
+        file_put_contents($token_dir . '/chunks.json', json_encode([
+            'type' => $type,
+            'chunks' => $chunks,
+            'total_chunks' => count($chunks),
+            'created_at' => time(),
+        ]));
+
+        SAM_Audit_Logger::log('backup_chunked_init', 'backup', $type, "Chunked prepare initialized: " . count($chunks) . " chunks");
+
+        return new WP_REST_Response([
+            'success' => true,
+            'token' => $token,
+            'type' => $type,
+            'total_chunks' => count($chunks),
+            'chunks' => $chunks,
+        ], 200);
+    }
+
+    public function prepare_chunk_exec(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        ignore_user_abort(true);
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '512M');
+
+        $token = $request->get_param('token');
+        $chunk_index = (int) $request->get_param('chunk_index');
+
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.'],
+            ], 400);
+        }
+
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        $chunks_file = $token_dir . '/chunks.json';
+
+        if (!file_exists($chunks_file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Chunked session not found or expired.'],
+            ], 404);
+        }
+
+        $chunks_info = json_decode(file_get_contents($chunks_file), true);
+        $type = $chunks_info['type'];
+        $total = $chunks_info['total_chunks'];
+
+        if ($chunk_index < 0 || $chunk_index >= $total) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_CHUNK', 'message' => "Chunk index must be 0-" . ($total - 1) . "."],
+            ], 400);
+        }
+
+        // Skip if already completed (idempotent retry)
+        $done_marker = $token_dir . '/chunk_' . $chunk_index . '.done';
+        if (file_exists($done_marker)) {
+            $size = (int) file_get_contents($done_marker);
+            return new WP_REST_Response([
+                'success' => true,
+                'chunk_index' => $chunk_index,
+                'chunk_size' => $size,
+                'skipped' => true,
+            ], 200);
+        }
+
+        $chunk = $chunks_info['chunks'][$chunk_index];
+
+        try {
+            if ($type === 'db') {
+                $chunk_size = $this->exec_db_chunk($wpdb, $token_dir, $chunk_index, $chunk, $total);
+            } else {
+                $chunk_size = $this->exec_files_chunk($token_dir, $chunk_index, $chunk);
+            }
+        } catch (\Throwable $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'CHUNK_FAILED', 'message' => $e->getMessage()],
+            ], 500);
+        }
+
+        // Mark done
+        file_put_contents($done_marker, (string) $chunk_size);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'chunk_index' => $chunk_index,
+            'chunk_size' => $chunk_size,
+        ], 200);
     }
 
     /**
-     * Quick check whether a loopback HTTP request to the REST API is likely to work.
+     * Stream-download a completed chunk file, optionally deleting it after.
+     * Used by Manager to pull each chunk immediately after exec, freeing WP /tmp.
      */
-    private function can_loopback(): bool {
-        $url = rest_url(SAM_REST_NAMESPACE . '/backup/capabilities');
-        $response = wp_remote_get($url, [
-            'timeout' => 5,
-            'sslverify' => false,
-        ]);
+    public function prepare_chunk_download(WP_REST_Request $request) {
+        $token = $request->get_param('token');
+        $chunk_index = (int) $request->get_param('chunk_index');
+        $delete_after = (bool) $request->get_param('delete');
 
-        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) < 500;
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.'],
+            ], 400);
+        }
+
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        $chunks_file = $token_dir . '/chunks.json';
+
+        if (!file_exists($chunks_file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Chunked session not found.'],
+            ], 404);
+        }
+
+        // Check done marker
+        $done_marker = $token_dir . '/chunk_' . $chunk_index . '.done';
+        if (!file_exists($done_marker)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_READY', 'message' => "Chunk {$chunk_index} not yet executed."],
+            ], 400);
+        }
+
+        $chunks_info = json_decode(file_get_contents($chunks_file), true);
+        $type = $chunks_info['type'];
+
+        if ($type === 'db') {
+            $file = $token_dir . '/chunk_' . $chunk_index . '.sql.gz';
+        } else {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_SUPPORTED', 'message' => 'Individual chunk download only supported for DB type.'],
+            ], 400);
+        }
+
+        if (!file_exists($file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => "Chunk file {$chunk_index} not found."],
+            ], 404);
+        }
+
+        $size = filesize($file);
+
+        // Stream the file
+        header('Content-Type: application/octet-stream');
+        header('Content-Length: ' . $size);
+        header('X-Chunk-Index: ' . $chunk_index);
+        header('X-Chunk-Size: ' . $size);
+
+        // Flush output buffers
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        readfile($file);
+
+        if ($delete_after) {
+            @unlink($file);
+            @unlink($done_marker);
+        }
+
+        exit;
     }
 
-    /**
-     * Find the PHP CLI binary path.
-     */
-    private function find_php_binary(): ?string {
-        // PHP_BINARY is the most reliable source
-        if (defined('PHP_BINARY') && PHP_BINARY && is_executable(PHP_BINARY)) {
-            // Verify it's the CLI SAPI (not php-fpm/php-cgi)
-            $basename = basename(PHP_BINARY);
-            if (strpos($basename, 'fpm') === false && strpos($basename, 'cgi') === false) {
-                return PHP_BINARY;
+    public function prepare_chunk_finalize(WP_REST_Request $request): WP_REST_Response {
+        $token = $request->get_param('token');
+
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.'],
+            ], 400);
+        }
+
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        $chunks_file = $token_dir . '/chunks.json';
+
+        if (!file_exists($chunks_file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Chunked session not found.'],
+            ], 404);
+        }
+
+        $chunks_info = json_decode(file_get_contents($chunks_file), true);
+        $type = $chunks_info['type'];
+        $total = $chunks_info['total_chunks'];
+
+        // Verify all chunks completed
+        for ($i = 0; $i < $total; $i++) {
+            if (!file_exists($token_dir . '/chunk_' . $i . '.done')) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'INCOMPLETE', 'message' => "Chunk {$i} not yet completed."],
+                ], 400);
             }
         }
 
-        // Search common paths
-        $paths = [
-            'php',
-            '/usr/bin/php',
-            '/usr/local/bin/php',
-            '/usr/bin/php8.3',
-            '/usr/bin/php8.2',
-            '/usr/bin/php8.1',
-            '/usr/bin/php8.0',
-            '/usr/local/bin/php8.3',
-            '/usr/local/bin/php8.2',
-        ];
+        // Build final prepared file (same location as sync prepare)
+        $prepared_file = sys_get_temp_dir() . '/sam_prepared/sam_backup_' . $token;
 
-        foreach ($paths as $path) {
-            if ($this->is_cli_php($path)) {
-                return $path;
+        try {
+            if ($type === 'db') {
+                // Concatenate gzip chunks — gzip files are concatenable!
+                $fh = fopen($prepared_file, 'wb');
+                if (!$fh) {
+                    throw new \RuntimeException('Cannot create final prepared file.');
+                }
+                for ($i = 0; $i < $total; $i++) {
+                    $chunk_file = $token_dir . '/chunk_' . $i . '.sql.gz';
+                    if (!file_exists($chunk_file)) {
+                        throw new \RuntimeException("Chunk file {$i} missing.");
+                    }
+                    $ch = fopen($chunk_file, 'rb');
+                    while (!feof($ch)) {
+                        fwrite($fh, fread($ch, 524288));
+                    }
+                    fclose($ch);
+                }
+                fclose($fh);
+            } else {
+                // Files: the zip is built incrementally, just move it
+                $zip_file = $token_dir . '/files.zip';
+                if (!file_exists($zip_file) || filesize($zip_file) === 0) {
+                    throw new \RuntimeException('Files archive is empty or missing.');
+                }
+                rename($zip_file, $prepared_file);
             }
+        } catch (\Throwable $e) {
+            @unlink($prepared_file);
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'FINALIZE_FAILED', 'message' => $e->getMessage()],
+            ], 500);
         }
 
-        return null;
+        clearstatcache(true, $prepared_file);
+        $size = filesize($prepared_file);
+        $checksum = hash_file('sha256', $prepared_file);
+
+        file_put_contents($prepared_file . '.meta', json_encode([
+            'type' => $type,
+            'size' => $size,
+            'checksum' => $checksum,
+            'created_at' => time(),
+        ]));
+
+        // Clean up chunk work directory (keep the prepared file)
+        $this->recursive_delete($token_dir);
+
+        SAM_Audit_Logger::log('backup_chunked_finalized', 'backup', $type, "Chunked backup finalized: {$size} bytes");
+
+        return new WP_REST_Response([
+            'success' => true,
+            'token' => $token,
+            'size' => $size,
+            'checksum' => $checksum,
+        ], 200);
     }
 
-    /**
-     * Verify a PHP binary path is CLI SAPI and executable.
-     */
-    private function is_cli_php(string $path): bool {
-        if (!function_exists('proc_open')) {
-            return false;
-        }
+    // ── Restore endpoint ────────────────────────────────────────────────
 
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = @proc_open([$path, '-r', 'echo php_sapi_name();'], $descriptors, $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fclose($pipes[0]);
-        $output = stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exit = proc_close($process);
-
-        return $exit === 0 && trim($output) === 'cli';
-    }
-
-    /**
-     * Spawn a CLI background process to run backup preparation.
-     */
-    private function spawn_cli_worker(string $token, string $type): bool {
-        $php = $this->find_php_binary();
-        $nohup = $this->find_binary('nohup');
-        if (!$php || !$nohup) {
-            return false;
-        }
-
-        $script = $this->generate_worker_script($token, $type);
-        $token_dir = sys_get_temp_dir() . '/sam_prepared';
-        if (!is_dir($token_dir)) {
-            @mkdir($token_dir, 0755, true);
-        }
-
-        $script_path = $token_dir . '/sam_worker_' . $token . '.php';
-        if (file_put_contents($script_path, $script) === false) {
-            return false;
-        }
-
-        $descriptors = [
-            0 => ['file', '/dev/null', 'r'],
-            1 => ['file', '/dev/null', 'w'],
-            2 => ['file', '/dev/null', 'w'],
-        ];
-
-        $process = @proc_open(
-            [$nohup, $php, $script_path],
-            $descriptors,
-            $pipes
-        );
-
-        if (!is_resource($process)) {
-            @unlink($script_path);
-            return false;
-        }
-
-        // Immediately close — the process runs detached via nohup
-        proc_close($process);
-
-        return true;
-    }
-
-    /**
-     * Generate a self-contained PHP worker script for CLI execution.
-     */
-    private function generate_worker_script(string $token, string $type): string {
-        $abspath = rtrim(ABSPATH, '/\\');
-        $wp_load = $abspath . '/wp-load.php';
-        $plugin_file = __FILE__;
-
-        // Escape strings for embedding in PHP
-        $token_escaped = addslashes($token);
-        $type_escaped = addslashes($type);
-        $wp_load_escaped = addslashes($wp_load);
-        $plugin_file_escaped = addslashes($plugin_file);
-
-        return <<<PHP
-<?php
-/**
- * SAM CLI backup worker — auto-generated, self-deleting.
- * Token: {$token}
- */
-
-// Detach from any parent process constraints
-ignore_user_abort(true);
-set_time_limit(0);
-@ini_set('memory_limit', '512M');
-
-// Load WordPress
-define('DOING_CRON', true); // Prevent redirect and other web-only behavior
-define('SAM_CLI_WORKER', true);
-
-\$wp_load = '{$wp_load_escaped}';
-if (!file_exists(\$wp_load)) {
-    error_log('SAM CLI worker: wp-load.php not found at ' . \$wp_load);
-    @unlink(__FILE__);
-    exit(1);
-}
-
-require_once \$wp_load;
-
-// Ensure our plugin class is available
-\$plugin_file = '{$plugin_file_escaped}';
-if (!class_exists('SAM_Backup_Endpoint')) {
-    if (file_exists(\$plugin_file)) {
-        require_once \$plugin_file;
-    } else {
-        error_log('SAM CLI worker: SAM_Backup_Endpoint class not found');
-        @unlink(__FILE__);
-        exit(1);
-    }
-}
-
-// Run the backup preparation
-\$endpoint = new SAM_Backup_Endpoint();
-\$endpoint->run_prepare_work('{$token_escaped}', '{$type_escaped}');
-
-// Self-delete
-@unlink(__FILE__);
-PHP;
-    }
-
-    /**
-     * Update async task progress in transient.
-     */
-    private function update_task_progress(string $task_key, int $progress, string $message): void {
-        $task = get_transient($task_key);
-        if ($task) {
-            $task['progress'] = $progress;
-            $task['message'] = $message;
-            $task['updated_at'] = time();
-            set_transient($task_key, $task, 7200);
-        }
-    }
-
-    /**
-     * Recursively delete a directory and its contents.
-     */
-    private function recursive_delete(string $dir): void {
-        if (!is_dir($dir)) {
-            return;
-        }
-        $files = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($files as $file) {
-            $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
-        }
-        @rmdir($dir);
-    }
-
-    /**
-     * Restore a database or files from a base64-encoded payload.
-     */
     public function restore(WP_REST_Request $request): WP_REST_Response {
         @set_time_limit(600);
         @ini_set('memory_limit', '512M');
@@ -1506,7 +1229,6 @@ PHP;
         }
 
         if (!empty($download_url)) {
-            // Stream download to temp file (memory-efficient for large files)
             $response = wp_remote_get($download_url, [
                 'timeout'  => 600,
                 'stream'   => true,
@@ -1545,7 +1267,6 @@ PHP;
 
         try {
             if ($type === 'database') {
-                // Preserve plugin state before DB restore (import will overwrite wp_options)
                 $sam_api_key = get_option('sam_api_key');
                 $sam_api_secret = get_option('sam_api_secret');
                 $active_plugins = get_option('active_plugins', []);
@@ -1554,7 +1275,6 @@ PHP;
                 SAM_Audit_Logger::log('restore_db_started', 'restore', 'database', 'Database restore initiated via SimpleAd Manager');
                 $this->restore_database($tmp_file);
 
-                // Re-activate plugin and restore API credentials after DB import
                 $new_active = get_option('active_plugins', []);
                 if (!in_array($plugin_basename, $new_active, true)) {
                     $new_active[] = $plugin_basename;
@@ -1567,7 +1287,6 @@ PHP;
                     update_option('sam_api_secret', $sam_api_secret);
                 }
 
-                // Clear WordPress object cache so new options take effect
                 wp_cache_flush();
 
                 SAM_Audit_Logger::log('restore_db_completed', 'restore', 'database', 'Database restore completed');
@@ -1589,249 +1308,116 @@ PHP;
         }
     }
 
-    /**
-     * Restore database from SQL file (may be gzip-compressed).
-     */
-    private function restore_database(string $file): void {
-        // Detect gzip by magic bytes
-        $fh = fopen($file, 'rb');
-        $magic = fread($fh, 2);
-        fclose($fh);
+    // ── Private helpers ─────────────────────────────────────────────────
 
-        $sql_file = $file;
-        $is_gzip = ($magic === "\x1f\x8b");
-
-        if ($is_gzip) {
-            // Try piped decompression: gzip -dc file.gz | mysql (zero memory overhead)
-            if ($this->exec_gzip_pipe_import($file)) {
-                return;
-            }
-
-            // Fallback: streaming decompress to temp file via gzopen/gzread
-            $sql_file = $file . '.sql';
-            $gz = gzopen($file, 'rb');
-            if (!$gz) {
-                throw new \RuntimeException('Failed to open gzipped database dump.');
-            }
-            $out = fopen($sql_file, 'wb');
-            if (!$out) {
-                gzclose($gz);
-                throw new \RuntimeException('Failed to create temp SQL file for decompression.');
-            }
-            while (!gzeof($gz)) {
-                $chunk = gzread($gz, 524288); // 512KB chunks
-                if ($chunk === false) break;
-                fwrite($out, $chunk);
-            }
-            gzclose($gz);
-            fclose($out);
-        }
-
-        try {
-            // Try mysql CLI first
-            if (!$this->exec_mysql_import($sql_file)) {
-                // Fallback to PHP-based import
-                $this->php_sql_import($sql_file);
-            }
-        } finally {
-            if ($is_gzip && file_exists($sql_file)) {
-                @unlink($sql_file);
-            }
-        }
+    private function can_loopback(): bool {
+        $url = rest_url(SAM_REST_NAMESPACE . '/backup/capabilities');
+        $response = wp_remote_get($url, [
+            'timeout' => 5,
+            'sslverify' => false,
+        ]);
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) < 500;
     }
 
     /**
-     * Restore files from a zip or tar.gz archive to ABSPATH.
+     * Directories and patterns to exclude from file backups.
      */
-    private function restore_files(string $file): void {
-        // Detect format by magic bytes
-        $fh = fopen($file, 'rb');
-        $magic = fread($fh, 2);
-        fclose($fh);
-
-        $is_zip = ($magic === "PK");
-        $is_gzip = ($magic === "\x1f\x8b");
-
-        if ($is_zip) {
-            if (!class_exists('ZipArchive')) {
-                throw new \RuntimeException('ZipArchive extension not available.');
-            }
-            $zip = new \ZipArchive();
-            if ($zip->open($file) !== true) {
-                throw new \RuntimeException('Failed to open zip archive.');
-            }
-            $zip->extractTo(rtrim(ABSPATH, '/'));
-            $zip->close();
-        } elseif ($is_gzip) {
-            $this->exec_tar_extract($file);
-        } else {
-            throw new \RuntimeException('Unknown archive format. Expected zip or tar.gz.');
-        }
-    }
-
-    /**
-     * Import SQL file using mysql CLI via proc_open.
-     */
-    private function exec_mysql_import(string $sql_file): bool {
-        $mysql = $this->find_binary('mysql');
-        if (!$mysql) {
-            return false;
-        }
-
-        $cmd = [
-            $mysql,
-            '--host=' . DB_HOST,
-            '--user=' . DB_USER,
-            '--password=' . DB_PASSWORD,
-            DB_NAME,
+    private function get_backup_exclusions(): array {
+        return [
+            'wp-content/cache',
+            'wp-content/backup-*',
+            'wp-content/updraft',
+            'wp-content/ai1wm-backups',
+            'wp-content/uploads/backwpup-*',
+            'tmp/sam_*',
+            '.git',
+            'node_modules',
+            'error_log',
+            'wp-content/debug.log',
         ];
-
-        $descriptors = [
-            0 => ['file', $sql_file, 'r'], // stdin from SQL file
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $exit_code = proc_close($process);
-
-        return $exit_code === 0;
     }
 
-    /**
-     * Pipe gzipped SQL directly into mysql CLI (zero memory overhead).
-     * Uses shell command: gzip -dc file.sql.gz | mysql ...
-     */
-    private function exec_gzip_pipe_import(string $gz_file): bool {
-        $mysql = $this->find_binary('mysql');
-        $gzip = $this->find_binary('gzip');
-        if (!$mysql || !$gzip) {
-            return false;
+    private function should_exclude(string $relative_path): bool {
+        foreach ($this->get_backup_exclusions() as $pattern) {
+            if (strpos($pattern, '*') !== false) {
+                $regex = '/^' . str_replace('\\*', '.*', preg_quote($pattern, '/')) . '(\/|$)/';
+                if (preg_match($regex, $relative_path)) {
+                    return true;
+                }
+            } else {
+                if ($relative_path === $pattern || strpos($relative_path, $pattern . '/') === 0) {
+                    return true;
+                }
+            }
         }
-
-        $cmd = sprintf(
-            '%s -dc %s | %s --host=%s --user=%s --password=%s %s',
-            escapeshellarg($gzip),
-            escapeshellarg($gz_file),
-            escapeshellarg($mysql),
-            escapeshellarg(DB_HOST),
-            escapeshellarg(DB_USER),
-            escapeshellarg(DB_PASSWORD),
-            escapeshellarg(DB_NAME)
-        );
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
-            return false;
-        }
-
-        fclose($pipes[0]);
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $exit_code = proc_close($process);
-
-        return $exit_code === 0;
+        return false;
     }
 
-    /**
-     * Import SQL file line by line via $wpdb->query().
-     */
-    private function php_sql_import(string $sql_file): void {
-        global $wpdb;
+    private function serve_and_cleanup(string $file_path, string $filename, string $content_type): void {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
 
-        $fh = fopen($sql_file, 'r');
+        header('Content-Type: ' . $content_type);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($file_path));
+        header('X-SAM-Backup-Type: ' . (strpos($content_type, 'sql') !== false ? 'database' : 'files'));
+
+        readfile($file_path);
+        @unlink($file_path);
+        exit;
+    }
+
+    private function php_database_dump($wpdb, string $db_name, string $output_file): void {
+        $fh = fopen($output_file, 'w');
         if (!$fh) {
-            throw new \RuntimeException('Failed to open SQL file for import.');
+            return;
         }
 
-        $query = '';
-        $delimiter = ';';
+        fwrite($fh, "-- SimpleAd Manager Database Backup\n");
+        fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
+        fwrite($fh, "-- Database: {$db_name}\n\n");
+        fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
 
-        while (($line = fgets($fh)) !== false) {
-            $trimmed = trim($line);
+        $tables = $wpdb->get_col("SHOW TABLES");
 
-            // Skip comments and empty lines
-            if ($trimmed === '' || strpos($trimmed, '--') === 0 || strpos($trimmed, '#') === 0) {
-                continue;
+        foreach ($tables as $table) {
+            $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+            fwrite($fh, $create[1] . ";\n\n");
+
+            $offset = 0;
+            $chunk = 500;
+
+            while (true) {
+                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$chunk}", ARRAY_A);
+                if (empty($rows)) {
+                    break;
+                }
+
+                foreach ($rows as $row) {
+                    $values = array_map(function ($v) use ($wpdb) {
+                        if ($v === null) return 'NULL';
+                        return "'" . $wpdb->_real_escape($v) . "'";
+                    }, array_values($row));
+
+                    $columns = array_map(function ($c) {
+                        return "`{$c}`";
+                    }, array_keys($row));
+
+                    fwrite($fh, "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n");
+                }
+
+                $offset += $chunk;
             }
 
-            // Skip MySQL-specific comments like /*!40101 ... */
-            if (strpos($trimmed, '/*') === 0 && strpos($trimmed, '*/;') !== false) {
-                continue;
-            }
-
-            $query .= $line;
-
-            if (substr(rtrim($query), -1) === $delimiter) {
-                $wpdb->query($query);
-                $query = '';
-            }
+            fwrite($fh, "\n");
         }
 
-        // Execute any remaining query
-        if (trim($query) !== '') {
-            $wpdb->query($query);
-        }
-
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
         fclose($fh);
     }
 
-    /**
-     * Extract tar.gz archive to ABSPATH using tar command.
-     */
-    private function exec_tar_extract(string $file): void {
-        $tar = $this->find_binary('tar');
-        if (!$tar) {
-            throw new \RuntimeException('tar command not available for extracting archive.');
-        }
-
-        $cmd = [
-            $tar,
-            'xzf',
-            $file,
-            '-C',
-            rtrim(ABSPATH, '/'),
-        ];
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
-            throw new \RuntimeException('Failed to start tar extraction process.');
-        }
-
-        fclose($pipes[0]);
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $exit_code = proc_close($process);
-
-        if ($exit_code !== 0) {
-            throw new \RuntimeException('tar extraction failed: ' . $stderr);
-        }
-    }
-
-    /**
-     * Gzip a file using streaming to avoid loading the entire file into memory.
-     */
     private function gzip_file(string $source, string $dest): bool {
         if (!function_exists('gzopen')) {
             return false;
@@ -1849,7 +1435,7 @@ PHP;
         }
 
         while (!feof($fp_in)) {
-            $chunk = fread($fp_in, 524288); // 512KB chunks
+            $chunk = fread($fp_in, 524288);
             if ($chunk === false) {
                 break;
             }
@@ -1862,20 +1448,307 @@ PHP;
         return file_exists($dest) && filesize($dest) > 0;
     }
 
+    /**
+     * Dump specific tables to a SQL file (for chunked prepare).
+     */
+    private function php_database_dump_tables($wpdb, array $tables, string $output_file, bool $include_header, bool $include_footer): void {
+        $fh = fopen($output_file, 'w');
+        if (!$fh) {
+            throw new \RuntimeException('Cannot open output file for database dump.');
+        }
+
+        if ($include_header) {
+            fwrite($fh, "-- SimpleAd Manager Database Backup (chunked)\n");
+            fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
+            fwrite($fh, "-- Database: " . DB_NAME . "\n\n");
+            fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
+        }
+
+        foreach ($tables as $table) {
+            $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+            if (!$create) continue;
+            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+            fwrite($fh, $create[1] . ";\n\n");
+
+            $offset = 0;
+            $batch = 500;
+
+            while (true) {
+                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$batch}", ARRAY_A);
+                if (empty($rows)) break;
+
+                foreach ($rows as $row) {
+                    $values = array_map(function ($v) use ($wpdb) {
+                        if ($v === null) return 'NULL';
+                        return "'" . $wpdb->_real_escape($v) . "'";
+                    }, array_values($row));
+
+                    $columns = array_map(function ($c) {
+                        return "`{$c}`";
+                    }, array_keys($row));
+
+                    fwrite($fh, "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n");
+                }
+
+                $offset += $batch;
+            }
+
+            fwrite($fh, "\n");
+        }
+
+        if ($include_footer) {
+            fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
+        }
+
+        fclose($fh);
+    }
+
+    /**
+     * Execute a single DB chunk: dump tables and gzip.
+     */
+    private function exec_db_chunk($wpdb, string $token_dir, int $chunk_index, array $chunk, int $total_chunks): int {
+        $tables = $chunk['tables'];
+        $is_first = ($chunk_index === 0);
+        $is_last = ($chunk_index === $total_chunks - 1);
+
+        $tmp_sql = tempnam(sys_get_temp_dir(), 'sam_chunk_');
+        if (!$tmp_sql) {
+            $disk_free = @disk_free_space(sys_get_temp_dir());
+            throw new \RuntimeException("Cannot create temp file for DB chunk. Temp dir: " . sys_get_temp_dir() . ", free: " . ($disk_free !== false ? round($disk_free / 1048576) . 'MB' : 'unknown'));
+        }
+
+        $this->php_database_dump_tables($wpdb, $tables, $tmp_sql, $is_first, $is_last);
+
+        clearstatcache(true, $tmp_sql);
+        $sql_size = file_exists($tmp_sql) ? filesize($tmp_sql) : 0;
+        if ($sql_size === 0) {
+            @unlink($tmp_sql);
+            $last_error = $wpdb->last_error ?: 'none';
+            throw new \RuntimeException("DB chunk {$chunk_index} SQL dump is empty. Tables: " . implode(', ', $tables) . ". Last DB error: {$last_error}");
+        }
+
+        $gz_file = $token_dir . '/chunk_' . $chunk_index . '.sql.gz';
+        if ($this->gzip_file($tmp_sql, $gz_file)) {
+            @unlink($tmp_sql);
+        } else {
+            rename($tmp_sql, $gz_file);
+        }
+
+        clearstatcache(true, $gz_file);
+        if (!file_exists($gz_file) || filesize($gz_file) === 0) {
+            throw new \RuntimeException("DB chunk {$chunk_index} produced empty gzip. SQL size was: {$sql_size}");
+        }
+
+        return filesize($gz_file);
+    }
+
+    /**
+     * Execute a single files chunk: add files to the incremental zip.
+     */
+    private function exec_files_chunk(string $token_dir, int $chunk_index, array $chunk): int {
+        $source_dir = rtrim(ABSPATH, '/');
+        $zip_file = $token_dir . '/files.zip';
+
+        if (!class_exists('ZipArchive')) {
+            throw new \RuntimeException('ZipArchive extension not available.');
+        }
+
+        $zip = new \ZipArchive();
+        // CREATE opens existing zip or creates new one
+        if ($zip->open($zip_file, \ZipArchive::CREATE) !== true) {
+            throw new \RuntimeException("Cannot open zip archive for chunk {$chunk_index}.");
+        }
+
+        $scope = $chunk['scope'];
+        $added = 0;
+
+        if ($scope === 'core') {
+            // wp-admin, wp-includes, root-level files
+            foreach (['wp-admin', 'wp-includes'] as $core_dir) {
+                $abs = $source_dir . '/' . $core_dir;
+                if (!is_dir($abs)) continue;
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($abs, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($files as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        $zip->addFile($file->getRealPath(), $relative);
+                        $added++;
+                    }
+                }
+            }
+            // Root-level files
+            foreach (new \DirectoryIterator($source_dir) as $item) {
+                if ($item->isDot() || $item->isDir()) continue;
+                if (!$this->should_exclude($item->getFilename())) {
+                    $zip->addFile($item->getPathname(), $item->getFilename());
+                    $added++;
+                }
+            }
+        } elseif ($scope === 'dir') {
+            // Recursively add all files in this directory
+            $abs = $source_dir . '/' . $chunk['path'];
+            if (is_dir($abs)) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($abs, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($files as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        if (!$this->should_exclude($relative)) {
+                            $zip->addFile($file->getRealPath(), $relative);
+                            $added++;
+                        }
+                    }
+                }
+            }
+        } elseif ($scope === 'dir_shallow') {
+            // Only files directly in this directory (not subdirectories)
+            $abs = $source_dir . '/' . $chunk['path'];
+            if (is_dir($abs)) {
+                foreach (new \DirectoryIterator($abs) as $item) {
+                    if ($item->isDot() || $item->isDir()) continue;
+                    $relative = $chunk['path'] . '/' . $item->getFilename();
+                    if (!$this->should_exclude($relative)) {
+                        $zip->addFile($item->getPathname(), $relative);
+                        $added++;
+                    }
+                }
+            }
+        }
+
+        if (!$zip->close()) {
+            throw new \RuntimeException("ZipArchive::close() failed for files chunk {$chunk_index}.");
+        }
+
+        clearstatcache(true, $zip_file);
+        return file_exists($zip_file) ? filesize($zip_file) : 0;
+    }
+
+    /**
+     * Group database tables into chunks that should each complete within ~30s.
+     */
+    private function group_tables_into_chunks(): array {
+        global $wpdb;
+
+        $table_info = $wpdb->get_results(
+            "SELECT TABLE_NAME as table_name, COALESCE(DATA_LENGTH, 0) as data_length
+             FROM INFORMATION_SCHEMA.TABLES
+             WHERE TABLE_SCHEMA = '" . $wpdb->_real_escape(DB_NAME) . "' AND TABLE_TYPE = 'BASE TABLE'
+             ORDER BY DATA_LENGTH DESC",
+            ARRAY_A
+        );
+
+        if (empty($table_info)) {
+            // Fallback: get table list without size info
+            $tables = $wpdb->get_col("SHOW TABLES");
+            return [['index' => 0, 'tables' => $tables, 'estimated_size' => 0]];
+        }
+
+        $chunks = [];
+        $current_tables = [];
+        $current_size = 0;
+        $max_chunk_size = 5 * 1024 * 1024; // 5MB data_length per chunk
+
+        foreach ($table_info as $info) {
+            $table = $info['table_name'];
+            $size = (int) $info['data_length'];
+
+            if ($size > $max_chunk_size && !empty($current_tables)) {
+                // Flush current batch before adding large table
+                $chunks[] = ['tables' => $current_tables, 'estimated_size' => $current_size];
+                $current_tables = [];
+                $current_size = 0;
+            }
+
+            $current_tables[] = $table;
+            $current_size += $size;
+
+            if ($current_size >= $max_chunk_size) {
+                $chunks[] = ['tables' => $current_tables, 'estimated_size' => $current_size];
+                $current_tables = [];
+                $current_size = 0;
+            }
+        }
+
+        if (!empty($current_tables)) {
+            $chunks[] = ['tables' => $current_tables, 'estimated_size' => $current_size];
+        }
+
+        // Ensure at least one chunk
+        if (empty($chunks)) {
+            $tables = $wpdb->get_col("SHOW TABLES");
+            $chunks[] = ['tables' => $tables, 'estimated_size' => 0];
+        }
+
+        foreach ($chunks as $i => &$chunk) {
+            $chunk['index'] = $i;
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * Group site directories into chunks for incremental zip creation.
+     */
+    private function group_directories_into_chunks(): array {
+        $source_dir = rtrim(ABSPATH, '/');
+        $chunks = [];
+        $idx = 0;
+
+        // Core files: wp-admin, wp-includes, root-level files
+        $chunks[] = ['index' => $idx++, 'scope' => 'core'];
+
+        $wp_content = $source_dir . '/wp-content';
+        if (!is_dir($wp_content)) {
+            return $chunks;
+        }
+
+        foreach (new \DirectoryIterator($wp_content) as $item) {
+            if ($item->isDot() || !$item->isDir()) continue;
+            $name = $item->getFilename();
+            $relative = 'wp-content/' . $name;
+            if ($this->should_exclude($relative)) continue;
+
+            if ($name === 'uploads') {
+                // Split uploads by year subdirectory for granularity
+                $uploads_path = $item->getPathname();
+                foreach (new \DirectoryIterator($uploads_path) as $year) {
+                    if ($year->isDot() || !$year->isDir()) continue;
+                    $year_relative = 'wp-content/uploads/' . $year->getFilename();
+                    if ($this->should_exclude($year_relative)) continue;
+                    $chunks[] = ['index' => $idx++, 'scope' => 'dir', 'path' => $year_relative];
+                }
+                // uploads root files
+                $chunks[] = ['index' => $idx++, 'scope' => 'dir_shallow', 'path' => 'wp-content/uploads'];
+            } else {
+                $chunks[] = ['index' => $idx++, 'scope' => 'dir', 'path' => $relative];
+            }
+        }
+
+        // wp-content root files
+        $chunks[] = ['index' => $idx++, 'scope' => 'dir_shallow', 'path' => 'wp-content'];
+
+        return $chunks;
+    }
+
     private function php_zip_backup(string $source_dir): void {
         $tmp_file = tempnam(sys_get_temp_dir(), 'sam_backup_');
 
         if (!class_exists('ZipArchive')) {
-            echo '{"success":false,"error":{"code":"NO_ZIP","message":"No tar or ZipArchive available for file backup."}}';
+            echo '{"success":false,"error":{"code":"NO_ZIP","message":"ZipArchive extension not available."}}';
             exit;
         }
 
-        $zip = new ZipArchive();
-        $zip->open($tmp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip = new \ZipArchive();
+        $zip->open($tmp_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($source_dir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::LEAVES_ONLY
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
         );
 
         foreach ($files as $file) {
@@ -1890,5 +1763,189 @@ PHP;
         $zip->close();
 
         $this->serve_and_cleanup($tmp_file, 'backup-files-' . date('Y-m-d-His') . '.zip', 'application/zip');
+    }
+
+    /**
+     * Restore database from SQL file (may be gzip-compressed).
+     */
+    private function restore_database(string $file): void {
+        $fh = fopen($file, 'rb');
+        $magic = fread($fh, 2);
+        fclose($fh);
+
+        $sql_file = $file;
+        $is_gzip = ($magic === "\x1f\x8b");
+
+        if ($is_gzip) {
+            $sql_file = $file . '.sql';
+            $gz = gzopen($file, 'rb');
+            if (!$gz) {
+                throw new \RuntimeException('Failed to open gzipped database dump.');
+            }
+            $out = fopen($sql_file, 'wb');
+            if (!$out) {
+                gzclose($gz);
+                throw new \RuntimeException('Failed to create temp SQL file for decompression.');
+            }
+            while (!gzeof($gz)) {
+                $chunk = gzread($gz, 524288);
+                if ($chunk === false) break;
+                fwrite($out, $chunk);
+            }
+            gzclose($gz);
+            fclose($out);
+        }
+
+        try {
+            $this->php_sql_import($sql_file);
+        } finally {
+            if ($is_gzip && file_exists($sql_file)) {
+                @unlink($sql_file);
+            }
+        }
+    }
+
+    private function restore_files(string $file): void {
+        $fh = fopen($file, 'rb');
+        $magic = fread($fh, 2);
+        fclose($fh);
+
+        $is_zip = ($magic === "PK");
+
+        if ($is_zip) {
+            if (!class_exists('ZipArchive')) {
+                throw new \RuntimeException('ZipArchive extension not available.');
+            }
+            $zip = new \ZipArchive();
+            if ($zip->open($file) !== true) {
+                throw new \RuntimeException('Failed to open zip archive.');
+            }
+            $zip->extractTo(rtrim(ABSPATH, '/'));
+            $zip->close();
+        } else {
+            throw new \RuntimeException('Unknown archive format. Expected zip.');
+        }
+    }
+
+    private function php_sql_import(string $sql_file): void {
+        global $wpdb;
+
+        $fh = fopen($sql_file, 'r');
+        if (!$fh) {
+            throw new \RuntimeException('Failed to open SQL file for import.');
+        }
+
+        $query = '';
+        $delimiter = ';';
+
+        while (($line = fgets($fh)) !== false) {
+            $trimmed = trim($line);
+
+            if ($trimmed === '' || strpos($trimmed, '--') === 0 || strpos($trimmed, '#') === 0) {
+                continue;
+            }
+
+            if (strpos($trimmed, '/*') === 0 && strpos($trimmed, '*/;') !== false) {
+                continue;
+            }
+
+            $query .= $line;
+
+            if (substr(rtrim($query), -1) === $delimiter) {
+                $wpdb->query($query);
+                $query = '';
+            }
+        }
+
+        if (trim($query) !== '') {
+            $wpdb->query($query);
+        }
+
+        fclose($fh);
+    }
+
+    private function handle_s3_multipart_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {
+        $parts = $request->get_param('parts');
+        $callback_url = $request->get_param('callback_url') ?: '';
+        $callback_token = $request->get_param('callback_token') ?: '';
+        $backup_id = (int) $request->get_param('backup_id');
+
+        if (empty($parts) || !is_array($parts)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'MISSING_PARTS', 'message' => 'No parts provided.'],
+            ], 400);
+        }
+
+        $etags = SAM_Direct_Uploader::upload_s3_multipart(
+            $file_path,
+            $parts,
+            $callback_url,
+            $callback_token,
+            $backup_id
+        );
+
+        SAM_Audit_Logger::log('direct_upload_s3_completed', 'backup', 'direct_upload', 'S3 multipart upload completed: ' . count($etags) . ' parts');
+
+        return new WP_REST_Response([
+            'success' => true,
+            'etags' => $etags,
+        ], 200);
+    }
+
+    private function handle_chunked_push_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {
+        $upload_url = $request->get_param('upload_url');
+        $upload_token = $request->get_param('upload_token');
+        $chunk_size = (int) ($request->get_param('chunk_size') ?: 8388608);
+        $callback_url = $request->get_param('callback_url') ?: '';
+        $callback_token = $request->get_param('callback_token') ?: '';
+        $backup_id = (int) $request->get_param('backup_id');
+
+        if (empty($upload_url) || empty($upload_token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'MISSING_PARAMS', 'message' => 'upload_url and upload_token are required.'],
+            ], 400);
+        }
+
+        SAM_Direct_Uploader::upload_chunked_push(
+            $file_path,
+            $upload_url,
+            $upload_token,
+            $chunk_size,
+            $callback_url,
+            $callback_token,
+            $backup_id
+        );
+
+        SAM_Audit_Logger::log('direct_upload_relay_completed', 'backup', 'direct_upload', 'Chunked push upload completed');
+
+        return new WP_REST_Response([
+            'success' => true,
+        ], 200);
+    }
+
+    private function update_task_progress(string $task_key, int $progress, string $message): void {
+        $task = get_transient($task_key);
+        if ($task) {
+            $task['progress'] = $progress;
+            $task['message'] = $message;
+            $task['updated_at'] = time();
+            set_transient($task_key, $task, 7200);
+        }
+    }
+
+    private function recursive_delete(string $dir): void {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $file) {
+            $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+        }
+        @rmdir($dir);
     }
 }
