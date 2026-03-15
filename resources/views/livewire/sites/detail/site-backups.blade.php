@@ -1,4 +1,4 @@
-<div {!! (($this->activeBackup && in_array($this->activeBackup->status, ['pending', 'in_progress'])) || ($this->activeRestore && in_array($this->activeRestore->restore_status, ['pending', 'in_progress']))) ? 'wire:poll.5s="refreshProgress"' : '' !!}>
+<div {!! ($this->trackingBackupId || $this->trackingRestoreBackupId) ? 'wire:poll.3s="pollProgress"' : '' !!}>
     {{-- Header --}}
     <x-ui.page-header title="Backups" subtitle="Create, schedule, and restore site backups" />
 
@@ -139,9 +139,9 @@
                 status = newStatus;
                 message = newMsg;
                 stage = newStage;
-                if (status === 'completed' && !timer) {
-                    pct = 100;
-                    timer = setTimeout(() => { dismissed = true; $wire.dismissProgress(); }, 5000);
+                if ((status === 'completed' || status === 'failed') && !timer) {
+                    if (status === 'completed') { pct = 100; }
+                    timer = setTimeout(() => { $wire.dismissProgress(); }, status === 'completed' ? 5000 : 30000);
                 }
             "
             x-show="!dismissed"

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\BackupStatus;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
 use App\Services\Backup\Storage\StorageFactory;
@@ -48,7 +49,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         try {
             $this->backup->update([
-                'restore_status' => 'in_progress',
+                'restore_status' => BackupStatus::InProgress,
                 'restore_stage' => 'downloading',
                 'restore_progress_percent' => 10,
                 'restore_progress_message' => 'Downloading backup from storage...',
@@ -136,7 +137,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             // Update backup record
             $this->backup->update([
                 'last_restored_at' => now(),
-                'restore_status' => 'completed',
+                'restore_status' => BackupStatus::Completed,
                 'restore_stage' => 'completed',
                 'restore_progress_percent' => 100,
                 'restore_progress_message' => $message,
@@ -152,7 +153,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             ]);
 
             $this->backup->update([
-                'restore_status' => 'failed',
+                'restore_status' => BackupStatus::Failed,
                 'restore_stage' => 'failed',
                 'restore_progress_message' => 'Restore failed: ' . Str::limit($e->getMessage(), 200),
                 'restore_error_message' => $e->getMessage(),
@@ -266,7 +267,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $result = $api->request('POST', '/backup/restore', [
                 'type' => $type,
                 'download_url' => $downloadUrl,
-            ], [], 600);
+            ], [], 1200);
             $result->throw();
         } finally {
             @unlink($storagePath);

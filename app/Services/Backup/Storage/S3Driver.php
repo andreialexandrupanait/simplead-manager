@@ -139,6 +139,85 @@ class S3Driver implements StorageDriver
         return (string) $request->getUri();
     }
 
+    /**
+     * Initiate a multipart upload and return the upload ID.
+     */
+    public function initiateMultipartUpload(string $remotePath): string
+    {
+        $result = $this->client->createMultipartUpload([
+            'Bucket' => $this->bucket,
+            'Key' => $this->fullPath($remotePath),
+        ]);
+
+        return $result['UploadId'];
+    }
+
+    /**
+     * Generate presigned PUT URLs for each part of a multipart upload.
+     *
+     * @return array Array of ['part_number' => int, 'url' => string, 'start' => int, 'end' => int]
+     */
+    public function generatePresignedPartUrls(string $remotePath, string $uploadId, int $totalSize, int $partSize = 104857600): array
+    {
+        $parts = [];
+        $partNumber = 1;
+        $offset = 0;
+
+        while ($offset < $totalSize) {
+            $end = min($offset + $partSize, $totalSize);
+
+            $command = $this->client->getCommand('UploadPart', [
+                'Bucket' => $this->bucket,
+                'Key' => $this->fullPath($remotePath),
+                'UploadId' => $uploadId,
+                'PartNumber' => $partNumber,
+            ]);
+
+            $request = $this->client->createPresignedRequest($command, '+4 hours');
+
+            $parts[] = [
+                'part_number' => $partNumber,
+                'url' => (string) $request->getUri(),
+                'start' => $offset,
+                'end' => $end,
+            ];
+
+            $offset = $end;
+            $partNumber++;
+        }
+
+        return $parts;
+    }
+
+    /**
+     * Complete a multipart upload with the ETags from each part.
+     *
+     * @param array $parts Array of ['PartNumber' => int, 'ETag' => string]
+     */
+    public function completeMultipartUpload(string $remotePath, string $uploadId, array $parts): void
+    {
+        $this->client->completeMultipartUpload([
+            'Bucket' => $this->bucket,
+            'Key' => $this->fullPath($remotePath),
+            'UploadId' => $uploadId,
+            'MultipartUpload' => [
+                'Parts' => $parts,
+            ],
+        ]);
+    }
+
+    /**
+     * Abort a multipart upload (cleanup on failure).
+     */
+    public function abortMultipartUpload(string $remotePath, string $uploadId): void
+    {
+        $this->client->abortMultipartUpload([
+            'Bucket' => $this->bucket,
+            'Key' => $this->fullPath($remotePath),
+            'UploadId' => $uploadId,
+        ]);
+    }
+
     protected function fullPath(string $relativePath): string
     {
         $path = ltrim($relativePath, '/');

@@ -285,6 +285,27 @@ class SiteBackups extends Component
         return $this->redirect($url);
     }
 
+    public function pollProgress(): void
+    {
+        if ($this->trackingBackupId) {
+            unset($this->activeBackup);
+
+            $ab = $this->activeBackup;
+            if ($ab && in_array($ab->status->value ?? $ab->status, ['completed', 'failed'])) {
+                // Let the auto-dismiss timer in Alpine handle cleanup
+            }
+        }
+
+        if ($this->trackingRestoreBackupId) {
+            unset($this->activeRestore);
+
+            $ar = $this->activeRestore;
+            if ($ar && in_array($ar->restore_status, ['completed', 'failed'])) {
+                // Let the auto-dismiss timer in Alpine handle cleanup
+            }
+        }
+    }
+
     public function refreshProgress(): void
     {
         unset($this->activeBackup);
