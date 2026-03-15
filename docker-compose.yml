@@ -73,7 +73,7 @@ services:
         condition: service_healthy
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: simplead-nginx-dev
     restart: unless-stopped
     ports:
@@ -178,6 +178,7 @@ services:
       LOG_DISCONNECTIONS: 0
       AUTH_TYPE: scram-sha-256
     healthcheck:
+      # Check PgBouncer's own listen port (6432 by default for edoburu image)
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U simplead"]
       interval: 10s
       timeout: 5s

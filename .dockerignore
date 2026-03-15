@@ -1,23 +1,49 @@
+# Version control
 .git
 .github
+.gitignore
+.gitattributes
+
+# Editor / IDE
 .claude
+.editorconfig
+.idea
+.vscode
+*.code-workspace
+
+# Environment — never bake secrets into the image
 .env
 .env.*
 !.env.example
+
+# Node / JS — not needed in the PHP runtime image
 node_modules
+
+# PHP dependencies — installed fresh by Composer inside the build
 vendor
+
+# Laravel runtime / generated files — these come from mounted volumes
 storage/logs/*
 storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
+
+# Test code — not needed in production image
 tests
 database/factories
 phpunit.xml
-.editorconfig
+
+# Documentation
 *.md
 features/
+
+# Docker / deploy tooling — not needed inside the container
 docker-compose*.yml
 deploy.sh
 scripts/dev-*.sh
 scripts/backfill-screenshots.php
 docker/certbot/conf/
+
+# OS / misc
+.DS_Store
+Thumbs.db
