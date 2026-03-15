@@ -261,7 +261,7 @@ class SiteOverview extends Component
 
         // Auto-fill endpoint from site URL if empty
         if (empty($this->apiEndpoint) && $this->site->url) {
-            $this->apiEndpoint = rtrim($this->site->url, '/') . '/wp-json/jesuspended/v1';
+            $this->apiEndpoint = rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
         }
 
         $this->dispatch('open-modal-connect-plugin');

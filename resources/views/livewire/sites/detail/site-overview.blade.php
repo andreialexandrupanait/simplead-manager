@@ -108,7 +108,7 @@
                 <div>
                     <label for="apiEndpoint" class="block text-sm font-medium text-gray-700">API Endpoint</label>
                     <x-ui.input wire:model="apiEndpoint" type="text" id="apiEndpoint" class="mt-1"
-                           placeholder="https://example.com/wp-json/jesuspended/v1" />
+                           placeholder="https://example.com/wp-json/simplead/v1" />
                     @error('apiEndpoint') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
