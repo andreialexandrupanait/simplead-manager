@@ -142,6 +142,14 @@
         >
             Database
         </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.cron', $site)"
+            icon="clock"
+            :active="request()->routeIs('sites.cron')"
+        >
+            Cron Jobs
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Monitoring">

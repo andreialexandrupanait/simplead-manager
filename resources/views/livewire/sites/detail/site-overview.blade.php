@@ -66,6 +66,7 @@
             <div class="sticky top-20 space-y-4">
                 @include('livewire.sites.detail.overview._health-bar')
                 @include('livewire.sites.detail.overview._site-info-card')
+                @include('livewire.sites.detail.overview._server-resources-card')
                 @include('livewire.sites.detail.overview._uptime-card')
                 @include('livewire.sites.detail.overview._backups-card')
                 @include('livewire.sites.detail.overview._security-card')
@@ -107,7 +108,7 @@
                 <div>
                     <label for="apiEndpoint" class="block text-sm font-medium text-gray-700">API Endpoint</label>
                     <x-ui.input wire:model="apiEndpoint" type="text" id="apiEndpoint" class="mt-1"
-                           placeholder="https://example.com/wp-json/jesuspended/v1" />
+                           placeholder="https://example.com/wp-json/simplead/v1" />
                     @error('apiEndpoint') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 

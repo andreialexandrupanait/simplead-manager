@@ -317,6 +317,16 @@ class WordPressApiService
     }
 
     /**
+     * Get server resource usage (CPU, RAM, disk).
+     */
+    public function getServerResources(): array
+    {
+        $response = $this->request('GET', '/server-resources');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
      * Get database cleanup stats preview.
      */
     public function getDbCleanupStats(): array
