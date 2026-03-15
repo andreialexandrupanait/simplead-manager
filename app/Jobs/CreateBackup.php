@@ -8,7 +8,6 @@ use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Http\Controllers\Api\BackupCallbackController;
-use App\Services\Backup\BackupBrowserService;
 use App\Services\Backup\Storage\DropboxDriver;
 use App\Services\Backup\Storage\S3Driver;
 use App\Services\Backup\Storage\StorageFactory;
@@ -71,6 +70,8 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             $this->prepare($destination);
 
             $api = new WordPressApiService($this->site);
+            $this->refreshCapabilities($api);
+
             $useDirectUpload = $this->trigger !== 'pre_update'
                 && $this->type === 'full'
                 && $this->supportsDirectUpload($api);
@@ -194,6 +195,51 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     }
 
     /**
+     * Refresh backup capabilities from the WP plugin if stale (>24h).
+     */
+    protected function refreshCapabilities(WordPressApiService $api): void
+    {
+        $checkedAt = $this->site->backup_capabilities_checked_at;
+        if ($checkedAt && $checkedAt->diffInHours(now()) < 24) {
+            return;
+        }
+
+        $capabilities = $api->getBackupCapabilities();
+        if ($capabilities) {
+            $this->site->update([
+                'backup_capabilities' => $capabilities,
+                'backup_capabilities_checked_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Determine the preferred async method based on cached capabilities.
+     */
+    protected function getPreferredMethod(): ?string
+    {
+        $caps = $this->site->backup_capabilities;
+        if (!$caps || empty($caps['async_methods'])) {
+            return null;
+        }
+
+        $methods = $caps['async_methods'];
+
+        // Prefer in order: CLI (fastest, no timeout), loopback, cron
+        if (!empty($methods['cli'])) {
+            return 'cli';
+        }
+        if (!empty($methods['loopback'])) {
+            return 'loopback';
+        }
+        if (!empty($methods['cron'])) {
+            return 'cron';
+        }
+
+        return null;
+    }
+
+    /**
      * Check if the WP plugin supports the chunked download endpoints.
      */
     protected function supportsChunkedDownload(WordPressApiService $api): bool
@@ -244,16 +290,25 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         // Try async preparation first
         try {
-            $asyncResponse = $api->request('POST', '/backup/prepare-async', [
-                'type' => $this->type,
-            ], [], 30);
+            $requestData = ['type' => $this->type];
+            $preferredMethod = $this->getPreferredMethod();
+            if ($preferredMethod) {
+                $requestData['preferred_method'] = $preferredMethod;
+            }
+
+            $asyncResponse = $api->request('POST', '/backup/prepare-async', $requestData, [], 30);
 
             if ($asyncResponse->successful()) {
                 $asyncData = $asyncResponse->json();
 
                 if (!empty($asyncData['success']) && !empty($asyncData['async']) && !empty($asyncData['token'])) {
                     $token = $asyncData['token'];
-                    Log::info("Backup {$this->backupId}: async preparation started, token: {$token}");
+                    $method = $asyncData['method'] ?? 'unknown';
+                    Log::info("Backup {$this->backupId}: async preparation started via {$method}, token: {$token}");
+
+                    if ($this->backup) {
+                        $this->backup->update(['preparation_method' => $method]);
+                    }
 
                     $result = $this->pollAsyncPreparation($api, $token);
                     if ($result) {
@@ -262,7 +317,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                     // If polling failed, fall through to sync
                     Log::warning("Backup {$this->backupId}: async polling failed, falling back to sync");
                 }
-                // async: false means WP loopback/cron both failed — fall through to sync
+                // async: false means all async methods failed — fall through to sync
             }
         } catch (\Throwable $e) {
             // 404 = old plugin without async endpoint, or other error — fall back to sync
@@ -271,6 +326,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         // Sync fallback: call prepare-combined directly (increase timeout to 900s)
         $this->reportProgress('preparing', 10, 'Preparing archive synchronously...');
+        if ($this->backup) {
+            $this->backup->update(['preparation_method' => 'sync']);
+        }
         $prepareResponse = $api->request('POST', '/backup/prepare-combined', [
             'type' => $this->type,
         ], [], 900);
@@ -296,11 +354,14 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
      */
     protected function pollAsyncPreparation(WordPressApiService $api, string $token): ?array
     {
-        $maxPolls = 240; // 60 minutes at 15s intervals
-        $pollInterval = 15;
+        $pollInterval = 5;
+        // Dynamic max polls: leave 300s (5 min) for upload after polling
+        $maxPollSeconds = max(300, $this->timeout - 300);
+        $maxPolls = (int) floor($maxPollSeconds / $pollInterval);
         $lastProgress = 0;
         $lastProgressAt = time();
         $stallTimeout = 300; // 5 minutes without progress change
+        $initialStallTimeout = 60; // 60 seconds at progress=0 means the async method likely failed silently
 
         for ($i = 0; $i < $maxPolls; $i++) {
             sleep($pollInterval);
@@ -349,13 +410,18 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                 $mappedProgress = 10 + (int) ($progress * 0.15);
                 $this->reportProgress('preparing', $mappedProgress, $message);
 
-                // Stall detection
+                // Stall detection — use shorter timeout when progress is still 0
+                // (indicates the async method likely failed silently, e.g. broken loopback auth)
                 if ($progress > $lastProgress) {
                     $lastProgress = $progress;
                     $lastProgressAt = time();
-                } elseif (time() - $lastProgressAt > $stallTimeout) {
-                    Log::warning("Backup {$this->backupId}: async preparation stalled for {$stallTimeout}s at {$progress}%");
-                    return null; // Signal caller to fall back to sync
+                } else {
+                    $currentStallTimeout = ($lastProgress === 0) ? $initialStallTimeout : $stallTimeout;
+                    $stalledFor = time() - $lastProgressAt;
+                    if ($stalledFor > $currentStallTimeout) {
+                        Log::warning("Backup {$this->backupId}: async preparation stalled for {$stalledFor}s at {$progress}%");
+                        return null; // Signal caller to fall back to sync
+                    }
                 }
             } catch (\Throwable $e) {
                 // Network hiccup — continue polling
@@ -571,7 +637,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         $fileSize = filesize($combinedPath);
         $checksum = hash_file('sha256', $combinedPath);
 
-        BackupBrowserService::precache($this->backup->id, $filesPath, true);
+        PrecacheBackupFileList::dispatch($this->backup->id, $filesPath, true);
 
         return [$combinedPath, $fileName, $fileSize, $checksum];
     }

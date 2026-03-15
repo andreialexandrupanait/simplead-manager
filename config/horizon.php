@@ -279,7 +279,7 @@ return [
                 'balanceCooldown' => 3,
             ],
             'supervisor-backups' => [
-                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 2),
+                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 3),
             ],
             'supervisor-notifications' => [
                 'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 2),

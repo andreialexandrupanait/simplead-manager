@@ -349,31 +349,19 @@
                                         @if($backup->is_locked)
                                             <x-ui.badge variant="purple">Locked</x-ui.badge>
                                         @endif
-                                        @if($backup->status === 'failed' && $backup->error_message)
-                                            <div x-data="{ open: false }" class="relative">
-                                                <button @click="open = !open" class="text-red-500 hover:text-red-700" title="View error details">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                </button>
-                                                <div x-show="open" x-cloak @click.outside="open = false"
-                                                    class="absolute z-50 left-0 mt-1 w-80 rounded-lg bg-white border border-red-200 shadow-lg p-3">
-                                                    <p class="text-xs font-medium text-red-800 mb-1">Error Details</p>
-                                                    <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $backup->error_message }}</p>
-                                                </div>
-                                            </div>
+                                        @if($backup->status === \App\Enums\BackupStatus::Failed && $backup->error_message)
+                                            <button @click="$dispatch('show-error-detail', { title: 'Backup Error', message: @js($backup->error_message) })"
+                                                class="text-red-500 hover:text-red-700" title="View error details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            </button>
                                         @endif
-                                        @if($backup->restore_status === 'failed')
+                                        @if($backup->restore_status === \App\Enums\BackupStatus::Failed)
                                             <x-ui.badge variant="red">Restore failed</x-ui.badge>
                                             @if($backup->restore_error_message)
-                                                <div x-data="{ open: false }" class="relative">
-                                                    <button @click="open = !open" class="text-red-500 hover:text-red-700" title="View restore error">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                    </button>
-                                                    <div x-show="open" x-cloak @click.outside="open = false"
-                                                        class="absolute z-50 left-0 mt-1 w-80 rounded-lg bg-white border border-red-200 shadow-lg p-3">
-                                                        <p class="text-xs font-medium text-red-800 mb-1">Restore Error</p>
-                                                        <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $backup->restore_error_message }}</p>
-                                                    </div>
-                                                </div>
+                                                <button @click="$dispatch('show-error-detail', { title: 'Restore Error', message: @js($backup->restore_error_message) })"
+                                                    class="text-red-500 hover:text-red-700" title="View restore error">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                </button>
                                             @endif
                                         @elseif($backup->last_restored_at)
                                             <x-ui.badge variant="blue" title="Restored {{ $backup->last_restored_at->diffForHumans() }}">Restored</x-ui.badge>
@@ -401,7 +389,7 @@
                                 </td>
                                 <td class="px-3 py-3 text-right">
                                     <div class="flex items-center justify-end gap-1">
-                                        @if($backup->status === 'completed')
+                                        @if($backup->status === \App\Enums\BackupStatus::Completed)
                                             <button wire:click="downloadBackup({{ $backup->id }})"
                                                 class="rounded p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50"
                                                 title="Download">
@@ -445,4 +433,20 @@
     {{-- Sub-components --}}
     <livewire:sites.detail.components.backup-schedule-form :site="$site" />
     <livewire:sites.detail.components.restore-confirmation :site="$site" />
+
+    {{-- Shared error detail modal --}}
+    <div x-data="{ errorTitle: '', errorMessage: '' }"
+         x-on:show-error-detail.window="errorTitle = $event.detail.title; errorMessage = $event.detail.message; $dispatch('open-modal-error-detail')">
+        <x-ui.modal name="error-detail" maxWidth="2xl">
+            <h3 class="text-base font-semibold text-red-900 mb-3" x-text="errorTitle"></h3>
+            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p class="text-sm text-red-700 whitespace-pre-wrap break-words select-text" x-text="errorMessage"></p>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <x-ui.button variant="secondary" size="sm" x-on:click="$dispatch('close-modal-error-detail')">
+                    Close
+                </x-ui.button>
+            </div>
+        </x-ui.modal>
+    </div>
 </div>

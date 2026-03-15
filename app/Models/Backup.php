@@ -41,6 +41,8 @@ class Backup extends Model
         'lock_reason',
         'expires_at',
         'last_restored_at',
+        'upload_method',
+        'preparation_method',
         'notes',
         'restore_status',
         'restore_stage',

@@ -412,6 +412,140 @@ class WordPressApiService
     }
 
     /**
+     * Make an authenticated request returning a raw Response (for binary data).
+     */
+    public function requestRaw(string $method, string $endpoint, array $data = [], int $timeout = 30): Response
+    {
+        $apiKey = $this->site->api_key;
+        $apiSecret = $this->site->api_secret;
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+
+        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
+        $body = !empty($data) ? json_encode($data) : '';
+
+        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+
+        $stringToSign = implode('|', [
+            strtoupper($method),
+            $path,
+            $timestamp,
+            $nonce,
+            $body,
+        ]);
+
+        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+
+        $request = Http::withHeaders([
+            'X-SAM-Key'       => $apiKey,
+            'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Nonce'     => $nonce,
+            'X-SAM-Signature' => $signature,
+            'User-Agent'      => 'SimpleAD-Manager/2.0',
+        ])->timeout($timeout);
+
+        if (strtoupper($method) === 'GET') {
+            $response = $request->get($url);
+        } else {
+            $response = $request->withBody($body, 'application/json')->post($url);
+        }
+
+        $response->throw();
+
+        return $response;
+    }
+
+    /**
+     * Get backup capabilities from the WP plugin.
+     */
+    public function getBackupCapabilities(): ?array
+    {
+        try {
+            $response = $this->request('POST', '/backup/capabilities', [], [], 10);
+            if (!$response->successful()) {
+                return null;
+            }
+            $data = $response->json();
+            return $data['success'] ?? false ? $data : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Download a backup file in chunks using the WP plugin's /backup/prepare + /backup/chunk endpoints.
+     */
+    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null): void
+    {
+        // Step 1: Prepare — creates archive on WP, returns token/size/checksum
+        $prepareResponse = $this->request('POST', '/backup/prepare', ['type' => $type], [], 600);
+        $prepareResponse->throw();
+        $prepare = $prepareResponse->json();
+
+        if (empty($prepare['success']) || empty($prepare['token'])) {
+            throw new \RuntimeException('Backup prepare failed: ' . ($prepare['error']['message'] ?? 'Unknown'));
+        }
+
+        $token = $prepare['token'];
+        $totalSize = (int) $prepare['size'];
+        $expectedChecksum = $prepare['checksum'];
+
+        // Step 2: Download in 25MB chunks
+        $chunkSize = 25 * 1024 * 1024;
+        $offset = 0;
+
+        $dir = dirname($saveTo);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $fh = fopen($saveTo, 'wb');
+        if (!$fh) {
+            throw new \RuntimeException("Cannot open {$saveTo} for writing");
+        }
+
+        try {
+            while ($offset < $totalSize) {
+                $length = min($chunkSize, $totalSize - $offset);
+
+                $chunkResponse = $this->requestRaw('POST', '/backup/chunk', [
+                    'token' => $token,
+                    'offset' => $offset,
+                    'length' => $length,
+                ], 120);
+
+                $chunk = $chunkResponse->body();
+                $written = fwrite($fh, $chunk);
+                if ($written === false) {
+                    throw new \RuntimeException("Failed to write chunk at offset {$offset}");
+                }
+
+                $offset += strlen($chunk);
+
+                if ($onProgress) {
+                    $onProgress($offset, $totalSize);
+                }
+            }
+        } finally {
+            fclose($fh);
+        }
+
+        // Step 3: Verify checksum
+        $actualChecksum = hash_file('sha256', $saveTo);
+        if ($actualChecksum !== $expectedChecksum) {
+            @unlink($saveTo);
+            throw new \RuntimeException("Checksum mismatch: expected {$expectedChecksum}, got {$actualChecksum}");
+        }
+
+        // Step 4: Cleanup prepared file on WP
+        try {
+            $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
+        } catch (\Throwable) {
+            // Best effort
+        }
+    }
+
+    /**
      * Download a large file from the WordPress API (streaming).
      */
     public function streamDownload(string $endpoint, string $saveTo): void
@@ -448,7 +582,7 @@ class WordPressApiService
             'X-SAM-Nonce'     => $nonce,
             'X-SAM-Signature' => $signature,
             'User-Agent'      => 'SimpleAD-Manager/2.0',
-        ])->timeout(600)->withBody('', 'application/json')->sink($saveTo)->post($url);
+        ])->timeout(1800)->withBody('', 'application/json')->sink($saveTo)->post($url);
 
         $response->throw();
     }

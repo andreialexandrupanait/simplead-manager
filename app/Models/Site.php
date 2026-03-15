@@ -55,6 +55,8 @@ class Site extends Model
         "screenshot_path",
         "applied_preset_id",
         "is_preset_customized",
+        "backup_capabilities",
+        "backup_capabilities_checked_at",
     ];
 
     protected $casts = [
@@ -77,6 +79,8 @@ class Site extends Model
         "api_secret" => "encrypted",
         "applied_preset_id" => "integer",
         "is_preset_customized" => "boolean",
+        "backup_capabilities" => "array",
+        "backup_capabilities_checked_at" => "datetime",
     ];
 
     protected static function booted(): void

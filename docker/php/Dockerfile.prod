@@ -39,9 +39,9 @@ RUN docker-php-ext-configure gd \
         zip
 
 # Pin PECL extension versions for reproducible builds.
-# imagick 3.7.0 — stable release compatible with ImageMagick 7.x on Alpine 3.x
+# imagick 3.8.1 — stable release compatible with ImageMagick 7.x / PHP 8.3
 # redis  6.1.0  — latest stable PHP 8.x Redis extension
-RUN pecl install imagick-3.7.0 redis-6.1.0 \
+RUN pecl install imagick-3.8.1 redis-6.1.0 \
     && docker-php-ext-enable imagick redis
 
 # Install Composer (copy binary — no network hit in final stage)

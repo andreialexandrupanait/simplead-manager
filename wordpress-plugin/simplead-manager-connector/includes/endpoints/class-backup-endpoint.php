@@ -590,6 +590,23 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'success' => true,
             'direct_upload' => true,
             'strategies' => ['s3_multipart', 'chunked_push'],
+            'async_methods' => [
+                'cli'      => $this->can_spawn_cli_process(),
+                'loopback' => $this->can_loopback(),
+                'cron'     => true,
+            ],
+            'tools' => [
+                'mysqldump' => (bool) $this->find_mysqldump(),
+                'tar'       => (bool) $this->find_binary('tar'),
+                'gzip'      => function_exists('gzopen'),
+                'zip'       => class_exists('ZipArchive'),
+                'proc_open' => function_exists('proc_open'),
+            ],
+            'limits' => [
+                'max_execution_time'  => (int) ini_get('max_execution_time'),
+                'memory_limit'        => ini_get('memory_limit'),
+                'temp_dir_free_space' => @disk_free_space(sys_get_temp_dir()),
+            ],
             'plugin_version' => defined('SAM_VERSION') ? SAM_VERSION : 'unknown',
         ], 200);
     }
@@ -916,51 +933,88 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         SAM_Audit_Logger::log('backup_async_started', 'backup', 'combined', "Async backup preparation ({$type}) initiated");
 
-        // Try to spawn background work via non-blocking loopback
-        $loopback_url = rest_url(SAM_REST_NAMESPACE . '/backup/prepare-execute');
-        $args = [
-            'method' => 'POST',
-            'timeout' => 1,
-            'blocking' => false,
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'X-SAM-Key' => get_option('sam_api_key', ''),
-                'X-SAM-Secret' => get_option('sam_api_secret', ''),
-            ],
-            'body' => wp_json_encode([
+        // Manager can hint which method to try (e.g. 'cli', 'loopback', 'cron')
+        $preferred_method = $request->get_param('preferred_method');
+
+        // 1. Try CLI spawn (most reliable — no web server timeout)
+        if ((!$preferred_method || $preferred_method === 'cli') && $this->can_spawn_cli_process()) {
+            $spawned = $this->spawn_cli_worker($token, $type);
+            if ($spawned) {
+                return new WP_REST_Response([
+                    'success' => true,
+                    'async'   => true,
+                    'token'   => $token,
+                    'method'  => 'cli',
+                ], 200);
+            }
+        }
+
+        // 2. Try to spawn background work via non-blocking loopback
+        if (!$preferred_method || $preferred_method === 'loopback') {
+            $loopback_url = rest_url(SAM_REST_NAMESPACE . '/backup/prepare-execute');
+            $body = wp_json_encode([
                 'token' => $token,
                 'type' => $type,
-            ]),
-            'sslverify' => false,
-        ];
+            ]);
+            $timestamp = (string) time();
+            $route = '/' . SAM_REST_NAMESPACE . '/backup/prepare-execute';
+            $api_key = get_option('sam_api_key', '');
+            $api_secret = get_option('sam_api_secret', '');
+            $string_to_sign = implode('|', ['POST', $route, $timestamp, $body]);
+            $signature = hash_hmac('sha256', $string_to_sign, $api_secret);
 
-        $result = wp_remote_post($loopback_url, $args);
+            $args = [
+                'method' => 'POST',
+                'timeout' => 1,
+                'blocking' => false,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'X-SAM-Key' => $api_key,
+                    'X-SAM-Timestamp' => $timestamp,
+                    'X-SAM-Signature' => $signature,
+                ],
+                'body' => $body,
+                'sslverify' => false,
+            ];
 
-        if (is_wp_error($result)) {
-            // Loopback failed — try WP-Cron as fallback
+            $result = wp_remote_post($loopback_url, $args);
+
+            if (!is_wp_error($result)) {
+                return new WP_REST_Response([
+                    'success' => true,
+                    'async' => true,
+                    'token' => $token,
+                    'method' => 'loopback',
+                ], 200);
+            }
+        }
+
+        // 3. Try WP-Cron as fallback
+        if (!$preferred_method || $preferred_method === 'cron') {
             $hook = 'sam_async_backup_prepare';
             if (!wp_next_scheduled($hook, [$token, $type])) {
                 wp_schedule_single_event(time(), $hook, [$token, $type]);
                 spawn_cron();
             }
 
-            // Check if cron was scheduled
-            if (!wp_next_scheduled($hook, [$token, $type])) {
-                // Both methods failed — clean up and signal sync fallback
-                delete_transient('sam_backup_task_' . $token);
-                delete_transient($lock_key);
+            if (wp_next_scheduled($hook, [$token, $type])) {
                 return new WP_REST_Response([
                     'success' => true,
-                    'async' => false,
-                    'reason' => 'Loopback and WP-Cron both unavailable',
+                    'async' => true,
+                    'token' => $token,
+                    'method' => 'cron',
                 ], 200);
             }
         }
 
+        // All async methods failed — clean up and signal sync fallback
+        delete_transient('sam_backup_task_' . $token);
+        delete_transient($lock_key);
+
         return new WP_REST_Response([
             'success' => true,
-            'async' => true,
-            'token' => $token,
+            'async' => false,
+            'reason' => 'All async methods unavailable',
         ], 200);
     }
 
@@ -969,8 +1023,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
      * Called by loopback or WP-Cron; not meant for direct Manager calls.
      */
     public function prepare_execute(WP_REST_Request $request): WP_REST_Response {
-        global $wpdb;
-
         ignore_user_abort(true);
         @set_time_limit(3600);
         @ini_set('memory_limit', '512M');
@@ -987,6 +1039,20 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         if (!$task || $task['status'] !== 'working') {
             return new WP_REST_Response(['success' => false, 'error' => 'No pending task'], 404);
         }
+
+        $this->run_prepare_work($token, $type);
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    /**
+     * Core backup preparation logic — shared by prepare_execute (REST/cron) and CLI worker.
+     */
+    public function run_prepare_work(string $token, string $type): void {
+        global $wpdb;
+
+        $task_key = 'sam_backup_task_' . $token;
+        $task = get_transient($task_key);
 
         $token_dir = sys_get_temp_dir() . '/sam_prepared';
         if (!is_dir($token_dir)) {
@@ -1113,7 +1179,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'size' => $size,
                 'checksum' => $checksum,
                 'error' => null,
-                'started_at' => $task['started_at'],
+                'started_at' => $task ? $task['started_at'] : time(),
                 'updated_at' => time(),
             ], 7200);
 
@@ -1131,7 +1197,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'size' => null,
                 'checksum' => null,
                 'error' => $e->getMessage(),
-                'started_at' => $task['started_at'],
+                'started_at' => $task ? $task['started_at'] : time(),
                 'updated_at' => time(),
             ], 7200);
 
@@ -1140,8 +1206,6 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
             SAM_Audit_Logger::log('backup_async_failed', 'backup', 'combined', 'Async backup failed: ' . $e->getMessage());
         }
-
-        return new WP_REST_Response(['success' => true], 200);
     }
 
     /**
@@ -1174,6 +1238,208 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'checksum' => $task['checksum'],
             'error' => $task['error'],
         ], 200);
+    }
+
+    /**
+     * Check if we can spawn a CLI background process.
+     */
+    private function can_spawn_cli_process(): bool {
+        if (!function_exists('proc_open')) {
+            return false;
+        }
+
+        $php = $this->find_php_binary();
+        if (!$php) {
+            return false;
+        }
+
+        // Check nohup is available
+        $nohup = $this->find_binary('nohup');
+        if (!$nohup) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Quick check whether a loopback HTTP request to the REST API is likely to work.
+     */
+    private function can_loopback(): bool {
+        $url = rest_url(SAM_REST_NAMESPACE . '/backup/capabilities');
+        $response = wp_remote_get($url, [
+            'timeout' => 5,
+            'sslverify' => false,
+        ]);
+
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) < 500;
+    }
+
+    /**
+     * Find the PHP CLI binary path.
+     */
+    private function find_php_binary(): ?string {
+        // PHP_BINARY is the most reliable source
+        if (defined('PHP_BINARY') && PHP_BINARY && is_executable(PHP_BINARY)) {
+            // Verify it's the CLI SAPI (not php-fpm/php-cgi)
+            $basename = basename(PHP_BINARY);
+            if (strpos($basename, 'fpm') === false && strpos($basename, 'cgi') === false) {
+                return PHP_BINARY;
+            }
+        }
+
+        // Search common paths
+        $paths = [
+            'php',
+            '/usr/bin/php',
+            '/usr/local/bin/php',
+            '/usr/bin/php8.3',
+            '/usr/bin/php8.2',
+            '/usr/bin/php8.1',
+            '/usr/bin/php8.0',
+            '/usr/local/bin/php8.3',
+            '/usr/local/bin/php8.2',
+        ];
+
+        foreach ($paths as $path) {
+            if ($this->is_cli_php($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Verify a PHP binary path is CLI SAPI and executable.
+     */
+    private function is_cli_php(string $path): bool {
+        if (!function_exists('proc_open')) {
+            return false;
+        }
+
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = @proc_open([$path, '-r', 'echo php_sapi_name();'], $descriptors, $pipes);
+        if (!is_resource($process)) {
+            return false;
+        }
+
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exit = proc_close($process);
+
+        return $exit === 0 && trim($output) === 'cli';
+    }
+
+    /**
+     * Spawn a CLI background process to run backup preparation.
+     */
+    private function spawn_cli_worker(string $token, string $type): bool {
+        $php = $this->find_php_binary();
+        $nohup = $this->find_binary('nohup');
+        if (!$php || !$nohup) {
+            return false;
+        }
+
+        $script = $this->generate_worker_script($token, $type);
+        $token_dir = sys_get_temp_dir() . '/sam_prepared';
+        if (!is_dir($token_dir)) {
+            @mkdir($token_dir, 0755, true);
+        }
+
+        $script_path = $token_dir . '/sam_worker_' . $token . '.php';
+        if (file_put_contents($script_path, $script) === false) {
+            return false;
+        }
+
+        $descriptors = [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['file', '/dev/null', 'w'],
+            2 => ['file', '/dev/null', 'w'],
+        ];
+
+        $process = @proc_open(
+            [$nohup, $php, $script_path],
+            $descriptors,
+            $pipes
+        );
+
+        if (!is_resource($process)) {
+            @unlink($script_path);
+            return false;
+        }
+
+        // Immediately close — the process runs detached via nohup
+        proc_close($process);
+
+        return true;
+    }
+
+    /**
+     * Generate a self-contained PHP worker script for CLI execution.
+     */
+    private function generate_worker_script(string $token, string $type): string {
+        $abspath = rtrim(ABSPATH, '/\\');
+        $wp_load = $abspath . '/wp-load.php';
+        $plugin_file = __FILE__;
+
+        // Escape strings for embedding in PHP
+        $token_escaped = addslashes($token);
+        $type_escaped = addslashes($type);
+        $wp_load_escaped = addslashes($wp_load);
+        $plugin_file_escaped = addslashes($plugin_file);
+
+        return <<<PHP
+<?php
+/**
+ * SAM CLI backup worker — auto-generated, self-deleting.
+ * Token: {$token}
+ */
+
+// Detach from any parent process constraints
+ignore_user_abort(true);
+set_time_limit(0);
+@ini_set('memory_limit', '512M');
+
+// Load WordPress
+define('DOING_CRON', true); // Prevent redirect and other web-only behavior
+define('SAM_CLI_WORKER', true);
+
+\$wp_load = '{$wp_load_escaped}';
+if (!file_exists(\$wp_load)) {
+    error_log('SAM CLI worker: wp-load.php not found at ' . \$wp_load);
+    @unlink(__FILE__);
+    exit(1);
+}
+
+require_once \$wp_load;
+
+// Ensure our plugin class is available
+\$plugin_file = '{$plugin_file_escaped}';
+if (!class_exists('SAM_Backup_Endpoint')) {
+    if (file_exists(\$plugin_file)) {
+        require_once \$plugin_file;
+    } else {
+        error_log('SAM CLI worker: SAM_Backup_Endpoint class not found');
+        @unlink(__FILE__);
+        exit(1);
+    }
+}
+
+// Run the backup preparation
+\$endpoint = new SAM_Backup_Endpoint();
+\$endpoint->run_prepare_work('{$token_escaped}', '{$type_escaped}');
+
+// Self-delete
+@unlink(__FILE__);
+PHP;
     }
 
     /**
