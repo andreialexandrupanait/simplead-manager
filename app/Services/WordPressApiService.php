@@ -26,37 +26,52 @@ class WordPressApiService
         if (!empty($queryParams)) {
             $url .= '?' . http_build_query($queryParams);
         }
-        $timestamp = (string) time();
-        $nonce = bin2hex(random_bytes(16));
         $body = !empty($data) ? json_encode($data) : '';
 
         // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
 
-        // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
-        $stringToSign = implode('|', [
-            strtoupper($method),
-            $path,
-            $timestamp,
-            $nonce,
-            $body,
-        ]);
+        $maxRetries = 3;
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            // Fresh timestamp/nonce for each attempt (stale timestamps get rejected)
+            $timestamp = (string) time();
+            $nonce = bin2hex(random_bytes(16));
 
-        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+            // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
+            $stringToSign = implode('|', [
+                strtoupper($method),
+                $path,
+                $timestamp,
+                $nonce,
+                $body,
+            ]);
 
-        $request = Http::withHeaders([
-            'X-SAM-Key'       => $apiKey,
-            'X-SAM-Timestamp' => $timestamp,
-            'X-SAM-Nonce'     => $nonce,
-            'X-SAM-Signature' => $signature,
-            'User-Agent'      => 'SimpleAD-Manager/2.0',
-            'Accept'          => 'application/json',
-        ])->timeout($timeout);
+            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
-        if (strtoupper($method) === 'GET') {
-            $response = $request->get($url);
-        } else {
-            $response = $request->withBody($body, 'application/json')->post($url);
+            $request = Http::withHeaders([
+                'X-SAM-Key'       => $apiKey,
+                'X-SAM-Timestamp' => $timestamp,
+                'X-SAM-Nonce'     => $nonce,
+                'X-SAM-Signature' => $signature,
+                'User-Agent'      => 'SimpleAD-Manager/2.0',
+                'Accept'          => 'application/json',
+            ])->timeout($timeout);
+
+            if (strtoupper($method) === 'GET') {
+                $response = $request->get($url);
+            } else {
+                $response = $request->withBody($body, 'application/json')->post($url);
+            }
+
+            if ($response->status() === 429 && $attempt < $maxRetries) {
+                $retryAfter = (int) $response->header('Retry-After') ?: min(5 * pow(3, $attempt), 60);
+                $retryAfter = min(max($retryAfter, 1), 60);
+                Log::warning("Rate limited (429) on {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                sleep($retryAfter);
+                continue;
+            }
+
+            break;
         }
 
         if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
@@ -582,6 +597,11 @@ class WordPressApiService
                 if ($onProgress) {
                     $onProgress($i + 1, $totalChunks);
                 }
+
+                // Avoid rate limiting on sites with strict limits
+                if ($i < $totalChunks - 1) {
+                    sleep(2);
+                }
             }
         } finally {
             fclose($fh);
@@ -612,43 +632,57 @@ class WordPressApiService
         $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
 
         $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-        $timestamp = (string) time();
-        $nonce = bin2hex(random_bytes(16));
         $body = !empty($data) ? json_encode($data) : '';
-
         $path = '/simplead/v1/' . ltrim($endpoint, '/');
-        $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $body]);
-        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
-        $fh = fopen($saveTo, 'wb');
-        if (!$fh) {
-            throw new \RuntimeException("Cannot open {$saveTo} for writing");
+        $maxRetries = 3;
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            // Fresh timestamp/nonce for each attempt
+            $timestamp = (string) time();
+            $nonce = bin2hex(random_bytes(16));
+            $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $body]);
+            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+
+            $fh = fopen($saveTo, 'wb');
+            if (!$fh) {
+                throw new \RuntimeException("Cannot open {$saveTo} for writing");
+            }
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $body,
+                CURLOPT_FILE           => $fh,
+                CURLOPT_HTTPHEADER     => [
+                    'X-SAM-Key: ' . $apiKey,
+                    'X-SAM-Timestamp: ' . $timestamp,
+                    'X-SAM-Nonce: ' . $nonce,
+                    'X-SAM-Signature: ' . $signature,
+                    'User-Agent: SimpleAD-Manager/2.0',
+                    'Content-Type: application/json',
+                ],
+                CURLOPT_TIMEOUT        => 600,
+                CURLOPT_CONNECTTIMEOUT => 30,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+
+            $success = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+            fclose($fh);
+
+            if ($httpCode === 429 && $attempt < $maxRetries) {
+                $retryAfter = min(5 * pow(3, $attempt), 60);
+                Log::warning("Rate limited (429) on stream download {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                @unlink($saveTo);
+                sleep($retryAfter);
+                continue;
+            }
+
+            break;
         }
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_FILE           => $fh,
-            CURLOPT_HTTPHEADER     => [
-                'X-SAM-Key: ' . $apiKey,
-                'X-SAM-Timestamp: ' . $timestamp,
-                'X-SAM-Nonce: ' . $nonce,
-                'X-SAM-Signature: ' . $signature,
-                'User-Agent: SimpleAD-Manager/2.0',
-                'Content-Type: application/json',
-            ],
-            CURLOPT_TIMEOUT        => 600,
-            CURLOPT_CONNECTTIMEOUT => 30,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => true,
-        ]);
-
-        $success = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        fclose($fh);
 
         if (!$success || $httpCode >= 400) {
             // Read only first 1KB for error details (file could be huge)
@@ -703,6 +737,11 @@ class WordPressApiService
 
                 if ($onProgress) {
                     $onProgress($offset, $totalSize);
+                }
+
+                // Avoid rate limiting on sites with strict limits
+                if ($offset < $totalSize) {
+                    sleep(1);
                 }
             }
         } finally {

@@ -374,7 +374,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
      */
     protected function pollAsyncPreparation(WordPressApiService $api, string $token): ?array
     {
-        $pollInterval = 5;
+        $pollInterval = 10; // Reduced from 5s to avoid rate limiting on strict hosts (6 req/min vs 12)
         // Dynamic max polls: leave 300s (5 min) for upload after polling
         $maxPollSeconds = max(300, $this->timeout - 300);
         $maxPolls = (int) floor($maxPollSeconds / $pollInterval);
