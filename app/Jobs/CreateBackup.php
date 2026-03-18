@@ -6,6 +6,7 @@ use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Jobs\Concerns\BackupJobTrait;
 use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
@@ -13,8 +14,6 @@ use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\WordPressApiService;
 use App\Jobs\PrecacheBackupFileList;
-use App\Jobs\NotifyBackupFailed;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,12 +21,11 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use ZipArchive;
 
 class CreateBackup implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, BackupJobTrait;
 
     public int $timeout = 1800;
     public int $tries = 2;
@@ -53,10 +51,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         return 'backup-' . $this->site->id;
     }
 
-    public static function releaseUniqueLock(int $siteId): void
+    protected function backupTypeLabel(): string
     {
-        $cacheKey = 'laravel_unique_job:' . static::class . ':backup-' . $siteId;
-        Cache::forget($cacheKey);
+        return 'Backup';
     }
 
     public function handle(): void
@@ -64,7 +61,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Creating backup...');
 
         $this->tempDir = storage_path('app/temp/backup-' . uniqid());
-        mkdir($this->tempDir, 0755, true);
+        mkdir($this->tempDir, 0700, true);
 
         try {
             $destination = $this->resolveStorageDestination();
@@ -94,18 +91,6 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             throw $e;
         } finally {
             $this->cleanup();
-        }
-    }
-
-    protected function checkCancelled(): void
-    {
-        if (!$this->backupId) {
-            return;
-        }
-        $status = Backup::where('id', $this->backupId)->value('status');
-        if ($status === BackupStatus::Cancelled || $status === 'cancelled') {
-            Log::info("Backup {$this->backupId}: cancelled by user, aborting job");
-            throw new \RuntimeException('Backup cancelled by user');
         }
     }
 
@@ -427,123 +412,4 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         static::releaseUniqueLock($this->site->id);
     }
 
-    protected function handleFailure(\Exception $e): void
-    {
-        Log::error("Backup failed for site {$this->site->id} ({$this->site->domain})", [
-            'backup_id' => $this->backupId,
-            'type' => $this->type,
-            'trigger' => $this->trigger,
-            'exception' => get_class($e),
-            'message' => $e->getMessage(),
-            'code' => $e->getCode(),
-            'file' => $e->getFile() . ':' . $e->getLine(),
-        ]);
-
-        if ($this->backup) {
-            $this->backup->refresh();
-            if ($this->backup->status === BackupStatus::Cancelled) {
-                return; // Don't overwrite cancelled status
-            }
-            $this->backup->update([
-                'status' => BackupStatus::Failed,
-                'stage' => 'failed',
-                'progress_message' => 'Backup failed: ' . Str::limit($e->getMessage(), 200),
-                'error_message' => $e->getMessage(),
-                'completed_at' => now(),
-                'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
-            ]);
-        }
-
-        $config = $this->site->backupConfig;
-        if ($config) {
-            $config->update(['last_backup_status' => 'failed']);
-        }
-
-        $this->site->update(['backup_ok' => false]);
-
-        if ($this->backup) {
-            NotifyBackupFailed::dispatch($this->site, $this->backup, $e->getMessage());
-        }
-
-        ActivityLogger::backupFailed($this->site, $e->getMessage());
-
-        // Release unique lock when no more retries remain
-        if ($this->attempts() >= $this->tries) {
-            static::releaseUniqueLock($this->site->id);
-        }
-    }
-
-    protected function reportProgress(string $stage, int $percent, string $message): void
-    {
-        if ($this->backup) {
-            $this->backup->update([
-                'stage' => $stage,
-                'progress_percent' => $percent,
-                'progress_message' => $message,
-            ]);
-        }
-
-        JobTracker::progress($this->uniqueId(), $percent, $message);
-    }
-
-    protected function resolveStorageDestination(): ?StorageDestination
-    {
-        // Explicit destination
-        if ($this->storageDestinationId) {
-            return StorageDestination::find($this->storageDestinationId);
-        }
-
-        // Site config destination
-        $config = $this->site->backupConfig;
-        if ($config?->storage_destination_id) {
-            return StorageDestination::find($config->storage_destination_id);
-        }
-
-        // Default destination (fall back to any active if no default set)
-        return StorageDestination::where('is_default', true)
-            ->where('is_active', true)
-            ->first()
-            ?? StorageDestination::where('is_active', true)->first();
-    }
-
-    protected function cleanup(): void
-    {
-        if ($this->tempDir && is_dir($this->tempDir)) {
-            $files = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($this->tempDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($files as $file) {
-                $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
-            }
-            rmdir($this->tempDir);
-        }
-    }
-
-    public function failed(?\Throwable $exception): void
-    {
-        Log::error("Backup job permanently failed for site {$this->site->id} ({$this->site->domain})", [
-            'backup_id' => $this->backupId,
-            'exception' => $exception ? get_class($exception) : 'Unknown',
-            'message' => $exception?->getMessage(),
-        ]);
-
-        $exceptionClass = $exception ? get_class($exception) : 'Unknown';
-
-        // Mark the backup record as failed so it doesn't stay stuck in "in_progress"
-        $backup = $this->backupId ? Backup::find($this->backupId) : null;
-        if ($backup && !in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled])) {
-            $backup->update([
-                'status' => BackupStatus::Failed,
-                'stage' => 'failed',
-                'progress_message' => 'Backup failed: ' . Str::limit($exception?->getMessage() ?? 'Unknown error', 200),
-                'error_message' => $exception?->getMessage() ?? 'Job exceeded maximum attempts or timed out',
-                'completed_at' => now(),
-                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
-            ]);
-        }
-
-        CircuitBreakerService::recordFailure($this->site, "Backup failed: {$exceptionClass}");
-        JobTracker::fail($this->uniqueId(), "Backup failed: {$exceptionClass}");
-    }
 }

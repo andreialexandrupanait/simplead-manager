@@ -198,7 +198,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         $token = bin2hex(random_bytes(32));
         $token_dir = sys_get_temp_dir() . '/sam_prepared';
         if (!is_dir($token_dir)) {
-            @mkdir($token_dir, 0755, true);
+            @mkdir($token_dir, 0700, true);
         }
         $prepared_file = $token_dir . '/sam_backup_' . $token;
 
@@ -231,16 +231,23 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             }
 
             $zip = new \ZipArchive();
-            $zip->open($prepared_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+            if ($zip->open($prepared_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create zip archive.'],
+                ], 500);
+            }
             $files = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::LEAVES_ONLY
             );
             foreach ($files as $file) {
                 if ($file->isFile()) {
-                    $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                    $realPath = $file->getRealPath();
+                    if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                    $relative = substr($realPath, strlen($source_dir) + 1);
                     if (!$this->should_exclude($relative)) {
-                        $zip->addFile($file->getRealPath(), $relative);
+                        $zip->addFile($realPath, $relative);
                     }
                 }
             }
@@ -254,7 +261,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'error' => [
                     'code' => 'PREPARE_FAILED',
                     'message' => 'Prepared file is empty or missing.',
-                    'debug' => [
+                    'debug' => (defined('WP_DEBUG') && WP_DEBUG) ? [
                         'type' => $type,
                         'prepared_file' => $prepared_file,
                         'file_exists' => file_exists($prepared_file),
@@ -262,7 +269,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                         'temp_writable' => is_writable(sys_get_temp_dir()),
                         'token_dir_exists' => is_dir($token_dir),
                         'max_execution_time' => ini_get('max_execution_time'),
-                    ],
+                    ] : null,
                 ],
             ], 500);
         }
@@ -441,7 +448,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         foreach ($iterator as $file) {
             if (!$file->isFile()) continue;
-            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            $realPath = $file->getRealPath();
+            if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+            $relative = substr($realPath, strlen($source_dir) + 1);
             if ($this->should_exclude($relative)) continue;
 
             $entries[] = [
@@ -492,7 +501,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         foreach ($iterator as $file) {
             if (!$file->isFile()) continue;
-            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            $realPath = $file->getRealPath();
+            if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+            $relative = substr($realPath, strlen($source_dir) + 1);
             if ($this->should_exclude($relative)) continue;
 
             $current_paths[$relative] = true;
@@ -546,7 +557,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         // Create chunked session token
         $token = bin2hex(random_bytes(32));
         $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
-        if (!@mkdir($token_dir, 0755, true)) {
+        if (!@mkdir($token_dir, 0700, true)) {
             return new WP_REST_Response([
                 'success' => false,
                 'error' => ['code' => 'MKDIR_FAILED', 'message' => 'Cannot create work directory.'],
@@ -602,11 +613,11 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         $token = bin2hex(random_bytes(32));
         $token_dir = sys_get_temp_dir() . '/sam_prepared';
         if (!is_dir($token_dir)) {
-            @mkdir($token_dir, 0755, true);
+            @mkdir($token_dir, 0700, true);
         }
 
         $work_dir = $token_dir . '/sam_work_' . $token;
-        @mkdir($work_dir, 0755, true);
+        @mkdir($work_dir, 0700, true);
 
         try {
             // 1. Database dump
@@ -634,16 +645,24 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 }
 
                 $zip = new \ZipArchive();
-                $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                if ($zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    $this->recursive_delete($work_dir);
+                    return new WP_REST_Response([
+                        'success' => false,
+                        'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create files archive.'],
+                    ], 500);
+                }
                 $files = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
                     \RecursiveIteratorIterator::LEAVES_ONLY
                 );
                 foreach ($files as $file) {
                     if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        $realPath = $file->getRealPath();
+                        if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                        $relative = substr($realPath, strlen($source_dir) + 1);
                         if (!$this->should_exclude($relative)) {
-                            $zip->addFile($file->getRealPath(), $relative);
+                            $zip->addFile($realPath, $relative);
                         }
                     }
                 }
@@ -687,7 +706,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 $this->recursive_delete($work_dir);
                 return new WP_REST_Response([
                     'success' => false,
-                    'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Database dump is empty or missing.', 'debug' => $debug],
+                    'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Database dump is empty or missing.'] + ((defined('WP_DEBUG') && WP_DEBUG) ? ['debug' => $debug] : []),
                 ], 500);
             }
 
@@ -696,7 +715,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 $this->recursive_delete($work_dir);
                 return new WP_REST_Response([
                     'success' => false,
-                    'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create combined archive.', 'debug' => $debug],
+                    'error' => ['code' => 'ZIP_FAILED', 'message' => 'Failed to create combined archive.'] + ((defined('WP_DEBUG') && WP_DEBUG) ? ['debug' => $debug] : []),
                 ], 500);
             }
 
@@ -714,7 +733,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 $this->recursive_delete($work_dir);
                 return new WP_REST_Response([
                     'success' => false,
-                    'error' => ['code' => 'ZIP_CLOSE_FAILED', 'message' => 'ZipArchive::close() returned false.', 'debug' => $debug],
+                    'error' => ['code' => 'ZIP_CLOSE_FAILED', 'message' => 'ZipArchive::close() returned false.'] + ((defined('WP_DEBUG') && WP_DEBUG) ? ['debug' => $debug] : []),
                 ], 500);
             }
 
@@ -740,7 +759,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $debug['final_exists'] = file_exists($combined_file);
             return new WP_REST_Response([
                 'success' => false,
-                'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Combined archive is empty after close.', 'debug' => $debug],
+                'error' => ['code' => 'PREPARE_FAILED', 'message' => 'Combined archive is empty after close.'] + ((defined('WP_DEBUG') && WP_DEBUG) ? ['debug' => $debug] : []),
             ], 500);
         }
 
@@ -955,11 +974,11 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         $token_dir = sys_get_temp_dir() . '/sam_prepared';
         if (!is_dir($token_dir)) {
-            @mkdir($token_dir, 0755, true);
+            @mkdir($token_dir, 0700, true);
         }
 
         $work_dir = $token_dir . '/sam_work_' . $token;
-        @mkdir($work_dir, 0755, true);
+        @mkdir($work_dir, 0700, true);
 
         try {
             // 1. Database dump (0-20%)
@@ -988,16 +1007,20 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     throw new \RuntimeException('ZipArchive extension not available.');
                 }
                 $zip = new \ZipArchive();
-                $zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                if ($zip->open($files_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    throw new \RuntimeException('Failed to create files archive.');
+                }
                 $files = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
                     \RecursiveIteratorIterator::LEAVES_ONLY
                 );
                 foreach ($files as $file) {
                     if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        $realPath = $file->getRealPath();
+                        if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                        $relative = substr($realPath, strlen($source_dir) + 1);
                         if (!$this->should_exclude($relative)) {
-                            $zip->addFile($file->getRealPath(), $relative);
+                            $zip->addFile($realPath, $relative);
                         }
                     }
                 }
@@ -1149,7 +1172,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         $token = bin2hex(random_bytes(32));
         $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
-        if (!@mkdir($token_dir, 0755, true)) {
+        if (!@mkdir($token_dir, 0700, true)) {
             return new WP_REST_Response([
                 'success' => false,
                 'error' => ['code' => 'MKDIR_FAILED', 'message' => 'Cannot create work directory.'],
@@ -1205,7 +1228,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         foreach ($iterator as $file) {
             if (!$file->isFile()) continue;
-            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            $realPath = $file->getRealPath();
+            if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+            $relative = substr($realPath, strlen($source_dir) + 1);
             if ($this->should_exclude($relative)) continue;
 
             $entries[] = [
@@ -1435,7 +1460,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             } else {
                 // Files: extract chunk zips to disk, then build final zip using addFile()
                 $extract_dir = $token_dir . '/merged_extract';
-                @mkdir($extract_dir, 0755, true);
+                @mkdir($extract_dir, 0700, true);
 
                 for ($i = 0; $i < $total; $i++) {
                     $chunk_zip_file = $token_dir . '/chunk_' . $i . '_files.zip';
@@ -1446,7 +1471,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     if ($chunk_zip->open($chunk_zip_file) !== true) {
                         throw new \RuntimeException("Cannot open chunk zip {$i}.");
                     }
-                    $chunk_zip->extractTo($extract_dir);
+                    $this->safe_extract_zip($chunk_zip, $extract_dir);
                     $chunk_zip->close();
                 }
 
@@ -1459,10 +1484,13 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     new \RecursiveDirectoryIterator($extract_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
                     \RecursiveIteratorIterator::LEAVES_ONLY
                 );
+                $real_extract = realpath($extract_dir);
                 foreach ($iter as $file) {
                     if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($extract_dir) + 1);
-                        $combined_zip->addFile($file->getRealPath(), $relative);
+                        $realPath = $file->getRealPath();
+                        if ($realPath === false || ($real_extract && strpos($realPath, $real_extract . '/') !== 0)) continue;
+                        $relative = substr($realPath, strlen($extract_dir) + 1);
+                        $combined_zip->addFile($realPath, $relative);
                     }
                 }
                 $combined_zip->close();
@@ -1932,8 +1960,10 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 );
                 foreach ($files as $file) {
                     if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
-                        $zip->addFile($file->getRealPath(), $relative);
+                        $realPath = $file->getRealPath();
+                        if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                        $relative = substr($realPath, strlen($source_dir) + 1);
+                        $zip->addFile($realPath, $relative);
                         $added++;
                     }
                 }
@@ -1956,9 +1986,11 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 );
                 foreach ($files as $file) {
                     if ($file->isFile()) {
-                        $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                        $realPath = $file->getRealPath();
+                        if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                        $relative = substr($realPath, strlen($source_dir) + 1);
                         if (!$this->should_exclude($relative)) {
-                            $zip->addFile($file->getRealPath(), $relative);
+                            $zip->addFile($realPath, $relative);
                             $added++;
                         }
                     }
@@ -2097,7 +2129,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         foreach ($iterator as $file) {
             if (!$file->isFile()) continue;
-            $file_relative = substr($file->getRealPath(), strlen($base_dir) + 1);
+            $realPath = $file->getRealPath();
+            if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+            $file_relative = substr($realPath, strlen($base_dir) + 1);
             if ($this->should_exclude($file_relative)) continue;
 
             $file_size = $file->getSize();
@@ -2198,7 +2232,11 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
 
         $zip = new \ZipArchive();
-        $zip->open($tmp_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if ($zip->open($tmp_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            @unlink($tmp_file);
+            echo '{"success":false,"error":{"code":"ZIP_FAILED","message":"Failed to create zip archive."}}';
+            exit;
+        }
 
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -2207,9 +2245,11 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         foreach ($files as $file) {
             if ($file->isFile()) {
-                $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+                $realPath = $file->getRealPath();
+                if ($realPath === false || !$this->is_within_abspath($realPath)) continue;
+                $relative = substr($realPath, strlen($source_dir) + 1);
                 if (!$this->should_exclude($relative)) {
-                    $zip->addFile($file->getRealPath(), $relative);
+                    $zip->addFile($realPath, $relative);
                 }
             }
         }
@@ -2274,7 +2314,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             if ($zip->open($file) !== true) {
                 throw new \RuntimeException('Failed to open zip archive.');
             }
-            $zip->extractTo(rtrim(ABSPATH, '/'));
+            $this->safe_extract_zip($zip, rtrim(ABSPATH, '/'));
             $zip->close();
         } else {
             throw new \RuntimeException('Unknown archive format. Expected zip.');
@@ -2423,5 +2463,68 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
         }
         @rmdir($dir);
+    }
+
+    /**
+     * Check if a resolved file path is within the WordPress installation directory.
+     * Prevents symlinks from including/extracting files outside the site root.
+     */
+    private function is_within_abspath(string $real_path): bool {
+        $abspath = realpath(rtrim(ABSPATH, '/'));
+        if ($abspath === false) {
+            return false;
+        }
+        return strpos($real_path, $abspath . DIRECTORY_SEPARATOR) === 0 || $real_path === $abspath;
+    }
+
+    /**
+     * Safely extract a ZIP archive to a destination directory.
+     * Validates each entry to prevent path traversal and symlink attacks.
+     */
+    private function safe_extract_zip(\ZipArchive $zip, string $dest): void {
+        $real_dest = realpath($dest);
+        if ($real_dest === false) {
+            throw new \RuntimeException("Extraction destination does not exist: {$dest}");
+        }
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry_name = $zip->getNameIndex($i);
+            if ($entry_name === false || substr($entry_name, -1) === '/') {
+                continue;
+            }
+
+            // Reject entries with path traversal sequences
+            if (strpos($entry_name, '..') !== false) {
+                continue;
+            }
+
+            $target_dir = dirname($real_dest . '/' . $entry_name);
+            if (!is_dir($target_dir)) {
+                @mkdir($target_dir, 0755, true);
+            }
+
+            $resolved_dir = realpath($target_dir);
+            if ($resolved_dir === false || strpos($resolved_dir . '/', $real_dest . '/') !== 0) {
+                continue;
+            }
+
+            $safe_path = $resolved_dir . '/' . basename($entry_name);
+            $stream = $zip->getStream($entry_name);
+            if (!$stream) {
+                continue;
+            }
+
+            $fh = fopen($safe_path, 'wb');
+            if (!$fh) {
+                fclose($stream);
+                continue;
+            }
+
+            while (!feof($stream)) {
+                fwrite($fh, fread($stream, 524288));
+            }
+            fclose($fh);
+            fclose($stream);
+        }
     }
 }

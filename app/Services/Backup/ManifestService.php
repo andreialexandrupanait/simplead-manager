@@ -5,6 +5,7 @@ namespace App\Services\Backup;
 use App\Models\Backup;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\WordPressApiService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ManifestService
@@ -71,6 +72,9 @@ class ManifestService
             mkdir($tempDir, 0755, true);
         }
         $tempFile = tempnam($tempDir, 'manifest_');
+        if ($tempFile === false) {
+            throw new \RuntimeException('Failed to create temporary file for manifest upload');
+        }
         file_put_contents($tempFile, $gzipped);
 
         try {
@@ -111,6 +115,9 @@ class ManifestService
             mkdir($tempDir, 0755, true);
         }
         $tempFile = tempnam($tempDir, 'manifest_dl_');
+        if ($tempFile === false) {
+            throw new \RuntimeException("Failed to create temporary file for manifest download (backup {$backup->id})");
+        }
 
         try {
             $driver->download($backup->manifest_path, $tempFile);
@@ -146,30 +153,18 @@ class ManifestService
 
     /**
      * Walk parent_backup_id chain to find the root full backup.
+     * Uses a single recursive CTE query instead of N+1 queries.
      */
     public function findChainRoot(Backup $backup): Backup
     {
-        $current = $backup;
-        $visited = [];
+        $chain = $this->loadAncestorChain($backup->id);
 
-        while ($current->parent_backup_id !== null) {
-            if (in_array($current->id, $visited)) {
-                throw new \RuntimeException("Circular reference detected in backup chain at backup {$current->id}");
-            }
-            $visited[] = $current->id;
-
-            $parent = Backup::find($current->parent_backup_id);
-            if (!$parent) {
-                break;
-            }
-            $current = $parent;
-        }
-
-        return $current;
+        return $chain->first() ?? $backup;
     }
 
     /**
      * Get the full chain of backups for restore: [full, inc1, inc2, ...target]
+     * Uses a single recursive CTE query instead of N+1 queries.
      *
      * @return Backup[] Ordered from full backup to the target incremental
      */
@@ -179,22 +174,39 @@ class ManifestService
             return [$backup];
         }
 
-        // Walk up to root
-        $chain = [$backup];
-        $current = $backup;
-        $visited = [$backup->id];
+        return $this->loadAncestorChain($backup->id)->values()->all();
+    }
 
-        while ($current->parent_backup_id !== null) {
-            $parent = Backup::find($current->parent_backup_id);
-            if (!$parent || in_array($parent->id, $visited)) {
-                break;
-            }
-            $visited[] = $parent->id;
-            array_unshift($chain, $parent);
-            $current = $parent;
+    /**
+     * Load the full ancestor chain for a backup using a recursive CTE.
+     * Returns backups ordered from root (full) to the given backup.
+     * One query regardless of chain depth.
+     */
+    private function loadAncestorChain(int $backupId)
+    {
+        $rows = DB::select("
+            WITH RECURSIVE ancestor_chain AS (
+                SELECT id, parent_backup_id, 0 AS depth
+                FROM backups
+                WHERE id = ?
+                UNION ALL
+                SELECT b.id, b.parent_backup_id, ac.depth + 1
+                FROM backups b
+                INNER JOIN ancestor_chain ac ON b.id = ac.parent_backup_id
+                WHERE ac.depth < 100
+            )
+            SELECT id FROM ancestor_chain ORDER BY depth DESC
+        ", [$backupId]);
+
+        $orderedIds = collect($rows)->pluck('id')->toArray();
+
+        if (empty($orderedIds)) {
+            return collect();
         }
 
-        return $chain;
+        $backups = Backup::whereIn('id', $orderedIds)->get()->keyBy('id');
+
+        return collect($orderedIds)->map(fn ($id) => $backups->get($id))->filter();
     }
 
     /**

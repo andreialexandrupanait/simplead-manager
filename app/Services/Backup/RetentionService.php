@@ -23,11 +23,19 @@ class RetentionService
         }
 
         // Chain-aware retention: group backups into chains (full + incrementals)
-        $allBackups = Backup::where('site_id', $site->id)
+        $query = Backup::where('site_id', $site->id)
             ->where('status', BackupStatus::Completed)
             ->where('is_locked', false)
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
+
+        // For days-based retention, only load backups older than the cutoff
+        $cutoff = null;
+        if ($config->retention_type === 'days') {
+            $cutoff = now()->subDays($config->retention_value);
+            $query->where('created_at', '<', $cutoff);
+        }
+
+        $allBackups = $query->get();
 
         // Group into chains: full backups (no parent) with their incrementals
         $chains = [];
@@ -58,7 +66,7 @@ class RetentionService
         if ($config->retention_type === 'count') {
             $chainsToDelete = array_slice($chains, $config->retention_value);
         } else {
-            $cutoff = now()->subDays($config->retention_value);
+            // For days-based with pre-filtered query, all loaded chains are candidates
             foreach ($chains as $chain) {
                 if ($chain->first()->created_at < $cutoff) {
                     $chainsToDelete[] = $chain;
@@ -68,32 +76,64 @@ class RetentionService
 
         foreach ($chainsToDelete as $chain) {
             foreach ($chain as $oldBackup) {
-                try {
-                    DB::transaction(function () use ($oldBackup) {
-                        $oldDestination = $oldBackup->storageDestination;
-
-                        if ($oldDestination && $oldBackup->file_path) {
-                            $driver = StorageFactory::make($oldDestination);
-                            $driver->delete($oldBackup->file_path);
-                            $oldDestination->decrement('used_bytes', max(0, $oldBackup->file_size ?? 0));
-                        }
-
-                        // Clean up manifest file
-                        if ($oldBackup->manifest_path && $oldDestination) {
-                            try {
-                                StorageFactory::make($oldDestination)->delete($oldBackup->manifest_path);
-                            } catch (\Throwable) {}
-                        }
-
-                        $oldBackup->delete();
-                    });
-                } catch (\Exception $e) {
-                    Log::warning("Failed to delete old backup {$oldBackup->id}", [
-                        'exception' => get_class($e),
-                        'code' => $e->getCode(),
-                    ]);
-                }
+                $this->deleteBackup($oldBackup);
             }
+        }
+
+        // Clean up orphaned incrementals whose parent was deleted (FK set to NULL)
+        $this->cleanupOrphans($site);
+    }
+
+    /**
+     * Delete a single backup record and its associated storage files.
+     */
+    private function deleteBackup(Backup $backup): void
+    {
+        try {
+            DB::transaction(function () use ($backup) {
+                $destination = $backup->storageDestination;
+
+                if ($destination && $backup->file_path) {
+                    $driver = StorageFactory::make($destination);
+                    $driver->delete($backup->file_path);
+                    $destination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
+                }
+
+                // Clean up manifest file
+                if ($backup->manifest_path && $destination) {
+                    try {
+                        StorageFactory::make($destination)->delete($backup->manifest_path);
+                    } catch (\Throwable $e) {
+                        Log::warning("Failed to delete manifest for backup {$backup->id}: {$e->getMessage()}");
+                    }
+                }
+
+                $backup->delete();
+            });
+        } catch (\Exception $e) {
+            Log::warning("Failed to delete old backup {$backup->id}", [
+                'exception' => get_class($e),
+                'code' => $e->getCode(),
+            ]);
+        }
+    }
+
+    /**
+     * Clean up orphaned incremental backups whose parent was deleted.
+     * When a parent backup is deleted, nullOnDelete sets parent_backup_id to NULL.
+     * Incrementals with type='incremental' and NULL parent are definitively orphaned.
+     */
+    private function cleanupOrphans(Site $site): void
+    {
+        $orphans = Backup::where('site_id', $site->id)
+            ->where('type', 'incremental')
+            ->whereNull('parent_backup_id')
+            ->where('status', BackupStatus::Completed)
+            ->get();
+
+        foreach ($orphans as $orphan) {
+            Log::info("Cleaning up orphaned incremental backup {$orphan->id} for site {$site->id}");
+            $this->deleteBackup($orphan);
         }
     }
 }
