@@ -105,6 +105,33 @@
                 </div>
             </div>
 
+            {{-- Incremental Backups (only for full type) --}}
+            @if($type === 'full')
+                <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" wire:model.live="enable_incremental" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm font-medium text-gray-700">Enable Incremental Backups</span>
+                    </label>
+                    <p class="text-xs text-gray-500">When enabled, daily backups will be incremental (only changed files), with a full backup on the selected day.</p>
+
+                    @if($enable_incremental)
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Full Backup Day</label>
+                            <x-ui.select wire:model="full_backup_day_of_week" class="mt-1">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </x-ui.select>
+                            <p class="mt-1 text-xs text-gray-400">Other days will run incremental backups (only changed files + full database).</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             {{-- Backup before updates --}}
             <label class="flex items-center gap-2">
                 <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">

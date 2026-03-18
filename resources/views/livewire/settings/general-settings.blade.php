@@ -195,6 +195,39 @@
         </form>
     </x-ui.modal>
 
+    {{-- Connector Plugin --}}
+    <div class="mt-8">
+        <x-ui.card>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Connector Plugin') }}</h3>
+                    <p class="text-sm text-gray-500">{{ __('Push the latest connector plugin version to all connected WordPress sites.') }}</p>
+                </div>
+                <x-ui.button size="sm"
+                             wire:click="pushPluginToAllSites"
+                             wire:loading.attr="disabled"
+                             wire:target="pushPluginToAllSites"
+                             wire:confirm="{{ __('Push the connector plugin to all connected sites?') }}">
+                    <span wire:loading.remove wire:target="pushPluginToAllSites">{{ __('Push to All Sites') }}</span>
+                    <span wire:loading wire:target="pushPluginToAllSites">{{ __('Pushing...') }}</span>
+                </x-ui.button>
+            </div>
+
+            @if(!empty($pluginPushResults))
+                <div class="divide-y divide-gray-100 mt-2">
+                    @foreach($pluginPushResults as $result)
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm text-gray-700">{{ $result['site'] }}</span>
+                            <span class="text-xs {{ $result['status'] === 'success' ? 'text-green-600' : 'text-red-600' }}">
+                                {{ $result['message'] }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </x-ui.card>
+    </div>
+
     {{-- Danger Zone --}}
     <div class="mt-8">
         <x-ui.card class="border-red-200 ring-red-100">

@@ -4,12 +4,15 @@ namespace App\Livewire\Settings;
 
 use App\Livewire\Forms\GeneralSettingsFormData;
 use App\Livewire\Forms\SiteStatusFormData;
+use App\Models\Site;
 use App\Models\SiteStatus;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Services\SettingsService;
+use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -170,6 +173,70 @@ class GeneralSettings extends Component
 
         $status->delete();
         unset($this->siteStatuses);
+    }
+
+    public bool $pluginPushRunning = false;
+    public array $pluginPushResults = [];
+
+    public function pushPluginToAllSites(): void
+    {
+        $this->pluginPushRunning = true;
+        $this->pluginPushResults = [];
+
+        $sites = Site::connected()->get();
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: 'No connected sites found.');
+            $this->pluginPushRunning = false;
+            return;
+        }
+
+        $downloadUrl = URL::temporarySignedRoute(
+            'download.connector-plugin.signed',
+            now()->addMinutes(30)
+        );
+
+        $succeeded = 0;
+        $failed = 0;
+
+        foreach ($sites as $site) {
+            try {
+                $api = new WordPressApiService($site);
+                $response = $api->request('POST', '/self-update', [
+                    'download_url' => $downloadUrl,
+                ], [], 120);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $this->pluginPushResults[] = [
+                        'site' => $site->name,
+                        'status' => 'success',
+                        'message' => ($data['old_version'] ?? '?') . ' -> ' . ($data['new_version'] ?? '?'),
+                    ];
+                    $succeeded++;
+                } else {
+                    $error = $response->json('error.message') ?? "HTTP {$response->status()}";
+                    $this->pluginPushResults[] = [
+                        'site' => $site->name,
+                        'status' => 'error',
+                        'message' => $error,
+                    ];
+                    $failed++;
+                }
+            } catch (\Throwable $e) {
+                $this->pluginPushResults[] = [
+                    'site' => $site->name,
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ];
+                $failed++;
+            }
+        }
+
+        $this->pluginPushRunning = false;
+        $this->dispatch('notify',
+            type: $failed > 0 ? 'warning' : 'success',
+            message: "Plugin push complete: {$succeeded} updated, {$failed} failed."
+        );
     }
 
     public function purgeMonitoringData(): void

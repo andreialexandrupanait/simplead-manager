@@ -4,6 +4,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
+use App\Jobs\CreateIncrementalBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Backup;
 use App\Models\Site;
@@ -140,7 +141,18 @@ class SiteBackups extends Component
     public function getBackupHistoryProperty()
     {
         return $this->site->backups()
-            ->with('storageDestination')
+            ->with(['storageDestination', 'parentBackup'])
+            ->selectSub(
+                Backup::selectRaw('file_size')
+                    ->whereColumn('site_id', 'backups.site_id')
+                    ->where('status', 'completed')
+                    ->whereColumn('id', '<', 'backups.id')
+                    ->whereNotNull('file_size')
+                    ->orderByDesc('id')
+                    ->limit(1),
+                '_previous_file_size'
+            )
+            ->select('backups.*')
             ->orderByDesc('created_at')
             ->paginate(15);
     }
@@ -178,7 +190,13 @@ class SiteBackups extends Component
             'started_at' => now(),
         ]);
 
-        CreateBackup::dispatch($this->site, 'database', 'manual', $destination->id, $backup->id);
+        try {
+            CreateBackup::dispatch($this->site, 'database', 'manual', $destination->id, $backup->id);
+        } catch (\Throwable $e) {
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            return;
+        }
         $this->trackingBackupId = $backup->id;
         unset($this->activeBackup);
     }
@@ -216,9 +234,79 @@ class SiteBackups extends Component
             'started_at' => now(),
         ]);
 
-        CreateBackup::dispatch($this->site, 'full', 'manual', $destination->id, $backup->id);
+        try {
+            CreateBackup::dispatch($this->site, 'full', 'manual', $destination->id, $backup->id);
+        } catch (\Throwable $e) {
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            return;
+        }
         $this->trackingBackupId = $backup->id;
         unset($this->activeBackup);
+    }
+
+    public function backupIncremental(): void
+    {
+        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+            return;
+        }
+
+        $destination = $this->resolveDestination();
+        if (!$destination) {
+            session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
+            return;
+        }
+
+        // Check if a full backup with manifest exists
+        $hasManifest = Backup::where('site_id', $this->site->id)
+            ->where('status', 'completed')
+            ->whereNotNull('manifest_path')
+            ->exists();
+
+        if (!$hasManifest) {
+            session()->flash('backup-error', 'No full backup with manifest found. Please create a full backup first.');
+            return;
+        }
+
+        $backup = Backup::create([
+            'site_id' => $this->site->id,
+            'storage_destination_id' => $destination->id,
+            'type' => 'incremental',
+            'trigger' => 'manual',
+            'status' => 'pending',
+            'stage' => 'queued',
+            'progress_percent' => 0,
+            'progress_message' => 'Incremental backup queued, waiting to start...',
+            'includes_database' => true,
+            'includes_files' => true,
+            'wp_version' => $this->site->wp_version,
+            'php_version' => $this->site->php_version,
+            'plugins_count' => $this->site->sitePlugins()->count(),
+            'themes_count' => $this->site->siteThemes()->count(),
+            'db_size_mb' => $this->site->db_size_mb,
+            'started_at' => now(),
+        ]);
+
+        try {
+            CreateIncrementalBackup::dispatch($this->site, 'manual', $destination->id, $backup->id);
+        } catch (\Throwable $e) {
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            return;
+        }
+        $this->trackingBackupId = $backup->id;
+        unset($this->activeBackup);
+    }
+
+    #[Computed]
+    public function hasFullBackupWithManifest(): bool
+    {
+        return Backup::where('site_id', $this->site->id)
+            ->where('status', 'completed')
+            ->whereNotNull('manifest_path')
+            ->exists();
     }
 
     public function toggleLock(int $backupId): void
@@ -236,6 +324,11 @@ class SiteBackups extends Component
 
         if ($backup->is_locked) {
             session()->flash('backup-error', 'Cannot delete a locked backup. Unlock it first.');
+            return;
+        }
+
+        if ($backup->incrementals()->exists()) {
+            session()->flash('backup-error', 'Cannot delete a full backup that has incremental backups. Delete the incrementals first.');
             return;
         }
 
@@ -329,8 +422,8 @@ class SiteBackups extends Component
             ]);
 
             // Release the uniqueness lock so a new backup can be started
-            $cacheKey = 'laravel_unique_job:' . \App\Jobs\CreateBackup::class . ':backup-' . $this->site->id;
-            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+            CreateBackup::releaseUniqueLock($this->site->id);
+            CreateIncrementalBackup::releaseUniqueLock($this->site->id);
         }
 
         $this->trackingBackupId = null;

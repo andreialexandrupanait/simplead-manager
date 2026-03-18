@@ -105,6 +105,24 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'prepare_chunk_download'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/manifest', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'generate_manifest'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/session-manifest', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'download_session_manifest'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/incremental-init', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'incremental_init'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
 
     // ── Streaming backup endpoints ──────────────────────────────────────
@@ -114,6 +132,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         @set_time_limit(600);
         @ini_set('memory_limit', '512M');
+
+        $this->check_disk_space(268435456); // 256MB
 
         SAM_Audit_Logger::log('backup_db_started', 'backup', 'database', 'Database backup initiated via SimpleAd Manager');
 
@@ -139,6 +159,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         @set_time_limit(600);
         @ini_set('memory_limit', '512M');
 
+        $this->check_disk_space(536870912); // 512MB
+
         SAM_Audit_Logger::log('backup_files_started', 'backup', 'files', 'File backup initiated via SimpleAd Manager');
 
         $source_dir = rtrim(ABSPATH, '/');
@@ -155,6 +177,15 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         @set_time_limit(0);
         @ini_set('max_execution_time', '0');
         @ini_set('memory_limit', '512M');
+
+        try {
+            $this->check_disk_space(536870912); // 512MB
+        } catch (\RuntimeException $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'DISK_SPACE', 'message' => $e->getMessage()],
+            ], 507);
+        }
 
         $type = $request->get_param('type');
         if (!in_array($type, ['db', 'files'], true)) {
@@ -336,6 +367,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'success' => true,
             'chunked_prepare' => true,
             'direct_upload' => true,
+            'incremental_backup' => true,
+            'manifest_generation' => true,
             'strategies' => ['s3_multipart', 'chunked_push'],
             'async_methods' => [
                 'cli'      => false,
@@ -354,6 +387,197 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 'temp_dir_free_space' => @disk_free_space(sys_get_temp_dir()),
             ],
             'plugin_version' => defined('SAM_VERSION') ? SAM_VERSION : 'unknown',
+        ], 200);
+    }
+
+    /**
+     * Download the pre-collected manifest from a chunked session.
+     * Avoids re-scanning the filesystem after backup is complete.
+     */
+    public function download_session_manifest(WP_REST_Request $request): WP_REST_Response {
+        $token = $request->get_param('token');
+
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.'],
+            ], 400);
+        }
+
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        $manifest_file = $token_dir . '/manifest.json';
+
+        if (!file_exists($manifest_file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Manifest not found for this session.'],
+            ], 404);
+        }
+
+        $manifest = json_decode(file_get_contents($manifest_file), true);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'total_files' => count($manifest),
+            'manifest' => $manifest,
+        ], 200);
+    }
+
+    /**
+     * Generate a file manifest for incremental backup support.
+     * Returns array of {p: path, s: size, m: mtime} for all files.
+     */
+    public function generate_manifest(WP_REST_Request $request): WP_REST_Response {
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
+
+        $source_dir = rtrim(ABSPATH, '/');
+        $entries = [];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile()) continue;
+            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            if ($this->should_exclude($relative)) continue;
+
+            $entries[] = [
+                'p' => $relative,
+                's' => $file->getSize(),
+                'm' => $file->getMTime(),
+            ];
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'total_files' => count($entries),
+            'manifest' => $entries,
+        ], 200);
+    }
+
+    /**
+     * Initialize an incremental backup by comparing previous manifest with current state.
+     * Receives previous manifest and returns changed/new/deleted files grouped into chunks.
+     */
+    public function incremental_init(WP_REST_Request $request): WP_REST_Response {
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
+
+        $previous_manifest = $request->get_param('manifest');
+        if (!is_array($previous_manifest)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_MANIFEST', 'message' => 'Previous manifest must be an array.'],
+            ], 400);
+        }
+
+        // Build lookup from previous manifest
+        $prev_lookup = [];
+        foreach ($previous_manifest as $entry) {
+            $prev_lookup[$entry['p']] = $entry;
+        }
+
+        $source_dir = rtrim(ABSPATH, '/');
+        $changed_files = [];
+        $new_files = [];
+        $current_paths = [];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile()) continue;
+            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            if ($this->should_exclude($relative)) continue;
+
+            $current_paths[$relative] = true;
+            $size = $file->getSize();
+            $mtime = $file->getMTime();
+
+            if (isset($prev_lookup[$relative])) {
+                // Check if changed (size or mtime differs)
+                $prev = $prev_lookup[$relative];
+                if ($prev['s'] != $size || $prev['m'] != $mtime) {
+                    $changed_files[] = $relative;
+                }
+            } else {
+                $new_files[] = $relative;
+            }
+        }
+
+        // Find deleted files
+        $deleted_paths = [];
+        foreach ($prev_lookup as $path => $entry) {
+            if (!isset($current_paths[$path])) {
+                $deleted_paths[] = $path;
+            }
+        }
+
+        // Group changed+new files into 50MB chunks
+        $all_files = array_merge($changed_files, $new_files);
+        $max_chunk_bytes = 50 * 1024 * 1024;
+        $chunks = [];
+        $current_chunk_files = [];
+        $current_chunk_size = 0;
+
+        foreach ($all_files as $relative) {
+            $abs = $source_dir . '/' . $relative;
+            $file_size = is_file($abs) ? filesize($abs) : 0;
+
+            if ($current_chunk_size + $file_size > $max_chunk_bytes && !empty($current_chunk_files)) {
+                $chunks[] = ['scope' => 'files_list', 'files' => $current_chunk_files, 'estimated_size' => $current_chunk_size];
+                $current_chunk_files = [];
+                $current_chunk_size = 0;
+            }
+
+            $current_chunk_files[] = $relative;
+            $current_chunk_size += $file_size;
+        }
+
+        if (!empty($current_chunk_files)) {
+            $chunks[] = ['scope' => 'files_list', 'files' => $current_chunk_files, 'estimated_size' => $current_chunk_size];
+        }
+
+        // Create chunked session token
+        $token = bin2hex(random_bytes(32));
+        $token_dir = sys_get_temp_dir() . '/sam_prepared/sam_chunked_' . $token;
+        if (!@mkdir($token_dir, 0755, true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'MKDIR_FAILED', 'message' => 'Cannot create work directory.'],
+            ], 500);
+        }
+
+        // Add index to each chunk
+        foreach ($chunks as $i => &$chunk) {
+            $chunk['index'] = $i;
+        }
+        unset($chunk);
+
+        file_put_contents($token_dir . '/chunks.json', json_encode([
+            'type' => 'files',
+            'chunks' => $chunks,
+            'total_chunks' => count($chunks),
+            'created_at' => time(),
+        ]));
+
+        SAM_Audit_Logger::log('backup_incremental_init', 'backup', 'incremental',
+            'Incremental init: ' . count($changed_files) . ' changed, ' . count($new_files) . ' new, ' . count($deleted_paths) . ' deleted');
+
+        return new WP_REST_Response([
+            'success' => true,
+            'token' => $token,
+            'total_chunks' => count($chunks),
+            'changed_count' => count($changed_files),
+            'new_count' => count($new_files),
+            'deleted_count' => count($deleted_paths),
+            'deleted_paths' => $deleted_paths,
+            'chunks' => $chunks,
         ], 200);
     }
 
@@ -906,6 +1130,15 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     // completes within shared-hosting max_execution_time limits.
 
     public function prepare_chunked_init(WP_REST_Request $request): WP_REST_Response {
+        try {
+            $this->check_disk_space(268435456); // 256MB
+        } catch (\RuntimeException $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'DISK_SPACE', 'message' => $e->getMessage()],
+            ], 507);
+        }
+
         $type = $request->get_param('type');
         if (!in_array($type, ['db', 'files'], true)) {
             return new WP_REST_Response([
@@ -927,6 +1160,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $chunks = $this->group_tables_into_chunks();
         } else {
             $chunks = $this->group_directories_into_chunks();
+
+            // Collect file manifest during init (reuses the filesystem walk already done)
+            $this->collect_manifest_during_init($token_dir);
         }
 
         file_put_contents($token_dir . '/chunks.json', json_encode([
@@ -938,13 +1174,48 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         SAM_Audit_Logger::log('backup_chunked_init', 'backup', $type, "Chunked prepare initialized: " . count($chunks) . " chunks");
 
-        return new WP_REST_Response([
+        $response = [
             'success' => true,
             'token' => $token,
             'type' => $type,
             'total_chunks' => count($chunks),
             'chunks' => $chunks,
-        ], 200);
+        ];
+
+        // Include manifest availability flag
+        if ($type === 'files' && file_exists($token_dir . '/manifest.json')) {
+            $response['has_manifest'] = true;
+        }
+
+        return new WP_REST_Response($response, 200);
+    }
+
+    /**
+     * Collect file manifest (path, size, mtime) during prepare-init.
+     * Stored in token dir so it can be retrieved without re-scanning the filesystem.
+     */
+    private function collect_manifest_during_init(string $token_dir): void {
+        $source_dir = rtrim(ABSPATH, '/');
+        $entries = [];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile()) continue;
+            $relative = substr($file->getRealPath(), strlen($source_dir) + 1);
+            if ($this->should_exclude($relative)) continue;
+
+            $entries[] = [
+                'p' => $relative,
+                's' => $file->getSize(),
+                'm' => $file->getMTime(),
+            ];
+        }
+
+        file_put_contents($token_dir . '/manifest.json', json_encode($entries));
     }
 
     public function prepare_chunk_exec(WP_REST_Request $request): WP_REST_Response {
@@ -986,16 +1257,24 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
-        // Skip if already completed (idempotent retry)
+        // Skip if already completed AND chunk file still exists (idempotent retry)
         $done_marker = $token_dir . '/chunk_' . $chunk_index . '.done';
         if (file_exists($done_marker)) {
-            $size = (int) file_get_contents($done_marker);
-            return new WP_REST_Response([
-                'success' => true,
-                'chunk_index' => $chunk_index,
-                'chunk_size' => $size,
-                'skipped' => true,
-            ], 200);
+            // Verify the actual chunk file still exists
+            $expected_file = ($type === 'db')
+                ? $token_dir . '/chunk_' . $chunk_index . '.sql.gz'
+                : $token_dir . '/chunk_' . $chunk_index . '_files.zip';
+            if (file_exists($expected_file)) {
+                $size = (int) file_get_contents($done_marker);
+                return new WP_REST_Response([
+                    'success' => true,
+                    'chunk_index' => $chunk_index,
+                    'chunk_size' => $size,
+                    'skipped' => true,
+                ], 200);
+            }
+            // Chunk file was cleaned up — remove done marker and re-execute
+            @unlink($done_marker);
         }
 
         $chunk = $chunks_info['chunks'][$chunk_index];
@@ -1064,10 +1343,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         if ($type === 'db') {
             $file = $token_dir . '/chunk_' . $chunk_index . '.sql.gz';
         } else {
-            return new WP_REST_Response([
-                'success' => false,
-                'error' => ['code' => 'NOT_SUPPORTED', 'message' => 'Individual chunk download only supported for DB type.'],
-            ], 400);
+            $file = $token_dir . '/chunk_' . $chunk_index . '_files.zip';
         }
 
         if (!file_exists($file)) {
@@ -1157,12 +1433,41 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 }
                 fclose($fh);
             } else {
-                // Files: the zip is built incrementally, just move it
-                $zip_file = $token_dir . '/files.zip';
-                if (!file_exists($zip_file) || filesize($zip_file) === 0) {
-                    throw new \RuntimeException('Files archive is empty or missing.');
+                // Files: extract chunk zips to disk, then build final zip using addFile()
+                $extract_dir = $token_dir . '/merged_extract';
+                @mkdir($extract_dir, 0755, true);
+
+                for ($i = 0; $i < $total; $i++) {
+                    $chunk_zip_file = $token_dir . '/chunk_' . $i . '_files.zip';
+                    if (!file_exists($chunk_zip_file)) {
+                        throw new \RuntimeException("Chunk zip {$i} not found.");
+                    }
+                    $chunk_zip = new \ZipArchive();
+                    if ($chunk_zip->open($chunk_zip_file) !== true) {
+                        throw new \RuntimeException("Cannot open chunk zip {$i}.");
+                    }
+                    $chunk_zip->extractTo($extract_dir);
+                    $chunk_zip->close();
                 }
-                rename($zip_file, $prepared_file);
+
+                $combined_zip = new \ZipArchive();
+                if ($combined_zip->open($prepared_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    throw new \RuntimeException('Cannot create combined files archive.');
+                }
+
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($extract_dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($iter as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($extract_dir) + 1);
+                        $combined_zip->addFile($file->getRealPath(), $relative);
+                    }
+                }
+                $combined_zip->close();
+
+                $this->recursive_delete($extract_dir);
             }
         } catch (\Throwable $e) {
             @unlink($prepared_file);
@@ -1201,6 +1506,15 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     public function restore(WP_REST_Request $request): WP_REST_Response {
         @set_time_limit(600);
         @ini_set('memory_limit', '512M');
+
+        try {
+            $this->check_disk_space(536870912); // 512MB
+        } catch (\RuntimeException $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'DISK_SPACE', 'message' => $e->getMessage()],
+            ], 507);
+        }
 
         $type = $request->get_param('type');
         $data = $request->get_param('data');
@@ -1311,12 +1625,26 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     // ── Private helpers ─────────────────────────────────────────────────
 
     private function can_loopback(): bool {
-        $url = rest_url(SAM_REST_NAMESPACE . '/backup/capabilities');
-        $response = wp_remote_get($url, [
+        $url = admin_url('admin-ajax.php');
+        $response = wp_remote_post($url, [
             'timeout' => 5,
             'sslverify' => false,
+            'body' => ['action' => 'heartbeat', 'data' => ['wp-auth-check' => true]],
         ]);
-        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) < 500;
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    /**
+     * Check that sufficient disk space is available for backup operations.
+     * @param int $min_bytes Minimum required free space in bytes.
+     */
+    private function check_disk_space(int $min_bytes = 268435456): void {
+        $free = @disk_free_space(sys_get_temp_dir());
+        if ($free !== false && $free < $min_bytes) {
+            $free_mb = round($free / 1048576);
+            $required_mb = round($min_bytes / 1048576);
+            throw new \RuntimeException("Insufficient disk space: {$free_mb}MB available, {$required_mb}MB required.");
+        }
     }
 
     /**
@@ -1380,6 +1708,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
 
         $tables = $wpdb->get_col("SHOW TABLES");
+        $batch_size = 50; // rows per INSERT statement
 
         foreach ($tables as $table) {
             $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
@@ -1388,6 +1717,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
             $offset = 0;
             $chunk = 500;
+            $columns_sql = null;
+            $pending_values = [];
 
             while (true) {
                 $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$chunk}", ARRAY_A);
@@ -1396,19 +1727,31 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 }
 
                 foreach ($rows as $row) {
+                    if ($columns_sql === null) {
+                        $columns_sql = '(' . implode(', ', array_map(function ($c) {
+                            return "`{$c}`";
+                        }, array_keys($row))) . ')';
+                    }
+
                     $values = array_map(function ($v) use ($wpdb) {
                         if ($v === null) return 'NULL';
                         return "'" . $wpdb->_real_escape($v) . "'";
                     }, array_values($row));
 
-                    $columns = array_map(function ($c) {
-                        return "`{$c}`";
-                    }, array_keys($row));
+                    $pending_values[] = '(' . implode(', ', $values) . ')';
 
-                    fwrite($fh, "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n");
+                    if (count($pending_values) >= $batch_size) {
+                        fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
+                        $pending_values = [];
+                    }
                 }
 
                 $offset += $chunk;
+            }
+
+            // Flush remaining rows
+            if (!empty($pending_values) && $columns_sql !== null) {
+                fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
             }
 
             fwrite($fh, "\n");
@@ -1464,6 +1807,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
         }
 
+        $batch_size = 50; // rows per INSERT statement
+
         foreach ($tables as $table) {
             $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
             if (!$create) continue;
@@ -1472,25 +1817,39 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
             $offset = 0;
             $batch = 500;
+            $columns_sql = null;
+            $pending_values = [];
 
             while (true) {
                 $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$batch}", ARRAY_A);
                 if (empty($rows)) break;
 
                 foreach ($rows as $row) {
+                    if ($columns_sql === null) {
+                        $columns_sql = '(' . implode(', ', array_map(function ($c) {
+                            return "`{$c}`";
+                        }, array_keys($row))) . ')';
+                    }
+
                     $values = array_map(function ($v) use ($wpdb) {
                         if ($v === null) return 'NULL';
                         return "'" . $wpdb->_real_escape($v) . "'";
                     }, array_values($row));
 
-                    $columns = array_map(function ($c) {
-                        return "`{$c}`";
-                    }, array_keys($row));
+                    $pending_values[] = '(' . implode(', ', $values) . ')';
 
-                    fwrite($fh, "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n");
+                    if (count($pending_values) >= $batch_size) {
+                        fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
+                        $pending_values = [];
+                    }
                 }
 
                 $offset += $batch;
+            }
+
+            // Flush remaining rows
+            if (!empty($pending_values) && $columns_sql !== null) {
+                fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
             }
 
             fwrite($fh, "\n");
@@ -1547,15 +1906,15 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
      */
     private function exec_files_chunk(string $token_dir, int $chunk_index, array $chunk): int {
         $source_dir = rtrim(ABSPATH, '/');
-        $zip_file = $token_dir . '/files.zip';
+        // Each chunk gets its own zip to avoid ZipArchive::close() failure on large accumulated zips
+        $zip_file = $token_dir . '/chunk_' . $chunk_index . '_files.zip';
 
         if (!class_exists('ZipArchive')) {
             throw new \RuntimeException('ZipArchive extension not available.');
         }
 
         $zip = new \ZipArchive();
-        // CREATE opens existing zip or creates new one
-        if ($zip->open($zip_file, \ZipArchive::CREATE) !== true) {
+        if ($zip->open($zip_file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException("Cannot open zip archive for chunk {$chunk_index}.");
         }
 
@@ -1618,6 +1977,23 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     }
                 }
             }
+        } elseif ($scope === 'files_list') {
+            // Explicit list of file paths (from split_large_directory)
+            $file_list = $chunk['files'] ?? [];
+            foreach ($file_list as $relative) {
+                $abs_file = $source_dir . '/' . $relative;
+                if (is_file($abs_file) && !$this->should_exclude($relative)) {
+                    $zip->addFile($abs_file, $relative);
+                    $added++;
+                }
+            }
+        }
+
+        if ($added === 0) {
+            // No files to archive — close and remove the empty zip
+            $zip->close();
+            @unlink($zip_file);
+            return 0;
         }
 
         if (!$zip->close()) {
@@ -1691,6 +2067,58 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         return $chunks;
     }
 
+    private function estimate_directory_size(string $dir_path): int {
+        if (!is_dir($dir_path)) return 0;
+        $size = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir_path, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
+        }
+        return $size;
+    }
+
+    private function split_large_directory(string $base_dir, string $relative_path, int $max_chunk_bytes = 104857600): array {
+        $abs = $base_dir . '/' . $relative_path;
+        if (!is_dir($abs)) return [];
+
+        $sub_chunks = [];
+        $current_files = [];
+        $current_size = 0;
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($abs, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile()) continue;
+            $file_relative = substr($file->getRealPath(), strlen($base_dir) + 1);
+            if ($this->should_exclude($file_relative)) continue;
+
+            $file_size = $file->getSize();
+
+            if ($current_size + $file_size > $max_chunk_bytes && !empty($current_files)) {
+                $sub_chunks[] = ['scope' => 'files_list', 'files' => $current_files, 'estimated_size' => $current_size];
+                $current_files = [];
+                $current_size = 0;
+            }
+
+            $current_files[] = $file_relative;
+            $current_size += $file_size;
+        }
+
+        if (!empty($current_files)) {
+            $sub_chunks[] = ['scope' => 'files_list', 'files' => $current_files, 'estimated_size' => $current_size];
+        }
+
+        return $sub_chunks;
+    }
+
     /**
      * Group site directories into chunks for incremental zip creation.
      */
@@ -1707,23 +2135,26 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             return $chunks;
         }
 
+        // Directories that should be split by subdirectory to avoid oversized zips
+        $split_dirs = ['uploads', 'plugins', 'themes', 'cache', 'updraft', 'wflogs', 'ai1wm-backups'];
+
         foreach (new \DirectoryIterator($wp_content) as $item) {
             if ($item->isDot() || !$item->isDir()) continue;
             $name = $item->getFilename();
             $relative = 'wp-content/' . $name;
             if ($this->should_exclude($relative)) continue;
 
-            if ($name === 'uploads') {
-                // Split uploads by year subdirectory for granularity
-                $uploads_path = $item->getPathname();
-                foreach (new \DirectoryIterator($uploads_path) as $year) {
-                    if ($year->isDot() || !$year->isDir()) continue;
-                    $year_relative = 'wp-content/uploads/' . $year->getFilename();
-                    if ($this->should_exclude($year_relative)) continue;
-                    $chunks[] = ['index' => $idx++, 'scope' => 'dir', 'path' => $year_relative];
+            if (in_array($name, $split_dirs, true)) {
+                // Split by subdirectory for granularity
+                $dir_path = $item->getPathname();
+                foreach (new \DirectoryIterator($dir_path) as $sub) {
+                    if ($sub->isDot() || !$sub->isDir()) continue;
+                    $sub_relative = $relative . '/' . $sub->getFilename();
+                    if ($this->should_exclude($sub_relative)) continue;
+                    $chunks[] = ['index' => $idx++, 'scope' => 'dir', 'path' => $sub_relative];
                 }
-                // uploads root files
-                $chunks[] = ['index' => $idx++, 'scope' => 'dir_shallow', 'path' => 'wp-content/uploads'];
+                // Root files in this directory
+                $chunks[] = ['index' => $idx++, 'scope' => 'dir_shallow', 'path' => $relative];
             } else {
                 $chunks[] = ['index' => $idx++, 'scope' => 'dir', 'path' => $relative];
             }
@@ -1732,7 +2163,30 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         // wp-content root files
         $chunks[] = ['index' => $idx++, 'scope' => 'dir_shallow', 'path' => 'wp-content'];
 
-        return $chunks;
+        // Post-process: split oversized dir chunks into files_list sub-chunks
+        $max_dir_size = 200 * 1024 * 1024; // 200MB
+        $final_chunks = [];
+        $final_idx = 0;
+        foreach ($chunks as $chunk) {
+            if ($chunk['scope'] === 'dir') {
+                $abs = $source_dir . '/' . $chunk['path'];
+                if (is_dir($abs)) {
+                    $dir_size = $this->estimate_directory_size($abs);
+                    if ($dir_size > $max_dir_size) {
+                        $sub_chunks = $this->split_large_directory($source_dir, $chunk['path']);
+                        foreach ($sub_chunks as $sc) {
+                            $sc['index'] = $final_idx++;
+                            $final_chunks[] = $sc;
+                        }
+                        continue;
+                    }
+                }
+            }
+            $chunk['index'] = $final_idx++;
+            $final_chunks[] = $chunk;
+        }
+
+        return $final_chunks;
     }
 
     private function php_zip_backup(string $source_dir): void {
@@ -1837,6 +2291,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         $query = '';
         $delimiter = ';';
+        $total_queries = 0;
+        $error_count = 0;
+        $ddl_pattern = '/^\s*(DROP|CREATE|ALTER)\s/i';
 
         while (($line = fgets($fh)) !== false) {
             $trimmed = trim($line);
@@ -1852,16 +2309,35 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $query .= $line;
 
             if (substr(rtrim($query), -1) === $delimiter) {
-                $wpdb->query($query);
+                $result = $wpdb->query($query);
+                $total_queries++;
+
+                if ($result === false && $wpdb->last_error) {
+                    $error_count++;
+                    $is_ddl = preg_match($ddl_pattern, trim($query));
+                    if ($is_ddl) {
+                        fclose($fh);
+                        throw new \RuntimeException('DDL query failed during import: ' . $wpdb->last_error);
+                    }
+                }
+
                 $query = '';
             }
         }
 
         if (trim($query) !== '') {
-            $wpdb->query($query);
+            $result = $wpdb->query($query);
+            $total_queries++;
+            if ($result === false && $wpdb->last_error) {
+                $error_count++;
+            }
         }
 
         fclose($fh);
+
+        if ($total_queries > 0 && ($error_count / $total_queries) > 0.10) {
+            throw new \RuntimeException("SQL import had too many errors: {$error_count}/{$total_queries} queries failed (>" . '10%)');
+        }
     }
 
     private function handle_s3_multipart_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {

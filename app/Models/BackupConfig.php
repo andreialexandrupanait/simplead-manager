@@ -19,8 +19,6 @@ class BackupConfig extends Model
         'day_of_month',
         'timezone',
         'type',
-        'exclude_paths',
-        'exclude_tables',
         'storage_destination_id',
         'retention_type',
         'retention_value',
@@ -28,18 +26,21 @@ class BackupConfig extends Model
         'last_backup_at',
         'next_backup_at',
         'last_backup_status',
+        'incremental_frequency',
+        'full_backup_day_of_week',
+        'last_full_backup_at',
     ];
 
     protected $casts = [
         'is_enabled' => 'boolean',
         'backup_before_updates' => 'boolean',
-        'exclude_paths' => 'array',
-        'exclude_tables' => 'array',
         'day_of_week' => 'integer',
         'day_of_month' => 'integer',
         'retention_value' => 'integer',
         'last_backup_at' => 'datetime',
         'next_backup_at' => 'datetime',
+        'full_backup_day_of_week' => 'integer',
+        'last_full_backup_at' => 'datetime',
     ];
 
     public function site(): BelongsTo

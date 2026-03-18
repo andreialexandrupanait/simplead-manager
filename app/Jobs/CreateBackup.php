@@ -4,17 +4,16 @@ namespace App\Jobs;
 
 use App\Enums\BackupStatus;
 use App\Models\Backup;
-use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
-use App\Http\Controllers\Api\BackupCallbackController;
-use App\Services\Backup\Storage\DropboxDriver;
-use App\Services\Backup\Storage\S3Driver;
+use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\WordPressApiService;
+use App\Jobs\PrecacheBackupFileList;
+use App\Jobs\NotifyBackupFailed;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -37,8 +36,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     protected ?Backup $backup = null;
     protected ?string $tempDir = null;
-    protected ?string $s3UploadId = null;
-    protected ?string $s3RemotePath = null;
+    protected ?string $filesSessionToken = null;
 
     public function __construct(
         public Site $site,
@@ -53,6 +51,12 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     public function uniqueId(): string
     {
         return 'backup-' . $this->site->id;
+    }
+
+    public static function releaseUniqueLock(int $siteId): void
+    {
+        $cacheKey = 'laravel_unique_job:' . static::class . ':backup-' . $siteId;
+        Cache::forget($cacheKey);
     }
 
     public function handle(): void
@@ -73,33 +77,17 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             $api = new WordPressApiService($this->site);
             $this->refreshCapabilities($api);
 
-            // Direct upload disabled: combined ZIP fails for large sites (>1GB files.zip)
-            // because ZipArchive::close() fails when adding large files to combined archive.
-            // Pull-based flow downloads db and files separately, avoiding this issue.
-            $useDirectUpload = false;
-
-            Log::info("Backup {$this->backupId}: flow decision", [
+            Log::info("Backup {$this->backupId}: starting pull flow", [
                 'site' => $this->site->domain,
                 'type' => $this->type,
                 'trigger' => $this->trigger,
-                'useDirectUpload' => $useDirectUpload,
                 'destinationType' => $destination->type,
-                'flow' => $useDirectUpload
-                    ? ($destination->type === 's3' ? 'direct_s3' : 'relay_' . $destination->type)
-                    : 'pull',
             ]);
 
-            if ($useDirectUpload && $destination->type === 's3') {
-                $this->handleDirectS3Upload($api, $destination);
-            } elseif ($useDirectUpload && in_array($destination->type, ['dropbox', 'local'])) {
-                $this->handleRelayUpload($api, $destination);
-            } else {
-                // Existing pull-based flow
-                [$dbPath, $filesPath] = $this->downloadData();
-                [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesPath);
-                $remotePath = $this->upload($destination, $combinedPath, $fileName);
-                $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
-            }
+            [$dbPath, $filesChunkPaths] = $this->downloadData();
+            [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
+            $remotePath = $this->upload($destination, $combinedPath, $fileName);
+            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -191,27 +179,42 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         $this->reportProgress('downloading_database', $this->type === 'full' ? 25 : 40, 'Database downloaded');
 
-        $filesPath = null;
+        $filesChunkPaths = [];
+        $this->filesSessionToken = null;
         if ($this->type === 'full') {
             $this->checkCancelled();
             $this->reportProgress('downloading_files', 30, 'Downloading files...');
-            $filesPath = $this->tempDir . '/files.zip';
 
             if ($supportsChunked) {
-                $api->chunkedDownload('files', $filesPath, function (int $downloaded, int $total) {
-                    $pct = 30 + (int) (($downloaded / max($total, 1)) * 25); // 30-55%
-                    $mb = round($downloaded / 1048576, 1);
-                    $totalMb = round($total / 1048576, 1);
-                    $this->reportProgress('downloading_files', $pct, "Downloading files... {$mb}/{$totalMb} MB");
-                });
+                // Download files as individual chunk zips (no merge step)
+                $filesDownloadStart = microtime(true);
+                [$filesChunkPaths, $this->filesSessionToken] = $api->chunkedDownloadFilesAsChunks(
+                    $this->tempDir . '/files.zip',
+                    function (int $downloaded, int $total) use ($filesDownloadStart) {
+                        $pct = 30 + (int) (($downloaded / max($total, 1)) * 25); // 30-55%
+                        $elapsed = microtime(true) - $filesDownloadStart;
+                        $eta = '';
+                        if ($downloaded > 0 && $downloaded < $total) {
+                            $avgPerChunk = $elapsed / $downloaded;
+                            $remaining = ($total - $downloaded) * $avgPerChunk;
+                            $min = (int) ($remaining / 60);
+                            $sec = (int) ($remaining % 60);
+                            $eta = $min > 0 ? " (~{$min}m {$sec}s remaining)" : " (~{$sec}s remaining)";
+                        }
+                        $this->reportProgress('downloading_files', $pct, "Downloading files... chunk {$downloaded}/{$total}{$eta}");
+                    }
+                );
             } else {
+                // Legacy: single files.zip download
+                $filesPath = $this->tempDir . '/files.zip';
                 $api->streamDownload('backup/files', $filesPath);
+                $filesChunkPaths = [$filesPath]; // Treat as single chunk
             }
 
             $this->reportProgress('downloading_files', 55, 'Files downloaded');
         }
 
-        return [$dbPath, $filesPath];
+        return [$dbPath, $filesChunkPaths];
     }
 
     /**
@@ -264,6 +267,15 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
      */
     protected function supportsChunkedDownload(WordPressApiService $api): bool
     {
+        // Use cached capabilities to avoid wasting a request on the rate limit
+        $caps = $this->site->backup_capabilities;
+        if ($caps) {
+            $supported = !empty($caps['chunked_download']) || !empty($caps['success']);
+            Log::info("Backup {$this->backupId}: chunked download supported (cached) = " . ($supported ? 'yes' : 'no'));
+            return $supported;
+        }
+
+        // No cached capabilities — probe the endpoint
         try {
             $response = $api->request('POST', '/backup/prepare', ['type' => 'invalid'], [], 10);
             // A 400 means the endpoint exists (it rejected invalid type)
@@ -279,351 +291,11 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    /**
-     * Check if the WP plugin supports direct upload (WP → storage).
-     */
-    protected function supportsDirectUpload(WordPressApiService $api): bool
-    {
-        try {
-            $response = $api->request('POST', '/backup/capabilities', [], [], 10);
-            if (!$response->successful()) {
-                Log::info("Backup {$this->backupId}: capabilities check returned HTTP {$response->status()}");
-                return false;
-            }
-            $data = $response->json();
-            $supported = !empty($data['direct_upload']);
-            Log::info("Backup {$this->backupId}: direct_upload supported = " . ($supported ? 'yes' : 'no'));
-            return $supported;
-        } catch (\Throwable $e) {
-            Log::info("Backup {$this->backupId}: capabilities check failed: {$e->getMessage()}");
-            return false;
-        }
-    }
 
-    /**
-     * Prepare the backup archive on WP, trying async first then falling back to sync.
-     * Returns ['token' => string, 'size' => int, 'checksum' => string].
-     */
-    protected function prepareArchiveOnWp(WordPressApiService $api): array
-    {
-        $this->reportProgress('preparing', 10, 'Preparing backup archive on WordPress...');
 
-        // Try async preparation first
-        try {
-            $requestData = ['type' => $this->type];
-            $preferredMethod = $this->getPreferredMethod();
-            if ($preferredMethod) {
-                $requestData['preferred_method'] = $preferredMethod;
-            }
 
-            $asyncResponse = $api->request('POST', '/backup/prepare-async', $requestData, [], 30);
 
-            if ($asyncResponse->successful()) {
-                $asyncData = $asyncResponse->json();
-
-                if (!empty($asyncData['success']) && !empty($asyncData['async']) && !empty($asyncData['token'])) {
-                    $token = $asyncData['token'];
-                    $method = $asyncData['method'] ?? 'unknown';
-                    Log::info("Backup {$this->backupId}: async preparation started via {$method}, token: {$token}");
-
-                    if ($this->backup) {
-                        $this->backup->update(['preparation_method' => $method]);
-                    }
-
-                    $result = $this->pollAsyncPreparation($api, $token);
-                    if ($result) {
-                        return $result;
-                    }
-                    // If polling failed, fall through to sync
-                    Log::warning("Backup {$this->backupId}: async polling failed, falling back to sync");
-                }
-                // async: false means all async methods failed — fall through to sync
-            }
-        } catch (\Throwable $e) {
-            // 404 = old plugin without async endpoint, or other error — fall back to sync
-            Log::info("Backup {$this->backupId}: async not available ({$e->getMessage()}), using sync");
-        }
-
-        // Sync fallback: call prepare-combined directly (increase timeout to 900s)
-        $this->reportProgress('preparing', 10, 'Preparing archive synchronously...');
-        if ($this->backup) {
-            $this->backup->update(['preparation_method' => 'sync']);
-        }
-        $prepareResponse = $api->request('POST', '/backup/prepare-combined', [
-            'type' => $this->type,
-        ], [], 900);
-        $prepareResponse->throw();
-        $prepare = $prepareResponse->json();
-
-        if (empty($prepare['success']) || empty($prepare['token'])) {
-            throw new \RuntimeException('Prepare-combined failed: ' . ($prepare['error']['message'] ?? 'Unknown error'));
-        }
-
-        $this->reportProgress('preparing', 25, 'Archive prepared (' . round((int) $prepare['size'] / 1048576, 1) . ' MB)');
-
-        return [
-            'token' => $prepare['token'],
-            'size' => (int) $prepare['size'],
-            'checksum' => $prepare['checksum'],
-        ];
-    }
-
-    /**
-     * Poll the async preparation status until done or failed.
-     * Returns ['token' => string, 'size' => int, 'checksum' => string] on success, null on failure.
-     */
-    protected function pollAsyncPreparation(WordPressApiService $api, string $token): ?array
-    {
-        $pollInterval = 10; // Reduced from 5s to avoid rate limiting on strict hosts (6 req/min vs 12)
-        // Dynamic max polls: leave 300s (5 min) for upload after polling
-        $maxPollSeconds = max(300, $this->timeout - 300);
-        $maxPolls = (int) floor($maxPollSeconds / $pollInterval);
-        $lastProgress = 0;
-        $lastProgressAt = time();
-        $stallTimeout = 300; // 5 minutes without progress change
-        $initialStallTimeout = 60; // 60 seconds at progress=0 means the async method likely failed silently
-
-        for ($i = 0; $i < $maxPolls; $i++) {
-            sleep($pollInterval);
-
-            try {
-                $statusResponse = $api->request('POST', '/backup/prepare-status', [
-                    'token' => $token,
-                ], [], 30);
-
-                if (!$statusResponse->successful()) {
-                    Log::warning("Backup {$this->backupId}: status poll returned HTTP {$statusResponse->status()}");
-                    continue; // Transient network error — keep polling
-                }
-
-                $status = $statusResponse->json();
-
-                if (!isset($status['status'])) {
-                    continue;
-                }
-
-                if ($status['status'] === 'done') {
-                    $this->reportProgress('preparing', 25, 'Archive prepared (' . round((int) $status['size'] / 1048576, 1) . ' MB)');
-
-                    // Release the lock on WP side
-                    try {
-                        $api->request('POST', '/backup/prepare-async', ['type' => 'db'], [], 5);
-                    } catch (\Throwable) {}
-
-                    return [
-                        'token' => $token,
-                        'size' => (int) $status['size'],
-                        'checksum' => $status['checksum'],
-                    ];
-                }
-
-                if ($status['status'] === 'failed') {
-                    Log::error("Backup {$this->backupId}: async preparation failed: " . ($status['error'] ?? 'unknown'));
-                    return null;
-                }
-
-                // Still working — update progress
-                $progress = (int) ($status['progress'] ?? 0);
-                $message = $status['message'] ?? 'Preparing...';
-
-                // Map WP prep progress (0-100%) to backup progress (10-25%)
-                $mappedProgress = 10 + (int) ($progress * 0.15);
-                $this->reportProgress('preparing', $mappedProgress, $message);
-
-                // Stall detection — use shorter timeout when progress is still 0
-                // (indicates the async method likely failed silently, e.g. broken loopback auth)
-                if ($progress > $lastProgress) {
-                    $lastProgress = $progress;
-                    $lastProgressAt = time();
-                } else {
-                    $currentStallTimeout = ($lastProgress === 0) ? $initialStallTimeout : $stallTimeout;
-                    $stalledFor = time() - $lastProgressAt;
-                    if ($stalledFor > $currentStallTimeout) {
-                        Log::warning("Backup {$this->backupId}: async preparation stalled for {$stalledFor}s at {$progress}%");
-                        return null; // Signal caller to fall back to sync
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Network hiccup — continue polling
-                Log::warning("Backup {$this->backupId}: poll error: {$e->getMessage()}");
-                continue;
-            }
-        }
-
-        Log::error("Backup {$this->backupId}: async preparation timed out after " . ($maxPolls * $pollInterval) . "s");
-        return null;
-    }
-
-    /**
-     * Direct S3 upload: WP creates combined archive, uploads parts directly to S3 via presigned URLs.
-     */
-    protected function handleDirectS3Upload(WordPressApiService $api, StorageDestination $destination): void
-    {
-        // Step 1: Prepare archive on WP (async or sync)
-        $prepared = $this->prepareArchiveOnWp($api);
-        $wpToken = $prepared['token'];
-        $fileSize = $prepared['size'];
-        $checksum = $prepared['checksum'];
-
-        // Step 2: Initiate S3 multipart upload
-        $timestamp = now()->format('Y-m-d-His');
-        $fileName = "{$this->site->domain}-{$this->type}-{$timestamp}.zip";
-        $remotePath = $this->site->domain . '/' . $fileName;
-
-        $driver = StorageFactory::make($destination);
-        if (!$driver instanceof S3Driver) {
-            throw new \RuntimeException('Expected S3Driver for direct S3 upload');
-        }
-
-        $this->s3RemotePath = $remotePath;
-        $uploadId = $driver->initiateMultipartUpload($remotePath);
-        $this->s3UploadId = $uploadId;
-
-        // Step 3: Generate presigned URLs
-        $parts = $driver->generatePresignedPartUrls($remotePath, $uploadId, $fileSize);
-
-        $this->reportProgress('uploading', 30, 'Uploading directly from WordPress to S3...');
-
-        // Step 4: Tell WP to upload each part directly to S3
-        $callbackToken = BackupCallbackController::generateToken($this->backup);
-        $callbackUrl = rtrim(config('app.url'), '/') . '/api/backup-callback';
-
-        $uploadResponse = $api->request('POST', '/backup/direct-upload', [
-            'strategy' => 's3_multipart',
-            'token' => $wpToken,
-            'parts' => $parts,
-            'callback_url' => $callbackUrl,
-            'callback_token' => $callbackToken,
-            'backup_id' => $this->backup->id,
-        ], [], 1800);
-        $uploadResponse->throw();
-        $uploadResult = $uploadResponse->json();
-
-        if (empty($uploadResult['success']) || empty($uploadResult['etags'])) {
-            throw new \RuntimeException('Direct upload failed: ' . ($uploadResult['error']['message'] ?? 'Unknown error'));
-        }
-
-        // Step 5: Complete the multipart upload
-        $this->reportProgress('finalizing', 90, 'Completing S3 multipart upload...');
-        $driver->completeMultipartUpload($remotePath, $uploadId, $uploadResult['etags']);
-        $this->s3UploadId = null; // Upload completed, no need to abort on failure
-
-        // Step 6: Verify file on S3
-        $s3Size = $driver->size($remotePath);
-        if ($s3Size < $fileSize * 0.95) { // Allow small variance from multipart overhead
-            throw new \RuntimeException("S3 file size mismatch: expected ~{$fileSize}, got {$s3Size}");
-        }
-
-        // Step 7: Cleanup prepared archive on WP
-        try {
-            $api->request('POST', '/backup/cleanup', ['token' => $wpToken], [], 10);
-        } catch (\Throwable) {
-            // Best effort
-        }
-
-        // Step 8: Finalize
-        $this->backup->update(['upload_method' => 'direct_s3']);
-        $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
-    }
-
-    /**
-     * Relay upload: WP creates combined archive, pushes chunks to Manager relay,
-     * which streams to Dropbox or appends to local file.
-     */
-    protected function handleRelayUpload(WordPressApiService $api, StorageDestination $destination): void
-    {
-        // Step 1: Prepare archive on WP (async or sync)
-        $prepared = $this->prepareArchiveOnWp($api);
-        $wpToken = $prepared['token'];
-        $fileSize = $prepared['size'];
-        $checksum = $prepared['checksum'];
-
-        // Step 2: Set up relay context
-        $timestamp = now()->format('Y-m-d-His');
-        $fileName = "{$this->site->domain}-{$this->type}-{$timestamp}.zip";
-        $remotePath = $this->site->domain . '/' . $fileName;
-        $callbackToken = BackupCallbackController::generateToken($this->backup);
-        $cacheKey = "backup-relay:{$this->backup->id}";
-
-        if ($destination->type === 'dropbox') {
-            /** @var DropboxDriver $driver */
-            $driver = StorageFactory::make($destination);
-            Cache::put($cacheKey, [
-                'strategy' => 'dropbox',
-                'remote_path' => $driver->fullPathPublic($remotePath),
-                'offset' => 0,
-            ], 14400);
-        } else {
-            // Local storage
-            $driver = StorageFactory::make($destination);
-            $localFullPath = $this->getLocalFullPath($destination, $remotePath);
-            $dir = dirname($localFullPath);
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
-            Cache::put($cacheKey, [
-                'strategy' => 'local',
-                'file_path' => $localFullPath,
-            ], 14400);
-        }
-
-        $this->reportProgress('uploading', 30, 'Uploading via relay...');
-
-        // Step 3: Tell WP to push chunks to relay
-        $relayUrl = rtrim(config('app.url'), '/') . '/api/backup-relay/' . $this->backup->id;
-        $callbackUrl = rtrim(config('app.url'), '/') . '/api/backup-callback';
-
-        $uploadResponse = $api->request('POST', '/backup/direct-upload', [
-            'strategy' => 'chunked_push',
-            'token' => $wpToken,
-            'upload_url' => $relayUrl,
-            'upload_token' => $callbackToken,
-            'chunk_size' => 8 * 1024 * 1024, // 8MB chunks
-            'callback_url' => $callbackUrl,
-            'callback_token' => $callbackToken,
-            'backup_id' => $this->backup->id,
-        ], [], 1800);
-        $uploadResponse->throw();
-        $uploadResult = $uploadResponse->json();
-
-        if (empty($uploadResult['success'])) {
-            throw new \RuntimeException('Relay upload failed: ' . ($uploadResult['error']['message'] ?? 'Unknown error'));
-        }
-
-        // Step 4: Verify
-        $this->reportProgress('finalizing', 90, 'Verifying upload...');
-
-        if ($destination->type === 'local') {
-            $localFullPath = $this->getLocalFullPath($destination, $remotePath);
-            if (!file_exists($localFullPath)) {
-                throw new \RuntimeException('Local file not found after relay upload');
-            }
-            $actualChecksum = hash_file('sha256', $localFullPath);
-            if ($actualChecksum !== $checksum) {
-                @unlink($localFullPath);
-                throw new \RuntimeException("Checksum mismatch: expected {$checksum}, got {$actualChecksum}");
-            }
-        }
-
-        // Step 5: Cleanup prepared archive on WP
-        try {
-            $api->request('POST', '/backup/cleanup', ['token' => $wpToken], [], 10);
-        } catch (\Throwable) {
-            // Best effort
-        }
-
-        // Step 6: Finalize
-        $this->backup->update(['upload_method' => 'relay_' . $destination->type]);
-        $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
-    }
-
-    protected function getLocalFullPath(StorageDestination $destination, string $remotePath): string
-    {
-        $basePath = rtrim($destination->config['path'] ?? storage_path('backups'), '/');
-        return $basePath . '/' . ltrim($remotePath, '/');
-    }
-
-    protected function createArchive(string $dbPath, ?string $filesPath): array
+    protected function createArchive(string $dbPath, array $filesChunkPaths): array
     {
         $timestamp = now()->format('Y-m-d-His');
         $fileName = "{$this->site->domain}-{$this->type}-{$timestamp}.zip";
@@ -637,13 +309,26 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         }
 
         $zip->addFile($dbPath, 'database.sql.gz');
-        if ($filesPath && file_exists($filesPath)) {
-            // Store without compression — files.zip is already compressed
-            $zip->addFile($filesPath, 'files.zip');
-            $zip->setCompressionName('files.zip', ZipArchive::CM_STORE);
+        $zip->setCompressionName('database.sql.gz', ZipArchive::CM_STORE);
+
+        $chunkFileNames = [];
+        if (!empty($filesChunkPaths)) {
+            if (count($filesChunkPaths) === 1 && basename($filesChunkPaths[0]) === 'files.zip') {
+                // Legacy single files.zip (from non-chunked download)
+                $zip->addFile($filesChunkPaths[0], 'files.zip');
+                $zip->setCompressionName('files.zip', ZipArchive::CM_STORE);
+            } else {
+                // v2 format: store each chunk zip directly with CM_STORE
+                foreach ($filesChunkPaths as $idx => $chunkPath) {
+                    $entryName = "files_chunk_{$idx}.zip";
+                    $zip->addFile($chunkPath, $entryName);
+                    $zip->setCompressionName($entryName, ZipArchive::CM_STORE);
+                    $chunkFileNames[] = $entryName;
+                }
+            }
         }
 
-        $zip->addFromString('backup-meta.json', json_encode([
+        $metaData = [
             'site_name' => $this->site->name,
             'site_url' => $this->site->url,
             'type' => $this->type,
@@ -651,7 +336,14 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             'php_version' => $this->site->php_version,
             'created_at' => now()->toIso8601String(),
             'trigger' => $this->trigger,
-        ], JSON_PRETTY_PRINT));
+        ];
+
+        if (!empty($chunkFileNames)) {
+            $metaData['format_version'] = 2;
+            $metaData['chunk_files'] = $chunkFileNames;
+        }
+
+        $zip->addFromString('backup-meta.json', json_encode($metaData, JSON_PRETTY_PRINT));
 
         if (!$zip->close()) {
             throw new \RuntimeException('Failed to finalize backup archive (ZipArchive::close failed).');
@@ -662,7 +354,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         $fileSize = filesize($combinedPath);
         $checksum = hash_file('sha256', $combinedPath);
 
-        PrecacheBackupFileList::dispatch($this->backup->id, $filesPath, true);
+        // For file list precaching, pass the first chunk path (or null if DB-only)
+        $firstFilesPath = !empty($filesChunkPaths) ? $filesChunkPaths[0] : null;
+        PrecacheBackupFileList::dispatch($this->backup->id, $firstFilesPath, true);
 
         return [$combinedPath, $fileName, $fileSize, $checksum];
     }
@@ -697,6 +391,18 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
 
+        // Generate manifest for incremental backup support (non-fatal)
+        // Uses pre-collected manifest from the backup session if available (avoids re-scanning)
+        if ($this->type === 'full') {
+            try {
+                $api = new WordPressApiService($this->site);
+                $manifestService = new \App\Services\Backup\ManifestService();
+                $manifestService->generateAndStore($api, $this->backup, $destination, $this->filesSessionToken);
+            } catch (\Throwable $e) {
+                Log::warning("Manifest generation failed for backup {$this->backupId} (non-fatal): {$e->getMessage()}");
+            }
+        }
+
         $this->site->update([
             'backup_ok' => true,
             'last_backup_at' => now(),
@@ -707,14 +413,18 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             $config->update([
                 'last_backup_at' => now(),
                 'last_backup_status' => 'completed',
+                'last_full_backup_at' => $this->type === 'full' ? now() : $config->last_full_backup_at,
             ]);
         }
 
         $destination->increment('used_bytes', $fileSize);
-        $this->applyRetention($destination);
+        (new RetentionService())->apply($this->site, $destination);
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Backup complete');
+
+        // Release unique lock immediately so new backups can start
+        static::releaseUniqueLock($this->site->id);
     }
 
     protected function handleFailure(\Exception $e): void
@@ -756,6 +466,11 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         }
 
         ActivityLogger::backupFailed($this->site, $e->getMessage());
+
+        // Release unique lock when no more retries remain
+        if ($this->attempts() >= $this->tries) {
+            static::releaseUniqueLock($this->site->id);
+        }
     }
 
     protected function reportProgress(string $stage, int $percent, string $message): void
@@ -791,54 +506,6 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             ?? StorageDestination::where('is_active', true)->first();
     }
 
-    protected function applyRetention(StorageDestination $destination): void
-    {
-        $config = $this->site->backupConfig;
-        if (!$config) {
-            return;
-        }
-
-        $query = Backup::where('site_id', $this->site->id)
-            ->where('status', BackupStatus::Completed)
-            ->where('is_locked', false)
-            ->orderByDesc('created_at');
-
-        if ($config->retention_type === 'count') {
-            $toDelete = $query->skip($config->retention_value)->get();
-        } else {
-            // days
-            $cutoff = now()->subDays($config->retention_value);
-            $toDelete = Backup::where('site_id', $this->site->id)
-                ->where('status', BackupStatus::Completed)
-                ->where('is_locked', false)
-                ->where('created_at', '<', $cutoff)
-                ->get();
-        }
-
-        foreach ($toDelete as $oldBackup) {
-            try {
-                \Illuminate\Support\Facades\DB::transaction(function () use ($oldBackup) {
-                    $oldDestination = $oldBackup->storageDestination;
-
-                    // Delete from storage first
-                    if ($oldDestination && $oldBackup->file_path) {
-                        $driver = StorageFactory::make($oldDestination);
-                        $driver->delete($oldBackup->file_path);
-                        $oldDestination->decrement('used_bytes', max(0, $oldBackup->file_size ?? 0));
-                    }
-
-                    // Then delete DB record
-                    $oldBackup->delete();
-                });
-            } catch (\Exception $e) {
-                Log::warning("Failed to delete old backup {$oldBackup->id}", [
-                    'exception' => get_class($e),
-                    'code' => $e->getCode(),
-                ]);
-            }
-        }
-    }
-
     protected function cleanup(): void
     {
         if ($this->tempDir && is_dir($this->tempDir)) {
@@ -862,26 +529,6 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         ]);
 
         $exceptionClass = $exception ? get_class($exception) : 'Unknown';
-
-        // Abort any in-progress S3 multipart upload
-        if ($this->s3UploadId && $this->s3RemotePath && $this->storageDestinationId) {
-            try {
-                $destination = StorageDestination::find($this->storageDestinationId);
-                if ($destination && $destination->type === 's3') {
-                    $driver = StorageFactory::make($destination);
-                    if ($driver instanceof S3Driver) {
-                        $driver->abortMultipartUpload($this->s3RemotePath, $this->s3UploadId);
-                    }
-                }
-            } catch (\Throwable) {
-                // Best effort cleanup
-            }
-        }
-
-        // Clean up relay cache if present
-        if ($this->backupId) {
-            Cache::forget("backup-relay:{$this->backupId}");
-        }
 
         // Mark the backup record as failed so it doesn't stay stuck in "in_progress"
         $backup = $this->backupId ? Backup::find($this->backupId) : null;

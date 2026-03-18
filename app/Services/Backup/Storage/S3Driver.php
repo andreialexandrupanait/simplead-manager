@@ -2,7 +2,9 @@
 
 namespace App\Services\Backup\Storage;
 
+use Aws\S3\MultipartUploader;
 use Aws\S3\S3Client;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class S3Driver implements StorageDriver
@@ -36,11 +38,39 @@ class S3Driver implements StorageDriver
 
     public function upload(string $localPath, string $remotePath): void
     {
+        $fileSize = filesize($localPath);
+        $threshold = 100 * 1024 * 1024; // 100MB
+
+        if ($fileSize > $threshold) {
+            $this->multipartUpload($localPath, $remotePath);
+            return;
+        }
+
         $this->client->putObject([
             'Bucket' => $this->bucket,
             'Key' => $this->fullPath($remotePath),
             'SourceFile' => $localPath,
         ]);
+    }
+
+    /**
+     * Upload a large file using S3 multipart upload (50MB parts, concurrency 3).
+     */
+    protected function multipartUpload(string $localPath, string $remotePath): void
+    {
+        $key = $this->fullPath($remotePath);
+        $sizeMb = round(filesize($localPath) / 1048576, 1);
+        Log::info("S3 multipart upload starting: {$key} ({$sizeMb} MB)");
+
+        $uploader = new MultipartUploader($this->client, $localPath, [
+            'bucket' => $this->bucket,
+            'key' => $key,
+            'part_size' => 50 * 1024 * 1024, // 50MB parts
+            'concurrency' => 3,
+        ]);
+
+        $uploader->upload();
+        Log::info("S3 multipart upload completed: {$key}");
     }
 
     public function download(string $remotePath, string $localPath): void

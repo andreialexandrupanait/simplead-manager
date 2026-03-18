@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Backup extends Model
 {
@@ -49,6 +50,11 @@ class Backup extends Model
         'restore_progress_percent',
         'restore_progress_message',
         'restore_error_message',
+        'parent_backup_id',
+        'manifest_path',
+        'files_changed_count',
+        'files_deleted_count',
+        'files_total_count',
     ];
 
     protected $casts = [
@@ -68,6 +74,9 @@ class Backup extends Model
         'expires_at' => 'datetime',
         'last_restored_at' => 'datetime',
         'restore_progress_percent' => 'integer',
+        'files_changed_count' => 'integer',
+        'files_deleted_count' => 'integer',
+        'files_total_count' => 'integer',
     ];
 
     // Query Scopes
@@ -99,6 +108,29 @@ class Backup extends Model
         return $this->belongsTo(StorageDestination::class);
     }
 
+    public function parentBackup(): BelongsTo
+    {
+        return $this->belongsTo(Backup::class, 'parent_backup_id');
+    }
+
+    public function incrementals(): HasMany
+    {
+        return $this->hasMany(Backup::class, 'parent_backup_id');
+    }
+
+    public function isIncremental(): bool
+    {
+        return $this->parent_backup_id !== null;
+    }
+
+    public function getChainLengthAttribute(): int
+    {
+        if ($this->isIncremental()) {
+            return 0; // Only meaningful on the root full backup
+        }
+        return $this->incrementals()->count() + 1;
+    }
+
     public function getFileSizeFormattedAttribute(): string
     {
         if (!$this->file_size) return '—';
@@ -123,7 +155,7 @@ class Backup extends Model
 
     public function getSizeDiffAttribute(): ?int
     {
-        if ($this->status !== 'completed' || !$this->file_size) {
+        if ($this->status !== BackupStatus::Completed || !$this->file_size) {
             return null;
         }
 

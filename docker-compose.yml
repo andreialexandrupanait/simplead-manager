@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
+      target: app
     image: simplead-app:dev
     container_name: simplead-app-dev
     env_file:
@@ -38,7 +39,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-    stop_grace_period: 30s
+    stop_grace_period: 1860s
     volumes:
       - .:/var/www/html
     networks:
@@ -195,7 +196,7 @@ services:
     restart: unless-stopped
     command: >
       sh -c '
-      ARGS="--maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec";
+      ARGS="--maxmemory 256mb --maxmemory-policy volatile-lru --appendonly yes --appendfsync everysec";
       if [ -n "$$REDIS_PASSWORD" ]; then ARGS="--requirepass $$REDIS_PASSWORD $$ARGS"; fi;
       exec redis-server $$ARGS
       '

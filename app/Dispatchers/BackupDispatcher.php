@@ -2,9 +2,13 @@
 
 namespace App\Dispatchers;
 
+use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
+use App\Jobs\CreateIncrementalBackup;
+use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Services\CircuitBreakerService;
+use Illuminate\Support\Facades\Log;
 
 class BackupDispatcher
 {
@@ -14,6 +18,8 @@ class BackupDispatcher
      */
     public function __invoke(): void
     {
+        $this->recoverStuckBackups();
+
         CircuitBreakerService::checkHalfOpen();
 
         BackupConfig::query()
@@ -29,19 +35,30 @@ class BackupDispatcher
             )
             ->with('site')
             ->each(function (BackupConfig $config) {
-                CreateBackup::dispatch(
-                    $config->site,
-                    $config->type,
-                    'scheduled',
-                    $config->storage_destination_id
-                );
+                $backupType = $this->determineBackupType($config);
 
-                // Calculate next backup time
+                if ($backupType === 'incremental') {
+                    CreateIncrementalBackup::dispatch(
+                        $config->site,
+                        'scheduled',
+                        $config->storage_destination_id
+                    );
+                } else {
+                    CreateBackup::dispatch(
+                        $config->site,
+                        $backupType,
+                        'scheduled',
+                        $config->storage_destination_id
+                    );
+                }
+
+                // Calculate next backup time in the config's timezone, then convert to UTC
+                $tz = $config->timezone ?: 'UTC';
                 $next = match ($config->frequency) {
-                    'daily' => now()->addDay(),
-                    'weekly' => now()->addWeek(),
-                    'monthly' => now()->addMonth(),
-                    default => now()->addDay(),
+                    'daily' => now($tz)->addDay(),
+                    'weekly' => now($tz)->addWeek(),
+                    'monthly' => now($tz)->addMonth(),
+                    default => now($tz)->addDay(),
                 };
 
                 if ($config->time) {
@@ -49,7 +66,73 @@ class BackupDispatcher
                     $next->setTime((int) $hour, (int) $minute);
                 }
 
-                $config->update(['next_backup_at' => $next]);
+                $config->update(['next_backup_at' => $next->utc()]);
             });
+    }
+
+    /**
+     * Determine the backup type based on incremental schedule configuration.
+     *
+     * Logic:
+     * - If incremental_frequency is null → use config type (backwards compatible)
+     * - If type is 'database' → always 'database'
+     * - If today is full_backup_day_of_week → 'full'
+     * - If never had a full backup → 'full'
+     * - If last full backup >30 days ago → 'full' (safety)
+     * - Otherwise → 'incremental'
+     */
+    public function determineBackupType(BackupConfig $config): string
+    {
+        // No incremental enabled — backwards compatible
+        if (!$config->incremental_frequency) {
+            return $config->type;
+        }
+
+        // Database-only configs always stay database
+        if ($config->type === 'database') {
+            return 'database';
+        }
+
+        // If today matches the full backup day of week → full
+        if ($config->full_backup_day_of_week !== null) {
+            if (now()->dayOfWeek === $config->full_backup_day_of_week) {
+                return 'full';
+            }
+        }
+
+        // Never had a full backup → must do full first
+        if (!$config->last_full_backup_at) {
+            return 'full';
+        }
+
+        // Safety: force full if last full is >30 days old
+        if ($config->last_full_backup_at->diffInDays(now()) > 30) {
+            return 'full';
+        }
+
+        return 'incremental';
+    }
+
+    /**
+     * Mark in_progress backups older than 35 minutes as failed.
+     * These are likely jobs that were killed mid-execution (e.g. container restart).
+     */
+    protected function recoverStuckBackups(): void
+    {
+        $stuck = Backup::where('status', BackupStatus::InProgress)
+            ->where('started_at', '<', now()->subMinutes(35))
+            ->get();
+
+        foreach ($stuck as $backup) {
+            Log::warning("Recovering stuck backup #{$backup->id} for site #{$backup->site_id} (started {$backup->started_at})");
+            $backup->update([
+                'status' => BackupStatus::Failed,
+                'stage' => 'failed',
+                'progress_message' => 'Backup timed out (stuck recovery)',
+                'error_message' => 'Backup was in progress for over 35 minutes and appears stuck. It may have been interrupted by a server restart.',
+                'completed_at' => now(),
+                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
+            ]);
+        }
     }
 }

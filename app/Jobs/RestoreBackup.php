@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\BackupStatus;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
+use App\Services\Backup\ManifestService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\WordPressApiService;
 use Illuminate\Bus\Queueable;
@@ -56,95 +57,12 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 'restore_error_message' => null,
             ]);
 
-            $site = $this->backup->site;
-            $destination = $this->backup->storageDestination;
-
-            if (!$destination || !$this->backup->file_path) {
-                throw new \RuntimeException('Backup storage destination or file path is missing.');
+            // Check if this is an incremental backup needing chain restore
+            if ($this->backup->isIncremental()) {
+                $this->restoreFromChain();
+            } else {
+                $this->restoreSingleBackup();
             }
-
-            // Download from storage
-            $localPath = $this->tempDir . '/' . $this->backup->file_name;
-            $driver = StorageFactory::make($destination);
-            $driver->download($this->backup->file_path, $localPath);
-
-            $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
-
-            // Verify checksum
-            if ($this->backup->checksum) {
-                $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
-                $hash = hash_file('sha256', $localPath);
-                if ($hash !== $this->backup->checksum) {
-                    throw new \RuntimeException('Backup checksum verification failed. The file may be corrupted.');
-                }
-                $this->reportRestoreProgress('verifying', 35, 'Backup integrity verified');
-            }
-
-            // Extract zip
-            $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
-            $zip = new ZipArchive();
-            if ($zip->open($localPath) !== true) {
-                throw new \RuntimeException('Failed to open backup archive.');
-            }
-            $zip->extractTo($this->tempDir);
-            $zip->close();
-
-            // Delete the original downloaded zip to free disk/memory
-            @unlink($localPath);
-
-            $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
-
-            $api = new WordPressApiService($site);
-
-            // Ensure the WP connector plugin has the restore endpoint
-            $this->ensurePluginUpToDate($api);
-
-            // Restore files FIRST (before database), because DB restore changes
-            // WP options that can deactivate the plugin and break subsequent API calls
-            $filesPath = $this->tempDir . '/files.zip';
-            if ($this->restoreFiles && file_exists($filesPath)) {
-                // Selective restore: create a smaller archive with only selected files
-                if (!empty($this->selectedFiles)) {
-                    $this->reportRestoreProgress('restoring_files', 50, 'Preparing selective file restore (' . count($this->selectedFiles) . ' files)...');
-                    $filesPath = $this->createSelectiveArchive($filesPath);
-                }
-
-                $this->reportRestoreProgress('restoring_files', 55, 'Restoring files...');
-                $this->sendRestoreData($api, 'files', $filesPath);
-                $this->reportRestoreProgress('restoring_files', 65, 'Files restored');
-
-                // Re-update plugin after file restore (restore overwrites it with old version)
-                $this->reportRestoreProgress('restoring_files', 67, 'Updating connector plugin...');
-                $this->ensurePluginUpToDate($api);
-            }
-
-            // Restore database AFTER files
-            $dbPath = $this->tempDir . '/database.sql.gz';
-            if ($this->restoreDatabase && file_exists($dbPath)) {
-                $this->reportRestoreProgress('restoring_database', 70, 'Restoring database...');
-                $this->sendRestoreData($api, 'database', $dbPath);
-                $this->reportRestoreProgress('restoring_database', 85, 'Database restored');
-            }
-
-            // Sync site data
-            $this->reportRestoreProgress('syncing', 95, 'Syncing site data...');
-
-            $message = 'Restore completed successfully';
-            if (!empty($this->selectedFiles)) {
-                $message = 'Selective restore completed (' . count($this->selectedFiles) . ' files restored)';
-            }
-
-            // Update backup record
-            $this->backup->update([
-                'last_restored_at' => now(),
-                'restore_status' => BackupStatus::Completed,
-                'restore_stage' => 'completed',
-                'restore_progress_percent' => 100,
-                'restore_progress_message' => $message,
-            ]);
-
-            // Sync site after restore
-            SyncWordPressSite::dispatch($site);
 
         } catch (\Exception $e) {
             Log::error("Restore failed for backup {$this->backup->id}", [
@@ -166,11 +84,312 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     }
 
     /**
+     * Restore a single (non-incremental) backup — original flow.
+     */
+    protected function restoreSingleBackup(): void
+    {
+        $site = $this->backup->site;
+        $destination = $this->backup->storageDestination;
+
+        if (!$destination || !$this->backup->file_path) {
+            throw new \RuntimeException('Backup storage destination or file path is missing.');
+        }
+
+        // Download from storage
+        $localPath = $this->tempDir . '/' . $this->backup->file_name;
+        $driver = StorageFactory::make($destination);
+        $driver->download($this->backup->file_path, $localPath);
+
+        $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
+
+        // Verify checksum
+        if ($this->backup->checksum) {
+            $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
+            $hash = hash_file('sha256', $localPath);
+            if ($hash !== $this->backup->checksum) {
+                throw new \RuntimeException('Backup checksum verification failed. The file may be corrupted.');
+            }
+            $this->reportRestoreProgress('verifying', 35, 'Backup integrity verified');
+        }
+
+        // Extract zip
+        $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
+        $zip = new ZipArchive();
+        if ($zip->open($localPath) !== true) {
+            throw new \RuntimeException('Failed to open backup archive.');
+        }
+        $zip->extractTo($this->tempDir);
+        $zip->close();
+        @unlink($localPath);
+
+        $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
+
+        $api = new WordPressApiService($site);
+        $this->ensurePluginUpToDate($api);
+        $this->doRestore($api, $this->tempDir);
+    }
+
+    /**
+     * Restore from an incremental backup chain.
+     * Downloads full + all incrementals, merges them, then restores.
+     */
+    protected function restoreFromChain(): void
+    {
+        $manifestService = new ManifestService();
+        $chain = $manifestService->getChain($this->backup);
+        $chainLength = count($chain);
+
+        $this->reportRestoreProgress('downloading', 10, "Restoring from chain of {$chainLength} backups...");
+
+        $mergedDir = $this->tempDir . '/merged';
+        mkdir($mergedDir, 0755, true);
+
+        $latestDbPath = null;
+        $allDeletedPaths = [];
+
+        // Process each backup in the chain
+        foreach ($chain as $i => $chainBackup) {
+            $stepNum = $i + 1;
+            $pct = 10 + (int) (($stepNum / $chainLength) * 50); // 10-60%
+
+            $destination = $chainBackup->storageDestination;
+            if (!$destination || !$chainBackup->file_path) {
+                throw new \RuntimeException("Backup #{$chainBackup->id} in chain has no file path.");
+            }
+
+            $this->reportRestoreProgress('downloading', $pct,
+                "Downloading backup {$stepNum}/{$chainLength}...");
+
+            // Download
+            $localPath = $this->tempDir . '/chain_' . $i . '.zip';
+            $driver = StorageFactory::make($destination);
+            $driver->download($chainBackup->file_path, $localPath);
+
+            // Verify checksum
+            if ($chainBackup->checksum) {
+                $hash = hash_file('sha256', $localPath);
+                if ($hash !== $chainBackup->checksum) {
+                    throw new \RuntimeException("Checksum mismatch for backup #{$chainBackup->id} in chain (expected {$chainBackup->checksum}, got {$hash}).");
+                }
+            }
+
+            // Extract to temp dir
+            $extractDir = $this->tempDir . '/extract_' . $i;
+            mkdir($extractDir, 0755, true);
+
+            $zip = new ZipArchive();
+            if ($zip->open($localPath) !== true) {
+                throw new \RuntimeException("Failed to open backup #{$chainBackup->id} archive.");
+            }
+            $zip->extractTo($extractDir);
+            $zip->close();
+            @unlink($localPath);
+
+            if ($i === 0) {
+                // Full backup: check for v2 format (chunk zips) or v1 (single files.zip)
+                if ($this->restoreFiles) {
+                    $this->mergeChunkZipsForRestore($extractDir);
+                    $filesZip = $extractDir . '/files.zip';
+                    if (file_exists($filesZip)) {
+                        $fz = new ZipArchive();
+                        if ($fz->open($filesZip) === true) {
+                            $fz->extractTo($mergedDir);
+                            $fz->close();
+                        }
+                    }
+                }
+            } else {
+                // Incremental: overlay changed files, apply deletions
+                $filesZip = $extractDir . '/files.zip';
+                if (file_exists($filesZip) && $this->restoreFiles) {
+                    $fz = new ZipArchive();
+                    if ($fz->open($filesZip) === true) {
+                        $fz->extractTo($mergedDir); // Overwrites existing files
+                        $fz->close();
+                    }
+                }
+
+                // Apply deletions
+                $deletedFile = $extractDir . '/deleted-files.json';
+                if (file_exists($deletedFile)) {
+                    $deletedPaths = json_decode(file_get_contents($deletedFile), true) ?? [];
+                    foreach ($deletedPaths as $path) {
+                        $fullPath = $mergedDir . '/' . $path;
+                        if (file_exists($fullPath)) {
+                            @unlink($fullPath);
+                        }
+                    }
+                    $allDeletedPaths = array_merge($allDeletedPaths, $deletedPaths);
+                }
+            }
+
+            // Always use the latest database dump
+            $dbFile = $extractDir . '/database.sql.gz';
+            if (file_exists($dbFile)) {
+                $latestDbPath = $dbFile;
+            }
+        }
+
+        $this->reportRestoreProgress('merging', 65, 'Preparing merged files for restore...');
+
+        // Create merged files.zip from the merged directory
+        $mergedFilesZip = $this->tempDir . '/files.zip';
+        if ($this->restoreFiles && is_dir($mergedDir)) {
+            $zip = new ZipArchive();
+            if ($zip->open($mergedFilesZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($mergedDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($iterator as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($mergedDir) + 1);
+                        $zip->addFile($file->getRealPath(), $relative);
+                    }
+                }
+                $zip->close();
+            }
+        }
+
+        // Copy latest DB to expected location
+        $finalDbPath = $this->tempDir . '/database.sql.gz';
+        if ($latestDbPath && file_exists($latestDbPath)) {
+            copy($latestDbPath, $finalDbPath);
+        }
+
+        $this->reportRestoreProgress('restoring', 70, 'Sending restored data to WordPress...');
+
+        $site = $this->backup->site;
+        $api = new WordPressApiService($site);
+        $this->ensurePluginUpToDate($api);
+        $this->doRestore($api, $this->tempDir);
+    }
+
+    /**
+     * If the backup uses v2 format (multiple chunk zips), merge them into a single files.zip for restore.
+     */
+    protected function mergeChunkZipsForRestore(string $baseDir): void
+    {
+        $metaFile = $baseDir . '/backup-meta.json';
+        if (!file_exists($metaFile)) {
+            return;
+        }
+
+        $meta = json_decode(file_get_contents($metaFile), true);
+        if (empty($meta['format_version']) || $meta['format_version'] < 2 || empty($meta['chunk_files'])) {
+            return;
+        }
+
+        // v2 format: merge chunk zips into a single files.zip for restore
+        $filesZip = $baseDir . '/files.zip';
+        $extractDir = $baseDir . '/files_extract_' . uniqid();
+        mkdir($extractDir, 0755, true);
+
+        try {
+            foreach ($meta['chunk_files'] as $chunkName) {
+                $chunkPath = $baseDir . '/' . $chunkName;
+                if (!file_exists($chunkPath)) {
+                    continue;
+                }
+
+                $chunkZip = new ZipArchive();
+                if ($chunkZip->open($chunkPath) === true) {
+                    $chunkZip->extractTo($extractDir);
+                    $chunkZip->close();
+                }
+                @unlink($chunkPath);
+            }
+
+            $zip = new ZipArchive();
+            if ($zip->open($filesZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($iterator as $file) {
+                    if ($file->isFile()) {
+                        $relative = substr($file->getRealPath(), strlen($extractDir) + 1);
+                        $zip->addFile($file->getRealPath(), $relative);
+                    }
+                }
+                $zip->close();
+            }
+        } finally {
+            // Clean up extract directory
+            if (is_dir($extractDir)) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+                foreach ($files as $f) {
+                    $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
+                }
+                @rmdir($extractDir);
+            }
+        }
+    }
+
+    /**
+     * Common restore logic: send files and/or DB to WordPress.
+     */
+    protected function doRestore(WordPressApiService $api, string $baseDir): void
+    {
+        // Handle v2 format: merge chunk zips into files.zip
+        $this->mergeChunkZipsForRestore($baseDir);
+
+        // Restore files FIRST (before database)
+        $filesPath = $baseDir . '/files.zip';
+        if ($this->restoreFiles && file_exists($filesPath)) {
+            if (!empty($this->selectedFiles)) {
+                $this->reportRestoreProgress('restoring_files', 50, 'Preparing selective file restore (' . count($this->selectedFiles) . ' files)...');
+                $filesPath = $this->createSelectiveArchive($filesPath);
+            }
+
+            $this->reportRestoreProgress('restoring_files', 55, 'Restoring files...');
+            $this->sendRestoreData($api, 'files', $filesPath);
+            $this->reportRestoreProgress('restoring_files', 65, 'Files restored');
+
+            $this->reportRestoreProgress('restoring_files', 67, 'Updating connector plugin...');
+            $this->ensurePluginUpToDate($api);
+        }
+
+        // Restore database AFTER files
+        $dbPath = $baseDir . '/database.sql.gz';
+        if ($this->restoreDatabase && file_exists($dbPath)) {
+            $this->reportRestoreProgress('restoring_database', 70, 'Restoring database...');
+            $this->sendRestoreData($api, 'database', $dbPath);
+            $this->reportRestoreProgress('restoring_database', 85, 'Database restored');
+        }
+
+        // Sync site data
+        $this->reportRestoreProgress('syncing', 95, 'Syncing site data...');
+
+        $message = 'Restore completed successfully';
+        if (!empty($this->selectedFiles)) {
+            $message = 'Selective restore completed (' . count($this->selectedFiles) . ' files restored)';
+        }
+        if ($this->backup->isIncremental()) {
+            $manifestService = new ManifestService();
+            $chainLength = count($manifestService->getChain($this->backup));
+            $message = "Chain restore completed ({$chainLength} backups merged)";
+        }
+
+        $this->backup->update([
+            'last_restored_at' => now(),
+            'restore_status' => BackupStatus::Completed,
+            'restore_stage' => 'completed',
+            'restore_progress_percent' => 100,
+            'restore_progress_message' => $message,
+        ]);
+
+        SyncWordPressSite::dispatch($this->backup->site);
+    }
+
+    /**
      * Create a selective archive containing only the specified files from the inner archive.
      */
     protected function createSelectiveArchive(string $innerArchivePath): string
     {
-        // Detect inner format by magic bytes
         $fh = fopen($innerArchivePath, 'rb');
         $magic = fread($fh, 2);
         fclose($fh);
@@ -202,11 +421,9 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $dest->close();
             $source->close();
         } else {
-            // tar.gz: extract selected files to a temp dir, then zip them
             $extractDir = $this->tempDir . '/selective-extract';
             mkdir($extractDir, 0755, true);
 
-            // Extract only specific files from tar.gz
             $cmd = ['tar', 'xzf', $innerArchivePath, '-C', $extractDir];
             foreach ($this->selectedFiles as $file) {
                 $cmd[] = './' . ltrim($file, './');
@@ -226,7 +443,6 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 proc_close($process);
             }
 
-            // Create zip from extracted files
             $dest = new ZipArchive();
             if ($dest->open($selectivePath, ZipArchive::CREATE) !== true) {
                 throw new \RuntimeException('Failed to create selective archive from tar.gz.');
@@ -252,8 +468,6 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
     /**
      * Send restore data to the WP site via temporary download URL.
-     * Always uses URL-based transfer to avoid loading file contents into PHP memory
-     * (the container has a 512MB memory limit).
      */
     protected function sendRestoreData(WordPressApiService $api, string $type, string $filePath): void
     {
@@ -276,19 +490,16 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
     /**
      * Ensure the WP connector plugin has the restore endpoint.
-     * Uses the self-update endpoint if available, otherwise logs a warning.
      */
     protected function ensurePluginUpToDate(WordPressApiService $api): void
     {
-        // Check if the restore endpoint exists
         $check = $api->request('POST', '/backup/restore', ['type' => 'database']);
         if ($check->status() !== 404) {
-            return; // Endpoint exists (even if it returns 400 for missing data)
+            return;
         }
 
         Log::info("Restore endpoint missing, attempting plugin update for backup {$this->backup->id}");
 
-        // Try the self-update endpoint
         $zipUrl = rtrim(config('app.url'), '/') . '/download/connector-plugin';
         $update = $api->request('POST', '/self-update', [
             'download_url' => $zipUrl,
@@ -296,7 +507,6 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         if ($update->successful()) {
             Log::info("Plugin updated successfully for backup {$this->backup->id}");
-            // Wait briefly for WP to reload
             sleep(2);
             return;
         }

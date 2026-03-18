@@ -23,6 +23,8 @@ class BackupScheduleForm extends Component
     public string $retention_type = 'count';
     public int $retention_value = 10;
     public bool $backup_before_updates = false;
+    public bool $enable_incremental = false;
+    public ?int $full_backup_day_of_week = 0;
 
     #[On('open-schedule-form')]
     public function openModal(): void
@@ -42,6 +44,8 @@ class BackupScheduleForm extends Component
             $this->retention_type = $config->retention_type;
             $this->retention_value = $config->retention_value;
             $this->backup_before_updates = $config->backup_before_updates;
+            $this->enable_incremental = !empty($config->incremental_frequency);
+            $this->full_backup_day_of_week = $config->full_backup_day_of_week ?? 0;
         }
 
         $this->dispatch('open-modal-schedule-form');
@@ -74,6 +78,8 @@ class BackupScheduleForm extends Component
                 'retention_type' => $this->retention_type,
                 'retention_value' => $this->retention_value,
                 'backup_before_updates' => $this->backup_before_updates,
+                'incremental_frequency' => ($this->enable_incremental && $this->type === 'full') ? 'daily' : null,
+                'full_backup_day_of_week' => ($this->enable_incremental && $this->type === 'full') ? $this->full_backup_day_of_week : null,
                 'next_backup_at' => $this->is_enabled ? $nextBackupAt : null,
             ]
         );

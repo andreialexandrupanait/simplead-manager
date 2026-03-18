@@ -3,7 +3,7 @@
  * Plugin Name: SimpleAd Manager Connector
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.2.2
+ * Version: 2.6.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.2.2');
+define('SAM_VERSION', '2.6.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);

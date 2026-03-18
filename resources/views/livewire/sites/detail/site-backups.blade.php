@@ -42,6 +42,15 @@
                     <span wire:loading.remove wire:target="backupFull">Full Backup</span>
                     <span wire:loading wire:target="backupFull">Queuing...</span>
                 </x-ui.button>
+                @if($this->hasFullBackupWithManifest)
+                    <x-ui.button wire:click="backupIncremental" wire:loading.attr="disabled" variant="secondary" class="w-full">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                        <span wire:loading.remove wire:target="backupIncremental">Incremental Backup</span>
+                        <span wire:loading wire:target="backupIncremental">Queuing...</span>
+                    </x-ui.button>
+                @else
+                    <p class="text-xs text-gray-400 italic">Run a full backup first to enable incremental backups.</p>
+                @endif
             </div>
             <p class="mt-3 text-xs text-gray-400">Estimated full backup size: ~{{ $this->estimatedBackupSize }}</p>
         </x-ui.card>
@@ -67,9 +76,15 @@
                         <span class="text-gray-500">Next Backup</span>
                         <span class="text-gray-900 font-medium">{{ $this->backupConfig->next_backup_at?->diffForHumans() ?? '—' }}</span>
                     </div>
+                    @if($this->backupConfig->incremental_frequency)
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Incremental</span>
+                            <x-ui.badge variant="purple">Enabled</x-ui.badge>
+                        </div>
+                    @endif
                     <div class="flex justify-between">
                         <span class="text-gray-500">Retention</span>
-                        <span class="text-gray-900 font-medium">{{ $this->backupConfig->retention_value }} {{ $this->backupConfig->retention_type === 'count' ? 'backups' : 'days' }}</span>
+                        <span class="text-gray-900 font-medium">{{ $this->backupConfig->retention_value }} {{ $this->backupConfig->retention_type === 'count' ? 'chains' : 'days' }}</span>
                     </div>
                 </div>
             @else
@@ -340,7 +355,19 @@
                                     {{ $backup->created_at->format('M d, Y H:i') }}
                                     <div class="text-xs text-gray-400">{{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}</div>
                                 </td>
-                                <td class="px-3 py-3 text-sm text-gray-700">{{ ucfirst($backup->type) }}</td>
+                                <td class="px-3 py-3 text-sm text-gray-700">
+                                    {{ ucfirst($backup->type) }}
+                                    @if($backup->type === 'incremental')
+                                        <div class="text-xs text-gray-400">
+                                            @if($backup->files_changed_count !== null)
+                                                {{ $backup->files_changed_count }} changed{{ $backup->files_deleted_count ? ", {$backup->files_deleted_count} deleted" : '' }}
+                                            @endif
+                                        </div>
+                                        @if($backup->parentBackup)
+                                            <div class="text-xs text-gray-400">Based on {{ $backup->parentBackup->created_at->format('M d') }}</div>
+                                        @endif
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($backup->size_diff_formatted)

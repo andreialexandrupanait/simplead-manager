@@ -67,6 +67,12 @@ Schedule::command('horizon:snapshot')
     ->name('horizon-snapshot')
     ->onOneServer();
 
+// Cleanup orphaned backup temp directories (from killed workers/crashes)
+Schedule::command('backup:cleanup-temp')
+    ->dailyAt('04:30')
+    ->name('backup-temp-cleanup')
+    ->onOneServer();
+
 // Daily PostgreSQL dump (independent database backup)
 Schedule::command('db:dump', ['--keep' => 7])
     ->dailyAt('02:30')
