@@ -33,7 +33,6 @@ services:
     tmpfs:
       - /tmp:size=64M,mode=1777
       - /var/run:size=8M
-      - /var/www/html/bootstrap/cache:size=8M
     deploy:
       resources:
         limits:
@@ -73,7 +72,6 @@ services:
     tmpfs:
       - /tmp:size=512M,mode=1777
       - /var/run:size=8M
-      - /var/www/html/bootstrap/cache:size=8M
     deploy:
       resources:
         limits:
@@ -108,7 +106,6 @@ services:
     tmpfs:
       - /tmp:size=64M,mode=1777
       - /var/run:size=8M
-      - /var/www/html/bootstrap/cache:size=8M
     deploy:
       resources:
         limits:

@@ -80,12 +80,8 @@ log "Running database migrations..."
 $COMPOSE exec app php artisan migrate --force
 
 # ── Step 8: Cache configuration ──────────────────────────────────────────────
-
-log "Caching configuration..."
-$COMPOSE exec app php artisan config:cache
-$COMPOSE exec app php artisan route:cache
-$COMPOSE exec app php artisan view:cache
-$COMPOSE exec app php artisan event:cache
+# Skipped — containers use read_only: true, so bootstrap/cache is immutable.
+# Config is read from .env at runtime; performance impact is negligible.
 
 # ── Step 9: Restart queue workers ────────────────────────────────────────────
 
