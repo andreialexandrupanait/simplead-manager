@@ -26,6 +26,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     public int $tries = 1;
 
     protected ?string $tempDir = null;
+    protected bool $pluginWasUpdated = false;
 
     public function __construct(
         public Backup $backup,
@@ -350,7 +351,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $this->reportRestoreProgress('restoring_files', 65, 'Files restored');
 
             $this->reportRestoreProgress('restoring_files', 67, 'Updating connector plugin...');
-            $this->ensurePluginUpToDate($api);
+            $pluginUpdated = $this->ensurePluginUpToDate($api);
+            if (!$pluginUpdated) {
+                Log::warning("Continuing restore without plugin update for backup {$this->backup->id}");
+            }
         }
 
         // Restore database AFTER files
@@ -401,6 +405,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     protected function runPostRestoreVerification(WordPressApiService $api): string
     {
         $results = [];
+
+        if (!$this->pluginWasUpdated) {
+            $results[] = 'plugin update failed';
+        }
 
         // 1. Clear caches (OPcache, object cache, transients)
         $this->reportRestoreProgress('verification', 88, 'Clearing caches...');
@@ -614,13 +622,16 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Always push the latest connector plugin after file restore.
+     * Push the latest connector plugin to the WP site.
      *
      * After file restore the backup's old plugin overwrites the current one,
-     * so we unconditionally push the latest version to ensure new endpoints
-     * (e.g. fix-elementor) are available for post-restore verification.
+     * so we push the latest version to ensure new endpoints (e.g. fix-elementor)
+     * are available for post-restore verification.
+     *
+     * Retries up to 3 times. Never throws — returns false on failure so the
+     * restore can continue even if the plugin update fails.
      */
-    protected function ensurePluginUpToDate(WordPressApiService $api): void
+    protected function ensurePluginUpToDate(WordPressApiService $api): bool
     {
         Log::info("Pushing latest connector plugin for backup {$this->backup->id}");
 
@@ -628,21 +639,35 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             'download.connector-plugin.signed',
             now()->addMinutes(30)
         );
-        $update = $api->request('POST', '/self-update', [
-            'download_url' => $zipUrl,
-        ], [], 120);
 
-        if ($update->successful()) {
-            Log::info("Plugin updated successfully for backup {$this->backup->id}");
-            sleep(2);
-            return;
+        $lastError = '';
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $update = $api->request('POST', '/self-update', [
+                    'download_url' => $zipUrl,
+                ], [], 120);
+
+                if ($update->successful()) {
+                    Log::info("Plugin updated successfully for backup {$this->backup->id} (attempt {$attempt})");
+                    $this->pluginWasUpdated = true;
+                    sleep(2);
+                    return true;
+                }
+
+                $lastError = "{$update->status()} {$update->body()}";
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+            }
+
+            Log::warning("Plugin update attempt {$attempt}/3 failed for backup {$this->backup->id}: {$lastError}");
+
+            if ($attempt < 3) {
+                sleep(3);
+            }
         }
 
-        Log::warning("Could not auto-update plugin for backup {$this->backup->id}: {$update->status()} {$update->body()}");
-        throw new \RuntimeException(
-            'Failed to update the WordPress connector plugin on the remote site. ' .
-            'Please update the plugin manually via WP Admin > Plugins > Upload.'
-        );
+        Log::error("All plugin update attempts failed for backup {$this->backup->id}: {$lastError}");
+        return false;
     }
 
     protected function reportRestoreProgress(string $stage, int $percent, string $message): void
