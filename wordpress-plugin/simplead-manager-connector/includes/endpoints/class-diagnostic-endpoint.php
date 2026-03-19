@@ -75,14 +75,30 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             $results['debug_log'] = null;
         }
 
-        // 4. Check PHP error log
+        // 4. Check PHP error log — read last portion and extract fatal errors
         $error_log = ini_get('error_log');
         $results['php_error_log_path'] = $error_log;
         if ($error_log && file_exists($error_log)) {
             $size = filesize($error_log);
-            $read_size = 100000;
-            $tail = $size > $read_size ? file_get_contents($error_log, false, null, $size - $read_size) : file_get_contents($error_log);
-            $results['php_error_log'] = ['size' => $size, 'tail' => $tail];
+            // Read last 500KB — enough to find fatal errors
+            $read_size = 500000;
+            $offset = max(0, $size - $read_size);
+            $fp = fopen($error_log, 'r');
+            fseek($fp, $offset);
+            $tail = fread($fp, $read_size);
+            fclose($fp);
+            // Find all fatal error lines
+            $fatal_lines = [];
+            $lines = explode("\n", $tail);
+            foreach ($lines as $line) {
+                if (preg_match('/(?:PHP )?Fatal error|TypeError|Uncaught Error/i', $line)) {
+                    $fatal_lines[] = $line;
+                }
+            }
+            $results['php_error_log'] = [
+                'size' => $size,
+                'fatal_errors' => array_slice($fatal_lines, -10),
+            ];
         } else {
             $results['php_error_log'] = null;
         }
@@ -109,6 +125,37 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
         $paused = get_option('wp_paused_extensions', []);
         $results['paused_extensions'] = $paused;
 
+        // 7. Search for dynamic tag patterns in _elementor_data
+        // Check various patterns that dynamic tags might use
+        $dynamic_count = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta}
+             WHERE meta_key = '_elementor_data'
+             AND (meta_value LIKE '%__dynamic__%' OR meta_value LIKE '%elementor-tag%')"
+        );
+        $results['dynamic_tag_count'] = $dynamic_count;
+
+        if ($dynamic_count > 0) {
+            $rows = $wpdb->get_results(
+                "SELECT post_id, meta_value FROM {$wpdb->postmeta}
+                 WHERE meta_key = '_elementor_data'
+                 AND (meta_value LIKE '%__dynamic__%' OR meta_value LIKE '%elementor-tag%')
+                 LIMIT 5"
+            );
+            $samples = [];
+            foreach ($rows as $row) {
+                $data = json_decode($row->meta_value, true);
+                if ($data) {
+                    $dynamics = [];
+                    $this->find_dynamic_settings($data, $dynamics);
+                    $samples[] = [
+                        'post_id' => $row->post_id,
+                        'dynamics' => array_slice($dynamics, 0, 10),
+                    ];
+                }
+            }
+            $results['dynamic_tag_samples'] = $samples;
+        }
+
         return $this->success($results);
     }
 
@@ -132,9 +179,35 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
         $version_mismatch = ($installed_version !== $db_version);
         $fixed[] = "installed: {$installed_version}, db: {$db_version}" . ($version_mismatch ? ' (MISMATCH)' : ' (match)');
 
-        // Step 0: Fix null dynamic tag settings (PHP 8.x TypeError prevention)
-        // Dynamic tags with settings="" cause json_decode to return null,
-        // which crashes get_tag_data_content() on PHP 8.x strict typing.
+        // Step 0a: Fix mangled percent-encoding in dynamic tag settings.
+        // During backup/restore, % chars in URL-encoded settings can get replaced
+        // with a hash placeholder like {abcdef...}. This breaks urldecode() which
+        // causes json_decode to return null, crashing get_tag_data_content().
+        // Fix: find any 64-char hex hash wrapped in {} that replaced % signs,
+        // and restore the original % characters.
+        $hash_rows = $wpdb->get_results(
+            "SELECT meta_id, meta_value FROM {$wpdb->postmeta}
+             WHERE meta_key = '_elementor_data'
+             AND meta_value REGEXP '\\{[a-f0-9]{64}\\}[0-9A-F]{2}'"
+        );
+        $hash_fixed = 0;
+        foreach ($hash_rows as $row) {
+            // Extract the hash pattern
+            if (preg_match('/\{([a-f0-9]{64})\}/', $row->meta_value, $m)) {
+                $hash_placeholder = '{' . $m[1] . '}';
+                $new_value = str_replace($hash_placeholder, '%', $row->meta_value);
+                if ($new_value !== $row->meta_value) {
+                    $wpdb->update($wpdb->postmeta, ['meta_value' => $new_value], ['meta_id' => $row->meta_id]);
+                    $hash_fixed++;
+                }
+            }
+        }
+        if ($hash_fixed > 0) {
+            $fixed[] = "Fixed {$hash_fixed} posts with mangled percent-encoding";
+        }
+
+        // Step 0b: Fix null dynamic tag settings (PHP 8.x TypeError prevention)
+        // Dynamic tags with settings="" cause json_decode to return null.
         // Replace with settings="%7B%7D" which decodes to empty object {}.
         $search = 'settings=\\"\\"]';
         $replace = 'settings=\\"%7B%7D\\"]';
@@ -181,10 +254,11 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
-        // Step 3: Only clear CSS caches if versions mismatched
-        // Clearing CSS forces regeneration, which can crash on pages with
-        // complex dynamic tags. When versions match, keep existing CSS intact.
-        if ($version_mismatch) {
+        // Step 3: Clear CSS caches if versions mismatched OR if data was fixed
+        // Clearing CSS forces regeneration on next page load.
+        // Safe to do now because the data has been fixed in Step 0.
+        $should_clear_css = $version_mismatch || $hash_fixed > 0 || ($updated ?? 0) > 0;
+        if ($should_clear_css) {
             $upload_dir = wp_upload_dir();
             $elementor_css_dir = $upload_dir['basedir'] . '/elementor/css';
             if (is_dir($elementor_css_dir)) {
@@ -202,7 +276,7 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             delete_option('_elementor_global_css');
             $fixed[] = 'Cleared Elementor global CSS option';
         } else {
-            $fixed[] = 'Versions match — kept CSS caches intact';
+            $fixed[] = 'No data changes — kept CSS caches intact';
         }
 
         // Step 4: Clean up stale Elementor metadata (safe, non-breaking)
@@ -275,5 +349,19 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             'plugin' => $plugin,
             'activated' => true,
         ]);
+    }
+
+    /**
+     * Recursively find __dynamic__ settings in Elementor data.
+     */
+    private function find_dynamic_settings(array $data, array &$results, int $depth = 0): void {
+        if ($depth > 20) return;
+        foreach ($data as $key => $value) {
+            if ($key === '__dynamic__' && is_array($value)) {
+                $results[] = $value;
+            } elseif (is_array($value)) {
+                $this->find_dynamic_settings($value, $results, $depth + 1);
+            }
+        }
     }
 }

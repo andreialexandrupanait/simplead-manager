@@ -625,7 +625,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         Log::info("Restore endpoint missing, attempting plugin update for backup {$this->backup->id}");
 
-        $zipUrl = rtrim(config('app.url'), '/') . '/download/connector-plugin';
+        $zipUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'download.connector-plugin.signed',
+            now()->addMinutes(30)
+        );
         $update = $api->request('POST', '/self-update', [
             'download_url' => $zipUrl,
         ], [], 120);
