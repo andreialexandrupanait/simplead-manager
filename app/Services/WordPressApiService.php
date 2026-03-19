@@ -444,6 +444,26 @@ class WordPressApiService
     }
 
     /**
+     * Run site diagnostic checks.
+     */
+    public function runDiagnostic(): array
+    {
+        $response = $this->request('GET', '/diagnostic');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
+     * Fix Elementor version mismatch after restore.
+     */
+    public function fixElementor(): array
+    {
+        $response = $this->request('POST', '/diagnostic/fix-elementor');
+        $response->throw();
+        return $response->json();
+    }
+
+    /**
      * Get security check results.
      */
     public function getSecurityCheck(): array

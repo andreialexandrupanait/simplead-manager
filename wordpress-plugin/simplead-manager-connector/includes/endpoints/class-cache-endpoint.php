@@ -22,6 +22,11 @@ class SAM_Cache_Endpoint extends SAM_Endpoint_Base {
 
         $cleared = [];
 
+        // 0. OPcache - must be first to clear stale bytecode after file restores
+        if (function_exists('opcache_reset') && opcache_reset()) {
+            $cleared[] = 'opcache';
+        }
+
         // 1. WordPress object cache
         if (wp_cache_flush()) {
             $cleared[] = 'object_cache';

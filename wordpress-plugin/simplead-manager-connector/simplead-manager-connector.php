@@ -61,6 +61,7 @@ spl_autoload_register(function ($class) {
         'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
         'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
         'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
+        'SAM_Diagnostic_Endpoint'   => 'endpoints/class-diagnostic-endpoint.php',
         // Direct upload helper
         'SAM_Direct_Uploader'       => 'class-direct-uploader.php',
         // Admin

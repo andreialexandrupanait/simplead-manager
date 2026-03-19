@@ -151,5 +151,7 @@ trait BackupJobTrait
 
         CircuitBreakerService::recordFailure($this->site, "{$label} failed: {$exceptionClass}");
         JobTracker::fail($this->uniqueId(), "{$label} failed: {$exceptionClass}");
+
+        static::releaseUniqueLock($this->site->id);
     }
 }

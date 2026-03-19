@@ -1635,6 +1635,10 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             } else {
                 SAM_Audit_Logger::log('restore_files_started', 'restore', 'files', 'File restore initiated via SimpleAd Manager');
                 $this->restore_files($tmp_file);
+                // Reset OPcache after file restore to prevent stale bytecode
+                if (function_exists('opcache_reset')) {
+                    opcache_reset();
+                }
                 SAM_Audit_Logger::log('restore_files_completed', 'restore', 'files', 'File restore completed');
             }
 

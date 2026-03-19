@@ -133,6 +133,9 @@ class BackupDispatcher
                 'completed_at' => now(),
                 'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
             ]);
+
+            CreateBackup::releaseUniqueLock($backup->site_id);
+            CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
         }
     }
 }
