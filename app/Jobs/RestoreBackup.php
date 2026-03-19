@@ -614,16 +614,15 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Ensure the WP connector plugin has the restore endpoint.
+     * Always push the latest connector plugin after file restore.
+     *
+     * After file restore the backup's old plugin overwrites the current one,
+     * so we unconditionally push the latest version to ensure new endpoints
+     * (e.g. fix-elementor) are available for post-restore verification.
      */
     protected function ensurePluginUpToDate(WordPressApiService $api): void
     {
-        $check = $api->request('POST', '/backup/restore', ['type' => 'database']);
-        if ($check->status() !== 404) {
-            return;
-        }
-
-        Log::info("Restore endpoint missing, attempting plugin update for backup {$this->backup->id}");
+        Log::info("Pushing latest connector plugin for backup {$this->backup->id}");
 
         $zipUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
             'download.connector-plugin.signed',
@@ -641,7 +640,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         Log::warning("Could not auto-update plugin for backup {$this->backup->id}: {$update->status()} {$update->body()}");
         throw new \RuntimeException(
-            'The WordPress connector plugin on the remote site does not support the restore endpoint. ' .
+            'Failed to update the WordPress connector plugin on the remote site. ' .
             'Please update the plugin manually via WP Admin > Plugins > Upload.'
         );
     }
