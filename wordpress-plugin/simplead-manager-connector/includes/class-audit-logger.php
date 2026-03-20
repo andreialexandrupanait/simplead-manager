@@ -131,10 +131,13 @@ class SAM_Audit_Logger {
      * Register WordPress hooks for automatic audit logging.
      */
     public static function register_hooks(): void {
-        // User login/logout
-        add_action('wp_login', function ($user_login) {
+        // User login/logout — also track last login timestamp in user meta
+        add_action('wp_login', function ($user_login, $user) {
             self::log('user_login', 'user', $user_login);
-        });
+            if ($user instanceof \WP_User) {
+                update_user_meta($user->ID, 'last_login', current_time('mysql', true));
+            }
+        }, 10, 2);
         add_action('wp_logout', function () {
             $user = wp_get_current_user();
             if ($user->ID) {

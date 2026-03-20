@@ -261,25 +261,83 @@ class SAM_Performance_Tweaks {
     }
 
     /**
-     * Get the actual enforced state.
+     * Get the actual enforced state by checking real WordPress hooks/filters.
      */
     public static function get_verified_state(): array {
         $settings = get_option('sam_performance_settings', []);
         $state = [];
 
-        $keys = [
-            'heartbeat_control', 'revisions_control', 'image_upload_control',
-            'disable_generator_tag', 'disable_wlw_manifest', 'disable_rsd_link',
-            'disable_shortlinks', 'disable_emojis', 'disable_dashicons',
-            'disable_jquery_migrate', 'disable_lazy_load', 'disable_block_widgets',
+        // Heartbeat: check if script is registered
+        $heartbeat_active = !empty($settings['heartbeat_control']);
+        if ($heartbeat_active) {
+            $hb = is_array($settings['heartbeat_control']) ? $settings['heartbeat_control'] : [];
+            $heartbeat_active = ($hb['frontend'] ?? 'default') === 'disable'
+                || ($hb['dashboard'] ?? 'default') !== 'default'
+                || ($hb['editor'] ?? 'default') !== 'default';
+        }
+        $state['heartbeat_control'] = [
+            'configured' => !empty($settings['heartbeat_control']),
+            'active'     => $heartbeat_active,
         ];
 
-        foreach ($keys as $key) {
-            $state[$key] = [
-                'configured' => !empty($settings[$key]),
-                'active'     => !empty($settings[$key]),
-            ];
-        }
+        // Revisions: check if filter is registered
+        $state['revisions_control'] = [
+            'configured' => !empty($settings['revisions_control']),
+            'active'     => has_filter('wp_revisions_to_keep'),
+        ];
+
+        // Image upload: check if filters are registered
+        $state['image_upload_control'] = [
+            'configured' => !empty($settings['image_upload_control']),
+            'active'     => has_filter('jpeg_quality') || has_filter('wp_handle_upload'),
+        ];
+
+        // Simple hook removals — check if the action was removed from wp_head
+        $state['disable_generator_tag'] = [
+            'configured' => !empty($settings['disable_generator_tag']),
+            'active'     => !has_action('wp_head', 'wp_generator'),
+        ];
+
+        $state['disable_wlw_manifest'] = [
+            'configured' => !empty($settings['disable_wlw_manifest']),
+            'active'     => !has_action('wp_head', 'wlwmanifest_link'),
+        ];
+
+        $state['disable_rsd_link'] = [
+            'configured' => !empty($settings['disable_rsd_link']),
+            'active'     => !has_action('wp_head', 'rsd_link'),
+        ];
+
+        $state['disable_shortlinks'] = [
+            'configured' => !empty($settings['disable_shortlinks']),
+            'active'     => !has_action('wp_head', 'wp_shortlink_wp_head'),
+        ];
+
+        $state['disable_emojis'] = [
+            'configured' => !empty($settings['disable_emojis']),
+            'active'     => !has_action('wp_head', 'print_emoji_detection_script', 7),
+        ];
+
+        // These require checking enqueue state which isn't available early
+        $state['disable_dashicons'] = [
+            'configured' => !empty($settings['disable_dashicons']),
+            'active'     => !empty($settings['disable_dashicons']),
+        ];
+
+        $state['disable_jquery_migrate'] = [
+            'configured' => !empty($settings['disable_jquery_migrate']),
+            'active'     => has_action('wp_default_scripts'),
+        ];
+
+        $state['disable_lazy_load'] = [
+            'configured' => !empty($settings['disable_lazy_load']),
+            'active'     => has_filter('wp_lazy_loading_enabled'),
+        ];
+
+        $state['disable_block_widgets'] = [
+            'configured' => !empty($settings['disable_block_widgets']),
+            'active'     => has_filter('use_widgets_block_editor'),
+        ];
 
         return $state;
     }

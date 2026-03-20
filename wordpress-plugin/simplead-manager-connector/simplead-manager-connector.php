@@ -3,7 +3,7 @@
  * Plugin Name: SimpleAd Manager Connector
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.8.4
+ * Version: 2.9.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.8.4');
+define('SAM_VERSION', '2.9.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -54,6 +54,7 @@ spl_autoload_register(function ($class) {
         'SAM_Security_Endpoint'     => 'endpoints/class-security-endpoint.php',
         'SAM_Security_Settings_Endpoint' => 'endpoints/class-security-settings-endpoint.php',
         'SAM_Security_Htaccess'     => 'class-security-htaccess.php',
+        'SAM_MU_Plugin_Manager'     => 'class-mu-plugin-manager.php',
         'SAM_Backup_Endpoint'       => 'endpoints/class-backup-endpoint.php',
         'SAM_Rollback_Endpoint'     => 'endpoints/class-rollback-endpoint.php',
         'SAM_Database_Endpoint'     => 'endpoints/class-database-endpoint.php',
@@ -162,6 +163,9 @@ final class SimpleAd_Manager_Connector {
             update_option('sam_api_secret', wp_generate_password(64, false));
         }
 
+        // Install/update the MU-plugin for persistent security enforcement
+        SAM_MU_Plugin_Manager::install();
+
         update_option('sam_version', SAM_VERSION);
         flush_rewrite_rules();
     }
@@ -173,6 +177,11 @@ final class SimpleAd_Manager_Connector {
         // v2.0.0: Create request log table
         if (version_compare($from_version, '2.0.0', '<')) {
             SAM_Request_Logger::create_table();
+        }
+
+        // v2.9.0: Install MU-plugin for persistent security enforcement
+        if (version_compare($from_version, '2.9.0', '<')) {
+            SAM_MU_Plugin_Manager::install();
         }
     }
 
@@ -235,12 +244,16 @@ final class SimpleAd_Manager_Connector {
         delete_option('sam_security_login');
         delete_option('sam_security_captcha');
         delete_option('sam_security_ip_management');
+        delete_option('sam_security_htaccess');
         delete_option('sam_banned_ips');
         delete_option('sam_performance_settings');
         delete_option('sam_site_control_settings');
         delete_option('sam_admin_ux_settings');
         delete_option('sam_content_media_settings');
         delete_option('sam_email_settings');
+
+        // Remove the MU-plugin on full uninstall
+        SAM_MU_Plugin_Manager::uninstall();
 
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_audit_logs");
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_login_tokens");

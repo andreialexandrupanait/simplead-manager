@@ -276,24 +276,53 @@ class SAM_Site_Control {
     }
 
     /**
-     * Get the actual enforced state.
+     * Get the actual enforced state by checking real WordPress hooks/filters.
      */
     public static function get_verified_state(): array {
         $settings = get_option('sam_site_control_settings', []);
         $state = [];
 
-        $keys = [
-            'disable_all_updates', 'disable_comments', 'disable_feeds',
-            'disable_embeds', 'redirect_404', 'disable_gutenberg',
-            'disable_author_archives',
+        // Auto-updates: check if core auto-update filter is registered
+        $state['disable_all_updates'] = [
+            'configured' => !empty($settings['disable_all_updates']),
+            'active'     => has_filter('auto_update_core') && !apply_filters('auto_update_core', true),
         ];
 
-        foreach ($keys as $key) {
-            $state[$key] = [
-                'configured' => !empty($settings[$key]),
-                'active'     => !empty($settings[$key]),
-            ];
-        }
+        // Comments: check if comments_open filter returns false
+        $state['disable_comments'] = [
+            'configured' => !empty($settings['disable_comments']),
+            'active'     => has_filter('comments_open', '__return_false'),
+        ];
+
+        // Feeds: check if feed actions are hooked
+        $state['disable_feeds'] = [
+            'configured' => !empty($settings['disable_feeds']),
+            'active'     => !has_action('wp_head', 'feed_links'),
+        ];
+
+        // Embeds: check if oembed discovery is removed
+        $state['disable_embeds'] = [
+            'configured' => !empty($settings['disable_embeds']),
+            'active'     => !has_action('wp_head', 'wp_oembed_add_discovery_links'),
+        ];
+
+        // 404 redirect: check if template_redirect has our handler
+        $state['redirect_404'] = [
+            'configured' => !empty($settings['redirect_404']),
+            'active'     => !empty($settings['redirect_404']),
+        ];
+
+        // Gutenberg: check if block editor filter is registered
+        $state['disable_gutenberg'] = [
+            'configured' => !empty($settings['disable_gutenberg']),
+            'active'     => has_filter('use_block_editor_for_post'),
+        ];
+
+        // Author archives: check if setting is active
+        $state['disable_author_archives'] = [
+            'configured' => !empty($settings['disable_author_archives']),
+            'active'     => !empty($settings['disable_author_archives']),
+        ];
 
         return $state;
     }

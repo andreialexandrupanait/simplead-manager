@@ -74,6 +74,9 @@ class SAM_Site_Tweaks_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
+        // Refresh the MU-plugin so it picks up the new settings on next request
+        SAM_MU_Plugin_Manager::install();
+
         SAM_Audit_Logger::log('site_tweaks_applied', 'tweaks', 'settings', 'Site tweaks pushed from dashboard');
 
         return $this->success([

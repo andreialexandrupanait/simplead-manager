@@ -120,6 +120,9 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
+        // Refresh the MU-plugin so it picks up the new settings on next request
+        SAM_MU_Plugin_Manager::install();
+
         SAM_Audit_Logger::log('security_settings_applied', 'security', 'settings', 'Security settings pushed from dashboard');
 
         return $this->success([
