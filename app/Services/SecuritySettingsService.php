@@ -186,7 +186,7 @@ class SecuritySettingsService
      */
     public function pushToPlugin(Site $site): void
     {
-        PushSecuritySettings::dispatch($site)->delay(now()->addSeconds(5));
+        PushSecuritySettings::dispatch($site)->delay(now()->addSeconds(1));
     }
 
     public function recalculateAllScores(): void
