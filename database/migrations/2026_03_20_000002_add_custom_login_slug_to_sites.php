@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sites', function (Blueprint $table) {
-            $table->string('custom_login_slug', 50)->nullable()->after('security_hardening_score');
+            $table->string('custom_login_slug', 50)->nullable();
         });
     }
 

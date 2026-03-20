@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('security_activity_logs', function (Blueprint $table) {
-            $table->string('event_category', 20)->default('security')->after('event_type');
+            $table->string('event_category', 20)->default('security');
             $table->index(['site_id', 'event_category']);
         });
 
