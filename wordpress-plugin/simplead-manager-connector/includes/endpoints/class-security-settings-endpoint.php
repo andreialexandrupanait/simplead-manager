@@ -54,7 +54,7 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
                     'applied' => array_keys(array_filter($hardening_settings)),
                 ];
                 if (!empty($cleanup_diag)) {
-                    $results['hardening']['wp_config_cleanup'] = $cleanup_diag;
+                    $results['hardening']['server_changes'] = $cleanup_diag;
                 }
             } catch (\Throwable $e) {
                 $results['hardening'] = [

@@ -289,6 +289,20 @@ class SAM_Security_Htaccess {
   RewriteCond %{QUERY_STRING} (base64_encode|eval\(|GLOBALS\[|REQUEST\[) [NC]
   RewriteRule .* - [F,L]
 </IfModule>',
+
+            'block_author_scans' => '<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_URI} !^/wp-admin/ [NC]
+  RewriteCond %{QUERY_STRING} (^|&)author=\d+ [NC]
+  RewriteRule .* /? [R=301,L]
+</IfModule>',
         ];
+    }
+
+    /**
+     * Get a single rule by key.
+     */
+    public function get_rule(string $key): ?string {
+        return $this->get_rules_map()[$key] ?? null;
     }
 }

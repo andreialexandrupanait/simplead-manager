@@ -156,16 +156,30 @@ class SAM_Security_Hardening {
     /**
      * Update settings from an external push.
      *
-     * @return array Diagnostic info about wp-config.php changes.
+     * @return array Diagnostic info about server-level changes (wp-config.php, .htaccess).
      */
     public static function update_settings(array $settings): array {
         update_option('sam_security_settings', $settings);
+        $diag = [];
 
+        // disable_theme_editor → wp-config.php
         if (!empty($settings['disable_theme_editor'])) {
-            return self::add_file_edit_constant();
+            $diag['wp_config'] = self::add_file_edit_constant();
         } else {
-            return self::remove_file_edit_constant();
+            $diag['wp_config'] = self::remove_file_edit_constant();
         }
+
+        // disable_user_enumeration → .htaccess
+        $htaccess = new SAM_Security_Htaccess();
+        if (!empty($settings['disable_user_enumeration'])) {
+            $success = $htaccess->add_section('block_author_scans', $htaccess->get_rule('block_author_scans'));
+            $diag['author_enum_htaccess'] = $success ? 'added' : 'failed';
+        } else {
+            $success = $htaccess->remove_section('block_author_scans');
+            $diag['author_enum_htaccess'] = $success ? 'removed' : 'not_present';
+        }
+
+        return $diag;
     }
 
     /**
