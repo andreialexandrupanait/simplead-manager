@@ -85,7 +85,7 @@
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                     @if($brandingLogo)
-                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-auto object-contain" style="height: 32px; filter: brightness(0) invert(1);">
+                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-auto object-contain" style="height: 40px; filter: brightness(0) invert(1);">
                     @else
                         <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
