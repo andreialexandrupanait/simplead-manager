@@ -258,7 +258,7 @@ class ModuleConfigService
     /**
      * Configure a single module for a site (create/update).
      */
-    private function configureModule(Site $site, string $moduleKey, bool $enabled, ?int $interval = null): void
+    public function configureModule(Site $site, string $moduleKey, bool $enabled, ?int $interval = null): void
     {
         $config = self::MODULE_MAP[$moduleKey];
         $record = $site->{$config['relation']};

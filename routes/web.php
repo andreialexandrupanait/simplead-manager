@@ -94,6 +94,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     });
 
+    // Bulk Settings
+    Route::get('/bulk-settings', Sites\BulkSettings::class)->name('bulk-settings');
+
     // Backups — global view
     Route::get('/backups', Backups\BackupsOverview::class)->name('backups.index');
 

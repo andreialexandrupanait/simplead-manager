@@ -2,7 +2,13 @@
     <x-ui.page-header
         title="Settings"
         subtitle="Configure monitoring modules and preset for this site"
-    />
+    >
+        <x-slot:actions>
+            <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
+                Copy to Sites
+            </x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
     <div class="mt-6 space-y-6">
         {{-- Preset Section --}}
@@ -92,4 +98,6 @@
             </div>
         </x-ui.card>
     </div>
+
+    <livewire:components.copy-settings-modal :source-site="$site" :show-security-option="false" :show-tweaks-option="false" :show-modules-option="true" />
 </div>

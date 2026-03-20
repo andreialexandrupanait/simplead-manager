@@ -35,6 +35,10 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
             ->where('is_enabled', true)
             ->get();
 
+        // Activity log is a Laravel-only setting — mark applied immediately
+        $settings->where('category', \App\Enums\SecurityCategory::ActivityLog)
+            ->each(fn ($s) => $s->update(['applied_at' => now(), 'failed_at' => null, 'failure_reason' => null]));
+
         $payload = $this->buildPayload($settings);
 
         if (empty($payload)) {
@@ -215,6 +219,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
     {
         SecuritySetting::where('site_id', $this->site->id)
             ->where('is_enabled', true)
+            ->where('category', '!=', 'activity_log')
             ->whereNull('applied_at')
             ->update([
                 'failed_at' => now(),

@@ -1,6 +1,9 @@
 <div>
     <x-ui.page-header title="Site Control" subtitle="Control updates, features, and site behavior">
         <x-slot:actions>
+            <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
+                Copy to Sites
+            </x-ui.button>
             <x-ui.button variant="ghost" size="sm" wire:click="verifySettings" wire:loading.attr="disabled" wire:target="verifySettings">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="verifySettings" />
                 Verify
@@ -143,4 +146,6 @@
             </x-ui.button>
         </div>
     @endif
+
+    <livewire:components.copy-settings-modal :source-site="$site" :show-security-option="false" :show-tweaks-option="true" :show-modules-option="false" />
 </div>

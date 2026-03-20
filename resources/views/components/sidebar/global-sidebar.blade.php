@@ -37,6 +37,14 @@
 
 <x-sidebar.sidebar-section :title="__('Management')">
     <x-sidebar.sidebar-item
+        :href="route('bulk-settings')"
+        icon="layers"
+        :active="request()->routeIs('bulk-settings')"
+    >
+        {{ __('Bulk Settings') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
         :href="route('backups.index')"
         icon="hard-drive"
         :active="request()->routeIs('backups.*')"

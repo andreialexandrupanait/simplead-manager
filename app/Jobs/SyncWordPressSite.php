@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Jobs\FetchSiteFavicon;
+use App\Jobs\PullSecurityActivityLogs;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
@@ -188,6 +189,13 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 app(SecurityRecommendationService::class)->check($this->site);
             } catch (\Exception $e) {
                 Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
+
+            // Pull security activity logs from WordPress
+            try {
+                PullSecurityActivityLogs::dispatch($this->site);
+            } catch (\Exception $e) {
+                Log::info("Security activity log pull skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Fetch DB cleanup stats for overview card
