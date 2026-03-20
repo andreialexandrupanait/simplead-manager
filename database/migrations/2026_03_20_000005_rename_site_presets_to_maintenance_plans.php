@@ -2,21 +2,19 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public $withinTransaction = false;
+
     public function up(): void
     {
-        // Drop FK constraints
-        Schema::table('sites', function (Blueprint $table) {
-            $table->dropForeign(['applied_preset_id']);
-        });
-
-        Schema::table('site_preset_modules', function (Blueprint $table) {
-            $table->dropForeign(['site_preset_id']);
-            $table->dropUnique(['site_preset_id', 'module_key']);
-        });
+        // Drop FK constraints and unique index
+        DB::statement('ALTER TABLE sites DROP CONSTRAINT IF EXISTS sites_applied_preset_id_foreign');
+        DB::statement('ALTER TABLE site_preset_modules DROP CONSTRAINT IF EXISTS site_preset_modules_site_preset_id_foreign');
+        DB::statement('ALTER TABLE site_preset_modules DROP CONSTRAINT IF EXISTS site_preset_modules_site_preset_id_module_key_unique');
 
         // Rename tables
         Schema::rename('site_presets', 'maintenance_plans');
@@ -50,15 +48,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Drop new FK constraints
-        Schema::table('sites', function (Blueprint $table) {
-            $table->dropForeign(['maintenance_plan_id']);
-        });
-
-        Schema::table('maintenance_plan_modules', function (Blueprint $table) {
-            $table->dropForeign(['maintenance_plan_id']);
-            $table->dropUnique(['maintenance_plan_id', 'module_key']);
-        });
+        // Drop new FK constraints and unique index
+        DB::statement('ALTER TABLE sites DROP CONSTRAINT IF EXISTS sites_maintenance_plan_id_foreign');
+        DB::statement('ALTER TABLE maintenance_plan_modules DROP CONSTRAINT IF EXISTS maintenance_plan_modules_maintenance_plan_id_foreign');
+        DB::statement('ALTER TABLE maintenance_plan_modules DROP CONSTRAINT IF EXISTS maintenance_plan_modules_maintenance_plan_id_module_key_unique');
 
         // Rename columns back
         Schema::table('sites', function (Blueprint $table) {
