@@ -121,6 +121,7 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
 
         return $this->success([
             'results' => $results,
+            'banned_ips' => SAM_Security_Login::get_banned_ips(),
             'timestamp' => gmdate('c'),
         ]);
     }

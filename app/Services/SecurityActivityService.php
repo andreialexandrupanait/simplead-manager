@@ -17,9 +17,11 @@ class SecurityActivityService
         $now = now();
 
         foreach ($logs as $log) {
+            $eventType = $log['event_type'] ?? 'unknown';
             $rows[] = [
                 'site_id' => $site->id,
-                'event_type' => $log['event_type'] ?? 'unknown',
+                'event_type' => $eventType,
+                'event_category' => self::categorizeEvent($eventType),
                 'username' => $log['username'] ?? null,
                 'object_type' => $log['object_type'] ?? null,
                 'object_name' => $log['object_name'] ?? null,
@@ -88,5 +90,20 @@ class SecurityActivityService
     public function pruneOldLogs(int $retentionDays): int
     {
         return SecurityActivityLog::where('occurred_at', '<', now()->subDays($retentionDays))->delete();
+    }
+
+    public static function categorizeEvent(string $eventType): string
+    {
+        if (str_starts_with($eventType, 'backup_') || str_starts_with($eventType, 'restore_') || str_starts_with($eventType, 'direct_upload')) {
+            return 'backup';
+        }
+        if (str_starts_with($eventType, 'plugin_') || str_starts_with($eventType, 'theme_')) {
+            return 'plugin';
+        }
+        if (str_starts_with($eventType, 'user_') || str_starts_with($eventType, 'login_') || $eventType === 'auto_login') {
+            return 'user';
+        }
+
+        return 'security';
     }
 }

@@ -48,6 +48,12 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
             if ($response->successful()) {
                 $results = $response->json('results') ?? [];
                 $this->processResults($results);
+
+                // Sync banned IPs reported by WordPress
+                $bannedIps = $response->json('banned_ips') ?? [];
+                if (!empty($bannedIps)) {
+                    app(SecuritySettingsService::class)->syncBannedIps($this->site, $bannedIps);
+                }
             } else {
                 Log::warning('PushSecuritySettings failed', [
                     'site_id' => $this->site->id,
@@ -178,11 +184,30 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                 foreach ($settings as $s) {
                     $reported[] = ['category' => $cat, 'key' => $s->setting_key, 'applied' => true];
                 }
+
+                // Store custom login slug on the site when login settings are applied
+                if ($cat === 'login') {
+                    $this->syncCustomLoginSlug();
+                }
             }
         }
 
         if (!empty($reported)) {
             app(SecuritySettingsService::class)->syncSettingsFromAgent($this->site, $reported);
+        }
+    }
+
+    protected function syncCustomLoginSlug(): void
+    {
+        $loginSetting = SecuritySetting::where('site_id', $this->site->id)
+            ->where('category', 'login')
+            ->where('setting_key', 'custom_login_url')
+            ->first();
+
+        if ($loginSetting?->is_enabled) {
+            $this->site->update(['custom_login_slug' => $loginSetting->setting_value['slug'] ?? null]);
+        } else {
+            $this->site->update(['custom_login_slug' => null]);
         }
     }
 

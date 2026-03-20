@@ -143,6 +143,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                             'posts_count' => $user['posts_count'] ?? 0,
                             'registered_at' => $user['registered'] ?? null,
                             'last_login_at' => $user['last_login'] ?? null,
+                            'synced_at' => now(),
                         ]
                     );
                     $existingWpUserIds[] = $user['id'];

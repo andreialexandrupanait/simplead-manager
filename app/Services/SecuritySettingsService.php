@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Jobs\PushSecuritySettings;
+use App\Models\SecurityBannedIp;
 use App\Models\SecurityPreset;
 use App\Models\SecuritySetting;
 use App\Models\Site;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class SecuritySettingsService
@@ -187,6 +189,38 @@ class SecuritySettingsService
     public function pushToPlugin(Site $site): void
     {
         PushSecuritySettings::dispatch($site)->delay(now()->addSeconds(1));
+    }
+
+    public function syncBannedIps(Site $site, array $bannedIps): void
+    {
+        $seenIps = [];
+
+        foreach ($bannedIps as $ip => $data) {
+            $bannedAt = isset($data['banned_at']) ? Carbon::createFromTimestamp($data['banned_at']) : now();
+            $expiresAt = isset($data['expires_at']) ? Carbon::createFromTimestamp($data['expires_at']) : null;
+
+            // Skip already-expired entries
+            if ($expiresAt && $expiresAt->isPast()) {
+                continue;
+            }
+
+            SecurityBannedIp::updateOrCreate(
+                ['site_id' => $site->id, 'ip_address' => $ip],
+                [
+                    'reason' => $data['reason'] ?? 'Brute force',
+                    'blocked_attempts' => $data['attempts'] ?? 0,
+                    'banned_at' => $bannedAt,
+                    'expires_at' => $expiresAt,
+                ],
+            );
+
+            $seenIps[] = $ip;
+        }
+
+        // Remove entries no longer present on WordPress side
+        SecurityBannedIp::where('site_id', $site->id)
+            ->when(!empty($seenIps), fn ($q) => $q->whereNotIn('ip_address', $seenIps))
+            ->delete();
     }
 
     public function recalculateAllScores(): void

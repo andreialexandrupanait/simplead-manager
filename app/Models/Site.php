@@ -30,6 +30,7 @@ class Site extends Model
         "sort_order",
         "health_score",
         "security_hardening_score",
+        "custom_login_slug",
         "type",
         "api_key",
         "api_secret",

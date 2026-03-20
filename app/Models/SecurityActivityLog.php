@@ -16,6 +16,7 @@ class SecurityActivityLog extends Model
     protected $fillable = [
         'site_id',
         'event_type',
+        'event_category',
         'username',
         'object_type',
         'object_name',

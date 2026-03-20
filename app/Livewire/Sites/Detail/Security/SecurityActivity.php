@@ -38,6 +38,7 @@ class SecurityActivity extends Component
     public function eventTypes(): array
     {
         return SecurityActivityLog::where('site_id', $this->site->id)
+            ->where('event_category', '!=', 'backup')
             ->distinct()
             ->pluck('event_type')
             ->sort()
@@ -70,6 +71,7 @@ class SecurityActivity extends Component
     public function render()
     {
         $query = SecurityActivityLog::where('site_id', $this->site->id)
+            ->where('event_category', '!=', 'backup')
             ->where('occurred_at', '>=', now()->subDays($this->filterDays))
             ->orderByDesc('occurred_at');
 
