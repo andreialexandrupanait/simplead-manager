@@ -53,22 +53,88 @@
         </x-ui.card>
     </div>
 
-    {{-- Category Status Cards --}}
+    {{-- Needs Attention Alert --}}
+    @php
+        $attentionItems = collect();
+
+        // Collect from security categories
+        foreach (['hardening', 'htaccess', 'login', 'captcha', 'ip_management', 'activity_log'] as $catKey) {
+            $catSettings = $this->settingsByCategory->get($catKey, collect());
+            $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
+            $pendingCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Pending)->count();
+            if ($failedCount > 0 || $pendingCount > 0) {
+                $attentionItems->push(['key' => $catKey, 'failed' => $failedCount, 'pending' => $pendingCount]);
+            }
+        }
+
+        // Collect from tweaks categories
+        foreach (['performance', 'site_control'] as $catKey) {
+            $catSettings = $this->tweakSettingsByCategory->get($catKey, collect());
+            $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
+            $pendingCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Pending)->count();
+            if ($failedCount > 0 || $pendingCount > 0) {
+                $attentionItems->push(['key' => $catKey, 'failed' => $failedCount, 'pending' => $pendingCount]);
+            }
+        }
+
+        $categoryLabels = [
+            'hardening' => 'WordPress Hardening',
+            'htaccess' => '.htaccess Rules',
+            'login' => 'Login Protection',
+            'captcha' => 'CAPTCHA',
+            'ip_management' => 'IP Management',
+            'activity_log' => 'Activity Log',
+            'performance' => 'Performance',
+            'site_control' => 'Site Control',
+        ];
+    @endphp
+
+    @if($attentionItems->isNotEmpty())
+        <div class="mb-6">
+            <x-ui.card>
+                <div class="flex items-start gap-3">
+                    <x-icons.alert-triangle class="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Needs Attention</h3>
+                        <div class="mt-2 space-y-1.5">
+                            @foreach($attentionItems as $item)
+                                <div class="flex items-center gap-2 text-sm text-gray-600">
+                                    <span>{{ $categoryLabels[$item['key']] ?? $item['key'] }}</span>
+                                    @if($item['failed'] > 0)
+                                        <x-ui.badge variant="red">{{ $item['failed'] }} failed</x-ui.badge>
+                                    @endif
+                                    @if($item['pending'] > 0)
+                                        <x-ui.badge variant="yellow">{{ $item['pending'] }} pending</x-ui.badge>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </x-ui.card>
+        </div>
+    @endif
+
+    {{-- Unified Category Status Cards --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @php
-            $categories = [
-                'hardening' => ['label' => 'WordPress Hardening', 'icon' => 'shield', 'route' => 'sites.security.hardening'],
-                'htaccess' => ['label' => '.htaccess Rules', 'icon' => 'lock', 'route' => 'sites.security.hardening'],
-                'login' => ['label' => 'Login Protection', 'icon' => 'lock', 'route' => 'sites.security.login'],
-                'captcha' => ['label' => 'CAPTCHA', 'icon' => 'shield-alert', 'route' => 'sites.security.captcha'],
-                'ip_management' => ['label' => 'IP Management', 'icon' => 'globe', 'route' => 'sites.security.ip-management'],
-                'activity_log' => ['label' => 'Activity Log', 'icon' => 'activity', 'route' => 'sites.security.activity'],
+            $allCategories = [
+                'hardening' => ['label' => 'WordPress Hardening', 'icon' => 'shield', 'route' => 'sites.security.hardening', 'source' => 'security'],
+                'htaccess' => ['label' => '.htaccess Rules', 'icon' => 'lock', 'route' => 'sites.security.hardening', 'source' => 'security'],
+                'login' => ['label' => 'Login Protection', 'icon' => 'lock', 'route' => 'sites.security.login', 'source' => 'security'],
+                'captcha' => ['label' => 'CAPTCHA', 'icon' => 'shield-alert', 'route' => 'sites.security.captcha', 'source' => 'security'],
+                'ip_management' => ['label' => 'IP Management', 'icon' => 'globe', 'route' => 'sites.security.ip-management', 'source' => 'security'],
+                'activity_log' => ['label' => 'Activity Log', 'icon' => 'activity', 'route' => 'sites.security.activity', 'source' => 'security'],
+                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.security.performance', 'source' => 'tweaks'],
+                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.security.site-control', 'source' => 'tweaks'],
             ];
         @endphp
 
-        @foreach($categories as $catKey => $catInfo)
+        @foreach($allCategories as $catKey => $catInfo)
             @php
-                $catSettings = $this->settingsByCategory->get($catKey, collect());
+                $catSettings = $catInfo['source'] === 'security'
+                    ? $this->settingsByCategory->get($catKey, collect())
+                    : $this->tweakSettingsByCategory->get($catKey, collect());
                 $enabledCount = $catSettings->where('is_enabled', true)->count();
                 $appliedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Applied)->count();
                 $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
@@ -87,74 +153,30 @@
                                 @endif
                             </p>
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div>
                             @if($failedCount > 0)
-                                <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                                <x-ui.badge variant="red">Needs Attention</x-ui.badge>
                             @elseif($appliedCount > 0 && $appliedCount === $enabledCount)
-                                <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
+                                <x-ui.badge variant="green">Applied</x-ui.badge>
                             @elseif($enabledCount > 0)
-                                <span class="h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
+                                <x-ui.badge variant="yellow">Pending</x-ui.badge>
                             @else
-                                <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>
+                                <x-ui.badge variant="gray">Not Configured</x-ui.badge>
                             @endif
                         </div>
                     </div>
                 </x-ui.card>
             </a>
         @endforeach
-    </div>
 
-    {{-- Site Tweaks Category Cards --}}
-    <h3 class="mt-8 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">Site Tweaks</h3>
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {{-- Coming Soon Cards --}}
         @php
-            $tweakCategories = [
-                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.security.performance'],
-                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.security.site-control'],
-            ];
             $comingSoonCategories = [
                 'admin_ux' => ['label' => 'Admin UX', 'icon' => 'layout', 'route' => 'sites.security.admin-ux'],
                 'content_media' => ['label' => 'Content & Media', 'icon' => 'image', 'route' => 'sites.security.content-media'],
                 'email' => ['label' => 'Email', 'icon' => 'mail', 'route' => 'sites.security.email'],
             ];
         @endphp
-
-        @foreach($tweakCategories as $catKey => $catInfo)
-            @php
-                $catSettings = $this->tweakSettingsByCategory->get($catKey, collect());
-                $enabledCount = $catSettings->where('is_enabled', true)->count();
-                $appliedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Applied)->count();
-                $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
-                $totalCount = $catSettings->count();
-            @endphp
-            <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
-                <x-ui.card class="cursor-pointer hover:border-purple-200 transition-colors">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>
-                            <p class="mt-1 text-xs text-gray-500">
-                                @if($totalCount === 0)
-                                    Not configured
-                                @else
-                                    {{ $appliedCount }}/{{ $enabledCount }} applied
-                                @endif
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            @if($failedCount > 0)
-                                <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>
-                            @elseif($appliedCount > 0 && $appliedCount === $enabledCount)
-                                <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-                            @elseif($enabledCount > 0)
-                                <span class="h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
-                            @else
-                                <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>
-                            @endif
-                        </div>
-                    </div>
-                </x-ui.card>
-            </a>
-        @endforeach
 
         @foreach($comingSoonCategories as $catKey => $catInfo)
             <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
@@ -164,7 +186,7 @@
                             <h4 class="text-sm font-semibold text-gray-400">{{ $catInfo['label'] }}</h4>
                             <p class="mt-1 text-xs text-gray-400">Coming soon</p>
                         </div>
-                        <span class="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 ring-1 ring-inset ring-amber-500/20">Soon</span>
+                        <x-ui.badge variant="yellow">Soon</x-ui.badge>
                     </div>
                 </x-ui.card>
             </a>

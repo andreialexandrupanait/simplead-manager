@@ -32,6 +32,9 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-900">{{ $info['label'] }}</p>
                             <p class="text-xs text-gray-500 truncate">{{ $info['desc'] }}</p>
+                            @if($hardeningToggles[$key] ?? false)
+                                <x-security.setting-status :status="$settingStatuses[$key] ?? null" />
+                            @endif
                         </div>
                     </div>
                     <x-ui.toggle
@@ -63,6 +66,9 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-900">{{ $info['label'] }}</p>
                             <p class="text-xs text-gray-500 truncate">{{ $info['desc'] }}</p>
+                            @if($htaccessToggles[$key] ?? false)
+                                <x-security.setting-status :status="$settingStatuses[$key] ?? null" />
+                            @endif
                         </div>
                     </div>
                     <x-ui.toggle

@@ -14,6 +14,7 @@ class SecurityHardening extends Component
     public Site $site;
     public array $hardeningToggles = [];
     public array $htaccessToggles = [];
+    public array $settingStatuses = [];
     public bool $isDirty = false;
 
     public function mount(Site $site): void
@@ -32,9 +33,11 @@ class SecurityHardening extends Component
 
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['hardening'] as $key) {
             $this->hardeningToggles[$key] = $settings->get($key)?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)?->status;
         }
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['htaccess'] as $key) {
             $this->htaccessToggles[$key] = $settings->get($key)?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)?->status;
         }
     }
 

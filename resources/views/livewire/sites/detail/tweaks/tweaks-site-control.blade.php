@@ -12,6 +12,9 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900">Disable All Auto-Updates</p>
                         <p class="text-xs text-gray-500">Prevent WordPress from automatically updating core, plugins, and themes.</p>
+                        @if($toggles['disable_all_updates'] ?? false)
+                            <x-security.setting-status :status="$settingStatuses['disable_all_updates'] ?? null" />
+                        @endif
                     </div>
                 </div>
                 <x-ui.toggle
@@ -46,6 +49,9 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-900">{{ $info['label'] }}</p>
                             <p class="text-xs text-gray-500 truncate">{{ $info['desc'] }}</p>
+                            @if($toggles[$key] ?? false)
+                                <x-security.setting-status :status="$settingStatuses[$key] ?? null" />
+                            @endif
                         </div>
                     </div>
                     <x-ui.toggle
@@ -66,6 +72,9 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900">Disable Gutenberg Block Editor</p>
                         <p class="text-xs text-gray-500">Revert to the Classic Editor for all post types and remove block styles.</p>
+                        @if($toggles['disable_gutenberg'] ?? false)
+                            <x-security.setting-status :status="$settingStatuses['disable_gutenberg'] ?? null" />
+                        @endif
                     </div>
                 </div>
                 <x-ui.toggle
@@ -79,6 +88,9 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900">Disable Author Archives</p>
                         <p class="text-xs text-gray-500">Return 404 for author archive pages to prevent username discovery.</p>
+                        @if($toggles['disable_author_archives'] ?? false)
+                            <x-security.setting-status :status="$settingStatuses['disable_author_archives'] ?? null" />
+                        @endif
                     </div>
                 </div>
                 <x-ui.toggle
@@ -98,6 +110,9 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900">Redirect 404 to Homepage</p>
                         <p class="text-xs text-gray-500">Automatically redirect all 404 (Not Found) pages to the homepage with a 301 redirect.</p>
+                        @if($toggles['redirect_404'] ?? false)
+                            <x-security.setting-status :status="$settingStatuses['redirect_404'] ?? null" />
+                        @endif
                     </div>
                 </div>
                 <x-ui.toggle

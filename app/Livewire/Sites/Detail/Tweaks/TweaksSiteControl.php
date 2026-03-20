@@ -13,6 +13,7 @@ class TweaksSiteControl extends Component
 
     public Site $site;
     public array $toggles = [];
+    public array $settingStatuses = [];
     public bool $isDirty = false;
 
     protected array $settingKeys = [
@@ -39,6 +40,7 @@ class TweaksSiteControl extends Component
 
         foreach ($this->settingKeys as $key) {
             $this->toggles[$key] = $settings->get($key)?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)?->status;
         }
     }
 

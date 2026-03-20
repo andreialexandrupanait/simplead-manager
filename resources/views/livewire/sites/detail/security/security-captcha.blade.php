@@ -1,5 +1,6 @@
 <div>
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
+    @include('livewire.sites.detail.security.partials.protection-sub-tabs', ['site' => $site])
 
     <x-ui.flash-alert type="success" key="captcha-saved" />
 
@@ -28,12 +29,12 @@
                     @endif
 
                     <x-ui.form-group label="Site Key" for="siteKey" error="{{ $errors->first('siteKey') }}">
-                        <x-ui.input type="text" id="siteKey" wire:model="siteKey"
+                        <x-ui.input type="text" id="siteKey" wire:model.live.debounce.500ms="siteKey"
                             placeholder="{{ $this->hasExistingKeys ? '••••••••••••' : 'Enter site key' }}" />
                     </x-ui.form-group>
 
                     <x-ui.form-group label="Secret Key" for="secretKey" error="{{ $errors->first('secretKey') }}">
-                        <x-ui.input type="password" id="secretKey" wire:model="secretKey"
+                        <x-ui.input type="password" id="secretKey" wire:model.live.debounce.500ms="secretKey"
                             placeholder="{{ $this->hasExistingKeys ? '••••••••••••' : 'Enter secret key' }}" />
                     </x-ui.form-group>
                 </div>
@@ -43,22 +44,22 @@
                     <h4 class="text-sm font-medium text-gray-900">Enable on Forms</h4>
 
                     <label class="flex items-center gap-2">
-                        <x-ui.checkbox wire:model="enableLogin" />
+                        <x-ui.checkbox wire:model.live="enableLogin" />
                         <span class="text-sm text-gray-700">Login form</span>
                     </label>
 
                     <label class="flex items-center gap-2">
-                        <x-ui.checkbox wire:model="enableRegister" />
+                        <x-ui.checkbox wire:model.live="enableRegister" />
                         <span class="text-sm text-gray-700">Registration form</span>
                     </label>
 
                     <label class="flex items-center gap-2">
-                        <x-ui.checkbox wire:model="enableResetPassword" />
+                        <x-ui.checkbox wire:model.live="enableResetPassword" />
                         <span class="text-sm text-gray-700">Password reset form</span>
                     </label>
 
                     <label class="flex items-center gap-2">
-                        <x-ui.checkbox wire:model="enableComments" />
+                        <x-ui.checkbox wire:model.live="enableComments" />
                         <span class="text-sm text-gray-700">Comment form</span>
                     </label>
                 </div>
@@ -79,12 +80,17 @@
                     @endif
                 </div>
             @endif
-
-            <div class="flex justify-end">
-                <x-ui.button wire:click="save" wire:loading.attr="disabled">
-                    Save CAPTCHA Settings
-                </x-ui.button>
-            </div>
         </div>
     </x-ui.card>
+
+    {{-- Sticky Save Bar --}}
+    @if($isDirty)
+        <div class="sticky bottom-0 mt-6 -mx-6 -mb-6 rounded-b-lg border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between shadow-lg">
+            <p class="text-sm text-gray-500">You have unsaved changes</p>
+            <x-ui.button wire:click="save" wire:loading.attr="disabled">
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="save" />
+                Save Changes
+            </x-ui.button>
+        </div>
+    @endif
 </div>

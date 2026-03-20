@@ -11,6 +11,9 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-900">Enable Heartbeat Control</p>
                     <p class="text-xs text-gray-500">Control the WordPress heartbeat API to reduce server load.</p>
+                    @if($toggles['heartbeat_control'] ?? false)
+                        <x-security.setting-status :status="$settingStatuses['heartbeat_control'] ?? null" />
+                    @endif
                 </div>
                 <x-ui.toggle
                     :enabled="$toggles['heartbeat_control'] ?? false"
@@ -61,6 +64,9 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-900">Limit Post Revisions</p>
                     <p class="text-xs text-gray-500">Control how many revisions WordPress keeps for each post.</p>
+                    @if($toggles['revisions_control'] ?? false)
+                        <x-security.setting-status :status="$settingStatuses['revisions_control'] ?? null" />
+                    @endif
                 </div>
                 <x-ui.toggle
                     :enabled="$toggles['revisions_control'] ?? false"
@@ -86,6 +92,9 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-900">Enable Image Optimization</p>
                     <p class="text-xs text-gray-500">Auto-resize uploaded images and control JPEG quality.</p>
+                    @if($toggles['image_upload_control'] ?? false)
+                        <x-security.setting-status :status="$settingStatuses['image_upload_control'] ?? null" />
+                    @endif
                 </div>
                 <x-ui.toggle
                     :enabled="$toggles['image_upload_control'] ?? false"
@@ -142,6 +151,9 @@
                         <div class="min-w-0">
                             <p class="text-sm font-medium text-gray-900">{{ $info['label'] }}</p>
                             <p class="text-xs text-gray-500 truncate">{{ $info['desc'] }}</p>
+                            @if($toggles[$key] ?? false)
+                                <x-security.setting-status :status="$settingStatuses[$key] ?? null" />
+                            @endif
                         </div>
                     </div>
                     <x-ui.toggle

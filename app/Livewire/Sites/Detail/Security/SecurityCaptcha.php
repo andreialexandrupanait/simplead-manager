@@ -25,6 +25,7 @@ class SecurityCaptcha extends Component
     public bool $enableResetPassword = true;
 
     public bool $hasExistingKeys = false;
+    public bool $isDirty = false;
 
     public function mount(Site $site): void
     {
@@ -52,6 +53,15 @@ class SecurityCaptcha extends Component
                 $this->hasExistingKeys = true;
             }
         }
+    }
+
+    public function updated($property): void
+    {
+        if ($property === 'isDirty') {
+            return;
+        }
+
+        $this->isDirty = true;
     }
 
     #[Computed]
@@ -114,6 +124,7 @@ class SecurityCaptcha extends Component
             $this->hasExistingKeys = true;
         }
 
+        $this->isDirty = false;
         unset($this->captchaSetting);
         session()->flash('captcha-saved', 'CAPTCHA settings saved.');
         $this->redirect(route('sites.security.captcha', $this->site), navigate: false);

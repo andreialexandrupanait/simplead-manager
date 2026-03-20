@@ -26,6 +26,8 @@ class SecurityLogin extends Component
     // 2FA
     public bool $twoFactorEnabled = false;
 
+    public bool $isDirty = false;
+
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
@@ -65,15 +67,27 @@ class SecurityLogin extends Component
             ->keyBy('setting_key');
     }
 
-    public function saveBruteForce(): void
+    public function updated($property): void
+    {
+        if ($property === 'isDirty') {
+            return;
+        }
+
+        $this->isDirty = true;
+    }
+
+    public function save(): void
     {
         $this->validate([
             'maxAttempts' => 'required|integer|min:1|max:100',
             'windowMinutes' => 'required|integer|min:1|max:1440',
             'blockDurationMinutes' => 'required|integer|min:1|max:43200',
+            'loginSlug' => 'nullable|string|max:50|alpha_dash',
         ]);
 
-        app(SecuritySettingsService::class)->applySetting(
+        $service = app(SecuritySettingsService::class);
+
+        $service->applySetting(
             $this->site,
             'login',
             'brute_force_protection',
@@ -85,29 +99,19 @@ class SecurityLogin extends Component
             true,
         );
 
-        unset($this->loginSettings);
-        session()->flash('login-saved', 'Brute force protection settings saved.');
-        $this->redirect(route('sites.security.login', $this->site), navigate: false);
-    }
+        $loginEnabled = !empty($this->loginSlug);
 
-    public function saveCustomLogin(): void
-    {
-        $this->validate([
-            'loginSlug' => 'nullable|string|max:50|alpha_dash',
-        ]);
-
-        $enabled = !empty($this->loginSlug);
-
-        app(SecuritySettingsService::class)->applySetting(
+        $service->applySetting(
             $this->site,
             'login',
             'custom_login_url',
             ['slug' => $this->loginSlug],
-            $enabled,
+            $loginEnabled,
         );
 
+        $this->isDirty = false;
         unset($this->loginSettings);
-        session()->flash('login-saved', 'Custom login URL settings saved.');
+        session()->flash('login-saved', 'Login protection settings saved.');
         $this->redirect(route('sites.security.login', $this->site), navigate: false);
     }
 

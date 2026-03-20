@@ -30,6 +30,7 @@ class TweaksPerformance extends Component
     public int $imageMaxHeight = 2560;
     public int $jpegQuality = 82;
 
+    public array $settingStatuses = [];
     public bool $isDirty = false;
 
     protected array $simpleToggleKeys = [
@@ -59,6 +60,7 @@ class TweaksPerformance extends Component
         // Simple toggles
         foreach ($this->simpleToggleKeys as $key) {
             $this->toggles[$key] = $settings->get($key)?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)?->status;
         }
 
         // Heartbeat
@@ -73,6 +75,7 @@ class TweaksPerformance extends Component
         } else {
             $this->toggles['heartbeat_control'] = false;
         }
+        $this->settingStatuses['heartbeat_control'] = $heartbeat?->status;
 
         // Revisions
         $revisions = $settings->get('revisions_control');
@@ -83,6 +86,7 @@ class TweaksPerformance extends Component
         } else {
             $this->toggles['revisions_control'] = false;
         }
+        $this->settingStatuses['revisions_control'] = $revisions?->status;
 
         // Image upload
         $image = $settings->get('image_upload_control');
@@ -95,6 +99,7 @@ class TweaksPerformance extends Component
         } else {
             $this->toggles['image_upload_control'] = false;
         }
+        $this->settingStatuses['image_upload_control'] = $image?->status;
     }
 
     public function toggleSetting(string $key): void
