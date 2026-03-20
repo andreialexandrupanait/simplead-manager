@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\SecurityIpList;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
@@ -89,7 +90,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                     ...(is_array($value) ? $value : []),
                 ];
             } elseif ($category === 'captcha') {
-                $payload['captcha'] = is_array($value) ? $value : [];
+                $payload['captcha'] = array_merge(['enabled' => true], is_array($value) ? $value : []);
             } elseif ($category === 'ip_management') {
                 $payload['ip_management'] = is_array($value) ? $value : [];
             }
@@ -119,6 +120,23 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                     $payload['ip_management'] = ['enabled' => false];
                 }
             }
+        }
+
+        // Decrypt the CAPTCHA secret key (stored encrypted in Laravel DB)
+        if (isset($payload['captcha']['secret_key'])) {
+            try {
+                $payload['captcha']['secret_key'] = decrypt($payload['captcha']['secret_key']);
+            } catch (\Throwable $e) {
+                // Not encrypted or decryption failed — leave as-is
+            }
+        }
+
+        // Include IP lists from the database in the push payload
+        if (isset($payload['ip_management'])) {
+            $payload['ip_management']['whitelist'] = SecurityIpList::forSite($this->site->id)
+                ->whitelist()->active()->pluck('ip_address')->toArray();
+            $payload['ip_management']['blocklist'] = SecurityIpList::forSite($this->site->id)
+                ->blocklist()->active()->pluck('ip_address')->toArray();
         }
 
         return $payload;

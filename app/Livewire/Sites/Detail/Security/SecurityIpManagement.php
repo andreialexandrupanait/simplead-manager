@@ -121,6 +121,9 @@ class SecurityIpManagement extends Component
 
         $this->reset('newIp', 'newReason', 'newExpiresAt');
         unset($this->whitelist, $this->blocklist);
+
+        app(SecuritySettingsService::class)->pushToPlugin($this->site);
+
         session()->flash('ip-success', 'IP address added.');
         $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
     }
@@ -132,6 +135,8 @@ class SecurityIpManagement extends Component
             ->delete();
 
         unset($this->whitelist, $this->blocklist);
+
+        app(SecuritySettingsService::class)->pushToPlugin($this->site);
     }
 
     public function unbanIp(int $id): void
@@ -162,6 +167,56 @@ class SecurityIpManagement extends Component
         );
 
         session()->flash('ip-success', 'Firewall settings saved.');
+        $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
+    }
+
+    public function verifySettings(): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('GET', '/security-state');
+
+            if (! $response->successful()) {
+                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
+                return;
+            }
+
+            $data = $response->json();
+            $ipState = $data['ip_management'] ?? [];
+
+            $setting = $this->site->securitySettings()
+                ->where('category', 'ip_management')
+                ->where('setting_key', 'firewall_config')
+                ->where('is_enabled', true)
+                ->first();
+
+            if (! $setting) {
+                session()->flash('ip-success', 'No enabled firewall settings to verify.');
+                $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
+                return;
+            }
+
+            $now = now();
+            $active = ! empty($ipState['enabled']);
+
+            if ($active) {
+                $setting->update(['applied_at' => $now, 'failed_at' => null, 'failure_reason' => null]);
+                session()->flash('ip-success', 'Firewall verified as active on WordPress.');
+            } else {
+                $setting->update(['failed_at' => $now, 'failure_reason' => 'Not active on WordPress']);
+                app(SecuritySettingsService::class)->pushToPlugin($this->site);
+                session()->flash('ip-success', 'Firewall not active on WordPress — re-push triggered.');
+            }
+
+            $service = app(SecuritySettingsService::class);
+            $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
+        } catch (\Exception $e) {
+            \Log::error('Verify IP management settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
+            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+        }
+
+        $this->loadFirewallSettings();
         $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
     }
 

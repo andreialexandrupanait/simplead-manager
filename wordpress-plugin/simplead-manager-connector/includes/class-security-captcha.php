@@ -73,27 +73,27 @@ class SAM_Security_Captcha {
     }
 
     private function enforce(): void {
-        $forms = $this->settings['forms'] ?? ['login'];
+        $forms = $this->settings['forms'] ?? [];
 
-        if (in_array('login', $forms, true)) {
+        if (!empty($forms['login'])) {
             add_action('login_enqueue_scripts', [$this, 'enqueue_scripts']);
             add_action('login_form', [$this, 'render_widget']);
             add_filter('authenticate', [$this, 'verify_login'], 25, 3);
         }
 
-        if (in_array('registration', $forms, true)) {
+        if (!empty($forms['register'])) {
             add_action('login_enqueue_scripts', [$this, 'enqueue_scripts']);
             add_action('register_form', [$this, 'render_widget']);
             add_filter('registration_errors', [$this, 'verify_registration'], 10, 3);
         }
 
-        if (in_array('reset_password', $forms, true)) {
+        if (!empty($forms['reset_password'])) {
             add_action('login_enqueue_scripts', [$this, 'enqueue_scripts']);
             add_action('lostpassword_form', [$this, 'render_widget']);
             add_action('lostpassword_post', [$this, 'verify_lost_password']);
         }
 
-        if (in_array('comments', $forms, true)) {
+        if (!empty($forms['comments'])) {
             add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
             add_action('comment_form_after_fields', [$this, 'render_widget']);
             add_action('comment_form_logged_in_after', [$this, 'render_widget']);

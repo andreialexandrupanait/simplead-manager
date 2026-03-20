@@ -26,8 +26,15 @@ class SAM_Security_Hardening {
 
     private function enforce(): void {
         // Disable theme/plugin editor
-        if (!empty($this->settings['disable_theme_editor']) && !defined('DISALLOW_FILE_EDIT')) {
-            define('DISALLOW_FILE_EDIT', true);
+        if (!empty($this->settings['disable_theme_editor'])) {
+            if (!defined('DISALLOW_FILE_EDIT')) {
+                define('DISALLOW_FILE_EDIT', true);
+            }
+            // Fallback: hide editor menus even if constant already defined as false
+            add_action('admin_init', function () {
+                remove_submenu_page('themes.php', 'theme-editor.php');
+                remove_submenu_page('plugins.php', 'plugin-editor.php');
+            }, 999);
         }
 
         // Security headers
