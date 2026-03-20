@@ -55,10 +55,13 @@
                         class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     >
                     <x-site-favicon :site="$site" class="h-4 w-4" />
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-gray-900 truncate">{{ $site->name }}</p>
                         <p class="text-xs text-gray-400 truncate">{{ $site->domain }}</p>
                     </div>
+                    @unless($site->is_connected)
+                        <span class="shrink-0 text-xs text-amber-500">Disconnected</span>
+                    @endunless
                 </label>
             @empty
                 <p class="px-3 py-4 text-sm text-gray-400 text-center">No other sites available.</p>

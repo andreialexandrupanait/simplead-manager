@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\SecurityPreset;
+use App\Models\SecuritySetting;
 use App\Models\Site;
 use Illuminate\Support\Collection;
 
@@ -15,8 +17,9 @@ class BulkSettingsCopyService
 
     /**
      * Copy security settings from source site to target sites.
+     * Settings are saved to DB for all targets. Push jobs only dispatched for connected sites.
      */
-    public function copySecuritySettings(Site $source, Collection $targets): int
+    public function copySecuritySettings(Site $source, Collection $targets): array
     {
         $categories = array_keys(SecuritySettingsService::VALID_SETTING_KEYS);
         $settings = $source->securitySettings()
@@ -24,30 +27,33 @@ class BulkSettingsCopyService
             ->get();
 
         if ($settings->isEmpty()) {
-            return 0;
+            return ['total' => 0, 'pushed' => 0];
         }
 
-        $count = 0;
+        $pushed = 0;
         foreach ($targets as $target) {
             foreach ($settings as $setting) {
-                $this->securityService->applySetting(
-                    $target,
-                    $setting->category->value ?? $setting->category,
-                    $setting->setting_key,
-                    $setting->setting_value,
-                    $setting->is_enabled,
+                $category = $setting->category->value ?? $setting->category;
+                SecuritySetting::updateOrCreate(
+                    ['site_id' => $target->id, 'category' => $category, 'setting_key' => $setting->setting_key],
+                    ['setting_value' => $setting->setting_value, 'is_enabled' => $setting->is_enabled, 'failed_at' => null, 'failure_reason' => null],
                 );
             }
-            $count++;
+
+            if ($target->is_connected) {
+                $this->securityService->pushToPlugin($target);
+                $pushed++;
+            }
         }
 
-        return $count;
+        return ['total' => $targets->count(), 'pushed' => $pushed];
     }
 
     /**
      * Copy tweak settings from source site to target sites.
+     * Settings are saved to DB for all targets. Push jobs only dispatched for connected sites.
      */
-    public function copyTweakSettings(Site $source, Collection $targets): int
+    public function copyTweakSettings(Site $source, Collection $targets): array
     {
         $categories = SiteTweaksSettingsService::TWEAK_CATEGORIES;
         $settings = $source->securitySettings()
@@ -56,25 +62,63 @@ class BulkSettingsCopyService
             ->groupBy(fn ($s) => $s->category->value ?? $s->category);
 
         if ($settings->isEmpty()) {
-            return 0;
+            return ['total' => 0, 'pushed' => 0];
         }
 
-        $count = 0;
+        $pushed = 0;
         foreach ($targets as $target) {
             foreach ($settings as $category => $categorySettings) {
-                $mapped = [];
                 foreach ($categorySettings as $s) {
-                    $mapped[$s->setting_key] = [
-                        'enabled' => $s->is_enabled,
-                        'value' => $s->setting_value,
-                    ];
+                    $this->tweaksService->applySetting($target, $category, $s->setting_key, $s->setting_value, $s->is_enabled);
                 }
-                $this->tweaksService->applyMultiple($target, $category, $mapped);
             }
-            $count++;
+
+            if ($target->is_connected) {
+                $this->tweaksService->pushToPlugin($target);
+                $pushed++;
+            }
         }
 
-        return $count;
+        return ['total' => $targets->count(), 'pushed' => $pushed];
+    }
+
+    /**
+     * Apply a security preset to target sites.
+     * Settings are saved to DB for all targets. Push jobs only dispatched for connected sites.
+     */
+    public function applySecurityPreset(SecurityPreset $preset, Collection $targets): array
+    {
+        $settings = $preset->settings;
+
+        if (empty($settings)) {
+            return ['total' => 0, 'pushed' => 0];
+        }
+
+        $pushed = 0;
+        foreach ($targets as $site) {
+            foreach ($settings as $category => $categorySettings) {
+                foreach ($categorySettings as $key => $config) {
+                    SecuritySetting::updateOrCreate(
+                        ['site_id' => $site->id, 'category' => $category, 'setting_key' => $key],
+                        ['setting_value' => $config['value'] ?? null, 'is_enabled' => $config['enabled'] ?? false, 'failed_at' => null, 'failure_reason' => null],
+                    );
+                }
+            }
+
+            $site->securityPresets()->syncWithoutDetaching([
+                $preset->id => [
+                    'applied_at' => now(),
+                    'applied_version' => $preset->version,
+                ],
+            ]);
+
+            if ($site->is_connected) {
+                $this->securityService->pushToPlugin($site);
+                $pushed++;
+            }
+        }
+
+        return ['total' => $targets->count(), 'pushed' => $pushed];
     }
 
     /**

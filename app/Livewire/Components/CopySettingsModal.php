@@ -52,25 +52,37 @@ class CopySettingsModal extends Component
 
         $targets = Site::whereIn('id', $this->selectedSiteIds)->get();
         $service = app(BulkSettingsCopyService::class);
-        $copied = 0;
+        $pushed = 0;
+        $total = $targets->count();
 
         if ($this->copySecuritySettings && $this->showSecurityOption) {
-            $copied += $service->copySecuritySettings($this->sourceSite, $targets);
+            $result = $service->copySecuritySettings($this->sourceSite, $targets);
+            $pushed = max($pushed, $result['pushed']);
         }
 
         if ($this->copyTweakSettings && $this->showTweaksOption) {
-            $copied += $service->copyTweakSettings($this->sourceSite, $targets);
+            $result = $service->copyTweakSettings($this->sourceSite, $targets);
+            $pushed = max($pushed, $result['pushed']);
         }
 
         if ($this->copyModuleConfig && $this->showModulesOption) {
-            $copied += $service->copyModuleConfig($this->sourceSite, $targets);
+            $service->copyModuleConfig($this->sourceSite, $targets);
         }
 
         $this->selectedSiteIds = [];
         $this->selectAll = false;
 
         $this->dispatch('close-modal-copy-settings');
-        session()->flash('success', "Settings copied to {$targets->count()} site(s). Changes will be pushed shortly.");
+
+        $message = "Settings saved to {$total} site(s).";
+        if ($pushed > 0) {
+            $message .= " Pushing to {$pushed} connected site(s).";
+        }
+        $disconnected = $total - $pushed;
+        if ($disconnected > 0) {
+            $message .= " {$disconnected} disconnected site(s) will receive settings when connected.";
+        }
+        session()->flash('success', $message);
     }
 
     public function getAvailableSites()

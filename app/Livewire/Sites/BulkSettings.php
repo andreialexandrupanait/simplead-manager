@@ -147,19 +147,32 @@ class BulkSettings extends Component
         $targets = $targets->reject(fn ($site) => $site->id === $source->id);
 
         $service = app(BulkSettingsCopyService::class);
+        $pushed = 0;
+        $total = $targets->count();
 
         if ($this->copySecuritySettings) {
-            $service->copySecuritySettings($source, $targets);
+            $result = $service->copySecuritySettings($source, $targets);
+            $pushed = max($pushed, $result['pushed']);
         }
         if ($this->copyTweakSettings) {
-            $service->copyTweakSettings($source, $targets);
+            $result = $service->copyTweakSettings($source, $targets);
+            $pushed = max($pushed, $result['pushed']);
         }
         if ($this->copyModuleConfig) {
             $service->copyModuleConfig($source, $targets);
         }
 
         $this->resetState();
-        session()->flash('bulk-success', "Settings copied from {$source->name} to {$targets->count()} site(s). Changes will be pushed shortly.");
+
+        $message = "Settings saved from {$source->name} to {$total} site(s).";
+        if ($pushed > 0) {
+            $message .= " Pushing to {$pushed} connected site(s).";
+        }
+        $disconnected = $total - $pushed;
+        if ($disconnected > 0) {
+            $message .= " {$disconnected} disconnected site(s) will receive settings when connected.";
+        }
+        session()->flash('bulk-success', $message);
     }
 
     private function applySecurityPreset($targets): void
@@ -175,10 +188,19 @@ class BulkSettings extends Component
             return;
         }
 
-        app(SecuritySettingsService::class)->applyPreset($preset, $targets);
+        $result = app(BulkSettingsCopyService::class)->applySecurityPreset($preset, $targets);
 
         $this->resetState();
-        session()->flash('bulk-success', "Security preset '{$preset->name}' applied to {$targets->count()} site(s).");
+
+        $message = "Security preset '{$preset->name}' saved to {$result['total']} site(s).";
+        if ($result['pushed'] > 0) {
+            $message .= " Pushing to {$result['pushed']} connected site(s).";
+        }
+        $disconnected = $result['total'] - $result['pushed'];
+        if ($disconnected > 0) {
+            $message .= " {$disconnected} disconnected site(s) will receive settings when connected.";
+        }
+        session()->flash('bulk-success', $message);
     }
 
     private function applyModulePreset($targets): void
