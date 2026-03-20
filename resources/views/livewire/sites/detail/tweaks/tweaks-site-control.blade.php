@@ -1,7 +1,17 @@
 <div>
+    <x-ui.page-header title="Site Control" subtitle="Control updates, features, and site behavior">
+        <x-slot:actions>
+            <x-ui.button variant="ghost" size="sm" wire:click="verifySettings" wire:loading.attr="disabled" wire:target="verifySettings">
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="verifySettings" />
+                Verify
+            </x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="verify-error" />
 
     {{-- Updates Control --}}
     <x-ui.card class="mb-6">

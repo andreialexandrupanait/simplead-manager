@@ -1,8 +1,23 @@
 <div>
+    <x-ui.page-header title="Hardening" subtitle="Harden WordPress core settings and server configuration">
+        <x-slot:actions>
+            <x-ui.button variant="ghost" size="sm" wire:click="verifySettings" wire:loading.attr="disabled" wire:target="verifySettings">
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="verifySettings" />
+                Verify
+            </x-ui.button>
+            @unless($this->allRecommendedEnabled)
+                <x-ui.button variant="secondary" size="sm" wire:click="enableRecommended">
+                    Enable Recommended
+                </x-ui.button>
+            @endunless
+        </x-slot:actions>
+    </x-ui.page-header>
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Flash Messages --}}
     <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="verify-error" />
 
     @if($this->site->is_multisite)
         <x-ui.alert variant="warning" class="mb-6">

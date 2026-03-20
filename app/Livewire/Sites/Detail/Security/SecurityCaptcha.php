@@ -130,6 +130,56 @@ class SecurityCaptcha extends Component
         $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
     }
 
+    public function verifySettings(): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('GET', '/security-state');
+
+            if (! $response->successful()) {
+                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
+                return;
+            }
+
+            $data = $response->json();
+            $captchaState = $data['captcha'] ?? [];
+
+            $setting = $this->site->securitySettings()
+                ->where('category', 'captcha')
+                ->where('setting_key', 'captcha_config')
+                ->where('is_enabled', true)
+                ->first();
+
+            if (! $setting) {
+                session()->flash('captcha-saved', 'No enabled CAPTCHA settings to verify.');
+                $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
+                return;
+            }
+
+            $now = now();
+            $active = ! empty($captchaState['enabled']);
+
+            if ($active) {
+                $setting->update(['applied_at' => $now, 'failed_at' => null, 'failure_reason' => null]);
+                session()->flash('captcha-saved', 'CAPTCHA verified as active on WordPress.');
+            } else {
+                $setting->update(['failed_at' => $now, 'failure_reason' => 'Not active on WordPress']);
+                app(SecuritySettingsService::class)->pushToPlugin($this->site);
+                session()->flash('captcha-saved', 'CAPTCHA not active on WordPress — re-push triggered.');
+            }
+
+            $service = app(SecuritySettingsService::class);
+            $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
+        } catch (\Exception $e) {
+            \Log::error('Verify captcha settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
+            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+        }
+
+        $this->loadCurrentSettings();
+        $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
+    }
+
     public function render()
     {
         return view('livewire.sites.detail.security.security-captcha')

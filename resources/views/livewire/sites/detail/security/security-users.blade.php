@@ -1,4 +1,6 @@
 <div>
+    <x-ui.page-header title="WordPress Users" subtitle="View and manage site user accounts" />
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Header --}}

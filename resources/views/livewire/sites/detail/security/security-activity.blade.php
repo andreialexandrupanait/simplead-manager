@@ -1,4 +1,6 @@
 <div>
+    <x-ui.page-header title="Activity Log" subtitle="Monitor login attempts and security events" />
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Failed Login Stats --}}

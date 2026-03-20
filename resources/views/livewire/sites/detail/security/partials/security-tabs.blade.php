@@ -17,7 +17,6 @@
 
         @foreach($tabs as $tab)
             <a href="{{ route($tab['route'], $site) }}"
-               wire:navigate
                class="whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition
                       {{ $tab['active']
                           ? 'border-purple-500 text-purple-600'

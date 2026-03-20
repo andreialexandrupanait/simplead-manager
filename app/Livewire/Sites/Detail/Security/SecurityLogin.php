@@ -130,6 +130,61 @@ class SecurityLogin extends Component
         unset($this->loginSettings);
     }
 
+    public function verifySettings(): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('GET', '/security-state');
+
+            if (! $response->successful()) {
+                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                $this->redirect(route('sites.security.login', $this->site), navigate: false);
+                return;
+            }
+
+            $data = $response->json();
+            $loginState = $data['login']['settings'] ?? [];
+
+            $settings = $this->site->securitySettings()
+                ->where('category', 'login')
+                ->where('is_enabled', true)
+                ->get();
+
+            $verified = 0;
+            $mismatches = 0;
+            $now = now();
+
+            foreach ($settings as $setting) {
+                $key = $setting->setting_key;
+                $active = ! empty($loginState[$key]['enabled']);
+
+                if ($active) {
+                    $setting->update(['applied_at' => $now, 'failed_at' => null, 'failure_reason' => null]);
+                    $verified++;
+                } else {
+                    $setting->update(['failed_at' => $now, 'failure_reason' => 'Not active on WordPress']);
+                    $mismatches++;
+                }
+            }
+
+            if ($mismatches > 0) {
+                app(SecuritySettingsService::class)->pushToPlugin($this->site);
+                session()->flash('login-saved', "{$verified} verified, {$mismatches} mismatches — re-push triggered.");
+            } else {
+                session()->flash('login-saved', "All {$verified} settings verified on WordPress.");
+            }
+
+            $service = app(SecuritySettingsService::class);
+            $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
+        } catch (\Exception $e) {
+            \Log::error('Verify login settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
+            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+        }
+
+        $this->loadCurrentSettings();
+        $this->redirect(route('sites.security.login', $this->site), navigate: false);
+    }
+
     public function render()
     {
         return view('livewire.sites.detail.security.security-login')

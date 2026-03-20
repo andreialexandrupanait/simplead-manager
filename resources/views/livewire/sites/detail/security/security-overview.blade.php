@@ -1,4 +1,6 @@
 <div>
+    <x-ui.page-header title="Security Overview" subtitle="Monitor and manage your site's security posture" />
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Module not active banner --}}
@@ -140,7 +142,7 @@
                 $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
                 $totalCount = $catSettings->count();
             @endphp
-            <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
+            <a href="{{ route($catInfo['route'], $site) }}">
                 <x-ui.card class="cursor-pointer hover:border-purple-200 transition-colors">
                     <div class="flex items-start justify-between">
                         <div>
@@ -179,7 +181,7 @@
         @endphp
 
         @foreach($comingSoonCategories as $catKey => $catInfo)
-            <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
+            <a href="{{ route($catInfo['route'], $site) }}">
                 <x-ui.card class="cursor-pointer opacity-60 transition-colors">
                     <div class="flex items-start justify-between">
                         <div>

@@ -1,4 +1,6 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
+    <x-ui.page-header title="Security Scanning" subtitle="Scan for vulnerabilities and core file integrity" />
+
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Flash Messages --}}

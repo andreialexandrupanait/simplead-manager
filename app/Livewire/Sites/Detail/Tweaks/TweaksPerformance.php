@@ -5,11 +5,22 @@ namespace App\Livewire\Sites\Detail\Tweaks;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\SiteTweaksSettingsService;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class TweaksPerformance extends Component
 {
     use WithSiteAuthorization;
+
+    public const RECOMMENDED_TOGGLES = [
+        'disable_emojis',
+        'disable_dashicons',
+        'disable_jquery_migrate',
+        'disable_generator_tag',
+        'disable_wlw_manifest',
+        'disable_rsd_link',
+        'disable_shortlinks',
+    ];
 
     public Site $site;
 
@@ -102,6 +113,26 @@ class TweaksPerformance extends Component
         $this->settingStatuses['image_upload_control'] = $image?->status;
     }
 
+    public function enableRecommended(): void
+    {
+        foreach (self::RECOMMENDED_TOGGLES as $key) {
+            $this->toggles[$key] = true;
+        }
+        $this->isDirty = true;
+    }
+
+    #[Computed]
+    public function allRecommendedEnabled(): bool
+    {
+        foreach (self::RECOMMENDED_TOGGLES as $key) {
+            if (! ($this->toggles[$key] ?? false)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function toggleSetting(string $key): void
     {
         if (array_key_exists($key, $this->toggles)) {
@@ -113,6 +144,60 @@ class TweaksPerformance extends Component
     public function updated($property): void
     {
         $this->isDirty = true;
+    }
+
+    public function verifySettings(): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('GET', '/site-tweaks-state');
+
+            if (! $response->successful()) {
+                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                $this->redirect(route('sites.security.performance', $this->site), navigate: false);
+                return;
+            }
+
+            $data = $response->json();
+            $perfVerified = $data['performance']['verified'] ?? [];
+            $perfSettings = $data['performance']['settings'] ?? [];
+
+            $settings = $this->site->securitySettings()
+                ->where('category', 'performance')
+                ->where('is_enabled', true)
+                ->get();
+
+            $verified = 0;
+            $mismatches = 0;
+            $now = now();
+
+            foreach ($settings as $setting) {
+                $key = $setting->setting_key;
+                $active = ! empty($perfVerified[$key]['active'])
+                    || (empty($perfVerified) && ! empty($perfSettings[$key]));
+
+                if ($active) {
+                    $setting->update(['applied_at' => $now, 'failed_at' => null, 'failure_reason' => null]);
+                    $verified++;
+                } else {
+                    $setting->update(['failed_at' => $now, 'failure_reason' => 'Not active on WordPress']);
+                    $mismatches++;
+                }
+            }
+
+            if ($mismatches > 0) {
+                app(SiteTweaksSettingsService::class)->pushToPlugin($this->site);
+                session()->flash('success', "{$verified} verified, {$mismatches} mismatches — re-push triggered.");
+            } else {
+                session()->flash('success', "All {$verified} settings verified on WordPress.");
+            }
+        } catch (\Exception $e) {
+            \Log::error('Verify tweaks settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
+            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+        }
+
+        $this->loadCurrentState();
+        $this->redirect(route('sites.security.performance', $this->site), navigate: false);
     }
 
     public function save(): void
