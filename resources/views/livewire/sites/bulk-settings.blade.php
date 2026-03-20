@@ -64,7 +64,7 @@
             @endif
 
             <div class="mt-4 flex justify-end">
-                <x-ui.button wire:click="goToStep(2)" {{ empty($selectedSiteIds) ? 'disabled' : '' }}>
+                <x-ui.button wire:click="goToStep(2)">
                     Next
                 </x-ui.button>
             </div>
@@ -105,7 +105,7 @@
 
             <div class="mt-4 flex justify-between">
                 <x-ui.button variant="secondary" wire:click="goToStep(1)">Back</x-ui.button>
-                <x-ui.button wire:click="goToStep(3)" {{ !$operation ? 'disabled' : '' }}>Next</x-ui.button>
+                <x-ui.button wire:click="goToStep(3)">Next</x-ui.button>
             </div>
         </x-ui.card>
     @endif

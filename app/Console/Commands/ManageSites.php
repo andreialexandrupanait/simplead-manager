@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Site;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class ManageSites extends Command
 {
@@ -69,39 +68,8 @@ class ManageSites extends Command
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($site) {
-            // HasMany relationships — delete all related records
-            $relations = [
-                'uptimeMonitor', 'sslCertificate', 'domainMonitor',
-                'performanceMonitor', 'securityMonitor', 'backupConfig',
-                'analyticsConnection', 'searchConsoleConnection', 'siteCloudflare',
-                'databaseCleanupConfig', 'healthState', 'reportConfig',
-                'sitePlugins', 'siteThemes', 'siteUsers',
-                'securitySettings', 'securityCommands', 'securityActivityLogs',
-                'securityBannedIps', 'securityIpLists',
-                'securityScans', 'securityIssues', 'securityRecommendations',
-                'vulnerabilityAlerts', 'coreFileChecks',
-                'backups', 'updateLogs',
-                'analyticsCaches', 'searchConsoleCaches',
-                'reportSchedules', 'reports', 'reportRecommendations',
-                'activityLogs', 'monthlySnapshots',
-                'databaseCleanups', 'databaseHealthChecks', 'emailHealthChecks',
-                'sitePluginConflicts', 'rollbackPoints', 'safeUpdates',
-                'trackedKeywords',
-            ];
-
-            foreach ($relations as $relation) {
-                if (method_exists($site, $relation)) {
-                    $site->{$relation}()->delete();
-                }
-            }
-
-            // BelongsToMany pivot
-            $site->securityPresets()->detach();
-
-            // Force-delete the site itself
-            $site->forceDelete();
-        });
+        // All FK constraints on sites use CASCADE — forceDelete handles everything
+        $site->forceDelete();
 
         $this->info("Site #{$id} ({$site->name}) permanently deleted with all related data.");
 
