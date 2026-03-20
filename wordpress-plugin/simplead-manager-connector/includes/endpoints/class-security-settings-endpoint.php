@@ -48,11 +48,14 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
                 foreach ($params['hardening'] as $key => $enabled) {
                     $hardening_settings[$key] = (bool) $enabled;
                 }
-                SAM_Security_Hardening::update_settings($hardening_settings);
+                $cleanup_diag = SAM_Security_Hardening::update_settings($hardening_settings);
                 $results['hardening'] = [
                     'success' => true,
                     'applied' => array_keys(array_filter($hardening_settings)),
                 ];
+                if (!empty($cleanup_diag)) {
+                    $results['hardening']['wp_config_cleanup'] = $cleanup_diag;
+                }
             } catch (\Throwable $e) {
                 $results['hardening'] = [
                     'success' => false,

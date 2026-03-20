@@ -155,9 +155,162 @@ class SAM_Security_Hardening {
 
     /**
      * Update settings from an external push.
+     *
+     * @return array Diagnostic info about wp-config.php changes.
      */
-    public static function update_settings(array $settings): void {
+    public static function update_settings(array $settings): array {
         update_option('sam_security_settings', $settings);
+
+        if (!empty($settings['disable_theme_editor'])) {
+            return self::add_file_edit_constant();
+        } else {
+            return self::remove_file_edit_constant();
+        }
+    }
+
+    /**
+     * Find wp-config.php — checks ABSPATH and one level above.
+     */
+    private static function find_wp_config(): ?string {
+        $candidates = [
+            ABSPATH . 'wp-config.php',
+            dirname(ABSPATH) . '/wp-config.php',
+        ];
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Add the DISALLOW_FILE_EDIT constant to wp-config.php.
+     *
+     * @return array Diagnostic info about what happened.
+     */
+    private static function add_file_edit_constant(): array {
+        $diag = ['action' => 'add_file_edit_constant'];
+
+        $config_file = self::find_wp_config();
+        if ($config_file === null) {
+            $diag['result'] = 'not_found';
+            return $diag;
+        }
+
+        $diag['file'] = $config_file;
+        $contents = file_get_contents($config_file);
+
+        // Already present — nothing to do
+        if (strpos($contents, 'DISALLOW_FILE_EDIT') !== false) {
+            $diag['result'] = 'already_exists';
+            return $diag;
+        }
+
+        if (!is_writable($config_file)) {
+            $diag['result'] = 'not_writable';
+            $diag['permissions'] = substr(sprintf('%o', fileperms($config_file)), -4);
+            return $diag;
+        }
+
+        // Insert before the "stop editing" marker
+        $marker = "/* That's all, stop editing!";
+        $pos = strpos($contents, $marker);
+        if ($pos === false) {
+            $diag['result'] = 'marker_not_found';
+            return $diag;
+        }
+
+        $new_contents = substr($contents, 0, $pos)
+            . "define('DISALLOW_FILE_EDIT', true);\n"
+            . substr($contents, $pos);
+
+        // Atomic write: temp file + rename
+        $tmp = $config_file . '.tmp.' . uniqid();
+        if (file_put_contents($tmp, $new_contents) === false) {
+            $diag['result'] = 'write_failed';
+            return $diag;
+        }
+
+        if (!rename($tmp, $config_file)) {
+            @unlink($tmp);
+            $diag['result'] = 'rename_failed';
+            return $diag;
+        }
+
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($config_file, true);
+        }
+
+        $diag['result'] = 'added';
+        return $diag;
+    }
+
+    /**
+     * Remove the DISALLOW_FILE_EDIT constant from wp-config.php.
+     *
+     * @return array Diagnostic info about what happened.
+     */
+    private static function remove_file_edit_constant(): array {
+        $diag = ['action' => 'remove_file_edit_constant'];
+
+        $config_file = self::find_wp_config();
+        if ($config_file === null) {
+            $diag['result'] = 'not_found';
+            return $diag;
+        }
+
+        $contents = file_get_contents($config_file);
+        if (strpos($contents, 'DISALLOW_FILE_EDIT') === false) {
+            $diag['result'] = 'not_found';
+            return $diag;
+        }
+
+        $diag['file'] = $config_file;
+
+        if (!is_writable($config_file)) {
+            $diag['result'] = 'not_writable';
+            $diag['permissions'] = substr(sprintf('%o', fileperms($config_file)), -4);
+            return $diag;
+        }
+
+        // Remove the define line (handles various formatting)
+        $new_contents = preg_replace(
+            '/[ \t]*define\s*\(\s*[\'"]DISALLOW_FILE_EDIT[\'"]\s*,\s*true\s*\)\s*;[ \t]*\r?\n?/',
+            '',
+            $contents
+        );
+
+        if ($new_contents === $contents || $new_contents === null) {
+            $diag['result'] = 'regex_no_match';
+            foreach (explode("\n", $contents) as $line) {
+                if (strpos($line, 'DISALLOW_FILE_EDIT') !== false) {
+                    $diag['actual_line'] = $line;
+                    break;
+                }
+            }
+            return $diag;
+        }
+
+        // Atomic write: temp file + rename
+        $tmp = $config_file . '.tmp.' . uniqid();
+        if (file_put_contents($tmp, $new_contents) === false) {
+            $diag['result'] = 'write_failed';
+            return $diag;
+        }
+
+        if (!rename($tmp, $config_file)) {
+            @unlink($tmp);
+            $diag['result'] = 'rename_failed';
+            return $diag;
+        }
+
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($config_file, true);
+        }
+
+        $diag['result'] = 'removed';
+        return $diag;
     }
 
     /**
