@@ -8,14 +8,23 @@
             </div>
             <h3 class="text-sm font-semibold text-gray-900">Server Resources</h3>
         </div>
-        <button wire:click="loadServerResources" wire:loading.attr="disabled" wire:target="loadServerResources"
-                class="text-xs text-gray-500 hover:text-gray-700">
-            <x-icons.refresh-cw class="h-3.5 w-3.5" wire:loading.class="animate-spin" wire:target="loadServerResources" />
-        </button>
+        <div class="flex items-center gap-2">
+            @if($serverResourcesLoadedAt)
+                <span class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($serverResourcesLoadedAt)->diffForHumans() }}</span>
+            @endif
+            <button wire:click="loadServerResources" wire:loading.attr="disabled" wire:target="loadServerResources"
+                    class="text-xs text-gray-500 hover:text-gray-700">
+                <x-icons.refresh-cw class="h-3.5 w-3.5" wire:loading.class="animate-spin" wire:target="loadServerResources" />
+            </button>
+        </div>
     </div>
 
     {{-- Card Content --}}
-    <div class="flex flex-1 flex-col p-3">
+    <div class="flex flex-1 flex-col p-3"
+        @if(!$serverResources || $this->serverResourcesIsStale)
+            wire:init="loadServerResources"
+        @endif
+    >
         @if($serverResources)
             <div class="space-y-3">
                 {{-- CPU --}}
@@ -89,10 +98,9 @@
                 @endif
             </div>
         @else
-            <div class="py-3 text-center">
-                <button wire:click="loadServerResources" class="text-sm text-purple-600 hover:text-purple-500 font-medium">
-                    Load Server Resources
-                </button>
+            <div class="flex items-center justify-center py-6">
+                <x-icons.refresh-cw class="h-4 w-4 animate-spin text-gray-400" />
+                <span class="ml-2 text-sm text-gray-400">Loading...</span>
             </div>
         @endif
     </div>

@@ -299,6 +299,48 @@ class ActivityLogger
         );
     }
 
+    public static function wpUserCreated(Site $site, string $username): ActivityLog
+    {
+        return static::log(
+            type: 'user',
+            severity: 'info',
+            title: "User created on {$site->name}",
+            description: $username,
+            site: $site,
+            metadata: ['username' => $username, 'action' => 'created'],
+            icon: 'user-plus',
+            url: route('sites.security.users', $site),
+        );
+    }
+
+    public static function wpUserUpdated(Site $site, string $username): ActivityLog
+    {
+        return static::log(
+            type: 'user',
+            severity: 'info',
+            title: "User updated on {$site->name}",
+            description: $username,
+            site: $site,
+            metadata: ['username' => $username, 'action' => 'updated'],
+            icon: 'user',
+            url: route('sites.security.users', $site),
+        );
+    }
+
+    public static function wpUserDeleted(Site $site, string $username): ActivityLog
+    {
+        return static::log(
+            type: 'user',
+            severity: 'warning',
+            title: "User deleted on {$site->name}",
+            description: $username,
+            site: $site,
+            metadata: ['username' => $username, 'action' => 'deleted'],
+            icon: 'user-minus',
+            url: route('sites.security.users', $site),
+        );
+    }
+
     public static function userLogin(User $user): ActivityLog
     {
         return static::log(

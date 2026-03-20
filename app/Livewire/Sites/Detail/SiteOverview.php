@@ -48,6 +48,13 @@ class SiteOverview extends Component
         ]);
         $this->site = $site;
         $this->initJobTracking();
+
+        // Load cached server resources
+        $cached = Cache::get("server-resources-{$this->site->id}");
+        if ($cached) {
+            $this->serverResources = $cached['data'];
+            $this->serverResourcesLoadedAt = $cached['loaded_at'];
+        }
     }
 
     protected function jobTrackingKeys(): array
@@ -213,12 +220,28 @@ class SiteOverview extends Component
     }
 
     public ?array $serverResources = null;
+    public ?string $serverResourcesLoadedAt = null;
+
+    #[Computed]
+    public function serverResourcesIsStale(): bool
+    {
+        if (!$this->serverResourcesLoadedAt) {
+            return true;
+        }
+        return \Carbon\Carbon::parse($this->serverResourcesLoadedAt)->diffInMinutes(now()) >= 5;
+    }
 
     public function loadServerResources(): void
     {
         try {
             $api = new WordPressApiService($this->site);
             $this->serverResources = $api->getServerResources();
+            $this->serverResourcesLoadedAt = now()->toIso8601String();
+
+            Cache::put("server-resources-{$this->site->id}", [
+                'data' => $this->serverResources,
+                'loaded_at' => $this->serverResourcesLoadedAt,
+            ], 600); // 10 minutes
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: 'Failed to load server resources: ' . $e->getMessage());
         }

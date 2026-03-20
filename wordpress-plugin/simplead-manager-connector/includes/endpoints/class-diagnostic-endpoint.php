@@ -13,6 +13,12 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
+        register_rest_route(SAM_REST_NAMESPACE, '/diagnostic/generator-check', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'check_generator'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
         register_rest_route(SAM_REST_NAMESPACE, '/diagnostic/fix-elementor', [
             'methods'             => 'POST',
             'callback'            => [$this, 'fix_elementor'],
@@ -155,6 +161,89 @@ class SAM_Diagnostic_Endpoint extends SAM_Endpoint_Base {
             }
             $results['dynamic_tag_samples'] = $samples;
         }
+
+        return $this->success($results);
+    }
+
+    public function check_generator(WP_REST_Request $request): WP_REST_Response {
+        global $wp_filter;
+
+        $results = [];
+
+        // Check if wp_generator is still hooked to wp_head
+        $results['wp_generator_on_wp_head'] = has_action('wp_head', 'wp_generator');
+
+        // Check the_generator filter callbacks
+        $results['the_generator_filters'] = [];
+        if (isset($wp_filter['the_generator'])) {
+            foreach ($wp_filter['the_generator']->callbacks as $priority => $hooks) {
+                foreach ($hooks as $id => $hook) {
+                    $callback = $hook['function'];
+                    if (is_string($callback)) {
+                        $source = $callback;
+                    } elseif (is_array($callback)) {
+                        $class = is_object($callback[0]) ? get_class($callback[0]) : $callback[0];
+                        $source = $class . '::' . $callback[1];
+                    } elseif ($callback instanceof Closure) {
+                        $ref = new ReflectionFunction($callback);
+                        $source = $ref->getFileName() . ':' . $ref->getStartLine();
+                    } else {
+                        $source = 'unknown';
+                    }
+                    $results['the_generator_filters'][] = [
+                        'priority' => $priority,
+                        'id' => $id,
+                        'source' => $source,
+                    ];
+                }
+            }
+        }
+
+        // Check wp_head hooks that might remove generator
+        $results['wp_head_has_wp_generator'] = has_action('wp_head', 'wp_generator') !== false;
+
+        // List mu-plugins
+        $mu_dir = WPMU_PLUGIN_DIR;
+        $results['mu_plugins'] = [];
+        if (is_dir($mu_dir)) {
+            $files = glob($mu_dir . '/*.php');
+            foreach ($files as $file) {
+                $results['mu_plugins'][] = basename($file);
+            }
+        }
+
+        // Read child theme functions.php (first 200 lines)
+        $child_functions = get_stylesheet_directory() . '/functions.php';
+        if (file_exists($child_functions)) {
+            $content = file_get_contents($child_functions);
+            $results['child_theme_functions'] = [
+                'path' => $child_functions,
+                'size' => strlen($content),
+                'contains_generator' => (
+                    stripos($content, 'wp_generator') !== false ||
+                    stripos($content, 'the_generator') !== false
+                ),
+                'content' => substr($content, 0, 10000),
+            ];
+        }
+
+        // Read parent theme — check for generator removal
+        $parent_functions = get_template_directory() . '/functions.php';
+        if (file_exists($parent_functions) && get_template_directory() !== get_stylesheet_directory()) {
+            $content = file_get_contents($parent_functions);
+            $results['parent_theme_functions'] = [
+                'path' => $parent_functions,
+                'contains_generator' => (
+                    stripos($content, 'wp_generator') !== false ||
+                    stripos($content, 'the_generator') !== false
+                ),
+            ];
+        }
+
+        // Check astra-settings option for version hiding
+        $astra_settings = get_option('astra-settings', []);
+        $results['astra_hide_version'] = $astra_settings['hide-wp-version'] ?? null;
+        $results['astra_remove_generator'] = $astra_settings['remove-generator-meta-tag'] ?? null;
 
         return $this->success($results);
     }

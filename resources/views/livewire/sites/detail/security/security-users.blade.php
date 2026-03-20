@@ -12,6 +12,12 @@
                 Not yet synced
             @endif
         </div>
+        @if($site->is_connected)
+            <x-ui.button size="sm" wire:click="openCreateModal">
+                <x-icons.plus class="mr-1 h-4 w-4" />
+                Create User
+            </x-ui.button>
+        @endif
     </div>
 
     {{-- Role Filter Tabs --}}
@@ -46,6 +52,9 @@
                             <th class="pb-2 pr-4">Email</th>
                             <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('last_login_at')">Last Login</th>
                             <th class="pb-2 pr-4">Status</th>
+                            @if($site->is_connected)
+                                <th class="pb-2 pr-4 text-right">Actions</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -84,6 +93,18 @@
                                         </span>
                                     @endif
                                 </td>
+                                @if($site->is_connected)
+                                    <td class="py-2 pr-4 text-right">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit user">
+                                                <x-icons.pencil class="h-4 w-4" />
+                                            </button>
+                                            <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete user">
+                                                <x-icons.trash class="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
@@ -97,4 +118,127 @@
             @endif
         @endif
     </x-ui.card>
+
+    {{-- Create User Modal --}}
+    <x-ui.modal name="create-user" maxWidth="md">
+        <form wire:submit="createUser">
+            <h2 class="text-lg font-semibold text-gray-900">Create User</h2>
+            <p class="mt-1 text-sm text-gray-500">Create a new WordPress user on {{ $site->name }}.</p>
+
+            <div class="mt-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <x-ui.input wire:model="newUsername" type="text" class="mt-1" placeholder="username" required />
+                    @error('newUsername') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <x-ui.input wire:model="newEmail" type="email" class="mt-1" placeholder="user@example.com" required />
+                    @error('newEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <x-ui.input wire:model="newPassword" type="password" class="mt-1" placeholder="Min 8 characters" required />
+                    @error('newPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                    <x-ui.select wire:model="newRole" class="mt-1">
+                        @foreach($this->availableRoles as $role)
+                            <option value="{{ $role }}">{{ ucfirst($role) }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Display Name <span class="text-gray-400">(optional)</span></label>
+                    <x-ui.input wire:model="newDisplayName" type="text" class="mt-1" placeholder="John Doe" />
+                </div>
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-create-user')">Cancel</x-ui.button>
+                <x-ui.button type="submit">Create User</x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    {{-- Edit User Modal --}}
+    <x-ui.modal name="edit-user" maxWidth="md">
+        <form wire:submit="updateUser">
+            <h2 class="text-lg font-semibold text-gray-900">Edit User</h2>
+            <p class="mt-1 text-sm text-gray-500">Update user details for <strong>{{ $editUsername }}</strong>.</p>
+
+            <div class="mt-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <x-ui.input type="text" :value="$editUsername" class="mt-1" disabled />
+                    <p class="mt-1 text-xs text-gray-400">Usernames cannot be changed in WordPress.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <x-ui.input wire:model="editEmail" type="email" class="mt-1" required />
+                    @error('editEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                    <x-ui.select wire:model="editRole" class="mt-1">
+                        @foreach($this->availableRoles as $role)
+                            <option value="{{ $role }}">{{ ucfirst($role) }}</option>
+                        @endforeach
+                    </x-ui.select>
+                    @error('editRole') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Display Name</label>
+                    <x-ui.input wire:model="editDisplayName" type="text" class="mt-1" />
+                </div>
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-edit-user')">Cancel</x-ui.button>
+                <x-ui.button type="submit">Save Changes</x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    {{-- Delete User Modal --}}
+    <x-ui.modal name="delete-user" maxWidth="md">
+        <div>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                    <x-icons.trash class="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Delete User</h2>
+                    <p class="text-sm text-gray-500">This action cannot be undone.</p>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-700">
+                Are you sure you want to delete <strong>{{ $deletingUsername }}</strong>? All content authored by this user will need to be reassigned or will be deleted.
+            </p>
+
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700">Reassign content to <span class="text-gray-400">(optional)</span></label>
+                <x-ui.select wire:model="reassignTo" class="mt-1">
+                    <option value="">Don't reassign (delete content)</option>
+                    @foreach(\App\Models\SiteUser::where('site_id', $site->id)->where('wp_user_id', '!=', $deletingUserId)->orderBy('username')->get() as $otherUser)
+                        <option value="{{ $otherUser->wp_user_id }}">{{ $otherUser->username }} ({{ ucfirst($otherUser->role) }})</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-user')">Cancel</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="deleteUser">Delete User</x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
 </div>

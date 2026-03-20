@@ -15,9 +15,14 @@ class SAM_Security_Hardening {
     /** @var array */
     private $settings;
 
+    /** @var array Htaccess settings for PHP-level enforcement (nginx compat) */
+    private $htaccess_settings;
+
     public function __construct() {
         $this->settings = get_option('sam_security_settings', []);
-        if (empty($this->settings)) {
+        $this->htaccess_settings = get_option('sam_security_htaccess', []);
+
+        if (empty($this->settings) && empty($this->htaccess_settings)) {
             return;
         }
 
@@ -73,7 +78,130 @@ class SAM_Security_Hardening {
             add_filter('the_generator', '__return_empty_string');
             add_filter('style_loader_src', [$this, 'remove_version_from_assets'], 10, 2);
             add_filter('script_loader_src', [$this, 'remove_version_from_assets'], 10, 2);
+            // Strip wp_version from Elementor's inline JS config
+            add_action('wp_print_scripts', [$this, 'strip_version_from_inline_scripts'], 999);
+            add_action('wp_print_footer_scripts', [$this, 'strip_version_from_inline_scripts'], 1);
         }
+
+        // PHP-level enforcement of htaccess rules (nginx compatibility / defense-in-depth)
+        $this->enforce_htaccess_rules();
+    }
+
+    /**
+     * Enforce htaccess security rules at the PHP level.
+     *
+     * These rules mirror the .htaccess directives so they work on nginx
+     * (which ignores .htaccess) and provide defense-in-depth on Apache/LiteSpeed.
+     */
+    private function enforce_htaccess_rules(): void {
+        if (empty($this->htaccess_settings)) {
+            return;
+        }
+
+        $request_uri = isset($_SERVER['REQUEST_URI'])
+            ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']))
+            : '';
+
+        if ($request_uri === '') {
+            return;
+        }
+
+        // Never block our own REST endpoints
+        $namespace = defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1';
+        if (strpos($request_uri, '/wp-json/' . $namespace . '/') !== false) {
+            return;
+        }
+
+        // Parse the URI path (strip query string) and get the basename
+        $uri_path = strtolower(parse_url($request_uri, PHP_URL_PATH) ?: $request_uri);
+        $basename = basename($uri_path);
+
+        // Block sensitive default files
+        if (!empty($this->htaccess_settings['block_default_files'])) {
+            $blocked_files = ['wp-config.php', 'install.php', 'wp-settings.php', 'wp-load.php'];
+            if (in_array($basename, $blocked_files, true)) {
+                $this->block_request('Blocked file');
+            }
+        }
+
+        // Block readme/license files
+        if (!empty($this->htaccess_settings['block_readme_access'])) {
+            $blocked_files = ['readme.html', 'readme.txt', 'license.txt'];
+            if (in_array($basename, $blocked_files, true)) {
+                $this->block_request('Blocked file');
+            }
+        }
+
+        // Block debug.log access
+        if (!empty($this->htaccess_settings['block_debug_log'])) {
+            if (strpos($uri_path, 'debug.log') !== false) {
+                $this->block_request('Blocked file');
+            }
+        }
+
+        // Firewall — block SQL injection, XSS, and file inclusion via query string
+        if (!empty($this->htaccess_settings['firewall_enabled'])) {
+            $query_string = isset($_SERVER['QUERY_STRING'])
+                ? sanitize_text_field(wp_unslash($_SERVER['QUERY_STRING']))
+                : '';
+
+            if ($query_string !== '' && $this->is_malicious_query($query_string)) {
+                $this->block_request('Firewall');
+            }
+        }
+    }
+
+    /**
+     * Check if a query string contains malicious patterns.
+     */
+    private function is_malicious_query(string $query): bool {
+        $patterns = [
+            // SQL injection
+            '/union\s+(all\s+)?select/i',
+            '/concat\s*\(/i',
+            '/group_concat/i',
+            '/information_schema/i',
+            '/into\s+(out|dump)file/i',
+            '/load_file\s*\(/i',
+
+            // XSS
+            '/<script[\s>]/i',
+            '/javascript\s*:/i',
+            '/on(error|load|click|mouseover)\s*=/i',
+
+            // File inclusion / traversal
+            '/\.\.\//i',
+            '/(etc\/passwd|proc\/self)/i',
+            '/(php|data|expect|zip):\/\//i',
+
+            // WP-specific probes
+            '/wp-config\.php/i',
+            '/eval\s*\(/i',
+            '/base64_(encode|decode)\s*\(/i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Block the request with a 403 response.
+     */
+    private function block_request(string $reason): void {
+        status_header(403);
+        if (function_exists('wp_die')) {
+            wp_die(
+                'Access denied.',
+                '403 Forbidden',
+                ['response' => 403]
+            );
+        }
+        die('Access denied.');
     }
 
     /**
@@ -134,6 +262,31 @@ class SAM_Security_Hardening {
             unset($endpoints['/wp/v2/users/(?P<id>[\d]+)']);
         }
         return $endpoints;
+    }
+
+    /**
+     * Strip wp_version from inline script data (e.g. Elementor's elementorCommonConfig).
+     */
+    public function strip_version_from_inline_scripts(): void {
+        global $wp_scripts;
+        if (empty($wp_scripts->registered)) {
+            return;
+        }
+
+        foreach ($wp_scripts->registered as $handle => $script) {
+            if (empty($script->extra['data'])) {
+                continue;
+            }
+
+            $data = $script->extra['data'];
+            if (strpos($data, 'wp_version') !== false) {
+                $script->extra['data'] = preg_replace(
+                    '/"wp_version"\s*:\s*"[^"]*"/',
+                    '"wp_version":""',
+                    $data
+                );
+            }
+        }
     }
 
     /**
@@ -368,6 +521,14 @@ class SAM_Security_Hardening {
         $state['hide_wp_version'] = [
             'configured' => !empty($settings['hide_wp_version']),
             'active' => !empty($settings['hide_wp_version']),
+        ];
+
+        // PHP-level htaccess enforcement state
+        $htaccess = get_option('sam_security_htaccess', []);
+        $state['php_htaccess_enforcement'] = [
+            'configured' => !empty($htaccess),
+            'active' => !empty($htaccess),
+            'rules' => !empty($htaccess) ? array_keys(array_filter($htaccess)) : [],
         ];
 
         return $state;

@@ -76,6 +76,9 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
 
         $all_plugins = get_plugins();
         $active_plugins = get_option('active_plugins', []);
+
+        // Force refresh so transient reflects actual available updates
+        wp_update_plugins();
         $update_plugins = get_site_transient('update_plugins');
 
         $plugins = [];
@@ -120,6 +123,12 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
 
+        // Refresh update transient so upgrader sees available updates
+        wp_update_plugins();
+
+        // Initialize filesystem (required by Plugin_Upgrader)
+        WP_Filesystem();
+
         // Use silent skin to suppress output
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Plugin_Upgrader($skin);
@@ -139,12 +148,22 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
 
             $result = $upgrader->upgrade($plugin_file);
 
+            $success = ($result === true || $result === null);
+            $error = null;
+
+            if (is_wp_error($result)) {
+                $error = $result->get_error_message();
+            } elseif ($result === false) {
+                $feedback = $skin->get_upgrade_messages();
+                $error = !empty($feedback) ? implode(' | ', $feedback) : 'Upgrade returned false (no details available)';
+            }
+
             $results[$plugin_file] = [
-                'success' => ($result === true || $result === null),
-                'error'   => is_wp_error($result) ? $result->get_error_message() : null,
+                'success' => $success,
+                'error'   => $error,
             ];
 
-            if ($result === true || $result === null) {
+            if ($success) {
                 SAM_Audit_Logger::log('plugin_updated', 'plugin', $plugin_file, 'Updated via SimpleAd Manager');
             }
         }

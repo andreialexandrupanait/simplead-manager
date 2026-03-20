@@ -263,7 +263,7 @@ class SitePlugins extends Component
                 ? $api->updatePlugins([$identifier])
                 : $api->updateThemes([$identifier]);
 
-            $updateResult = $result['results'][0] ?? [];
+            $updateResult = $result['results'][$identifier] ?? [];
 
             UpdateLog::create([
                 'site_id' => $this->site->id,

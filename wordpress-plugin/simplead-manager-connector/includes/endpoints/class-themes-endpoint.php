@@ -38,6 +38,9 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
     public function list_themes(WP_REST_Request $request): WP_REST_Response {
         $all_themes = wp_get_themes();
         $active_theme = get_stylesheet();
+
+        // Force refresh so transient reflects actual available updates
+        wp_update_themes();
         $update_themes = get_site_transient('update_themes');
 
         $themes = [];
@@ -77,6 +80,12 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
 
+        // Refresh update transient so upgrader sees available updates
+        wp_update_themes();
+
+        // Initialize filesystem (required by Theme_Upgrader)
+        WP_Filesystem();
+
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Theme_Upgrader($skin);
 
@@ -85,12 +94,23 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
             $slug = sanitize_text_field($slug);
             $result = $upgrader->upgrade($slug);
 
+            $success = ($result === true || $result === null);
+            $error = null;
+
+            if (is_wp_error($result)) {
+                $error = $result->get_error_message();
+            } elseif ($result === false) {
+                // Upgrade returned false — capture skin feedback for diagnostics
+                $feedback = $skin->get_upgrade_messages();
+                $error = !empty($feedback) ? implode(' | ', $feedback) : 'Upgrade returned false (no details available)';
+            }
+
             $results[$slug] = [
-                'success' => ($result === true || $result === null),
-                'error'   => is_wp_error($result) ? $result->get_error_message() : null,
+                'success' => $success,
+                'error'   => $error,
             ];
 
-            if ($result === true || $result === null) {
+            if ($success) {
                 SAM_Audit_Logger::log('theme_updated', 'theme', $slug, 'Updated via SimpleAd Manager');
             }
         }

@@ -70,6 +70,9 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
                 $htaccess = new SAM_Security_Htaccess();
                 $htaccess_results = $htaccess->apply_settings($params['htaccess']);
                 $results['htaccess'] = $htaccess_results;
+
+                // Save htaccess settings as WP option for PHP-level enforcement (nginx compat)
+                update_option('sam_security_htaccess', $params['htaccess']);
             } catch (\Throwable $e) {
                 $results['htaccess'] = [
                     'success' => false,
