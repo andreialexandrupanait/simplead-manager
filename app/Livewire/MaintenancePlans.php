@@ -324,7 +324,7 @@ class MaintenancePlans extends Component
         foreach (ModuleConfigService::getModuleKeys() as $key) {
             $this->planModules[$key] = ['enabled' => false];
         }
-        foreach ($plan->modules as $mod) {
+        foreach ($plan->planModules as $mod) {
             $this->planModules[$mod->module_key] = ['enabled' => $mod->is_enabled];
         }
 
