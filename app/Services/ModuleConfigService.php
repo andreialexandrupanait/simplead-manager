@@ -10,7 +10,7 @@ use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
-use App\Models\SitePreset;
+use App\Models\MaintenancePlan;
 use App\Models\SslCertificate;
 use App\Models\UptimeMonitor;
 
@@ -114,15 +114,15 @@ class ModuleConfigService
     private const CONNECTION_REQUIRED = ['analytics', 'search_console', 'cloudflare'];
 
     /**
-     * Apply a preset to a site. Creates/updates domain table rows for each module.
+     * Apply a maintenance plan to a site. Creates/updates domain table rows for each module.
      */
-    public function applyPreset(Site $site, SitePreset $preset): void
+    public function applyPlan(Site $site, MaintenancePlan $plan): void
     {
-        $preset->loadMissing('presetModules');
-        $presetModules = $preset->presetModules->keyBy('module_key');
+        $plan->loadMissing('modules');
+        $planModules = $plan->modules->keyBy('module_key');
 
         foreach (self::MODULE_MAP as $moduleKey => $config) {
-            $mod = $presetModules->get($moduleKey);
+            $mod = $planModules->get($moduleKey);
             $enabled = $mod?->is_enabled ?? false;
             $interval = $mod?->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
 
@@ -130,8 +130,8 @@ class ModuleConfigService
         }
 
         $site->update([
-            'applied_preset_id' => $preset->id,
-            'is_preset_customized' => false,
+            'maintenance_plan_id' => $plan->id,
+            'is_plan_customized' => false,
         ]);
     }
 
@@ -162,7 +162,7 @@ class ModuleConfigService
             $record->update([$config['enabled_column'] => $enabled]);
         }
 
-        $this->markPresetCustomized($site);
+        $this->markPlanCustomized($site);
     }
 
     /**
@@ -184,7 +184,7 @@ class ModuleConfigService
         $record = $site->{$config['relation']};
         if ($record) {
             $record->update([$config['interval_column'] => $minutes]);
-            $this->markPresetCustomized($site);
+            $this->markPlanCustomized($site);
         }
     }
 
@@ -371,12 +371,12 @@ class ModuleConfigService
     }
 
     /**
-     * Mark a site's preset as customized.
+     * Mark a site's plan as customized.
      */
-    private function markPresetCustomized(Site $site): void
+    private function markPlanCustomized(Site $site): void
     {
-        if ($site->applied_preset_id && !$site->is_preset_customized) {
-            $site->update(['is_preset_customized' => true]);
+        if ($site->maintenance_plan_id && !$site->is_plan_customized) {
+            $site->update(['is_plan_customized' => true]);
         }
     }
 

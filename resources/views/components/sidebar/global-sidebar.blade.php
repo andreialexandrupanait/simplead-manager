@@ -37,11 +37,11 @@
 
 <x-sidebar.sidebar-section :title="__('Management')">
     <x-sidebar.sidebar-item
-        :href="route('bulk-settings')"
+        :href="route('maintenance-plans')"
         icon="layers"
-        :active="request()->routeIs('bulk-settings')"
+        :active="request()->routeIs('maintenance-plans')"
     >
-        {{ __('Bulk Settings') }}
+        {{ __('Maintenance Plans') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item

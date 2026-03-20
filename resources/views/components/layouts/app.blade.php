@@ -22,7 +22,7 @@
             var s = document.createElement('style');
             s.id = 'sidebar-init';
             var rules = '@media(min-width:1024px){[data-sidebar]{width:' + w + '!important}[data-main]{padding-left:' + w + '!important}';
-            if (!open) rules += '[data-sidebar] span{opacity:0!important;width:0!important;overflow:hidden!important}[data-sidebar] [data-logo]{opacity:0!important;width:0!important;overflow:hidden!important}';
+            if (!open) rules += '[data-sidebar] span{opacity:0!important;width:0!important;overflow:hidden!important}[data-sidebar] [data-logo]{display:none!important}';
             rules += '}';
             s.textContent = rules;
             document.head.appendChild(s);
@@ -82,10 +82,10 @@
             {{-- Logo area --}}
             <div class="flex h-16 items-center px-4 border-b border-white/10"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 transition-all duration-300"
-                   :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 flex-1 min-w-0 transition-all duration-300"
+                   :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
-                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-auto object-contain" style="height: 40px; filter: brightness(0) invert(1);">
+                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-auto object-contain" style="height: 170px; filter: brightness(0) invert(1);">
                     @else
                         <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif

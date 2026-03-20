@@ -6,7 +6,7 @@ use App\Livewire\Forms\SiteWizardFormData;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\SiteHealthState;
-use App\Models\SitePreset;
+use App\Models\MaintenancePlan;
 use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -25,9 +25,9 @@ class CreateSiteWizard extends Component
 
     public function mount(): void
     {
-        $defaultPreset = SitePreset::getDefault();
-        if ($defaultPreset) {
-            $this->form->presetId = $defaultPreset->id;
+        $defaultPlan = MaintenancePlan::getDefault();
+        if ($defaultPlan) {
+            $this->form->planId = $defaultPlan->id;
         }
     }
 
@@ -43,9 +43,9 @@ class CreateSiteWizard extends Component
     }
 
     #[Computed]
-    public function presets()
+    public function plans()
     {
-        return SitePreset::with('presetModules')->orderBy('sort_order')->get();
+        return MaintenancePlan::with('modules')->orderBy('sort_order')->get();
     }
 
     public function updatedFormUrl(): void
@@ -161,16 +161,16 @@ class CreateSiteWizard extends Component
             'url' => $this->form->url,
             'user_id' => auth()->id(),
             'client_id' => $this->form->clientId,
-            'applied_preset_id' => $this->form->presetId,
+            'maintenance_plan_id' => $this->form->planId,
             'type' => 'wordpress',
             'status' => 'pending',
         ]);
 
-        // Apply preset if selected
-        if ($this->form->presetId) {
-            $preset = SitePreset::find($this->form->presetId);
-            if ($preset) {
-                app(ModuleConfigService::class)->applyPreset($site, $preset);
+        // Apply plan if selected
+        if ($this->form->planId) {
+            $plan = MaintenancePlan::find($this->form->planId);
+            if ($plan) {
+                app(ModuleConfigService::class)->applyPlan($site, $plan);
             }
         }
 

@@ -3,7 +3,7 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Models\Site;
-use App\Models\SitePreset;
+use App\Models\MaintenancePlan;
 use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -12,18 +12,18 @@ class SiteSettings extends Component
 {
     public Site $site;
 
-    public ?int $selectedPresetId = null;
+    public ?int $selectedPlanId = null;
 
     public function mount(Site $site): void
     {
         $this->site = $site;
-        $this->selectedPresetId = $site->applied_preset_id;
+        $this->selectedPlanId = $site->maintenance_plan_id;
     }
 
     #[Computed]
-    public function presets()
+    public function plans()
     {
-        return SitePreset::with('presetModules')->orderBy('sort_order')->get();
+        return MaintenancePlan::with('modules')->orderBy('sort_order')->get();
     }
 
     #[Computed]
@@ -64,20 +64,20 @@ class SiteSettings extends Component
         ];
     }
 
-    public function applyPreset(): void
+    public function applyPlan(): void
     {
-        if (!$this->selectedPresetId) {
-            $this->dispatch('notify', type: 'error', message: 'Please select a preset.');
+        if (!$this->selectedPlanId) {
+            $this->dispatch('notify', type: 'error', message: 'Please select a plan.');
             return;
         }
 
-        $preset = SitePreset::findOrFail($this->selectedPresetId);
-        app(ModuleConfigService::class)->applyPreset($this->site, $preset);
+        $plan = MaintenancePlan::findOrFail($this->selectedPlanId);
+        app(ModuleConfigService::class)->applyPlan($this->site, $plan);
 
         $this->site->refresh();
         unset($this->moduleConfig);
 
-        $this->dispatch('notify', type: 'success', message: "Preset \"{$preset->name}\" applied.");
+        $this->dispatch('notify', type: 'success', message: "Plan \"{$plan->name}\" applied.");
     }
 
     public function toggleModule(string $module): void

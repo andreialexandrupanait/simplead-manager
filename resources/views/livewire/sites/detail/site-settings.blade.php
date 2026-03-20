@@ -1,7 +1,7 @@
 <div>
     <x-ui.page-header
         title="Settings"
-        subtitle="Configure monitoring modules and preset for this site"
+        subtitle="Configure monitoring modules and maintenance plan for this site"
     >
         <x-slot:actions>
             <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
@@ -11,31 +11,31 @@
     </x-ui.page-header>
 
     <div class="mt-6 space-y-6">
-        {{-- Preset Section --}}
+        {{-- Plan Section --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">Site Preset</h3>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">Maintenance Plan</h3>
 
             <div class="flex items-end gap-3">
                 <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Applied Preset</label>
-                    <x-ui.select wire:model="selectedPresetId">
-                        <option value="">— No preset —</option>
-                        @foreach($this->presets as $preset)
-                            <option value="{{ $preset->id }}">
-                                {{ $preset->name }}{{ $preset->is_default ? ' (Default)' : '' }}
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Applied Plan</label>
+                    <x-ui.select wire:model="selectedPlanId">
+                        <option value="">— No plan —</option>
+                        @foreach($this->plans as $plan)
+                            <option value="{{ $plan->id }}">
+                                {{ $plan->name }}{{ $plan->is_default ? ' (Default)' : '' }}
                             </option>
                         @endforeach
                     </x-ui.select>
                 </div>
-                <x-ui.button wire:click="applyPreset" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="applyPreset">Apply Preset</span>
-                    <span wire:loading wire:target="applyPreset">Applying...</span>
+                <x-ui.button wire:click="applyPlan" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="applyPlan">Apply Plan</span>
+                    <span wire:loading wire:target="applyPlan">Applying...</span>
                 </x-ui.button>
             </div>
 
-            @if($site->applied_preset_id && $site->is_preset_customized)
+            @if($site->maintenance_plan_id && $site->is_plan_customized)
                 <p class="mt-2 text-xs text-amber-600">
-                    This site's configuration has been customized from the original preset.
+                    This site's configuration has been customized from the original plan.
                 </p>
             @endif
         </x-ui.card>

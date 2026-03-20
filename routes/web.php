@@ -17,6 +17,7 @@ use App\Livewire\Uptime;
 use App\Livewire\Clients;
 use App\Livewire\Reports;
 use App\Livewire\Settings;
+use App\Livewire\MaintenancePlans;
 use App\Livewire\StatusPages;
 use App\Models\Site;
 
@@ -94,8 +95,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     });
 
-    // Bulk Settings
-    Route::get('/bulk-settings', Sites\BulkSettings::class)->name('bulk-settings');
+    // Maintenance Plans
+    Route::get('/maintenance-plans', MaintenancePlans::class)->name('maintenance-plans');
+    Route::redirect('/site-presets', '/maintenance-plans');
+    Route::redirect('/bulk-settings', '/maintenance-plans');
 
     // Backups — global view
     Route::get('/backups', Backups\BackupsOverview::class)->name('backups.index');
@@ -156,8 +159,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 
-        // Site Presets
-        Route::get('/site-presets', Settings\SitePresetsSettings::class)->name('settings.site-presets');
+        // Maintenance Plans (redirect to standalone page)
+        Route::redirect('/site-presets', '/maintenance-plans')->name('settings.maintenance-plans');
 
         // Status Pages
         Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('settings.status-pages');

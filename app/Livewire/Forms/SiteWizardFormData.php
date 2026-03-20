@@ -16,8 +16,8 @@ class SiteWizardFormData extends Form
     #[Validate('nullable|exists:clients,id')]
     public ?int $clientId = null;
 
-    #[Validate('nullable|exists:site_presets,id')]
-    public ?int $presetId = null;
+    #[Validate('nullable|exists:maintenance_plans,id')]
+    public ?int $planId = null;
 
     // Inline client creation
     public string $newClientName = '';

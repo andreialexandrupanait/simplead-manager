@@ -94,11 +94,11 @@
                     </div>
                 </label>
 
-                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'module_preset' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
-                    <input type="radio" wire:model.live="operation" value="module_preset" class="sr-only">
+                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'module_plan' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
+                    <input type="radio" wire:model.live="operation" value="module_plan" class="sr-only">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900">Module Preset</p>
-                        <p class="mt-1 text-xs text-gray-500">Apply a site module preset (uptime, backups, etc.).</p>
+                        <p class="text-sm font-semibold text-gray-900">Maintenance Plan</p>
+                        <p class="mt-1 text-xs text-gray-500">Apply a maintenance plan (uptime, backups, etc.).</p>
                     </div>
                 </label>
             </div>
@@ -118,8 +118,8 @@
                     Copy from Site
                 @elseif($operation === 'security_preset')
                     Apply Security Preset
-                @elseif($operation === 'module_preset')
-                    Apply Module Preset
+                @elseif($operation === 'module_plan')
+                    Apply Maintenance Plan
                 @endif
             </h3>
 
@@ -168,19 +168,19 @@
                         <p class="mt-2 text-xs text-gray-400">No security presets found. Create one in Security &gt; Presets.</p>
                     @endif
                 </div>
-            @elseif($operation === 'module_preset')
+            @elseif($operation === 'module_plan')
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Module Preset</label>
-                    <x-ui.select wire:model="modulePresetId">
-                        <option value="">-- Select preset --</option>
-                        @foreach($this->modulePresets as $preset)
-                            <option value="{{ $preset->id }}">
-                                {{ $preset->name }}{{ $preset->is_default ? ' (Default)' : '' }}
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Maintenance Plan</label>
+                    <x-ui.select wire:model="modulePlanId">
+                        <option value="">-- Select plan --</option>
+                        @foreach($this->modulePlans as $plan)
+                            <option value="{{ $plan->id }}">
+                                {{ $plan->name }}{{ $plan->is_default ? ' (Default)' : '' }}
                             </option>
                         @endforeach
                     </x-ui.select>
-                    @if($this->modulePresets->isEmpty())
-                        <p class="mt-2 text-xs text-gray-400">No module presets found. Create one in Settings &gt; Site Presets.</p>
+                    @if($this->modulePlans->isEmpty())
+                        <p class="mt-2 text-xs text-gray-400">No maintenance plans found. Create one in Maintenance Plans.</p>
                     @endif
                 </div>
             @endif

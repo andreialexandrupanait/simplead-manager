@@ -54,8 +54,8 @@ class Site extends Model
         "core_update_version",
         "favicon_path",
         "screenshot_path",
-        "applied_preset_id",
-        "is_preset_customized",
+        "maintenance_plan_id",
+        "is_plan_customized",
         "backup_capabilities",
         "backup_capabilities_checked_at",
     ];
@@ -78,8 +78,8 @@ class Site extends Model
         "uploads_size_mb" => "decimal:2",
         "api_key" => "encrypted",
         "api_secret" => "encrypted",
-        "applied_preset_id" => "integer",
-        "is_preset_customized" => "boolean",
+        "maintenance_plan_id" => "integer",
+        "is_plan_customized" => "boolean",
         "backup_capabilities" => "array",
         "backup_capabilities_checked_at" => "datetime",
     ];
@@ -115,13 +115,13 @@ class Site extends Model
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);
 
-            // Apply preset via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
-            $preset = $site->applied_preset_id
-                ? SitePreset::with('presetModules')->find($site->applied_preset_id)
-                : SitePreset::with('presetModules')->where('is_default', true)->first();
+            // Apply plan via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
+            $plan = $site->maintenance_plan_id
+                ? MaintenancePlan::with('modules')->find($site->maintenance_plan_id)
+                : MaintenancePlan::with('modules')->where('is_default', true)->first();
 
-            if ($preset) {
-                app(ModuleConfigService::class)->applyPreset($site, $preset);
+            if ($plan) {
+                app(ModuleConfigService::class)->applyPlan($site, $plan);
             }
         });
     }

@@ -143,7 +143,7 @@ class BulkSettingsCopyService
                     $config['interval'],
                 );
             }
-            $target->update(['is_preset_customized' => true]);
+            $target->update(['is_plan_customized' => true]);
             $count++;
         }
 

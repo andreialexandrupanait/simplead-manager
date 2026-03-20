@@ -2,20 +2,23 @@
 
 namespace Database\Seeders;
 
-use App\Models\SitePreset;
-use App\Models\SitePresetModule;
+use App\Models\MaintenancePlan;
+use App\Models\MaintenancePlanModule;
 use Illuminate\Database\Seeder;
 
-class SitePresetSeeder extends Seeder
+class MaintenancePlanSeeder extends Seeder
 {
     public function run(): void
     {
-        $presets = [
+        $plans = [
             [
                 'name' => 'Full Monitoring',
                 'description' => 'All modules enabled — uptime, backups, performance, security, analytics, search console, cloudflare, and database cleanup.',
                 'is_default' => true,
                 'sort_order' => 1,
+                'include_modules' => true,
+                'include_security' => false,
+                'include_tweaks' => false,
                 'modules' => [
                     'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
                     'backup' => ['is_enabled' => true],
@@ -33,6 +36,9 @@ class SitePresetSeeder extends Seeder
                 'description' => 'Core monitoring and maintenance — uptime, backups, performance, and security. No analytics or external integrations.',
                 'is_default' => false,
                 'sort_order' => 2,
+                'include_modules' => true,
+                'include_security' => false,
+                'include_tweaks' => false,
                 'modules' => [
                     'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
                     'backup' => ['is_enabled' => true],
@@ -50,6 +56,9 @@ class SitePresetSeeder extends Seeder
                 'description' => 'Minimal setup — uptime monitoring and SSL checks only.',
                 'is_default' => false,
                 'sort_order' => 3,
+                'include_modules' => true,
+                'include_security' => false,
+                'include_tweaks' => false,
                 'modules' => [
                     'uptime' => ['is_enabled' => true, 'interval_minutes' => 5],
                     'backup' => ['is_enabled' => false],
@@ -64,18 +73,18 @@ class SitePresetSeeder extends Seeder
             ],
         ];
 
-        foreach ($presets as $presetData) {
-            $modules = $presetData['modules'];
-            unset($presetData['modules']);
+        foreach ($plans as $planData) {
+            $modules = $planData['modules'];
+            unset($planData['modules']);
 
-            $preset = SitePreset::updateOrCreate(
-                ['name' => $presetData['name']],
-                $presetData
+            $plan = MaintenancePlan::updateOrCreate(
+                ['name' => $planData['name']],
+                $planData
             );
 
             foreach ($modules as $moduleKey => $config) {
-                SitePresetModule::updateOrCreate(
-                    ['site_preset_id' => $preset->id, 'module_key' => $moduleKey],
+                MaintenancePlanModule::updateOrCreate(
+                    ['maintenance_plan_id' => $plan->id, 'module_key' => $moduleKey],
                     [
                         'is_enabled' => $config['is_enabled'],
                         'interval_minutes' => $config['interval_minutes'] ?? null,

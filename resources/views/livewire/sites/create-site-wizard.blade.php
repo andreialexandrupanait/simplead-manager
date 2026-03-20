@@ -2,7 +2,7 @@
     {{-- Step Indicator --}}
     <div class="mb-8">
         <div class="flex items-center justify-between">
-            @foreach([1 => 'Site URL', 2 => 'Client', 3 => 'Preset', 4 => 'Confirm'] as $num => $label)
+            @foreach([1 => 'Site URL', 2 => 'Client', 3 => 'Plan', 4 => 'Confirm'] as $num => $label)
                 <div class="flex items-center {{ $num < 4 ? 'flex-1' : '' }}">
                     <button
                         wire:click="goToStep({{ $num }})"
@@ -133,31 +133,31 @@
         </x-ui.card>
     @endif
 
-    {{-- Step 3: Preset --}}
+    {{-- Step 3: Plan --}}
     @if($step === 3)
         <x-ui.card>
-            <h2 class="text-lg font-semibold text-gray-900">Choose a monitoring preset</h2>
-            <p class="mt-1 text-sm text-gray-500">Presets determine which monitoring modules are enabled.</p>
+            <h2 class="text-lg font-semibold text-gray-900">Choose a maintenance plan</h2>
+            <p class="mt-1 text-sm text-gray-500">Plans determine which monitoring modules are enabled.</p>
 
             <div class="mt-6 space-y-3">
-                @foreach($this->presets as $preset)
+                @foreach($this->plans as $plan)
                     <button
-                        wire:click="$set('form.presetId', {{ $preset->id }})"
+                        wire:click="$set('form.planId', {{ $plan->id }})"
                         class="w-full rounded-lg border p-4 text-left transition
-                            {{ $form->presetId === $preset->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                            {{ $form->planId === $plan->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
                     >
                         <div class="flex items-center justify-between">
-                            <div class="text-sm font-semibold text-gray-900">{{ $preset->name }}</div>
-                            @if($preset->is_default)
+                            <div class="text-sm font-semibold text-gray-900">{{ $plan->name }}</div>
+                            @if($plan->is_default)
                                 <span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">Default</span>
                             @endif
                         </div>
-                        @if($preset->description)
-                            <p class="mt-1 text-xs text-gray-500">{{ $preset->description }}</p>
+                        @if($plan->description)
+                            <p class="mt-1 text-xs text-gray-500">{{ $plan->description }}</p>
                         @endif
-                        @if($preset->presetModules->isNotEmpty())
+                        @if($plan->modules->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-1">
-                                @foreach($preset->presetModules as $mod)
+                                @foreach($plan->modules as $mod)
                                     @if($mod->is_enabled)
                                         <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ ucfirst(str_replace('_', ' ', $mod->module_key)) }}</span>
                                     @endif
@@ -167,9 +167,9 @@
                     </button>
                 @endforeach
 
-                @if($this->presets->isEmpty())
+                @if($this->plans->isEmpty())
                     <div class="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-500">
-                        No presets configured. The site will use default monitoring settings.
+                        No plans configured. The site will use default monitoring settings.
                     </div>
                 @endif
             </div>
@@ -209,10 +209,10 @@
                         </span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <span class="text-sm text-gray-500">Preset</span>
+                        <span class="text-sm text-gray-500">Plan</span>
                         <span class="text-sm font-medium text-gray-900">
-                            @if($form->presetId)
-                                {{ $this->presets->firstWhere('id', $form->presetId)?->name ?? 'Unknown' }}
+                            @if($form->planId)
+                                {{ $this->plans->firstWhere('id', $form->planId)?->name ?? 'Unknown' }}
                             @else
                                 <span class="text-gray-400">Default</span>
                             @endif

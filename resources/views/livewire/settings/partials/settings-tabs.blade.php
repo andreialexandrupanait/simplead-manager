@@ -9,7 +9,6 @@
                     ['route' => 'settings.notifications', 'label' => __('Notifications')],
                     ['route' => 'settings.email', 'label' => __('Email')],
                     ['route' => 'settings.integrations', 'label' => __('Integrations')],
-                    ['route' => 'settings.site-presets', 'label' => __('Site Presets')],
                     ['route' => 'settings.status-pages', 'label' => __('Status Pages')],
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
                     ['route' => 'settings.data-retention', 'label' => __('Data Retention')],

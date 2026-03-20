@@ -4,7 +4,7 @@ namespace App\Livewire\Sites;
 
 use App\Models\SecurityPreset;
 use App\Models\Site;
-use App\Models\SitePreset;
+use App\Models\MaintenancePlan;
 use App\Services\BulkSettingsCopyService;
 use App\Services\ModuleConfigService;
 use App\Services\SecuritySettingsService;
@@ -22,7 +22,7 @@ class BulkSettings extends Component
     public bool $selectAll = false;
 
     // Step 2: Operation
-    public string $operation = ''; // copy_from_site, security_preset, module_preset
+    public string $operation = ''; // copy_from_site, security_preset, module_plan
 
     // Step 3: Configuration
     public ?int $sourceSiteId = null;
@@ -31,7 +31,7 @@ class BulkSettings extends Component
     public bool $copyModuleConfig = true;
 
     public ?int $securityPresetId = null;
-    public ?int $modulePresetId = null;
+    public ?int $modulePlanId = null;
 
     #[Computed]
     public function sites()
@@ -57,9 +57,9 @@ class BulkSettings extends Component
     }
 
     #[Computed]
-    public function modulePresets()
+    public function modulePlans()
     {
-        return SitePreset::with('presetModules')->orderBy('name')->get();
+        return MaintenancePlan::with('modules')->orderBy('name')->get();
     }
 
     #[Computed]
@@ -120,7 +120,7 @@ class BulkSettings extends Component
         match ($this->operation) {
             'copy_from_site' => $this->applyCopyFromSite($targets),
             'security_preset' => $this->applySecurityPreset($targets),
-            'module_preset' => $this->applyModulePreset($targets),
+            'module_plan' => $this->applyModulePlan($targets),
             default => session()->flash('bulk-error', 'Invalid operation.'),
         };
     }
@@ -203,26 +203,26 @@ class BulkSettings extends Component
         session()->flash('bulk-success', $message);
     }
 
-    private function applyModulePreset($targets): void
+    private function applyModulePlan($targets): void
     {
-        if (!$this->modulePresetId) {
-            session()->flash('bulk-error', 'Please select a module preset.');
+        if (!$this->modulePlanId) {
+            session()->flash('bulk-error', 'Please select a maintenance plan.');
             return;
         }
 
-        $preset = SitePreset::with('presetModules')->find($this->modulePresetId);
-        if (!$preset) {
-            session()->flash('bulk-error', 'Preset not found.');
+        $plan = MaintenancePlan::with('modules')->find($this->modulePlanId);
+        if (!$plan) {
+            session()->flash('bulk-error', 'Plan not found.');
             return;
         }
 
         $moduleConfigService = app(ModuleConfigService::class);
         foreach ($targets as $target) {
-            $moduleConfigService->applyPreset($target, $preset);
+            $moduleConfigService->applyPlan($target, $plan);
         }
 
         $this->resetState();
-        session()->flash('bulk-success', "Module preset '{$preset->name}' applied to {$targets->count()} site(s).");
+        session()->flash('bulk-success', "Maintenance plan '{$plan->name}' applied to {$targets->count()} site(s).");
     }
 
     private function resetState(): void
@@ -233,7 +233,7 @@ class BulkSettings extends Component
         $this->operation = '';
         $this->sourceSiteId = null;
         $this->securityPresetId = null;
-        $this->modulePresetId = null;
+        $this->modulePlanId = null;
         $this->copySecuritySettings = true;
         $this->copyTweakSettings = true;
         $this->copyModuleConfig = true;

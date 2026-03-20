@@ -38,7 +38,7 @@ use App\Models\SiteHealthState;
 use App\Models\SiteMonthlySnapshot;
 use App\Models\SitePlugin;
 use App\Models\SitePluginConflict;
-use App\Models\SitePreset;
+use App\Models\MaintenancePlan;
 use App\Models\SiteReportConfig;
 use App\Models\SiteStatus;
 use App\Models\SiteTheme;
@@ -61,9 +61,9 @@ trait HasSiteRelationships
         return $this->belongsTo(User::class);
     }
 
-    public function appliedPreset(): BelongsTo
+    public function maintenancePlan(): BelongsTo
     {
-        return $this->belongsTo(SitePreset::class, 'applied_preset_id');
+        return $this->belongsTo(MaintenancePlan::class, 'maintenance_plan_id');
     }
 
     public function client(): BelongsTo
