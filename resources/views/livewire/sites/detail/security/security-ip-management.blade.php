@@ -1,6 +1,5 @@
 <div>
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
-    @include('livewire.sites.detail.security.partials.protection-sub-tabs', ['site' => $site])
 
     <x-ui.flash-alert type="success" key="ip-success" />
 

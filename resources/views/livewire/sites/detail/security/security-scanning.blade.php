@@ -1,6 +1,5 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
-    @include('livewire.sites.detail.security.partials.monitoring-sub-tabs', ['site' => $site])
 
     {{-- Flash Messages --}}
     <x-ui.flash-alert type="error" key="error" />

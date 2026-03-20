@@ -2,40 +2,16 @@
     <nav class="-mb-px flex gap-4 overflow-x-auto">
         @php
             $tabs = [
-                [
-                    'route' => 'sites.security',
-                    'label' => __('Overview'),
-                    'active' => request()->routeIs('sites.security') && !request()->routeIs('sites.security.*'),
-                ],
-                [
-                    'route' => 'sites.security.hardening',
-                    'label' => __('Hardening'),
-                    'active' => request()->routeIs('sites.security.hardening'),
-                ],
-                [
-                    'route' => 'sites.security.login',
-                    'label' => __('Protection'),
-                    'active' => request()->routeIs('sites.security.login')
-                             || request()->routeIs('sites.security.captcha')
-                             || request()->routeIs('sites.security.ip-management'),
-                ],
-                [
-                    'route' => 'sites.security.scanning',
-                    'label' => __('Monitoring'),
-                    'active' => request()->routeIs('sites.security.scanning')
-                             || request()->routeIs('sites.security.activity')
-                             || request()->routeIs('sites.security.users'),
-                ],
-                [
-                    'route' => 'sites.security.performance',
-                    'label' => __('Performance'),
-                    'active' => request()->routeIs('sites.security.performance'),
-                ],
-                [
-                    'route' => 'sites.security.site-control',
-                    'label' => __('Site Control'),
-                    'active' => request()->routeIs('sites.security.site-control'),
-                ],
+                ['route' => 'sites.security', 'label' => __('Overview'), 'active' => request()->routeIs('sites.security') && !request()->routeIs('sites.security.*')],
+                ['route' => 'sites.security.hardening', 'label' => __('Hardening'), 'active' => request()->routeIs('sites.security.hardening')],
+                ['route' => 'sites.security.login', 'label' => __('Login'), 'active' => request()->routeIs('sites.security.login')],
+                ['route' => 'sites.security.captcha', 'label' => __('Captcha'), 'active' => request()->routeIs('sites.security.captcha')],
+                ['route' => 'sites.security.ip-management', 'label' => __('IP Mgmt'), 'active' => request()->routeIs('sites.security.ip-management')],
+                ['route' => 'sites.security.scanning', 'label' => __('Scanning'), 'active' => request()->routeIs('sites.security.scanning')],
+                ['route' => 'sites.security.activity', 'label' => __('Activity'), 'active' => request()->routeIs('sites.security.activity')],
+                ['route' => 'sites.security.users', 'label' => __('Users'), 'active' => request()->routeIs('sites.security.users')],
+                ['route' => 'sites.security.performance', 'label' => __('Performance'), 'active' => request()->routeIs('sites.security.performance')],
+                ['route' => 'sites.security.site-control', 'label' => __('Site Control'), 'active' => request()->routeIs('sites.security.site-control')],
             ];
         @endphp
 

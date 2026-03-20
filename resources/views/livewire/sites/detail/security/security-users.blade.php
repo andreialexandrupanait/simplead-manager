@@ -1,6 +1,5 @@
 <div>
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
-    @include('livewire.sites.detail.security.partials.monitoring-sub-tabs', ['site' => $site])
 
     {{-- Header --}}
     <div class="mb-4 flex items-center justify-between">

@@ -1,6 +1,5 @@
 <div>
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
-    @include('livewire.sites.detail.security.partials.monitoring-sub-tabs', ['site' => $site])
 
     {{-- Failed Login Stats --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
