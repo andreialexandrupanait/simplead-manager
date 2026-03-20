@@ -103,4 +103,71 @@
             </a>
         @endforeach
     </div>
+
+    {{-- Site Tweaks Category Cards --}}
+    <h3 class="mt-8 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">Site Tweaks</h3>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @php
+            $tweakCategories = [
+                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.security.performance'],
+                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.security.site-control'],
+            ];
+            $comingSoonCategories = [
+                'admin_ux' => ['label' => 'Admin UX', 'icon' => 'layout', 'route' => 'sites.security.admin-ux'],
+                'content_media' => ['label' => 'Content & Media', 'icon' => 'image', 'route' => 'sites.security.content-media'],
+                'email' => ['label' => 'Email', 'icon' => 'mail', 'route' => 'sites.security.email'],
+            ];
+        @endphp
+
+        @foreach($tweakCategories as $catKey => $catInfo)
+            @php
+                $catSettings = $this->tweakSettingsByCategory->get($catKey, collect());
+                $enabledCount = $catSettings->where('is_enabled', true)->count();
+                $appliedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Applied)->count();
+                $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
+                $totalCount = $catSettings->count();
+            @endphp
+            <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
+                <x-ui.card class="cursor-pointer hover:border-purple-200 transition-colors">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>
+                            <p class="mt-1 text-xs text-gray-500">
+                                @if($totalCount === 0)
+                                    Not configured
+                                @else
+                                    {{ $appliedCount }}/{{ $enabledCount }} applied
+                                @endif
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            @if($failedCount > 0)
+                                <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                            @elseif($appliedCount > 0 && $appliedCount === $enabledCount)
+                                <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
+                            @elseif($enabledCount > 0)
+                                <span class="h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
+                            @else
+                                <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>
+                            @endif
+                        </div>
+                    </div>
+                </x-ui.card>
+            </a>
+        @endforeach
+
+        @foreach($comingSoonCategories as $catKey => $catInfo)
+            <a href="{{ route($catInfo['route'], $site) }}" wire:navigate>
+                <x-ui.card class="cursor-pointer opacity-60 transition-colors">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400">{{ $catInfo['label'] }}</h4>
+                            <p class="mt-1 text-xs text-gray-400">Coming soon</p>
+                        </div>
+                        <span class="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 ring-1 ring-inset ring-amber-500/20">Soon</span>
+                    </div>
+                </x-ui.card>
+            </a>
+        @endforeach
+    </div>
 </div>

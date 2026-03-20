@@ -31,6 +31,7 @@ class SAM_REST_API {
             'SAM_Self_Update_Endpoint',
             'SAM_Cache_Endpoint',
             'SAM_Diagnostic_Endpoint',
+            'SAM_Site_Tweaks_Endpoint',
         ];
 
         foreach ($classes as $class) {

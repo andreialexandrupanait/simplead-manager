@@ -3,7 +3,7 @@
  * Plugin Name: SimpleAd Manager Connector
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.7.3
+ * Version: 2.8.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.7.3');
+define('SAM_VERSION', '2.8.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -31,6 +31,8 @@ require_once SAM_PLUGIN_DIR . 'includes/class-security-hardening.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-login.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-captcha.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-ip-manager.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-performance-tweaks.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-site-control.php';
 
 // Autoloader for all other classes (loaded on demand)
 spl_autoload_register(function ($class) {
@@ -62,6 +64,7 @@ spl_autoload_register(function ($class) {
         'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
         'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
         'SAM_Diagnostic_Endpoint'   => 'endpoints/class-diagnostic-endpoint.php',
+        'SAM_Site_Tweaks_Endpoint'  => 'endpoints/class-site-tweaks-endpoint.php',
         // Direct upload helper
         'SAM_Direct_Uploader'       => 'class-direct-uploader.php',
         // Admin
@@ -104,6 +107,10 @@ final class SimpleAd_Manager_Connector {
         add_action('plugins_loaded', [$this, 'init_security_ip_manager'], 2);
         add_action('init', [$this, 'init_security_login'], 1);
         add_action('init', [$this, 'init_security_captcha'], 2);
+
+        // Site tweaks enforcement
+        add_action('plugins_loaded', [$this, 'init_performance_tweaks'], 5);
+        add_action('plugins_loaded', [$this, 'init_site_control'], 5);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('init', [$this, 'handle_login_token']);
@@ -185,6 +192,14 @@ final class SimpleAd_Manager_Connector {
         new SAM_Security_IP_Manager();
     }
 
+    public function init_performance_tweaks(): void {
+        new SAM_Performance_Tweaks();
+    }
+
+    public function init_site_control(): void {
+        new SAM_Site_Control();
+    }
+
     public function deactivate(): void {
         // Remove scheduled events
         $timestamp = wp_next_scheduled('sam_cleanup_backup_temp');
@@ -221,6 +236,11 @@ final class SimpleAd_Manager_Connector {
         delete_option('sam_security_captcha');
         delete_option('sam_security_ip_management');
         delete_option('sam_banned_ips');
+        delete_option('sam_performance_settings');
+        delete_option('sam_site_control_settings');
+        delete_option('sam_admin_ux_settings');
+        delete_option('sam_content_media_settings');
+        delete_option('sam_email_settings');
 
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_audit_logs");
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}sam_login_tokens");

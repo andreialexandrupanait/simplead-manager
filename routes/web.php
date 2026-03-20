@@ -18,6 +18,7 @@ use App\Livewire\Clients;
 use App\Livewire\Reports;
 use App\Livewire\Settings;
 use App\Livewire\StatusPages;
+use App\Models\Site;
 
 // Health check (no auth)
 Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1');
@@ -71,6 +72,14 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/security/activity', Sites\Detail\Security\SecurityActivity::class)->name('sites.security.activity');
         Route::get('/security/users', Sites\Detail\Security\SecurityUsers::class)->name('sites.security.users');
         Route::get('/security/ip-management', Sites\Detail\Security\SecurityIpManagement::class)->name('sites.security.ip-management');
+        Route::get('/security/performance', Sites\Detail\Tweaks\TweaksPerformance::class)->name('sites.security.performance');
+        Route::get('/security/site-control', Sites\Detail\Tweaks\TweaksSiteControl::class)->name('sites.security.site-control');
+        Route::get('/security/admin-ux', Sites\Detail\Security\SecurityComingSoon::class)->name('sites.security.admin-ux');
+        Route::get('/security/content-media', Sites\Detail\Security\SecurityComingSoon::class)->name('sites.security.content-media');
+        Route::get('/security/email', Sites\Detail\Security\SecurityComingSoon::class)->name('sites.security.email');
+        Route::get('/tweaks', fn (Site $site) => redirect()->route('sites.security.performance', $site))->name('sites.tweaks');
+        Route::get('/tweaks/performance', fn (Site $site) => redirect()->route('sites.security.performance', $site))->name('sites.tweaks.performance');
+        Route::get('/tweaks/site-control', fn (Site $site) => redirect()->route('sites.security.site-control', $site))->name('sites.tweaks.site-control');
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');

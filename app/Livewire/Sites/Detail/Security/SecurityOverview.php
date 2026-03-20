@@ -6,6 +6,7 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\ModuleConfigService;
 use App\Services\SecuritySettingsService;
+use App\Services\SiteTweaksSettingsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -50,6 +51,12 @@ class SecurityOverview extends Component
     public function pendingCommandsCount(): int
     {
         return $this->site->securityCommands()->where('status', 'pending')->count();
+    }
+
+    #[Computed]
+    public function tweakSettingsByCategory(): Collection
+    {
+        return app(SiteTweaksSettingsService::class)->getSettingsForSite($this->site);
     }
 
     #[Computed]

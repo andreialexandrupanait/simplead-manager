@@ -150,6 +150,7 @@
         >
             Cron Jobs
         </x-sidebar.sidebar-item>
+
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Monitoring">

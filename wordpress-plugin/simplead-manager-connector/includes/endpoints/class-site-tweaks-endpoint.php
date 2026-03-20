@@ -1,0 +1,147 @@
+<?php
+/**
+ * REST endpoint for pushing site tweaks settings from Laravel.
+ *
+ * POST /simplead/v1/site-tweaks       — Apply performance/site-control settings
+ * GET  /simplead/v1/site-tweaks       — Get current applied state
+ * GET  /simplead/v1/site-tweaks-state — Full state sync (all settings + actual state)
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class SAM_Site_Tweaks_Endpoint extends SAM_Endpoint_Base {
+
+    /**
+     * Category → wp_option name mapping.
+     */
+    private const OPTION_MAP = [
+        'performance'   => 'sam_performance_settings',
+        'site_control'  => 'sam_site_control_settings',
+        'admin_ux'      => 'sam_admin_ux_settings',
+        'content_media' => 'sam_content_media_settings',
+        'email'         => 'sam_email_settings',
+    ];
+
+    public function register_routes(): void {
+        register_rest_route(SAM_REST_NAMESPACE, '/site-tweaks', [
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'apply_settings'],
+                'permission_callback' => [$this, 'check_permission'],
+            ],
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'get_settings'],
+                'permission_callback' => [$this, 'check_permission'],
+            ],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/site-tweaks-state', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_full_state'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+    }
+
+    /**
+     * Apply site tweaks settings pushed from Laravel.
+     */
+    public function apply_settings(WP_REST_Request $request): WP_REST_Response {
+        $params  = $request->get_json_params();
+        $results = [];
+
+        foreach (self::OPTION_MAP as $category => $option_name) {
+            if (!isset($params[$category])) {
+                continue;
+            }
+
+            try {
+                $settings = $this->sanitize_category_settings($category, $params[$category]);
+                update_option($option_name, $settings);
+                $results[$category] = [
+                    'success' => true,
+                    'applied' => array_keys(array_filter($settings, function ($v) {
+                        return !empty($v);
+                    })),
+                ];
+            } catch (\Throwable $e) {
+                $results[$category] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
+        }
+
+        SAM_Audit_Logger::log('site_tweaks_applied', 'tweaks', 'settings', 'Site tweaks pushed from dashboard');
+
+        return $this->success([
+            'results'   => $results,
+            'timestamp' => gmdate('c'),
+        ]);
+    }
+
+    /**
+     * Get current site tweaks settings.
+     */
+    public function get_settings(WP_REST_Request $request): WP_REST_Response {
+        $data = [];
+        foreach (self::OPTION_MAP as $category => $option_name) {
+            $data[$category] = get_option($option_name, []);
+        }
+
+        return $this->success($data);
+    }
+
+    /**
+     * Full state sync — returns configured settings AND actual enforced state.
+     */
+    public function get_full_state(WP_REST_Request $request): WP_REST_Response {
+        $state = [];
+
+        foreach (self::OPTION_MAP as $category => $option_name) {
+            $settings = get_option($option_name, []);
+            $state[$category] = [
+                'settings' => $settings,
+                'active'   => !empty($settings),
+            ];
+        }
+
+        // Add verified state from enforcement classes if available
+        if (class_exists('SAM_Performance_Tweaks')) {
+            $state['performance']['verified'] = SAM_Performance_Tweaks::get_verified_state();
+        }
+        if (class_exists('SAM_Site_Control')) {
+            $state['site_control']['verified'] = SAM_Site_Control::get_verified_state();
+        }
+
+        $state['timestamp'] = gmdate('c');
+
+        return $this->success($state);
+    }
+
+    /**
+     * Sanitize settings for a given category.
+     */
+    private function sanitize_category_settings(string $category, array $settings): array {
+        $sanitized = [];
+
+        foreach ($settings as $key => $value) {
+            $key = sanitize_key($key);
+            if (is_array($value)) {
+                $sanitized[$key] = array_map(function ($v) {
+                    return is_string($v) ? sanitize_text_field($v) : $v;
+                }, $value);
+            } elseif (is_bool($value)) {
+                $sanitized[$key] = $value;
+            } elseif (is_numeric($value)) {
+                $sanitized[$key] = $value + 0; // preserve int/float
+            } else {
+                $sanitized[$key] = sanitize_text_field($value);
+            }
+        }
+
+        return $sanitized;
+    }
+}
