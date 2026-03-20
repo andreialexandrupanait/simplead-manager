@@ -59,7 +59,7 @@ class BulkSettings extends Component
     #[Computed]
     public function modulePlans()
     {
-        return MaintenancePlan::with('modules')->orderBy('name')->get();
+        return MaintenancePlan::with('planModules')->orderBy('name')->get();
     }
 
     #[Computed]
@@ -210,7 +210,7 @@ class BulkSettings extends Component
             return;
         }
 
-        $plan = MaintenancePlan::with('modules')->find($this->modulePlanId);
+        $plan = MaintenancePlan::with('planModules')->find($this->modulePlanId);
         if (!$plan) {
             session()->flash('bulk-error', 'Plan not found.');
             return;

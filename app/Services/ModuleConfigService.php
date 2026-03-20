@@ -118,8 +118,8 @@ class ModuleConfigService
      */
     public function applyPlan(Site $site, MaintenancePlan $plan): void
     {
-        $plan->loadMissing('modules');
-        $planModules = $plan->modules->keyBy('module_key');
+        $plan->loadMissing('planModules');
+        $planModules = $plan->planModules->keyBy('module_key');
 
         foreach (self::MODULE_MAP as $moduleKey => $config) {
             $mod = $planModules->get($moduleKey);

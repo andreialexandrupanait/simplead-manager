@@ -40,7 +40,7 @@ class MaintenancePlan extends Model
         return $this->hasMany(Site::class, 'maintenance_plan_id');
     }
 
-    public function modules(): HasMany
+    public function planModules(): HasMany
     {
         return $this->hasMany(MaintenancePlanModule::class);
     }
@@ -57,7 +57,7 @@ class MaintenancePlan extends Model
 
     public function getEnabledModuleKeysAttribute(): array
     {
-        return $this->modules
+        return $this->planModules
             ->where('is_enabled', true)
             ->pluck('module_key')
             ->all();
@@ -75,7 +75,7 @@ class MaintenancePlan extends Model
 
     public function hasModuleConfig(): bool
     {
-        return $this->include_modules && $this->modules->isNotEmpty();
+        return $this->include_modules && $this->planModules->isNotEmpty();
     }
 
     public static function getDefault(): ?self

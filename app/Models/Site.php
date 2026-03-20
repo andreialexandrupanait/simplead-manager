@@ -117,8 +117,8 @@ class Site extends Model
 
             // Apply plan via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
             $plan = $site->maintenance_plan_id
-                ? MaintenancePlan::with('modules')->find($site->maintenance_plan_id)
-                : MaintenancePlan::with('modules')->where('is_default', true)->first();
+                ? MaintenancePlan::with('planModules')->find($site->maintenance_plan_id)
+                : MaintenancePlan::with('planModules')->where('is_default', true)->first();
 
             if ($plan) {
                 app(ModuleConfigService::class)->applyPlan($site, $plan);

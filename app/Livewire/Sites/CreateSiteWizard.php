@@ -45,7 +45,7 @@ class CreateSiteWizard extends Component
     #[Computed]
     public function plans()
     {
-        return MaintenancePlan::with('modules')->orderBy('sort_order')->get();
+        return MaintenancePlan::with('planModules')->orderBy('sort_order')->get();
     }
 
     public function updatedFormUrl(): void

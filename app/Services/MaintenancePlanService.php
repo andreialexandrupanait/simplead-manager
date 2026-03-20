@@ -213,7 +213,7 @@ class MaintenancePlanService
 
     private function applyBackupConfigFromPlan(MaintenancePlan $plan, Site $site): void
     {
-        $backupModule = $plan->modules->firstWhere('module_key', 'backup');
+        $backupModule = $plan->planModules->firstWhere('module_key', 'backup');
         if (!$backupModule || !$backupModule->is_enabled || empty($backupModule->config)) {
             return;
         }

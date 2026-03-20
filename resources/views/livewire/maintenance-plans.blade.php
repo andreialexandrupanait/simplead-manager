@@ -50,9 +50,9 @@
                                 </div>
 
                                 {{-- Enabled modules --}}
-                                @if($plan->include_modules && $plan->modules->where('is_enabled', true)->isNotEmpty())
+                                @if($plan->include_modules && $plan->planModules->where('is_enabled', true)->isNotEmpty())
                                     <div class="mt-2 flex flex-wrap gap-1.5">
-                                        @foreach($plan->modules as $mod)
+                                        @foreach($plan->planModules as $mod)
                                             @if($mod->is_enabled)
                                                 <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                                                     {{ $this->moduleLabels[$mod->module_key] ?? $mod->module_key }}

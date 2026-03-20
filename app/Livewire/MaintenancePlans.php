@@ -94,7 +94,7 @@ class MaintenancePlans extends Component
     #[Computed]
     public function plans()
     {
-        return MaintenancePlan::with('modules')
+        return MaintenancePlan::with('planModules')
             ->withCount('sites')
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -224,7 +224,7 @@ class MaintenancePlans extends Component
 
     public function startApply(int $planId): void
     {
-        $plan = MaintenancePlan::with('modules')->findOrFail($planId);
+        $plan = MaintenancePlan::with('planModules')->findOrFail($planId);
 
         $this->applyingPlanId = $planId;
         $this->selectedSiteIds = [];
@@ -243,7 +243,7 @@ class MaintenancePlans extends Component
             return;
         }
 
-        $plan = MaintenancePlan::with('modules')->find($this->applyingPlanId);
+        $plan = MaintenancePlan::with('planModules')->find($this->applyingPlanId);
         if (!$plan) {
             $this->dispatch('notify', type: 'error', message: 'Plan not found.');
             return;
@@ -307,7 +307,7 @@ class MaintenancePlans extends Component
 
     public function openEdit(int $id): void
     {
-        $plan = MaintenancePlan::with('modules')->findOrFail($id);
+        $plan = MaintenancePlan::with('planModules')->findOrFail($id);
 
         $this->editingId = $plan->id;
         $this->planName = $plan->name;
@@ -329,7 +329,7 @@ class MaintenancePlans extends Component
         }
 
         // Load backup config from module
-        $backupModule = $plan->modules->firstWhere('module_key', 'backup');
+        $backupModule = $plan->planModules->firstWhere('module_key', 'backup');
         if ($backupModule && !empty($backupModule->config)) {
             $bc = $backupModule->config;
             $this->backupFrequency = $bc['frequency'] ?? 'daily';

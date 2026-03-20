@@ -155,9 +155,9 @@
                         @if($plan->description)
                             <p class="mt-1 text-xs text-gray-500">{{ $plan->description }}</p>
                         @endif
-                        @if($plan->modules->isNotEmpty())
+                        @if($plan->planModules->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-1">
-                                @foreach($plan->modules as $mod)
+                                @foreach($plan->planModules as $mod)
                                     @if($mod->is_enabled)
                                         <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{{ ucfirst(str_replace('_', ' ', $mod->module_key)) }}</span>
                                     @endif
