@@ -34,7 +34,7 @@
             $storageLabel = '0 MB';
         }
     @endphp
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {{-- Sites --}}
         <x-ui.card :padding="false" class="p-4">
             <div class="flex items-start gap-3">
@@ -91,6 +91,36 @@
                     <div class="text-base font-semibold text-blue-600">{{ $stats['backups_today'] }}</div>
                     <div class="text-xs text-gray-500">Backups Today</div>
                     <div class="mt-0.5 text-xs text-gray-400">completed</div>
+                </div>
+            </div>
+        </x-ui.card>
+
+        {{-- Alerts --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                    @if($stats['total_alerts'] > 0)
+                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
+                    @else
+                        <x-icons.shield class="h-5 w-5 text-green-500" />
+                    @endif
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
+                    <div class="text-xs text-gray-500">Alerts</div>
+                    <div class="mt-0.5 text-xs {{ $stats['total_alerts'] > 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
+                        @if($stats['total_alerts'] === 0)
+                            all clear
+                        @else
+                            @php
+                                $parts = [];
+                                if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' down';
+                                if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' backup';
+                                if ($stats['ssl_expiring'] > 0) $parts[] = $stats['ssl_expiring'] . ' SSL';
+                            @endphp
+                            {{ implode(', ', $parts) }}
+                        @endif
+                    </div>
                 </div>
             </div>
         </x-ui.card>
