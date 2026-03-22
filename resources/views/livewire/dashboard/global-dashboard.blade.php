@@ -13,47 +13,91 @@
         </a>
     </div>
 
-    {{-- Section 1: Compact Stats Strip --}}
+    {{-- Section 1: Mini Stat Cards --}}
     @php
         $stats = $this->stats;
-        $uptimeColor = 'text-gray-900';
+
+        $uptimeColor = 'text-green-600';
+        $uptimeBg = 'bg-green-50';
+        $uptimeIcon = 'text-green-500';
         if ($stats['avg_uptime'] !== null) {
-            $uptimeColor = $stats['avg_uptime'] >= 99 ? 'text-green-600' : ($stats['avg_uptime'] >= 95 ? 'text-yellow-600' : 'text-red-600');
+            if ($stats['avg_uptime'] < 95) { $uptimeColor = 'text-red-600'; $uptimeBg = 'bg-red-50'; $uptimeIcon = 'text-red-500'; }
+            elseif ($stats['avg_uptime'] < 99) { $uptimeColor = 'text-yellow-600'; $uptimeBg = 'bg-yellow-50'; $uptimeIcon = 'text-yellow-500'; }
         }
-        $alertsColor = $stats['total_alerts'] === 0 ? 'text-green-600' : 'text-red-600';
+
+        $responseBg = 'bg-blue-50';
+        $responseIcon = 'text-blue-500';
+        $responseColor = 'text-blue-600';
+        if ($stats['avg_response_time'] !== null) {
+            if ($stats['avg_response_time'] > 1500) { $responseBg = 'bg-red-50'; $responseIcon = 'text-red-500'; $responseColor = 'text-red-600'; }
+            elseif ($stats['avg_response_time'] > 500) { $responseBg = 'bg-yellow-50'; $responseIcon = 'text-yellow-500'; $responseColor = 'text-yellow-600'; }
+        }
     @endphp
-    <x-ui.card :padding="false">
-        <div class="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 divide-gray-100">
-            {{-- Sites --}}
-            <div class="flex items-center gap-3 px-5 py-3">
-                <div class="h-2.5 w-2.5 shrink-0 rounded-full {{ $stats['sites_down'] > 0 ? 'bg-red-500 animate-pulse' : 'bg-green-500' }}"></div>
-                <div>
-                    <div class="text-lg font-semibold text-gray-900">{{ $stats['total_sites'] }} {{ Str::plural('Site', $stats['total_sites']) }}</div>
-                    <div class="text-xs {{ $stats['sites_down'] > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {{-- Sites --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['sites_down'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                    <x-icons.globe class="h-5 w-5 {{ $stats['sites_down'] > 0 ? 'text-red-500' : 'text-green-500' }}" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-gray-900">{{ $stats['total_sites'] }}</div>
+                    <div class="text-xs text-gray-500">Sites</div>
+                    <div class="mt-0.5 text-xs font-medium {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">
                         {{ $stats['sites_down'] === 0 ? 'all operational' : $stats['sites_down'] . ' down' }}
                     </div>
                 </div>
             </div>
+        </x-ui.card>
 
-            {{-- Uptime --}}
-            <div class="px-5 py-3">
-                <div class="text-lg font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
-                <div class="text-xs text-gray-400">uptime &middot; 30d</div>
-            </div>
-
-            {{-- Alerts --}}
-            <div class="px-5 py-3">
-                <div class="text-lg font-semibold {{ $alertsColor }}">{{ $stats['total_alerts'] }}</div>
-                <div class="text-xs text-gray-400">
-                    @if($stats['total_alerts'] === 0)
-                        no issues
-                    @else
-                        {{ Str::plural('issue', $stats['total_alerts']) }} need attention
-                    @endif
+        {{-- Uptime --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $uptimeBg }}">
+                    <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
+                    <div class="text-xs text-gray-500">Uptime</div>
+                    <div class="mt-0.5 text-xs text-gray-400">last 30 days</div>
                 </div>
             </div>
-        </div>
-    </x-ui.card>
+        </x-ui.card>
+
+        {{-- Response Time --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $responseBg }}">
+                    <x-icons.zap class="h-5 w-5 {{ $responseIcon }}" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold {{ $responseColor }}">{{ $stats['avg_response_time'] !== null ? $stats['avg_response_time'] . 'ms' : '—' }}</div>
+                    <div class="text-xs text-gray-500">Response</div>
+                    <div class="mt-0.5 text-xs text-gray-400">avg across sites</div>
+                </div>
+            </div>
+        </x-ui.card>
+
+        {{-- Alerts --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                    @if($stats['total_alerts'] > 0)
+                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
+                    @else
+                        <x-icons.check-circle class="h-5 w-5 text-green-500" />
+                    @endif
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
+                    <div class="text-xs text-gray-500">Alerts</div>
+                    <div class="mt-0.5 text-xs font-medium {{ $stats['total_alerts'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
+                        {{ $stats['total_alerts'] === 0 ? 'no issues' : Str::plural('issue', $stats['total_alerts']) . ' need attention' }}
+                    </div>
+                </div>
+            </div>
+        </x-ui.card>
+    </div>
 
     {{-- Section 2: Sites List View --}}
     <div class="mt-6">
