@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Settings;
 
+use App\Jobs\PushConnectorPlugin;
 use App\Livewire\Forms\GeneralSettingsFormData;
 use App\Livewire\Forms\SiteStatusFormData;
 use App\Models\Site;
@@ -9,10 +10,11 @@ use App\Models\SiteStatus;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Services\SettingsService;
-use App\Services\WordPressApiService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -191,6 +193,10 @@ class GeneralSettings extends Component
 
     public string $pushSiteSearch = '';
 
+    public ?string $pushId = null;
+
+    public int $pushTotal = 0;
+
     public const CONNECTOR_CHANGELOG = [
         'unreleased' => [
             'changes' => [
@@ -336,78 +342,59 @@ class GeneralSettings extends Component
 
     private function pushPluginToSites($sites): void
     {
-        $this->pluginPushRunning = true;
-        $this->pluginPushResults = [];
-
         if ($sites->isEmpty()) {
             $this->dispatch('notify', type: 'warning', message: 'No connected sites found.');
-            $this->pluginPushRunning = false;
 
             return;
         }
+
+        $this->pluginPushRunning = true;
+        $this->pluginPushResults = [];
+        $this->pushId = Str::uuid()->toString();
+        $this->pushTotal = $sites->count();
+
+        $cacheKey = "connector-push:{$this->pushId}";
+        Cache::put("{$cacheKey}:results", [], 3600);
+        Cache::put("{$cacheKey}:completed", 0, 3600);
 
         $downloadUrl = URL::temporarySignedRoute(
             'download.connector-plugin.signed',
             now()->addMinutes(30)
         );
 
-        $succeeded = 0;
-        $failed = 0;
-
         foreach ($sites as $site) {
-            try {
-                $api = new WordPressApiService($site);
-                $response = $api->request('POST', '/self-update', [
-                    'download_url' => $downloadUrl,
-                ], [], 120);
+            PushConnectorPlugin::dispatch($site, $downloadUrl, $this->pushId);
+        }
+    }
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    // Store confirmed connector version from push response
-                    if (! empty($data['new_version']) && $data['new_version'] !== 'unknown') {
-                        $site->update(['connector_version' => $data['new_version']]);
-                    }
-                    // Flush OPcache: direct HTTP call to standalone PHP file (bypasses WP/OPcache)
-                    $flushUrl = rtrim($site->url, '/').'/wp-content/plugins/simplead-manager-connector/opcache-flush.php';
-                    try {
-                        Http::timeout(10)->get($flushUrl);
-                    } catch (\Throwable) {
-                    }
-                    // Also try REST API endpoint as safety net
-                    try {
-                        $api->request('POST', '/flush-opcache', [], [], 15);
-                    } catch (\Throwable) {
-                    }
-                    $this->pluginPushResults[] = [
-                        'site' => $site->name,
-                        'status' => 'success',
-                        'message' => ($data['old_version'] ?? '?').' -> '.($data['new_version'] ?? '?'),
-                    ];
-                    $succeeded++;
-                } else {
-                    $error = $response->json('error.message') ?? "HTTP {$response->status()}";
-                    $this->pluginPushResults[] = [
-                        'site' => $site->name,
-                        'status' => 'error',
-                        'message' => $error,
-                    ];
-                    $failed++;
-                }
-            } catch (\Throwable $e) {
-                $this->pluginPushResults[] = [
-                    'site' => $site->name,
-                    'status' => 'error',
-                    'message' => $e->getMessage(),
-                ];
-                $failed++;
-            }
+    public function checkPushProgress(): void
+    {
+        if (! $this->pushId) {
+            return;
         }
 
-        $this->pluginPushRunning = false;
-        $this->dispatch('notify',
-            type: $failed > 0 ? 'warning' : 'success',
-            message: "Plugin push complete: {$succeeded} updated, {$failed} failed."
-        );
+        $cacheKey = "connector-push:{$this->pushId}";
+        $completed = (int) Cache::get("{$cacheKey}:completed", 0);
+        $results = Cache::get("{$cacheKey}:results", []);
+
+        $this->pluginPushResults = $results;
+
+        if ($completed >= $this->pushTotal) {
+            $this->pluginPushRunning = false;
+
+            $succeeded = collect($results)->where('status', 'success')->count();
+            $failed = collect($results)->where('status', 'error')->count();
+
+            $this->dispatch('notify',
+                type: $failed > 0 ? 'warning' : 'success',
+                message: "Plugin push complete: {$succeeded} updated, {$failed} failed."
+            );
+
+            // Cleanup cache
+            Cache::forget("{$cacheKey}:results");
+            Cache::forget("{$cacheKey}:completed");
+            $this->pushId = null;
+        }
     }
 
     public function purgeMonitoringData(): void

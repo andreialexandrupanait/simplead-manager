@@ -196,7 +196,7 @@
     </x-ui.modal>
 
     {{-- Connector Plugin --}}
-    <div class="mt-8">
+    <div class="mt-8" @if($pluginPushRunning) wire:poll.2s="checkPushProgress" @endif>
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <div>
@@ -204,22 +204,30 @@
                     <p class="text-sm text-gray-500">{{ __('Push the latest connector plugin version to connected WordPress sites.') }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <x-ui.button size="sm" variant="secondary"
-                                 wire:click="openPushSiteSelector"
-                                 wire:loading.attr="disabled"
-                                 wire:target="pushPluginToAllSites, pushPluginToSelectedSites">
-                        {{ __('Push to Selected...') }}
-                    </x-ui.button>
-                    <x-ui.button size="sm"
-                                 wire:click="pushPluginToAllSites"
-                                 wire:loading.attr="disabled"
-                                 wire:target="pushPluginToAllSites, pushPluginToSelectedSites"
-                                 wire:confirm="{{ __('Push the connector plugin to ALL connected sites?') }}">
-                        <span wire:loading.remove wire:target="pushPluginToAllSites, pushPluginToSelectedSites">{{ __('Push to All Sites') }}</span>
-                        <span wire:loading wire:target="pushPluginToAllSites, pushPluginToSelectedSites">{{ __('Pushing...') }}</span>
-                    </x-ui.button>
+                    @if($pluginPushRunning)
+                        <span class="text-sm text-gray-500">
+                            {{ count($pluginPushResults) }}/{{ $pushTotal }} {{ __('sites processed') }}
+                        </span>
+                    @else
+                        <x-ui.button size="sm" variant="secondary"
+                                     wire:click="openPushSiteSelector">
+                            {{ __('Push to Selected...') }}
+                        </x-ui.button>
+                        <x-ui.button size="sm"
+                                     wire:click="pushPluginToAllSites"
+                                     wire:confirm="{{ __('Push the connector plugin to ALL connected sites?') }}">
+                            {{ __('Push to All Sites') }}
+                        </x-ui.button>
+                    @endif
                 </div>
             </div>
+
+            @if($pluginPushRunning)
+                <div class="w-full bg-gray-200 rounded-full h-1.5 mb-3">
+                    <div class="bg-purple-600 h-1.5 rounded-full transition-all duration-300"
+                         style="width: {{ $pushTotal > 0 ? round(count($pluginPushResults) / $pushTotal * 100) : 0 }}%"></div>
+                </div>
+            @endif
 
             @if(!empty($pluginPushResults))
                 <div class="divide-y divide-gray-100 mt-2">
