@@ -61,7 +61,21 @@ class DashboardService
         ];
     }
 
+    public static function invalidateCache(): void
+    {
+        Cache::forget('dashboard:stats');
+        Cache::forget('dashboard:alerts');
+        Cache::forget('dashboard:summary_stats');
+        Cache::forget('dashboard:health_distribution');
+        Cache::forget('dashboard:backup_status');
+    }
+
     public function getAlerts(): array
+    {
+        return Cache::remember('dashboard:alerts', self::CACHE_TTL, fn () => $this->computeAlerts());
+    }
+
+    private function computeAlerts(): array
     {
         $alerts = [];
 
@@ -176,8 +190,8 @@ class DashboardService
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('domain', 'like', "%{$search}%");
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('domain', 'ilike', "%{$search}%");
             });
         }
 
@@ -270,25 +284,15 @@ class DashboardService
 
     private function computeSummaryStats(): array
     {
+        $stats = $this->getStats();
         $backups = $this->getBackupCounts();
-
-        $pendingPluginUpdates = \App\Models\SitePlugin::whereHas('site')->where('has_update', true)->count();
-        $pendingThemeUpdates = \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count();
-        $pendingCoreUpdates = Site::whereNotNull('core_update_version')->count();
-        $pendingUpdates = $pendingPluginUpdates + $pendingThemeUpdates + $pendingCoreUpdates;
-
-        $sslExpiring = SslCertificate::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(30))
-            ->where('expires_at', '>', now())
-            ->count();
 
         return [
             'backups_today' => $backups['backups_today'],
-            'failed_backups' => $backups['failed_backups'],
+            'failed_backups' => $stats['failed_backups'],
             'total_storage' => $backups['total_storage_bytes'],
-            'pending_updates' => $pendingUpdates,
-            'ssl_expiring' => $sslExpiring,
+            'pending_updates' => $stats['pending_updates'],
+            'ssl_expiring' => $stats['ssl_expiring'],
         ];
     }
 

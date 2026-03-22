@@ -114,8 +114,8 @@ class PerformanceOverview extends Component
             ->whereHas('site')
             ->with(['site', 'latestMobileTest', 'latestDesktopTest'])
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('domain', 'like', "%{$this->search}%"));
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
+                    ->orWhere('domain', 'ilike', "%{$this->search}%"));
             });
 
         // Apply sorting

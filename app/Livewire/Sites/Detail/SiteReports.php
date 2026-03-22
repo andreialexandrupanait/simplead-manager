@@ -761,7 +761,7 @@ class SiteReports extends Component
 
         $report = $this->site->reports()->findOrFail($this->sendReportId);
 
-        Mail::to($this->sendToEmail)->send(new ReportGeneratedMail($report, $this->site));
+        Mail::to($this->sendToEmail)->queue(new ReportGeneratedMail($report, $this->site));
 
         $sentTo = $report->sent_to ?? [];
         $sentTo[] = $this->sendToEmail;
@@ -808,7 +808,7 @@ class SiteReports extends Component
             ->get();
 
         foreach ($reports as $report) {
-            Mail::to($email)->send(new ReportGeneratedMail($report, $this->site));
+            Mail::to($email)->queue(new ReportGeneratedMail($report, $this->site));
 
             $sentTo = $report->sent_to ?? [];
             $sentTo[] = $email;

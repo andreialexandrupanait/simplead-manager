@@ -77,9 +77,9 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'like', '%' . $escaped . '%')
-                  ->orWhere('slug', 'like', '%' . $escaped . '%')
-                  ->orWhere('author', 'like', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('slug', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('author', 'ilike', '%' . $escaped . '%');
             });
         }
 
@@ -100,9 +100,9 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'like', '%' . $escaped . '%')
-                  ->orWhere('slug', 'like', '%' . $escaped . '%')
-                  ->orWhere('author', 'like', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('slug', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('author', 'ilike', '%' . $escaped . '%');
             });
         }
 
@@ -121,10 +121,10 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('username', 'like', '%' . $escaped . '%')
-                  ->orWhere('display_name', 'like', '%' . $escaped . '%')
-                  ->orWhere('email', 'like', '%' . $escaped . '%')
-                  ->orWhere('role', 'like', '%' . $escaped . '%');
+                $q->where('username', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('display_name', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('email', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('role', 'ilike', '%' . $escaped . '%');
             });
         }
 
@@ -201,8 +201,8 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'like', '%' . $escaped . '%')
-                  ->orWhere('slug', 'like', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%' . $escaped . '%')
+                  ->orWhere('slug', 'ilike', '%' . $escaped . '%');
             });
         }
 

@@ -8,6 +8,7 @@ use App\Jobs\FetchSiteFavicon;
 use App\Models\Traits\HasDomainExtraction;
 use App\Models\Traits\HasSiteRelationships;
 use App\Models\Traits\HasSiteScopes;
+use App\Services\DashboardService;
 use App\Services\ModuleConfigService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -90,6 +91,14 @@ class Site extends Model
             if (!$site->sort_order) {
                 $site->sort_order = (static::max('sort_order') ?? 0) + 1;
             }
+        });
+
+        static::saved(function () {
+            DashboardService::invalidateCache();
+        });
+
+        static::deleted(function () {
+            DashboardService::invalidateCache();
         });
 
         static::created(function (Site $site) {

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\BackupStatus;
+use App\Exceptions\BackupException;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
@@ -64,7 +65,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
         try {
             $destination = $this->resolveStorageDestination();
             if (!$destination) {
-                throw new \RuntimeException('No storage destination available.');
+                throw new BackupException('No storage destination available.', site: $this->site);
             }
 
             $manifestService = new ManifestService();

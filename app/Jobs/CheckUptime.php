@@ -2,22 +2,20 @@
 
 namespace App\Jobs;
 
+use App\Events\SiteRecovered;
+use App\Events\SiteWentDown;
 use App\Models\UptimeCheck;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
+use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Services\ActivityLogger;
-use App\Services\JobTracker;
 use Illuminate\Support\Facades\Http;
-use App\Jobs\NotifyIncident;
-use App\Jobs\CreateStatusPageIncident;
-use App\Jobs\ResolveStatusPageIncident;
 
 class CheckUptime implements ShouldQueue, ShouldBeUnique
 {
@@ -320,9 +318,11 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
         // Only notify when threshold is reached
         if ($this->monitor->consecutive_failures === $this->monitor->alert_after_failures) {
-            NotifyIncident::dispatch($incident, 'down');
-            ActivityLogger::siteDown($this->monitor->site, $result['failure_reason'] ?? 'Unknown');
-            CreateStatusPageIncident::dispatch($this->monitor->site, $result['failure_reason'] ?? 'Site is down');
+            SiteWentDown::dispatch(
+                $this->monitor->site,
+                $incident,
+                $result['failure_reason'] ?? 'Unknown',
+            );
         }
     }
 
@@ -336,11 +336,13 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
                 'resolved_at' => now(),
             ]);
 
-            NotifyIncident::dispatch($incident->fresh(), 'recovery');
-            ResolveStatusPageIncident::dispatch($this->monitor->site);
-
             $downtimeMinutes = $incident->started_at ? (int) $incident->started_at->diffInMinutes(now()) : 0;
-            ActivityLogger::siteRecovered($this->monitor->site, $downtimeMinutes);
+
+            SiteRecovered::dispatch(
+                $this->monitor->site,
+                $incident->fresh(),
+                $downtimeMinutes,
+            );
         }
     }
 

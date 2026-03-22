@@ -87,8 +87,8 @@ class BackupsOverview extends Component
         $backups = Backup::query()
             ->with(['site', 'storageDestination'])
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('domain', 'like', "%{$this->search}%"));
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
+                    ->orWhere('domain', 'ilike', "%{$this->search}%"));
             })
             ->when($this->filter !== 'all', function ($q) {
                 if ($this->filter === 'in_progress') {

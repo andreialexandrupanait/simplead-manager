@@ -4,7 +4,6 @@ use App\Dispatchers\BackupDispatcher;
 use App\Dispatchers\DataSyncDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 // ==========================================================================
@@ -80,7 +79,7 @@ Schedule::command('db:dump', ['--keep' => 7])
     ->onOneServer();
 
 // VACUUM ANALYZE — weekly Sunday 3 AM
-Schedule::call(fn () => DB::statement('VACUUM ANALYZE'))
+Schedule::command('db:vacuum-analyze')
     ->weekly()
     ->sundays()
     ->at('03:00')
@@ -89,55 +88,32 @@ Schedule::call(fn () => DB::statement('VACUUM ANALYZE'))
     ->onOneServer();
 
 // Favicon backfill — daily
-Schedule::call(function () {
-    \App\Models\Site::whereNull('favicon_path')
-        ->each(fn ($site) => \App\Jobs\FetchSiteFavicon::dispatch($site));
-})->daily()->name('favicon-backfill')->withoutOverlapping()->onOneServer();
+Schedule::command('sites:backfill-favicons')
+    ->daily()
+    ->name('favicon-backfill')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // App backup scheduler
-Schedule::call(function () {
-    $config = \App\Models\AppBackupConfig::query()
-        ->where('is_enabled', true)
-        ->where('next_backup_at', '<=', now())
-        ->first();
-
-    if ($config) {
-        \App\Jobs\CreateAppBackup::dispatch(
-            $config->type,
-            'scheduled',
-            $config->storage_destination_id,
-        );
-        $config->update(['next_backup_at' => $config->calculateNextBackupAt()]);
-    }
-})->everyFifteenMinutes()->name('scheduled-app-backups')->withoutOverlapping()->onOneServer();
+Schedule::command('app-backup:schedule-check')
+    ->everyFifteenMinutes()
+    ->name('scheduled-app-backups')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // App backup cleanup
-Schedule::call(function () {
-    app(\App\Services\AppBackup\AppBackupService::class)->cleanupExpired();
-})->dailyAt('04:00')->name('expired-app-backup-cleanup')->withoutOverlapping()->onOneServer();
+Schedule::command('app:backup-cleanup')
+    ->dailyAt('04:00')
+    ->name('expired-app-backup-cleanup')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Horizon health check
-Schedule::call(function () {
-    $cacheKey = 'horizon_stopped_notified';
-    try {
-        $supervisors = app(\Laravel\Horizon\Contracts\MasterSupervisorRepository::class)->all();
-        if (empty($supervisors)) {
-            if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-                \App\Services\Notifications\NotificationService::notifyAppEvent(
-                    event: 'horizon_stopped',
-                    title: 'Horizon Is Not Running',
-                    message: 'No Horizon supervisor processes were found. Queue jobs are not being processed.',
-                    severity: 'critical',
-                );
-                \Illuminate\Support\Facades\Cache::put($cacheKey, true, 3600);
-            }
-        } else {
-            \Illuminate\Support\Facades\Cache::forget($cacheKey);
-        }
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::warning('Horizon health check failed: ' . $e->getMessage());
-    }
-})->everyFiveMinutes()->name('horizon-health-check')->withoutOverlapping()->onOneServer();
+Schedule::command('horizon:health-check')
+    ->everyFiveMinutes()
+    ->name('horizon-health-check')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Validate external connections (Google, Cloudflare, Dropbox, WordPress)
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
@@ -163,23 +139,26 @@ Schedule::job(new \App\Jobs\SendDailyDigest)
 // ==========================================================================
 
 // Cleanup stale security commands (picked_up >30min)
-Schedule::call(function () {
-    app(\App\Services\SecurityCommandService::class)->cleanupStaleCommands();
-})->everyFifteenMinutes()->name('security-stale-commands-cleanup')->withoutOverlapping()->onOneServer();
+Schedule::command('security:maintenance stale-commands')
+    ->everyFifteenMinutes()
+    ->name('security-stale-commands-cleanup')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Prune old security activity logs
-Schedule::call(function () {
-    app(\App\Services\SecurityActivityService::class)->pruneOldLogs(90);
-})->dailyAt('03:30')->name('security-activity-log-prune')->onOneServer();
+Schedule::command('security:maintenance prune-logs')
+    ->dailyAt('03:30')
+    ->name('security-activity-log-prune')
+    ->onOneServer();
 
 // Cleanup expired banned IPs
-Schedule::call(function () {
-    \App\Models\SecurityBannedIp::whereNotNull('expires_at')
-        ->where('expires_at', '<=', now())
-        ->delete();
-})->hourly()->name('security-expired-bans-cleanup')->onOneServer();
+Schedule::command('security:maintenance expired-bans')
+    ->hourly()
+    ->name('security-expired-bans-cleanup')
+    ->onOneServer();
 
 // Recalculate all security hardening scores
-Schedule::call(function () {
-    app(\App\Services\SecuritySettingsService::class)->recalculateAllScores();
-})->dailyAt('06:00')->name('security-score-recalculation')->onOneServer();
+Schedule::command('security:maintenance recalculate-scores')
+    ->dailyAt('06:00')
+    ->name('security-score-recalculation')
+    ->onOneServer();

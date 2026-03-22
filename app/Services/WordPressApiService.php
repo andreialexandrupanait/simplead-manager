@@ -2,13 +2,28 @@
 
 namespace App\Services;
 
+use App\Exceptions\WordPressApiException;
 use App\Models\Site;
+use App\Services\WordPress\Concerns\ManagesCron;
+use App\Services\WordPress\Concerns\ManagesDatabase;
+use App\Services\WordPress\Concerns\ManagesPlugins;
+use App\Services\WordPress\Concerns\ManagesSecurity;
+use App\Services\WordPress\Concerns\ManagesSiteInfo;
+use App\Services\WordPress\Concerns\ManagesThemes;
+use App\Services\WordPress\Concerns\ManagesUsers;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WordPressApiService
 {
+    use ManagesPlugins;
+    use ManagesThemes;
+    use ManagesUsers;
+    use ManagesCron;
+    use ManagesSecurity;
+    use ManagesSiteInfo;
+    use ManagesDatabase;
     private float $lastRequestTime = 0;
     private float $minRequestInterval = 1.5; // seconds - max ~40 req/min (33% headroom under 60 limit)
     private float $baseRequestInterval = 1.5;
@@ -136,10 +151,13 @@ class WordPressApiService
         }
 
         if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
-            throw new \RuntimeException(
+            throw new WordPressApiException(
                 'Cloudflare is blocking API requests to this site. '
                 . 'Add a WAF exception rule in Cloudflare for the path /wp-json/simplead/v1/* '
-                . 'or whitelist this server\'s IP address.'
+                . 'or whitelist this server\'s IP address.',
+                site: $this->site,
+                endpoint: $endpoint,
+                httpStatus: 403,
             );
         }
 
@@ -161,397 +179,11 @@ class WordPressApiService
             ?? null;
 
         if ($message) {
-            throw new \RuntimeException($message);
+            throw new WordPressApiException($message, site: $this->site, httpStatus: $response->status());
         }
 
         // Fall back to Laravel's default throw (includes status code)
         $response->throw();
-    }
-
-    /**
-     * Get site information.
-     */
-    public function getInfo(): array
-    {
-        $response = $this->request('GET', '/info');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get all plugins.
-     */
-    public function getPlugins(): array
-    {
-        $response = $this->request('GET', '/plugins');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get all themes.
-     */
-    public function getThemes(): array
-    {
-        $response = $this->request('GET', '/themes');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Update one or more plugins.
-     *
-     * @param array $pluginFiles Array of plugin file paths (e.g., ['akismet/akismet.php'])
-     */
-    public function updatePlugins(array $pluginFiles): array
-    {
-        $response = $this->request('POST', '/plugins/update', [
-            'plugins' => $pluginFiles,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Update one or more themes.
-     *
-     * @param array $themeSlugs Array of theme slugs
-     */
-    public function updateThemes(array $themeSlugs): array
-    {
-        $response = $this->request('POST', '/themes/update', [
-            'themes' => $themeSlugs,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Activate a plugin.
-     */
-    public function activatePlugin(string $pluginFile): array
-    {
-        $response = $this->request('POST', '/plugins/activate', [
-            'plugin' => $pluginFile,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Deactivate a plugin.
-     */
-    public function deactivatePlugin(string $pluginFile): array
-    {
-        $response = $this->request('POST', '/plugins/deactivate', [
-            'plugin' => $pluginFile,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Delete a plugin.
-     */
-    public function deletePlugin(string $pluginFile): array
-    {
-        $response = $this->request('POST', '/plugins/delete', [
-            'plugin' => $pluginFile,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Activate a theme.
-     */
-    public function activateTheme(string $themeSlug): array
-    {
-        $response = $this->request('POST', '/themes/activate', [
-            'theme' => $themeSlug,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Delete a theme.
-     */
-    public function deleteTheme(string $themeSlug): array
-    {
-        $response = $this->request('POST', '/themes/delete', [
-            'theme' => $themeSlug,
-        ]);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Get all users.
-     */
-    public function getUsers(): array
-    {
-        $response = $this->request('GET', '/users');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Create a WordPress user.
-     */
-    public function createUser(array $data): array
-    {
-        $response = $this->request('POST', '/users/create', $data);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Update a WordPress user.
-     */
-    public function updateUser(int $wpUserId, array $data): array
-    {
-        $response = $this->request('POST', '/users/update', array_merge($data, [
-            'wp_user_id' => $wpUserId,
-        ]));
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Delete a WordPress user.
-     */
-    public function deleteUser(int $wpUserId, ?int $reassignTo = null): array
-    {
-        $data = ['wp_user_id' => $wpUserId];
-        if ($reassignTo !== null) {
-            $data['reassign_to'] = $reassignTo;
-        }
-        $response = $this->request('POST', '/users/delete', $data);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Update WordPress core.
-     */
-    public function updateCore(): array
-    {
-        $response = $this->request('POST', '/core/update');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get a one-time login URL for WP Admin.
-     */
-    public function getLoginUrl(?string $user = null): array
-    {
-        $data = [];
-        if ($user) {
-            $data['user'] = $user;
-        }
-
-        $response = $this->request('POST', '/login-url', $data);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get core file integrity check data (file hashes).
-     */
-    public function getCoreIntegrityCheck(): array
-    {
-        $response = $this->request('GET', '/core-integrity-check');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get cron job list.
-     */
-    public function getCronList(): array
-    {
-        $response = $this->request('GET', '/cron-list');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Run a specific cron hook.
-     */
-    public function runCron(string $hook, ?array $args = null): array
-    {
-        $data = ['hook' => $hook];
-        if ($args !== null) {
-            $data['args'] = $args;
-        }
-        $response = $this->request('POST', '/cron-run', $data);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Disable a specific cron hook.
-     */
-    public function disableCron(string $hook, ?array $args = null): array
-    {
-        $data = ['hook' => $hook];
-        if ($args !== null) {
-            $data['args'] = $args;
-        }
-        $response = $this->request('POST', '/cron-disable', $data);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Enable a specific cron hook.
-     */
-    public function enableCron(string $hook, string $schedule, ?array $args = null): array
-    {
-        $data = ['hook' => $hook, 'schedule' => $schedule];
-        if ($args !== null) {
-            $data['args'] = $args;
-        }
-        $response = $this->request('POST', '/cron-enable', $data);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Clear WordPress caches (object cache, transients, plugin caches).
-     */
-    public function clearCache(): array
-    {
-        $response = $this->request('POST', '/cache-clear');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get server resource usage (CPU, RAM, disk).
-     */
-    public function getServerResources(): array
-    {
-        $response = $this->request('GET', '/server-resources');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get database cleanup stats preview.
-     */
-    public function getDbCleanupStats(): array
-    {
-        $response = $this->request('GET', '/db-cleanup-stats');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Run database cleanup with specified options.
-     */
-    public function runDbCleanup(array $options): array
-    {
-        $response = $this->request('POST', '/db-cleanup-run', $options);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get database health information.
-     */
-    public function getDatabaseHealth(): array
-    {
-        $response = $this->request('GET', '/database-health');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Perform a health check.
-     */
-    public function healthCheck(): array
-    {
-        $response = $this->request('GET', '/health');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Run site diagnostic checks.
-     */
-    public function runDiagnostic(): array
-    {
-        $response = $this->request('GET', '/diagnostic');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Fix Elementor version mismatch after restore.
-     */
-    public function fixElementor(): array
-    {
-        $response = $this->request('POST', '/diagnostic/fix-elementor');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Get security check results.
-     */
-    public function getSecurityCheck(): array
-    {
-        $response = $this->request('GET', '/security-check');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Push security settings to the plugin.
-     */
-    public function pushSecuritySettings(array $settings): array
-    {
-        $response = $this->request('POST', '/security-settings', $settings);
-        $this->throwIfFailed($response);
-        return $response->json();
-    }
-
-    /**
-     * Get the full security state from the plugin.
-     */
-    public function getSecurityState(): array
-    {
-        $response = $this->request('GET', '/security-state');
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Apply a security fix.
-     */
-    public function applySecurityFix(string $key): array
-    {
-        $response = $this->request('POST', '/security-fix', [
-            'key' => $key,
-        ]);
-        $response->throw();
-        return $response->json();
-    }
-
-    /**
-     * Rollback a plugin, theme, or core to a previous version.
-     */
-    public function rollback(string $type, string $slug, string $version): array
-    {
-        $response = $this->request('POST', "/rollback/{$type}", [
-            'slug' => $slug,
-            'version' => $version,
-        ]);
-        $response->throw();
-        return $response->json();
     }
 
     /**

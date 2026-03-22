@@ -19,8 +19,8 @@ class SitesList extends Component
         $sites = Site::query()
             ->when(!$user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('name', 'like', "%{$this->search}%")
-                  ->orWhere('url', 'like', "%{$this->search}%");
+                $q->where('name', 'ilike', "%{$this->search}%")
+                  ->orWhere('url', 'ilike', "%{$this->search}%");
             }))
             ->when($this->filter !== 'all', function ($q) {
                 return match($this->filter) {

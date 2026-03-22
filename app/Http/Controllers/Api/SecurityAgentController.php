@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ActivityLogsRequest;
+use App\Http\Requests\Api\CommandResultsRequest;
+use App\Http\Requests\Api\SyncStateRequest;
+use App\Http\Resources\SecurityCommandResource;
 use App\Models\Site;
 use App\Services\SecurityActivityService;
 use App\Services\SecurityCommandService;
@@ -32,25 +36,13 @@ class SecurityAgentController extends Controller
         });
 
         return response()->json([
-            'commands' => $commands->map(fn ($cmd) => [
-                'id' => $cmd->id,
-                'category' => $cmd->category,
-                'action' => $cmd->action,
-                'payload' => $cmd->payload,
-                'priority' => $cmd->priority->value,
-            ]),
+            'commands' => SecurityCommandResource::collection($commands),
         ]);
     }
 
-    public function commandResults(Request $request, Site $site): JsonResponse
+    public function commandResults(CommandResultsRequest $request, Site $site): JsonResponse
     {
-        $validated = $request->validate([
-            'results' => 'required|array|max:50',
-            'results.*.command_id' => 'required|integer',
-            'results.*.success' => 'required|boolean',
-            'results.*.error' => 'nullable|string|max:1000',
-            'results.*.data' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         $processed = 0;
 
@@ -67,36 +59,18 @@ class SecurityAgentController extends Controller
         return response()->json(['processed' => $processed]);
     }
 
-    public function activityLogs(Request $request, Site $site): JsonResponse
+    public function activityLogs(ActivityLogsRequest $request, Site $site): JsonResponse
     {
-        $validated = $request->validate([
-            'logs' => 'required|array|max:1000',
-            'logs.*.event_type' => 'required|string|max:50',
-            'logs.*.username' => 'nullable|string|max:255',
-            'logs.*.object_type' => 'nullable|string|max:50',
-            'logs.*.object_name' => 'nullable|string|max:255',
-            'logs.*.action' => 'nullable|string|max:100',
-            'logs.*.ip_address' => 'nullable|ip',
-            'logs.*.user_agent' => 'nullable|string|max:500',
-            'logs.*.details' => 'nullable|array|max:50',
-            'logs.*.occurred_at' => 'nullable|date',
-        ]);
+        $validated = $request->validated();
 
         $ingested = $this->activityService->ingestLogs($site, $validated['logs']);
 
         return response()->json(['ingested' => $ingested]);
     }
 
-    public function syncState(Request $request, Site $site): JsonResponse
+    public function syncState(SyncStateRequest $request, Site $site): JsonResponse
     {
-        $validated = $request->validate([
-            'settings' => 'required|array|max:200',
-            'settings.*.category' => 'required|string|max:50',
-            'settings.*.key' => 'required|string|max:100',
-            'settings.*.applied' => 'nullable|boolean',
-            'settings.*.failed' => 'nullable|boolean',
-            'settings.*.reason' => 'nullable|string|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $this->settingsService->syncSettingsFromAgent($site, $validated['settings']);
 

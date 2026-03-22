@@ -27,8 +27,8 @@ trait HasSiteScopes
     public function scopeSearchable(Builder $query, string $term): Builder
     {
         return $query->where(function ($q) use ($term) {
-            $q->where('name', 'like', "%{$term}%")
-              ->orWhere('url', 'like', "%{$term}%");
+            $q->where('name', 'ilike', "%{$term}%")
+              ->orWhere('url', 'ilike', "%{$term}%");
         });
     }
 
