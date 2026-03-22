@@ -11,8 +11,8 @@ class SAM_Admin {
 
     public function register_menu(): void {
         add_menu_page(
-            'SimpleAd Manager',
-            'SimpleAd Manager',
+            'SAD Mentenanta',
+            'SAD Mentenanta',
             'manage_options',
             'simplead-manager',
             [$this, 'render_page'],
@@ -78,7 +78,7 @@ class SAM_Admin {
 
         ?>
         <div class="wrap" id="sam-admin-wrap">
-            <h1>SimpleAd Manager</h1>
+            <h1>SAD Mentenanta</h1>
 
             <?php $this->render_connection_card(); ?>
             <?php $this->render_ip_whitelist_card(); ?>
@@ -134,7 +134,7 @@ class SAM_Admin {
                 <p>
                     <input type="submit" name="sam_regenerate_keys" class="button button-secondary"
                            value="Regenerate API Credentials"
-                           onclick="return confirm('Are you sure? This will invalidate the current credentials and disconnect SimpleAd Manager until updated.');" />
+                           onclick="return confirm('Are you sure? This will invalidate the current credentials and disconnect SAD Mentenanta until updated.');" />
                 </p>
             </form>
         </div>
@@ -231,7 +231,7 @@ class SAM_Admin {
         ?>
         <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
             <h2>Cloudflare Notice</h2>
-            <p>If this site uses Cloudflare, you may need to add a WAF exception rule for the path <code>/wp-json/simplead/v1/*</code> to prevent Cloudflare from blocking API requests from SimpleAd Manager.</p>
+            <p>If this site uses Cloudflare, you may need to add a WAF exception rule for the path <code>/wp-json/simplead/v1/*</code> to prevent Cloudflare from blocking API requests from SAD Mentenanta.</p>
         </div>
         <?php
     }

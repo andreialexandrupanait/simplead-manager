@@ -13,7 +13,6 @@
     $responseColor = $s['response']['color'];
     $perfColor = $s['performance']['color'];
 
-    $domainColor = $s['domain']['color'];
     $pluginsColor = $s['plugins']['color'];
     $usersColor = $s['users']['color'];
     $wpConnColor = $s['wpConn']['color'];
@@ -65,10 +64,13 @@
 
     {{-- Site Identity --}}
     <div class="min-w-0 flex-1 flex items-center gap-2">
+        @if($site->siteStatus)
+            <span class="h-5 rounded-sm shrink-0"
+                  style="width: 3px; background-color: {{ $site->siteStatus->color }}"
+                  title="{{ $site->siteStatus->name }}"></span>
+        @endif
         <a href="{{ route('sites.overview', $site) }}"
-           class="truncate text-sm font-medium hover:opacity-80"
-           style="color: {{ $site->siteStatus?->color ?? '#111827' }}"
-           @if($site->siteStatus) title="{{ $site->siteStatus->name }}" @endif
+           class="truncate text-sm font-medium text-gray-900 hover:opacity-80"
         >{{ $site->domain }}</a>
     </div>
 
@@ -80,10 +82,6 @@
             </span>
             <div class="mx-0.5 hidden h-4 w-px bg-gray-200 lg:block"></div>
         @endif
-        <span class="hidden text-xs text-gray-500 lg:inline" title="{{ $site->site_plugins_count }} plugins">
-            {{ $site->site_plugins_count ?? 0 }}p
-        </span>
-
         <button
             wire:click="syncSite({{ $site->id }})"
             class="hidden rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-purple-600 lg:inline-flex"
@@ -144,17 +142,9 @@
             <svg class="h-5 w-5 {{ $gscColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </x-ui.tooltip>
 
-        {{-- 6. Domain --}}
-        <x-ui.hovercard>
-            <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $domainColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </x-slot:trigger>
-            <x-hovercards.domain :site="$site" />
-        </x-ui.hovercard>
-
         <div class="mx-3.5 h-4 w-px bg-gray-200"></div>
 
-        {{-- 7. Plugins/Updates --}}
+        {{-- 6. Plugins/Updates --}}
         <x-ui.hovercard>
             <x-slot:trigger>
                 <svg class="h-5 w-5 {{ $pluginsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>

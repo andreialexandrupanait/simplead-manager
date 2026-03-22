@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\HealthLevel;
-use App\Jobs\CheckDomainExpiry;
 use App\Jobs\CheckSslCertificate;
 use App\Jobs\FetchSiteFavicon;
 use App\Models\Traits\HasDomainExtraction;
@@ -46,6 +45,7 @@ class Site extends Model
         "ssl_ok",
         "ssl_expiry",
         "pending_updates_count",
+        "connector_version",
         "backup_ok",
         "last_backup_at",
         "notes",
@@ -100,17 +100,6 @@ class Site extends Model
                 ]);
                 CheckSslCertificate::dispatch($certificate);
             }
-
-            // Always create domain monitor
-            $rootDomain = static::extractRootDomain($site->url);
-            $parts = explode('.', $rootDomain);
-            $tld = end($parts);
-
-            $domainMonitor = $site->domainMonitor()->create([
-                'domain' => $rootDomain,
-                'tld' => $tld,
-            ]);
-            CheckDomainExpiry::dispatch($domainMonitor);
 
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);

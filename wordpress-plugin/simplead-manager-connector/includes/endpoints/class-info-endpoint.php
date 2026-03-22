@@ -69,7 +69,7 @@ class SAM_Info_Endpoint extends SAM_Endpoint_Base {
             'core_new_version'      => $core_new_version,
             'active_theme'          => get_stylesheet(),
             'site_title'            => get_bloginfo('name'),
-            'plugin_version'        => SAM_VERSION,
+            'plugin_version'        => get_option('sam_connector_version', '') ?: SAM_VERSION,
             'server_software'       => $_SERVER['SERVER_SOFTWARE'] ?? 'unknown',
             'max_upload_size'       => wp_max_upload_size(),
             'memory_limit'          => ini_get('memory_limit'),

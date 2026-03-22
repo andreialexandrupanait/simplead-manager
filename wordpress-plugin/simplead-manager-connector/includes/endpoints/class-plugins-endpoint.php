@@ -39,6 +39,34 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'delete_plugin'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/flush-opcache', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'flush_opcache'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+    }
+
+    /**
+     * Read plugin version directly from the file header, bypassing all WP/PHP caches.
+     */
+    private function read_fresh_version(string $plugin_file): ?string {
+        $path = WP_PLUGIN_DIR . '/' . $plugin_file;
+        clearstatcache(true, $path);
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($path, true);
+        }
+        if (!is_readable($path)) {
+            return null;
+        }
+        $content = @file_get_contents($path, false, null, 0, 8192);
+        if (!$content) {
+            return null;
+        }
+        if (preg_match('/^[ \t\/*#@]*Version:\s*(.+?)$/mi', $content, $m)) {
+            return trim($m[1]);
+        }
+        return null;
     }
 
     /**
@@ -60,11 +88,11 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             return false;
         }
 
-        // Must be a known installed plugin
+        // Clear cache and check against fresh plugin list
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
-
+        wp_cache_delete('plugins', 'plugins');
         $all_plugins = get_plugins();
         return isset($all_plugins[$plugin_file]);
     }
@@ -74,10 +102,13 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
+        // Clear plugin cache to get fresh filesystem scan
+        wp_cache_delete('plugins', 'plugins');
         $all_plugins = get_plugins();
         $active_plugins = get_option('active_plugins', []);
 
         // Force refresh so transient reflects actual available updates
+        delete_site_transient('update_plugins');
         wp_update_plugins();
         $update_plugins = get_site_transient('update_plugins');
 
@@ -108,6 +139,20 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
             ];
         }
 
+        // Verify versions from actual files — bypass PHP/WP cache (OPcache, object cache)
+        foreach ($plugins as &$plugin) {
+            $fresh = $this->read_fresh_version($plugin['file']);
+            if ($fresh) {
+                $plugin['version'] = $fresh;
+                if ($plugin['update_available'] && $plugin['new_version']
+                    && version_compare($fresh, $plugin['new_version'], '>=')) {
+                    $plugin['update_available'] = false;
+                    $plugin['new_version'] = null;
+                }
+            }
+        }
+        unset($plugin);
+
         return $this->success(['plugins' => $plugins]);
     }
 
@@ -124,7 +169,9 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         require_once ABSPATH . 'wp-admin/includes/file.php';
 
         // Refresh update transient so upgrader sees available updates
+        delete_site_transient('update_plugins');
         wp_update_plugins();
+        $update_transient = get_site_transient('update_plugins');
 
         // Initialize filesystem (required by Plugin_Upgrader)
         WP_Filesystem();
@@ -132,6 +179,14 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         // Use silent skin to suppress output
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Plugin_Upgrader($skin);
+
+        // Remember which plugins were active before upgrading,
+        // because Plugin_Upgrader temporarily deactivates them during the process.
+        $active_before = get_option('active_plugins', []);
+
+        // Capture versions before upgrade for accurate reporting
+        wp_cache_delete('plugins', 'plugins');
+        $all_plugins_before = get_plugins();
 
         $results = [];
         foreach ($plugin_files as $plugin_file) {
@@ -146,6 +201,9 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
                 continue;
             }
 
+            $old_version = $this->read_fresh_version($plugin_file) ?? $all_plugins_before[$plugin_file]['Version'] ?? null;
+            $was_active = in_array($plugin_file, $active_before, true);
+
             $result = $upgrader->upgrade($plugin_file);
 
             $success = ($result === true || $result === null);
@@ -158,9 +216,37 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
                 $error = !empty($feedback) ? implode(' | ', $feedback) : 'Upgrade returned false (no details available)';
             }
 
+            // Read actual current version after upgrade attempt (direct from file)
+            $current_version = $this->read_fresh_version($plugin_file);
+
+            // Detect "already up to date": upgrade failed but plugin is already at expected version
+            if (!$success && $current_version !== null) {
+                $expected_version = null;
+                $has_pending_update = isset($update_transient->response[$plugin_file]);
+                if ($has_pending_update) {
+                    $expected_version = $update_transient->response[$plugin_file]->new_version ?? null;
+                }
+
+                $already_current = ($expected_version && version_compare($current_version, $expected_version, '>='))
+                    || ($old_version !== null && $old_version !== $current_version)
+                    || !$has_pending_update;
+
+                if ($already_current) {
+                    $success = true;
+                    $error = null;
+                }
+            }
+
+            // Re-activate the plugin if it was active before the upgrade
+            if ($success && $was_active && !is_plugin_active($plugin_file)) {
+                activate_plugin($plugin_file);
+            }
+
             $results[$plugin_file] = [
-                'success' => $success,
-                'error'   => $error,
+                'success'      => $success,
+                'error'        => $error,
+                'from_version' => $old_version,
+                'to_version'   => $current_version,
             ];
 
             if ($success) {
@@ -263,5 +349,40 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         SAM_Audit_Logger::log('plugin_deleted', 'plugin', $plugin_file, 'Deleted via SimpleAd Manager');
 
         return $this->success(['plugin' => $plugin_file, 'deleted' => true]);
+    }
+
+    public function flush_opcache(): WP_REST_Response {
+        $cleared = 0;
+
+        // Invalidate all connector PHP files individually
+        $connector_dir = WP_PLUGIN_DIR . '/simplead-manager-connector/';
+        $patterns = ['*.php', 'includes/*.php', 'includes/endpoints/*.php'];
+        foreach ($patterns as $pattern) {
+            foreach (glob($connector_dir . $pattern) ?: [] as $f) {
+                @touch($f);
+                if (function_exists('opcache_invalidate')) {
+                    @opcache_invalidate($f, true);
+                }
+                $cleared++;
+            }
+        }
+
+        // Also invalidate MU-plugin
+        $mu = WPMU_PLUGIN_DIR . '/simplead-security.php';
+        if (file_exists($mu)) {
+            @touch($mu);
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($mu, true);
+            }
+        }
+
+        // Global reset as fallback
+        clearstatcache(true);
+        wp_cache_delete('plugins', 'plugins');
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
+
+        return $this->success(['cleared_files' => $cleared]);
     }
 }

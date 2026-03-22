@@ -33,7 +33,7 @@
         $updatesColor = $stats['pending_updates'] === 0 ? 'text-green-600' : ($stats['pending_updates'] <= 10 ? 'text-yellow-600' : 'text-red-600');
 
         // Expiring total
-        $expiringTotal = $stats['ssl_expiring'] + $stats['domains_expiring'];
+        $expiringTotal = $stats['ssl_expiring'];
         $expiringColor = $expiringTotal === 0 ? 'text-green-600' : ($expiringTotal <= 2 ? 'text-yellow-600' : 'text-red-600');
     @endphp
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -107,7 +107,6 @@
                     @php
                         $expParts = [];
                         if ($stats['ssl_expiring'] > 0) $expParts[] = $stats['ssl_expiring'] . ' SSL';
-                        if ($stats['domains_expiring'] > 0) $expParts[] = $stats['domains_expiring'] . ' ' . Str::plural('domain', $stats['domains_expiring']);
                     @endphp
                     {{ implode(', ', $expParts) }}
                 @endif

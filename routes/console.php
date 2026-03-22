@@ -94,13 +94,6 @@ Schedule::call(function () {
         ->each(fn ($site) => \App\Jobs\FetchSiteFavicon::dispatch($site));
 })->daily()->name('favicon-backfill')->withoutOverlapping()->onOneServer();
 
-// Domain expiry checks — daily
-Schedule::call(function () {
-    \App\Models\DomainMonitor::whereHas('site')
-        ->where(fn ($q) => $q->whereNull('next_check_at')->orWhere('next_check_at', '<=', now()))
-        ->each(fn ($domain) => \App\Jobs\CheckDomainExpiry::dispatch($domain));
-})->daily()->name('domain-checks')->withoutOverlapping()->onOneServer();
-
 // App backup scheduler
 Schedule::call(function () {
     $config = \App\Models\AppBackupConfig::query()

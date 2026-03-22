@@ -496,11 +496,6 @@ class SiteReports extends Component
             $metrics[] = ['label' => 'SSL', 'value' => $ssl->status_label];
         }
 
-        $domain = $this->site->domainMonitor;
-        if ($domain && $domain->status !== 'pending') {
-            $metrics[] = ['label' => 'Domain', 'value' => $domain->days_remaining !== null ? $domain->days_remaining . 'd' : 'N/A'];
-        }
-
         $email = $this->site->latestEmailHealthCheck;
         if ($email) {
             $parts = [];

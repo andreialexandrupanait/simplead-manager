@@ -80,9 +80,9 @@ class WordPressApiService
         $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
 
         $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-        if (!empty($queryParams)) {
-            $url .= '?' . http_build_query($queryParams);
-        }
+        // Always add cache-busting parameter to bypass CDN/Cloudflare caching
+        $queryParams['_nocache'] = time();
+        $url .= '?' . http_build_query($queryParams);
         $body = !empty($data) ? json_encode($data) : '';
 
         // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)

@@ -9,7 +9,6 @@ use App\Models\ActivityLog;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\SslCertificate;
-use App\Models\DomainMonitor;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -49,12 +48,6 @@ class DashboardService
             ->where('expires_at', '>', now())
             ->count();
 
-        $domainsExpiring = DomainMonitor::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(30))
-            ->where('expires_at', '>', now())
-            ->count();
-
         return [
             'sites_down' => $sitesDown,
             'avg_uptime' => $avgUptime ? round($avgUptime, 2) : null,
@@ -65,7 +58,6 @@ class DashboardService
             'pending_core_updates' => $pendingCoreUpdates,
             'failed_backups' => $failedBackups,
             'ssl_expiring' => $sslExpiring,
-            'domains_expiring' => $domainsExpiring,
         ];
     }
 
@@ -118,37 +110,6 @@ class DashboardService
             }
         }
 
-        // Domains — one alert per expired domain, one per expiring-soon domain
-        $domainsExpiring = DomainMonitor::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(30))
-            ->with('site')
-            ->get();
-
-        foreach ($domainsExpiring as $domain) {
-            if ($domain->expires_at->isPast()) {
-                $alerts[] = [
-                    'key' => "domains_expired_{$domain->site->id}",
-                    'severity' => 'critical',
-                    'icon' => 'globe',
-                    'title' => "Domain expired: {$domain->domain}",
-                    'description' => null,
-                    'url' => route('sites.overview', $domain->site),
-                    'timestamp' => $domain->updated_at,
-                ];
-            } else {
-                $alerts[] = [
-                    'key' => "domains_expiring_{$domain->site->id}",
-                    'severity' => 'warning',
-                    'icon' => 'globe',
-                    'title' => "Domain expiring soon: {$domain->domain}",
-                    'description' => "Expires {$domain->expires_at->diffForHumans()}",
-                    'url' => route('sites.overview', $domain->site),
-                    'timestamp' => $domain->updated_at,
-                ];
-            }
-        }
-
         // Backup failures (last 24h) — one alert per site (deduped)
         $failedBackups = Backup::whereHas('site')
             ->where('status', BackupStatus::Failed)
@@ -190,7 +151,6 @@ class DashboardService
             'uptimeMonitor',
             'uptimeMonitor.incidents',
             'sslCertificate',
-            'domainMonitor',
             'performanceMonitor',
             'backupConfig',
             'latestCompletedBackup',
@@ -323,19 +283,12 @@ class DashboardService
             ->where('expires_at', '>', now())
             ->count();
 
-        $domainsExpiring = DomainMonitor::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(30))
-            ->where('expires_at', '>', now())
-            ->count();
-
         return [
             'backups_today' => $backups['backups_today'],
             'failed_backups' => $backups['failed_backups'],
             'total_storage' => $backups['total_storage_bytes'],
             'pending_updates' => $pendingUpdates,
             'ssl_expiring' => $sslExpiring,
-            'domains_expiring' => $domainsExpiring,
         ];
     }
 

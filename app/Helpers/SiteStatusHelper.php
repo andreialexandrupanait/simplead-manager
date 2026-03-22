@@ -39,7 +39,6 @@ class SiteStatusHelper
             'ssl' => $ssl,
             'response' => static::responseTime($site),
             'performance' => $performance,
-            'domain' => static::domain($site),
             'plugins' => $plugins,
             'users' => static::users($site),
             'wpConn' => static::wpConnection($site),
@@ -121,28 +120,6 @@ class SiteStatusHelper
             if ($score !== null) {
                 $color = $score >= 90 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
                 $tip = 'Performance: ' . $score;
-            }
-        }
-
-        return compact('color', 'tip');
-    }
-
-    private static function domain(Site $site): array
-    {
-        $color = 'text-gray-300';
-        $tip = 'Domain: Not monitored';
-
-        if ($site->domainMonitor && $site->domainMonitor->expires_at) {
-            $daysLeft = (int) now()->diffInDays($site->domainMonitor->expires_at, false);
-            if ($daysLeft < 0) {
-                $color = 'text-red-500';
-                $tip = 'Domain expired';
-            } elseif ($daysLeft <= 30) {
-                $color = 'text-yellow-500';
-                $tip = 'Domain expires in ' . $daysLeft . ' days';
-            } else {
-                $color = 'text-green-500';
-                $tip = 'Domain expires in ' . $daysLeft . ' days';
             }
         }
 

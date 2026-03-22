@@ -130,6 +130,25 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// OPcache invalidation — detect stale connector code via flag file
+// This runs before the connector plugin loads, ensuring fresh code on next request
+$_sam_flag = WP_PLUGIN_DIR . '/simplead-manager-connector/.opcache-invalidate';
+if (file_exists($_sam_flag)) {
+    $_sam_patterns = [
+        WP_PLUGIN_DIR . '/simplead-manager-connector/*.php',
+        WP_PLUGIN_DIR . '/simplead-manager-connector/includes/*.php',
+        WP_PLUGIN_DIR . '/simplead-manager-connector/includes/endpoints/*.php',
+    ];
+    foreach ($_sam_patterns as $_sam_pat) {
+        foreach (glob($_sam_pat) ?: [] as $_sam_f) {
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($_sam_f, true);
+            }
+        }
+    }
+    @unlink($_sam_flag);
+}
+
 // Skip if the connector plugin is active — it handles enforcement itself
 if (defined('SAM_VERSION')) {
     return;

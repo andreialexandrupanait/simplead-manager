@@ -13,7 +13,6 @@ use App\Models\CoreFileCheck;
 use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
-use App\Models\DomainMonitor;
 use App\Models\EmailHealthCheck;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
@@ -84,11 +83,6 @@ trait HasSiteRelationships
     public function sslCertificate(): HasOne
     {
         return $this->hasOne(SslCertificate::class);
-    }
-
-    public function domainMonitor(): HasOne
-    {
-        return $this->hasOne(DomainMonitor::class);
     }
 
     public function sitePlugins(): HasMany

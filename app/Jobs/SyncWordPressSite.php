@@ -56,6 +56,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 'db_size_mb' => $info['db_size_mb'] ?? $this->site->db_size_mb,
                 'uploads_size_mb' => $info['uploads_size_mb'] ?? $this->site->uploads_size_mb,
                 'core_update_version' => $info['core_new_version'] ?? null,
+                'connector_version' => $info['plugin_version'] ?? $this->site->connector_version,
                 'is_connected' => true,
                 'last_synced_at' => now(),
             ]);
@@ -133,20 +134,34 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                 $existingWpUserIds = [];
 
                 foreach ($usersData['users'] ?? [] as $user) {
-                    $this->site->siteUsers()->updateOrCreate(
-                        ['wp_user_id' => $user['id']],
-                        [
-                            'username' => $user['login'] ?? $user['username'] ?? '',
-                            'email' => $user['email'] ?? null,
-                            'display_name' => $user['display_name'] ?? null,
-                            'role' => $user['roles'][0] ?? $user['role'] ?? null,
-                            'avatar_url' => $user['avatar_url'] ?? null,
-                            'posts_count' => $user['posts_count'] ?? 0,
-                            'registered_at' => $user['registered'] ?? null,
-                            'last_login_at' => $user['last_login'] ?? null,
-                            'synced_at' => now(),
-                        ]
-                    );
+                    try {
+                        $registered = $user['registered'] ?? null;
+                        $lastLogin = $user['last_login'] ?? null;
+                        // Sanitize invalid dates (e.g. "-0001-11-30") that PostgreSQL rejects
+                        if ($registered && (str_starts_with($registered, '-') || str_starts_with($registered, '0000'))) {
+                            $registered = null;
+                        }
+                        if ($lastLogin && (str_starts_with($lastLogin, '-') || str_starts_with($lastLogin, '0000'))) {
+                            $lastLogin = null;
+                        }
+
+                        $this->site->siteUsers()->updateOrCreate(
+                            ['wp_user_id' => $user['id']],
+                            [
+                                'username' => $user['login'] ?? $user['username'] ?? '',
+                                'email' => $user['email'] ?? null,
+                                'display_name' => $user['display_name'] ?? null,
+                                'role' => $user['roles'][0] ?? $user['role'] ?? null,
+                                'avatar_url' => $user['avatar_url'] ?? null,
+                                'posts_count' => $user['posts_count'] ?? 0,
+                                'registered_at' => $registered,
+                                'last_login_at' => $lastLogin,
+                                'synced_at' => now(),
+                            ]
+                        );
+                    } catch (\Exception $e) {
+                        Log::info("User sync failed for wp_user_id {$user['id']} on site {$this->site->id}: {$e->getMessage()}");
+                    }
                     $existingWpUserIds[] = $user['id'];
                 }
 

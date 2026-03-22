@@ -140,6 +140,11 @@ class SAM_Security_Login {
             return;
         }
 
+        // Allow static assets under /wp-admin/ (needed for login page CSS/JS)
+        if (preg_match('#/wp-admin/(css|js|images|fonts)/#', $request_path)) {
+            return;
+        }
+
         // Handle custom slug — show login form
         if ($request_path === '/' . $custom_slug) {
             // Set a cookie to prove they came through the custom URL
@@ -166,12 +171,7 @@ class SAM_Security_Login {
                 return;
             }
 
-            // Allow if user has the access cookie
-            if (isset($_COOKIE['sam_login_access']) && $_COOKIE['sam_login_access'] === wp_hash($custom_slug)) {
-                return;
-            }
-
-            // Redirect or 404
+            // Redirect — direct access to wp-login.php is not allowed
             wp_safe_redirect(home_url('/'), 302);
             exit;
         }
@@ -183,6 +183,9 @@ class SAM_Security_Login {
     public function filter_login_url(string $url, string $path, $scheme, $blog_id): string {
         if (strpos($url, 'wp-login.php') !== false && !is_admin()) {
             $custom_slug = $this->settings['custom_login_url']['slug'];
+            if (!is_user_logged_in() && !isset($_COOKIE['sam_login_access'])) {
+                return home_url('/');
+            }
             $url = home_url('/' . $custom_slug);
         }
         return $url;
@@ -193,6 +196,9 @@ class SAM_Security_Login {
      */
     public function filter_login_redirect(string $location, int $status): string {
         if (strpos($location, 'wp-login.php') !== false) {
+            if (!is_user_logged_in()) {
+                return home_url('/');
+            }
             $custom_slug = $this->settings['custom_login_url']['slug'];
             $location = str_replace('wp-login.php', $custom_slug, $location);
         }

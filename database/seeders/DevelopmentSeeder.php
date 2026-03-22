@@ -8,7 +8,6 @@ use App\Models\ActivityLog;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Client;
-use App\Models\DomainMonitor;
 use App\Models\NotificationChannel;
 use App\Models\PerformanceTest;
 use App\Models\Report;
@@ -79,9 +78,6 @@ class DevelopmentSeeder extends Seeder
 
             // SSL certificate
             SslCertificate::factory()->create(['site_id' => $site->id]);
-
-            // Domain monitor
-            DomainMonitor::factory()->create(['site_id' => $site->id]);
 
             // Backup config
             BackupConfig::factory()->create([

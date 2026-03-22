@@ -32,7 +32,7 @@ class SitesList extends Component
                     default => $q,
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'sslCertificate', 'analyticsConnection', 'domainMonitor', 'searchConsoleConnection')
+            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'sslCertificate', 'analyticsConnection', 'searchConsoleConnection')
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
             ->latest()
             ->paginate(16);

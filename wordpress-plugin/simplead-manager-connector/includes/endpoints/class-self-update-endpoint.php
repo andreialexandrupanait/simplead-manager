@@ -95,13 +95,41 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
             activate_plugin($plugin_file);
         }
 
-        // Get new version
+        // Aggressively clear OPcache for all connector files
+        $connector_dir = plugin_dir_path(dirname(__FILE__));
+        $patterns = [$connector_dir . '*.php', $connector_dir . 'includes/*.php', $connector_dir . 'includes/endpoints/*.php'];
+        foreach ($patterns as $pattern) {
+            foreach (glob($pattern) ?: [] as $f) {
+                @touch($f);
+                if (function_exists('opcache_invalidate')) {
+                    @opcache_invalidate($f, true);
+                }
+            }
+        }
+        clearstatcache(true);
         wp_cache_delete('plugins', 'plugins');
         if (function_exists('opcache_reset')) {
             @opcache_reset();
         }
-        $all_plugins = get_plugins();
-        $new_version = $all_plugins[$plugin_file]['Version'] ?? 'unknown';
+
+        // Read new version directly from file (bypass OPcache)
+        $new_version = 'unknown';
+        $main_file = WP_PLUGIN_DIR . '/' . $plugin_file;
+        $content = @file_get_contents($main_file, false, null, 0, 8192);
+        if ($content && preg_match('/^[ \t\/*#@]*Version:\s*(.+?)$/mi', $content, $m)) {
+            $new_version = trim($m[1]);
+        }
+
+        // Store version in DB option (survives OPcache issues)
+        update_option('sam_connector_version', $new_version, true);
+
+        // Create flag file for MU-plugin OPcache invalidation on next request
+        @file_put_contents($connector_dir . '.opcache-invalidate', (string) time());
+
+        // Regenerate MU-plugin so it picks up new code
+        if (class_exists('SAM_MU_Plugin_Manager')) {
+            SAM_MU_Plugin_Manager::install();
+        }
 
         SAM_Audit_Logger::log('self_update', 'plugin', 'simplead-manager-connector', "Updated from {$old_version} to {$new_version} via SimpleAd Manager");
 

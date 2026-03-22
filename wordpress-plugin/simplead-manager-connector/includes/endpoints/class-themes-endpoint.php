@@ -35,11 +35,34 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
         ]);
     }
 
+    /**
+     * Read theme version directly from style.css header, bypassing all WP/PHP caches.
+     */
+    private function read_fresh_theme_version(string $slug): ?string {
+        $path = get_theme_root() . '/' . $slug . '/style.css';
+        clearstatcache(true, $path);
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($path, true);
+        }
+        if (!is_readable($path)) {
+            return null;
+        }
+        $content = @file_get_contents($path, false, null, 0, 8192);
+        if (!$content) {
+            return null;
+        }
+        if (preg_match('/^[ \t\/*#@]*Version:\s*(.+?)$/mi', $content, $m)) {
+            return trim($m[1]);
+        }
+        return null;
+    }
+
     public function list_themes(WP_REST_Request $request): WP_REST_Response {
         $all_themes = wp_get_themes();
         $active_theme = get_stylesheet();
 
         // Force refresh so transient reflects actual available updates
+        delete_site_transient('update_themes');
         wp_update_themes();
         $update_themes = get_site_transient('update_themes');
 
@@ -66,6 +89,20 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
             ];
         }
 
+        // Verify versions from actual files — bypass PHP/WP cache (OPcache, object cache)
+        foreach ($themes as &$theme) {
+            $fresh = $this->read_fresh_theme_version($theme['slug']);
+            if ($fresh) {
+                $theme['version'] = $fresh;
+                if ($theme['update_available'] && $theme['new_version']
+                    && version_compare($fresh, $theme['new_version'], '>=')) {
+                    $theme['update_available'] = false;
+                    $theme['new_version'] = null;
+                }
+            }
+        }
+        unset($theme);
+
         return $this->success(['themes' => $themes]);
     }
 
@@ -81,7 +118,9 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
         require_once ABSPATH . 'wp-admin/includes/file.php';
 
         // Refresh update transient so upgrader sees available updates
+        delete_site_transient('update_themes');
         wp_update_themes();
+        $update_transient = get_site_transient('update_themes');
 
         // Initialize filesystem (required by Theme_Upgrader)
         WP_Filesystem();
@@ -89,9 +128,18 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Theme_Upgrader($skin);
 
+        // Capture versions before upgrade (direct from file for accuracy)
+        $old_versions = [];
+        foreach ($theme_slugs as $s) {
+            $s = sanitize_text_field($s);
+            $old_versions[$s] = $this->read_fresh_theme_version($s);
+        }
+
         $results = [];
         foreach ($theme_slugs as $slug) {
             $slug = sanitize_text_field($slug);
+            $old_version = $old_versions[$slug] ?? null;
+
             $result = $upgrader->upgrade($slug);
 
             $success = ($result === true || $result === null);
@@ -105,9 +153,32 @@ class SAM_Themes_Endpoint extends SAM_Endpoint_Base {
                 $error = !empty($feedback) ? implode(' | ', $feedback) : 'Upgrade returned false (no details available)';
             }
 
+            // Read actual current version after upgrade attempt (direct from file)
+            $current_version = $this->read_fresh_theme_version($slug);
+
+            // Detect "already up to date": upgrade failed but theme is already at expected version
+            if (!$success && $current_version !== null) {
+                $expected_version = null;
+                $has_pending_update = isset($update_transient->response[$slug]);
+                if ($has_pending_update) {
+                    $expected_version = $update_transient->response[$slug]['new_version'] ?? null;
+                }
+
+                $already_current = ($expected_version && version_compare($current_version, $expected_version, '>='))
+                    || ($old_version !== null && $old_version !== $current_version)
+                    || !$has_pending_update;
+
+                if ($already_current) {
+                    $success = true;
+                    $error = null;
+                }
+            }
+
             $results[$slug] = [
-                'success' => $success,
-                'error'   => $error,
+                'success'      => $success,
+                'error'        => $error,
+                'from_version' => $old_version,
+                'to_version'   => $current_version,
             ];
 
             if ($success) {

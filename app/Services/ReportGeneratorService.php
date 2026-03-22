@@ -463,9 +463,8 @@ class ReportGeneratorService
             $this->data['security_checks'] = $this->gatherSecurityChecksData();
         }
 
-        // Always gather SSL, domain, email data (shown inside technical stability)
+        // Always gather SSL, email data (shown inside technical stability)
         $this->data['ssl'] = $this->gatherSslData();
-        $this->data['domain'] = $this->gatherDomainData();
         $this->data['email'] = $this->gatherEmailData();
 
         // Executive snapshot (aggregates from already-gathered sections)
@@ -1099,23 +1098,6 @@ class ReportGeneratorService
             'days_remaining' => $ssl->days_remaining,
             'protocol' => $ssl->protocol,
             'key_size' => $ssl->key_size,
-        ];
-    }
-
-    protected function gatherDomainData(): ?array
-    {
-        $domain = $this->site->domainMonitor;
-        if (! $domain || $domain->status === 'pending') {
-            return null;
-        }
-
-        return [
-            'registrar' => $domain->registrar,
-            'expires_at' => $domain->expires_at?->format('d/m/Y'),
-            'days_remaining' => $domain->days_remaining,
-            'dns_provider' => $domain->dns_provider,
-            'status' => $domain->status,
-            'status_label' => $domain->status_label,
         ];
     }
 

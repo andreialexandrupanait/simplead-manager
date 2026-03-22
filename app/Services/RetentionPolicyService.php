@@ -55,7 +55,6 @@ class RetentionPolicyService
             'max' => 730,
             'tables' => [
                 ['table' => 'ssl_check_history', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'SSL check history', 'condition' => null, 'hasTable' => false],
-                ['table' => 'domain_check_history', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Domain check history', 'condition' => null, 'hasTable' => false],
             ],
         ],
         'activity_logs' => [

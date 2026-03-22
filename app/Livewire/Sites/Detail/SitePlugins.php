@@ -243,6 +243,16 @@ class SitePlugins extends Component
     {
         $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
         $result = $this->performUpdate('plugin', $plugin->file, $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version);
+
+        if ($result['success']) {
+            $plugin->update([
+                'version' => $result['version'] ?? $plugin->update_version,
+                'has_update' => false,
+                'update_version' => null,
+            ]);
+            $this->site->decrement('pending_updates_count');
+        }
+
         unset($this->plugins, $this->pluginCounts);
         return $result;
     }
@@ -251,6 +261,16 @@ class SitePlugins extends Component
     {
         $theme = $this->site->siteThemes()->findOrFail($themeId);
         $result = $this->performUpdate('theme', $theme->slug, $theme->name, $theme->slug, $theme->version, $theme->update_version);
+
+        if ($result['success']) {
+            $theme->update([
+                'version' => $result['version'] ?? $theme->update_version,
+                'has_update' => false,
+                'update_version' => null,
+            ]);
+            $this->site->decrement('pending_updates_count');
+        }
+
         unset($this->themes, $this->themeCounts);
         return $result;
     }
@@ -277,8 +297,6 @@ class SitePlugins extends Component
                 'error_message' => $updateResult['error'] ?? null,
                 'performed_at' => now(),
             ]);
-
-            SyncWordPressSite::dispatch($this->site);
 
             $success = $updateResult['success'] ?? false;
             if (!$success) {
@@ -333,8 +351,8 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->activatePlugin($plugin->file);
+            $plugin->update(['is_active' => true]);
             ActivityLogger::pluginActivated($this->site, $plugin->name);
-            SyncWordPressSite::dispatch($this->site);
             $this->updateResults['plugin_' . $id] = [
                 'success' => true,
                 'message' => "{$plugin->name} activated.",
@@ -366,8 +384,8 @@ class SitePlugins extends Component
         try {
             $api = new WordPressApiService($this->site);
             $api->deactivatePlugin($plugin->file);
+            $plugin->update(['is_active' => false]);
             ActivityLogger::pluginDeactivated($this->site, $plugin->name);
-            SyncWordPressSite::dispatch($this->site);
             $this->updateResults['plugin_' . $id] = [
                 'success' => true,
                 'message' => "{$plugin->name} deactivated.",
@@ -413,7 +431,6 @@ class SitePlugins extends Component
             $api->deletePlugin($plugin->file);
             $plugin->delete();
             ActivityLogger::pluginDeleted($this->site, $plugin->name);
-            SyncWordPressSite::dispatch($this->site);
             session()->flash('update-success', "{$plugin->name} deleted.");
         } catch (\Exception $e) {
             session()->flash('update-error', "Delete failed: {$e->getMessage()}");
@@ -433,7 +450,6 @@ class SitePlugins extends Component
             $api = new WordPressApiService($this->site);
             $api->activateTheme($theme->slug);
             ActivityLogger::themeActivated($this->site, $theme->name);
-            SyncWordPressSite::dispatch($this->site);
             $this->updateResults['theme_' . $id] = [
                 'success' => true,
                 'message' => "{$theme->name} activated.",
@@ -482,7 +498,6 @@ class SitePlugins extends Component
             $api->deleteTheme($theme->slug);
             $theme->delete();
             ActivityLogger::themeDeleted($this->site, $theme->name);
-            SyncWordPressSite::dispatch($this->site);
             $this->dispatch('notify', type: 'success', message: "{$theme->name} deleted.");
         } catch (\Exception $e) {
             Log::error('deleteTheme failed', ['error' => $e->getMessage(), 'theme' => $theme->slug]);
@@ -505,7 +520,6 @@ class SitePlugins extends Component
             $api->deleteTheme($theme->slug);
             $theme->delete();
             ActivityLogger::themeDeleted($this->site, $theme->name);
-            SyncWordPressSite::dispatch($this->site);
             session()->flash('update-success', "{$theme->name} deleted.");
         } catch (\Exception $e) {
             session()->flash('update-error', "Delete failed: {$e->getMessage()}");
@@ -607,6 +621,11 @@ class SitePlugins extends Component
 
             if ($wasSuccess) {
                 $success++;
+                $plugin->update([
+                    'version' => $plugin->update_version,
+                    'has_update' => false,
+                    'update_version' => null,
+                ]);
                 $this->updateResults['plugin_' . $plugin->id] = [
                     'success' => true,
                     'message' => "Updated to v{$plugin->update_version}",
@@ -622,7 +641,6 @@ class SitePlugins extends Component
             }
         }
 
-        SyncWordPressSite::dispatch($this->site);
         unset($this->plugins, $this->pluginCounts);
 
         return ['success' => $success, 'failed' => $failed];
@@ -667,6 +685,11 @@ class SitePlugins extends Component
 
             if ($wasSuccess) {
                 $success++;
+                $theme->update([
+                    'version' => $theme->update_version,
+                    'has_update' => false,
+                    'update_version' => null,
+                ]);
                 $this->updateResults['theme_' . $theme->id] = [
                     'success' => true,
                     'message' => "Updated to v{$theme->update_version}",
@@ -682,7 +705,6 @@ class SitePlugins extends Component
             }
         }
 
-        SyncWordPressSite::dispatch($this->site);
         unset($this->themes, $this->themeCounts);
 
         return ['success' => $success, 'failed' => $failed];
@@ -763,7 +785,6 @@ class SitePlugins extends Component
             ]);
 
             ActivityLogger::coreUpdated($this->site, $this->site->wp_version, $this->site->core_update_version);
-            SyncWordPressSite::dispatch($this->site);
             session()->flash('update-success', 'WordPress core update initiated.');
         } catch (\Exception $e) {
             session()->flash('update-error', "Core update failed: {$e->getMessage()}");

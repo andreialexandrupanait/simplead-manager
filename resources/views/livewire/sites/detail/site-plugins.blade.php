@@ -17,16 +17,9 @@
             this.bulkCompleted = 0;
             this.bulkFailed = 0;
             this.bulkType = 'plugins';
-            for (const id of ids) {
-                try {
-                    const result = await $wire.updateSinglePlugin(id);
-                    if (result && !result.success) this.bulkFailed++;
-                } catch (e) {
-                    this.bulkFailed++;
-                }
-                this.bulkCompleted++;
-            }
-            await $wire.syncNow();
+            const result = await $wire.bulkUpdatePlugins(ids);
+            this.bulkCompleted = (result.success || 0) + (result.failed || 0);
+            this.bulkFailed = result.failed || 0;
             this.bulkUpdating = false;
         },
         async updateAllThemes() {
@@ -37,16 +30,9 @@
             this.bulkCompleted = 0;
             this.bulkFailed = 0;
             this.bulkType = 'themes';
-            for (const id of ids) {
-                try {
-                    const result = await $wire.updateSingleTheme(id);
-                    if (result && !result.success) this.bulkFailed++;
-                } catch (e) {
-                    this.bulkFailed++;
-                }
-                this.bulkCompleted++;
-            }
-            await $wire.syncNow();
+            const result = await $wire.bulkUpdateThemes(ids);
+            this.bulkCompleted = (result.success || 0) + (result.failed || 0);
+            this.bulkFailed = result.failed || 0;
             this.bulkUpdating = false;
         },
         async applyBulkAction(tab) {

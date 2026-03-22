@@ -80,7 +80,7 @@
                ]">
 
             {{-- Logo area --}}
-            <div class="flex h-16 items-center px-4 border-b border-white/10"
+            <div class="flex h-16 items-center gap-2 px-4 border-b border-white/10"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 flex-1 min-w-0 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
