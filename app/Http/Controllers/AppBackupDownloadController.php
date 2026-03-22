@@ -13,11 +13,17 @@ class AppBackupDownloadController extends Controller
 
         if (!$destination) {
             // Local fallback
-            $filePath = storage_path('app/backups/application/' . $appBackup->storage_path);
-            if (!file_exists($filePath)) {
+            $basePath = storage_path('app/backups/application');
+            $filePath = $basePath . '/' . ltrim($appBackup->storage_path, '/');
+
+            $realBase = realpath($basePath);
+            $realFile = realpath($filePath);
+
+            if ($realBase === false || $realFile === false || !str_starts_with($realFile, $realBase)) {
                 abort(404, 'Backup file not found.');
             }
-            return response()->download($filePath, $appBackup->file_name);
+
+            return response()->download($realFile, $appBackup->file_name);
         }
 
         if ($destination->type !== 'local') {
@@ -28,10 +34,13 @@ class AppBackupDownloadController extends Controller
         $basePath = rtrim($config['path'] ?? storage_path('backups'), '/');
         $filePath = $basePath . '/' . ltrim($appBackup->storage_path, '/');
 
-        if (!file_exists($filePath)) {
+        $realBase = realpath($basePath);
+        $realFile = realpath($filePath);
+
+        if ($realBase === false || $realFile === false || !str_starts_with($realFile, $realBase)) {
             abort(404, 'Backup file not found.');
         }
 
-        return response()->download($filePath, $appBackup->file_name);
+        return response()->download($realFile, $appBackup->file_name);
     }
 }
