@@ -203,6 +203,13 @@ class GeneralSettings extends Component
                 // New changes accumulate here until version bump
             ],
         ],
+        '2.9.9' => [
+            'date' => '2026-03-22',
+            'changes' => [
+                'UI: Redesigned admin dashboard with 2-column grid layout',
+                'Fix: CSS specificity for WordPress admin compatibility',
+            ],
+        ],
         '2.9.8' => [
             'date' => '2026-03-22',
             'changes' => [

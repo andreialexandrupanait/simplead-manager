@@ -1,7 +1,8 @@
 /* SimpleAd Manager Admin Styles */
+/* All layout rules scoped under #sam-admin-wrap for WP admin specificity */
 
 /* ─── Grid Layout ─── */
-.sam-grid {
+#sam-admin-wrap .sam-grid {
     display: grid;
     grid-template-columns: 3fr 2fr;
     gap: 20px;
@@ -9,21 +10,23 @@
 }
 
 @media screen and (max-width: 1200px) {
-    .sam-grid {
+    #sam-admin-wrap .sam-grid {
         grid-template-columns: 1fr;
     }
 }
 
 /* ─── Card ─── */
-.sam-card {
+#sam-admin-wrap .sam-card {
     background: #fff;
     border: 1px solid #c3c4c7;
     border-radius: 4px;
     padding: 24px;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    max-width: none;
+    margin: 0;
 }
 
-.sam-card h2 {
+#sam-admin-wrap .sam-card h2 {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 15px;
@@ -33,17 +36,17 @@
     border-bottom: 1px solid #f0f0f1;
 }
 
-.sam-card p {
+#sam-admin-wrap .sam-card p {
     color: #50575e;
     font-size: 13px;
 }
 
-.sam-card-full {
+#sam-admin-wrap .sam-card-full {
     margin-top: 20px;
 }
 
 /* ─── Meta Row (REST URL + Version) ─── */
-.sam-meta-row {
+#sam-admin-wrap .sam-meta-row {
     display: flex;
     gap: 24px;
     flex-wrap: wrap;
@@ -54,23 +57,23 @@
     font-size: 13px;
 }
 
-.sam-meta-row span {
+#sam-admin-wrap .sam-meta-row span {
     color: #50575e;
 }
 
-.sam-meta-row code {
+#sam-admin-wrap .sam-meta-row code {
     font-size: 12px;
 }
 
 /* ─── Credential Fields ─── */
-.sam-credentials {
+#sam-admin-wrap .sam-credentials {
     display: flex;
     flex-direction: column;
     gap: 14px;
     margin: 16px 0;
 }
 
-.sam-credential-label {
+#sam-admin-wrap .sam-credential-label {
     display: block;
     font-size: 11px;
     font-weight: 600;
@@ -80,19 +83,19 @@
     margin-bottom: 4px;
 }
 
-.sam-credential-row {
+#sam-admin-wrap .sam-credential-row {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.sam-credential-field {
+#sam-admin-wrap .sam-credential-field {
     flex: 1;
     min-width: 0;
 }
 
-.sam-credential-field input[type="text"],
-.sam-credential-field input[type="password"] {
+#sam-admin-wrap .sam-credential-field input[type="text"],
+#sam-admin-wrap .sam-credential-field input[type="password"] {
     width: 100%;
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
     font-size: 13px;
@@ -104,25 +107,25 @@
     box-sizing: border-box;
 }
 
-.sam-credential-row .button {
+#sam-admin-wrap .sam-credential-row .button {
     flex-shrink: 0;
 }
 
 @media screen and (max-width: 782px) {
-    .sam-credential-row {
+    #sam-admin-wrap .sam-credential-row {
         flex-wrap: wrap;
     }
-    .sam-credential-field {
+    #sam-admin-wrap .sam-credential-field {
         width: 100%;
     }
-    .sam-meta-row {
+    #sam-admin-wrap .sam-meta-row {
         flex-direction: column;
         gap: 8px;
     }
 }
 
 /* ─── Info Banner (Cloudflare) ─── */
-.sam-info-banner {
+#sam-admin-wrap .sam-info-banner {
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -136,19 +139,19 @@
     color: #2c3338;
 }
 
-.sam-info-banner .dashicons {
+#sam-admin-wrap .sam-info-banner .dashicons {
     color: #72aee6;
     margin-top: 2px;
     flex-shrink: 0;
 }
 
-.sam-info-banner p {
+#sam-admin-wrap .sam-info-banner p {
     margin: 0;
     color: #2c3338;
 }
 
 /* ─── Count Badge ─── */
-.sam-count-badge {
+#sam-admin-wrap .sam-count-badge {
     display: inline-block;
     background: #dcdcde;
     color: #50575e;
@@ -161,7 +164,7 @@
 }
 
 /* ─── Empty State ─── */
-.sam-empty-state {
+#sam-admin-wrap .sam-empty-state {
     padding: 20px;
     text-align: center;
     background: #f6f7f7;
@@ -173,31 +176,31 @@
 }
 
 /* ─── Table ─── */
-.sam-table-wrap {
+#sam-admin-wrap .sam-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
 
-.sam-table { border-collapse: collapse; width: 100%; }
-.sam-table th,
-.sam-table td {
+#sam-admin-wrap .sam-table { border-collapse: collapse; width: 100%; }
+#sam-admin-wrap .sam-table th,
+#sam-admin-wrap .sam-table td {
     padding: 8px 12px;
     text-align: left;
     border-bottom: 1px solid #e5e7eb;
 }
-.sam-table th {
+#sam-admin-wrap .sam-table th {
     background: #f9fafb;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     color: #6b7280;
 }
-.sam-table tr:hover td { background: #f9fafb; }
+#sam-admin-wrap .sam-table tr:hover td { background: #f9fafb; }
 
-.sam-card .sam-table { margin-bottom: 16px; }
+#sam-admin-wrap .sam-card .sam-table { margin-bottom: 16px; }
 
 /* ─── Badges ─── */
-.sam-badge {
+#sam-admin-wrap .sam-badge {
     display: inline-block;
     padding: 2px 8px;
     border-radius: 3px;
@@ -205,23 +208,23 @@
     font-weight: 500;
     line-height: 1.6;
 }
-.sam-badge-pass { background: #d1fae5; color: #065f46; }
-.sam-badge-fail { background: #fee2e2; color: #991b1b; }
+#sam-admin-wrap .sam-badge-pass { background: #d1fae5; color: #065f46; }
+#sam-admin-wrap .sam-badge-fail { background: #fee2e2; color: #991b1b; }
 
 /* ─── IP Whitelist Form ─── */
-.sam-ip-add-form {
+#sam-admin-wrap .sam-ip-add-form {
     display: flex;
     gap: 8px;
     align-items: flex-end;
 }
 
-.sam-ip-add-form label {
+#sam-admin-wrap .sam-ip-add-form label {
     display: block;
     font-size: 12px;
     font-weight: 500;
     margin-bottom: 4px;
 }
 
-.sam-ip-remove-form {
+#sam-admin-wrap .sam-ip-remove-form {
     display: inline;
 }
