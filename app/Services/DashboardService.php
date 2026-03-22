@@ -25,6 +25,7 @@ class DashboardService
 
     private function computeStats(): array
     {
+        $totalSites = Site::count();
         $sitesDown = Site::where('is_up', false)->count();
 
         $avgUptime = UptimeMonitor::whereHas('site')->whereNotNull('uptime_30d')->avg('uptime_30d');
@@ -49,6 +50,7 @@ class DashboardService
             ->count();
 
         return [
+            'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
             'avg_uptime' => $avgUptime ? round($avgUptime, 2) : null,
             'avg_response_time' => $avgResponseTime ? (int) round($avgResponseTime) : null,
@@ -58,6 +60,7 @@ class DashboardService
             'pending_core_updates' => $pendingCoreUpdates,
             'failed_backups' => $failedBackups,
             'ssl_expiring' => $sslExpiring,
+            'total_alerts' => $sitesDown + $sslExpiring + $failedBackups,
         ];
     }
 

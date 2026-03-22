@@ -13,106 +13,47 @@
         </a>
     </div>
 
-    {{-- Section 1: Stats Bar --}}
+    {{-- Section 1: Compact Stats Strip --}}
     @php
         $stats = $this->stats;
-
-        // Uptime color thresholds
         $uptimeColor = 'text-gray-900';
         if ($stats['avg_uptime'] !== null) {
             $uptimeColor = $stats['avg_uptime'] >= 99 ? 'text-green-600' : ($stats['avg_uptime'] >= 95 ? 'text-yellow-600' : 'text-red-600');
         }
-
-        // Response time color thresholds
-        $responseColor = 'text-gray-900';
-        if ($stats['avg_response_time'] !== null) {
-            $responseColor = $stats['avg_response_time'] < 500 ? 'text-green-600' : ($stats['avg_response_time'] <= 1500 ? 'text-yellow-600' : 'text-red-600');
-        }
-
-        // Pending updates color
-        $updatesColor = $stats['pending_updates'] === 0 ? 'text-green-600' : ($stats['pending_updates'] <= 10 ? 'text-yellow-600' : 'text-red-600');
-
-        // Expiring total
-        $expiringTotal = $stats['ssl_expiring'];
-        $expiringColor = $expiringTotal === 0 ? 'text-green-600' : ($expiringTotal <= 2 ? 'text-yellow-600' : 'text-red-600');
+        $alertsColor = $stats['total_alerts'] === 0 ? 'text-green-600' : 'text-red-600';
     @endphp
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {{-- Sites Down --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Sites Down</div>
-            <div class="mt-1 text-2xl font-bold {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['sites_down'] }}</div>
-            <div class="mt-1 text-xs text-gray-400">
-                @if($stats['sites_down'] === 0)
-                    All systems operational
-                @else
-                    {{ $stats['sites_down'] }} {{ Str::plural('site', $stats['sites_down']) }} need{{ $stats['sites_down'] === 1 ? 's' : '' }} attention
-                @endif
+    <x-ui.card :padding="false">
+        <div class="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 divide-gray-100">
+            {{-- Sites --}}
+            <div class="flex items-center gap-3 px-5 py-3">
+                <div class="h-2.5 w-2.5 shrink-0 rounded-full {{ $stats['sites_down'] > 0 ? 'bg-red-500 animate-pulse' : 'bg-green-500' }}"></div>
+                <div>
+                    <div class="text-lg font-semibold text-gray-900">{{ $stats['total_sites'] }} {{ Str::plural('Site', $stats['total_sites']) }}</div>
+                    <div class="text-xs {{ $stats['sites_down'] > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+                        {{ $stats['sites_down'] === 0 ? 'all operational' : $stats['sites_down'] . ' down' }}
+                    </div>
+                </div>
             </div>
-        </x-ui.card>
 
-        {{-- Avg Uptime --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Avg Uptime</div>
-            <div class="mt-1 text-2xl font-bold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
-            <div class="mt-1 text-xs text-gray-400">last 30 days</div>
-        </x-ui.card>
-
-        {{-- Avg Response --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Avg Response</div>
-            <div class="mt-1 text-2xl font-bold {{ $responseColor }}">{{ $stats['avg_response_time'] !== null ? $stats['avg_response_time'] . 'ms' : '—' }}</div>
-            <div class="mt-1 text-xs text-gray-400">across all sites</div>
-        </x-ui.card>
-
-        {{-- Pending Updates --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Pending Updates</div>
-            <div class="mt-1 text-2xl font-bold {{ $updatesColor }}">{{ $stats['pending_updates'] }}</div>
-            <div class="mt-1 text-xs text-gray-400">
-                @if($stats['pending_updates'] === 0)
-                    Everything up to date
-                @else
-                    @php
-                        $parts = [];
-                        if ($stats['pending_plugin_updates'] > 0) $parts[] = $stats['pending_plugin_updates'] . ' ' . Str::plural('plugin', $stats['pending_plugin_updates']);
-                        if ($stats['pending_theme_updates'] > 0) $parts[] = $stats['pending_theme_updates'] . ' ' . Str::plural('theme', $stats['pending_theme_updates']);
-                        if ($stats['pending_core_updates'] > 0) $parts[] = $stats['pending_core_updates'] . ' core';
-                    @endphp
-                    {{ implode(', ', $parts) }}
-                @endif
+            {{-- Uptime --}}
+            <div class="px-5 py-3">
+                <div class="text-lg font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
+                <div class="text-xs text-gray-400">uptime &middot; 30d</div>
             </div>
-        </x-ui.card>
 
-        {{-- Failed Backups --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">Failed Backups</div>
-            <div class="mt-1 text-2xl font-bold {{ $stats['failed_backups'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['failed_backups'] }}</div>
-            <div class="mt-1 text-xs text-gray-400">
-                @if($stats['failed_backups'] === 0)
-                    All backups healthy
-                @else
-                    last 24 hours
-                @endif
+            {{-- Alerts --}}
+            <div class="px-5 py-3">
+                <div class="text-lg font-semibold {{ $alertsColor }}">{{ $stats['total_alerts'] }}</div>
+                <div class="text-xs text-gray-400">
+                    @if($stats['total_alerts'] === 0)
+                        no issues
+                    @else
+                        {{ Str::plural('issue', $stats['total_alerts']) }} need attention
+                    @endif
+                </div>
             </div>
-        </x-ui.card>
-
-        {{-- SSL/Domain Expiring --}}
-        <x-ui.card>
-            <div class="text-sm font-medium text-gray-500">SSL/Domain Expiring</div>
-            <div class="mt-1 text-2xl font-bold {{ $expiringColor }}">{{ $expiringTotal }}</div>
-            <div class="mt-1 text-xs text-gray-400">
-                @if($expiringTotal === 0)
-                    All certificates valid
-                @else
-                    @php
-                        $expParts = [];
-                        if ($stats['ssl_expiring'] > 0) $expParts[] = $stats['ssl_expiring'] . ' SSL';
-                    @endphp
-                    {{ implode(', ', $expParts) }}
-                @endif
-            </div>
-        </x-ui.card>
-    </div>
+        </div>
+    </x-ui.card>
 
     {{-- Section 2: Sites List View --}}
     <div class="mt-6">
