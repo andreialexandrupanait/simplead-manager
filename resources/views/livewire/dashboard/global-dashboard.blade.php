@@ -33,7 +33,7 @@
             elseif ($stats['avg_response_time'] > 500) { $responseBg = 'bg-yellow-50'; $responseIcon = 'text-yellow-500'; $responseColor = 'text-yellow-600'; }
         }
     @endphp
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {{-- Sites --}}
         <x-ui.card :padding="false" class="p-4">
             <div class="flex items-start gap-3">
@@ -93,6 +93,32 @@
                     <div class="text-xs text-gray-500">Alerts</div>
                     <div class="mt-0.5 text-xs font-medium {{ $stats['total_alerts'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
                         {{ $stats['total_alerts'] === 0 ? 'no issues' : Str::plural('issue', $stats['total_alerts']) . ' need attention' }}
+                    </div>
+                </div>
+            </div>
+        </x-ui.card>
+
+        {{-- Backup Storage --}}
+        @php
+            $bytes = $stats['backup_storage_bytes'] ?? 0;
+            if ($bytes >= 1073741824) {
+                $storageLabel = round($bytes / 1073741824, 1) . ' GB';
+            } elseif ($bytes >= 1048576) {
+                $storageLabel = round($bytes / 1048576, 0) . ' MB';
+            } else {
+                $storageLabel = '0 MB';
+            }
+        @endphp
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50">
+                    <x-icons.hard-drive class="h-5 w-5 text-purple-500" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
+                    <div class="text-xs text-gray-500">Backup Storage</div>
+                    <div class="mt-0.5 text-xs text-gray-400">
+                        {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' failed (24h)' : 'all healthy' }}
                     </div>
                 </div>
             </div>
