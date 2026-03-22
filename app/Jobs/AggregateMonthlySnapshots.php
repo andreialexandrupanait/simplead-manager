@@ -17,7 +17,8 @@ class AggregateMonthlySnapshots implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600;
-    public int $tries = 1;
+    public int $tries = 3;
+    public array $backoff = [300, 900];
 
     public function __construct(
         public ?int $year = null,
