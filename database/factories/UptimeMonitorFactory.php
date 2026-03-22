@@ -35,8 +35,6 @@ class UptimeMonitorFactory extends Factory
             'keyword' => null,
             'keyword_type' => null,
             'keyword_case_sensitive' => false,
-            'check_ssl' => true,
-            'ssl_expiry_threshold' => 14,
             'alert_after_failures' => 3,
             'alert_contacts' => null,
             'consecutive_failures' => 0,

@@ -516,11 +516,6 @@ class SiteReports extends Component
     {
         $metrics = [];
 
-        $ssl = $this->site->sslCertificate;
-        if ($ssl && $ssl->status !== 'pending') {
-            $metrics[] = ['label' => 'SSL', 'value' => $ssl->status_label];
-        }
-
         $email = $this->site->latestEmailHealthCheck;
         if ($email) {
             $parts = [];

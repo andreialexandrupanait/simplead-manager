@@ -1,10 +1,8 @@
 @php
-    $ssl = $data['ssl'] ?? null;
     $domain = $data['domain'] ?? null;
     $email = $data['email'] ?? null;
     $lang = $language ?? 'ro';
 
-    $showSsl = $ssl && ($sectionOptions['infrastructure']['show_ssl'] ?? true);
     $showDomain = $domain && ($sectionOptions['infrastructure']['show_domain'] ?? true);
     $showEmail = $email && ($sectionOptions['infrastructure']['show_email'] ?? true);
 @endphp
@@ -15,53 +13,6 @@
 ])
 
 <div class="infra-stack">
-    {{-- SSL Certificate --}}
-    @if($showSsl)
-        @php
-            $sslBadge = match($ssl['status'] ?? '') {
-                'valid' => 'badge-success',
-                'expiring_soon' => 'badge-warning',
-                'expired' => 'badge-danger',
-                default => 'badge-info',
-            };
-            $sslLabel = match($ssl['status'] ?? '') {
-                'valid' => __('report.ssl_valid', [], $lang),
-                'expiring_soon' => __('report.ssl_expiring_soon', [], $lang),
-                'expired' => __('report.ssl_expired', [], $lang),
-                default => $ssl['status_label'] ?? '—',
-            };
-            $daysColor = ($ssl['days_remaining'] ?? 0) > 30 ? '#10b981' : (($ssl['days_remaining'] ?? 0) > 7 ? '#f59e0b' : '#ef4444');
-        @endphp
-        <div class="infra-card">
-            <div class="infra-card-header">
-                <span class="infra-card-title">{{ __('report.tech_ssl_subcard', [], $lang) }}</span>
-                <span class="badge {{ $sslBadge }}">{{ $sslLabel }}</span>
-            </div>
-            <div class="infra-card-body">
-                <div class="infra-fields">
-                    <div class="infra-field">
-                        <span class="field-label">{{ __('report.ssl_issuer', [], $lang) }}</span>
-                        <span class="field-value">{{ $ssl['issuer'] ?? '—' }}</span>
-                    </div>
-                    <div class="infra-field">
-                        <span class="field-label">{{ __('report.ssl_expires', [], $lang) }}</span>
-                        <span class="field-value">{{ $ssl['expires_at'] ?? '—' }}</span>
-                    </div>
-                    <div class="infra-field">
-                        <span class="field-label">{{ __('report.ssl_days_remaining', [], $lang) }}</span>
-                        <span class="field-value" style="color: {{ $daysColor }};">{{ $ssl['days_remaining'] ?? '—' }}</span>
-                    </div>
-                    @if(!empty($ssl['key_size']))
-                        <div class="infra-field">
-                            <span class="field-label">{{ __('report.ssl_key_size', [], $lang) }}</span>
-                            <span class="field-value">{{ $ssl['key_size'] }} bit</span>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    @endif
-
     {{-- Domain Registration --}}
     @if($showDomain)
         @php

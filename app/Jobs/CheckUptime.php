@@ -85,7 +85,6 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             'status_code' => null,
             'failure_reason' => null,
             'keyword_found' => null,
-            'ssl_expires_at' => null,
         ];
 
         try {
@@ -164,59 +163,12 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
                 }
             }
 
-            // SSL check
-            if ($this->monitor->check_ssl && str_starts_with($this->monitor->url, 'https://')) {
-                $result['ssl_expires_at'] = $this->checkSslExpiry();
-            }
-
         } catch (\Exception $e) {
             $result['response_time'] = (int) round((microtime(true) - $startTime) * 1000);
             $result['failure_reason'] = $this->sanitizeErrorMessage($e->getMessage());
         }
 
         return $result;
-    }
-
-    protected function checkSslExpiry(): ?\Carbon\Carbon
-    {
-        try {
-            $parsed = parse_url($this->monitor->url);
-            $host = $parsed['host'] ?? '';
-            $port = $parsed['port'] ?? 443;
-
-            $context = stream_context_create([
-                'ssl' => [
-                    'capture_peer_cert' => true,
-                    'verify_peer' => true,
-                    'verify_peer_name' => true,
-                ],
-            ]);
-
-            $client = @stream_socket_client(
-                "ssl://{$host}:{$port}",
-                $errno,
-                $errstr,
-                10,
-                STREAM_CLIENT_CONNECT,
-                $context
-            );
-
-            if (! $client) {
-                return null;
-            }
-
-            $params = stream_context_get_params($client);
-            $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate'] ?? '');
-            fclose($client);
-
-            if ($cert && isset($cert['validTo_time_t'])) {
-                return \Carbon\Carbon::createFromTimestamp($cert['validTo_time_t']);
-            }
-        } catch (\Exception $e) {
-            // SSL check is non-critical
-        }
-
-        return null;
     }
 
     protected function saveCheck(array $result): UptimeCheck
@@ -227,7 +179,6 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             'status_code' => $result['status_code'],
             'failure_reason' => $result['failure_reason'],
             'keyword_found' => $result['keyword_found'],
-            'ssl_expires_at' => $result['ssl_expires_at'],
             'checked_at' => now(),
         ]);
     }

@@ -39,8 +39,6 @@ class SiteFactory extends Factory
             'is_multisite' => false,
             'uptime_percentage' => fake()->randomFloat(2, 98.0, 100.0),
             'is_up' => true,
-            'ssl_ok' => true,
-            'ssl_expiry' => fake()->dateTimeBetween('+30 days', '+365 days'),
             'pending_updates_count' => fake()->numberBetween(0, 5),
             'backup_ok' => true,
             'last_backup_at' => fake()->dateTimeBetween('-1 day', 'now'),
@@ -69,7 +67,6 @@ class SiteFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'health_score' => fake()->numberBetween(80, 100),
             'is_up' => true,
-            'ssl_ok' => true,
             'backup_ok' => true,
             'is_connected' => true,
             'uptime_percentage' => fake()->randomFloat(2, 99.5, 100.0),
@@ -97,7 +94,6 @@ class SiteFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'health_score' => fake()->numberBetween(0, 49),
             'is_up' => false,
-            'ssl_ok' => false,
             'backup_ok' => false,
             'uptime_percentage' => fake()->randomFloat(2, 80.0, 95.0),
         ]);
@@ -132,17 +128,6 @@ class SiteFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'pending_updates_count' => $count,
-        ]);
-    }
-
-    /**
-     * Indicate the site's SSL is expiring soon.
-     */
-    public function sslExpiringSoon(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'ssl_ok' => false,
-            'ssl_expiry' => fake()->dateTimeBetween('now', '+14 days'),
         ]);
     }
 

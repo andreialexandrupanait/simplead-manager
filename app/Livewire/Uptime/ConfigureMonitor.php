@@ -60,8 +60,6 @@ class ConfigureMonitor extends Component
             'keyword' => $this->form->type === 'keyword' ? $this->form->keyword : null,
             'keyword_type' => $this->form->type === 'keyword' ? $this->form->keyword_type : null,
             'keyword_case_sensitive' => $this->form->type === 'keyword' ? $this->form->keyword_case_sensitive : false,
-            'check_ssl' => $this->form->check_ssl,
-            'ssl_expiry_threshold' => $this->form->ssl_expiry_threshold,
             'alert_after_failures' => $this->form->alert_after_failures,
         ];
 

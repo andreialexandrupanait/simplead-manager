@@ -48,15 +48,6 @@ class RetentionPolicyService
                 ['table' => 'keyword_positions', 'column' => 'date', 'col_type' => 'date', 'label' => 'Keyword positions', 'condition' => null, 'hasTable' => false],
             ],
         ],
-        'ssl_domain' => [
-            'label' => 'SSL & Domain Checks',
-            'default' => 90,
-            'min' => 30,
-            'max' => 730,
-            'tables' => [
-                ['table' => 'ssl_check_history', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'SSL check history', 'condition' => null, 'hasTable' => false],
-            ],
-        ],
         'activity_logs' => [
             'label' => 'Activity Logs',
             'default' => 180,

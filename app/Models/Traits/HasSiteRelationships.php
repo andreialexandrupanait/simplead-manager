@@ -42,7 +42,6 @@ use App\Models\SiteReportConfig;
 use App\Models\SiteStatus;
 use App\Models\SiteTheme;
 use App\Models\SiteUser;
-use App\Models\SslCertificate;
 use App\Models\TrackedKeyword;
 use App\Models\UpdateLog;
 use App\Models\UptimeMonitor;
@@ -78,11 +77,6 @@ trait HasSiteRelationships
     public function uptimeMonitor(): HasOne
     {
         return $this->hasOne(UptimeMonitor::class);
-    }
-
-    public function sslCertificate(): HasOne
-    {
-        return $this->hasOne(SslCertificate::class);
     }
 
     public function sitePlugins(): HasMany

@@ -89,22 +89,6 @@
                 </div>
             @endif
 
-            {{-- SSL --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div class="flex items-end pb-1">
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="form.check_ssl" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                        <span class="text-sm text-gray-700">Monitor SSL certificate</span>
-                    </label>
-                </div>
-                @if($form->check_ssl)
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">SSL expiry warning (days)</label>
-                        <x-ui.input wire:model="form.ssl_expiry_threshold" type="number" min="1" max="90" class="mt-1" />
-                    </div>
-                @endif
-            </div>
-
             {{-- Alert threshold --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700">Alert after consecutive failures</label>

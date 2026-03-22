@@ -96,8 +96,6 @@
                     @foreach([
                         'site_down' => 'Site Down',
                         'site_up' => 'Site Recovered',
-                        'ssl_expiring' => 'SSL Expiring',
-                        'ssl_expired' => 'SSL Expired',
                         'domain_expiring' => 'Domain Expiring',
                         'backup_failed' => 'Backup Failed',
                         'performance_drop' => 'Performance Drop',

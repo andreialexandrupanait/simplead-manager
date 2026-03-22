@@ -17,7 +17,6 @@ use App\Models\SecurityScan;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
-use App\Models\SslCertificate;
 use App\Models\StorageDestination;
 use App\Models\UptimeMonitor;
 use App\Models\User;
@@ -75,9 +74,6 @@ class DevelopmentSeeder extends Seeder
 
             // Uptime monitor
             UptimeMonitor::factory()->create(['site_id' => $site->id]);
-
-            // SSL certificate
-            SslCertificate::factory()->create(['site_id' => $site->id]);
 
             // Backup config
             BackupConfig::factory()->create([

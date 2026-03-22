@@ -37,7 +37,6 @@ class SiteOverview extends Component
         $site->loadMissing([
             'uptimeMonitor',
             'securityMonitor',
-            'sslCertificate',
             'backupConfig.storageDestination',
             'latestCompletedBackup',
             'client',

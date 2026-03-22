@@ -11,7 +11,6 @@ use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
-use App\Models\SslCertificate;
 use App\Models\UptimeMonitor;
 
 class ModuleConfigService
@@ -33,12 +32,6 @@ class ModuleConfigService
             'model' => BackupConfig::class,
             'enabled_column' => 'is_enabled',
             'interval_column' => null, // uses frequency
-        ],
-        'ssl' => [
-            'relation' => 'sslCertificate',
-            'model' => SslCertificate::class,
-            'enabled_column' => 'alerts_enabled',
-            'interval_column' => null,
         ],
         'performance' => [
             'relation' => 'performanceMonitor',
@@ -83,7 +76,6 @@ class ModuleConfigService
      */
     private const MIN_INTERVALS = [
         'uptime' => 3,
-        'ssl' => 360,       // 6h
         'backup' => 60,      // 1h
         'performance' => 360, // 6h
         'security' => 360,    // 6h
@@ -98,7 +90,6 @@ class ModuleConfigService
      */
     private const DEFAULT_INTERVALS = [
         'uptime' => 5,
-        'ssl' => 720,         // 12h
         'backup' => 1440,     // daily
         'performance' => 10080, // 7 days
         'security' => 10080,   // 7 days

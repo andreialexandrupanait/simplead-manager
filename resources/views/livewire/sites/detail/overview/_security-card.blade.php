@@ -1,7 +1,6 @@
 @php
     $securityMonitor = $site->securityMonitor;
     $isActive = $securityMonitor?->is_active ?? false;
-    $ssl = $site->sslCertificate;
 @endphp
 
 <x-ui.card :padding="false" class="flex flex-col">
@@ -37,22 +36,6 @@
                         <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Update Available</span>
                     @else
                         <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Up to Date</span>
-                    @endif
-                </div>
-
-                {{-- SSL Status --}}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">SSL Certificate</span>
-                    @if($ssl)
-                        @if($ssl->status === 'valid')
-                            <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Valid</span>
-                        @elseif($ssl->status === 'expiring_soon')
-                            <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Expiring Soon</span>
-                        @else
-                            <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">{{ ucfirst($ssl->status ?? 'Invalid') }}</span>
-                        @endif
-                    @else
-                        <span class="text-xs text-gray-400">N/A</span>
                     @endif
                 </div>
 

@@ -8,7 +8,6 @@ use App\Enums\MonitorState;
 use App\Models\ActivityLog;
 use App\Models\Backup;
 use App\Models\Site;
-use App\Models\SslCertificate;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -43,12 +42,6 @@ class DashboardService
             ->where('created_at', '>=', now()->subDay())
             ->count();
 
-        $sslExpiring = SslCertificate::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(30))
-            ->where('expires_at', '>', now())
-            ->count();
-
         $totalStorageBytes = Backup::whereHas('site')
             ->where('status', BackupStatus::Completed)
             ->sum('file_size');
@@ -68,8 +61,7 @@ class DashboardService
             'pending_theme_updates' => $pendingThemeUpdates,
             'pending_core_updates' => $pendingCoreUpdates,
             'failed_backups' => $failedBackups,
-            'ssl_expiring' => $sslExpiring,
-            'total_alerts' => $sitesDown + $sslExpiring + $failedBackups,
+            'total_alerts' => $sitesDown + $failedBackups,
             'backup_storage_bytes' => $totalStorageBytes,
             'backups_today' => $backupsToday,
         ];
@@ -105,37 +97,6 @@ class DashboardService
                 'url' => route('sites.uptime', $site),
                 'timestamp' => $site->uptimeMonitor?->last_checked_at,
             ];
-        }
-
-        // SSL — one alert per expired cert, one per expiring-soon cert
-        $sslExpiring = SslCertificate::whereHas('site')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now()->addDays(14))
-            ->with('site')
-            ->get();
-
-        foreach ($sslExpiring as $cert) {
-            if ($cert->expires_at->isPast()) {
-                $alerts[] = [
-                    'key' => "ssl_expired_{$cert->site->id}",
-                    'severity' => 'critical',
-                    'icon' => 'shield',
-                    'title' => "SSL expired for {$cert->site->name}",
-                    'description' => null,
-                    'url' => route('sites.security', $cert->site),
-                    'timestamp' => $cert->updated_at,
-                ];
-            } else {
-                $alerts[] = [
-                    'key' => "ssl_expiring_{$cert->site->id}",
-                    'severity' => 'warning',
-                    'icon' => 'shield',
-                    'title' => "SSL expiring soon for {$cert->site->name}",
-                    'description' => "Expires {$cert->expires_at->diffForHumans()}",
-                    'url' => route('sites.security', $cert->site),
-                    'timestamp' => $cert->updated_at,
-                ];
-            }
         }
 
         // Backup failures (last 24h) — one alert per site (deduped)
@@ -181,7 +142,6 @@ class DashboardService
             'client',
             'uptimeMonitor',
             'uptimeMonitor.incidents',
-            'sslCertificate',
             'performanceMonitor',
             'backupConfig',
             'latestCompletedBackup',
@@ -309,7 +269,6 @@ class DashboardService
             'failed_backups' => $stats['failed_backups'],
             'total_storage' => $backups['total_storage_bytes'],
             'pending_updates' => $stats['pending_updates'],
-            'ssl_expiring' => $stats['ssl_expiring'],
         ];
     }
 
@@ -348,17 +307,12 @@ class DashboardService
     {
         return Site::with([
             'uptimeMonitor',
-            'sslCertificate',
             'latestCompletedBackup',
             'client',
         ])
             ->where(function ($query) {
                 $query->where('health_score', '<', 70)
                     ->orWhere('is_up', false)
-                    ->orWhereHas('sslCertificate', function ($q) {
-                        $q->whereNotNull('expires_at')
-                            ->where('expires_at', '<=', now()->addDays(14));
-                    })
                     ->orWhereDoesntHave('latestCompletedBackup')
                     ->orWhereHas('latestCompletedBackup', function ($q) {
                         $q->where('completed_at', '<=', now()->subDays(7));

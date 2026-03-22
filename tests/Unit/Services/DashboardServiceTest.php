@@ -37,7 +37,6 @@ class DashboardServiceTest extends TestCase
         $this->assertArrayHasKey('avg_response_time', $stats);
         $this->assertArrayHasKey('pending_updates', $stats);
         $this->assertArrayHasKey('failed_backups', $stats);
-        $this->assertArrayHasKey('ssl_expiring', $stats);
         $this->assertArrayHasKey('domains_expiring', $stats);
     }
 
@@ -150,7 +149,6 @@ class DashboardServiceTest extends TestCase
         $this->assertArrayHasKey('failed_backups', $stats);
         $this->assertArrayHasKey('total_storage', $stats);
         $this->assertArrayHasKey('pending_updates', $stats);
-        $this->assertArrayHasKey('ssl_expiring', $stats);
         $this->assertArrayHasKey('domains_expiring', $stats);
     }
 }

@@ -75,7 +75,6 @@ class DashboardCacheTest extends TestCase
         $summary = $this->service->getSummaryStats();
 
         $this->assertEquals($stats['pending_updates'], $summary['pending_updates']);
-        $this->assertEquals($stats['ssl_expiring'], $summary['ssl_expiring']);
         $this->assertEquals($stats['failed_backups'], $summary['failed_backups']);
     }
 }

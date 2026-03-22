@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\HealthLevel;
-use App\Jobs\CheckSslCertificate;
 use App\Jobs\FetchSiteFavicon;
 use App\Models\Traits\HasDomainExtraction;
 use App\Models\Traits\HasSiteRelationships;
@@ -43,8 +42,6 @@ class Site extends Model
         'is_multisite',
         'uptime_percentage',
         'is_up',
-        'ssl_ok',
-        'ssl_expiry',
         'pending_updates_count',
         'connector_version',
         'backup_ok',
@@ -64,10 +61,8 @@ class Site extends Model
     protected $casts = [
         'is_multisite' => 'boolean',
         'is_up' => 'boolean',
-        'ssl_ok' => 'boolean',
         'backup_ok' => 'boolean',
         'is_connected' => 'boolean',
-        'ssl_expiry' => 'date',
         'last_backup_at' => 'datetime',
         'last_synced_at' => 'datetime',
         'sort_order' => 'integer',
@@ -102,14 +97,6 @@ class Site extends Model
         });
 
         static::created(function (Site $site) {
-            // Create SSL certificate monitor if site uses HTTPS
-            if (str_starts_with($site->url, 'https://')) {
-                $certificate = $site->sslCertificate()->create([
-                    'domain' => parse_url($site->url, PHP_URL_HOST),
-                ]);
-                CheckSslCertificate::dispatch($certificate);
-            }
-
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);
 

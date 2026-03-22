@@ -15,9 +15,8 @@ class SiteStatusHelper
     {
         $updates = $site->pending_updates_count ?? 0;
 
-        // Compute the 6 health-bar dimensions
+        // Compute the 5 health-bar dimensions
         $uptime = static::uptime($site);
-        $ssl = static::ssl($site);
         $performance = static::performance($site);
         $backup = static::backup($site);
         $plugins = static::plugins($site, $updates);
@@ -26,7 +25,7 @@ class SiteStatusHelper
         // Calculate health score from dimension colors
         $possible = 0;
         $earned = 0;
-        foreach ([$uptime, $ssl, $performance, $backup, $plugins, $wpVersion] as $dim) {
+        foreach ([$uptime, $performance, $backup, $plugins, $wpVersion] as $dim) {
             if ($dim['color'] === 'text-gray-300') {
                 continue;
             }
@@ -41,7 +40,6 @@ class SiteStatusHelper
 
         return [
             'uptime' => $uptime,
-            'ssl' => $ssl,
             'response' => static::responseTime($site),
             'performance' => $performance,
             'plugins' => $plugins,
@@ -73,28 +71,6 @@ class SiteStatusHelper
             } else {
                 $color = 'text-yellow-500';
                 $tip = 'Uptime: Checking...';
-            }
-        }
-
-        return compact('color', 'tip');
-    }
-
-    private static function ssl(Site $site): array
-    {
-        $color = 'text-gray-300';
-        $tip = 'SSL: No certificate';
-
-        if ($site->sslCertificate) {
-            $cert = $site->sslCertificate;
-            if ($cert->status === 'valid') {
-                $color = 'text-green-500';
-                $tip = 'SSL: Valid';
-            } elseif ($cert->status === 'expiring_soon') {
-                $color = 'text-yellow-500';
-                $tip = 'SSL: Expiring soon';
-            } else {
-                $color = 'text-red-500';
-                $tip = 'SSL: '.ucfirst($cert->status ?? 'Invalid');
             }
         }
 

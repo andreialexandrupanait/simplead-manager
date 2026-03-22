@@ -116,7 +116,6 @@
                                 $parts = [];
                                 if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' down';
                                 if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' backup';
-                                if ($stats['ssl_expiring'] > 0) $parts[] = $stats['ssl_expiring'] . ' SSL';
                             @endphp
                             {{ implode(', ', $parts) }}
                         @endif

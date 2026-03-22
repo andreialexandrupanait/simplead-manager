@@ -31,12 +31,6 @@ class MonitorFormData extends Form
 
     public bool $keyword_case_sensitive = false;
 
-    // SSL
-    public bool $check_ssl = true;
-
-    #[Validate('required|integer|min:1|max:90')]
-    public int $ssl_expiry_threshold = 14;
-
     // Alerting
     #[Validate('required|integer|min:1|max:10')]
     public int $alert_after_failures = 3;
@@ -53,7 +47,6 @@ class MonitorFormData extends Form
             'timeout' => 'required|integer|min:5|max:120',
             'http_method' => 'required|in:GET,HEAD,POST',
             'alert_after_failures' => 'required|integer|min:1|max:10',
-            'ssl_expiry_threshold' => 'required|integer|min:1|max:90',
         ];
 
         if ($this->type === 'keyword') {
@@ -75,8 +68,6 @@ class MonitorFormData extends Form
         $this->keyword = $monitor->keyword ?? '';
         $this->keyword_type = $monitor->keyword_type ?? 'exists';
         $this->keyword_case_sensitive = $monitor->keyword_case_sensitive ?? false;
-        $this->check_ssl = $monitor->check_ssl ?? true;
-        $this->ssl_expiry_threshold = $monitor->ssl_expiry_threshold ?? 14;
         $this->alert_after_failures = $monitor->alert_after_failures ?? 3;
     }
 
@@ -91,8 +82,6 @@ class MonitorFormData extends Form
         $this->keyword = '';
         $this->keyword_type = 'exists';
         $this->keyword_case_sensitive = false;
-        $this->check_ssl = true;
-        $this->ssl_expiry_threshold = 14;
         $this->alert_after_failures = 3;
     }
 }

@@ -98,8 +98,7 @@ class ReportDataGatherer
             $this->data['security_checks'] = $this->gatherSecurityChecksData();
         }
 
-        // Always gather SSL, email data (shown inside technical stability)
-        $this->data['ssl'] = $this->gatherSslData();
+        // Always gather email data (shown inside technical stability)
         $this->data['email'] = $this->gatherEmailData();
 
         // Executive snapshot (aggregates from already-gathered sections)
@@ -827,24 +826,6 @@ class ReportDataGatherer
                 'title' => $r->title,
                 'category' => ucfirst(str_replace('_', ' ', $r->category)),
             ])->toArray(),
-        ];
-    }
-
-    protected function gatherSslData(): ?array
-    {
-        $ssl = $this->site->sslCertificate;
-        if (! $ssl || $ssl->status === 'pending') {
-            return null;
-        }
-
-        return [
-            'status' => $ssl->status,
-            'status_label' => $ssl->status_label,
-            'issuer' => $ssl->issuer,
-            'expires_at' => $ssl->expires_at?->format('d/m/Y'),
-            'days_remaining' => $ssl->days_remaining,
-            'protocol' => $ssl->protocol,
-            'key_size' => $ssl->key_size,
         ];
     }
 

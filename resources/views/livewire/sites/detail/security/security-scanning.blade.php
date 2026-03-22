@@ -155,41 +155,6 @@
                 </div>
             </div>
 
-            {{-- 5. SSL Certificate --}}
-            @php
-                $ssl = $this->sslCertificate;
-                $sslOk = $ssl && $ssl->status === 'valid';
-            @endphp
-            <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
-                <div class="flex items-center gap-3">
-                    @if(!$ssl)
-                        <x-icons.clock class="h-5 w-5 text-gray-400 shrink-0" />
-                    @elseif($sslOk)
-                        <x-icons.check-circle class="h-5 w-5 text-green-500 shrink-0" />
-                    @else
-                        <x-icons.x-circle class="h-5 w-5 text-red-500 shrink-0" />
-                    @endif
-                    <div>
-                        <p class="text-sm font-medium text-gray-900">SSL Certificate</p>
-                        <p class="text-xs text-gray-500">
-                            @if(!$ssl)
-                                Not yet checked
-                            @elseif($sslOk)
-                                Valid &middot; {{ $ssl->days_remaining }} days remaining &middot; {{ $ssl->issuer ?? 'Unknown issuer' }}
-                            @else
-                                {{ ucfirst(str_replace('_', ' ', $ssl->status)) }}
-                                @if($ssl->days_remaining !== null)
-                                    &middot; {{ $ssl->days_remaining }} days remaining
-                                @endif
-                            @endif
-                        </p>
-                    </div>
-                </div>
-                <x-ui.button variant="secondary" size="sm" wire:click="checkSslNow" wire:loading.attr="disabled" wire:target="checkSslNow">
-                    <span wire:loading.remove wire:target="checkSslNow">Check</span>
-                    <span wire:loading wire:target="checkSslNow">Checking...</span>
-                </x-ui.button>
-            </div>
         </div>
     </x-ui.card>
 

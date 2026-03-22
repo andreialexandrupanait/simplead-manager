@@ -68,13 +68,6 @@
             </div>
             @endif
 
-            {{-- SSL Expiry --}}
-            @if($site->sslCertificate && $site->sslCertificate->expires_at)
-            <div class="flex items-center justify-between">
-                <span class="text-sm text-gray-600">SSL Expires</span>
-                <span class="text-sm font-medium text-gray-900">{{ $site->sslCertificate->expires_at->format('M j, Y') }}</span>
-            </div>
-            @endif
         </div>
 
     </div>

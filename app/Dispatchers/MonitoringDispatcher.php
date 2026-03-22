@@ -2,18 +2,16 @@
 
 namespace App\Dispatchers;
 
-use App\Jobs\CheckSslCertificate;
 use App\Jobs\CheckUptime;
 use App\Jobs\RunSecurityScan;
 use App\Models\SecurityMonitor;
-use App\Models\SslCertificate;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
 
 class MonitoringDispatcher
 {
     /**
-     * Dispatch due uptime checks, SSL checks, and security scans.
+     * Dispatch due uptime checks and security scans.
      * Called every minute from the scheduler.
      */
     public function __invoke(): void
@@ -21,7 +19,6 @@ class MonitoringDispatcher
         CircuitBreakerService::checkHalfOpen();
 
         $this->dispatchUptimeChecks();
-        $this->dispatchSslChecks();
         $this->dispatchSecurityScans();
     }
 
@@ -36,14 +33,6 @@ class MonitoringDispatcher
                 ->where('is_monitoring_disabled', false)
             )
             ->each(fn (UptimeMonitor $monitor) => CheckUptime::dispatch($monitor));
-    }
-
-    private function dispatchSslChecks(): void
-    {
-        SslCertificate::query()
-            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
-            ->where(fn ($q) => $q->whereNull('next_check_at')->orWhere('next_check_at', '<=', now()))
-            ->each(fn (SslCertificate $cert) => CheckSslCertificate::dispatch($cert));
     }
 
     private function dispatchSecurityScans(): void

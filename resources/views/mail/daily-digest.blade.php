@@ -82,13 +82,7 @@
                 <div class="stat-value warning">{{ $digest['updates_available'] }}</div>
             </div>
             @endif
-            @if($digest['ssl_expiring_soon'] > 0)
-            <div class="stat-row">
-                <div class="stat-label">SSL Expiring Soon</div>
-                <div class="stat-value warning">{{ $digest['ssl_expiring_soon'] }}</div>
-            </div>
-            @endif
-            @if($digest['updates_available'] === 0 && $digest['ssl_expiring_soon'] === 0)
+            @if($digest['updates_available'] === 0)
             <div class="stat-row">
                 <div class="stat-label" style="color: #16a34a;">All clear — no attention needed</div>
                 <div class="stat-value"></div>

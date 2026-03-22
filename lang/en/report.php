@@ -265,16 +265,6 @@ return [
     'tech_domain_subcard' => 'Domain Registration',
     'tech_email_subcard' => 'Email Deliverability',
 
-    // SSL subcard
-    'ssl_status' => 'Status',
-    'ssl_issuer' => 'Issuer',
-    'ssl_expires' => 'Expires',
-    'ssl_days_remaining' => 'Days Remaining',
-    'ssl_key_size' => 'Key Size',
-    'ssl_valid' => 'Valid',
-    'ssl_expiring_soon' => 'Expiring Soon',
-    'ssl_expired' => 'Expired',
-
     // Domain subcard
     'domain_registrar' => 'Registrar',
     'domain_expires' => 'Expires',

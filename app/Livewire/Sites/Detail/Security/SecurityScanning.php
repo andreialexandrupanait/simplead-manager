@@ -3,7 +3,6 @@
 namespace App\Livewire\Sites\Detail\Security;
 
 use App\Jobs\CheckCoreFileIntegrity;
-use App\Jobs\CheckSslCertificate;
 use App\Jobs\RunSecurityScan;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
@@ -11,7 +10,6 @@ use App\Models\CoreFileCheck;
 use App\Models\SecurityIssue;
 use App\Models\SecurityScan;
 use App\Models\Site;
-use App\Models\SslCertificate;
 use App\Models\VulnerabilityAlert;
 use App\Services\SecurityScanService;
 use Illuminate\Support\Collection;
@@ -38,12 +36,6 @@ class SecurityScanning extends Component
         $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
-    }
-
-    #[Computed]
-    public function sslCertificate(): ?SslCertificate
-    {
-        return $this->site->sslCertificate;
     }
 
     #[Computed]
@@ -89,6 +81,7 @@ class SecurityScanning extends Component
         unset($this->latestScan, $this->activeIssues, $this->vulnerabilities);
     }
 
+
     public function resolveIssue(int $id): void
     {
         $issue = SecurityIssue::find($id);
@@ -107,23 +100,6 @@ class SecurityScanning extends Component
         unset($this->activeIssues, $this->latestScan);
     }
 
-    public function checkSslNow(): void
-    {
-        $rateLimitKey = "ssl-check:{$this->site->id}:".auth()->id();
-        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
-            session()->flash('error', 'Too many SSL check requests. Please wait before trying again.');
-
-            return;
-        }
-
-        if ($this->site->sslCertificate) {
-            CheckSslCertificate::dispatch($this->site->sslCertificate);
-            $this->site->sslCertificate->update(['last_checked_at' => now()]);
-        }
-
-        unset($this->sslCertificate);
-    }
-
     public function checkCoreIntegrityNow(): void
     {
         $rateLimitKey = "integrity-check:{$this->site->id}:".auth()->id();
@@ -139,7 +115,7 @@ class SecurityScanning extends Component
 
     protected function onJobFinished(string $jobName, array $data): void
     {
-        unset($this->latestScan, $this->activeIssues, $this->vulnerabilities, $this->latestCoreCheck, $this->sslCertificate);
+        unset($this->latestScan, $this->activeIssues, $this->vulnerabilities, $this->latestCoreCheck);
     }
 
     public function render()

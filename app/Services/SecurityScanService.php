@@ -95,7 +95,6 @@ class SecurityScanService
         $this->checkVulnerabilities($site, $trackerKey);
         $issues = array_merge($issues, $this->checkCoreIntegrity($site, $trackerKey));
         $issues = array_merge($issues, $this->checkDebugMode($site, $trackerKey));
-        $issues = array_merge($issues, $this->checkSsl($site, $trackerKey));
 
         return $issues;
     }
@@ -203,42 +202,6 @@ class SecurityScanService
             }
         } catch (\Exception $e) {
             Log::warning("Security scan: debug mode check failed for site {$site->id}: {$e->getMessage()}");
-        }
-
-        return [];
-    }
-
-    private function checkSsl(Site $site, ?string $trackerKey): array
-    {
-        if ($trackerKey) {
-            JobTracker::progress($trackerKey, 80, 'Checking SSL certificate...');
-        }
-
-        try {
-            $ssl = $site->sslCertificate;
-            if ($ssl) {
-                if ($ssl->status === 'expired') {
-                    return [[
-                        'category' => 'config',
-                        'type' => 'ssl_expired',
-                        'severity' => 'critical',
-                        'title' => 'SSL certificate has expired',
-                        'description' => 'The SSL certificate for this site has expired. Visitors will see security warnings.',
-                        'recommendation' => 'Renew the SSL certificate immediately.',
-                    ]];
-                } elseif ($ssl->status === 'expiring_soon') {
-                    return [[
-                        'category' => 'config',
-                        'type' => 'ssl_expiring_soon',
-                        'severity' => 'medium',
-                        'title' => 'SSL certificate expiring soon',
-                        'description' => "The SSL certificate expires in {$ssl->days_remaining} days.",
-                        'recommendation' => 'Renew the SSL certificate before it expires.',
-                    ]];
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning("Security scan: SSL check failed for site {$site->id}: {$e->getMessage()}");
         }
 
         return [];

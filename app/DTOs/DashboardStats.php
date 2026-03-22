@@ -13,7 +13,6 @@ readonly class DashboardStats
         public int $pendingThemeUpdates,
         public int $pendingCoreUpdates,
         public int $failedBackups,
-        public int $sslExpiring,
     ) {}
 
     public static function fromArray(array $data): self
@@ -27,7 +26,6 @@ readonly class DashboardStats
             pendingThemeUpdates: $data['pending_theme_updates'],
             pendingCoreUpdates: $data['pending_core_updates'],
             failedBackups: $data['failed_backups'],
-            sslExpiring: $data['ssl_expiring'],
         );
     }
 
@@ -42,7 +40,6 @@ readonly class DashboardStats
             'pending_theme_updates' => $this->pendingThemeUpdates,
             'pending_core_updates' => $this->pendingCoreUpdates,
             'failed_backups' => $this->failedBackups,
-            'ssl_expiring' => $this->sslExpiring,
         ];
     }
 }

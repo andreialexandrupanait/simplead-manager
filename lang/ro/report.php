@@ -265,16 +265,6 @@ return [
     'tech_domain_subcard' => 'Înregistrare domeniu',
     'tech_email_subcard' => 'Livrabilitate e-mail',
 
-    // SSL subcard
-    'ssl_status' => 'Status',
-    'ssl_issuer' => 'Emitent',
-    'ssl_expires' => 'Expiră',
-    'ssl_days_remaining' => 'Zile rămase',
-    'ssl_key_size' => 'Dimensiune cheie',
-    'ssl_valid' => 'Valid',
-    'ssl_expiring_soon' => 'Expiră curând',
-    'ssl_expired' => 'Expirat',
-
     // Domain subcard
     'domain_registrar' => 'Registrar',
     'domain_expires' => 'Expiră',
