@@ -76,6 +76,8 @@ class SAM_Admin {
             }
         }
 
+        $this->render_inline_styles();
+
         ?>
         <div class="wrap" id="sam-admin-wrap">
             <h1>SAD Mentenanta</h1>
@@ -91,6 +93,159 @@ class SAM_Admin {
         </div>
         <?php
     }
+
+    /* ─── Inline Styles ─── */
+
+    private function render_inline_styles(): void {
+        ?>
+        <style>
+            /* Grid */
+            #sam-admin-wrap .sam-grid {
+                display: grid !important;
+                grid-template-columns: 3fr 2fr !important;
+                gap: 20px !important;
+                margin-top: 20px !important;
+            }
+            @media screen and (max-width: 1200px) {
+                #sam-admin-wrap .sam-grid {
+                    grid-template-columns: 1fr !important;
+                }
+            }
+
+            /* Card */
+            #sam-admin-wrap .sam-card {
+                background: #fff !important;
+                border: 1px solid #c3c4c7 !important;
+                border-radius: 4px !important;
+                padding: 24px !important;
+                box-shadow: 0 1px 1px rgba(0,0,0,.04) !important;
+                max-width: none !important;
+                margin: 0 !important;
+            }
+            #sam-admin-wrap .sam-card h2 {
+                margin: 0 0 8px 0 !important;
+                padding: 0 0 12px 0 !important;
+                font-size: 15px !important;
+                font-weight: 600 !important;
+                color: #1d2327 !important;
+                border-bottom: 1px solid #f0f0f1 !important;
+            }
+            #sam-admin-wrap .sam-card p { color: #50575e; font-size: 13px; }
+            #sam-admin-wrap .sam-card-full { margin-top: 20px !important; }
+
+            /* Meta Row */
+            #sam-admin-wrap .sam-meta-row {
+                display: flex !important;
+                gap: 24px; flex-wrap: wrap;
+                margin-bottom: 16px; padding: 10px 14px;
+                background: #f6f7f7 !important;
+                border-radius: 3px; font-size: 13px;
+            }
+            #sam-admin-wrap .sam-meta-row span { color: #50575e; }
+            #sam-admin-wrap .sam-meta-row code { font-size: 12px; }
+
+            /* Credentials */
+            #sam-admin-wrap .sam-credentials {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 14px; margin: 16px 0;
+            }
+            #sam-admin-wrap .sam-credential-label {
+                display: block; font-size: 11px; font-weight: 600;
+                text-transform: uppercase; letter-spacing: .5px;
+                color: #6b7280; margin-bottom: 4px;
+            }
+            #sam-admin-wrap .sam-credential-row {
+                display: flex !important;
+                align-items: center; gap: 6px;
+            }
+            #sam-admin-wrap .sam-credential-field { flex: 1; min-width: 0; }
+            #sam-admin-wrap .sam-credential-field input[type="text"],
+            #sam-admin-wrap .sam-credential-field input[type="password"] {
+                width: 100% !important;
+                font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+                font-size: 13px;
+                background: #f6f7f7 !important;
+                border: 1px solid #dcdcde !important;
+                border-radius: 3px; padding: 6px 10px;
+                color: #2c3338; box-sizing: border-box;
+            }
+            #sam-admin-wrap .sam-credential-row .button { flex-shrink: 0; }
+
+            @media screen and (max-width: 782px) {
+                #sam-admin-wrap .sam-credential-row { flex-wrap: wrap; }
+                #sam-admin-wrap .sam-credential-field { width: 100% !important; }
+                #sam-admin-wrap .sam-meta-row { flex-direction: column; gap: 8px; }
+            }
+
+            /* Info Banner */
+            #sam-admin-wrap .sam-info-banner {
+                display: flex !important;
+                align-items: flex-start; gap: 10px;
+                margin-top: 20px; padding: 12px 16px;
+                background: #f0f6fc !important;
+                border: 1px solid #c5d9ed !important;
+                border-left: 4px solid #72aee6 !important;
+                border-radius: 3px; font-size: 13px; color: #2c3338;
+            }
+            #sam-admin-wrap .sam-info-banner .dashicons {
+                color: #72aee6; margin-top: 2px; flex-shrink: 0;
+            }
+            #sam-admin-wrap .sam-info-banner p { margin: 0 !important; color: #2c3338; }
+
+            /* Count Badge */
+            #sam-admin-wrap .sam-count-badge {
+                display: inline-block; background: #dcdcde;
+                color: #50575e; font-size: 11px; font-weight: 600;
+                padding: 1px 7px; border-radius: 10px;
+                margin-left: 6px; vertical-align: middle;
+            }
+
+            /* Empty State */
+            #sam-admin-wrap .sam-empty-state {
+                padding: 20px; text-align: center;
+                background: #f6f7f7 !important;
+                border-radius: 3px; color: #6b7280;
+                font-style: italic; font-size: 13px; margin-bottom: 16px;
+            }
+
+            /* Table */
+            #sam-admin-wrap .sam-table-wrap { overflow-x: auto; }
+            #sam-admin-wrap .sam-table { border-collapse: collapse; width: 100% !important; }
+            #sam-admin-wrap .sam-table th,
+            #sam-admin-wrap .sam-table td {
+                padding: 8px 12px; text-align: left;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            #sam-admin-wrap .sam-table th {
+                background: #f9fafb; font-size: 12px; font-weight: 600;
+                text-transform: uppercase; color: #6b7280;
+            }
+            #sam-admin-wrap .sam-table tr:hover td { background: #f9fafb; }
+            #sam-admin-wrap .sam-card .sam-table { margin-bottom: 16px; }
+
+            /* Badges */
+            #sam-admin-wrap .sam-badge {
+                display: inline-block; padding: 2px 8px;
+                border-radius: 3px; font-size: 12px;
+                font-weight: 500; line-height: 1.6;
+            }
+            #sam-admin-wrap .sam-badge-pass { background: #d1fae5 !important; color: #065f46; }
+            #sam-admin-wrap .sam-badge-fail { background: #fee2e2 !important; color: #991b1b; }
+
+            /* IP Form */
+            #sam-admin-wrap .sam-ip-add-form {
+                display: flex !important; gap: 8px; align-items: flex-end;
+            }
+            #sam-admin-wrap .sam-ip-add-form label {
+                display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px;
+            }
+            #sam-admin-wrap .sam-ip-remove-form { display: inline; }
+        </style>
+        <?php
+    }
+
+    /* ─── Card Renders ─── */
 
     private function render_connection_card(): void {
         $api_key    = get_option('sam_api_key', '');
