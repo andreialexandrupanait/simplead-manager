@@ -28,6 +28,8 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
+            // unsafe-eval required by Alpine.js v3 (uses new Function() for x-data expressions).
+            // Removable only by migrating to @alpinejs/csp and converting all inline expressions.
             "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob: https:",
