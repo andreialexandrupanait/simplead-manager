@@ -13,13 +13,13 @@ class RequireRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(403);
         }
 
         $allowed = array_map(fn ($r) => UserRole::from($r), $roles);
 
-        if (!in_array($user->role, $allowed, true)) {
+        if (! in_array($user->role, $allowed, true)) {
             abort(403, 'You do not have permission to access this page.');
         }
 

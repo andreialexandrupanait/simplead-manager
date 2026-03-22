@@ -33,7 +33,7 @@ class BackfillMonitors extends Command
 
         foreach ($sites as $site) {
             // Create SSL certificate monitor if missing and site uses HTTPS
-            if (!$site->sslCertificate && str_starts_with($site->url, 'https://')) {
+            if (! $site->sslCertificate && str_starts_with($site->url, 'https://')) {
                 $certificate = $site->sslCertificate()->create([
                     'domain' => parse_url($site->url, PHP_URL_HOST),
                 ]);
@@ -43,7 +43,7 @@ class BackfillMonitors extends Command
             }
 
             // Create performance monitor if missing
-            if (!$site->performanceMonitor) {
+            if (! $site->performanceMonitor) {
                 $monitor = $site->performanceMonitor()->create([
                     'is_active' => true,
                     'frequency' => 'daily',
@@ -65,7 +65,7 @@ class BackfillMonitors extends Command
         // Re-dispatch SSL checks for monitors stuck in error/pending or missing expiry
         SslCertificate::where(function ($q) {
             $q->whereIn('status', ['error', 'pending'])
-              ->orWhereNull('expires_at');
+                ->orWhereNull('expires_at');
         })->each(function (SslCertificate $cert) use (&$sslRetried) {
             $cert->update(['status' => 'pending', 'error_message' => null]);
             CheckSslCertificate::dispatch($cert);

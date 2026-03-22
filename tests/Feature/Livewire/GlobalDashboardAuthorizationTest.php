@@ -15,9 +15,13 @@ class GlobalDashboardAuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $manager;
+
     private User $viewer;
+
     private Site $adminSite;
+
     private Site $managerSite;
 
     protected function setUp(): void

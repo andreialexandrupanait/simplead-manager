@@ -12,12 +12,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class ResolveStatusPageIncident implements ShouldQueue, ShouldBeUnique
+class ResolveStatusPageIncident implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 30;
+
     public array $backoff = [15, 30];
 
     public function __construct(
@@ -26,7 +28,7 @@ class ResolveStatusPageIncident implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'status-resolve-' . $this->site->id;
+        return 'status-resolve-'.$this->site->id;
     }
 
     public function handle(): void

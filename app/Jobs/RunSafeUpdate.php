@@ -12,11 +12,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
+class RunSafeUpdate implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 600;
 
     public function __construct(
@@ -26,7 +27,7 @@ class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'safe-update-' . $this->safeUpdate->id;
+        return 'safe-update-'.$this->safeUpdate->id;
     }
 
     public function handle(SafeUpdateService $safeUpdateService): void
@@ -46,7 +47,7 @@ class RunSafeUpdate implements ShouldQueue, ShouldBeUnique
             $this->safeUpdate->site,
             'safe_update_failed',
             'Safe Update Failed',
-            "Safe update failed for {$this->safeUpdate->name}: " . ($exception?->getMessage() ?? 'Unknown error'),
+            "Safe update failed for {$this->safeUpdate->name}: ".($exception?->getMessage() ?? 'Unknown error'),
             [
                 'Type' => $this->safeUpdate->type,
                 'Name' => $this->safeUpdate->name,

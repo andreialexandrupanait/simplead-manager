@@ -11,7 +11,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         $response = $this->api()->get("{$this->baseUrl}/sites");
 
         if ($response->failed()) {
-            throw new \Exception('Failed to list Search Console properties: ' . $response->body());
+            throw new \Exception('Failed to list Search Console properties: '.$response->body());
         }
 
         $properties = [];
@@ -34,7 +34,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $rows = $response->json('rows', []);
@@ -57,7 +57,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -84,7 +84,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -111,7 +111,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -138,7 +138,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -164,7 +164,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -196,7 +196,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $displayNames = [
@@ -239,7 +239,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         $response = $this->api()->get("{$this->baseUrl}/sites/{$this->encodeSiteUrl($siteUrl)}/sitemaps");
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -277,7 +277,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('URL Inspection API error: ' . $response->body());
+            throw new \Exception('URL Inspection API error: '.$response->body());
         }
 
         $result = $response->json('inspectionResult', []);
@@ -298,7 +298,7 @@ class GoogleSearchConsoleService extends GoogleApiService
             ],
             'mobile_usability' => [
                 'verdict' => $mobileUsability['verdict'] ?? 'VERDICT_UNSPECIFIED',
-                'issues' => array_map(fn($issue) => [
+                'issues' => array_map(fn ($issue) => [
                     'issue_type' => $issue['issueType'] ?? '',
                     'severity' => $issue['severity'] ?? '',
                     'message' => $issue['message'] ?? '',
@@ -331,7 +331,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];
@@ -371,7 +371,7 @@ class GoogleSearchConsoleService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Search Console API error: ' . $response->body());
+            throw new \Exception('Search Console API error: '.$response->body());
         }
 
         $data = [];

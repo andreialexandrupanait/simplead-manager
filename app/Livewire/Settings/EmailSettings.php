@@ -9,13 +9,21 @@ use Livewire\Component;
 class EmailSettings extends Component
 {
     public string $mailer = 'smtp';
+
     public string $host = '';
+
     public string $port = '587';
+
     public string $username = '';
+
     public string $password = '';
+
     public string $encryption = 'tls';
+
     public string $fromAddress = '';
+
     public string $fromName = '';
+
     public bool $hasPassword = false;
 
     public function mount(SettingsService $settings): void
@@ -31,7 +39,7 @@ class EmailSettings extends Component
         // Don't load password into the form — just track whether one exists
         $encryptedPassword = $settings->get('mail.password');
         $envPassword = config('mail.mailers.smtp.password');
-        $this->hasPassword = !empty($encryptedPassword) || !empty($envPassword);
+        $this->hasPassword = ! empty($encryptedPassword) || ! empty($envPassword);
     }
 
     public function save(SettingsService $settings): void
@@ -79,7 +87,7 @@ class EmailSettings extends Component
 
             $this->dispatch('notify', type: 'success', message: "Test email sent to {$recipient}.");
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Failed to send test email: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to send test email: '.$e->getMessage());
         }
     }
 
@@ -96,7 +104,10 @@ class EmailSettings extends Component
             $settings = app(SettingsService::class);
             $encrypted = $settings->get('mail.password');
             if ($encrypted) {
-                try { $password = decrypt($encrypted); } catch (\Exception $e) {}
+                try {
+                    $password = decrypt($encrypted);
+                } catch (\Exception $e) {
+                }
             }
             if ($password === '') {
                 $password = config('mail.mailers.smtp.password');

@@ -5,12 +5,12 @@ namespace App\Services;
 use App\Models\AnalyticsConnection;
 use App\Models\BackupConfig;
 use App\Models\DatabaseCleanupConfig;
+use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
-use App\Models\MaintenancePlan;
 use App\Models\SslCertificate;
 use App\Models\UptimeMonitor;
 
@@ -145,10 +145,11 @@ class ModuleConfigService
 
         $record = $site->{$config['relation']};
 
-        if (!$record) {
+        if (! $record) {
             if ($enabled) {
                 $this->createModuleRecord($site, $module, $enabled);
             }
+
             return;
         }
 
@@ -173,7 +174,7 @@ class ModuleConfigService
         $this->validateModuleKey($module);
         $config = self::MODULE_MAP[$module];
 
-        if (!$config['interval_column']) {
+        if (! $config['interval_column']) {
             return; // Module doesn't support interval changes
         }
 
@@ -203,7 +204,7 @@ class ModuleConfigService
                 'enabled' => $this->resolveEnabled($record, $map),
                 'interval' => $record && $map['interval_column'] ? $record->{$map['interval_column']} : (self::DEFAULT_INTERVALS[$moduleKey] ?? null),
                 'requires_connection' => in_array($moduleKey, self::CONNECTION_REQUIRED),
-                'is_connected' => $record !== null && !in_array($moduleKey, self::CONNECTION_REQUIRED),
+                'is_connected' => $record !== null && ! in_array($moduleKey, self::CONNECTION_REQUIRED),
             ];
 
             // For connection-required modules, check if the external connection actually exists
@@ -224,7 +225,7 @@ class ModuleConfigService
         $config = self::MODULE_MAP[$module];
 
         $record = $site->{$config['relation']};
-        if (!$record) {
+        if (! $record) {
             return false;
         }
 
@@ -349,7 +350,7 @@ class ModuleConfigService
             $updates[$config['interval_column']] = max($interval, $min);
         }
 
-        if (!empty($updates)) {
+        if (! empty($updates)) {
             $record->update($updates);
         }
     }
@@ -359,7 +360,7 @@ class ModuleConfigService
      */
     private function resolveEnabled($record, array $config): bool
     {
-        if (!$record || !$config['enabled_column']) {
+        if (! $record || ! $config['enabled_column']) {
             return $record !== null; // If no enabled column, existence = enabled
         }
 
@@ -375,14 +376,14 @@ class ModuleConfigService
      */
     private function markPlanCustomized(Site $site): void
     {
-        if ($site->maintenance_plan_id && !$site->is_plan_customized) {
+        if ($site->maintenance_plan_id && ! $site->is_plan_customized) {
             $site->update(['is_plan_customized' => true]);
         }
     }
 
     private function validateModuleKey(string $module): void
     {
-        if (!isset(self::MODULE_MAP[$module])) {
+        if (! isset(self::MODULE_MAP[$module])) {
             throw new \InvalidArgumentException("Unknown module key: {$module}");
         }
     }

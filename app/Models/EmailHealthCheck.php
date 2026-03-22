@@ -75,19 +75,19 @@ class EmailHealthCheck extends Model
     {
         $recommendations = [];
 
-        if (!$this->spf_exists) {
+        if (! $this->spf_exists) {
             $recommendations[] = 'Add an SPF record to specify which mail servers are authorized to send email for your domain.';
         } elseif ($this->spf_status === 'invalid') {
             $recommendations[] = 'Your SPF record exists but appears invalid. Review the syntax and ensure it follows the v=spf1 format.';
         }
 
-        if (!$this->dmarc_exists) {
+        if (! $this->dmarc_exists) {
             $recommendations[] = 'Add a DMARC record (_dmarc.yourdomain.com) to define how receivers should handle unauthenticated email.';
         } elseif ($this->dmarc_policy === 'none') {
             $recommendations[] = 'Your DMARC policy is set to "none" (monitoring only). Consider upgrading to "quarantine" or "reject" for better protection.';
         }
 
-        if (!$this->dkim_exists) {
+        if (! $this->dkim_exists) {
             $recommendations[] = 'Configure DKIM signing for your domain to verify email authenticity and improve deliverability.';
         }
 

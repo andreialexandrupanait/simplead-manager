@@ -14,12 +14,16 @@ class ReportRecommendationsManager extends Component
 
     // New recommendation form
     public string $newRecTitle = '';
+
     public string $newRecDescription = '';
+
     public string $newRecPriority = 'medium';
+
     public string $newRecCategory = 'technical';
 
     // Template
     public string $templateName = '';
+
     public bool $showTemplateModal = false;
 
     public function mount(Site $site): void
@@ -49,13 +53,13 @@ class ReportRecommendationsManager extends Component
             ->whereNull('report_id')
             ->findOrFail($recId);
 
-        $rec->update(['is_included' => !$rec->is_included]);
+        $rec->update(['is_included' => ! $rec->is_included]);
     }
 
     public function updateRec(int $recId, string $field, string $value): void
     {
         $allowed = ['title', 'description', 'priority'];
-        if (!in_array($field, $allowed)) {
+        if (! in_array($field, $allowed)) {
             return;
         }
 

@@ -17,7 +17,9 @@ class SecurityLogin extends Component
 
     // Brute force
     public int $maxAttempts = 5;
+
     public int $windowMinutes = 10;
+
     public int $blockDurationMinutes = 60;
 
     // Custom login URL
@@ -99,7 +101,7 @@ class SecurityLogin extends Component
             true,
         );
 
-        $loginEnabled = !empty($this->loginSlug);
+        $loginEnabled = ! empty($this->loginSlug);
 
         $service->applySetting(
             $this->site,
@@ -117,7 +119,7 @@ class SecurityLogin extends Component
 
     public function toggleTwoFactor(): void
     {
-        $this->twoFactorEnabled = !$this->twoFactorEnabled;
+        $this->twoFactorEnabled = ! $this->twoFactorEnabled;
 
         app(SecuritySettingsService::class)->applySetting(
             $this->site,
@@ -137,8 +139,9 @@ class SecurityLogin extends Component
             $response = $api->request('GET', '/security-state');
 
             if (! $response->successful()) {
-                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
                 $this->redirect(route('sites.security.login', $this->site), navigate: false);
+
                 return;
             }
 
@@ -178,7 +181,7 @@ class SecurityLogin extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify login settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
         }
 
         $this->loadCurrentSettings();
@@ -190,7 +193,7 @@ class SecurityLogin extends Component
         return view('livewire.sites.detail.security.security-login')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Login Protection',
+                'title' => $this->site->name.' — Login Protection',
             ]);
     }
 }

@@ -22,8 +22,9 @@ class BackupReleaseLock extends Command
         $siteId = (int) $this->argument('siteId');
 
         $site = Site::find($siteId);
-        if (!$site) {
+        if (! $site) {
             $this->error("Site #{$siteId} not found.");
+
             return self::FAILURE;
         }
 

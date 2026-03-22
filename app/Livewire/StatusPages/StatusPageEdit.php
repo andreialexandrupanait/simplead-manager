@@ -5,8 +5,6 @@ namespace App\Livewire\StatusPages;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\StatusPage;
-use App\Models\StatusPageIncident;
-use App\Models\StatusPageSite;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -21,27 +19,46 @@ class StatusPageEdit extends Component
 
     // Form fields
     public string $title = '';
+
     public string $slug = '';
+
     public ?string $description = '';
+
     public ?string $logoUrl = '';
+
     public string $primaryColor = '#7C3AED';
+
     public bool $isPublic = true;
+
     public bool $showUptimePercentage = true;
+
     public bool $showResponseTime = false;
+
     public bool $showIncidentHistory = true;
+
     public int $incidentHistoryDays = 90;
+
     public bool $autoIncidents = true;
+
     public string $password = '';
+
     public ?int $clientId = null;
+
     public array $selectedSites = [];
+
     public ?string $customDomain = '';
 
     // Incident management
     public string $incidentTitle = '';
+
     public string $incidentDescription = '';
+
     public string $incidentSeverity = 'minor';
+
     public ?int $incidentSiteId = null;
+
     public string $updateMessage = '';
+
     public string $updateStatus = 'investigating';
 
     public function mount(?StatusPage $statusPage = null): void
@@ -68,7 +85,7 @@ class StatusPageEdit extends Component
 
     public function updatedTitle(): void
     {
-        if (!$this->statusPage) {
+        if (! $this->statusPage) {
             $this->slug = Str::slug($this->title);
         }
     }
@@ -88,7 +105,7 @@ class StatusPageEdit extends Component
     #[Computed]
     public function incidents()
     {
-        if (!$this->statusPage) {
+        if (! $this->statusPage) {
             return collect();
         }
 
@@ -103,7 +120,7 @@ class StatusPageEdit extends Component
     {
         $this->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|alpha_dash|unique:status_pages,slug' . ($this->statusPage ? ",{$this->statusPage->id}" : ''),
+            'slug' => 'required|string|max:255|alpha_dash|unique:status_pages,slug'.($this->statusPage ? ",{$this->statusPage->id}" : ''),
             'description' => 'nullable|string|max:1000',
             'logoUrl' => 'nullable|string|max:500',
             'primaryColor' => 'required|string|max:20',
@@ -142,7 +159,7 @@ class StatusPageEdit extends Component
         $toRemove = array_diff($existingSiteIds, $this->selectedSites);
         $toAdd = array_diff($this->selectedSites, $existingSiteIds);
 
-        if (!empty($toRemove)) {
+        if (! empty($toRemove)) {
             $this->statusPage->statusPageSites()->whereIn('site_id', $toRemove)->delete();
         }
 
@@ -156,7 +173,7 @@ class StatusPageEdit extends Component
         $this->password = '';
         session()->flash('success', 'Status page saved.');
 
-        if (!$this->statusPage->wasRecentlyCreated) {
+        if (! $this->statusPage->wasRecentlyCreated) {
             return;
         }
 
@@ -171,7 +188,9 @@ class StatusPageEdit extends Component
             'incidentSeverity' => 'required|in:minor,major,critical',
         ]);
 
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
 
         $incident = $this->statusPage->incidents()->create([
             'site_id' => $this->incidentSiteId ?: null,
@@ -194,7 +213,9 @@ class StatusPageEdit extends Component
 
     public function updateIncidentStatus(int $incidentId, string $status): void
     {
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => $status,
@@ -206,7 +227,9 @@ class StatusPageEdit extends Component
 
     public function resolveIncident(int $incidentId): void
     {
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => 'resolved',
@@ -229,7 +252,9 @@ class StatusPageEdit extends Component
             'updateStatus' => 'required|in:investigating,identified,monitoring,resolved',
         ]);
 
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
 
         $incident->update([
@@ -250,7 +275,7 @@ class StatusPageEdit extends Component
     #[Computed]
     public function orderedSites()
     {
-        if (!$this->statusPage) {
+        if (! $this->statusPage) {
             return collect();
         }
 
@@ -259,12 +284,16 @@ class StatusPageEdit extends Component
 
     public function moveSiteUp(int $siteId): void
     {
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
 
         $sites = $this->statusPage->statusPageSites()->orderBy('sort_order')->get();
         $index = $sites->search(fn ($s) => $s->site_id === $siteId);
 
-        if ($index === false || $index === 0) return;
+        if ($index === false || $index === 0) {
+            return;
+        }
 
         $current = $sites[$index];
         $previous = $sites[$index - 1];
@@ -278,12 +307,16 @@ class StatusPageEdit extends Component
 
     public function moveSiteDown(int $siteId): void
     {
-        if (!$this->statusPage) return;
+        if (! $this->statusPage) {
+            return;
+        }
 
         $sites = $this->statusPage->statusPageSites()->orderBy('sort_order')->get();
         $index = $sites->search(fn ($s) => $s->site_id === $siteId);
 
-        if ($index === false || $index >= $sites->count() - 1) return;
+        if ($index === false || $index >= $sites->count() - 1) {
+            return;
+        }
 
         $current = $sites[$index];
         $next = $sites[$index + 1];

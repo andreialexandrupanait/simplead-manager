@@ -18,6 +18,7 @@ class PullSecurityActivityLogs implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -39,11 +40,12 @@ class PullSecurityActivityLogs implements ShouldQueue
             $api = new WordPressApiService($this->site);
             $response = $api->request('GET', '/audit-logs', [], $since ? ['since' => $since] : []);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::warning('PullSecurityActivityLogs: API error', [
                     'site_id' => $this->site->id,
                     'status' => $response->status(),
                 ]);
+
                 return;
             }
 

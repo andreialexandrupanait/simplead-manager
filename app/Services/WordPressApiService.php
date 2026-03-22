@@ -17,15 +17,18 @@ use Illuminate\Support\Facades\Log;
 
 class WordPressApiService
 {
-    use ManagesPlugins;
-    use ManagesThemes;
-    use ManagesUsers;
     use ManagesCron;
+    use ManagesDatabase;
+    use ManagesPlugins;
     use ManagesSecurity;
     use ManagesSiteInfo;
-    use ManagesDatabase;
+    use ManagesThemes;
+    use ManagesUsers;
+
     private float $lastRequestTime = 0;
+
     private float $minRequestInterval = 1.5; // seconds - max ~40 req/min (33% headroom under 60 limit)
+
     private float $baseRequestInterval = 1.5;
 
     public function __construct(
@@ -92,16 +95,16 @@ class WordPressApiService
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
         // Always add cache-busting parameter to bypass CDN/Cloudflare caching
         $queryParams['_nocache'] = time();
-        $url .= '?' . http_build_query($queryParams);
-        $body = !empty($data) ? json_encode($data) : '';
+        $url .= '?'.http_build_query($queryParams);
+        $body = ! empty($data) ? json_encode($data) : '';
 
         // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)
-        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
         $maxRetries = 5;
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
@@ -123,12 +126,12 @@ class WordPressApiService
             $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
             $request = Http::withHeaders([
-                'X-SAM-Key'       => $apiKey,
+                'X-SAM-Key' => $apiKey,
                 'X-SAM-Timestamp' => $timestamp,
-                'X-SAM-Nonce'     => $nonce,
+                'X-SAM-Nonce' => $nonce,
                 'X-SAM-Signature' => $signature,
-                'User-Agent'      => 'SimpleAD-Manager/2.0',
-                'Accept'          => 'application/json',
+                'User-Agent' => 'SimpleAD-Manager/2.0',
+                'Accept' => 'application/json',
             ])->timeout($timeout);
 
             if (strtoupper($method) === 'GET') {
@@ -140,9 +143,10 @@ class WordPressApiService
             if ($response->status() === 429 && $attempt < $maxRetries) {
                 $retryAfter = (int) $response->header('Retry-After') ?: min(10 * pow(2, $attempt), 120);
                 $retryAfter = min(max($retryAfter, 5), 120);
-                Log::warning("Rate limited (429) on {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                Log::warning("Rate limited (429) on {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
                 sleep($retryAfter);
+
                 continue;
             }
 
@@ -153,8 +157,8 @@ class WordPressApiService
         if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
             throw new WordPressApiException(
                 'Cloudflare is blocking API requests to this site. '
-                . 'Add a WAF exception rule in Cloudflare for the path /wp-json/simplead/v1/* '
-                . 'or whitelist this server\'s IP address.',
+                .'Add a WAF exception rule in Cloudflare for the path /wp-json/simplead/v1/* '
+                .'or whitelist this server\'s IP address.',
                 site: $this->site,
                 endpoint: $endpoint,
                 httpStatus: 403,
@@ -193,11 +197,11 @@ class WordPressApiService
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-        $body = !empty($data) ? json_encode($data) : '';
-        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
+        $body = ! empty($data) ? json_encode($data) : '';
+        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
         $maxRetries = 5;
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
@@ -218,11 +222,11 @@ class WordPressApiService
             $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
             $request = Http::withHeaders([
-                'X-SAM-Key'       => $apiKey,
+                'X-SAM-Key' => $apiKey,
                 'X-SAM-Timestamp' => $timestamp,
-                'X-SAM-Nonce'     => $nonce,
+                'X-SAM-Nonce' => $nonce,
                 'X-SAM-Signature' => $signature,
-                'User-Agent'      => 'SimpleAD-Manager/2.0',
+                'User-Agent' => 'SimpleAD-Manager/2.0',
             ])->timeout($timeout);
 
             if (strtoupper($method) === 'GET') {
@@ -234,9 +238,10 @@ class WordPressApiService
             if ($response->status() === 429 && $attempt < $maxRetries) {
                 $retryAfter = (int) $response->header('Retry-After') ?: min(10 * pow(2, $attempt), 120);
                 $retryAfter = min(max($retryAfter, 5), 120);
-                Log::warning("Rate limited (429) on raw {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                Log::warning("Rate limited (429) on raw {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
                 sleep($retryAfter);
+
                 continue;
             }
 
@@ -256,10 +261,11 @@ class WordPressApiService
     {
         try {
             $response = $this->request('POST', '/backup/capabilities', [], [], 10);
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
             $data = $response->json();
+
             return $data['success'] ?? false ? $data : null;
         } catch (\Throwable) {
             return null;
@@ -273,8 +279,8 @@ class WordPressApiService
     public function chunkedDownloadFilesAsChunks(string $saveTo, ?callable $onProgress = null): array
     {
         $initResponse = $this->request('POST', '/backup/prepare-init', ['type' => 'files'], [], 30);
-        if (!$initResponse->successful()) {
-            throw new \RuntimeException('Chunked prepare-init failed: HTTP ' . $initResponse->status());
+        if (! $initResponse->successful()) {
+            throw new \RuntimeException('Chunked prepare-init failed: HTTP '.$initResponse->status());
         }
 
         $init = $initResponse->json();
@@ -283,7 +289,7 @@ class WordPressApiService
         }
 
         $token = $init['token'];
-        Log::info("Chunked prepare-init OK for files (chunks mode): " . ($init['total_chunks'] ?? '?') . " chunks");
+        Log::info('Chunked prepare-init OK for files (chunks mode): '.($init['total_chunks'] ?? '?').' chunks');
 
         $chunkPaths = $this->chunkedPrepareAndDownloadFilesAsChunks(
             $token,
@@ -308,9 +314,9 @@ class WordPressApiService
             $initResponse = $this->request('POST', '/backup/prepare-init', ['type' => $type], [], 30);
             if ($initResponse->successful()) {
                 $init = $initResponse->json();
-                if (!empty($init['success']) && !empty($init['token'])) {
+                if (! empty($init['success']) && ! empty($init['token'])) {
                     $chunkedInitAvailable = true;
-                    Log::info("Chunked prepare-init OK for {$type}: " . ($init['total_chunks'] ?? '?') . " chunks, token: " . substr($init['token'], 0, 12) . '...');
+                    Log::info("Chunked prepare-init OK for {$type}: ".($init['total_chunks'] ?? '?').' chunks, token: '.substr($init['token'], 0, 12).'...');
                     $this->chunkedPrepareAndDownload(
                         $init['token'],
                         $init['type'] ?? $type,
@@ -318,10 +324,11 @@ class WordPressApiService
                         $saveTo,
                         $onProgress
                     );
+
                     return;
                 }
             }
-            Log::info("Chunked prepare-init returned non-success for {$type}: HTTP " . $initResponse->status());
+            Log::info("Chunked prepare-init returned non-success for {$type}: HTTP ".$initResponse->status());
         } catch (\Throwable $e) {
             if ($chunkedInitAvailable) {
                 // Chunked init worked but execution/download failed — don't fall back to sync
@@ -338,7 +345,7 @@ class WordPressApiService
         $prepare = $prepareResponse->json();
 
         if (empty($prepare['success']) || empty($prepare['token'])) {
-            throw new \RuntimeException('Backup prepare failed: ' . ($prepare['error']['message'] ?? 'Unknown'));
+            throw new \RuntimeException('Backup prepare failed: '.($prepare['error']['message'] ?? 'Unknown'));
         }
 
         $token = $prepare['token'];
@@ -364,14 +371,14 @@ class WordPressApiService
     private function chunkedPrepareAndDownloadDb(string $token, int $totalChunks, string $saveTo, ?callable $onProgress = null): void
     {
         $dir = dirname($saveTo);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         $this->setBackupMode(true);
 
         $fh = fopen($saveTo, 'wb');
-        if (!$fh) {
+        if (! $fh) {
             throw new \RuntimeException("Cannot open {$saveTo} for writing");
         }
 
@@ -383,7 +390,7 @@ class WordPressApiService
                     'chunk_index' => $i,
                 ], [], 300);
 
-                if (!$execResponse->successful() || empty($execResponse->json()['success'])) {
+                if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
                     $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
                     throw new \RuntimeException("Chunk {$i} exec failed: {$error}");
                 }
@@ -392,7 +399,7 @@ class WordPressApiService
                 Log::info("DB chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}");
 
                 // 2. Download chunk and delete from WP
-                $chunkTempFile = $saveTo . '.chunk_' . $i . '.tmp';
+                $chunkTempFile = $saveTo.'.chunk_'.$i.'.tmp';
                 $this->streamDownloadTo('/backup/prepare-chunk-download', [
                     'token' => $token,
                     'chunk_index' => $i,
@@ -442,9 +449,9 @@ class WordPressApiService
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/backup/prepare-chunk-exec';
+        $url = rtrim($baseUrl, '/').'/backup/prepare-chunk-exec';
         $data = json_encode(['token' => $token, 'chunk_index' => $chunkIndex]);
         $path = '/simplead/v1/backup/prepare-chunk-exec';
 
@@ -455,19 +462,19 @@ class WordPressApiService
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $data,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'X-SAM-Key: ' . $apiKey,
-                'X-SAM-Timestamp: ' . $timestamp,
-                'X-SAM-Nonce: ' . $nonce,
-                'X-SAM-Signature: ' . $signature,
+            CURLOPT_HTTPHEADER => [
+                'X-SAM-Key: '.$apiKey,
+                'X-SAM-Timestamp: '.$timestamp,
+                'X-SAM-Nonce: '.$nonce,
+                'X-SAM-Signature: '.$signature,
                 'User-Agent: SimpleAD-Manager/2.0',
                 'Content-Type: application/json',
                 'Accept: application/json',
             ],
-            CURLOPT_TIMEOUT        => 300,
+            CURLOPT_TIMEOUT => 300,
             CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => true,
@@ -507,12 +514,12 @@ class WordPressApiService
         curl_close($ch);
         curl_multi_close($mh);
 
-        if ($httpCode >= 400 || !$response) {
-            throw new \RuntimeException("Async exec failed (HTTP {$httpCode}): " . ($error ?: substr($response ?? '', 0, 500)));
+        if ($httpCode >= 400 || ! $response) {
+            throw new \RuntimeException("Async exec failed (HTTP {$httpCode}): ".($error ?: substr($response ?? '', 0, 500)));
         }
 
         $data = json_decode($response, true);
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             throw new \RuntimeException("Async exec returned invalid JSON (HTTP {$httpCode})");
         }
 
@@ -526,7 +533,7 @@ class WordPressApiService
     private function chunkedPrepareAndDownloadFilesAsChunks(string $token, int $totalChunks, string $saveTo, ?callable $onProgress = null): array
     {
         $dir = dirname($saveTo);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -537,7 +544,7 @@ class WordPressApiService
             $pendingExec = null; // Holds async exec handles for the next chunk
 
             for ($i = 0; $i < $totalChunks; $i++) {
-                $chunkTempFile = $saveTo . '.chunk_' . $i . '_files.zip';
+                $chunkTempFile = $saveTo.'.chunk_'.$i.'_files.zip';
                 $maxChunkAttempts = 2;
                 $chunkSize = 0;
 
@@ -563,6 +570,7 @@ class WordPressApiService
                                 throw $e;
                             }
                             Log::warning("Pipelined exec for chunk {$i} failed, retrying sync: {$e->getMessage()}");
+
                             continue;
                         }
                     } else {
@@ -573,13 +581,13 @@ class WordPressApiService
                             'chunk_index' => $i,
                         ], [], 300);
 
-                        if (!$execResponse->successful() || empty($execResponse->json()['success'])) {
+                        if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
                             $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
                             throw new \RuntimeException("Files chunk {$i} exec failed: {$error}");
                         }
 
                         $chunkSize = $execResponse->json()['chunk_size'] ?? 0;
-                        Log::info("Files chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}" . ($chunkAttempt > 0 ? " (re-exec attempt {$chunkAttempt})" : ''));
+                        Log::info("Files chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}".($chunkAttempt > 0 ? " (re-exec attempt {$chunkAttempt})" : ''));
                     }
 
                     if ($chunkSize === 0) {
@@ -606,9 +614,13 @@ class WordPressApiService
                             sleep(2);
                             // Cancel pending async exec since we're retrying
                             if ($pendingExec !== null) {
-                                try { $this->waitAsyncExec($pendingExec); } catch (\Throwable) {}
+                                try {
+                                    $this->waitAsyncExec($pendingExec);
+                                } catch (\Throwable) {
+                                }
                                 $pendingExec = null;
                             }
+
                             continue;
                         }
                         throw $e;
@@ -619,11 +631,12 @@ class WordPressApiService
                     if ($onProgress) {
                         $onProgress($i + 1, $totalChunks);
                     }
+
                     continue;
                 }
 
                 $chunkFiles[] = $chunkTempFile;
-                Log::info("Files chunk {$i}/{$totalChunks} downloaded (" . round(filesize($chunkTempFile) / 1048576, 1) . " MB)");
+                Log::info("Files chunk {$i}/{$totalChunks} downloaded (".round(filesize($chunkTempFile) / 1048576, 1).' MB)');
                 $this->resetThrottle();
 
                 if ($onProgress) {
@@ -633,7 +646,10 @@ class WordPressApiService
 
             // Clean up any remaining pending exec
             if ($pendingExec !== null) {
-                try { $this->waitAsyncExec($pendingExec); } catch (\Throwable) {}
+                try {
+                    $this->waitAsyncExec($pendingExec);
+                } catch (\Throwable) {
+                }
             }
         } finally {
             $this->setBackupMode(false);
@@ -643,7 +659,7 @@ class WordPressApiService
             throw new \RuntimeException('Files backup produced no chunks');
         }
 
-        Log::info("Files backup: " . count($chunkFiles) . " chunk zips ready for direct archive storage");
+        Log::info('Files backup: '.count($chunkFiles).' chunk zips ready for direct archive storage');
 
         // Cleanup session on WP
         try {
@@ -662,11 +678,11 @@ class WordPressApiService
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-        $body = !empty($data) ? json_encode($data) : '';
-        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
+        $body = ! empty($data) ? json_encode($data) : '';
+        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
             $this->throttle();
@@ -678,24 +694,24 @@ class WordPressApiService
             $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
             $fh = fopen($saveTo, 'wb');
-            if (!$fh) {
+            if (! $fh) {
                 throw new \RuntimeException("Cannot open {$saveTo} for writing");
             }
 
             $ch = curl_init($url);
             curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => $body,
-                CURLOPT_FILE           => $fh,
-                CURLOPT_HTTPHEADER     => [
-                    'X-SAM-Key: ' . $apiKey,
-                    'X-SAM-Timestamp: ' . $timestamp,
-                    'X-SAM-Nonce: ' . $nonce,
-                    'X-SAM-Signature: ' . $signature,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_FILE => $fh,
+                CURLOPT_HTTPHEADER => [
+                    'X-SAM-Key: '.$apiKey,
+                    'X-SAM-Timestamp: '.$timestamp,
+                    'X-SAM-Nonce: '.$nonce,
+                    'X-SAM-Signature: '.$signature,
                     'User-Agent: SimpleAD-Manager/2.0',
                     'Content-Type: application/json',
                 ],
-                CURLOPT_TIMEOUT        => 600,
+                CURLOPT_TIMEOUT => 600,
                 CURLOPT_CONNECTTIMEOUT => 30,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -709,10 +725,11 @@ class WordPressApiService
 
             if ($httpCode === 429 && $attempt < $maxRetries) {
                 $retryAfter = min(10 * pow(2, $attempt), 120);
-                Log::warning("Rate limited (429) on stream download {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                Log::warning("Rate limited (429) on stream download {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
                 @unlink($saveTo);
                 sleep($retryAfter);
+
                 continue;
             }
 
@@ -720,13 +737,15 @@ class WordPressApiService
             break;
         }
 
-        if (!$success || $httpCode >= 400) {
+        if (! $success || $httpCode >= 400) {
             // Read only first 1KB for error details (file could be huge)
             $efh = fopen($saveTo, 'rb');
             $errorBody = $efh ? fread($efh, 1024) : '';
-            if ($efh) fclose($efh);
+            if ($efh) {
+                fclose($efh);
+            }
             @unlink($saveTo);
-            throw new \RuntimeException("Chunk download failed (HTTP {$httpCode}): " . ($error ?: substr($errorBody, 0, 500)));
+            throw new \RuntimeException("Chunk download failed (HTTP {$httpCode}): ".($error ?: substr($errorBody, 0, 500)));
         }
 
         clearstatcache(true, $saveTo);
@@ -745,11 +764,11 @@ class WordPressApiService
         $offset = 0;
 
         $dir = dirname($saveTo);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
         $fh = fopen($saveTo, 'wb');
-        if (!$fh) {
+        if (! $fh) {
             throw new \RuntimeException("Cannot open {$saveTo} for writing");
         }
 
@@ -801,13 +820,13 @@ class WordPressApiService
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/' . ltrim($endpoint, '/');
-        $path = '/simplead/v1/' . ltrim($endpoint, '/');
+        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
+        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
         $dir = dirname($saveTo);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -823,24 +842,24 @@ class WordPressApiService
 
             // Use curl directly — WP endpoints use readfile()+exit which Http::sink() doesn't handle
             $fh = fopen($saveTo, 'wb');
-            if (!$fh) {
+            if (! $fh) {
                 throw new \RuntimeException("Cannot open {$saveTo} for writing");
             }
 
             $ch = curl_init($url);
             curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => '',
-                CURLOPT_FILE           => $fh,
-                CURLOPT_HTTPHEADER     => [
-                    'X-SAM-Key: ' . $apiKey,
-                    'X-SAM-Timestamp: ' . $timestamp,
-                    'X-SAM-Nonce: ' . $nonce,
-                    'X-SAM-Signature: ' . $signature,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => '',
+                CURLOPT_FILE => $fh,
+                CURLOPT_HTTPHEADER => [
+                    'X-SAM-Key: '.$apiKey,
+                    'X-SAM-Timestamp: '.$timestamp,
+                    'X-SAM-Nonce: '.$nonce,
+                    'X-SAM-Signature: '.$signature,
                     'User-Agent: SimpleAD-Manager/2.0',
                     'Content-Type: application/json',
                 ],
-                CURLOPT_TIMEOUT        => 1800,
+                CURLOPT_TIMEOUT => 1800,
                 CURLOPT_CONNECTTIMEOUT => 30,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_SSL_VERIFYPEER => true,
@@ -854,10 +873,11 @@ class WordPressApiService
 
             if ($httpCode === 429 && $attempt < $maxRetries) {
                 $retryAfter = min(10 * pow(2, $attempt), 120);
-                Log::warning("Rate limited (429) on stream download {$endpoint}, retry " . ($attempt + 1) . "/{$maxRetries} after {$retryAfter}s");
+                Log::warning("Rate limited (429) on stream download {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
                 @unlink($saveTo);
                 sleep($retryAfter);
+
                 continue;
             }
 
@@ -865,10 +885,10 @@ class WordPressApiService
             break;
         }
 
-        if (!$success || $httpCode >= 400) {
+        if (! $success || $httpCode >= 400) {
             $body = file_get_contents($saveTo);
             @unlink($saveTo);
-            throw new \RuntimeException("Stream download failed (HTTP {$httpCode}): " . ($error ?: substr($body, 0, 500)));
+            throw new \RuntimeException("Stream download failed (HTTP {$httpCode}): ".($error ?: substr($body, 0, 500)));
         }
 
         $size = filesize($saveTo);

@@ -36,7 +36,7 @@ class ReportDispatcher
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
             ->with(['site', 'reportTemplate'])
             ->each(function (ReportSchedule $schedule) {
-                if (!$schedule->site || !$schedule->reportTemplate) {
+                if (! $schedule->site || ! $schedule->reportTemplate) {
                     return;
                 }
 

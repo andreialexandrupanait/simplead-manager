@@ -128,12 +128,15 @@ class Backup extends Model
         if ($this->isIncremental()) {
             return 0; // Only meaningful on the root full backup
         }
+
         return $this->incrementals()->count() + 1;
     }
 
     public function getFileSizeFormattedAttribute(): string
     {
-        if (!$this->file_size) return '—';
+        if (! $this->file_size) {
+            return '—';
+        }
 
         return FormatHelper::bytes($this->file_size);
     }
@@ -155,12 +158,12 @@ class Backup extends Model
 
     public function getSizeDiffAttribute(): ?int
     {
-        if ($this->status !== BackupStatus::Completed || !$this->file_size) {
+        if ($this->status !== BackupStatus::Completed || ! $this->file_size) {
             return null;
         }
 
         // Use a cached property to avoid N+1 queries in lists
-        if (!isset($this->attributes['_previous_file_size'])) {
+        if (! isset($this->attributes['_previous_file_size'])) {
             $this->attributes['_previous_file_size'] = static::where('site_id', $this->site_id)
                 ->where('status', 'completed')
                 ->where('id', '<', $this->id)
@@ -191,8 +194,8 @@ class Backup extends Model
         }
 
         $i = floor(log($abs, 1024));
-        $formatted = round($abs / pow(1024, $i), 1) . ' ' . $units[$i];
+        $formatted = round($abs / pow(1024, $i), 1).' '.$units[$i];
 
-        return $diff >= 0 ? '+' . $formatted : '-' . $formatted;
+        return $diff >= 0 ? '+'.$formatted : '-'.$formatted;
     }
 }

@@ -16,10 +16,12 @@ class SiteCloudflare extends Component
     use WithSiteAuthorization;
 
     public Site $site;
+
     public string $tab = 'overview';
 
     // Connection
     public ?int $selectedConnectionId = null;
+
     public ?string $selectedZoneId = null;
 
     // Cache
@@ -59,28 +61,31 @@ class SiteCloudflare extends Component
     #[Computed]
     public function availableZones(): array
     {
-        if (!$this->selectedConnectionId) {
+        if (! $this->selectedConnectionId) {
             return [];
         }
 
         $connection = CloudflareConnection::find($this->selectedConnectionId);
-        if (!$connection) {
+        if (! $connection) {
             return [];
         }
 
         try {
             $service = new CloudflareService($connection);
+
             return $service->listZones();
         } catch (\Exception $e) {
-            session()->flash('cf-error', 'Failed to fetch zones: ' . $e->getMessage());
+            session()->flash('cf-error', 'Failed to fetch zones: '.$e->getMessage());
+
             return [];
         }
     }
 
     public function connectToZone(): void
     {
-        if (!$this->selectedConnectionId || !$this->selectedZoneId) {
+        if (! $this->selectedConnectionId || ! $this->selectedZoneId) {
             session()->flash('cf-error', 'Please select a connection and zone.');
+
             return;
         }
 
@@ -93,7 +98,7 @@ class SiteCloudflare extends Component
             unset($this->siteCloudflare);
             session()->flash('cf-success', 'Site connected to Cloudflare zone.');
         } catch (\Exception $e) {
-            session()->flash('cf-error', 'Failed to connect: ' . $e->getMessage());
+            session()->flash('cf-error', 'Failed to connect: '.$e->getMessage());
         }
     }
 
@@ -116,13 +121,14 @@ class SiteCloudflare extends Component
     public function dnsRecords(): array
     {
         $cf = $this->siteCloudflare;
-        if (!$cf) {
+        if (! $cf) {
             return [];
         }
 
         return Cache::remember($this->dnsCacheKey(), 120, function () use ($cf) {
             try {
                 $service = new CloudflareService($cf->cloudflareConnection);
+
                 return $service->listDnsRecords($cf->zone_id);
             } catch (\Exception $e) {
                 return [];
@@ -136,7 +142,7 @@ class SiteCloudflare extends Component
     public function cachePurges()
     {
         $cf = $this->siteCloudflare;
-        if (!$cf) {
+        if (! $cf) {
             return collect();
         }
 
@@ -146,11 +152,14 @@ class SiteCloudflare extends Component
     public function purgeEverything(): void
     {
         $cf = $this->siteCloudflare;
-        if (!$cf) return;
+        if (! $cf) {
+            return;
+        }
 
-        $rateLimitKey = "cf-purge:{$cf->id}:" . auth()->id();
-        if (!\Illuminate\Support\Facades\RateLimiter::attempt($rateLimitKey, 5, fn () => true, 60)) {
+        $rateLimitKey = "cf-purge:{$cf->id}:".auth()->id();
+        if (! \Illuminate\Support\Facades\RateLimiter::attempt($rateLimitKey, 5, fn () => true, 60)) {
             session()->flash('cf-error', 'Too many purge requests. Please wait a moment.');
+
             return;
         }
 
@@ -168,7 +177,7 @@ class SiteCloudflare extends Component
             unset($this->cachePurges);
             session()->flash('cf-success', 'Cache purged successfully.');
         } catch (\Exception $e) {
-            session()->flash('cf-error', 'Failed to purge cache: ' . $e->getMessage());
+            session()->flash('cf-error', 'Failed to purge cache: '.$e->getMessage());
         }
     }
 
@@ -178,11 +187,14 @@ class SiteCloudflare extends Component
 
         if (empty($urls)) {
             session()->flash('cf-error', 'Please enter at least one URL.');
+
             return;
         }
 
         $cf = $this->siteCloudflare;
-        if (!$cf) return;
+        if (! $cf) {
+            return;
+        }
 
         $service = new CloudflareService($cf->cloudflareConnection);
 
@@ -198,9 +210,9 @@ class SiteCloudflare extends Component
 
             $this->purgeUrls = '';
             unset($this->cachePurges);
-            session()->flash('cf-success', count($urls) . ' URL(s) purged from cache.');
+            session()->flash('cf-success', count($urls).' URL(s) purged from cache.');
         } catch (\Exception $e) {
-            session()->flash('cf-error', 'Failed to purge URLs: ' . $e->getMessage());
+            session()->flash('cf-error', 'Failed to purge URLs: '.$e->getMessage());
         }
     }
 
@@ -210,10 +222,13 @@ class SiteCloudflare extends Component
     public function analytics(): array
     {
         $cf = $this->siteCloudflare;
-        if (!$cf) return [];
+        if (! $cf) {
+            return [];
+        }
 
         try {
             $service = new CloudflareService($cf->cloudflareConnection);
+
             return $service->getAnalytics($cf->zone_id, $this->analyticsPeriod);
         } catch (\Exception $e) {
             return [];
@@ -225,7 +240,7 @@ class SiteCloudflare extends Component
         return view('livewire.sites.detail.site-cloudflare')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Cloudflare',
+                'title' => $this->site->name.' — Cloudflare',
             ]);
     }
 }

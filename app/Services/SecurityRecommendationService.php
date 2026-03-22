@@ -31,7 +31,7 @@ class SecurityRecommendationService
 
             foreach ($checks as $pluginKey => $status) {
                 $definitionKey = $keyMap[$pluginKey] ?? null;
-                if (!$definitionKey) {
+                if (! $definitionKey) {
                     continue;
                 }
 
@@ -52,6 +52,7 @@ class SecurityRecommendationService
             return compact('passed', 'failed', 'total');
         } catch (\Exception $e) {
             Log::warning("Security recommendation check failed for site {$site->id}: {$e->getMessage()}");
+
             return ['passed' => 0, 'failed' => 0, 'total' => 0, 'error' => $e->getMessage()];
         }
     }
@@ -60,7 +61,7 @@ class SecurityRecommendationService
     {
         $rec = SecurityRecommendation::where('site_id', $site->id)->where('key', $key)->first();
 
-        if (!$rec || !$rec->can_auto_fix) {
+        if (! $rec || ! $rec->can_auto_fix) {
             return false;
         }
 
@@ -90,6 +91,7 @@ class SecurityRecommendationService
             return false;
         } catch (\Exception $e) {
             Log::warning("Security fix failed for site {$site->id}, key {$key}: {$e->getMessage()}");
+
             return false;
         }
     }

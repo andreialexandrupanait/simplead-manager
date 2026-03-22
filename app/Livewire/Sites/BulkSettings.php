@@ -2,12 +2,11 @@
 
 namespace App\Livewire\Sites;
 
+use App\Models\MaintenancePlan;
 use App\Models\SecurityPreset;
 use App\Models\Site;
-use App\Models\MaintenancePlan;
 use App\Services\BulkSettingsCopyService;
 use App\Services\ModuleConfigService;
-use App\Services\SecuritySettingsService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -18,7 +17,9 @@ class BulkSettings extends Component
 
     // Step 1: Site selection
     public string $search = '';
+
     public array $selectedSiteIds = [];
+
     public bool $selectAll = false;
 
     // Step 2: Operation
@@ -26,18 +27,22 @@ class BulkSettings extends Component
 
     // Step 3: Configuration
     public ?int $sourceSiteId = null;
+
     public bool $copySecuritySettings = true;
+
     public bool $copyTweakSettings = true;
+
     public bool $copyModuleConfig = true;
 
     public ?int $securityPresetId = null;
+
     public ?int $modulePlanId = null;
 
     #[Computed]
     public function sites()
     {
         $query = Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
             ->orderBy('name');
 
         if ($this->search) {
@@ -66,7 +71,7 @@ class BulkSettings extends Component
     public function sourceSites()
     {
         return Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
             ->orderBy('name')
             ->get();
     }
@@ -90,11 +95,13 @@ class BulkSettings extends Component
     {
         if ($step === 2 && empty($this->selectedSiteIds)) {
             session()->flash('bulk-error', 'Please select at least one site.');
+
             return;
         }
 
-        if ($step === 3 && !$this->operation) {
+        if ($step === 3 && ! $this->operation) {
             session()->flash('bulk-error', 'Please choose an operation.');
+
             return;
         }
 
@@ -105,15 +112,17 @@ class BulkSettings extends Component
     {
         if (empty($this->selectedSiteIds)) {
             session()->flash('bulk-error', 'No sites selected.');
+
             return;
         }
 
         $scopedQuery = Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
         $targets = $scopedQuery->whereIn('id', $this->selectedSiteIds)->get();
 
         if ($targets->isEmpty()) {
             session()->flash('bulk-error', 'No valid target sites found.');
+
             return;
         }
 
@@ -127,19 +136,22 @@ class BulkSettings extends Component
 
     private function applyCopyFromSite($targets): void
     {
-        if (!$this->sourceSiteId) {
+        if (! $this->sourceSiteId) {
             session()->flash('bulk-error', 'Please select a source site.');
+
             return;
         }
 
-        if (!$this->copySecuritySettings && !$this->copyTweakSettings && !$this->copyModuleConfig) {
+        if (! $this->copySecuritySettings && ! $this->copyTweakSettings && ! $this->copyModuleConfig) {
             session()->flash('bulk-error', 'Please select at least one setting type to copy.');
+
             return;
         }
 
         $source = Site::find($this->sourceSiteId);
-        if (!$source) {
+        if (! $source) {
             session()->flash('bulk-error', 'Source site not found.');
+
             return;
         }
 
@@ -177,14 +189,16 @@ class BulkSettings extends Component
 
     private function applySecurityPreset($targets): void
     {
-        if (!$this->securityPresetId) {
+        if (! $this->securityPresetId) {
             session()->flash('bulk-error', 'Please select a security preset.');
+
             return;
         }
 
         $preset = SecurityPreset::find($this->securityPresetId);
-        if (!$preset) {
+        if (! $preset) {
             session()->flash('bulk-error', 'Preset not found.');
+
             return;
         }
 
@@ -205,14 +219,16 @@ class BulkSettings extends Component
 
     private function applyModulePlan($targets): void
     {
-        if (!$this->modulePlanId) {
+        if (! $this->modulePlanId) {
             session()->flash('bulk-error', 'Please select a maintenance plan.');
+
             return;
         }
 
         $plan = MaintenancePlan::with('planModules')->find($this->modulePlanId);
-        if (!$plan) {
+        if (! $plan) {
             session()->flash('bulk-error', 'Plan not found.');
+
             return;
         }
 

@@ -18,7 +18,7 @@ class TelegramNotificationSender
         $botToken = $config['bot_token'] ?? null;
         $chatId = $config['chat_id'] ?? null;
 
-        if (!$botToken || !$chatId) {
+        if (! $botToken || ! $chatId) {
             return ['success' => false, 'response_code' => null, 'error' => 'Bot token or chat ID not configured'];
         }
 
@@ -37,7 +37,7 @@ class TelegramNotificationSender
 
         $text = "{$emoji} *{$title}*\n\n{$message}";
 
-        if (!empty($fields)) {
+        if (! empty($fields)) {
             $text .= "\n";
             foreach ($fields as $field) {
                 $name = $field['title'] ?? $field['name'] ?? '';

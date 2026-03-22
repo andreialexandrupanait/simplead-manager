@@ -12,6 +12,7 @@ use Livewire\Component;
 class ConfigureMonitor extends Component
 {
     public ?int $monitorId = null;
+
     public ?int $siteId = null;
 
     public MonitorFormData $form;

@@ -8,7 +8,10 @@ use App\Models\ReportRecommendation;
 use App\Models\ReportSchedule;
 use App\Models\ReportTemplate;
 use App\Models\Site;
+use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
+use App\Services\Backup\Storage\StorageFactory;
+use App\Services\JobTracker;
 use App\Services\ReportGeneratorService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -20,17 +23,17 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use App\Models\StorageDestination;
-use App\Services\Backup\Storage\StorageFactory;
-use App\Services\JobTracker;
 
-class GenerateReport implements ShouldQueue, ShouldBeUnique
+class GenerateReport implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
+
     public int $memory = 512;
+
     public int $tries = 2;
+
     public array $backoff = [60, 120];
 
     public function __construct(
@@ -48,12 +51,12 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'report-' . $this->site->id . '-' . $this->template->id;
+        return 'report-'.$this->site->id.'-'.$this->template->id;
     }
 
     public function trackerKey(): string
     {
-        return 'report-generate-' . $this->site->id;
+        return 'report-generate-'.$this->site->id;
     }
 
     public function handle(): void
@@ -64,7 +67,7 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
             'site_id' => $this->site->id,
             'report_template_id' => $this->template->id,
             'report_schedule_id' => $this->schedule?->id,
-            'title' => 'Maintenance Report - ' . $this->site->name . ' - ' . $this->periodEnd->format('d.m.Y'),
+            'title' => 'Maintenance Report - '.$this->site->name.' - '.$this->periodEnd->format('d.m.Y'),
             'period_start' => $this->periodStart,
             'period_end' => $this->periodEnd,
             'status' => 'generating',
@@ -115,7 +118,7 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
 
                 if ($destination && $reportsPath) {
                     $driver = StorageFactory::make($destination);
-                    $remotePath = rtrim($reportsPath, '/') . '/' . $this->site->domain . '/' . $this->periodEnd->format('Y') . '/' . $fileName;
+                    $remotePath = rtrim($reportsPath, '/').'/'.$this->site->domain.'/'.$this->periodEnd->format('Y').'/'.$fileName;
                     $driver->uploadToAbsolutePath($fullPath, $remotePath);
                 }
             } catch (\Throwable $e) {
@@ -131,7 +134,7 @@ class GenerateReport implements ShouldQueue, ShouldBeUnique
                 $recipients = array_merge($recipients, $this->schedule->recipient_emails ?? []);
                 if ($this->schedule->send_copy_to_admin) {
                     $adminEmail = config('mail.from.address');
-                    if ($adminEmail && !in_array($adminEmail, $recipients)) {
+                    if ($adminEmail && ! in_array($adminEmail, $recipients)) {
                         $recipients[] = $adminEmail;
                     }
                 }

@@ -73,7 +73,7 @@ class StatusPage extends Model
                 return 'operational';
             }
 
-            $hasOutage = $sites->contains(fn ($sps) => $sps->site && !$sps->site->is_up);
+            $hasOutage = $sites->contains(fn ($sps) => $sps->site && ! $sps->site->is_up);
             if ($hasOutage) {
                 return 'outage';
             }

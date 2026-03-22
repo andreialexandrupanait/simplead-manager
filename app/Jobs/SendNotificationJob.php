@@ -21,7 +21,9 @@ class SendNotificationJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -87,7 +89,7 @@ class SendNotificationJob implements ShouldQueue
 
             // Re-throw to trigger retry
             if ($this->attempts() < $this->tries) {
-                throw new \RuntimeException("Notification failed: " . ($result['error'] ?? 'Unknown error'));
+                throw new \RuntimeException('Notification failed: '.($result['error'] ?? 'Unknown error'));
             }
         }
     }

@@ -15,7 +15,7 @@ class DiscordNotificationSender
         string $severity = 'warning'
     ): array {
         $webhookUrl = $channel->getDecryptedConfig()['webhook_url'] ?? null;
-        if (!$webhookUrl) {
+        if (! $webhookUrl) {
             return ['success' => false, 'response_code' => null, 'error' => 'No webhook URL configured'];
         }
 

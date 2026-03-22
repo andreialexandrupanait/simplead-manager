@@ -14,6 +14,7 @@ use Livewire\Component;
 class NotificationDropdown extends Component
 {
     public bool $sidebarMode = false;
+
     public array $dismissedAlerts = [];
 
     public function mount(): void
@@ -26,7 +27,7 @@ class NotificationDropdown extends Component
     {
         $all = Cache::remember('global_alerts', 120, fn () => app(DashboardService::class)->getAlerts());
 
-        return array_values(array_filter($all, fn ($a) => !in_array($a['key'], $this->dismissedAlerts)));
+        return array_values(array_filter($all, fn ($a) => ! in_array($a['key'], $this->dismissedAlerts)));
     }
 
     #[Computed]
@@ -37,7 +38,7 @@ class NotificationDropdown extends Component
 
     public function dismissAlert(string $key): void
     {
-        if (!in_array($key, $this->dismissedAlerts)) {
+        if (! in_array($key, $this->dismissedAlerts)) {
             $this->dismissedAlerts[] = $key;
         }
         $this->persistDismissals();
@@ -58,7 +59,7 @@ class NotificationDropdown extends Component
 
     private function getCacheKey(): string
     {
-        return 'user:' . Auth::id() . ':dismissed_alerts';
+        return 'user:'.Auth::id().':dismissed_alerts';
     }
 
     private function getPersistedDismissals(): array

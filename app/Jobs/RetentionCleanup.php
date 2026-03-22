@@ -21,7 +21,9 @@ class RetentionCleanup implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 900;
+
     public int $tries = 2;
+
     public array $backoff = [120];
 
     public const JOB_KEY = 'retention-cleanup';
@@ -32,8 +34,9 @@ class RetentionCleanup implements ShouldQueue
 
     public function handle(RetentionPolicyService $policy, SettingsService $settings): void
     {
-        if (!$policy->isEnabled()) {
+        if (! $policy->isEnabled()) {
             Log::info('Retention cleanup skipped: disabled');
+
             return;
         }
 
@@ -66,7 +69,7 @@ class RetentionCleanup implements ShouldQueue
             JobTracker::progress(self::JOB_KEY, $progress, "Cleaning {$config['label']}...");
 
             foreach ($config['tables'] as $tableConfig) {
-                if ($tableConfig['hasTable'] && !Schema::hasTable($tableConfig['table'])) {
+                if ($tableConfig['hasTable'] && ! Schema::hasTable($tableConfig['table'])) {
                     continue;
                 }
 

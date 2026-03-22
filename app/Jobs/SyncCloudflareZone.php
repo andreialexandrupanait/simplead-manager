@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\SiteCloudflare;
-use App\Services\CircuitBreakerService;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -12,12 +11,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class SyncCloudflareZone implements ShouldQueue, ShouldBeUnique
+class SyncCloudflareZone implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 60;
+
     public array $backoff = [15, 30];
 
     public function __construct(
@@ -28,14 +29,14 @@ class SyncCloudflareZone implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'cf-sync-' . $this->siteCloudflare->id;
+        return 'cf-sync-'.$this->siteCloudflare->id;
     }
 
     public function handle(): void
     {
         $connection = $this->siteCloudflare->cloudflareConnection;
 
-        if (!$connection || !$connection->is_valid) {
+        if (! $connection || ! $connection->is_valid) {
             return;
         }
 

@@ -16,16 +16,21 @@ class SecurityIpManagement extends Component
     use WithSiteAuthorization;
 
     public Site $site;
+
     public string $subTab = 'whitelist';
 
     // Add IP form
     public string $newIp = '';
+
     public string $newReason = '';
+
     public ?string $newExpiresAt = null;
 
     // Firewall settings
     public bool $firewallEnabled = false;
+
     public string $ipHeaderOverride = '';
+
     public bool $roleWhitelist = false;
 
     public function mount(Site $site): void
@@ -93,12 +98,14 @@ class SecurityIpManagement extends Component
 
                     if (! filter_var($ip, FILTER_VALIDATE_IP)) {
                         $fail('Invalid IP address in CIDR notation.');
+
                         return;
                     }
 
                     $maxPrefix = str_contains($ip, ':') ? 128 : 32;
                     if ($prefix < 0 || $prefix > $maxPrefix) {
                         $fail("CIDR prefix must be between 0 and {$maxPrefix}.");
+
                         return;
                     }
 
@@ -177,8 +184,9 @@ class SecurityIpManagement extends Component
             $response = $api->request('GET', '/security-state');
 
             if (! $response->successful()) {
-                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
                 $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
+
                 return;
             }
 
@@ -194,6 +202,7 @@ class SecurityIpManagement extends Component
             if (! $setting) {
                 session()->flash('ip-success', 'No enabled firewall settings to verify.');
                 $this->redirect(route('sites.security.ip-management', $this->site), navigate: false);
+
                 return;
             }
 
@@ -213,7 +222,7 @@ class SecurityIpManagement extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify IP management settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
         }
 
         $this->loadFirewallSettings();
@@ -225,7 +234,7 @@ class SecurityIpManagement extends Component
         return view('livewire.sites.detail.security.security-ip-management')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — IP Management',
+                'title' => $this->site->name.' — IP Management',
             ]);
     }
 }

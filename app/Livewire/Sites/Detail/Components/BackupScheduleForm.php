@@ -13,17 +13,29 @@ class BackupScheduleForm extends Component
     public Site $site;
 
     public bool $is_enabled = false;
+
     public string $type = 'full';
+
     public string $frequency = 'daily';
+
     public string $time = '03:00';
+
     public ?int $day_of_week = 0;
+
     public ?int $day_of_month = 1;
+
     public string $timezone = 'UTC';
+
     public ?int $storage_destination_id = null;
+
     public string $retention_type = 'count';
+
     public int $retention_value = 10;
+
     public bool $backup_before_updates = false;
+
     public bool $enable_incremental = false;
+
     public ?int $full_backup_day_of_week = 0;
 
     #[On('open-schedule-form')]
@@ -44,7 +56,7 @@ class BackupScheduleForm extends Component
             $this->retention_type = $config->retention_type;
             $this->retention_value = $config->retention_value;
             $this->backup_before_updates = $config->backup_before_updates;
-            $this->enable_incremental = !empty($config->incremental_frequency);
+            $this->enable_incremental = ! empty($config->incremental_frequency);
             $this->full_backup_day_of_week = $config->full_backup_day_of_week ?? 0;
         }
 

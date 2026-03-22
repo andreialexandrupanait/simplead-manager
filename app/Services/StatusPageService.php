@@ -113,7 +113,7 @@ class StatusPageService
 
     public static function verifyPassword(StatusPage $statusPage, string $password): bool
     {
-        if (!$statusPage->password_hash) {
+        if (! $statusPage->password_hash) {
             return true;
         }
 

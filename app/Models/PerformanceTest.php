@@ -96,6 +96,7 @@ class PerformanceTest extends Model
         if ($count <= 1500) {
             return 'orange';
         }
+
         return 'red';
     }
 
@@ -111,6 +112,7 @@ class PerformanceTest extends Model
         if ($score >= 50) {
             return 'orange';
         }
+
         return 'red';
     }
 
@@ -126,6 +128,7 @@ class PerformanceTest extends Model
         if ($score >= 50) {
             return 'Needs Improvement';
         }
+
         return 'Poor';
     }
 
@@ -137,8 +140,8 @@ class PerformanceTest extends Model
         }
 
         return match ($metric) {
-            'fcp', 'lcp', 'si', 'tti', 'field_fcp', 'field_lcp' => round($value, 1) . ' s',
-            'tbt', 'field_inp', 'field_ttfb' => round($value) . ' ms',
+            'fcp', 'lcp', 'si', 'tti', 'field_fcp', 'field_lcp' => round($value, 1).' s',
+            'tbt', 'field_inp', 'field_ttfb' => round($value).' ms',
             'cls', 'field_cls' => number_format($value, 3),
             'total_size_bytes', 'html_size', 'css_size', 'js_size', 'image_size', 'font_size' => $this->formatBytes((int) $value),
             default => (string) $value,

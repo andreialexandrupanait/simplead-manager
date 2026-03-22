@@ -24,7 +24,7 @@ class BulkReportDownloadController extends Controller
 
         abort_if($reports->isEmpty(), 404);
 
-        $zipPath = storage_path('app/temp/reports-' . uniqid() . '.zip');
+        $zipPath = storage_path('app/temp/reports-'.uniqid().'.zip');
 
         $zip = new ZipArchive;
         abort_unless($zip->open($zipPath, ZipArchive::CREATE) === true, 500);
@@ -32,13 +32,13 @@ class BulkReportDownloadController extends Controller
         foreach ($reports as $report) {
             $filePath = Storage::disk('local')->path($report->file_path);
             if (file_exists($filePath)) {
-                $zip->addFile($filePath, $report->file_name ?? 'report-' . $report->id . '.pdf');
+                $zip->addFile($filePath, $report->file_name ?? 'report-'.$report->id.'.pdf');
             }
         }
 
         $zip->close();
 
-        $zipName = 'reports-' . $site->name . '-' . now()->format('Y-m-d') . '.zip';
+        $zipName = 'reports-'.$site->name.'-'.now()->format('Y-m-d').'.zip';
 
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
     }

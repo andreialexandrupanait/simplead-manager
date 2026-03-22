@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class BackfillSiteScreenshots extends Command
 {
     protected $signature = 'sites:backfill-screenshots';
+
     protected $description = 'Fetch screenshots for all sites without one';
 
     public function handle(): int
@@ -18,7 +19,7 @@ class BackfillSiteScreenshots extends Command
 
         foreach ($sites as $site) {
             // Create performance monitor if missing
-            if (!$site->performanceMonitor) {
+            if (! $site->performanceMonitor) {
                 $monitor = $site->performanceMonitor()->create([
                     'is_active' => true,
                     'frequency' => 'daily',
@@ -35,6 +36,7 @@ class BackfillSiteScreenshots extends Command
         }
 
         $this->info("Done. Queued {$queued} performance tests.");
+
         return Command::SUCCESS;
     }
 }

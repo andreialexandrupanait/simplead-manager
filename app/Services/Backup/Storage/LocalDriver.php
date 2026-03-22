@@ -18,11 +18,11 @@ class LocalDriver implements StorageDriver
         $destination = $this->fullPath($remotePath);
         $dir = dirname($destination);
 
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        if (!copy($localPath, $destination)) {
+        if (! copy($localPath, $destination)) {
             throw new RuntimeException("Failed to copy file to {$destination}");
         }
     }
@@ -31,16 +31,16 @@ class LocalDriver implements StorageDriver
     {
         $source = $this->fullPath($remotePath);
 
-        if (!file_exists($source)) {
+        if (! file_exists($source)) {
             throw new RuntimeException("File not found: {$remotePath}");
         }
 
         $dir = dirname($localPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        if (!copy($source, $localPath)) {
+        if (! copy($source, $localPath)) {
             throw new RuntimeException("Failed to download file from {$remotePath}");
         }
     }
@@ -63,7 +63,7 @@ class LocalDriver implements StorageDriver
     {
         $path = $this->fullPath($remotePath);
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new RuntimeException("File not found: {$remotePath}");
         }
 
@@ -74,16 +74,18 @@ class LocalDriver implements StorageDriver
     {
         $path = $this->fullPath($directory);
 
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return [];
         }
 
         $files = [];
         foreach (new \DirectoryIterator($path) as $file) {
-            if ($file->isDot()) continue;
+            if ($file->isDot()) {
+                continue;
+            }
             $files[] = [
                 'name' => $file->getFilename(),
-                'path' => ($directory ? $directory . '/' : '') . $file->getFilename(),
+                'path' => ($directory ? $directory.'/' : '').$file->getFilename(),
                 'size' => $file->isFile() ? $file->getSize() : 0,
                 'is_dir' => $file->isDir(),
                 'modified_at' => $file->getMTime(),
@@ -100,22 +102,23 @@ class LocalDriver implements StorageDriver
 
     public function test(): bool
     {
-        if (!is_dir($this->basePath)) {
+        if (! is_dir($this->basePath)) {
             mkdir($this->basePath, 0755, true);
         }
 
-        $testFile = $this->basePath . '/.storage-test-' . uniqid();
+        $testFile = $this->basePath.'/.storage-test-'.uniqid();
         $written = file_put_contents($testFile, 'test');
         if ($written === false) {
             return false;
         }
 
         unlink($testFile);
+
         return true;
     }
 
     protected function fullPath(string $relativePath): string
     {
-        return $this->basePath . '/' . ltrim($relativePath, '/');
+        return $this->basePath.'/'.ltrim($relativePath, '/');
     }
 }

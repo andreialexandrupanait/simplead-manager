@@ -3,12 +3,12 @@
 namespace App\Jobs\Concerns;
 
 use App\Enums\BackupStatus;
+use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
-use App\Jobs\NotifyBackupFailed;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -19,13 +19,13 @@ trait BackupJobTrait
 
     public static function releaseUniqueLock(int $siteId): void
     {
-        $cacheKey = 'laravel_unique_job:' . static::class . ':backup-' . $siteId;
+        $cacheKey = 'laravel_unique_job:'.static::class.':backup-'.$siteId;
         Cache::forget($cacheKey);
     }
 
     protected function checkCancelled(): void
     {
-        if (!$this->backupId) {
+        if (! $this->backupId) {
             return;
         }
         $status = Backup::where('id', $this->backupId)->value('status');
@@ -45,7 +45,7 @@ trait BackupJobTrait
             'exception' => get_class($e),
             'message' => $e->getMessage(),
             'code' => $e->getCode(),
-            'file' => $e->getFile() . ':' . $e->getLine(),
+            'file' => $e->getFile().':'.$e->getLine(),
         ]);
 
         if ($this->backup) {
@@ -56,7 +56,7 @@ trait BackupJobTrait
             $this->backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
-                'progress_message' => "{$label} failed: " . Str::limit($e->getMessage(), 200),
+                'progress_message' => "{$label} failed: ".Str::limit($e->getMessage(), 200),
                 'error_message' => $e->getMessage(),
                 'completed_at' => now(),
                 'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
@@ -138,11 +138,11 @@ trait BackupJobTrait
         $exceptionClass = $exception ? get_class($exception) : 'Unknown';
 
         $backup = $this->backupId ? Backup::find($this->backupId) : null;
-        if ($backup && !in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled])) {
+        if ($backup && ! in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled])) {
             $backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
-                'progress_message' => "{$label} failed: " . Str::limit($exception?->getMessage() ?? 'Unknown error', 200),
+                'progress_message' => "{$label} failed: ".Str::limit($exception?->getMessage() ?? 'Unknown error', 200),
                 'error_message' => $exception?->getMessage() ?? 'Job exceeded maximum attempts or timed out',
                 'completed_at' => now(),
                 'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,

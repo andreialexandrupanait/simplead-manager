@@ -70,7 +70,7 @@ class SecurityOverview extends Component
         return view('livewire.sites.detail.security.security-overview')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Security',
+                'title' => $this->site->name.' — Security',
             ]);
     }
 }

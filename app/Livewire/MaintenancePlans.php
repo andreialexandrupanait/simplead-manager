@@ -19,24 +19,37 @@ class MaintenancePlans extends Component
 
     // Apply mode
     public ?int $applyingPlanId = null;
+
     public string $siteSearch = '';
+
     public array $selectedSiteIds = [];
+
     public bool $selectAll = false;
+
     public bool $applyModules = true;
+
     public bool $applySecurity = true;
+
     public bool $applyTweaks = true;
 
     // Create/Edit form
     public ?int $editingId = null;
+
     public string $planName = '';
+
     public string $planDescription = '';
+
     public array $planModules = [];
+
     public bool $planIsDefault = false;
+
     public int $planSortOrder = 0;
 
     // Include flags
     public bool $includeModules = true;
+
     public bool $includeSecurity = false;
+
     public bool $includeTweaks = false;
 
     // Security toggles
@@ -47,8 +60,11 @@ class MaintenancePlans extends Component
 
     // Heartbeat sub-config
     public string $heartbeatFrontend = 'disable';
+
     public string $heartbeatDashboard = 'default';
+
     public string $heartbeatEditor = 'default';
+
     public int $heartbeatInterval = 60;
 
     // Revisions sub-config
@@ -56,29 +72,44 @@ class MaintenancePlans extends Component
 
     // Image sub-config
     public int $imageMaxWidth = 2560;
+
     public int $imageMaxHeight = 2560;
+
     public int $jpegQuality = 82;
 
     // Brute force sub-config
     public int $bruteForceMaxAttempts = 5;
+
     public int $bruteForceWindow = 10;
+
     public int $bruteForceBlockDuration = 60;
 
     // Backup config
     public string $backupFrequency = 'daily';
+
     public string $backupTime = '03:00';
+
     public string $backupTimezone = 'Europe/Bucharest';
+
     public string $backupType = 'full';
+
     public string $backupRetentionType = 'count';
+
     public int $backupRetentionValue = 10;
+
     public bool $backupBeforeUpdates = false;
 
     // Create from Site
     public ?int $sourceSiteId = null;
+
     public string $snapshotName = '';
+
     public string $snapshotDescription = '';
+
     public bool $snapshotModules = true;
+
     public bool $snapshotSecurity = true;
+
     public bool $snapshotTweaks = true;
 
     // Delete confirmation
@@ -105,7 +136,7 @@ class MaintenancePlans extends Component
     public function sites()
     {
         $query = Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
             ->orderBy('name');
 
         if ($this->siteSearch) {
@@ -122,7 +153,7 @@ class MaintenancePlans extends Component
     public function sourceSites()
     {
         return Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
             ->orderBy('name')
             ->get();
     }
@@ -240,31 +271,41 @@ class MaintenancePlans extends Component
     {
         if (empty($this->selectedSiteIds)) {
             $this->dispatch('notify', type: 'error', message: 'Please select at least one site.');
+
             return;
         }
 
         $plan = MaintenancePlan::with('planModules')->find($this->applyingPlanId);
-        if (!$plan) {
+        if (! $plan) {
             $this->dispatch('notify', type: 'error', message: 'Plan not found.');
+
             return;
         }
 
         $sections = [];
-        if ($this->applyModules) $sections[] = 'modules';
-        if ($this->applySecurity) $sections[] = 'security';
-        if ($this->applyTweaks) $sections[] = 'tweaks';
+        if ($this->applyModules) {
+            $sections[] = 'modules';
+        }
+        if ($this->applySecurity) {
+            $sections[] = 'security';
+        }
+        if ($this->applyTweaks) {
+            $sections[] = 'tweaks';
+        }
 
         if (empty($sections)) {
             $this->dispatch('notify', type: 'error', message: 'Please select at least one section to apply.');
+
             return;
         }
 
         $scopedQuery = Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
         $targets = $scopedQuery->whereIn('id', $this->selectedSiteIds)->get();
 
         if ($targets->isEmpty()) {
             $this->dispatch('notify', type: 'error', message: 'No valid target sites found.');
+
             return;
         }
 
@@ -330,7 +371,7 @@ class MaintenancePlans extends Component
 
         // Load backup config from module
         $backupModule = $plan->planModules->firstWhere('module_key', 'backup');
-        if ($backupModule && !empty($backupModule->config)) {
+        if ($backupModule && ! empty($backupModule->config)) {
             $bc = $backupModule->config;
             $this->backupFrequency = $bc['frequency'] ?? 'daily';
             $this->backupTime = $bc['time'] ?? '03:00';
@@ -345,7 +386,7 @@ class MaintenancePlans extends Component
 
         // Load security toggles
         $this->initSecurityToggles();
-        if (!empty($plan->security_settings)) {
+        if (! empty($plan->security_settings)) {
             foreach ($plan->security_settings as $category => $settings) {
                 foreach ($settings as $key => $config) {
                     if (array_key_exists($key, $this->securityToggles)) {
@@ -365,7 +406,7 @@ class MaintenancePlans extends Component
 
         // Load tweak toggles
         $this->initTweakToggles();
-        if (!empty($plan->tweak_settings)) {
+        if (! empty($plan->tweak_settings)) {
             foreach ($plan->tweak_settings as $category => $settings) {
                 foreach ($settings as $key => $config) {
                     if (array_key_exists($key, $this->tweakToggles)) {
@@ -474,7 +515,7 @@ class MaintenancePlans extends Component
             'tweak_settings' => $tweakSettings,
         ];
 
-        if (!$this->editingId) {
+        if (! $this->editingId) {
             $data['created_by'] = auth()->id();
         }
 
@@ -516,20 +557,20 @@ class MaintenancePlans extends Component
     public function toggleModuleInForm(string $module): void
     {
         $current = $this->planModules[$module]['enabled'] ?? false;
-        $this->planModules[$module]['enabled'] = !$current;
+        $this->planModules[$module]['enabled'] = ! $current;
     }
 
     public function toggleSecuritySetting(string $key): void
     {
         if (array_key_exists($key, $this->securityToggles)) {
-            $this->securityToggles[$key] = !$this->securityToggles[$key];
+            $this->securityToggles[$key] = ! $this->securityToggles[$key];
         }
     }
 
     public function toggleTweakSetting(string $key): void
     {
         if (array_key_exists($key, $this->tweakToggles)) {
-            $this->tweakToggles[$key] = !$this->tweakToggles[$key];
+            $this->tweakToggles[$key] = ! $this->tweakToggles[$key];
         }
     }
 
@@ -555,12 +596,19 @@ class MaintenancePlans extends Component
         ]);
 
         $sections = [];
-        if ($this->snapshotModules) $sections[] = 'modules';
-        if ($this->snapshotSecurity) $sections[] = 'security';
-        if ($this->snapshotTweaks) $sections[] = 'tweaks';
+        if ($this->snapshotModules) {
+            $sections[] = 'modules';
+        }
+        if ($this->snapshotSecurity) {
+            $sections[] = 'security';
+        }
+        if ($this->snapshotTweaks) {
+            $sections[] = 'tweaks';
+        }
 
         if (empty($sections)) {
             $this->dispatch('notify', type: 'error', message: 'Please select at least one section to include.');
+
             return;
         }
 
@@ -586,13 +634,16 @@ class MaintenancePlans extends Component
 
     public function delete(): void
     {
-        if (!$this->confirmDeleteId) return;
+        if (! $this->confirmDeleteId) {
+            return;
+        }
 
         $plan = MaintenancePlan::withCount('sites')->findOrFail($this->confirmDeleteId);
 
         if ($plan->sites_count > 0) {
             $this->dispatch('notify', type: 'error', message: "Cannot delete \"{$plan->name}\" — {$plan->sites_count} site(s) are using it.");
             $this->confirmDeleteId = null;
+
             return;
         }
 
@@ -700,7 +751,9 @@ class MaintenancePlans extends Component
      */
     public function countSettings(?array $settings): int
     {
-        if (!$settings) return 0;
+        if (! $settings) {
+            return 0;
+        }
 
         $count = 0;
         foreach ($settings as $categorySettings) {
@@ -717,7 +770,9 @@ class MaintenancePlans extends Component
      */
     public function countEnabledSettings(?array $settings): int
     {
-        if (!$settings) return 0;
+        if (! $settings) {
+            return 0;
+        }
 
         $count = 0;
         foreach ($settings as $categorySettings) {

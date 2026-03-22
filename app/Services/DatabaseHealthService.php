@@ -41,17 +41,27 @@ class DatabaseHealthService
 
         // Determine status using configurable thresholds
         $warnings = 0;
-        if ($totalSize > config('monitoring.db_total_size_warning', 1_073_741_824)) $warnings++;
-        if ($autoloadSize > config('monitoring.db_autoload_size_warning', 1_048_576)) $warnings++;
-        if ($myisamCount > 0) $warnings++;
+        if ($totalSize > config('monitoring.db_total_size_warning', 1_073_741_824)) {
+            $warnings++;
+        }
+        if ($autoloadSize > config('monitoring.db_autoload_size_warning', 1_048_576)) {
+            $warnings++;
+        }
+        if ($myisamCount > 0) {
+            $warnings++;
+        }
 
         $totalOverhead = collect($tablesWithOverhead)->sum('overhead');
-        if ($totalOverhead > config('monitoring.db_overhead_warning', 104_857_600)) $warnings++;
+        if ($totalOverhead > config('monitoring.db_overhead_warning', 104_857_600)) {
+            $warnings++;
+        }
 
         $tableSizeWarning = config('monitoring.db_table_size_warning', 524_288_000);
         foreach ($sortedTables as $table) {
             $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
-            if ($tableSize > $tableSizeWarning) $warnings++;
+            if ($tableSize > $tableSizeWarning) {
+                $warnings++;
+            }
         }
 
         $status = match (true) {

@@ -10,9 +10,11 @@ use RuntimeException;
 class DropboxDriver implements StorageDriver
 {
     protected array $config;
+
     protected string $basePath;
 
     protected const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
+
     protected const LARGE_FILE_THRESHOLD = 150 * 1024 * 1024; // 150MB
 
     public function __construct(
@@ -37,7 +39,7 @@ class DropboxDriver implements StorageDriver
     public function uploadToAbsolutePath(string $localPath, string $absoluteDropboxPath): void
     {
         $fileSize = filesize($localPath);
-        $path = '/' . ltrim($absoluteDropboxPath, '/');
+        $path = '/'.ltrim($absoluteDropboxPath, '/');
 
         if ($fileSize > self::LARGE_FILE_THRESHOLD) {
             $this->uploadChunked($localPath, $path);
@@ -133,7 +135,7 @@ class DropboxDriver implements StorageDriver
         $accessToken = $this->getAccessToken();
 
         $dir = dirname($localPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -146,7 +148,7 @@ class DropboxDriver implements StorageDriver
         }
 
         if ($response->failed()) {
-            throw new RuntimeException("Dropbox download failed: " . $response->body());
+            throw new RuntimeException('Dropbox download failed: '.$response->body());
         }
     }
 
@@ -190,6 +192,7 @@ class DropboxDriver implements StorageDriver
             $this->apiRequest('https://api.dropboxapi.com/2/files/get_metadata', [
                 'json' => ['path' => $this->fullPath($remotePath)],
             ]);
+
             return true;
         } catch (RuntimeException) {
             return false;
@@ -224,7 +227,7 @@ class DropboxDriver implements StorageDriver
             ];
         }
 
-        while (!empty($response['has_more'])) {
+        while (! empty($response['has_more'])) {
             $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder/continue', [
                 'json' => ['cursor' => $response['cursor']],
             ]);
@@ -270,7 +273,7 @@ class DropboxDriver implements StorageDriver
             }
         }
 
-        while (!empty($response['has_more'])) {
+        while (! empty($response['has_more'])) {
             $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder/continue', [
                 'json' => ['cursor' => $response['cursor']],
             ]);
@@ -326,7 +329,7 @@ class DropboxDriver implements StorageDriver
         ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Failed to refresh Dropbox access token: ' . $response->body());
+            throw new RuntimeException('Failed to refresh Dropbox access token: '.$response->body());
         }
 
         $data = $response->json();
@@ -354,7 +357,7 @@ class DropboxDriver implements StorageDriver
         }
 
         if ($response->failed()) {
-            throw new RuntimeException("Dropbox API error [{$response->status()}]: " . $response->body());
+            throw new RuntimeException("Dropbox API error [{$response->status()}]: ".$response->body());
         }
 
         $body = $response->body();
@@ -401,6 +404,7 @@ class DropboxDriver implements StorageDriver
             if ($options['json'] === null) {
                 return $request->withBody('null', 'application/json')->post($url);
             }
+
             return $request->post($url, $options['json']);
         }
 
@@ -409,6 +413,6 @@ class DropboxDriver implements StorageDriver
 
     protected function fullPath(string $relativePath): string
     {
-        return $this->basePath . '/' . ltrim($relativePath, '/');
+        return $this->basePath.'/'.ltrim($relativePath, '/');
     }
 }

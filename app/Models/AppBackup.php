@@ -61,15 +61,19 @@ class AppBackup extends Model
 
     public function getFileSizeFormattedAttribute(): string
     {
-        if (!$this->file_size) return '—';
+        if (! $this->file_size) {
+            return '—';
+        }
 
         $bytes = $this->file_size;
-        if ($bytes === 0) return '0 B';
+        if ($bytes === 0) {
+            return '0 B';
+        }
 
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $i = floor(log($bytes, 1024));
 
-        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+        return round($bytes / pow(1024, $i), 2).' '.$units[$i];
     }
 
     public function getStatusColorAttribute(): string
@@ -85,13 +89,19 @@ class AppBackup extends Model
 
     public function getDurationFormattedAttribute(): ?string
     {
-        if (!$this->duration_seconds) return null;
+        if (! $this->duration_seconds) {
+            return null;
+        }
 
         $seconds = $this->duration_seconds;
-        if ($seconds < 60) return "{$seconds}s";
-        if ($seconds < 3600) return floor($seconds / 60) . 'm ' . ($seconds % 60) . 's';
+        if ($seconds < 60) {
+            return "{$seconds}s";
+        }
+        if ($seconds < 3600) {
+            return floor($seconds / 60).'m '.($seconds % 60).'s';
+        }
 
-        return floor($seconds / 3600) . 'h ' . floor(($seconds % 3600) / 60) . 'm';
+        return floor($seconds / 3600).'h '.floor(($seconds % 3600) / 60).'m';
     }
 
     public function scopeCompleted(Builder $query): Builder

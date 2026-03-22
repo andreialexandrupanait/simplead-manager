@@ -28,8 +28,8 @@ class SecurityScanning extends Component
     protected function jobTrackingKeys(): array
     {
         return [
-            'scan' => 'security-scan-' . $this->site->id,
-            'integrity' => 'core-integrity-' . $this->site->id,
+            'scan' => 'security-scan-'.$this->site->id,
+            'integrity' => 'core-integrity-'.$this->site->id,
         ];
     }
 
@@ -78,9 +78,10 @@ class SecurityScanning extends Component
 
     public function scanNow(): void
     {
-        $rateLimitKey = "security-scan:{$this->site->id}:" . auth()->id();
+        $rateLimitKey = "security-scan:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('error', 'Too many scan requests. Please wait before trying again.');
+
             return;
         }
 
@@ -108,9 +109,10 @@ class SecurityScanning extends Component
 
     public function checkSslNow(): void
     {
-        $rateLimitKey = "ssl-check:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+        $rateLimitKey = "ssl-check:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('error', 'Too many SSL check requests. Please wait before trying again.');
+
             return;
         }
 
@@ -124,9 +126,10 @@ class SecurityScanning extends Component
 
     public function checkCoreIntegrityNow(): void
     {
-        $rateLimitKey = "integrity-check:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+        $rateLimitKey = "integrity-check:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('error', 'Too many integrity check requests. Please wait before trying again.');
+
             return;
         }
 
@@ -144,7 +147,7 @@ class SecurityScanning extends Component
         return view('livewire.sites.detail.security.security-scanning')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Scanning',
+                'title' => $this->site->name.' — Scanning',
             ]);
     }
 }

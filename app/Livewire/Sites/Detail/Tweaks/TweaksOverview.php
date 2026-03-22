@@ -61,7 +61,7 @@ class TweaksOverview extends Component
         return view('livewire.sites.detail.tweaks.tweaks-overview')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Site Tweaks',
+                'title' => $this->site->name.' — Site Tweaks',
             ]);
     }
 }

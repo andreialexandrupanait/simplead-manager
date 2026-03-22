@@ -38,7 +38,7 @@ class UptimeIncident extends Model
         $minutes = (int) $this->started_at->diffInMinutes($end);
 
         if ($minutes < 60) {
-            return $minutes . 'm';
+            return $minutes.'m';
         }
 
         $hours = intdiv($minutes, 60);

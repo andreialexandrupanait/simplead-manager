@@ -36,7 +36,7 @@ class DropboxAuthController extends Controller
     {
         if ($request->has('error')) {
             return redirect()->route('settings.integrations')
-                ->with('error', 'Dropbox authorization was denied: ' . $request->input('error_description', 'Unknown error'));
+                ->with('error', 'Dropbox authorization was denied: '.$request->input('error_description', 'Unknown error'));
         }
 
         abort_unless($request->get('state') === session()->pull('dropbox_oauth_state'), 403);
@@ -77,7 +77,7 @@ class DropboxAuthController extends Controller
         $rootNamespaceId = null;
         if ($accountResponse->ok()) {
             $account = $accountResponse->json();
-            $accountName = 'Dropbox — ' . ($account['email'] ?? $account['name']['display_name'] ?? 'Connected');
+            $accountName = 'Dropbox — '.($account['email'] ?? $account['name']['display_name'] ?? 'Connected');
 
             // For Dropbox Business: store root namespace ID so the driver can route
             // API calls to the team namespace (making team folders visible).
@@ -110,7 +110,7 @@ class DropboxAuthController extends Controller
         }
 
         // For Dropbox Business: store team_member_id so API calls can target this user's files
-        if (!empty($data['team_member_id'])) {
+        if (! empty($data['team_member_id'])) {
             $config['team_member_id'] = $data['team_member_id'];
         }
 

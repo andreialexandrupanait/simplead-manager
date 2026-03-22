@@ -20,7 +20,9 @@ class SendDailyDigest implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 60;
+
     public array $backoff = [30, 60];
 
     public function handle(): void
@@ -38,7 +40,7 @@ class SendDailyDigest implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        Log::error('SendDailyDigest job failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        Log::error('SendDailyDigest job failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 
     protected function gatherDigest(): array

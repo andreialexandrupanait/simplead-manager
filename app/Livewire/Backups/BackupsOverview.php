@@ -6,7 +6,6 @@ use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Backup;
 use App\Models\BackupConfig;
-use App\Models\Site;
 use App\Models\StorageDestination;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
@@ -29,9 +28,10 @@ class BackupsOverview extends Component
 
     public function backupAllSites(): void
     {
-        $rateLimitKey = 'bulk-backup-all:' . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
+        $rateLimitKey = 'bulk-backup-all:'.auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many bulk backup requests. Please wait before trying again.');
+
             return;
         }
 
@@ -44,18 +44,18 @@ class BackupsOverview extends Component
         $defaultDestination = null;
         foreach ($configs as $config) {
             $site = $config->site;
-            if (!$site || !$site->is_connected) {
+            if (! $site || ! $site->is_connected) {
                 continue;
             }
 
             $destination = $config->storageDestination;
-            if (!$destination) {
+            if (! $destination) {
                 $destination = $defaultDestination ??= StorageDestination::where('is_default', true)
                     ->where('is_active', true)
                     ->first();
             }
 
-            if (!$destination) {
+            if (! $destination) {
                 continue;
             }
 
@@ -94,6 +94,7 @@ class BackupsOverview extends Component
                 if ($this->filter === 'in_progress') {
                     return $q->whereIn('status', ['pending', 'in_progress']);
                 }
+
                 return $q->where('status', $this->filter);
             })
             ->join('sites', 'backups.site_id', '=', 'sites.id')

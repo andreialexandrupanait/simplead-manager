@@ -5,13 +5,13 @@ namespace App\Providers;
 use App\Services\Notifications\NotificationService;
 use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Events\LongWaitDetected;
 
@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! app()->isProduction());
 
         RateLimiter::for('login', function (Request $request) {
-            $key = $request->input('email', '') . '|' . $request->ip();
+            $key = $request->input('email', '').'|'.$request->ip();
 
             return Limit::perMinute(5)->by($key);
         });
@@ -60,17 +60,20 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('agent', function (Request $request) {
             $siteToken = $request->route('site_token', 'unknown');
-            return Limit::perMinute(120)->by('agent:' . $siteToken);
+
+            return Limit::perMinute(120)->by('agent:'.$siteToken);
         });
 
         RateLimiter::for('agent-activity-logs', function (Request $request) {
             $siteToken = $request->route('site_token', 'unknown');
-            return Limit::perMinute(1)->by('agent-logs:' . $siteToken);
+
+            return Limit::perMinute(1)->by('agent-logs:'.$siteToken);
         });
 
         RateLimiter::for('status-page-auth', function (Request $request) {
             $slug = $request->route('slug', 'unknown');
-            return Limit::perMinute(5)->by($slug . '|' . $request->ip());
+
+            return Limit::perMinute(5)->by($slug.'|'.$request->ip());
         });
 
         // Load Google API credentials from DB if not set in env

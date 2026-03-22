@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use ZipArchive;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ZipArchive;
 
 class ConnectorPluginDownloadController extends Controller
 {
@@ -12,7 +12,7 @@ class ConnectorPluginDownloadController extends Controller
     {
         $sourceDir = base_path('wordpress-plugin/simplead-manager-connector');
 
-        if (!is_dir($sourceDir)) {
+        if (! is_dir($sourceDir)) {
             abort(404, 'Plugin source not found.');
         }
 
@@ -28,7 +28,7 @@ class ConnectorPluginDownloadController extends Controller
 
         foreach ($files as $file) {
             if ($file->isFile()) {
-                $relativePath = 'simplead-manager-connector/' . substr($file->getRealPath(), strlen($sourceDir) + 1);
+                $relativePath = 'simplead-manager-connector/'.substr($file->getRealPath(), strlen($sourceDir) + 1);
                 $zip->addFile($file->getRealPath(), $relativePath);
             }
         }

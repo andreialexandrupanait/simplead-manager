@@ -151,7 +151,10 @@ class DashboardService
             $severityOrder = ['critical' => 0, 'warning' => 1, 'info' => 2];
             $aSev = $severityOrder[$a['severity']] ?? 2;
             $bSev = $severityOrder[$b['severity']] ?? 2;
-            if ($aSev !== $bSev) return $aSev - $bSev;
+            if ($aSev !== $bSev) {
+                return $aSev - $bSev;
+            }
+
             return ($b['timestamp'] ?? now()) <=> ($a['timestamp'] ?? now());
         });
 
@@ -168,11 +171,11 @@ class DashboardService
             'performanceMonitor',
             'backupConfig',
             'latestCompletedBackup',
-            'sitePlugins' => fn($q) => $q->where('has_update', true),
-            'siteThemes' => fn($q) => $q->where('has_update', true),
+            'sitePlugins' => fn ($q) => $q->where('has_update', true),
+            'siteThemes' => fn ($q) => $q->where('has_update', true),
             'analyticsConnection',
             'searchConsoleConnection',
-            'reportSchedules' => fn($q) => $q->where('is_active', true),
+            'reportSchedules' => fn ($q) => $q->where('is_active', true),
             'healthState',
         ];
 
@@ -181,8 +184,8 @@ class DashboardService
         $query = Site::with($eagerLoads)
             ->withCount([
                 'sitePlugins',
-                'sitePlugins as plugins_with_updates_count' => fn($q) => $q->where('has_update', true),
-                'siteThemes as themes_with_updates_count' => fn($q) => $q->where('has_update', true),
+                'sitePlugins as plugins_with_updates_count' => fn ($q) => $q->where('has_update', true),
+                'siteThemes as themes_with_updates_count' => fn ($q) => $q->where('has_update', true),
                 'siteUsers',
                 'backups',
                 'reportSchedules',
@@ -191,7 +194,7 @@ class DashboardService
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('domain', 'ilike', "%{$search}%");
+                    ->orWhere('domain', 'ilike', "%{$search}%");
             });
         }
 
@@ -202,7 +205,7 @@ class DashboardService
         } elseif ($filter === 'critical') {
             $query->where(function ($q) {
                 $q->where('health_score', '<', 70)
-                  ->orWhere('is_up', false);
+                    ->orWhere('is_up', false);
             });
         }
 
@@ -215,12 +218,12 @@ class DashboardService
         }
 
         match ($sort) {
-            'manual'      => $query->orderBy('sort_order', 'asc'),
-            'name-asc'    => $query->orderBy('name', 'asc'),
-            'name-desc'   => $query->orderBy('name', 'desc'),
-            'health-asc'  => $query->orderByRaw('COALESCE(health_score, 0) ASC'),
+            'manual' => $query->orderBy('sort_order', 'asc'),
+            'name-asc' => $query->orderBy('name', 'asc'),
+            'name-desc' => $query->orderBy('name', 'desc'),
+            'health-asc' => $query->orderByRaw('COALESCE(health_score, 0) ASC'),
             'health-desc' => $query->orderByRaw('COALESCE(health_score, 0) DESC'),
-            default       => $query->orderBy('sort_order', 'asc'),
+            default => $query->orderBy('sort_order', 'asc'),
         };
 
         return $query->paginate($perPage);
@@ -333,25 +336,25 @@ class DashboardService
             'uptimeMonitor',
             'sslCertificate',
             'latestCompletedBackup',
-            'client'
+            'client',
         ])
-        ->where(function ($query) {
-            $query->where('health_score', '<', 70)
-                ->orWhere('is_up', false)
-                ->orWhereHas('sslCertificate', function ($q) {
-                    $q->whereNotNull('expires_at')
-                      ->where('expires_at', '<=', now()->addDays(14));
-                })
-                ->orWhereDoesntHave('latestCompletedBackup')
-                ->orWhereHas('latestCompletedBackup', function ($q) {
-                    $q->where('completed_at', '<=', now()->subDays(7));
-                })
-                ->orWhereNotNull('core_update_version');
-        })
-        ->orderByRaw('CASE WHEN is_up = false THEN 0 ELSE 1 END')
-        ->orderByRaw('COALESCE(health_score, 0) ASC')
-        ->limit($limit)
-        ->get();
+            ->where(function ($query) {
+                $query->where('health_score', '<', 70)
+                    ->orWhere('is_up', false)
+                    ->orWhereHas('sslCertificate', function ($q) {
+                        $q->whereNotNull('expires_at')
+                            ->where('expires_at', '<=', now()->addDays(14));
+                    })
+                    ->orWhereDoesntHave('latestCompletedBackup')
+                    ->orWhereHas('latestCompletedBackup', function ($q) {
+                        $q->where('completed_at', '<=', now()->subDays(7));
+                    })
+                    ->orWhereNotNull('core_update_version');
+            })
+            ->orderByRaw('CASE WHEN is_up = false THEN 0 ELSE 1 END')
+            ->orderByRaw('COALESCE(health_score, 0) ASC')
+            ->limit($limit)
+            ->get();
     }
 
     public function getBackupStatus(): array
@@ -376,5 +379,4 @@ class DashboardService
             'sites_without_backup' => $sitesWithoutBackup,
         ];
     }
-
 }

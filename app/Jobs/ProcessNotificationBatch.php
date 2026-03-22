@@ -45,14 +45,14 @@ class ProcessNotificationBatch implements ShouldQueue
         // Group by channel_id + event
         $groups = [];
         foreach ($items as $item) {
-            $key = $item['channel_id'] . ':' . $item['event'];
+            $key = $item['channel_id'].':'.$item['event'];
             $groups[$key][] = $item;
         }
 
         foreach ($groups as $groupItems) {
             $first = $groupItems[0];
             $channel = NotificationChannel::find($first['channel_id']);
-            if (!$channel || !$channel->is_active) {
+            if (! $channel || ! $channel->is_active) {
                 continue;
             }
 
@@ -95,10 +95,10 @@ class ProcessNotificationBatch implements ShouldQueue
         $title = "{$count}x {$first['title']}";
         $sitesLabel = count($siteNames) <= 5
             ? implode(', ', $siteNames)
-            : implode(', ', array_slice($siteNames, 0, 5)) . ' +' . (count($siteNames) - 5) . ' more';
+            : implode(', ', array_slice($siteNames, 0, 5)).' +'.(count($siteNames) - 5).' more';
 
         $message = "{$count} occurrences in the last minute";
-        if (!empty($sitesLabel)) {
+        if (! empty($sitesLabel)) {
             $message .= "\nAffected sites: {$sitesLabel}";
         }
 
@@ -107,7 +107,7 @@ class ProcessNotificationBatch implements ShouldQueue
             ['title' => 'Count', 'value' => (string) $count],
         ];
 
-        if (!empty($siteNames)) {
+        if (! empty($siteNames)) {
             $fields[] = ['title' => 'Sites', 'value' => $sitesLabel];
         }
 

@@ -4,9 +4,9 @@ namespace App\Livewire\Sites;
 
 use App\Livewire\Forms\SiteWizardFormData;
 use App\Models\Client;
+use App\Models\MaintenancePlan;
 use App\Models\Site;
 use App\Models\SiteHealthState;
-use App\Models\MaintenancePlan;
 use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -18,6 +18,7 @@ class CreateSiteWizard extends Component
     public SiteWizardFormData $form;
 
     public ?string $connectivityStatus = null; // null, 'checking', 'ok', 'error'
+
     public ?string $connectivityMessage = null;
 
     // Step 2: Client
@@ -35,8 +36,7 @@ class CreateSiteWizard extends Component
     public function clients()
     {
         return Client::where('status', 'active')
-            ->when(!auth()->user()->isAdmin(), fn ($q) =>
-                $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
             )
             ->orderBy('name')
             ->get();

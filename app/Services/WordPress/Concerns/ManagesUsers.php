@@ -8,6 +8,7 @@ trait ManagesUsers
     {
         $response = $this->request('GET', '/users');
         $response->throw();
+
         return $response->json();
     }
 
@@ -15,6 +16,7 @@ trait ManagesUsers
     {
         $response = $this->request('POST', '/users/create', $data);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -24,6 +26,7 @@ trait ManagesUsers
             'wp_user_id' => $wpUserId,
         ]));
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -35,6 +38,7 @@ trait ManagesUsers
         }
         $response = $this->request('POST', '/users/delete', $data);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 }

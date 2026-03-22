@@ -14,12 +14,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
+class FetchSearchConsoleData implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 120;
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -33,7 +35,7 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'search-console-' . $this->site->id;
+        return 'search-console-'.$this->site->id;
     }
 
     public function handle(): void
@@ -41,14 +43,16 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Fetching Search Console data...');
 
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) {
+        if (! $connection || ! $connection->is_active) {
             JobTracker::complete($this->uniqueId(), 'Skipped: no active Search Console connection');
+
             return;
         }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) {
+        if (! $google || ! $google->is_active) {
             JobTracker::complete($this->uniqueId(), 'Skipped: no active Google connection');
+
             return;
         }
 
@@ -111,7 +115,7 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
     public function failed(?\Throwable $exception): void
     {
         CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Search Console fetch failed');
-        JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Fetch failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 
     private function getDateRange(): array
@@ -135,5 +139,4 @@ class FetchSearchConsoleData implements ShouldQueue, ShouldBeUnique
 
         return [$startDate, $endDate];
     }
-
 }

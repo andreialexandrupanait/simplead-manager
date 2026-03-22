@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class FaviconBackfillCommand extends Command
 {
     protected $signature = 'sites:backfill-favicons';
+
     protected $description = 'Dispatch favicon fetch jobs for sites missing favicons';
 
     public function handle(): void

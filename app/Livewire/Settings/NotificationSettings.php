@@ -13,13 +13,18 @@ class NotificationSettings extends Component
 {
     // Notification preferences
     public bool $notifyDown = true;
+
     public bool $notifyRecovery = true;
+
     public bool $notifySslExpiring = true;
+
     public bool $notifyDegraded = false;
 
     // Quiet hours
     public bool $quietHoursEnabled = false;
+
     public string $quietHoursStart = '22:00';
+
     public string $quietHoursEnd = '07:00';
 
     public function mount(SettingsService $settings): void
@@ -54,7 +59,7 @@ class NotificationSettings extends Component
     public function toggleChannel(int $id): void
     {
         $channel = NotificationChannel::findOrFail($id);
-        $channel->update(['is_active' => !$channel->is_active]);
+        $channel->update(['is_active' => ! $channel->is_active]);
     }
 
     public function testChannel(int $id): void

@@ -23,10 +23,13 @@ class SitePlugins extends Component
     private static ?bool $hasSiteUsersTable = null;
 
     public Site $site;
+
     public bool $embedded = false;
 
     public string $tab = 'plugins';
+
     public string $filter = 'all';
+
     public string $search = '';
 
     // Per-item update results
@@ -34,9 +37,13 @@ class SitePlugins extends Component
 
     // Delete confirmation state
     public ?int $confirmingDeleteId = null;
+
     public ?string $confirmingDeleteName = null;
+
     public ?int $confirmingDeleteThemeId = null;
+
     public ?string $confirmingDeleteThemeName = null;
+
     public array $confirmingDeleteThemeChildren = [];
 
     // Detail modal
@@ -45,8 +52,8 @@ class SitePlugins extends Component
     protected function jobTrackingKeys(): array
     {
         return [
-            'sync' => 'sync-wp-' . $this->site->id,
-            'backup' => 'backup-' . $this->site->id,
+            'sync' => 'sync-wp-'.$this->site->id,
+            'backup' => 'backup-'.$this->site->id,
         ];
     }
 
@@ -77,9 +84,9 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('slug', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('author', 'ilike', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('slug', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('author', 'ilike', '%'.$escaped.'%');
             });
         }
 
@@ -100,9 +107,9 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('slug', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('author', 'ilike', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('slug', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('author', 'ilike', '%'.$escaped.'%');
             });
         }
 
@@ -112,7 +119,7 @@ class SitePlugins extends Component
     #[Computed]
     public function users()
     {
-        if (!(static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
+        if (! (static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
             return collect();
         }
 
@@ -121,10 +128,10 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('username', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('display_name', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('email', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('role', 'ilike', '%' . $escaped . '%');
+                $q->where('username', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('display_name', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('email', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('role', 'ilike', '%'.$escaped.'%');
             });
         }
 
@@ -145,12 +152,12 @@ class SitePlugins extends Component
     public function pluginCounts()
     {
         $counts = $this->site->sitePlugins()
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
                 SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as inactive,
                 SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates
-            ")
+            ')
             ->first();
 
         return [
@@ -165,11 +172,11 @@ class SitePlugins extends Component
     public function themeCounts()
     {
         $counts = $this->site->siteThemes()
-            ->selectRaw("
+            ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
                 SUM(CASE WHEN has_update = true THEN 1 ELSE 0 END) as updates
-            ")
+            ')
             ->first();
 
         return [
@@ -182,7 +189,7 @@ class SitePlugins extends Component
     #[Computed]
     public function userCount()
     {
-        if (!(static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
+        if (! (static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
             return 0;
         }
 
@@ -201,8 +208,8 @@ class SitePlugins extends Component
         if ($this->search) {
             $escaped = $this->escapeLike($this->search);
             $query->where(function ($q) use ($escaped) {
-                $q->where('name', 'ilike', '%' . $escaped . '%')
-                  ->orWhere('slug', 'ilike', '%' . $escaped . '%');
+                $q->where('name', 'ilike', '%'.$escaped.'%')
+                    ->orWhere('slug', 'ilike', '%'.$escaped.'%');
             });
         }
 
@@ -230,13 +237,13 @@ class SitePlugins extends Component
     public function updatePlugin(int $pluginId): void
     {
         $result = $this->updateSinglePlugin($pluginId);
-        $this->updateResults['plugin_' . $pluginId] = $result;
+        $this->updateResults['plugin_'.$pluginId] = $result;
     }
 
     public function updateTheme(int $themeId): void
     {
         $result = $this->updateSingleTheme($themeId);
-        $this->updateResults['theme_' . $themeId] = $result;
+        $this->updateResults['theme_'.$themeId] = $result;
     }
 
     public function updateSinglePlugin(int $pluginId): array
@@ -254,6 +261,7 @@ class SitePlugins extends Component
         }
 
         unset($this->plugins, $this->pluginCounts);
+
         return $result;
     }
 
@@ -272,6 +280,7 @@ class SitePlugins extends Component
         }
 
         unset($this->themes, $this->themeCounts);
+
         return $result;
     }
 
@@ -299,14 +308,15 @@ class SitePlugins extends Component
             ]);
 
             $success = $updateResult['success'] ?? false;
-            if (!$success) {
+            if (! $success) {
                 $errorMsg = $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed');
-                $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: " . $errorMsg);
+                $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: ".$errorMsg);
             }
+
             return [
                 'success' => $success,
                 'message' => $success
-                    ? "Updated to v" . ($updateResult['to_version'] ?? $updateVersion)
+                    ? 'Updated to v'.($updateResult['to_version'] ?? $updateVersion)
                     : $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
                 'version' => $updateResult['to_version'] ?? $updateVersion,
             ];
@@ -318,10 +328,11 @@ class SitePlugins extends Component
                 'error' => $e->getMessage(),
             ]);
             $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: " . $cleanMsg);
+            $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: ".$cleanMsg);
+
             return [
                 'success' => false,
-                'message' => "Failed: " . $cleanMsg,
+                'message' => 'Failed: '.$cleanMsg,
                 'version' => null,
             ];
         }
@@ -353,7 +364,7 @@ class SitePlugins extends Component
             $api->activatePlugin($plugin->file);
             $plugin->update(['is_active' => true]);
             ActivityLogger::pluginActivated($this->site, $plugin->name);
-            $this->updateResults['plugin_' . $id] = [
+            $this->updateResults['plugin_'.$id] = [
                 'success' => true,
                 'message' => "{$plugin->name} activated.",
                 'version' => null,
@@ -366,12 +377,12 @@ class SitePlugins extends Component
                 'error' => $e->getMessage(),
             ]);
             $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_' . $id] = [
+            $this->updateResults['plugin_'.$id] = [
                 'success' => false,
-                'message' => "Activate failed: " . $cleanMsg,
+                'message' => 'Activate failed: '.$cleanMsg,
                 'version' => null,
             ];
-            $this->dispatch('notify', type: 'error', message: "Activate failed: " . $cleanMsg);
+            $this->dispatch('notify', type: 'error', message: 'Activate failed: '.$cleanMsg);
         }
 
         unset($this->plugins, $this->pluginCounts);
@@ -386,7 +397,7 @@ class SitePlugins extends Component
             $api->deactivatePlugin($plugin->file);
             $plugin->update(['is_active' => false]);
             ActivityLogger::pluginDeactivated($this->site, $plugin->name);
-            $this->updateResults['plugin_' . $id] = [
+            $this->updateResults['plugin_'.$id] = [
                 'success' => true,
                 'message' => "{$plugin->name} deactivated.",
                 'version' => null,
@@ -399,12 +410,12 @@ class SitePlugins extends Component
                 'error' => $e->getMessage(),
             ]);
             $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_' . $id] = [
+            $this->updateResults['plugin_'.$id] = [
                 'success' => false,
-                'message' => "Deactivate failed: " . $cleanMsg,
+                'message' => 'Deactivate failed: '.$cleanMsg,
                 'version' => null,
             ];
-            $this->dispatch('notify', type: 'error', message: "Deactivate failed: " . $cleanMsg);
+            $this->dispatch('notify', type: 'error', message: 'Deactivate failed: '.$cleanMsg);
         }
 
         unset($this->plugins, $this->pluginCounts);
@@ -420,7 +431,7 @@ class SitePlugins extends Component
 
     public function deletePlugin(): void
     {
-        if (!$this->confirmingDeleteId) {
+        if (! $this->confirmingDeleteId) {
             return;
         }
 
@@ -450,7 +461,7 @@ class SitePlugins extends Component
             $api = new WordPressApiService($this->site);
             $api->activateTheme($theme->slug);
             ActivityLogger::themeActivated($this->site, $theme->name);
-            $this->updateResults['theme_' . $id] = [
+            $this->updateResults['theme_'.$id] = [
                 'success' => true,
                 'message' => "{$theme->name} activated.",
                 'version' => null,
@@ -462,12 +473,12 @@ class SitePlugins extends Component
                 'error' => $e->getMessage(),
             ]);
             $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['theme_' . $id] = [
+            $this->updateResults['theme_'.$id] = [
                 'success' => false,
-                'message' => "Activate failed: " . $cleanMsg,
+                'message' => 'Activate failed: '.$cleanMsg,
                 'version' => null,
             ];
-            $this->dispatch('notify', type: 'error', message: "Activate failed: " . $cleanMsg);
+            $this->dispatch('notify', type: 'error', message: 'Activate failed: '.$cleanMsg);
         }
 
         unset($this->themes, $this->themeCounts);
@@ -501,7 +512,7 @@ class SitePlugins extends Component
             $this->dispatch('notify', type: 'success', message: "{$theme->name} deleted.");
         } catch (\Exception $e) {
             Log::error('deleteTheme failed', ['error' => $e->getMessage(), 'theme' => $theme->slug]);
-            $this->dispatch('notify', type: 'error', message: "Delete failed: " . $this->cleanErrorMessage($e->getMessage()));
+            $this->dispatch('notify', type: 'error', message: 'Delete failed: '.$this->cleanErrorMessage($e->getMessage()));
         }
 
         unset($this->themes, $this->themeCounts);
@@ -509,7 +520,7 @@ class SitePlugins extends Component
 
     public function deleteTheme(): void
     {
-        if (!$this->confirmingDeleteThemeId) {
+        if (! $this->confirmingDeleteThemeId) {
             return;
         }
 
@@ -544,6 +555,7 @@ class SitePlugins extends Component
             $plugin->delete();
             ActivityLogger::pluginDeleted($this->site, $plugin->name);
             unset($this->plugins, $this->pluginCounts);
+
             return ['success' => true, 'message' => "{$plugin->name} deleted.", 'name' => $plugin->name];
         } catch (\Exception $e) {
             Log::warning("Plugin delete failed: {$plugin->name} on site {$this->site->name}", [
@@ -551,9 +563,10 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $msg = "Delete failed: " . $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_' . $id] = ['success' => false, 'message' => $msg, 'version' => null];
+            $msg = 'Delete failed: '.$this->cleanErrorMessage($e->getMessage());
+            $this->updateResults['plugin_'.$id] = ['success' => false, 'message' => $msg, 'version' => null];
             unset($this->plugins, $this->pluginCounts);
+
             return ['success' => false, 'message' => $msg, 'name' => $plugin->name];
         }
     }
@@ -568,6 +581,7 @@ class SitePlugins extends Component
             $theme->delete();
             ActivityLogger::themeDeleted($this->site, $theme->name);
             unset($this->themes, $this->themeCounts);
+
             return ['success' => true, 'message' => "{$theme->name} deleted.", 'name' => $theme->name];
         } catch (\Exception $e) {
             Log::warning("Theme delete failed: {$theme->name} on site {$this->site->name}", [
@@ -575,9 +589,10 @@ class SitePlugins extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $msg = "Delete failed: " . $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['theme_' . $id] = ['success' => false, 'message' => $msg, 'version' => null];
+            $msg = 'Delete failed: '.$this->cleanErrorMessage($e->getMessage());
+            $this->updateResults['theme_'.$id] = ['success' => false, 'message' => $msg, 'version' => null];
             unset($this->themes, $this->themeCounts);
+
             return ['success' => false, 'message' => $msg, 'name' => $theme->name];
         }
     }
@@ -626,14 +641,14 @@ class SitePlugins extends Component
                     'has_update' => false,
                     'update_version' => null,
                 ]);
-                $this->updateResults['plugin_' . $plugin->id] = [
+                $this->updateResults['plugin_'.$plugin->id] = [
                     'success' => true,
                     'message' => "Updated to v{$plugin->update_version}",
                     'version' => $plugin->update_version,
                 ];
             } else {
                 $failed++;
-                $this->updateResults['plugin_' . $plugin->id] = [
+                $this->updateResults['plugin_'.$plugin->id] = [
                     'success' => false,
                     'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
                     'version' => null,
@@ -690,14 +705,14 @@ class SitePlugins extends Component
                     'has_update' => false,
                     'update_version' => null,
                 ]);
-                $this->updateResults['theme_' . $theme->id] = [
+                $this->updateResults['theme_'.$theme->id] = [
                     'success' => true,
                     'message' => "Updated to v{$theme->update_version}",
                     'version' => $theme->update_version,
                 ];
             } else {
                 $failed++;
-                $this->updateResults['theme_' . $theme->id] = [
+                $this->updateResults['theme_'.$theme->id] = [
                     'success' => false,
                     'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
                     'version' => null,
@@ -722,9 +737,10 @@ class SitePlugins extends Component
 
     public function syncNow(): void
     {
-        $rateLimitKey = "sync:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+        $rateLimitKey = "sync:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
             session()->flash('update-error', 'Too many sync requests. Please wait before trying again.');
+
             return;
         }
 
@@ -739,22 +755,24 @@ class SitePlugins extends Component
             $api = new WordPressApiService($this->site);
             $result = $api->getLoginUrl();
 
-            if (!empty($result['login_url'])) {
-                $this->js("window.open('" . addslashes($result['login_url']) . "', '_blank')");
+            if (! empty($result['login_url'])) {
+                $this->js("window.open('".addslashes($result['login_url'])."', '_blank')");
+
                 return;
             }
 
             session()->flash('update-error', 'Could not generate login URL. No URL returned.');
         } catch (\Exception $e) {
-            session()->flash('update-error', 'Could not generate login URL: ' . $e->getMessage());
+            session()->flash('update-error', 'Could not generate login URL: '.$e->getMessage());
         }
     }
 
     public function quickBackup(): void
     {
-        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('update-error', 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
@@ -813,9 +831,9 @@ class SitePlugins extends Component
             $item = $this->site->siteThemes()->findOrFail($id);
         }
 
-        $item->update(['auto_update' => !$item->auto_update]);
+        $item->update(['auto_update' => ! $item->auto_update]);
 
-        $this->dispatch('notify', type: 'success', message: ($item->auto_update ? 'Enabled' : 'Disabled') . " auto-updates for {$item->name}.");
+        $this->dispatch('notify', type: 'success', message: ($item->auto_update ? 'Enabled' : 'Disabled')." auto-updates for {$item->name}.");
         unset($this->plugins, $this->themes);
     }
 
@@ -860,10 +878,10 @@ class SitePlugins extends Component
     {
         $view = view('livewire.sites.detail.site-plugins');
 
-        if (!$this->embedded) {
+        if (! $this->embedded) {
             $view->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Plugins & Themes',
+                'title' => $this->site->name.' — Plugins & Themes',
             ]);
         }
 

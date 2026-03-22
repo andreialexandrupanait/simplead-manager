@@ -19,8 +19,9 @@ class AppBackupCommand extends Command
         $type = $this->option('type');
         $validTypes = ['full', 'database', 'config', 'storage'];
 
-        if (!in_array($type, $validTypes)) {
-            $this->error("Invalid backup type: {$type}. Valid types: " . implode(', ', $validTypes));
+        if (! in_array($type, $validTypes)) {
+            $this->error("Invalid backup type: {$type}. Valid types: ".implode(', ', $validTypes));
+
             return self::FAILURE;
         }
 
@@ -53,6 +54,7 @@ class AppBackupCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("Backup failed: {$e->getMessage()}");
+
             return self::FAILURE;
         }
     }

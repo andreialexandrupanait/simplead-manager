@@ -5,8 +5,6 @@ namespace App\Jobs;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
 use App\Models\Site;
-use App\Jobs\NotifyBudgetViolation;
-use App\Jobs\NotifyPerformanceDrop;
 use App\Services\ActivityLogger;
 use App\Services\PageSpeedService;
 use Illuminate\Bus\Queueable;
@@ -17,12 +15,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 
-class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
+class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
+
     public int $tries = 2;
+
     public array $backoff = [60, 180];
 
     public function __construct(
@@ -34,7 +34,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'perf-test-' . $this->monitor->id;
+        return 'perf-test-'.$this->monitor->id;
     }
 
     public function handle(PageSpeedService $pageSpeed): void
@@ -50,7 +50,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
         } else {
             $first = true;
             foreach ($pages as $page) {
-                if (!$first) {
+                if (! $first) {
                     sleep(2); // Rate-limit between API calls
                 }
                 $this->runTestForUrl($pageSpeed, $site, $page->url, $page->id, $devices);
@@ -120,7 +120,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
             ->latest('tested_at')
             ->first();
 
-        if (!$latestTest) {
+        if (! $latestTest) {
             return;
         }
 
@@ -152,7 +152,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
         $previousViolations = [];
 
         foreach ($budgets as $key => $budget) {
-            if (!isset($budgetMap[$key]) || $budget === null || $budget === '') {
+            if (! isset($budgetMap[$key]) || $budget === null || $budget === '') {
                 continue;
             }
 
@@ -192,7 +192,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
         // Only notify on newly exceeded budgets
         $newViolations = array_diff_key($violations, $previousViolations);
 
-        if (!empty($newViolations)) {
+        if (! empty($newViolations)) {
             NotifyBudgetViolation::dispatch($this->monitor, $newViolations, $latestTest);
         }
     }
@@ -201,18 +201,18 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
     {
         try {
             $dataUri = $test->screenshot_final;
-            if (!$dataUri || !str_contains($dataUri, 'base64,')) {
+            if (! $dataUri || ! str_contains($dataUri, 'base64,')) {
                 return;
             }
 
             $base64 = explode('base64,', $dataUri, 2)[1];
             $imageData = base64_decode($base64);
-            if (!$imageData) {
+            if (! $imageData) {
                 return;
             }
 
             $src = @imagecreatefromstring($imageData);
-            if (!$src) {
+            if (! $src) {
                 return;
             }
 
@@ -288,7 +288,7 @@ class RunPerformanceTest implements ShouldQueue, ShouldBeUnique
 
     private function checkAlerts(): void
     {
-        if (!$this->monitor->alert_on_score_drop) {
+        if (! $this->monitor->alert_on_score_drop) {
             return;
         }
 

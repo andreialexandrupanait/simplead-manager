@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Events\SiteRecovered;
 use App\Events\SiteWentDown;
 use App\Models\UptimeCheck;
-use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
@@ -17,12 +16,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 
-class CheckUptime implements ShouldQueue, ShouldBeUnique
+class CheckUptime implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -33,7 +34,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'check-uptime-' . $this->monitor->id;
+        return 'check-uptime-'.$this->monitor->id;
     }
 
     public function handle(): void
@@ -48,7 +49,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
         $this->updateUptimeStats();
 
-        if (!$result['is_up']) {
+        if (! $result['is_up']) {
             $this->handleFailure($result);
         } else {
             $this->handleRecovery();
@@ -72,7 +73,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        JobTracker::fail($this->uniqueId(), 'Uptime check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Uptime check failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 
     protected function performCheck(): array
@@ -101,7 +102,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
                 ]);
 
             // Follow redirects
-            if (!$this->monitor->follow_redirects) {
+            if (! $this->monitor->follow_redirects) {
                 $request = $request->withOptions(['allow_redirects' => false]);
             }
 
@@ -135,11 +136,11 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
             $result['is_up'] = in_array($response->status(), $acceptedCodes);
 
             // Cloudflare JS challenge returns 403 with cf-mitigated header — site is actually up
-            if (!$result['is_up'] && $response->status() === 403 && $response->header('cf-mitigated') === 'challenge') {
+            if (! $result['is_up'] && $response->status() === 403 && $response->header('cf-mitigated') === 'challenge') {
                 $result['is_up'] = true;
             }
 
-            if (!$result['is_up']) {
+            if (! $result['is_up']) {
                 $result['failure_reason'] = "HTTP {$response->status()}";
             }
 
@@ -154,7 +155,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
 
                 $result['keyword_found'] = $found;
 
-                if ($this->monitor->keyword_type === 'exists' && !$found) {
+                if ($this->monitor->keyword_type === 'exists' && ! $found) {
                     $result['is_up'] = false;
                     $result['failure_reason'] = 'Keyword not found';
                 } elseif ($this->monitor->keyword_type === 'not_exists' && $found) {
@@ -200,7 +201,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
                 $context
             );
 
-            if (!$client) {
+            if (! $client) {
                 return null;
             }
 
@@ -264,7 +265,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
         $monitor = $this->monitor;
 
         $now = now();
-        $stats = \Illuminate\Support\Facades\DB::selectOne("
+        $stats = \Illuminate\Support\Facades\DB::selectOne('
             SELECT
                 SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_24h,
                 SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_24h,
@@ -277,7 +278,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
                 AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response
             FROM uptime_checks
             WHERE monitor_id = ? AND checked_at >= ?
-        ", [
+        ', [
             $now->copy()->subHours(24),
             $now->copy()->subHours(24),
             $now->copy()->subDays(7),
@@ -308,7 +309,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
     {
         $incident = $this->monitor->ongoingIncident;
 
-        if (!$incident) {
+        if (! $incident) {
             $incident = $this->monitor->incidents()->create([
                 'status' => 'ongoing',
                 'cause' => $result['failure_reason'],
@@ -350,6 +351,7 @@ class CheckUptime implements ShouldQueue, ShouldBeUnique
     {
         // Remove file paths and sensitive info from error messages
         $message = preg_replace('/\/[^\s]+/', '[path]', $message);
+
         return \Illuminate\Support\Str::limit($message, 250);
     }
 }

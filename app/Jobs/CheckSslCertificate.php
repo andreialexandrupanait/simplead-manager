@@ -10,12 +10,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
+class CheckSslCertificate implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 60;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -24,7 +26,7 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'ssl-check-' . $this->certificate->id;
+        return 'ssl-check-'.$this->certificate->id;
     }
 
     public function handle(): void
@@ -121,7 +123,7 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
             $context
         );
 
-        if (!$stream) {
+        if (! $stream) {
             throw new \RuntimeException("SSL connection failed: {$errstr} (errno: {$errno})");
         }
 
@@ -129,15 +131,15 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
         $cert = $params['options']['ssl']['peer_certificate'] ?? null;
         $chain = $params['options']['ssl']['peer_certificate_chain'] ?? [];
 
-        if (!$cert) {
+        if (! $cert) {
             fclose($stream);
-            throw new \RuntimeException("No peer certificate received");
+            throw new \RuntimeException('No peer certificate received');
         }
 
         $certData = openssl_x509_parse($cert);
-        if (!$certData) {
+        if (! $certData) {
             fclose($stream);
-            throw new \RuntimeException("Failed to parse SSL certificate");
+            throw new \RuntimeException('Failed to parse SSL certificate');
         }
 
         // Extract issuer
@@ -146,7 +148,7 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
         // Extract SAN domains
         $sanDomains = [];
-        if (!empty($certData['extensions']['subjectAltName'])) {
+        if (! empty($certData['extensions']['subjectAltName'])) {
             $sans = explode(',', $certData['extensions']['subjectAltName']);
             foreach ($sans as $san) {
                 $san = trim($san);
@@ -201,11 +203,11 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
     protected function checkAlerts(string $status): void
     {
-        if (!$this->certificate->alerts_enabled) {
+        if (! $this->certificate->alerts_enabled) {
             return;
         }
 
-        if (!in_array($status, ['expired', 'expiring_soon', 'error'])) {
+        if (! in_array($status, ['expired', 'expiring_soon', 'error'])) {
             return;
         }
 
@@ -230,7 +232,7 @@ class CheckSslCertificate implements ShouldQueue, ShouldBeUnique
 
         $this->certificate->update([
             'status' => 'error',
-            'error_message' => 'Job failed: ' . ($exception ? get_class($exception) : 'Unknown error'),
+            'error_message' => 'Job failed: '.($exception ? get_class($exception) : 'Unknown error'),
             'last_checked_at' => now(),
             'next_check_at' => now()->addHours(1),
         ]);

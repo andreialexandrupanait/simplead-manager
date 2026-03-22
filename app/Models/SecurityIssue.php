@@ -55,7 +55,7 @@ class SecurityIssue extends Model
 
     public function scopeOrderBySeverity(Builder $query, string $direction = 'asc'): Builder
     {
-        return $query->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END " . ($direction === 'desc' ? 'DESC' : 'ASC'));
+        return $query->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END ".($direction === 'desc' ? 'DESC' : 'ASC'));
     }
 
     public function getSeverityColorAttribute(): string

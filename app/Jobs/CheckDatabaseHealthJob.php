@@ -13,12 +13,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class CheckDatabaseHealthJob implements ShouldQueue, ShouldBeUnique
+class CheckDatabaseHealthJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 120;
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -27,7 +29,7 @@ class CheckDatabaseHealthJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'db-health-' . $this->site->id;
+        return 'db-health-'.$this->site->id;
     }
 
     public function handle(): void
@@ -45,6 +47,6 @@ class CheckDatabaseHealthJob implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        JobTracker::fail($this->uniqueId(), 'Health check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Health check failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 }

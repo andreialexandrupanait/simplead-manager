@@ -13,14 +13,14 @@ class AuthenticateAgent
     {
         $siteToken = $request->route('site_token');
 
-        if (!$siteToken) {
+        if (! $siteToken) {
             return response()->json(['error' => 'Missing site token.'], 401);
         }
 
         // Find site by API key
         $site = Site::where('api_key', $siteToken)->first();
 
-        if (!$site) {
+        if (! $site) {
             return response()->json(['error' => 'Invalid site token.'], 401);
         }
 
@@ -28,7 +28,7 @@ class AuthenticateAgent
         $signature = $request->header('X-Signature');
         $timestamp = $request->header('X-Timestamp');
 
-        if (!$signature || !$timestamp) {
+        if (! $signature || ! $timestamp) {
             return response()->json(['error' => 'Missing signature or timestamp.'], 401);
         }
 
@@ -39,10 +39,10 @@ class AuthenticateAgent
         }
 
         // Compute expected signature
-        $payload = $timestamp . '.' . $request->getContent();
+        $payload = $timestamp.'.'.$request->getContent();
         $expectedSignature = hash_hmac('sha256', $payload, $site->api_secret);
 
-        if (!hash_equals($expectedSignature, $signature)) {
+        if (! hash_equals($expectedSignature, $signature)) {
             return response()->json(['error' => 'Invalid signature.'], 401);
         }
 

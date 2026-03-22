@@ -17,9 +17,13 @@ class StorageDestinationForm extends Component
 
     // Dropbox folder browser
     public bool $showFolderBrowser = false;
+
     public string $browserTarget = 'base_path';
+
     public string $browserCurrentPath = '';
+
     public array $browserFolders = [];
+
     public string $browserError = '';
 
     #[On('open-storage-form')]
@@ -104,10 +108,10 @@ class StorageDestinationForm extends Component
             'base_path' => $this->form->s3BasePath,
         ];
 
-        if (!empty($this->form->s3Key)) {
+        if (! empty($this->form->s3Key)) {
             $config['key'] = encrypt($this->form->s3Key);
         }
-        if (!empty($this->form->s3Secret)) {
+        if (! empty($this->form->s3Secret)) {
             $config['secret'] = encrypt($this->form->s3Secret);
         }
 
@@ -151,6 +155,7 @@ class StorageDestinationForm extends Component
         if (! $destination || $destination->type !== 'dropbox') {
             $this->browserError = 'No Dropbox connection found. Please connect Dropbox first.';
             $this->browserFolders = [];
+
             return;
         }
 
@@ -170,7 +175,7 @@ class StorageDestinationForm extends Component
             } elseif (str_contains($message, 'not_found')) {
                 $this->browserError = 'Folder not found.';
             } else {
-                $this->browserError = 'Could not load folders: ' . $message;
+                $this->browserError = 'Could not load folders: '.$message;
             }
             $this->browserFolders = [];
         }

@@ -38,12 +38,14 @@ class MigrateReportFiles extends Command
             if (! $site) {
                 $this->warn("  SKIP report #{$report->id} — site not found.");
                 $skipped++;
+
                 continue;
             }
 
             if (! $report->period_end) {
                 $this->warn("  SKIP report #{$report->id} — no period_end date.");
                 $skipped++;
+
                 continue;
             }
 
@@ -54,9 +56,9 @@ class MigrateReportFiles extends Command
             $year = $periodEnd->format('Y');
             $date = $periodEnd->format('d.m.Y');
 
-            $newDirectory = 'reports/' . $safeName . '/' . $year;
-            $newFileName = $month . '. Maintenance Report | ' . $clientName . ' - ' . $date . '.pdf';
-            $newPath = $newDirectory . '/' . $newFileName;
+            $newDirectory = 'reports/'.$safeName.'/'.$year;
+            $newFileName = $month.'. Maintenance Report | '.$clientName.' - '.$date.'.pdf';
+            $newPath = $newDirectory.'/'.$newFileName;
 
             $oldPath = $report->file_path;
 
@@ -64,6 +66,7 @@ class MigrateReportFiles extends Command
             if ($oldPath === $newPath) {
                 $this->line("  OK report #{$report->id} — already at correct path.");
                 $skipped++;
+
                 continue;
             }
 
@@ -71,6 +74,7 @@ class MigrateReportFiles extends Command
             if (! Storage::disk('local')->exists($oldPath)) {
                 $this->warn("  MISSING report #{$report->id} — file not found: {$oldPath}");
                 $missing++;
+
                 continue;
             }
 
@@ -79,6 +83,7 @@ class MigrateReportFiles extends Command
                 $this->line("    FROM: {$oldPath}");
                 $this->line("    TO:   {$newPath}");
                 $moved++;
+
                 continue;
             }
 

@@ -33,7 +33,7 @@ class SitePolicy
 
     public function delete(User $user, Site $site): bool
     {
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return false;
         }
 

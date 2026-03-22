@@ -118,7 +118,7 @@ class RetentionPolicyService
     public function getDays(string $category): int
     {
         $config = self::CATEGORIES[$category] ?? null;
-        if (!$config) {
+        if (! $config) {
             return 90;
         }
 
@@ -130,7 +130,7 @@ class RetentionPolicyService
     public function getDaysFresh(string $category): int
     {
         $config = self::CATEGORIES[$category] ?? null;
-        if (!$config) {
+        if (! $config) {
             return 90;
         }
 
@@ -143,7 +143,7 @@ class RetentionPolicyService
     public function setDays(string $category, int $days): void
     {
         $config = self::CATEGORIES[$category] ?? null;
-        if (!$config) {
+        if (! $config) {
             return;
         }
 
@@ -183,7 +183,7 @@ class RetentionPolicyService
     public function getCategoryStats(string $category): array
     {
         $config = self::CATEGORIES[$category] ?? null;
-        if (!$config) {
+        if (! $config) {
             return [];
         }
 
@@ -191,7 +191,7 @@ class RetentionPolicyService
 
         foreach ($config['tables'] as $tableConfig) {
             $table = $tableConfig['table'];
-            if ($tableConfig['hasTable'] && !Schema::hasTable($table)) {
+            if ($tableConfig['hasTable'] && ! Schema::hasTable($table)) {
                 continue;
             }
 

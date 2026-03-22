@@ -14,12 +14,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
+class PushSiteTweaksSettings implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [10, 30, 60];
+
     public int $timeout = 60;
 
     public function __construct(
@@ -54,7 +56,7 @@ class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
                     'body' => $response->body(),
                 ]);
 
-                $this->markAllFailed('Plugin returned HTTP ' . $response->status());
+                $this->markAllFailed('Plugin returned HTTP '.$response->status());
             }
         } catch (\Exception $e) {
             Log::error('PushSiteTweaksSettings exception', [
@@ -92,7 +94,7 @@ class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
         $reported = [];
 
         foreach (SiteTweaksSettingsService::TWEAK_CATEGORIES as $category) {
-            if (!isset($results[$category])) {
+            if (! isset($results[$category])) {
                 continue;
             }
 
@@ -102,7 +104,7 @@ class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
                 // Mark all enabled settings in this category as applied
                 $appliedKeys = $categoryResult['applied'] ?? [];
 
-                if (!empty($appliedKeys)) {
+                if (! empty($appliedKeys)) {
                     foreach ($appliedKeys as $key) {
                         $reported[] = ['category' => $category, 'key' => $key, 'applied' => true];
                     }
@@ -134,7 +136,7 @@ class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        if (!empty($reported)) {
+        if (! empty($reported)) {
             app(SiteTweaksSettingsService::class)->syncSettingsFromPlugin($this->site, $reported);
         }
     }
@@ -153,6 +155,6 @@ class PushSiteTweaksSettings implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'push-tweaks-' . $this->site->id;
+        return 'push-tweaks-'.$this->site->id;
     }
 }

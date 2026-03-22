@@ -109,7 +109,7 @@ class UptimeMonitor extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('next_check_at')
-              ->orWhere('next_check_at', '<=', now());
+                ->orWhere('next_check_at', '<=', now());
         });
     }
 }

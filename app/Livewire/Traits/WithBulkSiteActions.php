@@ -13,7 +13,7 @@ trait WithBulkSiteActions
     protected function scopedSiteQuery(array $siteIds): \Illuminate\Database\Eloquent\Builder
     {
         return Site::whereIn('id', $siteIds)
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
     }
 
     public function bulkMoveToClient(int $clientId): void
@@ -23,7 +23,7 @@ trait WithBulkSiteActions
         $count = count($this->selectedSites);
         $this->selectedSites = [];
         unset($this->sites, $this->clients);
-        $this->dispatch('notify', type: 'success', message: "{$count} " . Str::plural('site', $count) . " moved to client.");
+        $this->dispatch('notify', type: 'success', message: "{$count} ".Str::plural('site', $count).' moved to client.');
     }
 
     public function bulkSetStatus(int $statusId): void
@@ -48,7 +48,7 @@ trait WithBulkSiteActions
     {
         abort_unless(auth()->user()->canManageSites(), 403);
 
-        if (!$this->rateLimit('bulk-sync', 'all')) {
+        if (! $this->rateLimit('bulk-sync', 'all')) {
             return;
         }
 
@@ -65,7 +65,7 @@ trait WithBulkSiteActions
     {
         abort_unless(auth()->user()->canManageSites(), 403);
 
-        if (!$this->rateLimit('bulk-backup', 'all')) {
+        if (! $this->rateLimit('bulk-backup', 'all')) {
             return;
         }
 
@@ -82,7 +82,7 @@ trait WithBulkSiteActions
     {
         abort_unless(auth()->user()->canManageSites(), 403);
 
-        if (!$this->rateLimit('bulk-uptime', 'all')) {
+        if (! $this->rateLimit('bulk-uptime', 'all')) {
             return;
         }
 

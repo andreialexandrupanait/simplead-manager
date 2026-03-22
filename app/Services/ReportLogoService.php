@@ -18,7 +18,7 @@ class ReportLogoService
             return null;
         }
 
-        $fullPath = storage_path('app/' . $path);
+        $fullPath = storage_path('app/'.$path);
         if (file_exists($fullPath)) {
             return $fullPath;
         }
@@ -51,7 +51,7 @@ class ReportLogoService
             return null;
         }
 
-        $fullPath = storage_path('app/public/' . $logoPath);
+        $fullPath = storage_path('app/public/'.$logoPath);
 
         return file_exists($fullPath) ? $fullPath : null;
     }
@@ -66,12 +66,12 @@ class ReportLogoService
         $contents = file_get_contents($fullPath);
 
         if (str_ends_with(strtolower($fullPath), '.svg')) {
-            return 'data:image/svg+xml;base64,' . base64_encode($contents);
+            return 'data:image/svg+xml;base64,'.base64_encode($contents);
         }
 
         $mime = mime_content_type($fullPath) ?: 'image/png';
 
-        return 'data:' . $mime . ';base64,' . base64_encode($contents);
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 
     public function getLogoAsBase64(): ?string
@@ -88,12 +88,12 @@ class ReportLogoService
             $contents = preg_replace('/fill:\s*url\([^)]+\)/', 'fill: #ffffff', $contents);
             $contents = preg_replace('/fill="#[0-9a-fA-F]{3,6}"/', 'fill="#ffffff"', $contents);
 
-            return 'data:image/svg+xml;base64,' . base64_encode($contents);
+            return 'data:image/svg+xml;base64,'.base64_encode($contents);
         }
 
         $mime = mime_content_type($fullPath) ?: 'image/png';
 
-        return 'data:' . $mime . ';base64,' . base64_encode($contents);
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 
     public function resolveClientLogo(): ?string
@@ -116,7 +116,7 @@ class ReportLogoService
             return null;
         }
 
-        $fullPath = storage_path('app/public/' . $client->logo_path);
+        $fullPath = storage_path('app/public/'.$client->logo_path);
         if (! file_exists($fullPath)) {
             $fullPath = $this->resolveLogoPath($client->logo_path);
         }
@@ -127,10 +127,11 @@ class ReportLogoService
 
         $contents = file_get_contents($fullPath);
         if (str_ends_with(strtolower($fullPath), '.svg')) {
-            return 'data:image/svg+xml;base64,' . base64_encode($contents);
+            return 'data:image/svg+xml;base64,'.base64_encode($contents);
         }
 
         $mime = mime_content_type($fullPath) ?: 'image/png';
-        return 'data:' . $mime . ';base64,' . base64_encode($contents);
+
+        return 'data:'.$mime.';base64,'.base64_encode($contents);
     }
 }

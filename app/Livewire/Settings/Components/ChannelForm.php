@@ -54,7 +54,7 @@ class ChannelForm extends Component
             'type' => $this->form->type,
             'config' => $config,
             'is_default' => $this->form->is_default,
-            'event_subscriptions' => !empty($this->form->eventSubscriptions) ? $this->form->eventSubscriptions : null,
+            'event_subscriptions' => ! empty($this->form->eventSubscriptions) ? $this->form->eventSubscriptions : null,
         ];
 
         if ($this->channelId) {

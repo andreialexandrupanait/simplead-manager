@@ -17,7 +17,9 @@ class NotifyBudgetViolation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -38,7 +40,7 @@ class NotifyBudgetViolation implements ShouldQueue
         }
 
         $title = "BUDGET EXCEEDED: {$site->name}";
-        $message = count($this->violations) . " performance budget(s) exceeded:\n" . implode("\n", $violationLines);
+        $message = count($this->violations)." performance budget(s) exceeded:\n".implode("\n", $violationLines);
 
         $fields = [
             ['title' => 'Site', 'value' => $site->name, 'short' => true],

@@ -83,7 +83,7 @@ class SecuritySettingsService
 
     public function applySetting(Site $site, string $category, string $key, mixed $value, bool $enabled): SecuritySetting
     {
-        if (!$this->isValidSetting($category, $key)) {
+        if (! $this->isValidSetting($category, $key)) {
             throw new \InvalidArgumentException("Invalid security setting: {$category}/{$key}");
         }
 
@@ -133,7 +133,7 @@ class SecuritySettingsService
     public function syncSettingsFromAgent(Site $site, array $reportedSettings): void
     {
         foreach ($reportedSettings as $item) {
-            if (!$this->isValidSetting($item['category'], $item['key'])) {
+            if (! $this->isValidSetting($item['category'], $item['key'])) {
                 continue;
             }
 
@@ -142,7 +142,7 @@ class SecuritySettingsService
                 ->where('setting_key', $item['key'])
                 ->first();
 
-            if (!$setting) {
+            if (! $setting) {
                 continue;
             }
 
@@ -219,7 +219,7 @@ class SecuritySettingsService
 
         // Remove entries no longer present on WordPress side
         SecurityBannedIp::where('site_id', $site->id)
-            ->when(!empty($seenIps), fn ($q) => $q->whereNotIn('ip_address', $seenIps))
+            ->when(! empty($seenIps), fn ($q) => $q->whereNotIn('ip_address', $seenIps))
             ->delete();
     }
 

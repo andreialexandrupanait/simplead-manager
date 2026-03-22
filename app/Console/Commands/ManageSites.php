@@ -27,6 +27,7 @@ class ManageSites extends Command
 
         if ($sites->isEmpty()) {
             $this->info('No sites found.');
+
             return self::SUCCESS;
         }
 
@@ -55,16 +56,18 @@ class ManageSites extends Command
     {
         $site = Site::withTrashed()->find($id);
 
-        if (!$site) {
+        if (! $site) {
             $this->error("Site #{$id} not found.");
+
             return self::FAILURE;
         }
 
         $this->warn("About to permanently delete: {$site->name} ({$site->url})");
-        $this->warn("This will remove ALL related data (monitors, settings, backups, etc.).");
+        $this->warn('This will remove ALL related data (monitors, settings, backups, etc.).');
 
-        if (!$this->confirm('Are you sure?')) {
+        if (! $this->confirm('Are you sure?')) {
             $this->info('Cancelled.');
+
             return self::SUCCESS;
         }
 

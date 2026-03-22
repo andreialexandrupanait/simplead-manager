@@ -27,7 +27,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        if (!Schema::hasColumn('performance_tests', 'seo_score')) {
+        if (! Schema::hasColumn('performance_tests', 'seo_score')) {
             Schema::table('performance_tests', function (Blueprint $table) {
                 $table->integer('seo_score')->nullable()->after('best_practices_score');
             });

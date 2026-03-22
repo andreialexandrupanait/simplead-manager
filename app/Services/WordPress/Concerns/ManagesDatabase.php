@@ -8,6 +8,7 @@ trait ManagesDatabase
     {
         $response = $this->request('GET', '/db-cleanup-stats');
         $response->throw();
+
         return $response->json();
     }
 
@@ -15,6 +16,7 @@ trait ManagesDatabase
     {
         $response = $this->request('POST', '/db-cleanup-run', $options);
         $response->throw();
+
         return $response->json();
     }
 
@@ -22,6 +24,7 @@ trait ManagesDatabase
     {
         $response = $this->request('GET', '/database-health');
         $response->throw();
+
         return $response->json();
     }
 }

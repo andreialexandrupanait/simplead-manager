@@ -23,7 +23,7 @@ class NotifyUpcomingReport implements ShouldQueue
     public function handle(): void
     {
         $site = $this->schedule->site;
-        if (!$site) {
+        if (! $site) {
             return;
         }
 
@@ -33,7 +33,7 @@ class NotifyUpcomingReport implements ShouldQueue
         NotificationService::notifySiteEvent(
             site: $site,
             event: 'report_reminder',
-            title: 'Upcoming Report: ' . $site->name,
+            title: 'Upcoming Report: '.$site->name,
             message: "Report for {$site->name} is scheduled for {$scheduledDate}. Review recommendations before generation.",
             fields: [
                 'Site' => $site->name,

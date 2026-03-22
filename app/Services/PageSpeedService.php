@@ -29,9 +29,9 @@ class PageSpeedService
 
         $response = Http::timeout(120)->get(self::API_URL, $params);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException(
-                'PageSpeed API error: ' . ($response->json('error.message') ?? $response->body())
+                'PageSpeed API error: '.($response->json('error.message') ?? $response->body())
             );
         }
 
@@ -65,12 +65,14 @@ class PageSpeedService
     private function extractScore(array $categories, string $key): ?int
     {
         $score = $categories[$key]['score'] ?? null;
+
         return $score !== null ? (int) round($score * 100) : null;
     }
 
     private function extractMetricSeconds(array $audits, string $key): ?float
     {
         $ms = $audits[$key]['numericValue'] ?? null;
+
         return $ms !== null ? round($ms / 1000, 2) : null;
     }
 
@@ -108,6 +110,7 @@ class PageSpeedService
         if ($value === null) {
             return null;
         }
+
         return round($value / $divisor, $divisor > 1 ? 2 : 4);
     }
 
@@ -146,5 +149,4 @@ class PageSpeedService
             ...$sizes,
         ];
     }
-
 }

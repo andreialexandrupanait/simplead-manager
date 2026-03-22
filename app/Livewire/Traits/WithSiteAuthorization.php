@@ -11,7 +11,7 @@ trait WithSiteAuthorization
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             throw new AuthorizationException('Unauthenticated.');
         }
 
@@ -28,7 +28,7 @@ trait WithSiteAuthorization
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             throw new AuthorizationException('Unauthenticated.');
         }
 

@@ -13,7 +13,7 @@ class BackupDownloadController extends Controller
     public function __invoke(Request $request, Backup $backup)
     {
         // Verify the backup belongs to a valid site and user has access
-        if (!$backup->site || !$backup->site->exists) {
+        if (! $backup->site || ! $backup->site->exists) {
             abort(403, 'Unauthorized.');
         }
 
@@ -21,19 +21,19 @@ class BackupDownloadController extends Controller
 
         $destination = $backup->storageDestination;
 
-        if (!$destination || $destination->type !== 'local') {
+        if (! $destination || $destination->type !== 'local') {
             abort(404, 'Backup not available for local download.');
         }
 
         $config = $destination->config ?? [];
         $basePath = rtrim($config['path'] ?? storage_path('backups'), '/');
-        $filePath = $basePath . '/' . ltrim($backup->file_path, '/');
+        $filePath = $basePath.'/'.ltrim($backup->file_path, '/');
 
         // Canonicalize and validate path stays within base directory
         $realBase = realpath($basePath);
         $realFile = realpath($filePath);
 
-        if ($realBase === false || $realFile === false || !str_starts_with($realFile, $realBase)) {
+        if ($realBase === false || $realFile === false || ! str_starts_with($realFile, $realBase)) {
             abort(404, 'Backup file not found.');
         }
 

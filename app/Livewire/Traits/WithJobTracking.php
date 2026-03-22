@@ -7,6 +7,7 @@ use App\Services\JobTracker;
 trait WithJobTracking
 {
     public array $trackedJobs = [];
+
     public bool $hasRunningJobs = false;
 
     /**
@@ -29,7 +30,9 @@ trait WithJobTracking
     {
         $keys = $this->jobTrackingKeys();
         $cacheKey = $keys[$name] ?? null;
-        if (!$cacheKey) return;
+        if (! $cacheKey) {
+            return;
+        }
 
         JobTracker::start($cacheKey, $message);
         dispatch($job);
@@ -49,10 +52,11 @@ trait WithJobTracking
         foreach ($keys as $name => $cacheKey) {
             $data = JobTracker::get($cacheKey);
 
-            if (!$data) {
+            if (! $data) {
                 if (isset($this->trackedJobs[$name])) {
                     unset($this->trackedJobs[$name]);
                 }
+
                 continue;
             }
 

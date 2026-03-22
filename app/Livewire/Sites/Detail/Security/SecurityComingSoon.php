@@ -23,7 +23,7 @@ class SecurityComingSoon extends Component
         return view('livewire.sites.detail.security.security-coming-soon')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Coming Soon',
+                'title' => $this->site->name.' — Coming Soon',
             ]);
     }
 }

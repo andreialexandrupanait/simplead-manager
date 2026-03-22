@@ -63,7 +63,7 @@ class SecurityCommandService
         } else {
             $command->markFailed($result);
 
-            if (!$command->shouldRetry()) {
+            if (! $command->shouldRetry()) {
                 SecuritySetting::where('site_id', $command->site_id)
                     ->where('category', $command->category)
                     ->where('setting_key', $command->action)

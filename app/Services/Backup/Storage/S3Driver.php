@@ -5,12 +5,13 @@ namespace App\Services\Backup\Storage;
 use Aws\S3\MultipartUploader;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 class S3Driver implements StorageDriver
 {
     protected S3Client $client;
+
     protected string $bucket;
+
     protected string $basePath;
 
     public function __construct(array $config)
@@ -28,7 +29,7 @@ class S3Driver implements StorageDriver
         ];
 
         // Support custom endpoints (DigitalOcean Spaces, Backblaze B2, etc.)
-        if (!empty($config['endpoint'])) {
+        if (! empty($config['endpoint'])) {
             $clientConfig['endpoint'] = $config['endpoint'];
             $clientConfig['use_path_style_endpoint'] = $config['use_path_style'] ?? true;
         }
@@ -43,6 +44,7 @@ class S3Driver implements StorageDriver
 
         if ($fileSize > $threshold) {
             $this->multipartUpload($localPath, $remotePath);
+
             return;
         }
 
@@ -76,7 +78,7 @@ class S3Driver implements StorageDriver
     public function download(string $remotePath, string $localPath): void
     {
         $dir = dirname($localPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -114,7 +116,7 @@ class S3Driver implements StorageDriver
     {
         $prefix = $this->fullPath($directory);
         if ($prefix) {
-            $prefix = rtrim($prefix, '/') . '/';
+            $prefix = rtrim($prefix, '/').'/';
         }
 
         $result = $this->client->listObjectsV2([
@@ -222,7 +224,7 @@ class S3Driver implements StorageDriver
     /**
      * Complete a multipart upload with the ETags from each part.
      *
-     * @param array $parts Array of ['PartNumber' => int, 'ETag' => string]
+     * @param  array  $parts  Array of ['PartNumber' => int, 'ETag' => string]
      */
     public function completeMultipartUpload(string $remotePath, string $uploadId, array $parts): void
     {
@@ -251,6 +253,7 @@ class S3Driver implements StorageDriver
     protected function fullPath(string $relativePath): string
     {
         $path = ltrim($relativePath, '/');
-        return $this->basePath ? $this->basePath . '/' . $path : $path;
+
+        return $this->basePath ? $this->basePath.'/'.$path : $path;
     }
 }

@@ -29,8 +29,11 @@ class TweaksPerformance extends Component
 
     // Heartbeat config
     public string $heartbeatFrontend = 'disable';
+
     public string $heartbeatDashboard = 'default';
+
     public string $heartbeatEditor = 'default';
+
     public int $heartbeatInterval = 60;
 
     // Revisions config
@@ -38,10 +41,13 @@ class TweaksPerformance extends Component
 
     // Image config
     public int $imageMaxWidth = 2560;
+
     public int $imageMaxHeight = 2560;
+
     public int $jpegQuality = 82;
 
     public array $settingStatuses = [];
+
     public bool $isDirty = false;
 
     protected array $simpleToggleKeys = [
@@ -136,7 +142,7 @@ class TweaksPerformance extends Component
     public function toggleSetting(string $key): void
     {
         if (array_key_exists($key, $this->toggles)) {
-            $this->toggles[$key] = !$this->toggles[$key];
+            $this->toggles[$key] = ! $this->toggles[$key];
             $this->isDirty = true;
         }
     }
@@ -153,8 +159,9 @@ class TweaksPerformance extends Component
             $response = $api->request('GET', '/site-tweaks-state');
 
             if (! $response->successful()) {
-                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
                 $this->redirect(route('sites.security.performance', $this->site), navigate: false);
+
                 return;
             }
 
@@ -193,7 +200,7 @@ class TweaksPerformance extends Component
             }
         } catch (\Exception $e) {
             \Log::error('Verify tweaks settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
         }
 
         $this->loadCurrentState();
@@ -252,7 +259,7 @@ class TweaksPerformance extends Component
         return view('livewire.sites.detail.tweaks.tweaks-performance')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Performance Tweaks',
+                'title' => $this->site->name.' — Performance Tweaks',
             ]);
     }
 }

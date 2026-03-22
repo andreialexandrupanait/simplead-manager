@@ -21,7 +21,7 @@ class GoogleAnalyticsService extends GoogleApiService
             $response = $this->api()->get('https://analyticsadmin.googleapis.com/v1beta/accountSummaries', $params);
 
             if ($response->failed()) {
-                throw new \Exception('Failed to list Analytics properties: ' . $response->body());
+                throw new \Exception('Failed to list Analytics properties: '.$response->body());
             }
 
             foreach ($response->json('accountSummaries', []) as $account) {
@@ -35,7 +35,7 @@ class GoogleAnalyticsService extends GoogleApiService
             }
 
             $pageToken = $response->json('nextPageToken');
-            if (!$pageToken) {
+            if (! $pageToken) {
                 break;
             }
         }
@@ -62,7 +62,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $row = $response->json('rows.0.metricValues', []);
@@ -99,14 +99,14 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
         foreach ($response->json('rows', []) as $row) {
             $date = $row['dimensionValues'][0]['value'] ?? '';
             $data[] = [
-                'date' => substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2),
+                'date' => substr($date, 0, 4).'-'.substr($date, 4, 2).'-'.substr($date, 6, 2),
                 'users' => (int) ($row['metricValues'][0]['value'] ?? 0),
                 'new_users' => (int) ($row['metricValues'][1]['value'] ?? 0),
                 'sessions' => (int) ($row['metricValues'][2]['value'] ?? 0),
@@ -136,7 +136,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -180,7 +180,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -216,7 +216,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -258,7 +258,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -295,7 +295,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -341,7 +341,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];
@@ -480,7 +480,7 @@ class GoogleAnalyticsService extends GoogleApiService
         ]);
 
         if ($response->failed()) {
-            throw new \Exception('Analytics API error: ' . $response->body());
+            throw new \Exception('Analytics API error: '.$response->body());
         }
 
         $data = [];

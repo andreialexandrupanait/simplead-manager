@@ -39,6 +39,7 @@ class ClientForm extends Component
             $client = Client::create($validated);
             session()->flash('success', 'Client created successfully.');
             $this->redirect(route('clients.show', $client), navigate: true);
+
             return;
         }
 

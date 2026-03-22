@@ -17,7 +17,9 @@ class AggregateMonthlySnapshots implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600;
+
     public int $tries = 3;
+
     public array $backoff = [300, 900];
 
     public function __construct(
@@ -25,7 +27,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
         public ?int $month = null,
     ) {
         // Default to previous month
-        if (!$this->year || !$this->month) {
+        if (! $this->year || ! $this->month) {
             $lastMonth = now()->subMonth();
             $this->year = $lastMonth->year;
             $this->month = $lastMonth->month;
@@ -53,7 +55,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
     private function aggregateUptime(Carbon $start, Carbon $end): void
     {
-        $rows = DB::select("
+        $rows = DB::select('
             SELECT
                 um.site_id,
                 AVG(uc.response_time) as avg_response_ms,
@@ -66,7 +68,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
             JOIN uptime_monitors um ON um.id = uc.monitor_id
             WHERE uc.checked_at BETWEEN ? AND ?
             GROUP BY um.site_id
-        ", [$start, $end]);
+        ', [$start, $end]);
 
         foreach ($rows as $row) {
             $this->upsert($row->site_id, [
@@ -101,12 +103,12 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
     private function aggregateUpdates(Carbon $start, Carbon $end): void
     {
-        $rows = DB::select("
+        $rows = DB::select('
             SELECT site_id, COUNT(*) as applied
             FROM update_logs
             WHERE created_at BETWEEN ? AND ?
             GROUP BY site_id
-        ", [$start, $end]);
+        ', [$start, $end]);
 
         foreach ($rows as $row) {
             $this->upsert($row->site_id, [
@@ -117,12 +119,12 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
     private function aggregateSecurity(Carbon $start, Carbon $end): void
     {
-        $rows = DB::select("
+        $rows = DB::select('
             SELECT site_id, AVG(score) as avg_score
             FROM security_scans
             WHERE scanned_at BETWEEN ? AND ?
             GROUP BY site_id
-        ", [$start, $end]);
+        ', [$start, $end]);
 
         foreach ($rows as $row) {
             $this->upsert($row->site_id, [
@@ -168,7 +170,9 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
         foreach ($rows as $row) {
             $data = json_decode($row->data, true);
-            if (!$data) continue;
+            if (! $data) {
+                continue;
+            }
 
             $this->upsert($row->site_id, [
                 'analytics_users' => $data['users'] ?? null,
@@ -193,7 +197,9 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
         foreach ($rows as $row) {
             $data = json_decode($row->data, true);
-            if (!$data) continue;
+            if (! $data) {
+                continue;
+            }
 
             $this->upsert($row->site_id, [
                 'search_console_clicks' => $data['clicks'] ?? null,
@@ -205,13 +211,13 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
     private function aggregateIncidents(Carbon $start, Carbon $end): void
     {
-        $rows = DB::select("
+        $rows = DB::select('
             SELECT um.site_id, COUNT(*) as incident_count
             FROM uptime_incidents ui
             JOIN uptime_monitors um ON um.id = ui.monitor_id
             WHERE ui.started_at BETWEEN ? AND ?
             GROUP BY um.site_id
-        ", [$start, $end]);
+        ', [$start, $end]);
 
         foreach ($rows as $row) {
             $this->upsert($row->site_id, [

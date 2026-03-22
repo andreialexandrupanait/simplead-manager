@@ -17,13 +17,18 @@ class ChannelFormData extends Form
 
     // Type-specific fields
     public string $emailAddress = '';
+
     public string $webhookUrl = '';
+
     public string $webhookMethod = 'POST';
+
     public string $webhookHeaders = '';
+
     public string $webhookSigningSecret = '';
 
     // Telegram fields
     public string $telegramBotToken = '';
+
     public string $telegramChatId = '';
 
     // Event subscriptions

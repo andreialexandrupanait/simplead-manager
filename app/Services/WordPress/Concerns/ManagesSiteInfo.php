@@ -8,6 +8,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('GET', '/info');
         $response->throw();
+
         return $response->json();
     }
 
@@ -20,6 +21,7 @@ trait ManagesSiteInfo
 
         $response = $this->request('POST', '/login-url', $data);
         $response->throw();
+
         return $response->json();
     }
 
@@ -27,6 +29,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('GET', '/core-integrity-check');
         $response->throw();
+
         return $response->json();
     }
 
@@ -34,6 +37,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('POST', '/core/update');
         $response->throw();
+
         return $response->json();
     }
 
@@ -44,6 +48,7 @@ trait ManagesSiteInfo
             'version' => $version,
         ]);
         $response->throw();
+
         return $response->json();
     }
 
@@ -51,6 +56,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('GET', '/health');
         $response->throw();
+
         return $response->json();
     }
 
@@ -58,6 +64,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('GET', '/diagnostic');
         $response->throw();
+
         return $response->json();
     }
 
@@ -65,6 +72,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('POST', '/diagnostic/fix-elementor');
         $response->throw();
+
         return $response->json();
     }
 
@@ -72,6 +80,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('POST', '/cache-clear');
         $response->throw();
+
         return $response->json();
     }
 
@@ -79,6 +88,7 @@ trait ManagesSiteInfo
     {
         $response = $this->request('GET', '/server-resources');
         $response->throw();
+
         return $response->json();
     }
 }

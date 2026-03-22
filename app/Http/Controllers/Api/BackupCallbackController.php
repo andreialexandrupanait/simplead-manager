@@ -14,17 +14,17 @@ class BackupCallbackController extends Controller
         $token = $request->header('X-Backup-Token');
         $backupId = $request->input('backup_id');
 
-        if (!$token || !$backupId) {
+        if (! $token || ! $backupId) {
             return response()->json(['error' => 'Missing token or backup_id'], 400);
         }
 
         $backup = Backup::find($backupId);
-        if (!$backup) {
+        if (! $backup) {
             return response()->json(['error' => 'Backup not found'], 404);
         }
 
         $expectedToken = self::generateToken($backup);
-        if (!hash_equals($expectedToken, $token)) {
+        if (! hash_equals($expectedToken, $token)) {
             return response()->json(['error' => 'Invalid token'], 403);
         }
 
@@ -51,6 +51,6 @@ class BackupCallbackController extends Controller
 
     public static function generateToken(Backup $backup): string
     {
-        return hash_hmac('sha256', $backup->id . '|' . $backup->created_at, config('app.key'));
+        return hash_hmac('sha256', $backup->id.'|'.$backup->created_at, config('app.key'));
     }
 }

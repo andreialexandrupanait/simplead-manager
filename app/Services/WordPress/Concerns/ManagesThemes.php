@@ -8,6 +8,7 @@ trait ManagesThemes
     {
         $response = $this->request('GET', '/themes');
         $response->throw();
+
         return $response->json();
     }
 
@@ -17,6 +18,7 @@ trait ManagesThemes
             'themes' => $themeSlugs,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -26,6 +28,7 @@ trait ManagesThemes
             'theme' => $themeSlug,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -35,6 +38,7 @@ trait ManagesThemes
             'theme' => $themeSlug,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 }

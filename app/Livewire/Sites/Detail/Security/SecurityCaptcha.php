@@ -16,15 +16,21 @@ class SecurityCaptcha extends Component
     public Site $site;
 
     public string $provider = 'none';
+
     public string $siteKey = '';
+
     public string $secretKey = '';
 
     public bool $enableLogin = true;
+
     public bool $enableRegister = true;
+
     public bool $enableComments = false;
+
     public bool $enableResetPassword = true;
 
     public bool $hasExistingKeys = false;
+
     public bool $isDirty = false;
 
     public function mount(Site $site): void
@@ -49,7 +55,7 @@ class SecurityCaptcha extends Component
             $this->enableComments = $val['forms']['comments'] ?? false;
             $this->enableResetPassword = $val['forms']['reset_password'] ?? true;
 
-            if (!empty($val['site_key'])) {
+            if (! empty($val['site_key'])) {
                 $this->hasExistingKeys = true;
             }
         }
@@ -78,7 +84,7 @@ class SecurityCaptcha extends Component
         $rules = ['provider' => 'required|in:none,recaptcha_v2,recaptcha_v3,hcaptcha,turnstile'];
 
         if ($this->provider !== 'none') {
-            if (!$this->hasExistingKeys) {
+            if (! $this->hasExistingKeys) {
                 $rules['siteKey'] = 'required|string|max:255';
                 $rules['secretKey'] = 'required|string|max:255';
             } else {
@@ -101,7 +107,7 @@ class SecurityCaptcha extends Component
             ],
         ];
 
-        if (!empty($this->siteKey) && !empty($this->secretKey)) {
+        if (! empty($this->siteKey) && ! empty($this->secretKey)) {
             $value['site_key'] = $this->siteKey;
             $value['secret_key'] = encrypt($this->secretKey);
         } elseif ($this->hasExistingKeys) {
@@ -137,8 +143,9 @@ class SecurityCaptcha extends Component
             $response = $api->request('GET', '/security-state');
 
             if (! $response->successful()) {
-                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
                 $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
+
                 return;
             }
 
@@ -154,6 +161,7 @@ class SecurityCaptcha extends Component
             if (! $setting) {
                 session()->flash('captcha-saved', 'No enabled CAPTCHA settings to verify.');
                 $this->redirect(route('sites.security.captcha', $this->site), navigate: false);
+
                 return;
             }
 
@@ -173,7 +181,7 @@ class SecurityCaptcha extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify captcha settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
         }
 
         $this->loadCurrentSettings();
@@ -185,7 +193,7 @@ class SecurityCaptcha extends Component
         return view('livewire.sites.detail.security.security-captcha')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Captcha',
+                'title' => $this->site->name.' — Captcha',
             ]);
     }
 }

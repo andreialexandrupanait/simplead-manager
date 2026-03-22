@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SecurityMonitor extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'site_id',
         'is_active',

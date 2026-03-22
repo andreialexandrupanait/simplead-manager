@@ -13,7 +13,7 @@ class SetCurrentSite
         if ($request->route('site')) {
             $site = $request->route('site');
 
-            if (!$site instanceof Site) {
+            if (! $site instanceof Site) {
                 $site = Site::findOrFail($site);
             }
 

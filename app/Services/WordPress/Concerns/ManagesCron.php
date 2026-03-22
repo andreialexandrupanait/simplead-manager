@@ -8,6 +8,7 @@ trait ManagesCron
     {
         $response = $this->request('GET', '/cron-list');
         $response->throw();
+
         return $response->json();
     }
 
@@ -19,6 +20,7 @@ trait ManagesCron
         }
         $response = $this->request('POST', '/cron-run', $data);
         $response->throw();
+
         return $response->json();
     }
 
@@ -30,6 +32,7 @@ trait ManagesCron
         }
         $response = $this->request('POST', '/cron-disable', $data);
         $response->throw();
+
         return $response->json();
     }
 
@@ -41,6 +44,7 @@ trait ManagesCron
         }
         $response = $this->request('POST', '/cron-enable', $data);
         $response->throw();
+
         return $response->json();
     }
 }

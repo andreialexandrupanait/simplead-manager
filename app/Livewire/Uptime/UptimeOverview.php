@@ -11,6 +11,7 @@ use Livewire\Component;
 class UptimeOverview extends Component
 {
     public string $search = '';
+
     public string $filter = 'all';
 
     public function updatedSearch(): void
@@ -97,7 +98,7 @@ class UptimeOverview extends Component
             ->with('site')
             ->when($this->search, function ($q) {
                 $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%"))
-                  ->orWhere('url', 'ilike', "%{$this->search}%");
+                    ->orWhere('url', 'ilike', "%{$this->search}%");
             })
             ->when($this->filter !== 'all', fn ($q) => match ($this->filter) {
                 'up' => $q->where('current_state', 'up'),

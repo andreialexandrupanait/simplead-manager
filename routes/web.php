@@ -2,23 +2,23 @@
 
 use App\Http\Controllers\AppBackupDownloadController;
 use App\Http\Controllers\BackupDownloadController;
+use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ConnectorPluginDownloadController;
 use App\Http\Controllers\DropboxAuthController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
-use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ReportDownloadController;
 use App\Livewire\Backups;
-use App\Livewire\Dashboard;
-use App\Livewire\Performance;
-use App\Livewire\Security;
-use App\Livewire\Sites;
-use App\Livewire\Uptime;
 use App\Livewire\Clients;
-use App\Livewire\Reports;
-use App\Livewire\Settings;
+use App\Livewire\Dashboard;
 use App\Livewire\MaintenancePlans;
+use App\Livewire\Performance;
+use App\Livewire\Reports;
+use App\Livewire\Security;
+use App\Livewire\Settings;
+use App\Livewire\Sites;
 use App\Livewire\StatusPages;
+use App\Livewire\Uptime;
 use App\Models\Site;
 
 // Health check (no auth)
@@ -27,13 +27,14 @@ Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1')
 // Temporary restore file download (token-protected, no auth)
 Route::get('/restore-download/{token}', function (string $token) {
     // Only allow hex tokens (64 chars)
-    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+    if (! preg_match('/^[a-f0-9]{64}$/', $token)) {
         abort(404);
     }
     $path = storage_path("app/temp/restore-{$token}");
-    if (!file_exists($path)) {
+    if (! file_exists($path)) {
         abort(404);
     }
+
     return response()->file($path);
 })->middleware('throttle:10,1');
 
@@ -119,7 +120,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
 
-
     // Clients
     Route::prefix('clients')->group(function () {
         Route::get('/', Clients\ClientsList::class)->name('clients.index');
@@ -130,7 +130,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Reports
     Route::get('/reports', Reports\ReportsOverview::class)->name('reports.index');
-
 
     // Plugin download (generated on-the-fly from source)
     Route::get('/download/connector-plugin', ConnectorPluginDownloadController::class)

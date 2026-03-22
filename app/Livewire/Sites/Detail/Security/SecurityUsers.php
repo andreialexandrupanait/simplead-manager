@@ -14,28 +14,39 @@ use Livewire\WithPagination;
 
 class SecurityUsers extends Component
 {
-    use WithPagination, WithSorting, WithSiteAuthorization;
+    use WithPagination, WithSiteAuthorization, WithSorting;
 
     public Site $site;
+
     public string $roleFilter = '';
 
     // Create modal
     public string $newUsername = '';
+
     public string $newEmail = '';
+
     public string $newPassword = '';
+
     public string $newRole = 'subscriber';
+
     public string $newDisplayName = '';
 
     // Edit modal
     public ?int $editingUserId = null;
+
     public string $editUsername = '';
+
     public string $editEmail = '';
+
     public string $editRole = '';
+
     public string $editDisplayName = '';
 
     // Delete modal
     public ?int $deletingUserId = null;
+
     public string $deletingUsername = '';
+
     public ?int $reassignTo = null;
 
     public function mount(Site $site): void
@@ -79,6 +90,7 @@ class SecurityUsers extends Component
 
         // Always include standard WP roles
         $standard = ['administrator', 'editor', 'author', 'contributor', 'subscriber'];
+
         return array_values(array_unique(array_merge($standard, $roles)));
     }
 
@@ -242,7 +254,7 @@ class SecurityUsers extends Component
             'users' => $query->paginate(50),
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,
-            'title' => $this->site->name . ' — Users',
+            'title' => $this->site->name.' — Users',
         ]);
     }
 }

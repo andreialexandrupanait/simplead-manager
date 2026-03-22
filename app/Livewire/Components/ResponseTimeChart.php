@@ -8,6 +8,7 @@ use Livewire\Component;
 class ResponseTimeChart extends Component
 {
     public UptimeMonitor $monitor;
+
     public string $range = '24h';
 
     public function setRange(string $range): void

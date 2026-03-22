@@ -21,6 +21,7 @@ class SiteWizardFormData extends Form
 
     // Inline client creation
     public string $newClientName = '';
+
     public string $newClientEmail = '';
 
     /**

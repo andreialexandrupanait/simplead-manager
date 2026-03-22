@@ -84,7 +84,7 @@ class BackupDispatcher
     public function determineBackupType(BackupConfig $config): string
     {
         // No incremental enabled — backwards compatible
-        if (!$config->incremental_frequency) {
+        if (! $config->incremental_frequency) {
             return $config->type;
         }
 
@@ -101,7 +101,7 @@ class BackupDispatcher
         }
 
         // Never had a full backup → must do full first
-        if (!$config->last_full_backup_at) {
+        if (! $config->last_full_backup_at) {
             return 'full';
         }
 

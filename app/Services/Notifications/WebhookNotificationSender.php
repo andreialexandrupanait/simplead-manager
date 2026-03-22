@@ -16,7 +16,7 @@ class WebhookNotificationSender
     ): array {
         $config = $channel->getDecryptedConfig();
         $url = $config['url'] ?? null;
-        if (!$url) {
+        if (! $url) {
             return ['success' => false, 'response_code' => null, 'error' => 'No webhook URL configured'];
         }
 

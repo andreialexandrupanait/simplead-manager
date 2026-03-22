@@ -16,11 +16,11 @@ return new class extends Migration
                 SELECT id, datetime('now'), datetime('now') FROM sites WHERE deleted_at IS NULL
             ");
         } else {
-            DB::statement("
+            DB::statement('
                 INSERT INTO site_health_state (site_id, created_at, updated_at)
                 SELECT id, NOW(), NOW() FROM sites WHERE deleted_at IS NULL
                 ON CONFLICT (site_id) DO NOTHING
-            ");
+            ');
         }
 
         if ($isSqlite) {

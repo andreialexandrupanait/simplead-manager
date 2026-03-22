@@ -132,7 +132,7 @@ class BulkSettingsCopyService
         foreach ($targets as $target) {
             foreach ($sourceConfig as $moduleKey => $config) {
                 // Skip connection-required modules that aren't connected on source
-                if ($config['requires_connection'] && !$config['is_connected']) {
+                if ($config['requires_connection'] && ! $config['is_connected']) {
                     continue;
                 }
 

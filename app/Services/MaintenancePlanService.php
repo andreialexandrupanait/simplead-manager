@@ -64,12 +64,12 @@ class MaintenancePlanService
                 $this->applyBackupConfigFromPlan($plan, $site);
             }
 
-            if (in_array('security', $sections) && $plan->include_security && !empty($plan->security_settings)) {
+            if (in_array('security', $sections) && $plan->include_security && ! empty($plan->security_settings)) {
                 $this->applySecuritySettings($plan->security_settings, $site);
                 $needsSecurityPush = true;
             }
 
-            if (in_array('tweaks', $sections) && $plan->include_tweaks && !empty($plan->tweak_settings)) {
+            if (in_array('tweaks', $sections) && $plan->include_tweaks && ! empty($plan->tweak_settings)) {
                 $this->applyTweakSettings($plan->tweak_settings, $site);
                 $needsTweaksPush = true;
             }
@@ -156,7 +156,7 @@ class MaintenancePlanService
     private function snapshotBackupConfig(Site $site): ?array
     {
         $backupConfig = $site->backupConfig;
-        if (!$backupConfig) {
+        if (! $backupConfig) {
             return null;
         }
 
@@ -214,7 +214,7 @@ class MaintenancePlanService
     private function applyBackupConfigFromPlan(MaintenancePlan $plan, Site $site): void
     {
         $backupModule = $plan->planModules->firstWhere('module_key', 'backup');
-        if (!$backupModule || !$backupModule->is_enabled || empty($backupModule->config)) {
+        if (! $backupModule || ! $backupModule->is_enabled || empty($backupModule->config)) {
             return;
         }
 

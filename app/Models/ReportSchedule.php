@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ReportSchedule extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'site_id',
         'report_template_id',

@@ -196,10 +196,10 @@ class SAM_Security_Login {
      */
     public function filter_login_redirect(string $location, int $status): string {
         if (strpos($location, 'wp-login.php') !== false) {
-            if (!is_user_logged_in()) {
+            $custom_slug = $this->settings['custom_login_url']['slug'];
+            if (!is_user_logged_in() && !isset($_COOKIE['sam_login_access'])) {
                 return home_url('/');
             }
-            $custom_slug = $this->settings['custom_login_url']['slug'];
             $location = str_replace('wp-login.php', $custom_slug, $location);
         }
         return $location;

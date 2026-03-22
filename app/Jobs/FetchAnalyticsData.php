@@ -14,12 +14,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
+class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 120;
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -33,7 +35,7 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'analytics-' . $this->site->id;
+        return 'analytics-'.$this->site->id;
     }
 
     public function handle(): void
@@ -41,14 +43,16 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
         JobTracker::start($this->uniqueId(), 'Fetching Analytics data...');
 
         $connection = $this->site->analyticsConnection;
-        if (!$connection || !$connection->is_active) {
+        if (! $connection || ! $connection->is_active) {
             JobTracker::complete($this->uniqueId(), 'Skipped — no active connection');
+
             return;
         }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) {
+        if (! $google || ! $google->is_active) {
             JobTracker::complete($this->uniqueId(), 'Skipped — no active Google connection');
+
             return;
         }
 
@@ -109,7 +113,7 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
     public function failed(?\Throwable $exception): void
     {
         CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Analytics fetch failed');
-        JobTracker::fail($this->uniqueId(), 'Fetch failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Fetch failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 
     private function getDateRange(): array
@@ -133,5 +137,4 @@ class FetchAnalyticsData implements ShouldQueue, ShouldBeUnique
 
         return [$startDate, $endDate];
     }
-
 }

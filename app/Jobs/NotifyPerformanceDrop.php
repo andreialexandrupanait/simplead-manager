@@ -16,7 +16,9 @@ class NotifyPerformanceDrop implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 30;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -34,7 +36,7 @@ class NotifyPerformanceDrop implements ShouldQueue
         $drop = $this->previousScore - $this->currentScore;
 
         $title = "PERFORMANCE DROP: {$site->name} ({$this->device})";
-        $message = ucfirst($this->device) . " performance score dropped by {$drop} points (from {$this->previousScore} to {$this->currentScore}).";
+        $message = ucfirst($this->device)." performance score dropped by {$drop} points (from {$this->previousScore} to {$this->currentScore}).";
 
         $fields = [
             ['title' => 'Site', 'value' => $site->name, 'short' => true],

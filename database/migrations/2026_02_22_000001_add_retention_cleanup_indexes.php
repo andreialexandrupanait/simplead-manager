@@ -20,7 +20,7 @@ return new class extends Migration
         ];
 
         foreach ($indexes as [$table, $indexName, $column]) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 continue;
             }
 
@@ -49,11 +49,11 @@ return new class extends Migration
         ];
 
         foreach ($indexes as [$table, $indexName]) {
-            if (!Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 continue;
             }
 
-            if (!$this->indexExists($table, $indexName)) {
+            if (! $this->indexExists($table, $indexName)) {
                 continue;
             }
 
@@ -66,7 +66,7 @@ return new class extends Migration
     private function indexExists(string $table, string $indexName): bool
     {
         return (bool) \Illuminate\Support\Facades\DB::selectOne(
-            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
+            'SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?',
             [$table, $indexName]
         );
     }

@@ -100,7 +100,7 @@ class SiteTweaksSettingsService
 
     public function applySetting(Site $site, string $category, string $key, mixed $value, bool $enabled): SecuritySetting
     {
-        if (!$this->isValidSetting($category, $key)) {
+        if (! $this->isValidSetting($category, $key)) {
             throw new \InvalidArgumentException("Invalid tweak setting: {$category}/{$key}");
         }
 
@@ -125,7 +125,7 @@ class SiteTweaksSettingsService
     public function syncSettingsFromPlugin(Site $site, array $reportedSettings): void
     {
         foreach ($reportedSettings as $item) {
-            if (!$this->isValidSetting($item['category'], $item['key'])) {
+            if (! $this->isValidSetting($item['category'], $item['key'])) {
                 continue;
             }
 
@@ -134,7 +134,7 @@ class SiteTweaksSettingsService
                 ->where('setting_key', $item['key'])
                 ->first();
 
-            if (!$setting) {
+            if (! $setting) {
                 continue;
             }
 

@@ -3,6 +3,8 @@
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\SyncWordPressSite;
+use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\AnalyticsCache;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
@@ -10,14 +12,13 @@ use App\Services\WordPressApiService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
-use App\Livewire\Traits\WithJobTracking;
-use App\Livewire\Traits\WithSiteAuthorization;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SiteOverview extends Component
 {
     use WithJobTracking, WithSiteAuthorization;
+
     public Site $site;
 
     // Period selectors for cards
@@ -25,7 +26,9 @@ class SiteOverview extends Component
 
     // Connect plugin modal
     public string $apiKey = '';
+
     public string $apiSecret = '';
+
     public string $apiEndpoint = '';
 
     public function mount(Site $site): void
@@ -60,7 +63,7 @@ class SiteOverview extends Component
     protected function jobTrackingKeys(): array
     {
         return [
-            'sync' => 'sync-wp-' . $this->site->id,
+            'sync' => 'sync-wp-'.$this->site->id,
         ];
     }
 
@@ -123,12 +126,16 @@ class SiteOverview extends Component
     public function performanceData(): ?array
     {
         $monitor = $this->site->performanceMonitor;
-        if (!$monitor) return null;
+        if (! $monitor) {
+            return null;
+        }
 
         $metricKeys = ['fcp', 'si', 'lcp', 'tti', 'tbt', 'cls'];
 
         $buildMetrics = function ($test) use ($metricKeys) {
-            if (!$test) return null;
+            if (! $test) {
+                return null;
+            }
             $metrics = [];
             foreach ($metricKeys as $key) {
                 $metrics[$key] = [
@@ -136,6 +143,7 @@ class SiteOverview extends Component
                     'color' => $test->metricColor($key),
                 ];
             }
+
             return $metrics;
         };
 
@@ -198,9 +206,10 @@ class SiteOverview extends Component
 
     public function runBackup(): void
     {
-        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
@@ -210,9 +219,10 @@ class SiteOverview extends Component
 
     public function syncNow(): void
     {
-        $rateLimitKey = "sync:{$this->site->id}:" . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+        $rateLimitKey = "sync:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many sync requests. Please wait before trying again.');
+
             return;
         }
 
@@ -220,14 +230,16 @@ class SiteOverview extends Component
     }
 
     public ?array $serverResources = null;
+
     public ?string $serverResourcesLoadedAt = null;
 
     #[Computed]
     public function serverResourcesIsStale(): bool
     {
-        if (!$this->serverResourcesLoadedAt) {
+        if (! $this->serverResourcesLoadedAt) {
             return true;
         }
+
         return \Carbon\Carbon::parse($this->serverResourcesLoadedAt)->diffInMinutes(now()) >= 5;
     }
 
@@ -243,7 +255,7 @@ class SiteOverview extends Component
                 'loaded_at' => $this->serverResourcesLoadedAt,
             ], 600); // 10 minutes
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Failed to load server resources: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to load server resources: '.$e->getMessage());
         }
     }
 
@@ -253,9 +265,9 @@ class SiteOverview extends Component
             $api = new WordPressApiService($this->site);
             $result = $api->clearCache();
             $cleared = $result['cleared'] ?? [];
-            $this->dispatch('notify', type: 'success', message: 'Cache cleared (' . count($cleared) . ' layer' . (count($cleared) !== 1 ? 's' : '') . ')');
+            $this->dispatch('notify', type: 'success', message: 'Cache cleared ('.count($cleared).' layer'.(count($cleared) !== 1 ? 's' : '').')');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Failed to clear cache: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to clear cache: '.$e->getMessage());
         }
     }
 
@@ -265,14 +277,15 @@ class SiteOverview extends Component
             $api = new WordPressApiService($this->site);
             $result = $api->getLoginUrl();
 
-            if (!empty($result['login_url'])) {
-                $this->js("window.open('" . addslashes($result['login_url']) . "', '_blank')");
+            if (! empty($result['login_url'])) {
+                $this->js("window.open('".addslashes($result['login_url'])."', '_blank')");
+
                 return;
             }
 
             session()->flash('wp-admin-error', 'Could not generate login URL. No URL returned.');
         } catch (\Exception $e) {
-            session()->flash('wp-admin-error', 'Could not generate login URL: ' . $e->getMessage());
+            session()->flash('wp-admin-error', 'Could not generate login URL: '.$e->getMessage());
         }
     }
 
@@ -284,7 +297,7 @@ class SiteOverview extends Component
 
         // Auto-fill endpoint from site URL if empty
         if (empty($this->apiEndpoint) && $this->site->url) {
-            $this->apiEndpoint = rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+            $this->apiEndpoint = rtrim($this->site->url, '/').'/wp-json/simplead/v1';
         }
 
         $this->dispatch('open-modal-connect-plugin');
@@ -364,7 +377,7 @@ class SiteOverview extends Component
     {
         return view('livewire.sites.detail.site-overview')->layout('components.layouts.app', [
             'siteContext' => $this->site,
-            'title' => $this->site->name . ' — Overview',
+            'title' => $this->site->name.' — Overview',
             'maxWidth' => '',
         ]);
     }

@@ -190,7 +190,7 @@ class SecurityScanService
             if ($site->is_connected) {
                 $api = new WordPressApiService($site);
                 $siteInfo = $api->getInfo();
-                if (!empty($siteInfo['debug_mode'])) {
+                if (! empty($siteInfo['debug_mode'])) {
                     return [[
                         'category' => 'config',
                         'type' => 'debug_mode_enabled',

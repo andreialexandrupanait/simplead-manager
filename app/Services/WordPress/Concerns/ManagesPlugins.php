@@ -8,6 +8,7 @@ trait ManagesPlugins
     {
         $response = $this->request('GET', '/plugins');
         $response->throw();
+
         return $response->json();
     }
 
@@ -17,6 +18,7 @@ trait ManagesPlugins
             'plugins' => $pluginFiles,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -26,6 +28,7 @@ trait ManagesPlugins
             'plugin' => $pluginFile,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -35,6 +38,7 @@ trait ManagesPlugins
             'plugin' => $pluginFile,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -44,6 +48,7 @@ trait ManagesPlugins
             'plugin' => $pluginFile,
         ]);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 }

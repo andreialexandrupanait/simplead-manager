@@ -61,7 +61,9 @@ class ClientsList extends Component
 
     public function changeStatus(int $id, string $status): void
     {
-        if (!in_array($status, ['active', 'inactive', 'archived'])) return;
+        if (! in_array($status, ['active', 'inactive', 'archived'])) {
+            return;
+        }
 
         $client = Client::findOrFail($id);
         $this->authorize('update', $client);
@@ -72,8 +74,7 @@ class ClientsList extends Component
     private function scopedQuery()
     {
         return Client::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) =>
-                $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->whereHas('sites', fn ($sq) => $sq->where('user_id', auth()->id()))
             );
     }
 
@@ -81,7 +82,7 @@ class ClientsList extends Component
     public function statusCounts(): array
     {
         $counts = $this->scopedQuery()
-            ->selectRaw("count(*) as total")
+            ->selectRaw('count(*) as total')
             ->selectRaw("count(*) filter (where status = 'active') as active")
             ->selectRaw("count(*) filter (where status = 'inactive') as inactive")
             ->selectRaw("count(*) filter (where status = 'archived') as archived")

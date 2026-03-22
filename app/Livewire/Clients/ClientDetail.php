@@ -11,6 +11,7 @@ class ClientDetail extends Component
     use AuthorizesRequests;
 
     public Client $client;
+
     public function mount(Client $client): void
     {
         $this->authorize('view', $client);

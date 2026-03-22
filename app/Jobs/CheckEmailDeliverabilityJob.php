@@ -12,12 +12,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class CheckEmailDeliverabilityJob implements ShouldQueue, ShouldBeUnique
+class CheckEmailDeliverabilityJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 120;
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -26,7 +28,7 @@ class CheckEmailDeliverabilityJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'email-check-' . $this->site->id;
+        return 'email-check-'.$this->site->id;
     }
 
     public function handle(): void

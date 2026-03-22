@@ -13,16 +13,18 @@ use Livewire\Component;
 class SecurityDashboard extends Component
 {
     public string $scoreFilter = '';
+
     public string $search = '';
 
     // Bulk actions
     public array $selectedSites = [];
+
     public ?int $bulkPresetId = null;
 
     private function scopedSiteQuery(): Builder
     {
         return Site::query()
-            ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
     }
 
     #[Computed]
@@ -117,12 +119,12 @@ class SecurityDashboard extends Component
 
     public function bulkApplyPreset(): void
     {
-        if (empty($this->selectedSites) || !$this->bulkPresetId) {
+        if (empty($this->selectedSites) || ! $this->bulkPresetId) {
             return;
         }
 
         $preset = SecurityPreset::find($this->bulkPresetId);
-        if (!$preset) {
+        if (! $preset) {
             return;
         }
 

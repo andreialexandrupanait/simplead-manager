@@ -13,9 +13,10 @@ class SettingsService
     {
         $cached = Cache::remember("settings.{$key}", self::CACHE_TTL, function () use ($key) {
             $setting = AppSetting::where('key', $key)->first();
-            if (!$setting) {
+            if (! $setting) {
                 return ['_null' => true];
             }
+
             return ['value' => $setting->value, 'type' => $setting->type];
         });
 

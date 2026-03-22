@@ -27,7 +27,7 @@ class UptimeBar extends Component
             // If segment already has data, it's "up" only if all checks in that segment are up
             if ($segments[$index] === null) {
                 $segments[$index] = $check->is_up;
-            } elseif (!$check->is_up) {
+            } elseif (! $check->is_up) {
                 $segments[$index] = false;
             }
         }

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 class GoogleApiService
 {
     protected GoogleConnection $connection;
+
     protected string $accessToken;
 
     public function __construct(GoogleConnection $connection)
@@ -21,6 +22,7 @@ class GoogleApiService
         try {
             if ($this->connection->token_expires_at->isFuture()) {
                 $this->accessToken = decrypt($this->connection->access_token);
+
                 return;
             }
 

@@ -8,36 +8,43 @@ use App\Jobs\GenerateReport;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithBulkSiteActions;
 use App\Livewire\Traits\WithRateLimiting;
+use App\Models\Client;
 use App\Models\ReportTemplate;
 use App\Models\Site;
-use App\Models\Client;
 use App\Models\SiteStatus;
 use App\Services\DashboardService;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class GlobalDashboard extends Component
 {
-    use WithPagination, WithRateLimiting, WithBulkSiteActions;
+    use WithBulkSiteActions, WithPagination, WithRateLimiting;
 
     public string $search = '';
+
     public string $filter = 'all';
+
     public ?int $statusFilter = null;
+
     public ?int $clientFilter = null;
+
     public string $sort = 'manual';
+
     public bool $reordering = false;
+
     // Selection
     public array $selectedSites = [];
 
     // Rename modal
     public ?int $renamingSiteId = null;
+
     public string $renamingSiteName = '';
 
     // Delete modal
     public ?int $deletingSiteId = null;
+
     public ?string $deletingSiteName = null;
 
     #[Computed]
@@ -61,7 +68,7 @@ class GlobalDashboard extends Component
     #[Computed]
     public function siteStatuses()
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (! Schema::hasTable('site_statuses')) {
             return collect();
         }
 
@@ -149,7 +156,7 @@ class GlobalDashboard extends Component
 
     public function setSiteStatus(int $siteId, ?int $statusId): void
     {
-        if (!Schema::hasTable('site_statuses')) {
+        if (! Schema::hasTable('site_statuses')) {
             return;
         }
 
@@ -161,7 +168,7 @@ class GlobalDashboard extends Component
 
     public function runBackup(int $siteId): void
     {
-        if (!$this->rateLimit('backup', $siteId)) {
+        if (! $this->rateLimit('backup', $siteId)) {
             return;
         }
 
@@ -173,7 +180,7 @@ class GlobalDashboard extends Component
 
     public function checkNow(int $siteId): void
     {
-        if (!$this->rateLimit('uptime-check', $siteId, 10)) {
+        if (! $this->rateLimit('uptime-check', $siteId, 10)) {
             return;
         }
 
@@ -187,7 +194,7 @@ class GlobalDashboard extends Component
 
     public function syncSite(int $siteId): void
     {
-        if (!$this->rateLimit('sync', $siteId, 10)) {
+        if (! $this->rateLimit('sync', $siteId, 10)) {
             return;
         }
 
@@ -199,15 +206,16 @@ class GlobalDashboard extends Component
 
     public function generateQuickReport(int $siteId): void
     {
-        if (!$this->rateLimit('report', $siteId, 10)) {
+        if (! $this->rateLimit('report', $siteId, 10)) {
             return;
         }
 
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         $template = ReportTemplate::where('is_default', true)->first() ?? ReportTemplate::first();
-        if (!$template) {
+        if (! $template) {
             $this->dispatch('notify', type: 'error', message: 'No report template configured.');
+
             return;
         }
         GenerateReport::dispatch($site, $template, now()->subDays(30)->startOfDay(), now()->endOfDay(), 'manual');
@@ -286,7 +294,7 @@ class GlobalDashboard extends Component
     {
         abort_unless(auth()->user()->canManageSites(), 403);
 
-        if (!$this->reordering || !Schema::hasColumn('sites', 'sort_order')) {
+        if (! $this->reordering || ! Schema::hasColumn('sites', 'sort_order')) {
             return;
         }
 

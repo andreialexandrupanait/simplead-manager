@@ -8,7 +8,9 @@ use Livewire\Component;
 class UptimeStatsCard extends Component
 {
     public string $label;
+
     public UptimeMonitor $monitor;
+
     public string $period = '24h';
 
     public function getStatsProperty(): array
@@ -31,12 +33,13 @@ class UptimeStatsCard extends Component
 
         $totalDowntimeMinutes = $incidents->sum(function ($incident) {
             $end = $incident->resolved_at ?? now();
+
             return $incident->started_at->diffInMinutes($end);
         });
 
         // Format downtime
         if ($totalDowntimeMinutes < 60) {
-            $downtime = $totalDowntimeMinutes . 'm';
+            $downtime = $totalDowntimeMinutes.'m';
         } elseif ($totalDowntimeMinutes < 1440) {
             $hours = intdiv($totalDowntimeMinutes, 60);
             $mins = $totalDowntimeMinutes % 60;
@@ -48,7 +51,7 @@ class UptimeStatsCard extends Component
         }
 
         return [
-            'uptime' => $uptime !== null ? number_format($uptime, 2) . '%' : 'N/A',
+            'uptime' => $uptime !== null ? number_format($uptime, 2).'%' : 'N/A',
             'incidents' => $incidentCount,
             'downtime' => $totalDowntimeMinutes > 0 ? $downtime : 'None',
         ];

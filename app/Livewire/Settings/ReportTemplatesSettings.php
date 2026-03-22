@@ -10,15 +10,25 @@ class ReportTemplatesSettings extends Component
     public ?int $editingTemplateId = null;
 
     public string $name = '';
+
     public string $description = '';
+
     public array $sections = [];
+
     public array $section_overrides = [];
+
     public array $section_options = [];
+
     public array $expandedSections = [];
+
     public string $company_name = '';
+
     public string $company_website = '';
+
     public string $primary_color = '#3b82f6';
+
     public string $intro_text = '';
+
     public string $closing_text = '';
 
     /**
@@ -26,20 +36,20 @@ class ReportTemplatesSettings extends Component
      * used in partials. Some keys differ (e.g. 'uptime' -> 'technical_stability').
      */
     protected static array $sectionKeyMap = [
-        'overview'          => 'executive_snapshot',
-        'uptime'            => 'technical_stability',
-        'updates'           => 'updates',
-        'backups'           => 'backups',
-        'analytics'         => 'analytics',
-        'search_console'    => 'search_console',
-        'performance'       => 'performance',
-        'infrastructure'    => 'infrastructure',
-        'plugin_inventory'  => 'plugin_inventory',
-        'database_health'   => 'database_health',
-        'cloudflare'        => 'cloudflare',
-        'wp_users'          => 'wp_users',
-        'security_checks'   => 'security_checks',
-        'recommendations'   => 'recommendations',
+        'overview' => 'executive_snapshot',
+        'uptime' => 'technical_stability',
+        'updates' => 'updates',
+        'backups' => 'backups',
+        'analytics' => 'analytics',
+        'search_console' => 'search_console',
+        'performance' => 'performance',
+        'infrastructure' => 'infrastructure',
+        'plugin_inventory' => 'plugin_inventory',
+        'database_health' => 'database_health',
+        'cloudflare' => 'cloudflare',
+        'wp_users' => 'wp_users',
+        'security_checks' => 'security_checks',
+        'recommendations' => 'recommendations',
     ];
 
     /**
@@ -49,14 +59,14 @@ class ReportTemplatesSettings extends Component
     {
         return [
             'executive_snapshot' => [
-                'show_uptime'       => 'Uptime',
-                'show_downtime'     => 'Downtime',
-                'show_updates'      => 'Updates',
-                'show_backups'      => 'Backups',
+                'show_uptime' => 'Uptime',
+                'show_downtime' => 'Downtime',
+                'show_updates' => 'Updates',
+                'show_backups' => 'Backups',
                 'show_desktop_perf' => 'Desktop Performance',
-                'show_mobile_perf'  => 'Mobile Performance',
-                'show_users'        => 'Users (Analytics)',
-                'show_impressions'  => 'Impressions (Search Console)',
+                'show_mobile_perf' => 'Mobile Performance',
+                'show_users' => 'Users (Analytics)',
+                'show_impressions' => 'Impressions (Search Console)',
             ],
             'technical_stability' => [
                 'show_incidents_table' => 'Incidents Table',
@@ -96,11 +106,11 @@ class ReportTemplatesSettings extends Component
                 'show_performance' => 'Performance Recommendations',
                 'show_seo' => 'SEO Recommendations',
             ],
-            'plugin_inventory'  => [],
-            'database_health'   => [],
-            'cloudflare'        => [],
-            'wp_users'          => [],
-            'security_checks'   => [],
+            'plugin_inventory' => [],
+            'database_health' => [],
+            'cloudflare' => [],
+            'wp_users' => [],
+            'security_checks' => [],
         ];
     }
 
@@ -197,7 +207,7 @@ class ReportTemplatesSettings extends Component
     {
         $template = ReportTemplate::findOrFail($id);
         $new = $template->replicate();
-        $new->name = $template->name . ' (Copy)';
+        $new->name = $template->name.' (Copy)';
         $new->is_default = false;
         $new->save();
         session()->flash('template-success', 'Template duplicated.');
@@ -209,6 +219,7 @@ class ReportTemplatesSettings extends Component
 
         if ($template->schedules()->exists()) {
             session()->flash('template-error', 'Cannot delete — this template is used by active schedules.');
+
             return;
         }
 

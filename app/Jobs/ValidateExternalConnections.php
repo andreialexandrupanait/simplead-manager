@@ -24,6 +24,7 @@ class ValidateExternalConnections implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300;
+
     public int $tries = 1;
 
     public function __construct()
@@ -44,8 +45,8 @@ class ValidateExternalConnections implements ShouldQueue
         );
 
         if (count($failures) > 0) {
-            $message = count($failures) . ' external connection(s) failed validation: '
-                . implode(', ', array_map(fn ($f) => $f['name'], $failures));
+            $message = count($failures).' external connection(s) failed validation: '
+                .implode(', ', array_map(fn ($f) => $f['name'], $failures));
 
             NotificationService::notifyAppEvent(
                 event: 'connection_validation_failed',

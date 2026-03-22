@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class DatabaseDumpCommand extends Command
 {
@@ -21,7 +20,7 @@ class DatabaseDumpCommand extends Command
         $username = config('database.connections.pgsql.username');
         $password = config('database.connections.pgsql.password');
 
-        $filename = "db_dump_" . now()->format('Y-m-d_His') . ".sql.gz";
+        $filename = 'db_dump_'.now()->format('Y-m-d_His').'.sql.gz';
         $dumpDir = storage_path('app/db-dumps');
 
         if (! is_dir($dumpDir)) {
@@ -55,21 +54,22 @@ class DatabaseDumpCommand extends Command
 
         $this->info("Running pg_dump for {$database}...");
 
-        exec($command . ' 2>&1', $output, $exitCode);
+        exec($command.' 2>&1', $output, $exitCode);
 
         @unlink($pgpassPath);
 
         if ($exitCode !== 0) {
             $error = implode("\n", $output);
             $this->error("pg_dump failed (exit code {$exitCode}): {$error}");
-            Log::error("Database dump failed", ['exit_code' => $exitCode, 'output' => $error]);
+            Log::error('Database dump failed', ['exit_code' => $exitCode, 'output' => $error]);
+
             return self::FAILURE;
         }
 
         // Encrypt if BACKUP_ENCRYPTION_KEY is set
         $encryptionKey = env('BACKUP_ENCRYPTION_KEY');
         if ($encryptionKey) {
-            $encryptedPath = $filepath . '.enc';
+            $encryptedPath = $filepath.'.enc';
             $encCommand = sprintf(
                 'openssl enc -aes-256-cbc -salt -pbkdf2 -in %s -out %s -pass env:BACKUP_ENCRYPTION_KEY 2>&1',
                 escapeshellarg($filepath),
@@ -79,9 +79,10 @@ class DatabaseDumpCommand extends Command
             exec($encCommand, $encOutput, $encExit);
 
             if ($encExit !== 0) {
-                $this->error('Encryption failed: ' . implode("\n", $encOutput));
+                $this->error('Encryption failed: '.implode("\n", $encOutput));
                 Log::error('Database dump encryption failed', ['output' => $encOutput]);
                 unlink($filepath);
+
                 return self::FAILURE;
             }
 
@@ -116,11 +117,11 @@ class DatabaseDumpCommand extends Command
 
         foreach ($toDelete as $file) {
             unlink($file);
-            $this->line("Removed old dump: " . basename($file));
+            $this->line('Removed old dump: '.basename($file));
         }
 
         if (count($toDelete) > 0) {
-            $this->info("Cleaned up " . count($toDelete) . " old dump(s), keeping {$keep}.");
+            $this->info('Cleaned up '.count($toDelete)." old dump(s), keeping {$keep}.");
         }
     }
 }

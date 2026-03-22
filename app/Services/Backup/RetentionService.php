@@ -18,7 +18,7 @@ class RetentionService
     public function apply(Site $site, StorageDestination $destination): void
     {
         $config = $site->backupConfig;
-        if (!$config) {
+        if (! $config) {
             return;
         }
 
@@ -53,7 +53,7 @@ class RetentionService
         // Include orphaned incrementals as their own chains
         $parentIds = $fullBackups->pluck('id')->toArray();
         foreach ($incrementalByParent as $parentId => $incrementals) {
-            if (!in_array($parentId, $parentIds)) {
+            if (! in_array($parentId, $parentIds)) {
                 $chains[] = $incrementals;
             }
         }

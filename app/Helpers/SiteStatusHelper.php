@@ -27,10 +27,15 @@ class SiteStatusHelper
         $possible = 0;
         $earned = 0;
         foreach ([$uptime, $ssl, $performance, $backup, $plugins, $wpVersion] as $dim) {
-            if ($dim['color'] === 'text-gray-300') continue;
+            if ($dim['color'] === 'text-gray-300') {
+                continue;
+            }
             $possible++;
-            if ($dim['color'] === 'text-green-500') $earned += 1;
-            elseif ($dim['color'] === 'text-yellow-500') $earned += 0.5;
+            if ($dim['color'] === 'text-green-500') {
+                $earned += 1;
+            } elseif ($dim['color'] === 'text-yellow-500') {
+                $earned += 0.5;
+            }
         }
         $healthScore = $possible > 0 ? (int) round(($earned / $possible) * 100) : 0;
 
@@ -61,7 +66,7 @@ class SiteStatusHelper
         if ($site->uptimeMonitor) {
             if ($site->is_up === true) {
                 $color = 'text-green-500';
-                $tip = 'Site is up' . ($site->uptime_percentage ? ' — ' . $site->uptime_percentage . '%' : '');
+                $tip = 'Site is up'.($site->uptime_percentage ? ' — '.$site->uptime_percentage.'%' : '');
             } elseif ($site->is_up === false) {
                 $color = 'text-red-500';
                 $tip = 'Site is DOWN';
@@ -89,7 +94,7 @@ class SiteStatusHelper
                 $tip = 'SSL: Expiring soon';
             } else {
                 $color = 'text-red-500';
-                $tip = 'SSL: ' . ucfirst($cert->status ?? 'Invalid');
+                $tip = 'SSL: '.ucfirst($cert->status ?? 'Invalid');
             }
         }
 
@@ -104,7 +109,7 @@ class SiteStatusHelper
         if ($site->uptimeMonitor && $site->uptimeMonitor->avg_response_time) {
             $rt = $site->uptimeMonitor->avg_response_time;
             $color = $rt < 500 ? 'text-green-500' : ($rt <= 2000 ? 'text-yellow-500' : 'text-red-500');
-            $tip = 'Response: ' . number_format($rt) . 'ms';
+            $tip = 'Response: '.number_format($rt).'ms';
         }
 
         return compact('color', 'tip');
@@ -119,7 +124,7 @@ class SiteStatusHelper
             $score = $site->performanceMonitor->latest_mobile_score ?? $site->performanceMonitor->latest_desktop_score;
             if ($score !== null) {
                 $color = $score >= 90 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
-                $tip = 'Performance: ' . $score;
+                $tip = 'Performance: '.$score;
             }
         }
 
@@ -133,7 +138,7 @@ class SiteStatusHelper
 
         if ($site->is_connected) {
             $color = $updates === 0 ? 'text-green-500' : ($updates <= 5 ? 'text-yellow-500' : 'text-red-500');
-            $tip = $updates === 0 ? 'All plugins up to date' : $updates . ' update' . ($updates > 1 ? 's' : '') . ' available';
+            $tip = $updates === 0 ? 'All plugins up to date' : $updates.' update'.($updates > 1 ? 's' : '').' available';
         }
 
         return compact('color', 'tip');
@@ -143,7 +148,7 @@ class SiteStatusHelper
     {
         $count = $site->site_users_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
-        $tip = $count > 0 ? $count . ' user' . ($count > 1 ? 's' : '') : 'No users tracked';
+        $tip = $count > 0 ? $count.' user'.($count > 1 ? 's' : '') : 'No users tracked';
 
         return compact('color', 'tip');
     }
@@ -163,7 +168,7 @@ class SiteStatusHelper
 
         if ($site->backupConfig) {
             $bc = $site->backupConfig;
-            if (!$bc->is_enabled) {
+            if (! $bc->is_enabled) {
                 $tip = 'Backups: Disabled';
             } elseif ($bc->last_backup_status === 'failed') {
                 $color = 'text-red-500';
@@ -174,10 +179,10 @@ class SiteStatusHelper
                 };
                 if ($site->last_backup_at->diffInHours(now()) > $maxHours) {
                     $color = 'text-yellow-500';
-                    $tip = 'Backup overdue — last: ' . $site->last_backup_at->diffForHumans();
+                    $tip = 'Backup overdue — last: '.$site->last_backup_at->diffForHumans();
                 } else {
                     $color = 'text-green-500';
-                    $tip = 'Last backup: ' . $site->last_backup_at->diffForHumans();
+                    $tip = 'Last backup: '.$site->last_backup_at->diffForHumans();
                 }
             } else {
                 $color = 'text-yellow-500';
@@ -196,10 +201,10 @@ class SiteStatusHelper
         if ($site->wp_version) {
             if ($site->core_update_version) {
                 $color = 'text-yellow-500';
-                $tip = 'WP ' . $site->wp_version . ' → ' . $site->core_update_version;
+                $tip = 'WP '.$site->wp_version.' → '.$site->core_update_version;
             } else {
                 $color = 'text-green-500';
-                $tip = 'WP ' . $site->wp_version . ' (latest)';
+                $tip = 'WP '.$site->wp_version.' (latest)';
             }
         }
 
@@ -210,7 +215,7 @@ class SiteStatusHelper
     {
         $count = $site->report_schedules_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
-        $tip = $count > 0 ? $count . ' report schedule' . ($count > 1 ? 's' : '') : 'Reports';
+        $tip = $count > 0 ? $count.' report schedule'.($count > 1 ? 's' : '') : 'Reports';
 
         return compact('color', 'tip');
     }
@@ -222,7 +227,7 @@ class SiteStatusHelper
 
         $conn = $site->searchConsoleConnection;
         if ($conn) {
-            if (!$conn->is_active) {
+            if (! $conn->is_active) {
                 $color = 'text-gray-300';
                 $tip = 'Search Console: Disabled';
             } elseif ($conn->last_error) {
@@ -230,7 +235,7 @@ class SiteStatusHelper
                 $tip = 'Search Console: Error';
             } elseif ($conn->last_sync_at) {
                 $color = 'text-green-500';
-                $tip = 'Search Console: Synced ' . $conn->last_sync_at->diffForHumans();
+                $tip = 'Search Console: Synced '.$conn->last_sync_at->diffForHumans();
             } else {
                 $color = 'text-yellow-500';
                 $tip = 'Search Console: Pending first sync';

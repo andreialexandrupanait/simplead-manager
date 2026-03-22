@@ -18,14 +18,18 @@ class SiteSearchConsole extends Component
     use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
+
     public string $dateRange = '28d';
+
     public ?string $customStart = null;
+
     public ?string $customEnd = null;
+
     public array $availableProperties = [];
 
     protected function jobTrackingKeys(): array
     {
-        return ['fetch' => 'search-console-' . $this->site->id];
+        return ['fetch' => 'search-console-'.$this->site->id];
     }
 
     public function mount(Site $site): void
@@ -35,7 +39,7 @@ class SiteSearchConsole extends Component
         $this->initJobTracking();
 
         // Auto-trigger property picker after OAuth return
-        if (session('success') && !$this->site->searchConsoleConnection) {
+        if (session('success') && ! $this->site->searchConsoleConnection) {
             $this->connectSearchConsole();
         }
     }
@@ -43,7 +47,7 @@ class SiteSearchConsole extends Component
     #[Computed]
     public function hasGoogleCredentials(): bool
     {
-        return !empty(config('services.google.client_id'));
+        return ! empty(config('services.google.client_id'));
     }
 
     #[Computed]
@@ -56,9 +60,12 @@ class SiteSearchConsole extends Component
     public function googleConnectionStatus(): ?array
     {
         $conn = $this->site->searchConsoleConnection;
-        if (!$conn) return null;
+        if (! $conn) {
+            return null;
+        }
 
         $google = $conn->googleConnection;
+
         return [
             'email' => $google?->email,
             'property' => $conn->property_url,
@@ -83,7 +90,9 @@ class SiteSearchConsole extends Component
         $this->dateRange = $range;
 
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection) return;
+        if (! $connection) {
+            return;
+        }
 
         $cache = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', $this->dateRange)
@@ -91,7 +100,7 @@ class SiteSearchConsole extends Component
             ->latest('fetched_at')
             ->first();
 
-        if (!$cache || $cache->expires_at->isPast()) {
+        if (! $cache || $cache->expires_at->isPast()) {
             $this->dispatchTrackedJob('fetch', new FetchSearchConsoleData($this->site, $this->dateRange), 'Fetching Search Console data...');
         }
     }
@@ -103,7 +112,9 @@ class SiteSearchConsole extends Component
         $this->customEnd = $end;
 
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection) return;
+        if (! $connection) {
+            return;
+        }
 
         $cache = SearchConsoleCache::where('site_id', $this->site->id)
             ->where('date_range', 'custom')
@@ -113,7 +124,7 @@ class SiteSearchConsole extends Component
             ->latest('fetched_at')
             ->first();
 
-        if (!$cache || $cache->expires_at->isPast()) {
+        if (! $cache || $cache->expires_at->isPast()) {
             $this->dispatchTrackedJob('fetch', new FetchSearchConsoleData($this->site, 'custom', $start, $end), 'Fetching Search Console data...');
         }
     }
@@ -121,7 +132,9 @@ class SiteSearchConsole extends Component
     public function refreshData(): void
     {
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
 
         $this->dispatchTrackedJob('fetch', new FetchSearchConsoleData($this->site, $this->dateRange), 'Fetching Search Console data...');
     }
@@ -135,8 +148,9 @@ class SiteSearchConsole extends Component
     {
         $googleConnection = $this->resolveGoogleConnection();
 
-        if (!$googleConnection) {
+        if (! $googleConnection) {
             $this->redirect(route('google.auth', ['return_url' => route('sites.search-console', $this->site)]));
+
             return;
         }
 
@@ -148,17 +162,21 @@ class SiteSearchConsole extends Component
                 session()->flash('error', 'No Search Console properties found for this Google account. Make sure the account has access to a Search Console property.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to list properties: ' . $e->getMessage());
+            session()->flash('error', 'Failed to list properties: '.$e->getMessage());
         }
     }
 
     public function selectProperty(int $index): void
     {
         $property = $this->availableProperties[$index] ?? null;
-        if (!$property) return;
+        if (! $property) {
+            return;
+        }
 
         $googleConnection = $this->resolveGoogleConnection();
-        if (!$googleConnection) return;
+        if (! $googleConnection) {
+            return;
+        }
 
         $propertyType = str_starts_with($property['site_url'], 'sc-domain:') ? 'domain' : 'url';
 
@@ -234,8 +252,7 @@ class SiteSearchConsole extends Component
             'googleConnections' => $googleConnections,
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,
-            'title' => $this->site->name . ' — Search Console',
+            'title' => $this->site->name.' — Search Console',
         ]);
     }
-
 }

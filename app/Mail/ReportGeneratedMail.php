@@ -50,12 +50,12 @@ class ReportGeneratedMail extends Mailable
 
     public function attachments(): array
     {
-        if (!$this->report->file_path) {
+        if (! $this->report->file_path) {
             return [];
         }
 
         $fullPath = \Illuminate\Support\Facades\Storage::disk('local')->path($this->report->file_path);
-        if (!file_exists($fullPath)) {
+        if (! file_exists($fullPath)) {
             return [];
         }
 

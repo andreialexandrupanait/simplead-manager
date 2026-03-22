@@ -163,20 +163,20 @@
                             <td class="whitespace-nowrap px-5 py-3 text-sm">
                                 @php
                                     $statusVariant = match($report->status) {
-                                        'completed' => 'green',
-                                        'generating' => 'blue',
-                                        'pending' => 'yellow',
+                                        \App\Enums\ReportStatus::Completed => 'green',
+                                        \App\Enums\ReportStatus::Generating => 'blue',
+                                        \App\Enums\ReportStatus::Pending => 'yellow',
                                         default => 'red',
                                     };
                                 @endphp
-                                <x-ui.badge :variant="$statusVariant">{{ ucfirst($report->status) }}</x-ui.badge>
+                                <x-ui.badge :variant="$statusVariant">{{ $report->status->label() }}</x-ui.badge>
                             </td>
                             <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-500">
                                 {{ $report->file_size ? $report->file_size_formatted : '—' }}
                             </td>
                             <td class="whitespace-nowrap px-5 py-3 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    @if($report->status === 'completed' && $report->file_path)
+                                    @if($report->status === \App\Enums\ReportStatus::Completed && $report->file_path)
                                         <a href="{{ route('reports.download', ['report' => $report, 'preview' => 1]) }}"
                                            target="_blank"
                                            class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"

@@ -65,12 +65,12 @@ class MaintenancePlan extends Model
 
     public function hasSecuritySettings(): bool
     {
-        return $this->include_security && !empty($this->security_settings);
+        return $this->include_security && ! empty($this->security_settings);
     }
 
     public function hasTweakSettings(): bool
     {
-        return $this->include_tweaks && !empty($this->tweak_settings);
+        return $this->include_tweaks && ! empty($this->tweak_settings);
     }
 
     public function hasModuleConfig(): bool

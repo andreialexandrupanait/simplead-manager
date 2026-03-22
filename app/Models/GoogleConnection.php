@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class GoogleConnection extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'google_id',
         'email',

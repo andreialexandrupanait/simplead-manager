@@ -13,11 +13,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class FetchKeywordPositions implements ShouldQueue, ShouldBeUnique
+class FetchKeywordPositions implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 120;
 
     public function __construct(
@@ -26,19 +27,25 @@ class FetchKeywordPositions implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'keyword-positions-' . $this->site->id;
+        return 'keyword-positions-'.$this->site->id;
     }
 
     public function handle(): void
     {
         $connection = $this->site->searchConsoleConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
+        if (! $google || ! $google->is_active) {
+            return;
+        }
 
         $keywords = TrackedKeyword::where('site_id', $this->site->id)->get();
-        if ($keywords->isEmpty()) return;
+        if ($keywords->isEmpty()) {
+            return;
+        }
 
         $service = new GoogleSearchConsoleService($google);
         $siteUrl = $connection->property_url;

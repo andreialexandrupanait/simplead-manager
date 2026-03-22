@@ -11,6 +11,7 @@ use Laravel\Horizon\Contracts\MasterSupervisorRepository;
 class HorizonHealthCheckCommand extends Command
 {
     protected $signature = 'horizon:health-check';
+
     protected $description = 'Check if Horizon supervisors are running and alert if not';
 
     public function handle(): void
@@ -21,7 +22,7 @@ class HorizonHealthCheckCommand extends Command
             $supervisors = app(MasterSupervisorRepository::class)->all();
 
             if (empty($supervisors)) {
-                if (!Cache::has($cacheKey)) {
+                if (! Cache::has($cacheKey)) {
                     NotificationService::notifyAppEvent(
                         event: 'horizon_stopped',
                         title: 'Horizon Is Not Running',
@@ -34,7 +35,7 @@ class HorizonHealthCheckCommand extends Command
                 Cache::forget($cacheKey);
             }
         } catch (\Throwable $e) {
-            Log::warning('Horizon health check failed: ' . $e->getMessage());
+            Log::warning('Horizon health check failed: '.$e->getMessage());
         }
     }
 }

@@ -15,7 +15,7 @@ class TwoFactorChallengeController extends Controller
 {
     public function create(Request $request): View|RedirectResponse
     {
-        if (!$request->session()->has('2fa:user_id')) {
+        if (! $request->session()->has('2fa:user_id')) {
             return redirect()->route('login');
         }
 
@@ -31,13 +31,13 @@ class TwoFactorChallengeController extends Controller
         $userId = $request->session()->get('2fa:user_id');
         $remember = $request->session()->get('2fa:remember', false);
 
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login');
         }
 
         $user = User::find($userId);
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -45,7 +45,7 @@ class TwoFactorChallengeController extends Controller
 
         // Try TOTP code first
         if (strlen($code) === 6 && ctype_digit($code)) {
-            $google2fa = new Google2FA();
+            $google2fa = new Google2FA;
 
             if ($google2fa->verifyKey($user->two_factor_secret, $code)) {
                 return $this->loginUser($request, $user, $remember);

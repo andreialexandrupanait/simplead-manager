@@ -13,14 +13,14 @@ class StatusPageController extends Controller
     {
         $statusPage = StatusPage::where('slug', $slug)->firstOrFail();
 
-        if (!$statusPage->is_public) {
+        if (! $statusPage->is_public) {
             abort(404);
         }
 
         // Check password protection
         if ($statusPage->password_hash) {
             $authenticated = session("status-page-auth.{$statusPage->id}");
-            if (!$authenticated) {
+            if (! $authenticated) {
                 return view('status-page.password', [
                     'statusPage' => $statusPage,
                 ]);
@@ -39,14 +39,14 @@ class StatusPageController extends Controller
     {
         $statusPage = StatusPage::where('slug', $slug)->firstOrFail();
 
-        if (!$statusPage->is_public) {
+        if (! $statusPage->is_public) {
             abort(404);
         }
 
         // Enforce password protection on API endpoint
         if ($statusPage->password_hash) {
             $authenticated = session("status-page-auth.{$statusPage->id}");
-            if (!$authenticated) {
+            if (! $authenticated) {
                 abort(403, 'This status page is password protected.');
             }
         }
@@ -69,6 +69,7 @@ class StatusPageController extends Controller
 
         if (StatusPageService::verifyPassword($statusPage, $request->password)) {
             session(["status-page-auth.{$statusPage->id}" => true]);
+
             return redirect()->route('status-page.show', $slug);
         }
 

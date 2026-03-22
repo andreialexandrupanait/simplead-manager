@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\SecurityPreset;
 use App\Models\SecuritySetting;
 use App\Models\Site;
-use Illuminate\Support\Collection;
 
 class SecurityPresetService
 {

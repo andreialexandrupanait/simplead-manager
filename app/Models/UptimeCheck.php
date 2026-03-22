@@ -36,5 +36,4 @@ class UptimeCheck extends Model
     {
         return $this->belongsTo(UptimeMonitor::class, 'monitor_id');
     }
-
 }

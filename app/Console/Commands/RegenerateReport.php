@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class RegenerateReport extends Command
 {
     protected $signature = 'report:regenerate {--site= : Site ID (default: latest report\'s site)} {--id= : Report ID to regenerate}';
+
     protected $description = 'Regenerate a report PDF in-place using the current template';
 
     public function handle(): int
@@ -23,8 +24,9 @@ class RegenerateReport extends Command
             $report = Report::where('status', 'completed')->orderBy('id', 'desc')->first();
         }
 
-        if (!$report) {
+        if (! $report) {
             $this->error('No report found.');
+
             return 1;
         }
 

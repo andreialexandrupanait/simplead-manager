@@ -2,14 +2,15 @@
 
 namespace App\Services;
 
-use GuzzleHttp\Client;
 use Gotenberg\Gotenberg;
 use Gotenberg\Stream;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
 class GotenbergService
 {
     protected string $baseUrl;
+
     protected Client $httpClient;
 
     public function __construct()

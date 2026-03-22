@@ -29,9 +29,13 @@ class SecurityHardening extends Component
     ];
 
     public Site $site;
+
     public array $hardeningToggles = [];
+
     public array $htaccessToggles = [];
+
     public array $settingStatuses = [];
+
     public bool $isDirty = false;
 
     public function mount(Site $site): void
@@ -61,9 +65,9 @@ class SecurityHardening extends Component
     public function toggleSetting(string $category, string $key): void
     {
         if ($category === 'hardening' && array_key_exists($key, $this->hardeningToggles)) {
-            $this->hardeningToggles[$key] = !$this->hardeningToggles[$key];
+            $this->hardeningToggles[$key] = ! $this->hardeningToggles[$key];
         } elseif ($category === 'htaccess' && array_key_exists($key, $this->htaccessToggles)) {
-            $this->htaccessToggles[$key] = !$this->htaccessToggles[$key];
+            $this->htaccessToggles[$key] = ! $this->htaccessToggles[$key];
         } else {
             return;
         }
@@ -106,8 +110,9 @@ class SecurityHardening extends Component
             $response = $api->request('GET', '/security-state');
 
             if (! $response->successful()) {
-                session()->flash('verify-error', 'Could not reach site (HTTP ' . $response->status() . ')');
+                session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
                 $this->redirect(route('sites.security.hardening', $this->site), navigate: false);
+
                 return;
             }
 
@@ -152,7 +157,7 @@ class SecurityHardening extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify security settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: ' . $e->getMessage());
+            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
         }
 
         $this->loadCurrentState();
@@ -182,7 +187,7 @@ class SecurityHardening extends Component
         return view('livewire.sites.detail.security.security-hardening')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Hardening',
+                'title' => $this->site->name.' — Hardening',
             ]);
     }
 }

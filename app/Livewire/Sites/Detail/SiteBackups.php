@@ -22,7 +22,9 @@ class SiteBackups extends Component
     use WithPagination, WithSiteAuthorization;
 
     public Site $site;
+
     public ?int $trackingBackupId = null;
+
     public ?int $trackingRestoreBackupId = null;
 
     public function mount(Site $site): void
@@ -52,7 +54,7 @@ class SiteBackups extends Component
     #[Computed]
     public function activeBackup(): ?Backup
     {
-        if (!$this->trackingBackupId) {
+        if (! $this->trackingBackupId) {
             return null;
         }
 
@@ -62,7 +64,7 @@ class SiteBackups extends Component
     #[Computed]
     public function activeRestore(): ?Backup
     {
-        if (!$this->trackingRestoreBackupId) {
+        if (! $this->trackingRestoreBackupId) {
             return null;
         }
 
@@ -102,19 +104,19 @@ class SiteBackups extends Component
             return '< 1 MB';
         }
 
-        return round($totalMb, 1) . ' MB';
+        return round($totalMb, 1).' MB';
     }
 
     #[Computed]
     public function storageQuotaInfo(): ?array
     {
         $config = $this->site->backupConfig;
-        if (!$config?->storage_destination_id) {
+        if (! $config?->storage_destination_id) {
             return null;
         }
 
         $destination = StorageDestination::find($config->storage_destination_id);
-        if (!$destination || !$destination->quota_bytes) {
+        if (! $destination || ! $destination->quota_bytes) {
             return null;
         }
 
@@ -159,15 +161,17 @@ class SiteBackups extends Component
 
     public function backupDatabase(): void
     {
-        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
         $destination = $this->resolveDestination();
-        if (!$destination) {
+        if (! $destination) {
             session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
+
             return;
         }
 
@@ -193,8 +197,9 @@ class SiteBackups extends Component
         try {
             CreateBackup::dispatch($this->site, 'database', 'manual', $destination->id, $backup->id);
         } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
+
             return;
         }
         $this->trackingBackupId = $backup->id;
@@ -203,15 +208,17 @@ class SiteBackups extends Component
 
     public function backupFull(): void
     {
-        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
         $destination = $this->resolveDestination();
-        if (!$destination) {
+        if (! $destination) {
             session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
+
             return;
         }
 
@@ -237,8 +244,9 @@ class SiteBackups extends Component
         try {
             CreateBackup::dispatch($this->site, 'full', 'manual', $destination->id, $backup->id);
         } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
+
             return;
         }
         $this->trackingBackupId = $backup->id;
@@ -247,15 +255,17 @@ class SiteBackups extends Component
 
     public function backupIncremental(): void
     {
-        $rateLimitKey = "backup:{$this->site->id}:" . auth()->id();
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
         $destination = $this->resolveDestination();
-        if (!$destination) {
+        if (! $destination) {
             session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
+
             return;
         }
 
@@ -265,8 +275,9 @@ class SiteBackups extends Component
             ->whereNotNull('manifest_path')
             ->exists();
 
-        if (!$hasManifest) {
+        if (! $hasManifest) {
             session()->flash('backup-error', 'No full backup with manifest found. Please create a full backup first.');
+
             return;
         }
 
@@ -292,8 +303,9 @@ class SiteBackups extends Component
         try {
             CreateIncrementalBackup::dispatch($this->site, 'manual', $destination->id, $backup->id);
         } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: ' . $e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: ' . $e->getMessage());
+            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
+            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
+
             return;
         }
         $this->trackingBackupId = $backup->id;
@@ -313,8 +325,8 @@ class SiteBackups extends Component
     {
         $backup = $this->site->backups()->findOrFail($backupId);
         $backup->update([
-            'is_locked' => !$backup->is_locked,
-            'lock_reason' => !$backup->is_locked ? 'manual' : null,
+            'is_locked' => ! $backup->is_locked,
+            'lock_reason' => ! $backup->is_locked ? 'manual' : null,
         ]);
     }
 
@@ -324,11 +336,13 @@ class SiteBackups extends Component
 
         if ($backup->is_locked) {
             session()->flash('backup-error', 'Cannot delete a locked backup. Unlock it first.');
+
             return;
         }
 
         if ($backup->incrementals()->exists()) {
             session()->flash('backup-error', 'Cannot delete a full backup that has incremental backups. Delete the incrementals first.');
+
             return;
         }
 
@@ -356,8 +370,9 @@ class SiteBackups extends Component
     {
         $backup = $this->site->backups()->with('storageDestination')->findOrFail($backupId);
 
-        if (!$backup->storageDestination || !$backup->file_path) {
+        if (! $backup->storageDestination || ! $backup->file_path) {
             session()->flash('backup-error', 'Backup file not available for download.');
+
             return null;
         }
 
@@ -365,14 +380,16 @@ class SiteBackups extends Component
 
         if ($destination->type === 'local') {
             $url = URL::signedRoute('backups.download', ['backup' => $backup->id]);
+
             return $this->redirect($url);
         }
 
         $driver = StorageFactory::make($destination);
         $url = $driver->temporaryUrl($backup->file_path);
 
-        if (!$url) {
+        if (! $url) {
             session()->flash('backup-error', 'Could not generate download link.');
+
             return null;
         }
 
@@ -407,7 +424,7 @@ class SiteBackups extends Component
 
     public function cancelBackup(): void
     {
-        if (!$this->trackingBackupId) {
+        if (! $this->trackingBackupId) {
             return;
         }
 
@@ -477,7 +494,7 @@ class SiteBackups extends Component
         ])
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Backups',
+                'title' => $this->site->name.' — Backups',
             ]);
     }
 }

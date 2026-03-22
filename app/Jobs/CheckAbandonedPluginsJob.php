@@ -12,12 +12,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class CheckAbandonedPluginsJob implements ShouldQueue, ShouldBeUnique
+class CheckAbandonedPluginsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 300;
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -26,7 +28,7 @@ class CheckAbandonedPluginsJob implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'abandoned-plugins-' . $this->site->id;
+        return 'abandoned-plugins-'.$this->site->id;
     }
 
     public function handle(): void
@@ -38,6 +40,6 @@ class CheckAbandonedPluginsJob implements ShouldQueue, ShouldBeUnique
 
     public function failed(?\Throwable $exception): void
     {
-        JobTracker::fail($this->uniqueId(), 'Abandoned check failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Abandoned check failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 }

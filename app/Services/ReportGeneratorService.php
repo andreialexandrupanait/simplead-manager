@@ -13,7 +13,9 @@ use Illuminate\Support\Str;
 class ReportGeneratorService
 {
     protected array $data = [];
+
     protected ReportChartService $chartService;
+
     protected string $language = 'ro';
 
     public function __construct(
@@ -24,7 +26,7 @@ class ReportGeneratorService
         protected array $excludedSections = [],
         ?ReportChartService $chartService = null,
     ) {
-        $this->chartService = $chartService ?? new ReportChartService();
+        $this->chartService = $chartService ?? new ReportChartService;
     }
 
     public function generate(): string
@@ -103,18 +105,18 @@ class ReportGeneratorService
         $reportTitle = mb_strtoupper(__('report.title', [], $this->language));
         $clientName = mb_strtoupper(e($branding['client_name'] ?? ''));
         $footerHtml = '<html><head><style>'
-            . '#f { width: 100%; border-collapse: collapse; font-family: Inter, Arial, sans-serif; font-size: 7pt; color: #94a3b8; }'
-            . '#f td { padding: 4px 12mm; vertical-align: middle; }'
-            . '</style></head><body>'
-            . '<table id="f"><tr>'
-            . '<td style="text-align:left;">' . e($branding['company_website'] ?? 'simplead.ro') . '</td>'
-            . '<td style="text-align:center;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">' . $reportTitle . ' &middot; ' . $clientName . '</td>'
-            . '<td style="text-align:right;">'
-            . '<span style="background:' . $pc . ';color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;font-size:7pt;">'
-            . '<span class="pageNumber"></span> / <span class="totalPages"></span>'
-            . '</span></td>'
-            . '</tr></table>'
-            . '</body></html>';
+            .'#f { width: 100%; border-collapse: collapse; font-family: Inter, Arial, sans-serif; font-size: 7pt; color: #94a3b8; }'
+            .'#f td { padding: 4px 12mm; vertical-align: middle; }'
+            .'</style></head><body>'
+            .'<table id="f"><tr>'
+            .'<td style="text-align:left;">'.e($branding['company_website'] ?? 'simplead.ro').'</td>'
+            .'<td style="text-align:center;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">'.$reportTitle.' &middot; '.$clientName.'</td>'
+            .'<td style="text-align:right;">'
+            .'<span style="background:'.$pc.';color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;font-size:7pt;">'
+            .'<span class="pageNumber"></span> / <span class="totalPages"></span>'
+            .'</span></td>'
+            .'</tr></table>'
+            .'</body></html>';
 
         // Generate PDF via Gotenberg
         $gotenberg = app(GotenbergService::class);
@@ -126,9 +128,9 @@ class ReportGeneratorService
         $year = $this->periodEnd->format('Y');
         $date = $this->periodEnd->format('d.m.Y');
 
-        $directory = 'reports/' . $safeName . '/' . $year;
-        $fileName = $month . '. Maintenance Report - ' . $clientName . ' - ' . $date . '.pdf';
-        $filePath = $directory . '/' . $fileName;
+        $directory = 'reports/'.$safeName.'/'.$year;
+        $fileName = $month.'. Maintenance Report - '.$clientName.' - '.$date.'.pdf';
+        $filePath = $directory.'/'.$fileName;
 
         Storage::disk('local')->makeDirectory($directory);
         Storage::disk('local')->put($filePath, $pdfBinary);

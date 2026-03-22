@@ -16,11 +16,14 @@ class SiteCron extends Component
     public Site $site;
 
     public ?array $cronData = null;
+
     public bool $loading = false;
+
     public string $search = '';
 
     // Enable modal state
     public ?string $enablingHook = null;
+
     public string $enableSchedule = 'daily';
 
     public function mount(Site $site): void
@@ -32,7 +35,7 @@ class SiteCron extends Component
     #[Computed]
     public function filteredCrons(): array
     {
-        if (!$this->cronData) {
+        if (! $this->cronData) {
             return [];
         }
 
@@ -40,7 +43,7 @@ class SiteCron extends Component
 
         if ($this->search) {
             $search = strtolower($this->search);
-            $crons = array_filter($crons, fn($cron) => str_contains(strtolower($cron['hook']), $search));
+            $crons = array_filter($crons, fn ($cron) => str_contains(strtolower($cron['hook']), $search));
             $crons = array_values($crons);
         }
 
@@ -65,7 +68,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to load cron jobs: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to load cron jobs: '.$e->getMessage());
             $this->cronData = null;
         }
 
@@ -77,7 +80,7 @@ class SiteCron extends Component
     {
         try {
             $api = new WordPressApiService($this->site);
-            $api->runCron($hook, !empty($args) ? $args : null);
+            $api->runCron($hook, ! empty($args) ? $args : null);
             $this->dispatch('notify', type: 'success', message: "Cron hook '{$hook}' executed successfully.");
             $this->loadCrons();
         } catch (\Exception $e) {
@@ -85,7 +88,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: "Failed to run cron: " . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to run cron: '.$e->getMessage());
         }
     }
 
@@ -101,7 +104,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: "Failed to disable cron: " . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to disable cron: '.$e->getMessage());
         }
     }
 
@@ -114,7 +117,7 @@ class SiteCron extends Component
 
     public function enableCron(): void
     {
-        if (!$this->enablingHook) {
+        if (! $this->enablingHook) {
             return;
         }
 
@@ -128,7 +131,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: "Failed to enable cron: " . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to enable cron: '.$e->getMessage());
         }
 
         $this->enablingHook = null;
@@ -140,7 +143,7 @@ class SiteCron extends Component
         return view('livewire.sites.detail.site-cron')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Cron Jobs',
+                'title' => $this->site->name.' — Cron Jobs',
             ]);
     }
 }

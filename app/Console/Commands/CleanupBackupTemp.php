@@ -16,8 +16,9 @@ class CleanupBackupTemp extends Command
         $hours = (int) $this->option('hours');
         $basePath = storage_path('app/temp');
 
-        if (!is_dir($basePath)) {
+        if (! is_dir($basePath)) {
             $this->info('No temp directory found, nothing to clean.');
+
             return self::SUCCESS;
         }
 
@@ -25,12 +26,12 @@ class CleanupBackupTemp extends Command
         $cleaned = 0;
 
         foreach (scandir($basePath) as $entry) {
-            if (!str_starts_with($entry, 'backup-')) {
+            if (! str_starts_with($entry, 'backup-')) {
                 continue;
             }
 
-            $dirPath = $basePath . '/' . $entry;
-            if (!is_dir($dirPath)) {
+            $dirPath = $basePath.'/'.$entry;
+            if (! is_dir($dirPath)) {
                 continue;
             }
 
@@ -43,7 +44,7 @@ class CleanupBackupTemp extends Command
             Log::info("CleanupBackupTemp: removed orphaned directory {$entry}");
         }
 
-        $this->info("Cleaned up {$cleaned} orphaned backup temp " . ($cleaned === 1 ? 'directory' : 'directories') . '.');
+        $this->info("Cleaned up {$cleaned} orphaned backup temp ".($cleaned === 1 ? 'directory' : 'directories').'.');
 
         return self::SUCCESS;
     }

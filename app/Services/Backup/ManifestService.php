@@ -28,9 +28,9 @@ class ManifestService
 
                 if ($response->successful()) {
                     $data = $response->json();
-                    if (!empty($data['success']) && !empty($data['manifest'])) {
+                    if (! empty($data['success']) && ! empty($data['manifest'])) {
                         $manifest = $data['manifest'];
-                        Log::info("Using pre-collected manifest for backup {$backup->id}: " . count($manifest) . " files");
+                        Log::info("Using pre-collected manifest for backup {$backup->id}: ".count($manifest).' files');
                     }
                 }
             } catch (\Throwable $e) {
@@ -42,13 +42,13 @@ class ManifestService
         if ($manifest === null) {
             $response = $api->request('POST', '/backup/manifest', [], [], 300);
 
-            if (!$response->successful()) {
-                throw new \RuntimeException('Manifest generation failed: HTTP ' . $response->status());
+            if (! $response->successful()) {
+                throw new \RuntimeException('Manifest generation failed: HTTP '.$response->status());
             }
 
             $data = $response->json();
             if (empty($data['success'])) {
-                throw new \RuntimeException('Manifest generation failed: ' . ($data['error']['message'] ?? 'Unknown error'));
+                throw new \RuntimeException('Manifest generation failed: '.($data['error']['message'] ?? 'Unknown error'));
             }
 
             $manifest = $data['manifest'] ?? [];
@@ -65,10 +65,10 @@ class ManifestService
 
         // Upload to storage
         $site = $backup->site;
-        $manifestPath = $site->domain . '/manifests/manifest-' . $backup->id . '.json.gz';
+        $manifestPath = $site->domain.'/manifests/manifest-'.$backup->id.'.json.gz';
 
         $tempDir = storage_path('app/temp');
-        if (!is_dir($tempDir)) {
+        if (! is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
         $tempFile = tempnam($tempDir, 'manifest_');
@@ -100,18 +100,18 @@ class ManifestService
      */
     public function retrieve(Backup $backup): array
     {
-        if (!$backup->manifest_path) {
+        if (! $backup->manifest_path) {
             throw new \RuntimeException("Backup {$backup->id} has no manifest path");
         }
 
         $destination = $backup->storageDestination;
-        if (!$destination) {
+        if (! $destination) {
             throw new \RuntimeException("Backup {$backup->id} has no storage destination");
         }
 
         $driver = StorageFactory::make($destination);
         $tempDir = storage_path('app/temp');
-        if (!is_dir($tempDir)) {
+        if (! is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
         $tempFile = tempnam($tempDir, 'manifest_dl_');
@@ -132,7 +132,7 @@ class ManifestService
         }
 
         $manifest = json_decode($json, true);
-        if (!is_array($manifest)) {
+        if (! is_array($manifest)) {
             throw new \RuntimeException("Invalid manifest JSON for backup {$backup->id}");
         }
 
@@ -170,7 +170,7 @@ class ManifestService
      */
     public function getChain(Backup $backup): array
     {
-        if (!$backup->isIncremental()) {
+        if (! $backup->isIncremental()) {
             return [$backup];
         }
 
@@ -184,7 +184,7 @@ class ManifestService
      */
     private function loadAncestorChain(int $backupId)
     {
-        $rows = DB::select("
+        $rows = DB::select('
             WITH RECURSIVE ancestor_chain AS (
                 SELECT id, parent_backup_id, 0 AS depth
                 FROM backups
@@ -196,7 +196,7 @@ class ManifestService
                 WHERE ac.depth < 100
             )
             SELECT id FROM ancestor_chain ORDER BY depth DESC
-        ", [$backupId]);
+        ', [$backupId]);
 
         $orderedIds = collect($rows)->pluck('id')->toArray();
 
@@ -214,7 +214,7 @@ class ManifestService
      */
     public function deleteManifest(Backup $backup): void
     {
-        if (!$backup->manifest_path || !$backup->storageDestination) {
+        if (! $backup->manifest_path || ! $backup->storageDestination) {
             return;
         }
 

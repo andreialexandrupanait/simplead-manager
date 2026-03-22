@@ -20,15 +20,22 @@ class StorageDestinationFormData extends Form
 
     // S3
     public string $s3Key = '';
+
     public string $s3Secret = '';
+
     public string $s3Bucket = '';
+
     public string $s3Region = 'us-east-1';
+
     public string $s3Endpoint = '';
+
     public string $s3BasePath = '';
 
     // Dropbox
     public string $dropboxBasePath = '/#1 SAD Workspace/4. Backup';
+
     public string $dropboxReportsPath = '';
+
     public string $dropboxAppBackupsPath = '';
 
     /**

@@ -50,8 +50,13 @@ class SecurityScan extends Model
 
     public static function scoreColor(int $score): string
     {
-        if ($score >= 80) return 'green';
-        if ($score >= 50) return 'yellow';
+        if ($score >= 80) {
+            return 'green';
+        }
+        if ($score >= 50) {
+            return 'yellow';
+        }
+
         return 'red';
     }
 
@@ -62,9 +67,16 @@ class SecurityScan extends Model
 
     public function getScoreLabelAttribute(): string
     {
-        if ($this->score >= 90) return 'Excellent';
-        if ($this->score >= 80) return 'Good';
-        if ($this->score >= 50) return 'Needs Attention';
+        if ($this->score >= 90) {
+            return 'Excellent';
+        }
+        if ($this->score >= 80) {
+            return 'Good';
+        }
+        if ($this->score >= 50) {
+            return 'Needs Attention';
+        }
+
         return 'Critical';
     }
 

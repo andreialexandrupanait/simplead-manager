@@ -13,12 +13,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunSecurityScan implements ShouldQueue, ShouldBeUnique
+class RunSecurityScan implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 300;
+
     public array $backoff = [60, 180];
 
     public function __construct(
@@ -27,7 +29,7 @@ class RunSecurityScan implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'security-scan-' . $this->site->id;
+        return 'security-scan-'.$this->site->id;
     }
 
     public function handle(): void
@@ -51,6 +53,6 @@ class RunSecurityScan implements ShouldQueue, ShouldBeUnique
     public function failed(?\Throwable $exception): void
     {
         CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Security scan failed');
-        JobTracker::fail($this->uniqueId(), 'Security scan failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Security scan failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 }

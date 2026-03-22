@@ -1,9 +1,6 @@
 /.phpunit.cache
 .phpunit.result.cache
 /node_modules
-/tests
-/database/factories
-phpunit.xml
 .editorconfig
 features/
 /public/build

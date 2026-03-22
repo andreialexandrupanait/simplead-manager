@@ -58,7 +58,7 @@ class AppBackupService
             'log' => [],
         ]);
 
-        $tempDir = storage_path('app/temp/app-backup-' . $backup->id);
+        $tempDir = storage_path('app/temp/app-backup-'.$backup->id);
         mkdir($tempDir, 0755, true);
 
         try {
@@ -71,7 +71,7 @@ class AppBackupService
                 $dbPath = $this->backupDatabase($tempDir);
                 $componentSizes['database'] = filesize($dbPath);
                 $componentSizes['table_counts'] = $this->getTableRowCounts();
-                $this->log($backup, 'Database backup completed (' . $this->formatBytes($componentSizes['database']) . ')');
+                $this->log($backup, 'Database backup completed ('.$this->formatBytes($componentSizes['database']).')');
                 $this->updateProgress($backup, 40);
             }
 
@@ -91,7 +91,7 @@ class AppBackupService
                 $this->updateProgress($backup, 52);
                 $storagePath = $this->backupStorage($tempDir);
                 $componentSizes['storage'] = filesize($storagePath);
-                $this->log($backup, 'Storage backup completed (' . $this->formatBytes($componentSizes['storage']) . ')');
+                $this->log($backup, 'Storage backup completed ('.$this->formatBytes($componentSizes['storage']).')');
                 $this->updateProgress($backup, 70);
             }
 
@@ -111,7 +111,7 @@ class AppBackupService
                 $this->updateProgress($backup, 82);
                 $codebasePath = $this->backupCodebase($tempDir);
                 $componentSizes['codebase'] = filesize($codebasePath);
-                $this->log($backup, 'Codebase backup completed (' . $this->formatBytes($componentSizes['codebase']) . ')');
+                $this->log($backup, 'Codebase backup completed ('.$this->formatBytes($componentSizes['codebase']).')');
                 $this->updateProgress($backup, 90);
             }
 
@@ -122,7 +122,7 @@ class AppBackupService
             $timestamp = now()->format('Ymd_His');
             $random = Str::random(6);
             $fileName = "simplead-backup-{$type}-{$timestamp}-{$random}.tar.gz";
-            $archivePath = $tempDir . '/' . $fileName;
+            $archivePath = $tempDir.'/'.$fileName;
 
             $this->createArchive($tempDir, $archivePath, $components);
 
@@ -130,7 +130,7 @@ class AppBackupService
             $config = AppBackupConfig::instance();
             if ($config->encrypt_backup && $config->encryption_password) {
                 $this->log($backup, 'Encrypting backup...');
-                $encryptedPath = $archivePath . '.enc';
+                $encryptedPath = $archivePath.'.enc';
                 $this->encryptFile($archivePath, $encryptedPath, $config->encryption_password);
                 unlink($archivePath);
                 $archivePath = $encryptedPath;
@@ -144,14 +144,14 @@ class AppBackupService
             $this->log($backup, 'Uploading to storage...');
             $this->updateProgress($backup, 95);
 
-            $remotePath = 'application-backups/' . $fileName;
+            $remotePath = 'application-backups/'.$fileName;
 
             if ($destination) {
                 $driver = StorageFactory::make($destination);
                 $appBackupsPath = $destination->config['app_backups_path'] ?? null;
 
                 if ($appBackupsPath) {
-                    $absoluteRemotePath = rtrim($appBackupsPath, '/') . '/' . $fileName;
+                    $absoluteRemotePath = rtrim($appBackupsPath, '/').'/'.$fileName;
                     $driver->uploadToAbsolutePath($archivePath, $absoluteRemotePath);
                     $remotePath = $absoluteRemotePath;
                 } else {
@@ -161,10 +161,10 @@ class AppBackupService
             } else {
                 // Local fallback
                 $fallbackDir = storage_path('app/backups/application');
-                if (!is_dir($fallbackDir)) {
+                if (! is_dir($fallbackDir)) {
                     mkdir($fallbackDir, 0755, true);
                 }
-                copy($archivePath, $fallbackDir . '/' . $fileName);
+                copy($archivePath, $fallbackDir.'/'.$fileName);
                 $remotePath = $fileName;
             }
 
@@ -216,7 +216,7 @@ class AppBackupService
             return $backup;
 
         } catch (\Exception $e) {
-            Log::error('Application backup failed: ' . $e->getMessage());
+            Log::error('Application backup failed: '.$e->getMessage());
 
             $backup->update([
                 'status' => 'failed',
@@ -226,7 +226,7 @@ class AppBackupService
                 'duration_seconds' => (int) $backup->started_at->diffInSeconds(now()),
             ]);
 
-            $this->log($backup, 'FAILED: ' . $e->getMessage());
+            $this->log($backup, 'FAILED: '.$e->getMessage());
 
             $config = AppBackupConfig::instance();
             $config->update(['last_backup_status' => 'failed']);
@@ -242,7 +242,6 @@ class AppBackupService
             );
 
             throw $e;
-
         } finally {
             try {
                 $this->cleanupDir($tempDir);
@@ -283,33 +282,35 @@ class AppBackupService
     {
         $destination = $backup->storageDestination;
 
-        if (!$destination) {
+        if (! $destination) {
             // Local fallback
-            $localPath = storage_path('app/backups/application/' . $backup->storage_path);
-            if (!file_exists($localPath)) {
+            $localPath = storage_path('app/backups/application/'.$backup->storage_path);
+            if (! file_exists($localPath)) {
                 throw new \RuntimeException('Backup file not found.');
             }
+
             return $localPath;
         }
 
         if ($destination->type === 'local') {
             $config = $destination->config ?? [];
             $basePath = rtrim($config['path'] ?? storage_path('backups'), '/');
-            $filePath = $basePath . '/' . ltrim($backup->storage_path, '/');
+            $filePath = $basePath.'/'.ltrim($backup->storage_path, '/');
 
-            if (!file_exists($filePath)) {
+            if (! file_exists($filePath)) {
                 throw new \RuntimeException('Backup file not found.');
             }
+
             return $filePath;
         }
 
         // Remote: download to temp
-        $tempDir = storage_path('app/temp/app-backup-download-' . $backup->id);
-        if (!is_dir($tempDir)) {
+        $tempDir = storage_path('app/temp/app-backup-download-'.$backup->id);
+        if (! is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
 
-        $localPath = $tempDir . '/' . $backup->file_name;
+        $localPath = $tempDir.'/'.$backup->file_name;
         $driver = StorageFactory::make($destination);
         $driver->download($backup->storage_path, $localPath);
 
@@ -319,12 +320,12 @@ class AppBackupService
     public function restoreDatabase(AppBackup $backup): array
     {
         $components = $backup->components ?? [];
-        if (!in_array('database', $components)) {
+        if (! in_array('database', $components)) {
             throw new \RuntimeException('This backup does not contain a database component.');
         }
 
-        $tempDir = storage_path('app/temp/app-restore-' . $backup->id);
-        if (!is_dir($tempDir)) {
+        $tempDir = storage_path('app/temp/app-restore-'.$backup->id);
+        if (! is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
 
@@ -335,26 +336,26 @@ class AppBackupService
             // Decrypt if needed
             $config = AppBackupConfig::instance();
             if (Str::endsWith($archivePath, '.enc')) {
-                if (!$config->encryption_password) {
+                if (! $config->encryption_password) {
                     throw new \RuntimeException('Encryption password is required to restore this backup.');
                 }
-                $decryptedPath = $tempDir . '/backup.tar.gz';
+                $decryptedPath = $tempDir.'/backup.tar.gz';
                 $this->decryptFile($archivePath, $decryptedPath, $config->encryption_password);
                 $archivePath = $decryptedPath;
             }
 
             // Extract archive
-            $this->exec("tar -xzf " . escapeshellarg($archivePath) . " -C " . escapeshellarg($tempDir));
+            $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 
             // Find database dump
-            $dbFile = $tempDir . '/database.sql.gz';
-            if (!file_exists($dbFile)) {
+            $dbFile = $tempDir.'/database.sql.gz';
+            if (! file_exists($dbFile)) {
                 throw new \RuntimeException('Database dump not found in backup archive.');
             }
 
             // Decompress
-            $this->exec("gunzip -k " . escapeshellarg($dbFile));
-            $sqlFile = $tempDir . '/database.sql';
+            $this->exec('gunzip -k '.escapeshellarg($dbFile));
+            $sqlFile = $tempDir.'/database.sql';
 
             // Import
             $connection = config('database.default');
@@ -404,12 +405,12 @@ class AppBackupService
     public function viewEnv(AppBackup $backup): string
     {
         $components = $backup->components ?? [];
-        if (!in_array('env', $components)) {
+        if (! in_array('env', $components)) {
             throw new \RuntimeException('This backup does not contain an .env component.');
         }
 
-        $tempDir = storage_path('app/temp/app-env-view-' . $backup->id);
-        if (!is_dir($tempDir)) {
+        $tempDir = storage_path('app/temp/app-env-view-'.$backup->id);
+        if (! is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
 
@@ -419,18 +420,18 @@ class AppBackupService
             // Decrypt if encrypted
             $config = AppBackupConfig::instance();
             if (Str::endsWith($archivePath, '.enc')) {
-                if (!$config->encryption_password) {
+                if (! $config->encryption_password) {
                     throw new \RuntimeException('Encryption password is required.');
                 }
-                $decryptedPath = $tempDir . '/backup.tar.gz';
+                $decryptedPath = $tempDir.'/backup.tar.gz';
                 $this->decryptFile($archivePath, $decryptedPath, $config->encryption_password);
                 $archivePath = $decryptedPath;
             }
 
-            $this->exec("tar -xzf " . escapeshellarg($archivePath) . " -C " . escapeshellarg($tempDir));
+            $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 
-            $envFile = $tempDir . '/env.encrypted';
-            if (!file_exists($envFile)) {
+            $envFile = $tempDir.'/env.encrypted';
+            if (! file_exists($envFile)) {
                 throw new \RuntimeException('.env file not found in backup archive.');
             }
 
@@ -453,9 +454,9 @@ class AppBackupService
             } catch (\Exception $e) {
                 Log::warning("Failed to delete app backup file {$backup->storage_path}: {$e->getMessage()}");
             }
-        } elseif (!$destination && $backup->storage_path) {
+        } elseif (! $destination && $backup->storage_path) {
             // Local fallback
-            $localPath = storage_path('app/backups/application/' . $backup->storage_path);
+            $localPath = storage_path('app/backups/application/'.$backup->storage_path);
             if (file_exists($localPath)) {
                 unlink($localPath);
             }
@@ -489,10 +490,10 @@ class AppBackupService
             default => ['database', 'env', 'storage'],
         };
 
-        if (!empty($options['include_logs'])) {
+        if (! empty($options['include_logs'])) {
             $components[] = 'logs';
         }
-        if (!empty($options['include_codebase'])) {
+        if (! empty($options['include_codebase'])) {
             $components[] = 'codebase';
         }
 
@@ -519,9 +520,9 @@ class AppBackupService
     {
         $connection = config('database.default');
         $dbConfig = config("database.connections.{$connection}");
-        $outputPath = $tempDir . '/database.sql.gz';
+        $outputPath = $tempDir.'/database.sql.gz';
 
-        $sqlPath = $tempDir . '/database.sql';
+        $sqlPath = $tempDir.'/database.sql';
 
         if ($connection === 'pgsql') {
             $dumpCmd = sprintf(
@@ -547,13 +548,13 @@ class AppBackupService
 
         $this->exec($dumpCmd);
 
-        if (!file_exists($sqlPath) || filesize($sqlPath) === 0) {
+        if (! file_exists($sqlPath) || filesize($sqlPath) === 0) {
             throw new \RuntimeException('Database dump failed or produced empty file.');
         }
 
         $this->exec(sprintf('gzip -9 %s', escapeshellarg($sqlPath)));
 
-        if (!file_exists($outputPath)) {
+        if (! file_exists($outputPath)) {
             throw new \RuntimeException('Database dump compression failed.');
         }
 
@@ -572,7 +573,7 @@ class AppBackupService
             $envContent = $this->reconstructEnvFromEnvironment();
         }
 
-        $outputPath = $tempDir . '/env.encrypted';
+        $outputPath = $tempDir.'/env.encrypted';
         $encrypted = encrypt($envContent);
         file_put_contents($outputPath, $encrypted);
 
@@ -602,12 +603,12 @@ class AppBackupService
             }
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 
     protected function backupStorage(string $tempDir): string
     {
-        $outputPath = $tempDir . '/storage.tar.gz';
+        $outputPath = $tempDir.'/storage.tar.gz';
         $storagePath = storage_path('app');
 
         $excludes = [
@@ -629,7 +630,7 @@ class AppBackupService
         // Also include public/uploads if it exists
         $uploadsPath = public_path('uploads');
         if (is_dir($uploadsPath)) {
-            $uploadsArchive = $tempDir . '/uploads.tar.gz';
+            $uploadsArchive = $tempDir.'/uploads.tar.gz';
             $this->exec(sprintf(
                 'tar -czf %s -C %s .',
                 escapeshellarg($uploadsArchive),
@@ -642,12 +643,13 @@ class AppBackupService
 
     protected function backupLogs(string $tempDir): string
     {
-        $outputPath = $tempDir . '/logs.tar.gz';
+        $outputPath = $tempDir.'/logs.tar.gz';
         $logsPath = storage_path('logs');
 
-        if (!is_dir($logsPath)) {
+        if (! is_dir($logsPath)) {
             // Create empty archive
             file_put_contents($outputPath, '');
+
             return $outputPath;
         }
 
@@ -662,7 +664,7 @@ class AppBackupService
 
     protected function backupCodebase(string $tempDir): string
     {
-        $outputPath = $tempDir . '/codebase.tar.gz';
+        $outputPath = $tempDir.'/codebase.tar.gz';
         $basePath = base_path();
 
         $excludes = [
@@ -699,7 +701,7 @@ class AppBackupService
 
         foreach ($components as $component) {
             if (isset($fileMap[$component])) {
-                $file = $tempDir . '/' . $fileMap[$component];
+                $file = $tempDir.'/'.$fileMap[$component];
                 if (file_exists($file)) {
                     $files[] = $fileMap[$component];
                 }
@@ -707,7 +709,7 @@ class AppBackupService
         }
 
         // Also include uploads archive if it exists
-        if (file_exists($tempDir . '/uploads.tar.gz')) {
+        if (file_exists($tempDir.'/uploads.tar.gz')) {
             $files[] = 'uploads.tar.gz';
         }
 
@@ -743,7 +745,7 @@ class AppBackupService
     {
         $output = [];
         $returnVar = 0;
-        exec($command . ' 2>&1', $output, $returnVar);
+        exec($command.' 2>&1', $output, $returnVar);
 
         if ($returnVar !== 0) {
             $outputStr = implode("\n", $output);
@@ -775,7 +777,7 @@ class AppBackupService
 
         foreach ($tables as $table) {
             try {
-                if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table->tablename)) {
+                if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table->tablename)) {
                     continue;
                 }
                 $counts[$table->tablename] = DB::table($table->tablename)->count();
@@ -804,6 +806,7 @@ class AppBackupService
             $verification['status'] = 'no_baseline';
             $verification['message'] = 'Restore completed. No row counts stored in backup for comparison.';
             $verification['current_counts'] = $currentCounts;
+
             return $verification;
         }
 
@@ -855,8 +858,8 @@ class AppBackupService
                 DB::statement(sprintf(
                     'SELECT setval(%s, COALESCE((SELECT MAX(%s) FROM %s), 1))',
                     DB::getPdo()->quote($seq->sequence_name),
-                    '"' . $seq->column_name . '"',
-                    '"' . $seq->table_name . '"',
+                    '"'.$seq->column_name.'"',
+                    '"'.$seq->table_name.'"',
                 ));
             } catch (\Exception $e) {
                 Log::warning("Failed to reset sequence {$seq->sequence_name}: {$e->getMessage()}");
@@ -866,7 +869,9 @@ class AppBackupService
 
     protected function cleanupDir(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (! is_dir($dir)) {
+            return;
+        }
 
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),

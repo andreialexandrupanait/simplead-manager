@@ -69,7 +69,7 @@ class DatabaseHealthCheck extends Model
         $issues = [];
 
         if ($this->total_size > 1_073_741_824) {
-            $issues[] = 'Database size exceeds 1 GB (' . $this->formatted_total_size . ')';
+            $issues[] = 'Database size exceeds 1 GB ('.$this->formatted_total_size.')';
         }
 
         $totalOverhead = 0;
@@ -77,11 +77,11 @@ class DatabaseHealthCheck extends Model
             $totalOverhead += $table['overhead'] ?? 0;
         }
         if ($totalOverhead > 104_857_600) {
-            $issues[] = 'Total table overhead exceeds 100 MB (' . static::formatBytes($totalOverhead) . ')';
+            $issues[] = 'Total table overhead exceeds 100 MB ('.static::formatBytes($totalOverhead).')';
         }
 
         if ($this->autoload_size > 1_048_576) {
-            $issues[] = 'Autoload data exceeds 1 MB (' . $this->formatted_autoload_size . ')';
+            $issues[] = 'Autoload data exceeds 1 MB ('.$this->formatted_autoload_size.')';
         }
 
         if ($this->myisam_count > 0) {
@@ -91,7 +91,7 @@ class DatabaseHealthCheck extends Model
         foreach ($this->largest_tables ?? [] as $table) {
             $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
             if ($tableSize > 524_288_000) {
-                $issues[] = "Table '{$table['name']}' exceeds 500 MB (" . static::formatBytes($tableSize) . ')';
+                $issues[] = "Table '{$table['name']}' exceeds 500 MB (".static::formatBytes($tableSize).')';
             }
         }
 

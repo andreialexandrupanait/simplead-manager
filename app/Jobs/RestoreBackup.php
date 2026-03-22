@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Enums\BackupStatus;
-use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\Storage\StorageFactory;
@@ -18,14 +17,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use ZipArchive;
 
-class RestoreBackup implements ShouldQueue, ShouldBeUnique
+class RestoreBackup implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 3600;
+
     public int $tries = 1;
 
     protected ?string $tempDir = null;
+
     protected bool $pluginWasUpdated = false;
 
     public function __construct(
@@ -39,14 +40,14 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'restore-' . $this->backup->id;
+        return 'restore-'.$this->backup->id;
     }
 
     public function handle(): void
     {
         ini_set('memory_limit', '1G');
 
-        $this->tempDir = storage_path('app/temp/restore-' . uniqid());
+        $this->tempDir = storage_path('app/temp/restore-'.uniqid());
         mkdir($this->tempDir, 0755, true);
 
         try {
@@ -74,7 +75,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $this->backup->update([
                 'restore_status' => BackupStatus::Failed,
                 'restore_stage' => 'failed',
-                'restore_progress_message' => 'Restore failed: ' . Str::limit($e->getMessage(), 200),
+                'restore_progress_message' => 'Restore failed: '.Str::limit($e->getMessage(), 200),
                 'restore_error_message' => $e->getMessage(),
             ]);
 
@@ -92,12 +93,12 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         $site = $this->backup->site;
         $destination = $this->backup->storageDestination;
 
-        if (!$destination || !$this->backup->file_path) {
+        if (! $destination || ! $this->backup->file_path) {
             throw new \RuntimeException('Backup storage destination or file path is missing.');
         }
 
         // Download from storage
-        $localPath = $this->tempDir . '/' . $this->backup->file_name;
+        $localPath = $this->tempDir.'/'.$this->backup->file_name;
         $driver = StorageFactory::make($destination);
         $driver->download($this->backup->file_path, $localPath);
 
@@ -115,7 +116,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         // Extract zip
         $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($localPath) !== true) {
             throw new \RuntimeException('Failed to open backup archive.');
         }
@@ -136,13 +137,13 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
      */
     protected function restoreFromChain(): void
     {
-        $manifestService = new ManifestService();
+        $manifestService = new ManifestService;
         $chain = $manifestService->getChain($this->backup);
         $chainLength = count($chain);
 
         $this->reportRestoreProgress('downloading', 10, "Restoring from chain of {$chainLength} backups...");
 
-        $mergedDir = $this->tempDir . '/merged';
+        $mergedDir = $this->tempDir.'/merged';
         mkdir($mergedDir, 0755, true);
 
         $latestDbPath = null;
@@ -154,7 +155,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $pct = 10 + (int) (($stepNum / $chainLength) * 50); // 10-60%
 
             $destination = $chainBackup->storageDestination;
-            if (!$destination || !$chainBackup->file_path) {
+            if (! $destination || ! $chainBackup->file_path) {
                 throw new \RuntimeException("Backup #{$chainBackup->id} in chain has no file path.");
             }
 
@@ -162,7 +163,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 "Downloading backup {$stepNum}/{$chainLength}...");
 
             // Download
-            $localPath = $this->tempDir . '/chain_' . $i . '.zip';
+            $localPath = $this->tempDir.'/chain_'.$i.'.zip';
             $driver = StorageFactory::make($destination);
             $driver->download($chainBackup->file_path, $localPath);
 
@@ -175,10 +176,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             }
 
             // Extract to temp dir
-            $extractDir = $this->tempDir . '/extract_' . $i;
+            $extractDir = $this->tempDir.'/extract_'.$i;
             mkdir($extractDir, 0755, true);
 
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($localPath) !== true) {
                 throw new \RuntimeException("Failed to open backup #{$chainBackup->id} archive.");
             }
@@ -190,9 +191,9 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 // Full backup: check for v2 format (chunk zips) or v1 (single files.zip)
                 if ($this->restoreFiles) {
                     $this->mergeChunkZipsForRestore($extractDir);
-                    $filesZip = $extractDir . '/files.zip';
+                    $filesZip = $extractDir.'/files.zip';
                     if (file_exists($filesZip)) {
-                        $fz = new ZipArchive();
+                        $fz = new ZipArchive;
                         if ($fz->open($filesZip) === true) {
                             $fz->extractTo($mergedDir);
                             $fz->close();
@@ -201,9 +202,9 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 }
             } else {
                 // Incremental: overlay changed files, apply deletions
-                $filesZip = $extractDir . '/files.zip';
+                $filesZip = $extractDir.'/files.zip';
                 if (file_exists($filesZip) && $this->restoreFiles) {
-                    $fz = new ZipArchive();
+                    $fz = new ZipArchive;
                     if ($fz->open($filesZip) === true) {
                         $fz->extractTo($mergedDir); // Overwrites existing files
                         $fz->close();
@@ -211,11 +212,11 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 }
 
                 // Apply deletions
-                $deletedFile = $extractDir . '/deleted-files.json';
+                $deletedFile = $extractDir.'/deleted-files.json';
                 if (file_exists($deletedFile)) {
                     $deletedPaths = json_decode(file_get_contents($deletedFile), true) ?? [];
                     foreach ($deletedPaths as $path) {
-                        $fullPath = $mergedDir . '/' . $path;
+                        $fullPath = $mergedDir.'/'.$path;
                         if (file_exists($fullPath)) {
                             @unlink($fullPath);
                         }
@@ -225,7 +226,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             }
 
             // Always use the latest database dump
-            $dbFile = $extractDir . '/database.sql.gz';
+            $dbFile = $extractDir.'/database.sql.gz';
             if (file_exists($dbFile)) {
                 $latestDbPath = $dbFile;
             }
@@ -234,9 +235,9 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         $this->reportRestoreProgress('merging', 65, 'Preparing merged files for restore...');
 
         // Create merged files.zip from the merged directory
-        $mergedFilesZip = $this->tempDir . '/files.zip';
+        $mergedFilesZip = $this->tempDir.'/files.zip';
         if ($this->restoreFiles && is_dir($mergedDir)) {
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($mergedFilesZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
                 $iterator = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($mergedDir, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -253,7 +254,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         }
 
         // Copy latest DB to expected location
-        $finalDbPath = $this->tempDir . '/database.sql.gz';
+        $finalDbPath = $this->tempDir.'/database.sql.gz';
         if ($latestDbPath && file_exists($latestDbPath)) {
             copy($latestDbPath, $finalDbPath);
         }
@@ -271,8 +272,8 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
      */
     protected function mergeChunkZipsForRestore(string $baseDir): void
     {
-        $metaFile = $baseDir . '/backup-meta.json';
-        if (!file_exists($metaFile)) {
+        $metaFile = $baseDir.'/backup-meta.json';
+        if (! file_exists($metaFile)) {
             return;
         }
 
@@ -282,18 +283,18 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         }
 
         // v2 format: merge chunk zips into a single files.zip for restore
-        $filesZip = $baseDir . '/files.zip';
-        $extractDir = $baseDir . '/files_extract_' . uniqid();
+        $filesZip = $baseDir.'/files.zip';
+        $extractDir = $baseDir.'/files_extract_'.uniqid();
         mkdir($extractDir, 0755, true);
 
         try {
             foreach ($meta['chunk_files'] as $chunkName) {
-                $chunkPath = $baseDir . '/' . $chunkName;
-                if (!file_exists($chunkPath)) {
+                $chunkPath = $baseDir.'/'.$chunkName;
+                if (! file_exists($chunkPath)) {
                     continue;
                 }
 
-                $chunkZip = new ZipArchive();
+                $chunkZip = new ZipArchive;
                 if ($chunkZip->open($chunkPath) === true) {
                     $chunkZip->extractTo($extractDir);
                     $chunkZip->close();
@@ -301,7 +302,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 @unlink($chunkPath);
             }
 
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($filesZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
                 $iterator = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($extractDir, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -339,10 +340,10 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         $this->mergeChunkZipsForRestore($baseDir);
 
         // Restore files FIRST (before database)
-        $filesPath = $baseDir . '/files.zip';
+        $filesPath = $baseDir.'/files.zip';
         if ($this->restoreFiles && file_exists($filesPath)) {
-            if (!empty($this->selectedFiles)) {
-                $this->reportRestoreProgress('restoring_files', 50, 'Preparing selective file restore (' . count($this->selectedFiles) . ' files)...');
+            if (! empty($this->selectedFiles)) {
+                $this->reportRestoreProgress('restoring_files', 50, 'Preparing selective file restore ('.count($this->selectedFiles).' files)...');
                 $filesPath = $this->createSelectiveArchive($filesPath);
             }
 
@@ -352,13 +353,13 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
             $this->reportRestoreProgress('restoring_files', 67, 'Updating connector plugin...');
             $pluginUpdated = $this->ensurePluginUpToDate($api);
-            if (!$pluginUpdated) {
+            if (! $pluginUpdated) {
                 Log::warning("Continuing restore without plugin update for backup {$this->backup->id}");
             }
         }
 
         // Restore database AFTER files
-        $dbPath = $baseDir . '/database.sql.gz';
+        $dbPath = $baseDir.'/database.sql.gz';
         if ($this->restoreDatabase && file_exists($dbPath)) {
             $this->reportRestoreProgress('restoring_database', 70, 'Restoring database...');
             $this->sendRestoreData($api, 'database', $dbPath);
@@ -369,17 +370,17 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         $verificationSummary = $this->runPostRestoreVerification($api);
 
         $message = 'Restore completed successfully';
-        if (!empty($this->selectedFiles)) {
-            $message = 'Selective restore completed (' . count($this->selectedFiles) . ' files restored)';
+        if (! empty($this->selectedFiles)) {
+            $message = 'Selective restore completed ('.count($this->selectedFiles).' files restored)';
         }
         if ($this->backup->isIncremental()) {
-            $manifestService = new ManifestService();
+            $manifestService = new ManifestService;
             $chainLength = count($manifestService->getChain($this->backup));
             $message = "Chain restore completed ({$chainLength} backups merged)";
         }
 
         if ($verificationSummary) {
-            $message .= ' — ' . $verificationSummary;
+            $message .= ' — '.$verificationSummary;
         }
 
         $this->backup->update([
@@ -406,7 +407,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
     {
         $results = [];
 
-        if (!$this->pluginWasUpdated) {
+        if (! $this->pluginWasUpdated) {
             $results[] = 'plugin update failed';
         }
 
@@ -430,7 +431,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         try {
             $elementorFix = $api->fixElementor();
             $fixDetails = $elementorFix['fixed'] ?? [];
-            $results[] = 'Elementor fixed (' . count($fixDetails) . ' steps)';
+            $results[] = 'Elementor fixed ('.count($fixDetails).' steps)';
             Log::info("Post-restore: Elementor fix for backup {$this->backup->id}", $fixDetails);
         } catch (\Exception $e) {
             $results[] = 'Elementor fix skipped';
@@ -478,7 +479,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $results[] = 'Elementor reinitialized';
             Log::info("Post-restore: Elementor reinitialized for backup {$this->backup->id}");
         } catch (\Exception $e) {
-            if (!str_contains($e->getMessage(), 'not installed')) {
+            if (! str_contains($e->getMessage(), 'not installed')) {
                 $results[] = 'Elementor reinit skipped';
                 Log::warning("Post-restore: Elementor reinit failed for backup {$this->backup->id}", [
                     'error' => $e->getMessage(),
@@ -499,7 +500,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
             // Check for paused extensions
             $paused = $diagnostic['paused_extensions'] ?? [];
-            if (!empty($paused)) {
+            if (! empty($paused)) {
                 $results[] = 'WARNING: paused extensions detected';
                 Log::warning("Post-restore: paused extensions for backup {$this->backup->id}", ['paused' => $paused]);
             }
@@ -527,18 +528,18 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         $magic = fread($fh, 2);
         fclose($fh);
 
-        $isZip = ($magic === "PK");
+        $isZip = ($magic === 'PK');
 
-        $selectivePath = $this->tempDir . '/selective-files.zip';
+        $selectivePath = $this->tempDir.'/selective-files.zip';
         $selectedLookup = array_flip($this->selectedFiles);
 
         if ($isZip) {
-            $source = new ZipArchive();
+            $source = new ZipArchive;
             if ($source->open($innerArchivePath) !== true) {
                 throw new \RuntimeException('Failed to open inner files archive for selective restore.');
             }
 
-            $dest = new ZipArchive();
+            $dest = new ZipArchive;
             if ($dest->open($selectivePath, ZipArchive::CREATE) !== true) {
                 $source->close();
                 throw new \RuntimeException('Failed to create selective archive.');
@@ -554,12 +555,12 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
             $dest->close();
             $source->close();
         } else {
-            $extractDir = $this->tempDir . '/selective-extract';
+            $extractDir = $this->tempDir.'/selective-extract';
             mkdir($extractDir, 0755, true);
 
             $cmd = ['tar', 'xzf', $innerArchivePath, '-C', $extractDir];
             foreach ($this->selectedFiles as $file) {
-                $cmd[] = './' . ltrim($file, './');
+                $cmd[] = './'.ltrim($file, './');
             }
 
             $descriptors = [
@@ -576,7 +577,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                 proc_close($process);
             }
 
-            $dest = new ZipArchive();
+            $dest = new ZipArchive;
             if ($dest->open($selectivePath, ZipArchive::CREATE) !== true) {
                 throw new \RuntimeException('Failed to create selective archive from tar.gz.');
             }
@@ -609,7 +610,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
 
         try {
             copy($filePath, $storagePath);
-            $downloadUrl = rtrim(config('app.url'), '/') . '/restore-download/' . $token;
+            $downloadUrl = rtrim(config('app.url'), '/').'/restore-download/'.$token;
 
             $result = $api->request('POST', '/backup/restore', [
                 'type' => $type,
@@ -651,6 +652,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
                     Log::info("Plugin updated successfully for backup {$this->backup->id} (attempt {$attempt})");
                     $this->pluginWasUpdated = true;
                     sleep(2);
+
                     return true;
                 }
 
@@ -667,6 +669,7 @@ class RestoreBackup implements ShouldQueue, ShouldBeUnique
         }
 
         Log::error("All plugin update attempts failed for backup {$this->backup->id}: {$lastError}");
+
         return false;
     }
 

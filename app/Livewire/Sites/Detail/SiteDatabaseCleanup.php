@@ -18,21 +18,28 @@ class SiteDatabaseCleanup extends Component
     public Site $site;
 
     public ?array $stats = null;
+
     public bool $statsLoading = false;
 
     public bool $cleanRevisions = true;
+
     public bool $cleanAutoDrafts = true;
+
     public bool $cleanTrashPosts = true;
+
     public bool $cleanSpamComments = true;
+
     public bool $cleanTrashComments = true;
+
     public bool $cleanTransients = true;
+
     public bool $cleanOrphanedMeta = true;
 
     public bool $showConfirmation = false;
 
     protected function jobTrackingKeys(): array
     {
-        return ['health' => 'db-health-' . $this->site->id];
+        return ['health' => 'db-health-'.$this->site->id];
     }
 
     public function mount(Site $site): void
@@ -137,7 +144,7 @@ class SiteDatabaseCleanup extends Component
         return view('livewire.sites.detail.site-database-cleanup')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Database',
+                'title' => $this->site->name.' — Database',
             ]);
     }
 }

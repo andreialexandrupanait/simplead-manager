@@ -21,17 +21,29 @@ class ApplicationBackup extends Component
 
     // Config form
     public bool $isEnabled = false;
+
     public string $frequency = 'daily';
+
     public string $time = '02:00';
+
     public ?int $dayOfWeek = null;
+
     public ?int $dayOfMonth = null;
+
     public string $timezone = 'Europe/Bucharest';
+
     public string $type = 'full';
+
     public array $components = ['database', 'env', 'storage'];
+
     public ?int $storageDestinationId = null;
+
     public string $retentionType = 'count';
+
     public int $retentionValue = 7;
+
     public bool $encryptBackup = false;
+
     public string $encryptionPassword = '';
 
     // Filter
@@ -39,13 +51,17 @@ class ApplicationBackup extends Component
 
     // Create modal
     public bool $showCreateModal = false;
+
     public string $createType = 'full';
+
     public bool $createIncludeLogs = false;
+
     public bool $createIncludeCodebase = false;
 
     // Restore modal
     #[Locked]
     public ?int $restoreBackupId = null;
+
     public bool $restoreConfirmed = false;
 
     // Env viewer
@@ -57,6 +73,7 @@ class ApplicationBackup extends Component
     // Tracking
     #[Locked]
     public ?int $trackingBackupId = null;
+
     public bool $awaitingBackup = false;
 
     public function mount(): void
@@ -86,7 +103,10 @@ class ApplicationBackup extends Component
     #[Computed]
     public function activeBackup(): ?AppBackup
     {
-        if (!$this->trackingBackupId) return null;
+        if (! $this->trackingBackupId) {
+            return null;
+        }
+
         return AppBackup::find($this->trackingBackupId);
     }
 
@@ -106,6 +126,7 @@ class ApplicationBackup extends Component
     public function totalStorageUsed(): string
     {
         $total = AppBackup::where('status', 'completed')->sum('file_size');
+
         return $this->formatBytes($total);
     }
 
@@ -162,7 +183,7 @@ class ApplicationBackup extends Component
             $data['encryption_password'] = $this->encryptionPassword;
         }
 
-        if (!$this->encryptBackup) {
+        if (! $this->encryptBackup) {
             $data['encryption_password'] = null;
         }
 
@@ -192,15 +213,20 @@ class ApplicationBackup extends Component
 
     public function createBackup(): void
     {
-        $rateLimitKey = 'app-backup:' . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+        $rateLimitKey = 'app-backup:'.auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+
             return;
         }
 
         $options = [];
-        if ($this->createIncludeLogs) $options['include_logs'] = true;
-        if ($this->createIncludeCodebase) $options['include_codebase'] = true;
+        if ($this->createIncludeLogs) {
+            $options['include_logs'] = true;
+        }
+        if ($this->createIncludeCodebase) {
+            $options['include_codebase'] = true;
+        }
 
         $config = AppBackupConfig::instance();
 
@@ -225,21 +251,24 @@ class ApplicationBackup extends Component
     {
         $backup = AppBackup::findOrFail($id);
 
-        if (!$backup->storage_path) {
+        if (! $backup->storage_path) {
             $this->dispatch('notify', type: 'error', message: 'Backup file not available for download.');
+
             return null;
         }
 
         $destination = $backup->storageDestination;
 
         // Local fallback (no destination)
-        if (!$destination) {
+        if (! $destination) {
             $url = URL::signedRoute('app-backups.download', ['appBackup' => $backup->id]);
+
             return $this->redirect($url);
         }
 
         if ($destination->type === 'local') {
             $url = URL::signedRoute('app-backups.download', ['appBackup' => $backup->id]);
+
             return $this->redirect($url);
         }
 
@@ -247,8 +276,9 @@ class ApplicationBackup extends Component
         $driver = StorageFactory::make($destination);
         $url = $driver->temporaryUrl($backup->storage_path);
 
-        if (!$url) {
+        if (! $url) {
             $this->dispatch('notify', type: 'error', message: 'Could not generate download link.');
+
             return null;
         }
 
@@ -267,14 +297,16 @@ class ApplicationBackup extends Component
 
     public function restoreDatabase(): void
     {
-        $rateLimitKey = 'app-restore:' . auth()->id();
-        if (!RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
+        $rateLimitKey = 'app-restore:'.auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many restore requests. Please wait before trying again.');
+
             return;
         }
 
-        if (!$this->restoreConfirmed) {
+        if (! $this->restoreConfirmed) {
             $this->dispatch('notify', type: 'error', message: 'Please confirm you understand the risks.');
+
             return;
         }
 
@@ -300,7 +332,7 @@ class ApplicationBackup extends Component
 
             $this->dispatch('open-modal-restore-verification');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Restore failed: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Restore failed: '.$e->getMessage());
         }
     }
 
@@ -313,7 +345,7 @@ class ApplicationBackup extends Component
             $this->envContent = $service->viewEnv($backup);
             $this->dispatch('open-modal-view-env');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Could not read .env: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Could not read .env: '.$e->getMessage());
         }
     }
 
@@ -328,8 +360,8 @@ class ApplicationBackup extends Component
     {
         $backup = AppBackup::findOrFail($id);
         $backup->update([
-            'is_locked' => !$backup->is_locked,
-            'lock_reason' => !$backup->is_locked ? 'manual' : null,
+            'is_locked' => ! $backup->is_locked,
+            'lock_reason' => ! $backup->is_locked ? 'manual' : null,
         ]);
     }
 
@@ -339,6 +371,7 @@ class ApplicationBackup extends Component
 
         if ($backup->is_locked) {
             $this->dispatch('notify', type: 'error', message: 'Cannot delete a locked backup. Unlock it first.');
+
             return;
         }
 
@@ -348,7 +381,7 @@ class ApplicationBackup extends Component
             unset($this->totalStorageUsed, $this->lastBackup, $this->completedBackupCount);
             $this->dispatch('notify', type: 'success', message: 'Backup deleted.');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Delete failed: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Delete failed: '.$e->getMessage());
         }
     }
 
@@ -360,7 +393,7 @@ class ApplicationBackup extends Component
         if ($active) {
             $this->trackingBackupId = $active->id;
             $this->awaitingBackup = false;
-        } elseif (!$this->awaitingBackup) {
+        } elseif (! $this->awaitingBackup) {
             // Backup finished (completed/failed) — stop tracking
             $this->trackingBackupId = null;
             unset($this->lastBackup, $this->totalStorageUsed, $this->completedBackupCount);

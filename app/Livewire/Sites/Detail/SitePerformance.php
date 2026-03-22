@@ -19,23 +19,34 @@ class SitePerformance extends Component
     use WithSiteAuthorization;
 
     public Site $site;
+
     public string $historyRange = '30d';
+
     public bool $showSettings = false;
+
     public bool $isRunning = false;
+
     #[Locked]
     public ?int $trackingTestId = null;
 
     // Settings form
     public string $settingsFrequency = 'daily';
+
     public string $settingsTestTime = '04:00';
+
     public ?int $settingsDayOfWeek = null;
+
     public bool $settingsAlertOnDrop = true;
+
     public int $settingsThreshold = 10;
 
     // Multi-page
     public ?int $selectedPageId = null;
+
     public string $newPageLabel = '';
+
     public string $newPageUrl = '';
+
     public bool $showAddPage = false;
 
     // Budgets
@@ -83,7 +94,7 @@ class SitePerformance extends Component
     #[Computed]
     public function pages(): \Illuminate\Support\Collection
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return collect();
         }
 
@@ -93,7 +104,7 @@ class SitePerformance extends Component
     #[Computed]
     public function activeTest(): ?PerformanceTest
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return null;
         }
 
@@ -116,7 +127,7 @@ class SitePerformance extends Component
     #[Computed]
     public function activeDesktopTest(): ?PerformanceTest
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return null;
         }
 
@@ -145,7 +156,7 @@ class SitePerformance extends Component
         }
 
         $test = $this->activeTest;
-        if (!$test) {
+        if (! $test) {
             return [];
         }
 
@@ -193,7 +204,7 @@ class SitePerformance extends Component
     #[Computed]
     public function chartEventMarkers(): array
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return [];
         }
 
@@ -219,16 +230,17 @@ class SitePerformance extends Component
     public function hasFieldData(): bool
     {
         $test = $this->latestMobileTest;
-        if (!$test) {
+        if (! $test) {
             return false;
         }
+
         return $test->field_fcp !== null || $test->field_lcp !== null || $test->field_cls !== null;
     }
 
     #[Computed]
     public function activeTests(): \Illuminate\Support\Collection
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return collect();
         }
 
@@ -240,7 +252,7 @@ class SitePerformance extends Component
     #[Computed]
     public function lastFinishedTest(): ?PerformanceTest
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return null;
         }
 
@@ -274,7 +286,7 @@ class SitePerformance extends Component
     #[Computed]
     public function scoreHistory(): array
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return ['labels' => [], 'datasets' => [], 'annotations' => []];
         }
 
@@ -360,7 +372,7 @@ class SitePerformance extends Component
     #[Computed]
     public function testHistory()
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return collect();
         }
 
@@ -392,7 +404,7 @@ class SitePerformance extends Component
             'newPageUrl' => 'required|url|max:500',
         ]);
 
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return;
         }
 
@@ -414,7 +426,7 @@ class SitePerformance extends Component
     public function removePage(int $pageId): void
     {
         $page = PerformancePage::where('performance_monitor_id', $this->monitor?->id)->find($pageId);
-        if (!$page) {
+        if (! $page) {
             return;
         }
 
@@ -440,7 +452,7 @@ class SitePerformance extends Component
 
     public function setPrimaryPage(int $pageId): void
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return;
         }
 
@@ -474,7 +486,7 @@ class SitePerformance extends Component
 
     public function saveBudgets(): void
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return;
         }
 
@@ -485,7 +497,7 @@ class SitePerformance extends Component
             }
         }
 
-        $this->monitor->update(['budgets' => !empty($budgets) ? $budgets : null]);
+        $this->monitor->update(['budgets' => ! empty($budgets) ? $budgets : null]);
         unset($this->monitor);
         unset($this->budgetViolations);
         $this->dispatch('close-modal-edit-budgets');
@@ -494,15 +506,16 @@ class SitePerformance extends Component
 
     public function runTest(): void
     {
-        $rateLimitKey = "performance-test:{$this->site->id}:" . auth()->id();
+        $rateLimitKey = "performance-test:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
             session()->flash('error', 'Too many performance test requests. Please wait before trying again.');
+
             return;
         }
 
         $monitor = $this->monitor;
 
-        if (!$monitor) {
+        if (! $monitor) {
             $monitor = PerformanceMonitor::create([
                 'site_id' => $this->site->id,
                 'is_active' => true,
@@ -529,11 +542,11 @@ class SitePerformance extends Component
 
     public function toggleActive(): void
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return;
         }
 
-        $this->monitor->update(['is_active' => !$this->monitor->is_active]);
+        $this->monitor->update(['is_active' => ! $this->monitor->is_active]);
         unset($this->monitor);
     }
 
@@ -545,7 +558,7 @@ class SitePerformance extends Component
 
     public function updateSettings(): void
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return;
         }
 
@@ -589,7 +602,7 @@ class SitePerformance extends Component
             $start = max(0, $i - $window + 1);
             $slice = array_slice($scores, $start, $i - $start + 1);
             $validScores = array_filter($slice, fn ($s) => $s !== null);
-            $result[] = !empty($validScores) ? round(array_sum($validScores) / count($validScores), 1) : null;
+            $result[] = ! empty($validScores) ? round(array_sum($validScores) / count($validScores), 1) : null;
         }
 
         return $result;
@@ -600,7 +613,7 @@ class SitePerformance extends Component
         return view('livewire.sites.detail.site-performance')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Performance',
+                'title' => $this->site->name.' — Performance',
             ]);
     }
 }

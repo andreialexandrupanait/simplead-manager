@@ -11,14 +11,19 @@ class CopySettingsModal extends Component
     public Site $sourceSite;
 
     public bool $showSecurityOption = false;
+
     public bool $showTweaksOption = false;
+
     public bool $showModulesOption = false;
 
     public bool $copySecuritySettings = false;
+
     public bool $copyTweakSettings = false;
+
     public bool $copyModuleConfig = false;
 
     public array $selectedSiteIds = [];
+
     public bool $selectAll = false;
 
     public function mount(Site $sourceSite): void
@@ -42,11 +47,13 @@ class CopySettingsModal extends Component
     {
         if (empty($this->selectedSiteIds)) {
             session()->flash('copy-error', 'Please select at least one target site.');
+
             return;
         }
 
-        if (!$this->copySecuritySettings && !$this->copyTweakSettings && !$this->copyModuleConfig) {
+        if (! $this->copySecuritySettings && ! $this->copyTweakSettings && ! $this->copyModuleConfig) {
             session()->flash('copy-error', 'Please select at least one setting type to copy.');
+
             return;
         }
 
@@ -91,7 +98,7 @@ class CopySettingsModal extends Component
             ->orderBy('name');
 
         $user = auth()->user();
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $query->where('user_id', $user->id);
         }
 

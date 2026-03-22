@@ -28,7 +28,7 @@ use Livewire\WithPagination;
 
 class SiteReports extends Component
 {
-    use WithPagination, WithSiteAuthorization, WithJobTracking;
+    use WithJobTracking, WithPagination, WithSiteAuthorization;
 
     public Site $site;
 
@@ -36,24 +36,40 @@ class SiteReports extends Component
 
     // Schedule modal
     public bool $showScheduleModal = false;
+
     public ?int $editingScheduleId = null;
+
     public bool $scheduleActive = true;
+
     public ?int $scheduleTemplateId = null;
+
     public string $scheduleFrequency = 'monthly';
+
     public int $scheduleDayOfWeek = 1;
+
     public int $scheduleDayOfMonth = 1;
+
     public string $scheduleTime = '08:00';
+
     public string $scheduleTimezone = 'Europe/Bucharest';
+
     public string $schedulePeriod = 'last_30_days';
+
     public string $scheduleRecipientEmails = '';
+
     public bool $scheduleSendCopyToAdmin = true;
+
     public string $scheduleEmailSubject = '';
+
     public string $scheduleEmailBody = '';
+
     public string $scheduleClientName = '';
 
     // Send modal
     public bool $showSendModal = false;
+
     public ?int $sendReportId = null;
+
     public string $sendToEmail = '';
 
     // Bulk actions
@@ -61,20 +77,29 @@ class SiteReports extends Component
 
     // Generate modal
     public bool $showGenerateModal = false;
+
     public int $generateStep = 1;
+
     public array $sectionPreviews = [];
+
     public array $excludedSections = [];
+
     public $draftRecommendations = [];
+
     public string $newRecTitle = '';
+
     public string $newRecDescription = '';
+
     public string $newRecPriority = 'medium';
+
     public string $newRecCategory = 'technical';
+
     public bool $loadingRecommendations = false;
 
     protected function jobTrackingKeys(): array
     {
         return [
-            'generate' => 'report-generate-' . $this->site->id,
+            'generate' => 'report-generate-'.$this->site->id,
         ];
     }
 
@@ -153,7 +178,7 @@ class SiteReports extends Component
             ->whereNull('report_id')
             ->findOrFail($id);
 
-        $rec->update(['is_included' => !$rec->is_included]);
+        $rec->update(['is_included' => ! $rec->is_included]);
         $this->loadDraftRecommendations();
     }
 
@@ -377,7 +402,7 @@ class SiteReports extends Component
             'label' => __('report.section_label_uptime'),
             'status' => $status,
             'metrics' => [
-                ['label' => 'Uptime', 'value' => $pct !== null ? number_format($pct, 2) . '%' : 'N/A'],
+                ['label' => 'Uptime', 'value' => $pct !== null ? number_format($pct, 2).'%' : 'N/A'],
             ],
         ];
     }
@@ -499,9 +524,15 @@ class SiteReports extends Component
         $email = $this->site->latestEmailHealthCheck;
         if ($email) {
             $parts = [];
-            if ($email->spf_exists) $parts[] = 'SPF';
-            if ($email->dkim_exists) $parts[] = 'DKIM';
-            if ($email->dmarc_exists) $parts[] = 'DMARC';
+            if ($email->spf_exists) {
+                $parts[] = 'SPF';
+            }
+            if ($email->dkim_exists) {
+                $parts[] = 'DKIM';
+            }
+            if ($email->dmarc_exists) {
+                $parts[] = 'DMARC';
+            }
             $metrics[] = ['label' => 'Email', 'value' => $parts ? implode('+', $parts) : 'None'];
         }
 
@@ -535,7 +566,7 @@ class SiteReports extends Component
             'label' => __('report.section_label_recommendations'),
             'status' => 'neutral',
             'metrics' => [
-                ['label' => 'Included', 'value' => $total > 0 ? $count . '/' . $total : 'Auto-generated'],
+                ['label' => 'Included', 'value' => $total > 0 ? $count.'/'.$total : 'Auto-generated'],
             ],
         ];
     }
@@ -606,7 +637,7 @@ class SiteReports extends Component
             'status' => 'neutral',
             'metrics' => [
                 ['label' => 'Requests', 'value' => $requests !== null ? number_format($requests) : 'N/A'],
-                ['label' => 'Cache hit', 'value' => $cacheRatio !== null ? number_format($cacheRatio, 1) . '%' : 'N/A'],
+                ['label' => 'Cache hit', 'value' => $cacheRatio !== null ? number_format($cacheRatio, 1).'%' : 'N/A'],
             ],
         ];
     }
@@ -655,8 +686,8 @@ class SiteReports extends Component
             'label' => __('report.section_label_security_checks'),
             'status' => $status,
             'metrics' => [
-                ['label' => 'Score', 'value' => $score . '%'],
-                ['label' => 'Passed', 'value' => $passed . '/' . $total],
+                ['label' => 'Score', 'value' => $score.'%'],
+                ['label' => 'Passed', 'value' => $passed.'/'.$total],
             ],
         ];
     }
@@ -773,7 +804,7 @@ class SiteReports extends Component
 
         $this->showSendModal = false;
         $this->sendReportId = null;
-        session()->flash('report-success', 'Report sent to ' . $this->sendToEmail);
+        session()->flash('report-success', 'Report sent to '.$this->sendToEmail);
     }
 
     // ─── Bulk Actions ─────────────────────────────────────────────
@@ -790,7 +821,7 @@ class SiteReports extends Component
         }
 
         $count = $reports->count();
-        session()->flash('report-success', $count . ' report(s) deleted.');
+        session()->flash('report-success', $count.' report(s) deleted.');
     }
 
     public function bulkSend(array $ids, string $email): void
@@ -821,7 +852,7 @@ class SiteReports extends Component
 
         $this->bulkSendEmail = '';
         $count = $reports->count();
-        session()->flash('report-success', $count . ' report(s) sent to ' . $email);
+        session()->flash('report-success', $count.' report(s) sent to '.$email);
     }
 
     public function deleteReport(int $reportId): void
@@ -857,7 +888,7 @@ class SiteReports extends Component
         ])
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Reports',
+                'title' => $this->site->name.' — Reports',
             ]);
     }
 }

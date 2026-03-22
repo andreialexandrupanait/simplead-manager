@@ -28,7 +28,7 @@ trait HasSiteScopes
     {
         return $query->where(function ($q) use ($term) {
             $q->where('name', 'ilike', "%{$term}%")
-              ->orWhere('url', 'ilike', "%{$term}%");
+                ->orWhere('url', 'ilike', "%{$term}%");
         });
     }
 

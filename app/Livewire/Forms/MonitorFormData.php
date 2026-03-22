@@ -26,7 +26,9 @@ class MonitorFormData extends Form
 
     // Keyword
     public string $keyword = '';
+
     public string $keyword_type = 'exists';
+
     public bool $keyword_case_sensitive = false;
 
     // SSL

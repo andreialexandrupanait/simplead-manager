@@ -18,6 +18,7 @@ class VerifySecurityState implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -50,7 +51,7 @@ class VerifySecurityState implements ShouldQueue
                     'category' => 'hardening',
                     'key' => $key,
                     'applied' => (bool) $isActive,
-                    'failed' => !$isActive,
+                    'failed' => ! $isActive,
                     'reason' => $isActive ? null : 'Setting not active on WordPress',
                 ];
             }
@@ -71,7 +72,7 @@ class VerifySecurityState implements ShouldQueue
                     'category' => 'htaccess',
                     'key' => $key,
                     'applied' => $isActive,
-                    'failed' => !$isActive,
+                    'failed' => ! $isActive,
                     'reason' => $isActive ? null : 'Htaccess rule not active',
                 ];
             }
@@ -92,7 +93,7 @@ class VerifySecurityState implements ShouldQueue
                     'category' => 'login',
                     'key' => $key,
                     'applied' => $isActive,
-                    'failed' => !$isActive,
+                    'failed' => ! $isActive,
                     'reason' => $isActive ? null : 'Login setting not active on WordPress',
                 ];
             }
@@ -101,7 +102,7 @@ class VerifySecurityState implements ShouldQueue
         // Verify captcha
         if (isset($state['captcha'])) {
             $captchaState = $state['captcha'];
-            $isActive = !empty($captchaState['enabled']);
+            $isActive = ! empty($captchaState['enabled']);
             $captchaSetting = SecuritySetting::where('site_id', $this->site->id)
                 ->where('category', 'captcha')
                 ->where('is_enabled', true)
@@ -112,7 +113,7 @@ class VerifySecurityState implements ShouldQueue
                     'category' => 'captcha',
                     'key' => $captchaSetting->setting_key,
                     'applied' => $isActive,
-                    'failed' => !$isActive,
+                    'failed' => ! $isActive,
                     'reason' => $isActive ? null : 'CAPTCHA not active on WordPress',
                 ];
             }
@@ -121,7 +122,7 @@ class VerifySecurityState implements ShouldQueue
         // Verify IP management
         if (isset($state['ip_management'])) {
             $ipState = $state['ip_management'];
-            $isActive = !empty($ipState['enabled']);
+            $isActive = ! empty($ipState['enabled']);
             $ipSetting = SecuritySetting::where('site_id', $this->site->id)
                 ->where('category', 'ip_management')
                 ->where('is_enabled', true)
@@ -132,13 +133,13 @@ class VerifySecurityState implements ShouldQueue
                     'category' => 'ip_management',
                     'key' => $ipSetting->setting_key,
                     'applied' => $isActive,
-                    'failed' => !$isActive,
+                    'failed' => ! $isActive,
                     'reason' => $isActive ? null : 'IP management not active on WordPress',
                 ];
             }
         }
 
-        if (!empty($reported)) {
+        if (! empty($reported)) {
             app(SecuritySettingsService::class)->syncSettingsFromAgent($this->site, $reported);
         }
     }

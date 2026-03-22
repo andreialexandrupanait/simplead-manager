@@ -38,7 +38,7 @@ class CloudflareService
 
         do {
             $params['page'] = $page;
-            $query = '?' . http_build_query($params);
+            $query = '?'.http_build_query($params);
             $response = $this->request('GET', "/zones{$query}");
 
             $zones = $response['result'] ?? [];

@@ -17,8 +17,9 @@ class UpdateConnectorPlugin extends Command
 
     public function handle(): int
     {
-        if (!$this->option('site') && !$this->option('all')) {
+        if (! $this->option('site') && ! $this->option('all')) {
             $this->error('You must specify --site=ID or --all');
+
             return self::FAILURE;
         }
 
@@ -29,10 +30,12 @@ class UpdateConnectorPlugin extends Command
 
         if ($this->option('site')) {
             $site = Site::find($this->option('site'));
-            if (!$site) {
+            if (! $site) {
                 $this->error("Site not found: {$this->option('site')}");
+
                 return self::FAILURE;
             }
+
             return $this->updateSite($site, $downloadUrl) ? self::SUCCESS : self::FAILURE;
         }
 
@@ -40,6 +43,7 @@ class UpdateConnectorPlugin extends Command
 
         if ($sites->isEmpty()) {
             $this->warn('No connected sites found.');
+
             return self::SUCCESS;
         }
 
@@ -78,14 +82,17 @@ class UpdateConnectorPlugin extends Command
                 $old = $data['old_version'] ?? '?';
                 $new = $data['new_version'] ?? '?';
                 $this->info("  ✓ {$label}: {$old} → {$new}");
+
                 return true;
             }
 
             $error = $response->json('error.message') ?? $response->json('message') ?? "HTTP {$response->status()}";
             $this->error("  ✗ {$label}: {$error}");
+
             return false;
         } catch (\Throwable $e) {
             $this->error("  ✗ {$label}: {$e->getMessage()}");
+
             return false;
         }
     }

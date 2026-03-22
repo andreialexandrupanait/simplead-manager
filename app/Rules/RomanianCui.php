@@ -20,8 +20,9 @@ class RomanianCui implements ValidationRule
         }
 
         // Must be 2-10 digits
-        if (!preg_match('/^\d{2,10}$/', $cui)) {
+        if (! preg_match('/^\d{2,10}$/', $cui)) {
             $fail(__('The :attribute must be a valid Romanian CUI (2-10 digits, optionally prefixed with RO).'));
+
             return;
         }
 

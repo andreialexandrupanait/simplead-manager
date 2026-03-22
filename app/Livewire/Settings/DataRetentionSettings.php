@@ -14,6 +14,7 @@ class DataRetentionSettings extends Component
     use WithJobTracking;
 
     public bool $enabled = true;
+
     public array $days = [];
 
     public function mount(RetentionPolicyService $policy): void
@@ -117,6 +118,7 @@ class DataRetentionSettings extends Component
     {
         if ($this->hasRunningJobs) {
             $this->dispatch('notify', type: 'warning', message: 'Cleanup is already running.');
+
             return;
         }
 
@@ -134,7 +136,7 @@ class DataRetentionSettings extends Component
 
     public function formatOldest(?string $oldest): string
     {
-        if (!$oldest) {
+        if (! $oldest) {
             return 'No data';
         }
 

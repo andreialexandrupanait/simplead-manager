@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AnalyticsConnection extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'site_id',
         'google_connection_id',

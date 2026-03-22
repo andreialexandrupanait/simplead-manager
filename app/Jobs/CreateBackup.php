@@ -4,17 +4,16 @@ namespace App\Jobs;
 
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
+use App\Jobs\Concerns\BackupJobTrait;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
-use App\Jobs\Concerns\BackupJobTrait;
+use App\Services\ActivityLogger;
 use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
-use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\WordPressApiService;
-use App\Jobs\PrecacheBackupFileList;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,17 +23,22 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use ZipArchive;
 
-class CreateBackup implements ShouldQueue, ShouldBeUnique
+class CreateBackup implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, BackupJobTrait;
+    use BackupJobTrait, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1800;
+
     public int $tries = 2;
+
     public array $backoff = [120];
+
     public int $uniqueFor = 1800;
 
     protected ?Backup $backup = null;
+
     protected ?string $tempDir = null;
+
     protected ?string $filesSessionToken = null;
 
     public function __construct(
@@ -49,7 +53,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'backup-' . $this->site->id;
+        return 'backup-'.$this->site->id;
     }
 
     protected function backupTypeLabel(): string
@@ -61,12 +65,12 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     {
         JobTracker::start($this->uniqueId(), 'Creating backup...');
 
-        $this->tempDir = storage_path('app/temp/backup-' . uniqid());
+        $this->tempDir = storage_path('app/temp/backup-'.uniqid());
         mkdir($this->tempDir, 0700, true);
 
         try {
             $destination = $this->resolveStorageDestination();
-            if (!$destination) {
+            if (! $destination) {
                 throw new BackupException('No storage destination available. Configure a storage destination first.', site: $this->site);
             }
 
@@ -149,7 +153,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         $supportsChunked = $this->supportsChunkedDownload($api);
 
         $this->reportProgress('downloading_database', 10, 'Downloading database...');
-        $dbPath = $this->tempDir . '/database.sql.gz';
+        $dbPath = $this->tempDir.'/database.sql.gz';
 
         if ($supportsChunked) {
             $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) {
@@ -175,7 +179,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                 // Download files as individual chunk zips (no merge step)
                 $filesDownloadStart = microtime(true);
                 [$filesChunkPaths, $this->filesSessionToken] = $api->chunkedDownloadFilesAsChunks(
-                    $this->tempDir . '/files.zip',
+                    $this->tempDir.'/files.zip',
                     function (int $downloaded, int $total) use ($filesDownloadStart) {
                         $pct = 30 + (int) (($downloaded / max($total, 1)) * 25); // 30-55%
                         $elapsed = microtime(true) - $filesDownloadStart;
@@ -192,7 +196,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
                 );
             } else {
                 // Legacy: single files.zip download
-                $filesPath = $this->tempDir . '/files.zip';
+                $filesPath = $this->tempDir.'/files.zip';
                 $api->streamDownload('backup/files', $filesPath);
                 $filesChunkPaths = [$filesPath]; // Treat as single chunk
             }
@@ -228,20 +232,20 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     protected function getPreferredMethod(): ?string
     {
         $caps = $this->site->backup_capabilities;
-        if (!$caps || empty($caps['async_methods'])) {
+        if (! $caps || empty($caps['async_methods'])) {
             return null;
         }
 
         $methods = $caps['async_methods'];
 
         // Prefer in order: CLI (fastest, no timeout), loopback, cron
-        if (!empty($methods['cli'])) {
+        if (! empty($methods['cli'])) {
             return 'cli';
         }
-        if (!empty($methods['loopback'])) {
+        if (! empty($methods['loopback'])) {
             return 'loopback';
         }
-        if (!empty($methods['cron'])) {
+        if (! empty($methods['cron'])) {
             return 'cron';
         }
 
@@ -256,8 +260,9 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         // Use cached capabilities to avoid wasting a request on the rate limit
         $caps = $this->site->backup_capabilities;
         if ($caps) {
-            $supported = !empty($caps['chunked_download']) || !empty($caps['success']);
-            Log::info("Backup {$this->backupId}: chunked download supported (cached) = " . ($supported ? 'yes' : 'no'));
+            $supported = ! empty($caps['chunked_download']) || ! empty($caps['success']);
+            Log::info("Backup {$this->backupId}: chunked download supported (cached) = ".($supported ? 'yes' : 'no'));
+
             return $supported;
         }
 
@@ -267,29 +272,27 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             // A 400 means the endpoint exists (it rejected invalid type)
             // A 404 means the endpoint doesn't exist (old plugin)
             $supported = $response->status() !== 404;
-            if (!$supported) {
+            if (! $supported) {
                 Log::info("Backup {$this->backupId}: chunked download not supported (HTTP 404 on /backup/prepare)");
             }
+
             return $supported;
         } catch (\Throwable $e) {
             Log::info("Backup {$this->backupId}: chunked download check failed: {$e->getMessage()}");
+
             return false;
         }
     }
-
-
-
-
 
     protected function createArchive(string $dbPath, array $filesChunkPaths): array
     {
         $timestamp = now()->format('Y-m-d-His');
         $fileName = "{$this->site->domain}-{$this->type}-{$timestamp}.zip";
-        $combinedPath = $this->tempDir . '/' . $fileName;
+        $combinedPath = $this->tempDir.'/'.$fileName;
 
         $this->reportProgress('creating_archive', $this->type === 'full' ? 60 : 50, 'Creating backup archive...');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($combinedPath, ZipArchive::CREATE) !== true) {
             throw new \RuntimeException('Failed to create backup archive.');
         }
@@ -298,7 +301,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         $zip->setCompressionName('database.sql.gz', ZipArchive::CM_STORE);
 
         $chunkFileNames = [];
-        if (!empty($filesChunkPaths)) {
+        if (! empty($filesChunkPaths)) {
             if (count($filesChunkPaths) === 1 && basename($filesChunkPaths[0]) === 'files.zip') {
                 // Legacy single files.zip (from non-chunked download)
                 $zip->addFile($filesChunkPaths[0], 'files.zip');
@@ -324,14 +327,14 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
             'trigger' => $this->trigger,
         ];
 
-        if (!empty($chunkFileNames)) {
+        if (! empty($chunkFileNames)) {
             $metaData['format_version'] = 2;
             $metaData['chunk_files'] = $chunkFileNames;
         }
 
         $zip->addFromString('backup-meta.json', json_encode($metaData, JSON_PRETTY_PRINT));
 
-        if (!$zip->close()) {
+        if (! $zip->close()) {
             throw new \RuntimeException('Failed to finalize backup archive (ZipArchive::close failed).');
         }
 
@@ -341,7 +344,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         $checksum = hash_file('sha256', $combinedPath);
 
         // For file list precaching, pass the first chunk path (or null if DB-only)
-        $firstFilesPath = !empty($filesChunkPaths) ? $filesChunkPaths[0] : null;
+        $firstFilesPath = ! empty($filesChunkPaths) ? $filesChunkPaths[0] : null;
         PrecacheBackupFileList::dispatch($this->backup->id, $firstFilesPath, true);
 
         return [$combinedPath, $fileName, $fileSize, $checksum];
@@ -350,7 +353,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
     protected function upload(StorageDestination $destination, string $combinedPath, string $fileName): string
     {
         $this->reportProgress('uploading', 75, 'Uploading to storage...');
-        $remotePath = $this->site->domain . '/' . $fileName;
+        $remotePath = $this->site->domain.'/'.$fileName;
         $driver = StorageFactory::make($destination);
         $driver->upload($combinedPath, $remotePath);
         $this->reportProgress('finalizing', 95, 'Finalizing...');
@@ -382,7 +385,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         if ($this->type === 'full') {
             try {
                 $api = new WordPressApiService($this->site);
-                $manifestService = new \App\Services\Backup\ManifestService();
+                $manifestService = new \App\Services\Backup\ManifestService;
                 $manifestService->generateAndStore($api, $this->backup, $destination, $this->filesSessionToken);
             } catch (\Throwable $e) {
                 Log::warning("Manifest generation failed for backup {$this->backupId} (non-fatal): {$e->getMessage()}");
@@ -404,7 +407,7 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         }
 
         $destination->increment('used_bytes', $fileSize);
-        (new RetentionService())->apply($this->site, $destination);
+        (new RetentionService)->apply($this->site, $destination);
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Backup complete');
@@ -412,5 +415,4 @@ class CreateBackup implements ShouldQueue, ShouldBeUnique
         // Release unique lock immediately so new backups can start
         static::releaseUniqueLock($this->site->id);
     }
-
 }

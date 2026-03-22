@@ -58,7 +58,7 @@ class PluginConflictService
                             }
                         }
 
-                        if (!$alreadyFound) {
+                        if (! $alreadyFound) {
                             // Check if there is a known conflict for this pair
                             $knownConflict = $knownConflicts->first(function ($c) use ($a, $b) {
                                 return ($c->plugin_a_slug === $a && $c->plugin_b_slug === $b)
@@ -108,8 +108,11 @@ class PluginConflictService
 
         // Notify on critical conflicts
         $criticalConflicts = collect($foundConflicts)->filter(function ($fc) use ($knownConflicts) {
-            if (!$fc['plugin_conflict_id']) return false;
+            if (! $fc['plugin_conflict_id']) {
+                return false;
+            }
             $conflict = $knownConflicts->firstWhere('id', $fc['plugin_conflict_id']);
+
             return $conflict && in_array($conflict->severity, ['critical', 'high']);
         });
 
@@ -118,7 +121,7 @@ class PluginConflictService
                 site: $site,
                 event: 'plugin_conflict_detected',
                 title: "Plugin conflicts detected on {$site->name}",
-                message: $criticalConflicts->count() . " critical/high severity conflict(s) found.",
+                message: $criticalConflicts->count().' critical/high severity conflict(s) found.',
                 fields: [
                     'Total Conflicts' => (string) count($foundConflicts),
                     'Critical/High' => (string) $criticalConflicts->count(),

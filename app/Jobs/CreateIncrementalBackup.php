@@ -4,14 +4,14 @@ namespace App\Jobs;
 
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
+use App\Jobs\Concerns\BackupJobTrait;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
-use App\Jobs\Concerns\BackupJobTrait;
+use App\Services\ActivityLogger;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
-use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\WordPressApiService;
@@ -24,16 +24,20 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use ZipArchive;
 
-class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
+class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, BackupJobTrait;
+    use BackupJobTrait, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1800;
+
     public int $tries = 2;
+
     public array $backoff = [120];
+
     public int $uniqueFor = 1800;
 
     protected ?Backup $backup = null;
+
     protected ?string $tempDir = null;
 
     public function __construct(
@@ -47,7 +51,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'backup-' . $this->site->id;
+        return 'backup-'.$this->site->id;
     }
 
     protected function backupTypeLabel(): string
@@ -59,23 +63,24 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
     {
         JobTracker::start($this->uniqueId(), 'Creating incremental backup...');
 
-        $this->tempDir = storage_path('app/temp/backup-inc-' . uniqid());
+        $this->tempDir = storage_path('app/temp/backup-inc-'.uniqid());
         mkdir($this->tempDir, 0700, true);
 
         try {
             $destination = $this->resolveStorageDestination();
-            if (!$destination) {
+            if (! $destination) {
                 throw new BackupException('No storage destination available.', site: $this->site);
             }
 
-            $manifestService = new ManifestService();
+            $manifestService = new ManifestService;
 
             // Find parent backup with manifest
             $parentBackup = $manifestService->findLatestManifestBackup($this->site->id);
 
-            if (!$parentBackup) {
+            if (! $parentBackup) {
                 Log::info("No parent manifest found for site {$this->site->id}, dispatching full backup instead");
                 $this->fallbackToFullBackup($destination);
+
                 return;
             }
 
@@ -86,7 +91,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
             // Step 1: Retrieve parent manifest
             $this->reportProgress('loading_manifest', 5, 'Loading previous manifest...');
             $previousManifest = $manifestService->retrieve($parentBackup);
-            $this->reportProgress('loading_manifest', 10, 'Manifest loaded: ' . count($previousManifest) . ' files');
+            $this->reportProgress('loading_manifest', 10, 'Manifest loaded: '.count($previousManifest).' files');
 
             // Step 2: Send manifest to WP for diff
             $this->checkCancelled();
@@ -95,8 +100,8 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
                 'manifest' => $previousManifest,
             ], [], 300);
 
-            if (!$initResponse->successful() || empty($initResponse->json()['success'])) {
-                $error = $initResponse->json()['error']['message'] ?? 'HTTP ' . $initResponse->status();
+            if (! $initResponse->successful() || empty($initResponse->json()['success'])) {
+                $error = $initResponse->json()['error']['message'] ?? 'HTTP '.$initResponse->status();
                 throw new \RuntimeException("Incremental init failed: {$error}");
             }
 
@@ -120,7 +125,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
             // Step 3: Download database (always full dump)
             $this->checkCancelled();
             $this->reportProgress('downloading_database', 20, 'Downloading database...');
-            $dbPath = $this->tempDir . '/database.sql.gz';
+            $dbPath = $this->tempDir.'/database.sql.gz';
             $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) {
                 $pct = 20 + (int) (($downloaded / max($total, 1)) * 15);
                 $mb = round($downloaded / 1048576, 1);
@@ -134,7 +139,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
                 $this->checkCancelled();
                 $this->reportProgress('downloading_files', 40, 'Downloading changed files...');
 
-                $filesChunkPaths = $this->downloadIncrementalFiles($api, $filesToken, $totalFileChunks, $this->tempDir . '/files.zip');
+                $filesChunkPaths = $this->downloadIncrementalFiles($api, $filesToken, $totalFileChunks, $this->tempDir.'/files.zip');
                 $this->reportProgress('downloading_files', 60, 'Changed files downloaded');
             }
 
@@ -143,7 +148,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
             $this->reportProgress('creating_archive', 65, 'Creating incremental archive...');
 
             // Save deleted files list
-            $deletedFilesPath = $this->tempDir . '/deleted-files.json';
+            $deletedFilesPath = $this->tempDir.'/deleted-files.json';
             file_put_contents($deletedFilesPath, json_encode($deletedPaths, JSON_PRETTY_PRINT));
 
             [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive(
@@ -152,7 +157,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
 
             // Step 6: Upload
             $this->reportProgress('uploading', 75, 'Uploading to storage...');
-            $remotePath = $this->site->domain . '/' . $fileName;
+            $remotePath = $this->site->domain.'/'.$fileName;
             $driver = StorageFactory::make($destination);
             $driver->upload($combinedPath, $remotePath);
             $this->reportProgress('finalizing', 90, 'Finalizing...');
@@ -182,7 +187,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
     protected function downloadIncrementalFiles(WordPressApiService $api, string $token, int $totalChunks, string $saveTo): array
     {
         $dir = dirname($saveTo);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -195,7 +200,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
                 'chunk_index' => $i,
             ], [], 300);
 
-            if (!$execResponse->successful() || empty($execResponse->json()['success'])) {
+            if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
                 $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
                 throw new \RuntimeException("Incremental files chunk {$i} exec failed: {$error}");
             }
@@ -203,12 +208,12 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
             Log::info("Incremental files chunk {$i}/{$totalChunks} executed");
 
             // Download chunk zip
-            $chunkTempFile = $saveTo . '.chunk_' . $i . '_files.zip';
+            $chunkTempFile = $saveTo.'.chunk_'.$i.'_files.zip';
             $this->streamDownloadChunk($api, $token, $i, $chunkTempFile);
             $chunkFiles[] = $chunkTempFile;
 
             $pct = 40 + (int) ((($i + 1) / $totalChunks) * 20);
-            $this->reportProgress('downloading_files', $pct, "Downloaded chunk " . ($i + 1) . "/{$totalChunks}");
+            $this->reportProgress('downloading_files', $pct, 'Downloaded chunk '.($i + 1)."/{$totalChunks}");
         }
 
         // Cleanup on WP
@@ -224,9 +229,9 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
     {
         $apiKey = $this->site->api_key;
         $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/') . '/wp-json/simplead/v1';
+        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
 
-        $url = rtrim($baseUrl, '/') . '/backup/prepare-chunk-download';
+        $url = rtrim($baseUrl, '/').'/backup/prepare-chunk-download';
         $data = json_encode([
             'token' => $token,
             'chunk_index' => $chunkIndex,
@@ -240,24 +245,24 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
         $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
 
         $fh = fopen($saveTo, 'wb');
-        if (!$fh) {
+        if (! $fh) {
             throw new \RuntimeException("Cannot open {$saveTo} for writing");
         }
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $data,
-            CURLOPT_FILE           => $fh,
-            CURLOPT_HTTPHEADER     => [
-                'X-SAM-Key: ' . $apiKey,
-                'X-SAM-Timestamp: ' . $timestamp,
-                'X-SAM-Nonce: ' . $nonce,
-                'X-SAM-Signature: ' . $signature,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_FILE => $fh,
+            CURLOPT_HTTPHEADER => [
+                'X-SAM-Key: '.$apiKey,
+                'X-SAM-Timestamp: '.$timestamp,
+                'X-SAM-Nonce: '.$nonce,
+                'X-SAM-Signature: '.$signature,
                 'User-Agent: SimpleAD-Manager/2.0',
                 'Content-Type: application/json',
             ],
-            CURLOPT_TIMEOUT        => 600,
+            CURLOPT_TIMEOUT => 600,
             CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => true,
@@ -269,9 +274,9 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
         curl_close($ch);
         fclose($fh);
 
-        if (!$success || $httpCode >= 400) {
+        if (! $success || $httpCode >= 400) {
             @unlink($saveTo);
-            throw new \RuntimeException("Incremental chunk download failed (HTTP {$httpCode}): " . $error);
+            throw new \RuntimeException("Incremental chunk download failed (HTTP {$httpCode}): ".$error);
         }
     }
 
@@ -279,9 +284,9 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
     {
         $timestamp = now()->format('Y-m-d-His');
         $fileName = "{$this->site->domain}-incremental-{$timestamp}.zip";
-        $combinedPath = $this->tempDir . '/' . $fileName;
+        $combinedPath = $this->tempDir.'/'.$fileName;
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($combinedPath, ZipArchive::CREATE) !== true) {
             throw new \RuntimeException('Failed to create incremental backup archive.');
         }
@@ -291,7 +296,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
 
         $chunkFileNames = [];
         foreach ($filesChunkPaths as $idx => $chunkPath) {
-            if (!file_exists($chunkPath)) {
+            if (! file_exists($chunkPath)) {
                 continue;
             }
             $entryName = "files_chunk_{$idx}.zip";
@@ -315,14 +320,14 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
             'files_deleted_count' => $this->backup->files_deleted_count,
         ];
 
-        if (!empty($chunkFileNames)) {
+        if (! empty($chunkFileNames)) {
             $metaData['format_version'] = 2;
             $metaData['chunk_files'] = $chunkFileNames;
         }
 
         $zip->addFromString('backup-meta.json', json_encode($metaData, JSON_PRETTY_PRINT));
 
-        if (!$zip->close()) {
+        if (! $zip->close()) {
             throw new \RuntimeException('Failed to finalize incremental backup archive.');
         }
 
@@ -419,7 +424,7 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
         }
 
         $destination->increment('used_bytes', $fileSize);
-        (new RetentionService())->apply($this->site, $destination);
+        (new RetentionService)->apply($this->site, $destination);
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Incremental backup complete');
@@ -427,5 +432,4 @@ class CreateIncrementalBackup implements ShouldQueue, ShouldBeUnique
         // Release unique lock immediately so new backups can start
         static::releaseUniqueLock($this->site->id);
     }
-
 }

@@ -67,7 +67,7 @@ class Report extends Model
 
     public function getFileSizeFormattedAttribute(): string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return '0 B';
         }
 

@@ -56,7 +56,7 @@ class NotificationService
         }
 
         foreach ($channels as $channel) {
-            if (!$channel->subscribedTo($event)) {
+            if (! $channel->subscribedTo($event)) {
                 continue;
             }
 
@@ -99,7 +99,7 @@ class NotificationService
         }
 
         foreach ($channels as $channel) {
-            if (!$channel->subscribedTo($event)) {
+            if (! $channel->subscribedTo($event)) {
                 continue;
             }
 
@@ -163,7 +163,7 @@ class NotificationService
      */
     protected static function isDuplicate(string $event, ?int $siteId = null): bool
     {
-        $key = 'notification_dedup:' . $event . ':' . ($siteId ?? 'app');
+        $key = 'notification_dedup:'.$event.':'.($siteId ?? 'app');
 
         if (Cache::has($key)) {
             return true;
@@ -179,7 +179,7 @@ class NotificationService
         $settings = app(SettingsService::class);
 
         $enabled = $settings->get('quiet_hours_enabled', false);
-        if (!$enabled) {
+        if (! $enabled) {
             return false;
         }
 

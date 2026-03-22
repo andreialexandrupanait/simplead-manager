@@ -13,7 +13,7 @@ class EmailNotificationSender
         array $mailableArgs = []
     ): array {
         $address = $channel->getDecryptedConfig()['address'] ?? null;
-        if (!$address) {
+        if (! $address) {
             return ['success' => false, 'response_code' => null, 'error' => 'No email address configured'];
         }
 

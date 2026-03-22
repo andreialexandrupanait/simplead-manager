@@ -19,11 +19,12 @@ return new class extends Migration
                 "SELECT 1 FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND name = ?",
                 [$table, $indexName]
             );
+
             return $result !== null;
         }
 
         return DB::selectOne(
-            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
+            'SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?',
             [$table, $indexName]
         ) !== null;
     }
@@ -35,47 +36,47 @@ return new class extends Migration
     {
         // Sites table indexes
         Schema::table('sites', function (Blueprint $table) {
-            if (!$this->indexExists('sites', 'sites_status_index')) {
+            if (! $this->indexExists('sites', 'sites_status_index')) {
                 $table->index('status');
             }
-            if (!$this->indexExists('sites', 'sites_health_score_index')) {
+            if (! $this->indexExists('sites', 'sites_health_score_index')) {
                 $table->index('health_score');
             }
-            if (!$this->indexExists('sites', 'sites_health_score_is_up_index')) {
+            if (! $this->indexExists('sites', 'sites_health_score_is_up_index')) {
                 $table->index(['health_score', 'is_up']);
             }
         });
 
         // SSL certificates table
-        if (!$this->indexExists('ssl_certificates', 'ssl_certificates_expires_at_index')) {
+        if (! $this->indexExists('ssl_certificates', 'ssl_certificates_expires_at_index')) {
             Schema::table('ssl_certificates', function (Blueprint $table) {
                 $table->index('expires_at');
             });
         }
 
         // Domain monitors table
-        if (!$this->indexExists('domain_monitors', 'domain_monitors_expires_at_index')) {
+        if (! $this->indexExists('domain_monitors', 'domain_monitors_expires_at_index')) {
             Schema::table('domain_monitors', function (Blueprint $table) {
                 $table->index('expires_at');
             });
         }
 
         // Uptime monitors table
-        if (!$this->indexExists('uptime_monitors', 'uptime_monitors_current_state_index')) {
+        if (! $this->indexExists('uptime_monitors', 'uptime_monitors_current_state_index')) {
             Schema::table('uptime_monitors', function (Blueprint $table) {
                 $table->index('current_state');
             });
         }
 
         // WP audit logs table
-        if (Schema::hasTable('wp_audit_logs') && !$this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
+        if (Schema::hasTable('wp_audit_logs') && ! $this->indexExists('wp_audit_logs', 'wp_audit_logs_site_id_action_at_index')) {
             Schema::table('wp_audit_logs', function (Blueprint $table) {
                 $table->index(['site_id', 'action_at']);
             });
         }
 
         // Notification channels table
-        if (!$this->indexExists('notification_channels', 'notification_channels_is_active_is_default_index')) {
+        if (! $this->indexExists('notification_channels', 'notification_channels_is_active_is_default_index')) {
             Schema::table('notification_channels', function (Blueprint $table) {
                 $table->index(['is_active', 'is_default']);
             });

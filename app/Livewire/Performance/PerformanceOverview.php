@@ -5,7 +5,6 @@ namespace App\Livewire\Performance;
 use App\Jobs\RunPerformanceTest;
 use App\Livewire\Traits\WithSorting;
 use App\Models\PerformanceMonitor;
-use App\Models\PerformanceTest;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -18,10 +17,10 @@ class PerformanceOverview extends Component
     public function mount(): void
     {
         // Override trait defaults for this component
-        if (!request()->has('sortBy')) {
+        if (! request()->has('sortBy')) {
             $this->sortBy = 'manual';
         }
-        if (!request()->has('sortDir')) {
+        if (! request()->has('sortDir')) {
             $this->sortDir = 'asc';
         }
     }
@@ -45,8 +44,7 @@ class PerformanceOverview extends Component
         $avgMobile = $monitors->whereNotNull('latest_mobile_score')->avg('latest_mobile_score');
         $avgDesktop = $monitors->whereNotNull('latest_desktop_score')->avg('latest_desktop_score');
 
-        $poorCount = $monitors->filter(fn ($m) =>
-            ($m->latest_mobile_score !== null && $m->latest_mobile_score < 50) ||
+        $poorCount = $monitors->filter(fn ($m) => ($m->latest_mobile_score !== null && $m->latest_mobile_score < 50) ||
             ($m->latest_desktop_score !== null && $m->latest_desktop_score < 50)
         )->count();
 
@@ -57,7 +55,7 @@ class PerformanceOverview extends Component
                     return false;
                 }
                 $test = $monitor->latestMobileTest;
-                if (!$test) {
+                if (! $test) {
                     return false;
                 }
                 $minBudgets = ['performance_score'];
@@ -75,6 +73,7 @@ class PerformanceOverview extends Component
                         return true;
                     }
                 }
+
                 return false;
             })
             ->count();
@@ -97,7 +96,7 @@ class PerformanceOverview extends Component
 
         $queued = 0;
         foreach ($monitors as $monitor) {
-            if (!$monitor->site || !$monitor->site->is_connected) {
+            if (! $monitor->site || ! $monitor->site->is_connected) {
                 continue;
             }
             RunPerformanceTest::dispatch($monitor, 'both');
@@ -149,6 +148,7 @@ class PerformanceOverview extends Component
                 if ($current === null || $previous === null) {
                     return 0;
                 }
+
                 return $current - $previous;
             }, SORT_REGULAR, $this->sortDir === 'desc');
         }

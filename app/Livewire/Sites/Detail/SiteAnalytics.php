@@ -19,11 +19,17 @@ class SiteAnalytics extends Component
     use WithSiteAuthorization;
 
     public Site $site;
+
     public string $dateRange = '28d';
+
     public ?string $customStart = null;
+
     public ?string $customEnd = null;
+
     public array $availableProperties = [];
+
     public ?array $realtimeData = null;
+
     public ?int $selectedGoogleConnectionId = null;
 
     public function mount(Site $site): void
@@ -32,7 +38,7 @@ class SiteAnalytics extends Component
         $this->site = $site;
 
         // Auto-trigger property picker after OAuth return
-        if (session('success') && !$this->site->analyticsConnection) {
+        if (session('success') && ! $this->site->analyticsConnection) {
             $this->connectAnalytics();
         }
     }
@@ -40,7 +46,7 @@ class SiteAnalytics extends Component
     #[Computed]
     public function hasGoogleCredentials(): bool
     {
-        return !empty(config('services.google.client_id'));
+        return ! empty(config('services.google.client_id'));
     }
 
     #[Computed]
@@ -53,9 +59,12 @@ class SiteAnalytics extends Component
     public function googleConnectionStatus(): ?array
     {
         $conn = $this->site->analyticsConnection;
-        if (!$conn) return null;
+        if (! $conn) {
+            return null;
+        }
 
         $google = $conn->googleConnection;
+
         return [
             'email' => $google?->email,
             'property' => $conn->property_name ?? $conn->property_id,
@@ -86,14 +95,16 @@ class SiteAnalytics extends Component
         $this->dateRange = $range;
 
         $connection = $this->site->analyticsConnection;
-        if (!$connection) return;
+        if (! $connection) {
+            return;
+        }
 
         $cache = AnalyticsCache::where('site_id', $this->site->id)
             ->where('date_range', $this->dateRange)
             ->latest('fetched_at')
             ->first();
 
-        if (!$cache || $cache->expires_at->isPast()) {
+        if (! $cache || $cache->expires_at->isPast()) {
             FetchAnalyticsData::dispatch($this->site, $this->dateRange);
             session()->flash('analytics-refreshing', true);
         }
@@ -106,7 +117,9 @@ class SiteAnalytics extends Component
         $this->customEnd = $end;
 
         $connection = $this->site->analyticsConnection;
-        if (!$connection) return;
+        if (! $connection) {
+            return;
+        }
 
         $cache = AnalyticsCache::where('site_id', $this->site->id)
             ->where('date_range', 'custom')
@@ -115,7 +128,7 @@ class SiteAnalytics extends Component
             ->latest('fetched_at')
             ->first();
 
-        if (!$cache || $cache->expires_at->isPast()) {
+        if (! $cache || $cache->expires_at->isPast()) {
             FetchAnalyticsData::dispatch($this->site, 'custom', $start, $end);
             session()->flash('analytics-refreshing', true);
         }
@@ -124,7 +137,9 @@ class SiteAnalytics extends Component
     public function refreshData(): void
     {
         $connection = $this->site->analyticsConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
 
         FetchAnalyticsData::dispatch($this->site, $this->dateRange);
         session()->flash('analytics-refreshing', true);
@@ -134,8 +149,9 @@ class SiteAnalytics extends Component
     {
         $googleConnection = $this->resolveGoogleConnection();
 
-        if (!$googleConnection) {
+        if (! $googleConnection) {
             $this->redirect(route('google.auth', ['return_url' => route('sites.analytics', $this->site)]));
+
             return;
         }
 
@@ -147,17 +163,21 @@ class SiteAnalytics extends Component
                 session()->flash('error', 'No GA4 properties found for this Google account. Make sure the account has access to a GA4 property.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to list properties: ' . $e->getMessage());
+            session()->flash('error', 'Failed to list properties: '.$e->getMessage());
         }
     }
 
     public function selectProperty(int $index): void
     {
         $property = $this->availableProperties[$index] ?? null;
-        if (!$property) return;
+        if (! $property) {
+            return;
+        }
 
         $googleConnection = $this->resolveGoogleConnection();
-        if (!$googleConnection) return;
+        if (! $googleConnection) {
+            return;
+        }
 
         AnalyticsConnection::updateOrCreate(
             ['site_id' => $this->site->id],
@@ -179,16 +199,20 @@ class SiteAnalytics extends Component
     public function fetchRealtimeData(): void
     {
         $connection = $this->site->analyticsConnection;
-        if (!$connection || !$connection->is_active) return;
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
 
         $google = $connection->googleConnection;
-        if (!$google || !$google->is_active) return;
+        if (! $google || ! $google->is_active) {
+            return;
+        }
 
         try {
             $service = new GoogleAnalyticsService($google);
             $this->realtimeData = $service->getRealtimeData($connection->property_id);
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Real-time data failed: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Real-time data failed: '.$e->getMessage());
         }
     }
 
@@ -269,7 +293,7 @@ class SiteAnalytics extends Component
             'googleConnections' => $googleConnections,
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,
-            'title' => $this->site->name . ' — Analytics',
+            'title' => $this->site->name.' — Analytics',
         ]);
     }
 
@@ -280,15 +304,17 @@ class SiteAnalytics extends Component
             ->orderBy('performed_at')
             ->get();
 
-        if ($logs->isEmpty()) return [];
+        if ($logs->isEmpty()) {
+            return [];
+        }
 
         // Map dates from usersOverTime for label matching
-        $dateLabels = collect($usersOverTime)->pluck('date')->map(fn($d) => Carbon::parse($d)->format('M d'))->toArray();
+        $dateLabels = collect($usersOverTime)->pluck('date')->map(fn ($d) => Carbon::parse($d)->format('M d'))->toArray();
 
         $annotations = [];
         foreach ($logs as $log) {
             $dateLabel = $log->performed_at->format('M d');
-            $label = ucfirst($log->type) . ': ' . $log->name . ' → ' . $log->to_version;
+            $label = ucfirst($log->type).': '.$log->name.' → '.$log->to_version;
             $annotations[] = [
                 'date' => $dateLabel,
                 'label' => $label,

@@ -1,0 +1,2647 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/BackfillMonitors.php
+
+		-
+			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\RunPerformanceTest constructor expects App\\Models\\PerformanceMonitor in App\\Jobs\\RunPerformanceTest\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/BackfillMonitors.php
+
+		-
+			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\RunPerformanceTest constructor expects App\\Models\\PerformanceMonitor in App\\Jobs\\RunPerformanceTest\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/BackfillSiteScreenshots.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Console/Commands/DatabaseDumpCommand.php
+
+		-
+			message: '#^Parameter \#1 \$array of function rsort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Console/Commands/DatabaseDumpCommand.php
+
+		-
+			message: '#^Parameter \#1 \$site of class App\\Services\\ReportGeneratorService constructor expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RegenerateReport.php
+
+		-
+			message: '#^Parameter \#2 \$template of class App\\Services\\ReportGeneratorService constructor expects App\\Models\\ReportTemplate, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/RegenerateReport.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/BackupDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateIncrementalBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateIncrementalBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/BackupDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\FetchAnalyticsData constructor expects App\\Models\\Site in App\\Jobs\\FetchAnalyticsData\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/DataSyncDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\FetchSearchConsoleData constructor expects App\\Models\\Site in App\\Jobs\\FetchSearchConsoleData\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/DataSyncDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\RunSecurityScan constructor expects App\\Models\\Site in App\\Jobs\\RunSecurityScan\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/MonitoringDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\GenerateReport constructor expects App\\Models\\Site in App\\Jobs\\GenerateReport\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/ReportDispatcher.php
+
+		-
+			message: '#^Parameter \#2 \$template of job class App\\Jobs\\GenerateReport constructor expects App\\Models\\ReportTemplate in App\\Jobs\\GenerateReport\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/ReportDispatcher.php
+
+		-
+			message: '#^Invalid array key type float\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Helpers/FormatHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avg_response_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_backup_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_error\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_sync_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_desktop_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between false and false will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:backup\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:performance\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:plugins\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:reports\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:responseTime\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:searchConsole\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:ssl\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:uptime\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:users\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:wpConnection\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:wpVersion\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Helpers/SiteStatusHelper.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\DropboxDriver\:\:appendToUploadSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/BackupRelayController.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\DropboxDriver\:\:finishUploadSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/BackupRelayController.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\DropboxDriver\:\:startUploadSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/BackupRelayController.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/BackupRelayController.php
+
+		-
+			message: '#^Parameter \#2 \$default of method Illuminate\\Http\\Request\:\:header\(\) expects array\<string, string\>\|string\|null, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/BackupRelayController.php
+
+		-
+			message: '#^Parameter \#1 \$command of method App\\Services\\SecurityCommandService\:\:processCommandResult\(\) expects App\\Models\\SecurityCommand, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/SecurityAgentController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AppBackupDownloadController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BackupDownloadController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BulkReportDownloadController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BulkReportDownloadController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>config" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DropboxAuthController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between float\|false and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/HealthCheckController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ReportDownloadController.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments string, array\<int\|string, App\\Enums\\UserRole\> and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Middleware/RequireRole.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Middleware/RequireRole.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\SecurityCommandResource\:\:\$action\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/SecurityCommandResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\SecurityCommandResource\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/SecurityCommandResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\SecurityCommandResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/SecurityCommandResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\SecurityCommandResource\:\:\$payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/SecurityCommandResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\SecurityCommandResource\:\:\$priority\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/SecurityCommandResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$started_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Method App\\Jobs\\CheckUptime\:\:saveCheck\(\) should return App\\Models\\UptimeCheck but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Parameter \#1 \$site of event class App\\Events\\SiteRecovered constructor expects App\\Models\\Site in App\\Events\\SiteRecovered\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Parameter \#1 \$site of event class App\\Events\\SiteWentDown constructor expects App\\Models\\Site in App\\Events\\SiteWentDown\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Parameter \#1 \$site of static method App\\Services\\CircuitBreakerService\:\:recordSuccess\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Parameter \#2 \$incident of event class App\\Events\\SiteRecovered constructor expects App\\Models\\UptimeIncident in App\\Events\\SiteRecovered\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Parameter \#2 \$incident of event class App\\Events\\SiteWentDown constructor expects App\\Models\\UptimeIncident in App\\Events\\SiteWentDown\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Property App\\Models\\UptimeMonitor\:\:\$current_state \(App\\Enums\\MonitorState\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 3
+			path: app/Jobs/CheckUptime.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_full_backup_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/CreateBackup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/CreateBackup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/CreateIncrementalBackup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchAnalyticsData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchAnalyticsData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$property_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchAnalyticsData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchKeywordPositions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchKeywordPositions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$property_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchKeywordPositions.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchSearchConsoleData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchSearchConsoleData.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$property_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/FetchSearchConsoleData.php
+
+		-
+			message: '#^Method Illuminate\\Http\\Client\\Response\:\:header\(\) invoked with 2 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Jobs/FetchSiteFavicon.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\StorageDriver\:\:uploadToAbsolutePath\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Jobs/GenerateReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/NotifyBudgetViolation.php
+
+		-
+			message: '#^Parameter \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/NotifyBudgetViolation.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$alert_contacts\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/NotifyIncident.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/NotifyIncident.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/NotifyIncident.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/NotifyIncident.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/NotifyPerformanceDrop.php
+
+		-
+			message: '#^Parameter \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/NotifyPerformanceDrop.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Jobs/NotifySslAlert.php
+
+		-
+			message: '#^Parameter \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/NotifySslAlert.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/NotifyUpcomingReport.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Jobs/NotifyUpcomingReport.php
+
+		-
+			message: '#^Parameter \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/NotifyUpcomingReport.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$site of class App\\Services\\WordPressApiService constructor expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\SyncWordPressSite constructor expects App\\Models\\Site in App\\Jobs\\SyncWordPressSite\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cls\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fcp\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$image_size\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$js_size\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$lcp\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$performance_score\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$si\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tbt\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_size_bytes\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Parameter \#1 \$site of static method App\\Services\\ActivityLogger\:\:performanceScoreDrop\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Parameter \#2 \$site of method App\\Jobs\\RunPerformanceTest\:\:runTestForUrl\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Parameter \#3 \$test of job class App\\Jobs\\NotifyBudgetViolation constructor expects App\\Models\\PerformanceTest in App\\Jobs\\NotifyBudgetViolation\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Parameter \#1 \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RunSafeUpdate.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$interval_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/RunSecurityScan.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_valid\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/SyncCloudflareZone.php
+
+		-
+			message: '#^Parameter \#1 \$connection of class App\\Services\\CloudflareService constructor expects App\\Models\\CloudflareConnection, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/SyncCloudflareZone.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_connected\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$php_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wp_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$checked_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Components/ResponseTimeChart.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Components/ResponseTimeChart.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$checked_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Components/UptimeBar.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_up\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Components/UptimeBar.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$started_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Components/UptimeStatsCard.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptimeMonitor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:canDeleteResources\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\CheckUptime constructor expects App\\Models\\UptimeMonitor in App\\Jobs\\CheckUptime\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\SyncWordPressSite constructor expects App\\Models\\Site in App\\Jobs\\SyncWordPressSite\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/MaintenancePlans.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$module_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/MaintenancePlans.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_connected\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Performance/PerformanceOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$lcp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Performance/PerformanceOverview.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>lcp" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Performance/PerformanceOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ApplicationBackup.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Settings/ApplicationBackup.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>log" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Settings/ApplicationBackup.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\StorageDriver\:\:listFolders\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Settings/Components/StorageDestinationForm.php
+
+		-
+			message: '#^Instanceof between Throwable and Illuminate\\Contracts\\Encryption\\DecryptException will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Livewire/Settings/Components/StorageDestinationForm.php
+
+		-
+			message: '#^Call to static method timeout\(\) on an unknown class App\\Livewire\\Settings\\Http\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Livewire/Settings/GeneralSettings.php
+
+		-
+			message: '#^Unsafe access to private property App\\Livewire\\Settings\\GeneralSettings\:\:\$hasSiteStatusesTable through static\:\:\.$#'
+			identifier: staticClassAccess.privateProperty
+			count: 4
+			path: app/Livewire/Settings/GeneralSettings.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\GoogleConnection\:\:\$sites_using\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/IntegrationsSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$action\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Method App\\Livewire\\Settings\\ProfileSettings\:\:exportData\(\) should return Symfony\\Component\\HttpFoundation\\StreamedResponse but returns Illuminate\\Http\\Response\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Method App\\Livewire\\Settings\\ProfileSettings\:\:exportData\(\) should return Symfony\\Component\\HttpFoundation\\StreamedResponse but returns Symfony\\Component\\HttpFoundation\\BinaryFileResponse\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Settings/ProfileSettings.php
+
+		-
+			message: '#^Constant CURLE_PEER_FAILED_VERIFICATION not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: app/Livewire/Sites/CreateSiteWizard.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$backup_before_updates\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$frequency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$timezone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/BackupScheduleForm.php
+
+		-
+			message: '#^Offset string on array\{\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
+
+		-
+			message: '#^Property App\\Livewire\\Sites\\Detail\\Components\\RestoreConfirmation\:\:\$preRestoreStatus \(string\|null\) does not accept App\\Enums\\BackupStatus\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between App\\Enums\\BackupStatus and ''completed'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avg_response_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$language\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestDesktopTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestMobileTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptime_30d\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>language" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/ReportRecommendationsManager.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>setting_value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityCaptcha.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityHardening.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/Security/SecurityHardening.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityHardening.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/Security/SecurityHardening.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Livewire/Sites/Detail/Security/SecurityHardening.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityLogin.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\Security\\SecurityScanning\:\:latestCoreCheck\(\) should return App\\Models\\CoreFileCheck\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\Security\\SecurityScanning\:\:latestScan\(\) should return App\\Models\\SecurityScan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\Security\\SecurityScanning\:\:sslCertificate\(\) should return App\\Models\\SslCertificate\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
+
+		-
+			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_error\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_sync_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$property_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_active" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteAnalytics.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_locked\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storageDestination\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:incrementals\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cloudflare_connection_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteCloudflare.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\SiteCloudflare\:\:siteCloudflare\(\) should return App\\Models\\SiteCloudflare\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteCloudflare.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>issues" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteDatabaseCleanup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_cleanup_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_tested_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestDesktopTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestMobileTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_desktop_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_mobile_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$next_cleanup_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$alert_on_score_drop\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$day_of_week\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$frequency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score_drop_threshold\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$test_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\SitePerformance\:\:monitor\(\) should return App\\Models\\PerformanceMonitor\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>budgets" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$active\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$author\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$auto_update\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$backup_before_updates\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file\.$#'
+			identifier: property.notFound
+			count: 9
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$has_update\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$inactive\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 35
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 15
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$update_version\.$#'
+			identifier: property.notFound
+			count: 13
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$updates\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$wp_org_last_updated\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Unsafe access to private property App\\Livewire\\Sites\\Detail\\SitePlugins\:\:\$hasSiteUsersTable through static\:\:\.$#'
+			identifier: staticClassAccess.privateProperty
+			count: 2
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avg_response_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dkim_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dmarc_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$frequency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$language\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestDesktopTest\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestMobileTest\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$report_template_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$send_copy_to_admin\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$spf_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status_label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptime_30d\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Parameter \#1 \$report of class App\\Mail\\ReportGeneratedMail constructor expects App\\Models\\Report, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>language" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>sections" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_error\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_sync_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$property_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>data" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_active" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSearchConsole.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteUptime.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\SiteUptime\:\:monitor\(\) should return App\\Models\\UptimeMonitor\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteUptime.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Tweaks/TweaksPerformance.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/Tweaks/TweaksPerformance.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/Tweaks/TweaksSiteControl.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Sites/Detail/Tweaks/TweaksSiteControl.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$resolved_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/StatusPages/StatusPageEdit.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/StatusPages/StatusPageEdit.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sort_order\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Livewire/StatusPages/StatusPageEdit.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:updates\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Livewire/StatusPages/StatusPageEdit.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UptimeMonitor\:\:\$degraded\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UptimeMonitor\:\:\$down\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UptimeMonitor\:\:\$paused\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UptimeMonitor\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UptimeMonitor\:\:\$up\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\CheckUptime constructor expects App\\Models\\UptimeMonitor in App\\Jobs\\CheckUptime\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Uptime/UptimeOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/BudgetViolationMail.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PerformanceAlertMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email_subject" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/ReportGeneratedMail.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Mail/SslAlertMail.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Mail/UptimeAlertMail.php
+
+		-
+			message: '#^Invalid array key type float\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Models/AppBackup.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\<min, \-1\>\|int\<1, max\> and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/AppBackup.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Models/Backup.php
+
+		-
+			message: '#^Invalid array key type float\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Models/Backup.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Enums\\BackupStatus\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/Backup.php
+
+		-
+			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Site.php
+
+		-
+			message: '#^Unsafe access to private property App\\Models\\Site\:\:\$twoPartTlds through static\:\:\.$#'
+			identifier: staticClassAccess.privateProperty
+			count: 1
+			path: app/Models/Site.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/StatusPage.php
+
+		-
+			message: '#^Parameter \#2 \$syntax of method Carbon\\Carbon\:\:diffForHumans\(\) expects array\|int\|null, true given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/StatusPageIncident.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_up\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/StatusPageSite.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/StatusPageSite.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptimeMonitor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/StatusPageSite.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_destination_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/StorageDestination.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\<min, \-1\>\|int\<1, max\> and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/StorageDestination.php
+
+		-
+			message: '#^Cannot call method canManageSites\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Admin will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Manager will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\UserRole\:\:Viewer will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Policies/BackupPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/AppBackup/AppBackupService.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\StorageDriver\:\:uploadToAbsolutePath\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/AppBackup/AppBackupService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/AppBackup/AppBackupService.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/AppBackup/AppBackupService.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$domain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Backup/ManifestService.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Backup/ManifestService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Backup/RetentionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Backup/RetentionService.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Backup/RetentionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/BulkSettingsCopyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/BulkSettingsCopyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/BulkSettingsCopyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/BulkSettingsCopyService.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\CircuitBreakerService\:\:getOrCreateState\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 3
+			path: app/Services/CircuitBreakerService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_checked_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Offset ''critical''\|''warning'' on array\{critical\: 0, warning\: 1, info\: 2\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$array of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$backup_before_updates\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$day_of_month\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$day_of_week\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$frequency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$retention_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_key\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$setting_value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$timezone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Services/MaintenancePlanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$interval_minutes\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Offset ''analytics''\|''backup''\|''cloudflare''\|''database_cleanup''\|''performance''\|''search_console''\|''security''\|''ssl''\|''uptime'' on array\{uptime\: 5, ssl\: 720, backup\: 1440, performance\: 10080, security\: 10080, analytics\: 1440, search_console\: 1440, cloudflare\: 360, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''alerts_enabled''\|''is_active''\|''is_enabled''\|''status'' and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>interval_minutes" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ModuleConfigService.php
+
+		-
+			message: '#^Dead catch \- RedisException is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: app/Services/Notifications/NotificationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_abandoned\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PluginAbandonmentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_closed\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PluginAbandonmentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PluginAbandonmentService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PluginAbandonmentService.php
+
+		-
+			message: '#^Parameter \#1 \$plugin of static method App\\Services\\PluginAbandonmentService\:\:checkPlugin\(\) expects App\\Models\\SitePlugin, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/PluginAbandonmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\SiteCloudflare\:\:\$plan_label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$checked_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$days_remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dkim_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dkim_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dmarc_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dmarc_policy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$frequency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$issuer\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$key_size\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestDesktopTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestMobileTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_desktop_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latest_mobile_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$protocol\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$spf_exists\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$spf_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status_label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptime_30d\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Parameter \#1 \$current of method App\\Services\\ReportDataGatherer\:\:calculateTrend\(\) expects float\|int\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 9
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Parameter \#1 \$current of method App\\Services\\ReportDataGatherer\:\:calculateTrendInverse\(\) expects float\|int\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Parameter \#1 \$value of method App\\Services\\ReportDataGatherer\:\:formatNumber\(\) expects float\|int\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Parameter \#2 \$previous of method App\\Services\\ReportDataGatherer\:\:calculateTrend\(\) expects float\|int\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 9
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Parameter \#2 \$previous of method App\\Services\\ReportDataGatherer\:\:calculateTrendInverse\(\) expects float\|int\|null, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_failed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_successful" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_total" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>data" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>frequency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>performance_avg_desktop" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>performance_avg_mobile" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>updates_applied" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_avg_response_ms" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_incidents_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_percentage" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/ReportDataGatherer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$language\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Offset ''primary_color'' on array\{company_name\: string, company_logo\: string\|null, company_website\: string\|null, primary_color\: string, client_name\: mixed, client_logo\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>language" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$logo_path\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ReportLogoService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/RollbackService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:available\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/RollbackService.php
+
+		-
+			message: '#^Parameter \#1 \$site of class App\\Services\\WordPressApiService constructor expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/RollbackService.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\SyncWordPressSite constructor expects App\\Models\\Site in App\\Jobs\\SyncWordPressSite\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/RollbackService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$backupConfig\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Parameter \#1 \$site of class App\\Services\\WordPressApiService constructor expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatchSync\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Parameter \#1 \$site of method App\\Services\\RollbackService\:\:createRollbackPoint\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Parameter \#1 \$site of method App\\Services\\SafeUpdateService\:\:runHealthChecks\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SafeUpdateService.php
+
+		-
+			message: '#^Parameter \#1 \$site of method App\\Services\\SecuritySettingsService\:\:getSecurityScore\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SecurityCommandService.php
+
+		-
+			message: '#^Invalid array key type App\\Enums\\SecurityCategory\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Services/SecurityPresetService.php
+
+		-
+			message: '#^Part \$s\-\>category \(App\\Enums\\SecurityCategory\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Services/SecurityPresetService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/SecurityPresetService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$days_remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$modified_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unknown_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:active\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Dead catch \- Exception is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 2
+			path: app/Services/SecurityScanService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StatusPage\:\:\$overall_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$current_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:updates\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:active\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:recent\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Method App\\Services\\StatusPageService\:\:createAutoIncident\(\) should return App\\Models\\StatusPageIncident but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/StatusPageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/VulnerabilityCheckService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Services/VulnerabilityCheckService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Services/WordPressApiService.php
+
+		-
+			message: '#^Variable \$error might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Services/WordPressApiService.php
+
+		-
+			message: '#^Variable \$httpCode might not be defined\.$#'
+			identifier: variable.undefined
+			count: 2
+			path: app/Services/WordPressApiService.php
+
+		-
+			message: '#^Variable \$success might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Services/WordPressApiService.php

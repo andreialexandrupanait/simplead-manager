@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class BulkAddSites extends Command
 {
     protected $signature = 'app:bulk-add-sites';
+
     protected $description = 'Bulk-add sites with their clients from a predefined list';
 
     public function handle(): int
@@ -50,7 +51,7 @@ class BulkAddSites extends Command
         ];
 
         // Pre-fetch all existing site URLs to avoid N+1 queries
-        $allDomains = collect($sites)->flatten()->map(fn ($d) => 'https://' . $d)->all();
+        $allDomains = collect($sites)->flatten()->map(fn ($d) => 'https://'.$d)->all();
         $existingUrls = Site::whereIn('url', $allDomains)->pluck('url')->flip();
 
         $created = 0;
@@ -62,11 +63,12 @@ class BulkAddSites extends Command
                 $this->line("<fg=cyan>{$clientName}</> (client #{$client->id})");
 
                 foreach ($domains as $domain) {
-                    $url = 'https://' . $domain;
+                    $url = 'https://'.$domain;
 
                     if ($existingUrls->has($url)) {
                         $this->line("  <comment>SKIP</comment>  {$domain} (already exists)");
                         $skipped++;
+
                         continue;
                     }
 

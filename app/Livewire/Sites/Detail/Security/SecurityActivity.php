@@ -13,13 +13,16 @@ use Livewire\WithPagination;
 
 class SecurityActivity extends Component
 {
-    use WithPagination, WithTableFilters, WithSiteAuthorization;
+    use WithPagination, WithSiteAuthorization, WithTableFilters;
 
     public Site $site;
 
     public string $filterEventType = '';
+
     public string $filterIp = '';
+
     public string $filterUsername = '';
+
     public int $filterDays = 7;
 
     public function mount(Site $site): void
@@ -89,7 +92,7 @@ class SecurityActivity extends Component
             'logs' => $query->paginate(25),
         ])->layout('components.layouts.app', [
             'siteContext' => $this->site,
-            'title' => $this->site->name . ' — Activity',
+            'title' => $this->site->name.' — Activity',
         ]);
     }
 }

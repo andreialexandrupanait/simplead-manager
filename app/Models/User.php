@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -20,18 +20,18 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var list<string>
      */
     protected $fillable = [
-        "name",
-        "email",
-        "password",
-        "is_admin",
-        "role",
-        "timezone",
-        "date_format",
-        "language",
-        "two_factor_enabled",
-        "two_factor_secret",
-        "two_factor_recovery_codes",
-        "avatar_path",
+        'name',
+        'email',
+        'password',
+        'is_admin',
+        'role',
+        'timezone',
+        'date_format',
+        'language',
+        'two_factor_enabled',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'avatar_path',
     ];
 
     /**
@@ -40,10 +40,10 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var list<string>
      */
     protected $hidden = [
-        "password",
-        "remember_token",
-        "two_factor_secret",
-        "two_factor_recovery_codes",
+        'password',
+        'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -54,13 +54,13 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            "email_verified_at" => "datetime",
-            "password" => "hashed",
-            "two_factor_enabled" => "boolean",
-            "is_admin" => "boolean",
-            "role" => UserRole::class,
-            "two_factor_secret" => "encrypted",
-            "two_factor_recovery_codes" => "encrypted:array",
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'two_factor_enabled' => 'boolean',
+            'is_admin' => 'boolean',
+            'role' => UserRole::class,
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
         ];
     }
 
@@ -101,9 +101,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function getInitialsAttribute(): string
     {
-        $words = explode(" ", $this->name);
+        $words = explode(' ', $this->name);
+
         return strtoupper(
-            collect($words)->take(2)->map(fn ($w) => $w[0])->implode("")
+            collect($words)->take(2)->map(fn ($w) => $w[0])->implode('')
         );
     }
 }

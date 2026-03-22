@@ -13,9 +13,9 @@ use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use PragmaRX\Google2FA\Google2FA;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
-use PragmaRX\Google2FA\Google2FA;
 
 class ProfileSettings extends Component
 {
@@ -23,23 +23,34 @@ class ProfileSettings extends Component
 
     // Profile
     public string $name = '';
+
     public string $email = '';
+
     public string $timezone = 'UTC';
+
     public string $language = 'en';
+
     public $avatar = null;
 
     // Password
     public string $currentPassword = '';
+
     public string $newPassword = '';
+
     public string $newPasswordConfirmation = '';
 
     // 2FA
     public bool $showingQrCode = false;
+
     public bool $showingRecoveryCodes = false;
+
     public string $twoFactorCode = '';
+
     public ?string $twoFactorQrSvg = null;
+
     #[Locked]
     public ?string $pendingTwoFactorSecret = null;
+
     public array $recoveryCodes = [];
 
     public function mount(): void
@@ -59,7 +70,7 @@ class ProfileSettings extends Component
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
+            'email' => 'required|email|max:255|unique:users,email,'.Auth::id(),
             'timezone' => 'required|timezone',
             'language' => 'required|in:en,ro',
             'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048|dimensions:max_width=1000,max_height=1000',
@@ -72,7 +83,7 @@ class ProfileSettings extends Component
         $user->language = $this->language;
 
         if ($this->avatar) {
-            $path = $this->avatar->storeAs('avatars', uniqid('avatar_') . '.' . $this->avatar->getClientOriginalExtension(), 'public');
+            $path = $this->avatar->storeAs('avatars', uniqid('avatar_').'.'.$this->avatar->getClientOriginalExtension(), 'public');
             $user->avatar_path = $path;
         }
 
@@ -89,8 +100,9 @@ class ProfileSettings extends Component
             'newPasswordConfirmation' => 'required|same:newPassword',
         ]);
 
-        if (!Hash::check($this->currentPassword, Auth::user()->password)) {
+        if (! Hash::check($this->currentPassword, Auth::user()->password)) {
             $this->addError('currentPassword', 'The current password is incorrect.');
+
             return;
         }
 
@@ -111,8 +123,9 @@ class ProfileSettings extends Component
             'deleteAccountPassword' => 'required',
         ]);
 
-        if (!Hash::check($this->deleteAccountPassword, Auth::user()->password)) {
+        if (! Hash::check($this->deleteAccountPassword, Auth::user()->password)) {
             $this->addError('deleteAccountPassword', 'The password is incorrect.');
+
             return;
         }
 
@@ -128,7 +141,7 @@ class ProfileSettings extends Component
 
     public function enableTwoFactor(): void
     {
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
         $this->pendingTwoFactorSecret = $google2fa->generateSecretKey();
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
@@ -139,13 +152,13 @@ class ProfileSettings extends Component
 
         $renderer = new ImageRenderer(
             new RendererStyle(200),
-            new SvgImageBackEnd(),
+            new SvgImageBackEnd,
         );
         $writer = new Writer($renderer);
         $svg = $writer->writeString($qrCodeUrl);
 
         // Sanitize: ensure output is a valid SVG and strip any script elements
-        if (str_contains($svg, '<svg') && !preg_match('/<script/i', $svg)) {
+        if (str_contains($svg, '<svg') && ! preg_match('/<script/i', $svg)) {
             $this->twoFactorQrSvg = $svg;
         } else {
             $this->twoFactorQrSvg = null;
@@ -162,10 +175,11 @@ class ProfileSettings extends Component
             'twoFactorCode' => 'required|digits:6',
         ]);
 
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
 
-        if (!$google2fa->verifyKey($this->pendingTwoFactorSecret, $this->twoFactorCode)) {
+        if (! $google2fa->verifyKey($this->pendingTwoFactorSecret, $this->twoFactorCode)) {
             $this->addError('twoFactorCode', 'The code is invalid. Please try again.');
+
             return;
         }
 
@@ -226,11 +240,12 @@ class ProfileSettings extends Component
     public function exportData(): StreamedResponse
     {
         $user = Auth::user();
-        $zipPath = storage_path('app/temp/data-export-' . uniqid() . '.zip');
+        $zipPath = storage_path('app/temp/data-export-'.uniqid().'.zip');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
             $this->dispatch('notify', type: 'error', message: 'Failed to create export archive.');
+
             return response()->noContent();
         }
 
@@ -290,7 +305,7 @@ class ProfileSettings extends Component
 
         $zip->close();
 
-        $fileName = 'my-data-' . now()->format('Y-m-d') . '.zip';
+        $fileName = 'my-data-'.now()->format('Y-m-d').'.zip';
 
         return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
     }

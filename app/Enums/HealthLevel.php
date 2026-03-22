@@ -10,11 +10,12 @@ enum HealthLevel: string
     case Unknown = 'unknown';
 
     public const HEALTHY_THRESHOLD = 75;
+
     public const WARNING_THRESHOLD = 50;
 
     public static function fromScore(?int $score, bool $isUp = true): self
     {
-        if (!$isUp) {
+        if (! $isUp) {
             return self::Critical;
         }
 

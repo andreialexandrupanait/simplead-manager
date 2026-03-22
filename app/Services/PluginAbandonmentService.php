@@ -13,11 +13,12 @@ class PluginAbandonmentService
 {
     public static function checkPlugin(SitePlugin $plugin): void
     {
-        if (!$plugin->slug) {
+        if (! $plugin->slug) {
             $plugin->update([
                 'is_on_wp_org' => false,
                 'abandoned_checked_at' => now(),
             ]);
+
             return;
         }
 
@@ -34,12 +35,14 @@ class PluginAbandonmentService
                     'closed_reason' => 'not_found',
                     'abandoned_checked_at' => now(),
                 ]);
+
                 return;
             }
 
             if ($response->failed()) {
                 Log::warning("WordPress.org API returned {$response->status()} for plugin {$plugin->slug}");
                 $plugin->update(['abandoned_checked_at' => now()]);
+
                 return;
             }
 
@@ -54,6 +57,7 @@ class PluginAbandonmentService
                     'wp_org_last_updated' => isset($data['last_updated']) ? Carbon::parse($data['last_updated']) : null,
                     'abandoned_checked_at' => now(),
                 ]);
+
                 return;
             }
 
@@ -94,8 +98,12 @@ class PluginAbandonmentService
             static::checkPlugin($plugin);
 
             $plugin->refresh();
-            if ($plugin->is_abandoned) $abandoned++;
-            if ($plugin->is_closed) $closed++;
+            if ($plugin->is_abandoned) {
+                $abandoned++;
+            }
+            if ($plugin->is_closed) {
+                $closed++;
+            }
             $completed++;
 
             // Rate limit: 1 second between requests

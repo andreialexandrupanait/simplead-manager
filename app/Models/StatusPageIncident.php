@@ -85,7 +85,7 @@ class StatusPageIncident extends Model
     protected function duration(): Attribute
     {
         return Attribute::get(function () {
-            if (!$this->started_at) {
+            if (! $this->started_at) {
                 return null;
             }
 

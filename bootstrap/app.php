@@ -71,7 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Scrub sensitive data from generic exceptions in production
         $exceptions->renderable(function (\Throwable $e, Request $request) {
-            if (!app()->isProduction()) {
+            if (! app()->isProduction()) {
                 return null;
             }
 

@@ -24,10 +24,12 @@ class GeneralSettings extends Component
     private static ?bool $hasSiteStatusesTable = null;
 
     public GeneralSettingsFormData $form;
+
     public SiteStatusFormData $statusForm;
 
     // Branding paths (not part of the form -- display-only state)
     public ?string $faviconPath = null;
+
     public ?string $logoPath = null;
 
     // Site Status form editing ID
@@ -49,7 +51,7 @@ class GeneralSettings extends Component
     #[Computed]
     public function siteStatuses()
     {
-        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
+        if (! (static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             return collect();
         }
 
@@ -73,7 +75,7 @@ class GeneralSettings extends Component
                 Storage::disk('public')->delete($this->faviconPath);
             }
 
-            $path = $this->form->favicon->storeAs('branding', uniqid('favicon_') . '.' . $this->form->favicon->getClientOriginalExtension(), 'public');
+            $path = $this->form->favicon->storeAs('branding', uniqid('favicon_').'.'.$this->form->favicon->getClientOriginalExtension(), 'public');
             $settings->set('branding.favicon', $path, 'branding', 'string');
             $this->faviconPath = $path;
             $this->form->favicon = null;
@@ -84,7 +86,7 @@ class GeneralSettings extends Component
                 Storage::disk('public')->delete($this->logoPath);
             }
 
-            $path = $this->form->logo->storeAs('branding', uniqid('logo_') . '.' . $this->form->logo->getClientOriginalExtension(), 'public');
+            $path = $this->form->logo->storeAs('branding', uniqid('logo_').'.'.$this->form->logo->getClientOriginalExtension(), 'public');
             $settings->set('branding.logo', $path, 'branding', 'string');
             $this->logoPath = $path;
             $this->form->logo = null;
@@ -113,8 +115,9 @@ class GeneralSettings extends Component
 
     public function openStatusForm(?int $id = null): void
     {
-        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
+        if (! (static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
+
             return;
         }
 
@@ -137,8 +140,9 @@ class GeneralSettings extends Component
 
     public function saveStatus(): void
     {
-        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
+        if (! (static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
+
             return;
         }
 
@@ -159,8 +163,9 @@ class GeneralSettings extends Component
 
     public function deleteStatus(int $id): void
     {
-        if (!(static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
+        if (! (static::$hasSiteStatusesTable ??= Schema::hasTable('site_statuses'))) {
             $this->dispatch('notify', type: 'error', message: 'Please run migrations first: php artisan migrate');
+
             return;
         }
 
@@ -168,6 +173,7 @@ class GeneralSettings extends Component
 
         if ($status->sites_count > 0) {
             $this->dispatch('notify', type: 'error', message: "Cannot delete \"{$status->name}\" — {$status->sites_count} site(s) are assigned to it.");
+
             return;
         }
 
@@ -176,10 +182,13 @@ class GeneralSettings extends Component
     }
 
     public bool $pluginPushRunning = false;
+
     public array $pluginPushResults = [];
 
     public array $selectedPushSiteIds = [];
+
     public bool $pushSelectAll = false;
+
     public string $pushSiteSearch = '';
 
     public const CONNECTOR_CHANGELOG = [
@@ -305,6 +314,7 @@ class GeneralSettings extends Component
     {
         if (empty($this->selectedPushSiteIds)) {
             $this->dispatch('notify', type: 'warning', message: 'No sites selected.');
+
             return;
         }
 
@@ -312,6 +322,7 @@ class GeneralSettings extends Component
 
         if ($sites->isEmpty()) {
             $this->dispatch('notify', type: 'warning', message: 'No valid connected sites found in selection.');
+
             return;
         }
 
@@ -331,6 +342,7 @@ class GeneralSettings extends Component
         if ($sites->isEmpty()) {
             $this->dispatch('notify', type: 'warning', message: 'No connected sites found.');
             $this->pluginPushRunning = false;
+
             return;
         }
 
@@ -352,22 +364,24 @@ class GeneralSettings extends Component
                 if ($response->successful()) {
                     $data = $response->json();
                     // Store confirmed connector version from push response
-                    if (!empty($data['new_version']) && $data['new_version'] !== 'unknown') {
+                    if (! empty($data['new_version']) && $data['new_version'] !== 'unknown') {
                         $site->update(['connector_version' => $data['new_version']]);
                     }
                     // Flush OPcache: direct HTTP call to standalone PHP file (bypasses WP/OPcache)
-                    $flushUrl = rtrim($site->url, '/') . '/wp-content/plugins/simplead-manager-connector/opcache-flush.php';
+                    $flushUrl = rtrim($site->url, '/').'/wp-content/plugins/simplead-manager-connector/opcache-flush.php';
                     try {
                         Http::timeout(10)->get($flushUrl);
-                    } catch (\Throwable) {}
+                    } catch (\Throwable) {
+                    }
                     // Also try REST API endpoint as safety net
                     try {
                         $api->request('POST', '/flush-opcache', [], [], 15);
-                    } catch (\Throwable) {}
+                    } catch (\Throwable) {
+                    }
                     $this->pluginPushResults[] = [
                         'site' => $site->name,
                         'status' => 'success',
-                        'message' => ($data['old_version'] ?? '?') . ' -> ' . ($data['new_version'] ?? '?'),
+                        'message' => ($data['old_version'] ?? '?').' -> '.($data['new_version'] ?? '?'),
                     ];
                     $succeeded++;
                 } else {

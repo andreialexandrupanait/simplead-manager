@@ -23,6 +23,7 @@ use Carbon\Carbon;
 class ReportDataGatherer
 {
     protected array $data = [];
+
     protected array $excludedSections = [];
 
     public function __construct(
@@ -158,7 +159,7 @@ class ReportDataGatherer
         return [
             'direction' => $isPositive ? 'up' : 'down',
             'value' => round($percentChange, 1),
-            'display' => ($isPositive ? '↑' : '↓') . ' ' . abs(round($percentChange, 1)) . '%',
+            'display' => ($isPositive ? '↑' : '↓').' '.abs(round($percentChange, 1)).'%',
             'color' => $isPositive ? '#10b981' : '#ef4444',
         ];
     }
@@ -202,7 +203,7 @@ class ReportDataGatherer
         }
 
         if ($minutes < 60) {
-            return $minutes . ' min';
+            return $minutes.' min';
         }
 
         $hours = intdiv($minutes, 60);
@@ -367,7 +368,7 @@ class ReportDataGatherer
         $groups = [];
 
         foreach ($allUpdates as $update) {
-            $key = ($update['name'] ?? '') . '|' . ($update['type'] ?? '');
+            $key = ($update['name'] ?? '').'|'.($update['type'] ?? '');
 
             if (! isset($groups[$key])) {
                 $groups[$key] = [
@@ -449,7 +450,7 @@ class ReportDataGatherer
             $durMin = $inc->started_at->diffInMinutes($end);
             $downtimeBars[] = [
                 'value' => $durMin,
-                'label' => '#' . ($idx + 1),
+                'label' => '#'.($idx + 1),
                 'color' => '#ef4444',
             ];
         }
@@ -594,6 +595,7 @@ class ReportDataGatherer
             ])->toArray(),
             'top_pages' => collect($raw['top_pages'] ?? [])->reject(function ($page) {
                 $path = $page['page'] ?? $page['path'] ?? '';
+
                 return preg_match('#/wp-(login|admin|cron|json)|/xmlrpc\.php#', $path);
             })->reject(function ($page) {
                 return ($page['pageviews'] ?? $page['views'] ?? 0) == 0;
@@ -889,7 +891,7 @@ class ReportDataGatherer
         $allCards = [
             [
                 'key' => 'uptime',
-                'value' => $uptimePct !== null ? $this->formatNumber($uptimePct, 2) . '%' : __('report.snapshot_no_data', [], $this->language),
+                'value' => $uptimePct !== null ? $this->formatNumber($uptimePct, 2).'%' : __('report.snapshot_no_data', [], $this->language),
                 'label' => __('report.snapshot_uptime', [], $this->language),
                 'note' => $incidentsCount > 0 ? __('report.snapshot_incidents', ['count' => $incidentsCount], $this->language) : null,
                 'status' => $this->getUptimeStatus($uptimePct),
@@ -958,7 +960,8 @@ class ReportDataGatherer
         // Filter by template section_options for executive_snapshot
         $snapshotOptions = $this->template->section_options['executive_snapshot'] ?? [];
         $allCards = array_values(array_filter($allCards, function ($card) use ($snapshotOptions) {
-            $optionKey = 'show_' . $card['key'];
+            $optionKey = 'show_'.$card['key'];
+
             return ($snapshotOptions[$optionKey] ?? true) !== false;
         }));
 
@@ -1086,7 +1089,7 @@ class ReportDataGatherer
             'bandwidth' => $bandwidth,
             'bandwidth_formatted' => $bandwidth !== null ? $this->formatBytes((int) $bandwidth) : __('report.not_available', [], $this->language),
             'cache_hit_ratio' => $cacheRatio,
-            'cache_hit_ratio_formatted' => $cacheRatio !== null ? $this->formatNumber($cacheRatio, 1) . '%' : __('report.not_available', [], $this->language),
+            'cache_hit_ratio_formatted' => $cacheRatio !== null ? $this->formatNumber($cacheRatio, 1).'%' : __('report.not_available', [], $this->language),
             'requests_trend' => $this->calculateTrend($requests, $prev?->cloudflare_requests),
             'bandwidth_trend' => $this->calculateTrend($bandwidth, $prev?->cloudflare_bandwidth_bytes),
             'cache_ratio_trend' => $this->calculateTrend($cacheRatio, $prev?->cloudflare_cache_hit_ratio),

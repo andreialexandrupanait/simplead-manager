@@ -36,7 +36,7 @@ class ReportChartService
         foreach ($values as $i => $value) {
             $x = $paddingLeft + ($i * $xStep);
             $y = 5 + $chartHeight - (($value / $yMax) * $chartHeight);
-            $points[] = round($x, 1) . ',' . round($y, 1);
+            $points[] = round($x, 1).','.round($y, 1);
         }
 
         $linePoints = implode(' ', $points);
@@ -44,12 +44,12 @@ class ReportChartService
         $firstX = round($paddingLeft, 1);
         $lastX = round($paddingLeft + (($count - 1) * $xStep), 1);
         $bottomY = round(5 + $chartHeight, 1);
-        $areaPoints = $linePoints . " {$lastX},{$bottomY} {$firstX},{$bottomY}";
+        $areaPoints = $linePoints." {$lastX},{$bottomY} {$firstX},{$bottomY}";
 
         // Generate smooth Bézier path
         $smoothLinePath = $this->generateSmoothLinePath($values, $paddingLeft, $xStep, $chartHeight, $yMax);
         $smoothAreaPath = $smoothLinePath
-            . " L {$lastX},{$bottomY} L {$firstX},{$bottomY} Z";
+            ." L {$lastX},{$bottomY} L {$firstX},{$bottomY} Z";
 
         return [
             'line_points' => $linePoints,
@@ -113,7 +113,7 @@ class ReportChartService
         $labels = [];
         for ($i = 0; $i < $steps; $i++) {
             $value = $yMax - ($i * ($yMax / ($steps - 1)));
-            $labels[] = $this->formatCompact($value) . $suffix;
+            $labels[] = $this->formatCompact($value).$suffix;
         }
 
         return $labels;
@@ -124,7 +124,7 @@ class ReportChartService
      *
      * @param  array  $dates  Array of date strings (e.g. ['2026-01-01', ...])
      * @param  int  $maxLabels  Maximum number of labels to show
-     * @return array  Array of ['index' => int, 'label' => string]
+     * @return array Array of ['index' => int, 'label' => string]
      */
     public function generateXLabels(array $dates, int $maxLabels = 5): array
     {
@@ -160,7 +160,6 @@ class ReportChartService
      * @param  int  $height  Chart height
      * @param  int  $paddingLeft  Left padding for Y-axis labels
      * @param  int  $paddingBottom  Bottom padding for X-axis labels
-     * @return array
      */
     public function generateBarChartData(
         array $bars,
@@ -219,7 +218,6 @@ class ReportChartService
      * @param  array  $bars  [['value' => float, 'label' => string, 'color' => string], ...]
      * @param  int  $width  Chart width
      * @param  int  $labelWidth  Width reserved for labels on the left
-     * @return array
      */
     public function generateHorizontalBarData(
         array $bars,
@@ -267,7 +265,6 @@ class ReportChartService
      * @param  array  $segments  [['value' => float, 'label' => string, 'color' => string], ...]
      * @param  int  $size  SVG size (width & height)
      * @param  int  $strokeWidth  Ring thickness
-     * @return array
      */
     public function generateDonutData(
         array $segments,
@@ -293,7 +290,7 @@ class ReportChartService
 
             $enriched[] = array_merge($seg, [
                 'percentage' => round($pct * 100, 1),
-                'dash_array' => round($segLen, 2) . ', ' . round($circumference - $segLen, 2),
+                'dash_array' => round($segLen, 2).', '.round($circumference - $segLen, 2),
                 'dash_offset' => round(-$cumulativeOffset, 2),
             ]);
 
@@ -348,10 +345,10 @@ class ReportChartService
     protected function formatCompact(float $value): string
     {
         if ($value >= 1000000) {
-            return round($value / 1000000, 1) . 'M';
+            return round($value / 1000000, 1).'M';
         }
         if ($value >= 1000) {
-            return round($value / 1000, 1) . 'K';
+            return round($value / 1000, 1).'K';
         }
 
         return (string) round($value);

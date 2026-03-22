@@ -15,12 +15,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
+class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [10, 30, 60];
+
     public int $timeout = 60;
 
     public function __construct(
@@ -55,7 +57,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
 
                 // Sync banned IPs reported by WordPress
                 $bannedIps = $response->json('banned_ips') ?? [];
-                if (!empty($bannedIps)) {
+                if (! empty($bannedIps)) {
                     app(SecuritySettingsService::class)->syncBannedIps($this->site, $bannedIps);
                 }
             } else {
@@ -65,7 +67,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                     'body' => $response->body(),
                 ]);
 
-                $this->markAllFailed('Plugin returned HTTP ' . $response->status());
+                $this->markAllFailed('Plugin returned HTTP '.$response->status());
             }
         } catch (\Exception $e) {
             Log::error('PushSecuritySettings exception', [
@@ -122,11 +124,11 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                 $payload['login'][$key] = ['enabled' => false];
             } elseif ($category === 'captcha') {
                 // If captcha is fully disabled, send disabled flag
-                if (!isset($payload['captcha'])) {
+                if (! isset($payload['captcha'])) {
                     $payload['captcha'] = ['enabled' => false];
                 }
             } elseif ($category === 'ip_management') {
-                if (!isset($payload['ip_management'])) {
+                if (! isset($payload['ip_management'])) {
                     $payload['ip_management'] = ['enabled' => false];
                 }
             }
@@ -171,7 +173,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
                     'category' => 'htaccess',
                     'key' => $key,
                     'applied' => $result['success'] ?? false,
-                    'failed' => !($result['success'] ?? false),
+                    'failed' => ! ($result['success'] ?? false),
                     'reason' => $result['message'] ?? null,
                 ];
             }
@@ -196,7 +198,7 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
             }
         }
 
-        if (!empty($reported)) {
+        if (! empty($reported)) {
             app(SecuritySettingsService::class)->syncSettingsFromAgent($this->site, $reported);
         }
     }
@@ -229,6 +231,6 @@ class PushSecuritySettings implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'push-security-' . $this->site->id;
+        return 'push-security-'.$this->site->id;
     }
 }

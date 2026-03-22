@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class ScheduledAppBackupCommand extends Command
 {
     protected $signature = 'app-backup:schedule-check';
+
     protected $description = 'Check and dispatch scheduled application backups';
 
     public function handle(): void

@@ -11,6 +11,7 @@ class DatabaseCleanupService
     public static function getStats(Site $site): array
     {
         $api = new WordPressApiService($site);
+
         return $api->getDbCleanupStats();
     }
 

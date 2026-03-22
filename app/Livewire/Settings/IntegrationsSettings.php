@@ -15,18 +15,22 @@ use Livewire\Component;
 class IntegrationsSettings extends Component
 {
     public bool $showDisconnectModal = false;
+
     public ?int $disconnectingId = null;
 
     // Dropbox API Credentials
     public string $dropboxAppKey = '';
+
     public string $dropboxAppSecret = '';
 
     // Google API Credentials
     public string $googleClientId = '';
+
     public string $googleClientSecret = '';
 
     // Cloudflare
     public string $cfApiToken = '';
+
     public ?int $deletingCfId = null;
 
     public function mount(): void
@@ -123,7 +127,7 @@ class IntegrationsSettings extends Component
                 'last_test_error' => $passed ? null : 'Test returned false.',
             ]);
 
-            session()->flash('storage-success', "Connection test for {$destination->name} " . ($passed ? 'passed.' : 'failed.'));
+            session()->flash('storage-success', "Connection test for {$destination->name} ".($passed ? 'passed.' : 'failed.'));
         } catch (\Exception $e) {
             $destination->update([
                 'last_tested_at' => now(),
@@ -147,11 +151,12 @@ class IntegrationsSettings extends Component
 
         if ($destination->backups()->exists()) {
             session()->flash('storage-error', "Cannot delete {$destination->name} — it has existing backups.");
+
             return;
         }
 
         $destination->delete();
-        session()->flash('storage-success', "Storage destination deleted.");
+        session()->flash('storage-success', 'Storage destination deleted.');
     }
 
     #[On('storage-destination-saved')]
@@ -209,7 +214,7 @@ class IntegrationsSettings extends Component
             if ($valid) {
                 // Try to get account info from zones
                 $zones = $service->listZones();
-                if (!empty($zones) && isset($zones[0]['account'])) {
+                if (! empty($zones) && isset($zones[0]['account'])) {
                     $connection->update([
                         'account_id' => $zones[0]['account']['id'] ?? null,
                         'account_email' => $zones[0]['account']['name'] ?? null,
@@ -220,7 +225,7 @@ class IntegrationsSettings extends Component
                 session()->flash('error', 'Cloudflare token validation failed. The connection was saved but may not work.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to validate token: ' . $e->getMessage());
+            session()->flash('error', 'Failed to validate token: '.$e->getMessage());
         }
 
         $this->cfApiToken = '';
@@ -235,9 +240,9 @@ class IntegrationsSettings extends Component
             $service = new CloudflareService($connection);
             $valid = $service->validateToken();
 
-            session()->flash('success', "Cloudflare connection test " . ($valid ? 'passed' : 'failed') . '.');
+            session()->flash('success', 'Cloudflare connection test '.($valid ? 'passed' : 'failed').'.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Test failed: ' . $e->getMessage());
+            session()->flash('error', 'Test failed: '.$e->getMessage());
         }
 
         unset($this->cloudflareConnections);

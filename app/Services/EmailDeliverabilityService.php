@@ -44,9 +44,15 @@ class EmailDeliverabilityService
 
         // Score calculation
         $score = 0;
-        if ($spfStatus === 'valid') $score += 33;
-        if ($dmarcStatus === 'valid') $score += 34;
-        if ($dkimExists) $score += 33;
+        if ($spfStatus === 'valid') {
+            $score += 33;
+        }
+        if ($dmarcStatus === 'valid') {
+            $score += 34;
+        }
+        if ($dkimExists) {
+            $score += 33;
+        }
         $score -= ($blacklistsListed * 20);
         $score = max(0, min(100, $score));
 
@@ -119,7 +125,7 @@ class EmailDeliverabilityService
     {
         try {
             $records = dns_get_record($domain, DNS_TXT);
-            if (!$records) {
+            if (! $records) {
                 return [false, null, 'missing', []];
             }
 
@@ -134,6 +140,7 @@ class EmailDeliverabilityService
                     }
 
                     $status = empty($issues) ? 'valid' : 'invalid';
+
                     return [true, $value, $status, $issues];
                 }
             }
@@ -148,7 +155,7 @@ class EmailDeliverabilityService
     {
         try {
             $records = dns_get_record("_dmarc.{$domain}", DNS_TXT);
-            if (!$records) {
+            if (! $records) {
                 return [false, null, null, 'missing'];
             }
 
@@ -176,7 +183,7 @@ class EmailDeliverabilityService
         foreach (static::$dkimSelectors as $selector) {
             try {
                 $records = dns_get_record("{$selector}._domainkey.{$domain}", DNS_TXT);
-                if (!empty($records)) {
+                if (! empty($records)) {
                     foreach ($records as $record) {
                         $value = strtolower($record['txt'] ?? '');
                         if (str_contains($value, 'v=dkim1') || str_contains($value, 'k=rsa')) {
@@ -196,6 +203,7 @@ class EmailDeliverabilityService
     {
         try {
             $records = dns_get_record($domain, DNS_A);
+
             return collect($records)->pluck('ip')->filter()->values()->all();
         } catch (\Throwable) {
             return [];
@@ -217,7 +225,7 @@ class EmailDeliverabilityService
 
                 try {
                     $result = dns_get_record($lookup, DNS_A);
-                    $isListed = !empty($result);
+                    $isListed = ! empty($result);
                 } catch (\Throwable) {
                     // Treat lookup failure as not listed
                 }
@@ -243,6 +251,7 @@ class EmailDeliverabilityService
     {
         try {
             $records = dns_get_record($domain, DNS_MX);
+
             return collect($records)->map(fn ($r) => [
                 'priority' => $r['pri'] ?? 0,
                 'host' => $r['target'] ?? '',

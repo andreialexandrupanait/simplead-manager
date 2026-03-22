@@ -67,6 +67,7 @@ return new class extends Migration
     private function indexExists(string $table, string $indexName): bool
     {
         $indexes = Schema::getIndexes($table);
+
         return collect($indexes)->contains(fn ($idx) => $idx['name'] === $indexName);
     }
 };

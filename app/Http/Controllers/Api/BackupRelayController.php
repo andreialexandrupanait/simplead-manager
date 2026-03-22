@@ -17,17 +17,17 @@ class BackupRelayController extends Controller
     {
         $token = $request->header('X-Backup-Token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'Missing token'], 400);
         }
 
         $backup = Backup::find($backupId);
-        if (!$backup) {
+        if (! $backup) {
             return response()->json(['error' => 'Backup not found'], 404);
         }
 
         $expectedToken = BackupCallbackController::generateToken($backup);
-        if (!hash_equals($expectedToken, $token)) {
+        if (! hash_equals($expectedToken, $token)) {
             return response()->json(['error' => 'Invalid token'], 403);
         }
 
@@ -38,7 +38,7 @@ class BackupRelayController extends Controller
         $cacheKey = "backup-relay:{$backupId}";
         $context = Cache::get($cacheKey);
 
-        if (!$context) {
+        if (! $context) {
             return response()->json(['error' => 'No relay context found. Was the backup initiated?'], 404);
         }
 
@@ -55,7 +55,8 @@ class BackupRelayController extends Controller
                 'offset' => $offset,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['error' => 'Relay failed: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Relay failed: '.$e->getMessage()], 500);
         }
 
         return response()->json(['success' => true, 'is_last' => $isLast]);
@@ -66,7 +67,7 @@ class BackupRelayController extends Controller
         $destination = $backup->storageDestination;
         $driver = StorageFactory::make($destination);
 
-        if (!$driver instanceof DropboxDriver) {
+        if (! $driver instanceof DropboxDriver) {
             throw new \RuntimeException('Expected DropboxDriver for Dropbox relay');
         }
 
@@ -104,13 +105,13 @@ class BackupRelayController extends Controller
         $filePath = $context['file_path'];
         $dir = dirname($filePath);
 
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         // Append chunk to target file
         $fh = fopen($filePath, 'ab');
-        if (!$fh) {
+        if (! $fh) {
             throw new \RuntimeException("Cannot open file for writing: {$filePath}");
         }
         fwrite($fh, $data);

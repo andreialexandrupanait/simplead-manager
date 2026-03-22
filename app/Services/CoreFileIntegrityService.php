@@ -12,7 +12,7 @@ class CoreFileIntegrityService
 {
     public static function fetchOfficialChecksums(string $version, string $locale = 'en_US'): array
     {
-        $response = Http::timeout(15)->get("https://api.wordpress.org/core/checksums/1.0/", [
+        $response = Http::timeout(15)->get('https://api.wordpress.org/core/checksums/1.0/', [
             'version' => $version,
             'locale' => $locale,
         ]);
@@ -39,7 +39,7 @@ class CoreFileIntegrityService
 
             $wpVersion = $siteFiles['wp_version'] ?? $site->wp_version;
 
-            if (!$wpVersion) {
+            if (! $wpVersion) {
                 return CoreFileCheck::create([
                     'site_id' => $site->id,
                     'status' => 'error',
@@ -86,7 +86,7 @@ class CoreFileIntegrityService
 
             // Check for unknown files in wp-admin/wp-includes
             foreach ($fileHashes as $path => $hash) {
-                if (!isset($officialChecksums[$path])) {
+                if (! isset($officialChecksums[$path])) {
                     if (str_starts_with($path, 'wp-admin/') || str_starts_with($path, 'wp-includes/')) {
                         $unknown[] = $path;
                     }
@@ -106,9 +106,9 @@ class CoreFileIntegrityService
                 'modified_count' => count($modified),
                 'missing_count' => count($missing),
                 'unknown_count' => count($unknown),
-                'modified_files' => !empty($modified) ? $modified : null,
-                'missing_files' => !empty($missing) ? $missing : null,
-                'unknown_files' => !empty($unknown) ? $unknown : null,
+                'modified_files' => ! empty($modified) ? $modified : null,
+                'missing_files' => ! empty($missing) ? $missing : null,
+                'unknown_files' => ! empty($unknown) ? $unknown : null,
                 'status' => $status,
                 'checked_at' => now(),
             ]);
@@ -118,7 +118,7 @@ class CoreFileIntegrityService
                     site: $site,
                     event: 'core_files_modified',
                     title: "Core file integrity issues on {$site->name}",
-                    message: count($modified) . " modified, " . count($missing) . " missing, " . count($unknown) . " unknown files detected.",
+                    message: count($modified).' modified, '.count($missing).' missing, '.count($unknown).' unknown files detected.',
                     fields: [
                         'WordPress Version' => $wpVersion,
                         'Modified Files' => (string) count($modified),
@@ -148,7 +148,7 @@ class CoreFileIntegrityService
                 title: "Core file integrity check for {$site->name}",
                 description: $status === 'clean'
                     ? 'All core files are clean.'
-                    : count($modified) . " modified, " . count($missing) . " missing, " . count($unknown) . " unknown files.",
+                    : count($modified).' modified, '.count($missing).' missing, '.count($unknown).' unknown files.',
                 site: $site,
                 icon: 'shield',
                 url: route('sites.security', $site),

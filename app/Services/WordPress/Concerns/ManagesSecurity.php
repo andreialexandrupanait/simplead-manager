@@ -8,6 +8,7 @@ trait ManagesSecurity
     {
         $response = $this->request('GET', '/security-check');
         $response->throw();
+
         return $response->json();
     }
 
@@ -15,6 +16,7 @@ trait ManagesSecurity
     {
         $response = $this->request('POST', '/security-settings', $settings);
         $this->throwIfFailed($response);
+
         return $response->json();
     }
 
@@ -22,6 +24,7 @@ trait ManagesSecurity
     {
         $response = $this->request('GET', '/security-state');
         $response->throw();
+
         return $response->json();
     }
 
@@ -31,6 +34,7 @@ trait ManagesSecurity
             'key' => $key,
         ]);
         $response->throw();
+
         return $response->json();
     }
 }

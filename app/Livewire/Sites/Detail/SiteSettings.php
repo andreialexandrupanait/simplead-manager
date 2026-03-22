@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Sites\Detail;
 
-use App\Models\Site;
 use App\Models\MaintenancePlan;
+use App\Models\Site;
 use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -66,8 +66,9 @@ class SiteSettings extends Component
 
     public function applyPlan(): void
     {
-        if (!$this->selectedPlanId) {
+        if (! $this->selectedPlanId) {
             $this->dispatch('notify', type: 'error', message: 'Please select a plan.');
+
             return;
         }
 
@@ -84,7 +85,7 @@ class SiteSettings extends Component
     {
         $service = app(ModuleConfigService::class);
         $currentlyActive = $service->isModuleActive($this->site, $module);
-        $service->toggleModule($this->site, $module, !$currentlyActive);
+        $service->toggleModule($this->site, $module, ! $currentlyActive);
 
         $this->site->refresh();
         unset($this->moduleConfig);
@@ -120,7 +121,7 @@ class SiteSettings extends Component
         return view('livewire.sites.detail.site-settings')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Settings',
+                'title' => $this->site->name.' — Settings',
             ]);
     }
 }

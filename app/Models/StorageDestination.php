@@ -50,7 +50,7 @@ class StorageDestination extends Model
 
     public function getUsagePercentAttribute(): ?float
     {
-        if (!$this->quota_bytes || $this->quota_bytes === 0) {
+        if (! $this->quota_bytes || $this->quota_bytes === 0) {
             return null;
         }
 

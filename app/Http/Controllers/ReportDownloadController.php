@@ -13,18 +13,18 @@ class ReportDownloadController extends Controller
         // For authenticated routes, verify site ownership
         if ($request->routeIs('reports.download')) {
             $site = $report->site;
-            if (!$site || (!$request->user()->isAdmin() && $site->user_id !== $request->user()->id)) {
+            if (! $site || (! $request->user()->isAdmin() && $site->user_id !== $request->user()->id)) {
                 abort(403, 'Unauthorized.');
             }
         }
 
-        if (!$report->file_path) {
+        if (! $report->file_path) {
             abort(404, 'Report file not available.');
         }
 
         $filePath = Storage::disk('local')->path($report->file_path);
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             abort(404, 'Report file not found.');
         }
 
@@ -32,7 +32,7 @@ class ReportDownloadController extends Controller
         if ($request->query('preview')) {
             return response()->file($filePath, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . ($report->file_name ?? 'report.pdf') . '"',
+                'Content-Disposition' => 'inline; filename="'.($report->file_name ?? 'report.pdf').'"',
             ]);
         }
 

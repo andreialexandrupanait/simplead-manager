@@ -26,7 +26,7 @@ return new class extends Migration
         foreach ($presets as $preset) {
             $modules = json_decode($preset->modules, true);
 
-            if (!is_array($modules)) {
+            if (! is_array($modules)) {
                 continue;
             }
 

@@ -43,11 +43,11 @@ class StatusPageSite extends Model
     {
         return Attribute::get(function () {
             $site = $this->site;
-            if (!$site) {
+            if (! $site) {
                 return 'unknown';
             }
 
-            if (!$site->is_up) {
+            if (! $site->is_up) {
                 return 'down';
             }
 

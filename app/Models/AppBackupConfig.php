@@ -68,7 +68,9 @@ class AppBackupConfig extends Model
 
     public function getEncryptionPasswordAttribute(?string $value): ?string
     {
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
 
         try {
             return decrypt($value);

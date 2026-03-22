@@ -11,6 +11,7 @@ use ZipArchive;
 class BackupBrowserService
 {
     protected const MAX_FILES = 15000;
+
     protected const CACHE_TTL = 2592000; // 30 days — backup contents never change
 
     /**
@@ -27,22 +28,22 @@ class BackupBrowserService
             return $cached;
         }
 
-        $tempDir = storage_path('app/temp/browse-' . uniqid());
+        $tempDir = storage_path('app/temp/browse-'.uniqid());
         mkdir($tempDir, 0755, true);
 
         try {
             $destination = $backup->storageDestination;
-            if (!$destination || !$backup->file_path) {
+            if (! $destination || ! $backup->file_path) {
                 throw new \RuntimeException('Backup storage destination or file path is missing.');
             }
 
             // Download the outer zip
-            $localPath = $tempDir . '/' . $backup->file_name;
+            $localPath = $tempDir.'/'.$backup->file_name;
             $driver = StorageFactory::make($destination);
             $driver->download($backup->file_path, $localPath);
 
             // Open outer zip
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($localPath) !== true) {
                 throw new \RuntimeException('Failed to open backup archive.');
             }
@@ -55,7 +56,7 @@ class BackupBrowserService
 
             if ($hasFiles) {
                 // Extract only the files archive
-                $innerPath = $tempDir . '/files.zip';
+                $innerPath = $tempDir.'/files.zip';
                 $zip->extractTo($tempDir, ['files.zip']);
                 $zip->close();
 
@@ -129,7 +130,7 @@ class BackupBrowserService
         $magic = fread($fh, 2);
         fclose($fh);
 
-        if ($magic === "PK") {
+        if ($magic === 'PK') {
             return self::listZipContents($archivePath);
         }
 
@@ -145,7 +146,7 @@ class BackupBrowserService
      */
     public static function listZipContents(string $zipPath): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath) !== true) {
             throw new \RuntimeException('Failed to open inner files archive.');
         }
@@ -167,6 +168,7 @@ class BackupBrowserService
         }
 
         $zip->close();
+
         return $files;
     }
 
@@ -184,7 +186,7 @@ class BackupBrowserService
         ];
 
         $process = proc_open($cmd, $descriptors, $pipes);
-        if (!is_resource($process)) {
+        if (! is_resource($process)) {
             throw new \RuntimeException('Failed to run tar command to list contents.');
         }
 
@@ -239,7 +241,7 @@ class BackupBrowserService
      */
     protected function cleanup(string $dir): void
     {
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             return;
         }
 

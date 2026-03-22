@@ -17,13 +17,13 @@ class SitesList extends Component
         $user = auth()->user();
 
         $sites = Site::query()
-            ->when(!$user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
+            ->when(! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('name', 'ilike', "%{$this->search}%")
-                  ->orWhere('url', 'ilike', "%{$this->search}%");
+                    ->orWhere('url', 'ilike', "%{$this->search}%");
             }))
             ->when($this->filter !== 'all', function ($q) {
-                return match($this->filter) {
+                return match ($this->filter) {
                     'healthy' => $q->where('health_score', '>=', 90)->where('is_up', true),
                     'warning' => $q->where('health_score', '>=', 70)->where('health_score', '<', 90)->where('is_up', true),
                     'critical' => $q->where(function ($q) {

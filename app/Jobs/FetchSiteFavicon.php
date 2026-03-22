@@ -17,6 +17,7 @@ class FetchSiteFavicon implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -32,24 +33,26 @@ class FetchSiteFavicon implements ShouldQueue
         $imageData = $this->fetchUrl("{$url}/favicon.ico");
 
         // Strategy 2: Parse homepage HTML for <link rel="icon" ...>
-        if (!$imageData) {
+        if (! $imageData) {
             $imageData = $this->fetchFromHtml($url);
         }
 
         // Strategy 3: Try /apple-touch-icon.png
-        if (!$imageData) {
+        if (! $imageData) {
             $imageData = $this->fetchUrl("{$url}/apple-touch-icon.png");
         }
 
-        if (!$imageData) {
+        if (! $imageData) {
             Log::info("FetchSiteFavicon: No favicon found for site {$this->site->id} ({$this->site->domain})");
+
             return;
         }
 
         // Normalize to 64x64 PNG
         $png = $this->normalizeToPng($imageData);
-        if (!$png) {
+        if (! $png) {
             Log::info("FetchSiteFavicon: Failed to normalize favicon for site {$this->site->id}");
+
             return;
         }
 
@@ -92,7 +95,7 @@ class FetchSiteFavicon implements ShouldQueue
                 ->withOptions(['allow_redirects' => ['max' => 3]])
                 ->get($url);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
@@ -106,11 +109,11 @@ class FetchSiteFavicon implements ShouldQueue
 
                         // Handle relative URLs
                         if (str_starts_with($href, '//')) {
-                            $href = 'https:' . $href;
+                            $href = 'https:'.$href;
                         } elseif (str_starts_with($href, '/')) {
-                            $href = $url . $href;
-                        } elseif (!str_starts_with($href, 'http')) {
-                            $href = $url . '/' . $href;
+                            $href = $url.$href;
+                        } elseif (! str_starts_with($href, 'http')) {
+                            $href = $url.'/'.$href;
                         }
 
                         // Skip data URIs
@@ -135,15 +138,25 @@ class FetchSiteFavicon implements ShouldQueue
     private function looksLikeImage(string $header): bool
     {
         // PNG magic bytes
-        if (str_starts_with($header, "\x89PNG")) return true;
+        if (str_starts_with($header, "\x89PNG")) {
+            return true;
+        }
         // JPEG
-        if (str_starts_with($header, "\xFF\xD8\xFF")) return true;
+        if (str_starts_with($header, "\xFF\xD8\xFF")) {
+            return true;
+        }
         // GIF
-        if (str_starts_with($header, "GIF8")) return true;
+        if (str_starts_with($header, 'GIF8')) {
+            return true;
+        }
         // ICO
-        if (str_starts_with($header, "\x00\x00\x01\x00") || str_starts_with($header, "\x00\x00\x02\x00")) return true;
+        if (str_starts_with($header, "\x00\x00\x01\x00") || str_starts_with($header, "\x00\x00\x02\x00")) {
+            return true;
+        }
         // SVG (starts with < or whitespace then <)
-        if (str_contains(substr($header, 0, 5), '<')) return true;
+        if (str_contains(substr($header, 0, 5), '<')) {
+            return true;
+        }
 
         return false;
     }
@@ -153,7 +166,7 @@ class FetchSiteFavicon implements ShouldQueue
         // Try Imagick first (handles ICO natively)
         if (extension_loaded('imagick')) {
             try {
-                $im = new \Imagick();
+                $im = new \Imagick;
                 $im->readImageBlob($imageData);
 
                 // If multi-frame (ICO), pick the largest
@@ -188,7 +201,7 @@ class FetchSiteFavicon implements ShouldQueue
         // GD fallback (doesn't handle ICO natively)
         try {
             $src = @imagecreatefromstring($imageData);
-            if (!$src) {
+            if (! $src) {
                 return null;
             }
 

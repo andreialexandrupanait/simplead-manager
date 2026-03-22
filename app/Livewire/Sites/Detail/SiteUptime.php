@@ -21,7 +21,8 @@ class SiteUptime extends Component
     protected function jobTrackingKeys(): array
     {
         $monitorId = $this->site->uptimeMonitor?->id;
-        return $monitorId ? ['uptime' => 'check-uptime-' . $monitorId] : [];
+
+        return $monitorId ? ['uptime' => 'check-uptime-'.$monitorId] : [];
     }
 
     public function mount(Site $site): void
@@ -46,7 +47,7 @@ class SiteUptime extends Component
     #[Computed]
     public function incidents()
     {
-        if (!$this->monitor) {
+        if (! $this->monitor) {
             return collect();
         }
 
@@ -72,9 +73,10 @@ class SiteUptime extends Component
     public function testNow(): void
     {
         if ($this->monitor) {
-            $rateLimitKey = "uptime-check:{$this->site->id}:" . auth()->id();
-            if (!RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
+            $rateLimitKey = "uptime-check:{$this->site->id}:".auth()->id();
+            if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
                 session()->flash('error', 'Too many uptime check requests. Please wait before trying again.');
+
                 return;
             }
 
@@ -100,7 +102,7 @@ class SiteUptime extends Component
         return view('livewire.sites.detail.site-uptime')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name . ' — Uptime',
+                'title' => $this->site->name.' — Uptime',
             ]);
     }
 }

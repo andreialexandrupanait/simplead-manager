@@ -13,17 +13,23 @@ class PresetManager extends Component
 {
     // Form state
     public bool $showForm = false;
+
     public ?int $editingId = null;
+
     public string $presetName = '';
+
     public string $presetDescription = '';
+
     public bool $isDefault = false;
 
     // Apply state
     public ?int $applyingPresetId = null;
+
     public array $applySiteIds = [];
 
     // Snapshot from site
     public ?int $snapshotSiteId = null;
+
     public string $snapshotName = '';
 
     public function resetForm(): void
@@ -114,7 +120,7 @@ class PresetManager extends Component
 
     public function applyToSites(): void
     {
-        if (!$this->applyingPresetId || empty($this->applySiteIds)) {
+        if (! $this->applyingPresetId || empty($this->applySiteIds)) {
             return;
         }
 

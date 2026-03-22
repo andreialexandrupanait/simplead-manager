@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Log;
 class CircuitBreakerService
 {
     private const FAILURE_THRESHOLD = 3;
+
     private const OPEN_DURATION_MINUTES = 60;
+
     private const MAX_BREAKS_PER_24H = 3;
 
     /**
@@ -65,7 +67,7 @@ class CircuitBreakerService
             $updates['circuit_opened_at'] = now();
             $updates['circuit_breaks_last_24h'] = $breaksToday;
 
-            if (!$state->circuit_breaks_reset_at) {
+            if (! $state->circuit_breaks_reset_at) {
                 $updates['circuit_breaks_reset_at'] = now()->addDay();
             }
 
@@ -81,7 +83,7 @@ class CircuitBreakerService
             $updates['circuit_opened_at'] = now();
             $updates['circuit_breaks_last_24h'] = $breaksToday;
 
-            if (!$state->circuit_breaks_reset_at) {
+            if (! $state->circuit_breaks_reset_at) {
                 $updates['circuit_breaks_reset_at'] = now()->addDay();
             }
 

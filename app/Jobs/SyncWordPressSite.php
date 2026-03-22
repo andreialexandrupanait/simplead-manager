@@ -2,8 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\FetchSiteFavicon;
-use App\Jobs\PullSecurityActivityLogs;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
@@ -19,12 +17,14 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
+class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 120;
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -35,7 +35,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
 
     public function uniqueId(): string
     {
-        return 'sync-wp-' . $this->site->id;
+        return 'sync-wp-'.$this->site->id;
     }
 
     public function handle(): void
@@ -110,7 +110,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
                         'author_uri' => $theme['author_uri'] ?? null,
                         'description' => $theme['description'] ?? null,
                         'is_active' => ($theme['status'] ?? $theme['is_active'] ?? '') === 'active',
-                        'is_child_theme' => !empty($theme['parent_theme']) || ($theme['is_child_theme'] ?? false),
+                        'is_child_theme' => ! empty($theme['parent_theme']) || ($theme['is_child_theme'] ?? false),
                         'parent_theme' => $theme['parent_theme'] ?? null,
                         'has_update' => $theme['update_available'] ?? $theme['has_update'] ?? false,
                         'update_version' => $theme['new_version'] ?? $theme['update_version'] ?? null,
@@ -177,7 +177,7 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
             JobTracker::progress($this->uniqueId(), 70, 'Updating metadata...');
 
             // Fetch favicon if not yet cached
-            if (!$this->site->favicon_path) {
+            if (! $this->site->favicon_path) {
                 FetchSiteFavicon::dispatch($this->site);
             }
 
@@ -240,6 +240,6 @@ class SyncWordPressSite implements ShouldQueue, ShouldBeUnique
     public function failed(?\Throwable $exception): void
     {
         CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'WP sync failed');
-        JobTracker::fail($this->uniqueId(), 'Sync failed: ' . ($exception?->getMessage() ?? 'Unknown error'));
+        JobTracker::fail($this->uniqueId(), 'Sync failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 }

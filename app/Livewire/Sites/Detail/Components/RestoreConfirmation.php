@@ -14,24 +14,40 @@ use Livewire\Component;
 class RestoreConfirmation extends Component
 {
     public Site $site;
+
     public ?Backup $backup = null;
+
     public bool $confirmed = false;
+
     public bool $backupBeforeRestore = true;
+
     public ?int $preRestoreBackupId = null;
+
     public ?string $preRestoreStatus = null;
 
     // Selective restore properties
     public string $restoreMode = 'full'; // 'full' | 'selective'
+
     public bool $restoreDatabase = true;
+
     public bool $restoreFiles = true;
+
     public array $fileTree = [];
+
     public array $selectedFiles = [];
+
     public bool $loadingFileList = false;
+
     public bool $fileListLoaded = false;
+
     public ?string $fileListError = null;
+
     public int $totalFileCount = 0;
+
     public bool $fileListTruncated = false;
+
     public bool $hasDatabase = false;
+
     public bool $hasFiles = false;
 
     #[On('open-restore-confirmation')]
@@ -64,7 +80,7 @@ class RestoreConfirmation extends Component
     {
         $this->restoreMode = $mode;
 
-        if ($mode === 'selective' && !$this->fileListLoaded && !$this->loadingFileList) {
+        if ($mode === 'selective' && ! $this->fileListLoaded && ! $this->loadingFileList) {
             // Set loading state and return immediately so the spinner renders,
             // then the blade's wire:poll triggers loadFileList() in a separate request.
             $this->loadingFileList = true;
@@ -74,7 +90,7 @@ class RestoreConfirmation extends Component
 
     public function loadFileList(): void
     {
-        if (!$this->backup || $this->fileListLoaded) {
+        if (! $this->backup || $this->fileListLoaded) {
             return;
         }
 
@@ -82,7 +98,7 @@ class RestoreConfirmation extends Component
         $this->fileListError = null;
 
         try {
-            $service = new BackupBrowserService();
+            $service = new BackupBrowserService;
             $result = $service->listContents($this->backup);
 
             $this->hasDatabase = $result['has_database'];
@@ -113,7 +129,7 @@ class RestoreConfirmation extends Component
                 $dirName = $parts[$i];
                 $dirPath = implode('/', array_slice($parts, 0, $i + 1));
 
-                if (!isset($current[$dirName])) {
+                if (! isset($current[$dirName])) {
                     $current[$dirName] = [
                         'type' => 'dir',
                         'name' => $dirName,
@@ -162,17 +178,18 @@ class RestoreConfirmation extends Component
 
     public function restore(): void
     {
-        if (!$this->confirmed || !$this->backup) {
+        if (! $this->confirmed || ! $this->backup) {
             return;
         }
 
-        if ($this->backupBeforeRestore && !$this->preRestoreBackupId) {
+        if ($this->backupBeforeRestore && ! $this->preRestoreBackupId) {
             $this->startPreRestoreBackup();
+
             return;
         }
 
         // If pre-restore backup is still running, don't proceed
-        if ($this->preRestoreBackupId && $this->preRestoreStatus && !in_array($this->preRestoreStatus, ['completed', 'failed'])) {
+        if ($this->preRestoreBackupId && $this->preRestoreStatus && ! in_array($this->preRestoreStatus, ['completed', 'failed'])) {
             return;
         }
 
@@ -181,7 +198,7 @@ class RestoreConfirmation extends Component
 
     public function restoreAnyway(): void
     {
-        if (!$this->confirmed || !$this->backup) {
+        if (! $this->confirmed || ! $this->backup) {
             return;
         }
 
@@ -190,12 +207,12 @@ class RestoreConfirmation extends Component
 
     public function checkPreRestoreStatus(): void
     {
-        if (!$this->preRestoreBackupId) {
+        if (! $this->preRestoreBackupId) {
             return;
         }
 
         $preBackup = Backup::find($this->preRestoreBackupId);
-        if (!$preBackup) {
+        if (! $preBackup) {
             return;
         }
 
@@ -210,9 +227,10 @@ class RestoreConfirmation extends Component
     protected function startPreRestoreBackup(): void
     {
         $destination = $this->resolveDestination();
-        if (!$destination) {
+        if (! $destination) {
             session()->flash('backup-error', 'No storage destination configured.');
             $this->dispatch('close-modal-restore-confirmation');
+
             return;
         }
 
@@ -242,13 +260,13 @@ class RestoreConfirmation extends Component
 
     protected function dispatchRestore(): void
     {
-        if (!$this->backup) {
+        if (! $this->backup) {
             return;
         }
 
         $restoreDb = $this->restoreMode === 'full' ? true : $this->restoreDatabase;
         $restoreFiles = $this->restoreMode === 'full' ? true : $this->restoreFiles;
-        $selectedFiles = ($this->restoreMode === 'selective' && !empty($this->selectedFiles))
+        $selectedFiles = ($this->restoreMode === 'selective' && ! empty($this->selectedFiles))
             ? $this->selectedFiles
             : [];
 
