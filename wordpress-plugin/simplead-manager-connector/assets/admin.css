@@ -1,6 +1,183 @@
 /* SimpleAd Manager Admin Styles */
 
-/* Table */
+/* ─── Grid Layout ─── */
+.sam-grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+@media screen and (max-width: 1200px) {
+    .sam-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ─── Card ─── */
+.sam-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 24px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.sam-card h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2327;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.sam-card p {
+    color: #50575e;
+    font-size: 13px;
+}
+
+.sam-card-full {
+    margin-top: 20px;
+}
+
+/* ─── Meta Row (REST URL + Version) ─── */
+.sam-meta-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: #f6f7f7;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.sam-meta-row span {
+    color: #50575e;
+}
+
+.sam-meta-row code {
+    font-size: 12px;
+}
+
+/* ─── Credential Fields ─── */
+.sam-credentials {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 16px 0;
+}
+
+.sam-credential-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.sam-credential-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sam-credential-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.sam-credential-field input[type="text"],
+.sam-credential-field input[type="password"] {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: 6px 10px;
+    color: #2c3338;
+    box-sizing: border-box;
+}
+
+.sam-credential-row .button {
+    flex-shrink: 0;
+}
+
+@media screen and (max-width: 782px) {
+    .sam-credential-row {
+        flex-wrap: wrap;
+    }
+    .sam-credential-field {
+        width: 100%;
+    }
+    .sam-meta-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* ─── Info Banner (Cloudflare) ─── */
+.sam-info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: #f0f6fc;
+    border: 1px solid #c5d9ed;
+    border-left: 4px solid #72aee6;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #2c3338;
+}
+
+.sam-info-banner .dashicons {
+    color: #72aee6;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.sam-info-banner p {
+    margin: 0;
+    color: #2c3338;
+}
+
+/* ─── Count Badge ─── */
+.sam-count-badge {
+    display: inline-block;
+    background: #dcdcde;
+    color: #50575e;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* ─── Empty State ─── */
+.sam-empty-state {
+    padding: 20px;
+    text-align: center;
+    background: #f6f7f7;
+    border-radius: 3px;
+    color: #6b7280;
+    font-style: italic;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+/* ─── Table ─── */
+.sam-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .sam-table { border-collapse: collapse; width: 100%; }
 .sam-table th,
 .sam-table td {
@@ -17,7 +194,9 @@
 }
 .sam-table tr:hover td { background: #f9fafb; }
 
-/* Badges */
+.sam-card .sam-table { margin-bottom: 16px; }
+
+/* ─── Badges ─── */
 .sam-badge {
     display: inline-block;
     padding: 2px 8px;
@@ -28,3 +207,21 @@
 }
 .sam-badge-pass { background: #d1fae5; color: #065f46; }
 .sam-badge-fail { background: #fee2e2; color: #991b1b; }
+
+/* ─── IP Whitelist Form ─── */
+.sam-ip-add-form {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.sam-ip-add-form label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.sam-ip-remove-form {
+    display: inline;
+}
