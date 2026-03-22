@@ -53,6 +53,11 @@ class DashboardService
             ->where('status', BackupStatus::Completed)
             ->sum('file_size');
 
+        $backupsToday = Backup::whereHas('site')
+            ->where('status', BackupStatus::Completed)
+            ->whereDate('completed_at', today())
+            ->count();
+
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
@@ -66,6 +71,7 @@ class DashboardService
             'ssl_expiring' => $sslExpiring,
             'total_alerts' => $sitesDown + $sslExpiring + $failedBackups,
             'backup_storage_bytes' => $totalStorageBytes,
+            'backups_today' => $backupsToday,
         ];
     }
 

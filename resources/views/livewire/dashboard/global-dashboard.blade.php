@@ -25,15 +25,16 @@
             elseif ($stats['avg_uptime'] < 99) { $uptimeColor = 'text-yellow-600'; $uptimeBg = 'bg-yellow-50'; $uptimeIcon = 'text-yellow-500'; }
         }
 
-        $responseBg = 'bg-blue-50';
-        $responseIcon = 'text-blue-500';
-        $responseColor = 'text-blue-600';
-        if ($stats['avg_response_time'] !== null) {
-            if ($stats['avg_response_time'] > 1500) { $responseBg = 'bg-red-50'; $responseIcon = 'text-red-500'; $responseColor = 'text-red-600'; }
-            elseif ($stats['avg_response_time'] > 500) { $responseBg = 'bg-yellow-50'; $responseIcon = 'text-yellow-500'; $responseColor = 'text-yellow-600'; }
+        $bytes = $stats['backup_storage_bytes'] ?? 0;
+        if ($bytes >= 1073741824) {
+            $storageLabel = round($bytes / 1073741824, 1) . ' GB';
+        } elseif ($bytes >= 1048576) {
+            $storageLabel = round($bytes / 1048576, 0) . ' MB';
+        } else {
+            $storageLabel = '0 MB';
         }
     @endphp
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {{-- Sites --}}
         <x-ui.card :padding="false" class="p-4">
             <div class="flex items-start gap-3">
@@ -64,51 +65,7 @@
             </div>
         </x-ui.card>
 
-        {{-- Response Time --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $responseBg }}">
-                    <x-icons.zap class="h-5 w-5 {{ $responseIcon }}" />
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold {{ $responseColor }}">{{ $stats['avg_response_time'] !== null ? $stats['avg_response_time'] . 'ms' : '—' }}</div>
-                    <div class="text-xs text-gray-500">Response</div>
-                    <div class="mt-0.5 text-xs text-gray-400">avg across sites</div>
-                </div>
-            </div>
-        </x-ui.card>
-
-        {{-- Alerts --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
-                    @if($stats['total_alerts'] > 0)
-                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
-                    @else
-                        <x-icons.check-circle class="h-5 w-5 text-green-500" />
-                    @endif
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
-                    <div class="text-xs text-gray-500">Alerts</div>
-                    <div class="mt-0.5 text-xs font-medium {{ $stats['total_alerts'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
-                        {{ $stats['total_alerts'] === 0 ? 'no issues' : Str::plural('issue', $stats['total_alerts']) . ' need attention' }}
-                    </div>
-                </div>
-            </div>
-        </x-ui.card>
-
         {{-- Backup Storage --}}
-        @php
-            $bytes = $stats['backup_storage_bytes'] ?? 0;
-            if ($bytes >= 1073741824) {
-                $storageLabel = round($bytes / 1073741824, 1) . ' GB';
-            } elseif ($bytes >= 1048576) {
-                $storageLabel = round($bytes / 1048576, 0) . ' MB';
-            } else {
-                $storageLabel = '0 MB';
-            }
-        @endphp
         <x-ui.card :padding="false" class="p-4">
             <div class="flex items-start gap-3">
                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50">
@@ -120,6 +77,20 @@
                     <div class="mt-0.5 text-xs text-gray-400">
                         {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' failed (24h)' : 'all healthy' }}
                     </div>
+                </div>
+            </div>
+        </x-ui.card>
+
+        {{-- Backups Today --}}
+        <x-ui.card :padding="false" class="p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                    <x-icons.check-circle class="h-5 w-5 text-blue-500" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-base font-semibold text-blue-600">{{ $stats['backups_today'] }}</div>
+                    <div class="text-xs text-gray-500">Backups Today</div>
+                    <div class="mt-0.5 text-xs text-gray-400">completed</div>
                 </div>
             </div>
         </x-ui.card>
