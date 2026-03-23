@@ -4,6 +4,15 @@
 // PHPUnit's <env force="true"> sets $_ENV but Docker populates
 // $_SERVER with production values. We must sync all three sources
 // ($_ENV, $_SERVER, putenv) so Laravel's env() helper reads test values.
+//
+// CI detection: if GITHUB_ACTIONS is set, override DB_HOST to 127.0.0.1
+// because CI runs Postgres as a service container, not via Docker hostname.
+if (getenv('GITHUB_ACTIONS')) {
+    $_ENV['DB_HOST'] = '127.0.0.1';
+    $_ENV['DB_USERNAME'] = $_ENV['DB_USERNAME'] ?? 'simplead';
+    $_ENV['DB_PASSWORD'] = $_ENV['DB_PASSWORD'] ?? 'password';
+}
+
 foreach ($_ENV as $key => $value) {
     $_SERVER[$key] = $value;
     putenv("$key=$value");
