@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\AnalyticsConnection;
@@ -253,7 +255,9 @@ class ModuleConfigService
     public function configureModule(Site $site, string $moduleKey, bool $enabled, ?int $interval = null): void
     {
         $config = self::MODULE_MAP[$moduleKey];
-        $record = $site->{$config['relation']};
+
+        // Fresh query to avoid stale cached relations
+        $record = $config['model']::where('site_id', $site->id)->first();
 
         if ($record) {
             $this->updateModuleRecord($record, $config, $enabled, $interval);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Sites;
 
 use App\Livewire\Forms\SiteWizardFormData;
@@ -7,7 +9,6 @@ use App\Models\Client;
 use App\Models\MaintenancePlan;
 use App\Models\Site;
 use App\Models\SiteHealthState;
-use App\Services\ModuleConfigService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -165,14 +166,6 @@ class CreateSiteWizard extends Component
             'type' => 'wordpress',
             'status' => 'pending',
         ]);
-
-        // Apply plan if selected
-        if ($this->form->planId) {
-            $plan = MaintenancePlan::find($this->form->planId);
-            if ($plan) {
-                app(ModuleConfigService::class)->applyPlan($site, $plan);
-            }
-        }
 
         // Create health state for circuit breaker
         SiteHealthState::create([

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings\Components;
 
 use App\Livewire\Forms\ChannelFormData;

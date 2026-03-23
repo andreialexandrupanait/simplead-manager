@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\AppBackup;
 
 use App\Models\AppBackup;
@@ -596,7 +598,7 @@ class AppBackupService
 
         $lines = [];
         foreach ($keys as $key) {
-            $value = env($key);
+            $value = getenv($key) ?: null;
             if ($value !== null) {
                 $value = str_contains((string) $value, ' ') ? "\"$value\"" : $value;
                 $lines[] = "$key=$value";

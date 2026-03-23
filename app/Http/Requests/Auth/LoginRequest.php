@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Auth;
 
 use App\Services\ActivityLogger;
@@ -45,7 +47,7 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
-            ActivityLogger::userLoginFailed($this->string('email'));
+            ActivityLogger::userLoginFailed((string) $this->string('email'));
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
@@ -83,6 +85,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower((string) $this->string('email')).'|'.$this->ip());
     }
 }

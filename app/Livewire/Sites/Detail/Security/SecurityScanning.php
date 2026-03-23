@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Sites\Detail\Security;
 
 use App\Jobs\CheckCoreFileIntegrity;
@@ -80,7 +82,6 @@ class SecurityScanning extends Component
         $this->dispatchTrackedJob('scan', new RunSecurityScan($this->site), 'Running security scan...');
         unset($this->latestScan, $this->activeIssues, $this->vulnerabilities);
     }
-
 
     public function resolveIssue(int $id): void
     {

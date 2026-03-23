@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Sites\Detail\Security;
 
 use App\Livewire\Traits\WithSiteAuthorization;

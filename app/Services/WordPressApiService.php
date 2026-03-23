@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\WordPressApiException;
@@ -89,50 +91,72 @@ class WordPressApiService
     }
 
     /**
-     * Make an authenticated request to the WordPress REST API.
+     * Build the full URL and the clean HMAC signing path for an endpoint.
+     *
+     * @return array{0: string, 1: string} [$url, $path]
      */
-    public function request(string $method, string $endpoint, array $data = [], array $queryParams = [], int $timeout = 30): Response
+    private function buildUrl(string $endpoint): array
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
         $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
         $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
-        // Always add cache-busting parameter to bypass CDN/Cloudflare caching
-        $queryParams['_nocache'] = time();
-        $url .= '?'.http_build_query($queryParams);
-        $body = ! empty($data) ? json_encode($data) : '';
-
-        // Use only the clean path for HMAC signing (WP_REST_Request::get_route() excludes query params)
         $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
+        return [$url, $path];
+    }
+
+    /**
+     * Build HMAC-signed authentication headers with a fresh timestamp and nonce.
+     */
+    private function buildAuthHeaders(string $method, string $path, string $body = ''): array
+    {
+        $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
+
+        $stringToSign = implode('|', [
+            strtoupper($method),
+            $path,
+            $timestamp,
+            $nonce,
+            $body,
+        ]);
+
+        $signature = hash_hmac('sha256', $stringToSign, (string) $this->site->api_secret);
+
+        return [
+            'X-SAM-Key' => (string) $this->site->api_key,
+            'X-SAM-Timestamp' => $timestamp,
+            'X-SAM-Nonce' => $nonce,
+            'X-SAM-Signature' => $signature,
+            'User-Agent' => 'SimpleAD-Manager/2.0',
+        ];
+    }
+
+    /**
+     * Convert an associative header array to curl's "Key: Value" format.
+     */
+    private function formatCurlHeaders(array $headers): array
+    {
+        return array_map(
+            fn (string $key, string $value) => "{$key}: {$value}",
+            array_keys($headers),
+            array_values($headers),
+        );
+    }
+
+    /**
+     * Execute an HTTP request via Laravel's Http client with 429 retry logic.
+     */
+    private function httpRequestWithRetry(string $method, string $url, string $path, string $body, array $extraHeaders, int $timeout, string $logLabel): Response
+    {
         $maxRetries = 5;
+        $response = null;
+
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
             $this->throttle();
 
-            // Fresh timestamp/nonce for each attempt (stale timestamps get rejected)
-            $timestamp = (string) time();
-            $nonce = bin2hex(random_bytes(16));
+            $headers = array_merge($this->buildAuthHeaders($method, $path, $body), $extraHeaders);
 
-            // v2.0 format: METHOD|PATH|TIMESTAMP|NONCE|BODY
-            $stringToSign = implode('|', [
-                strtoupper($method),
-                $path,
-                $timestamp,
-                $nonce,
-                $body,
-            ]);
-
-            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
-
-            $request = Http::withHeaders([
-                'X-SAM-Key' => $apiKey,
-                'X-SAM-Timestamp' => $timestamp,
-                'X-SAM-Nonce' => $nonce,
-                'X-SAM-Signature' => $signature,
-                'User-Agent' => 'SimpleAD-Manager/2.0',
-                'Accept' => 'application/json',
-            ])->timeout($timeout);
+            $request = Http::withHeaders($headers)->timeout($timeout);
 
             if (strtoupper($method) === 'GET') {
                 $response = $request->get($url);
@@ -143,7 +167,7 @@ class WordPressApiService
             if ($response->status() === 429 && $attempt < $maxRetries) {
                 $retryAfter = (int) $response->header('Retry-After') ?: min(10 * pow(2, $attempt), 120);
                 $retryAfter = min(max($retryAfter, 5), 120);
-                Log::warning("Rate limited (429) on {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
+                Log::warning("Rate limited (429) on {$logLabel}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
                 sleep($retryAfter);
 
@@ -153,6 +177,92 @@ class WordPressApiService
             $this->relaxThrottle();
             break;
         }
+
+        return $response;
+    }
+
+    /**
+     * Download from a WP endpoint to a local file using curl with 429 retry logic.
+     */
+    private function curlDownloadWithRetry(string $url, string $path, string $body, string $saveTo, int $timeout = 600, int $maxRetries = 5): void
+    {
+        $success = false;
+        $httpCode = 0;
+        $error = '';
+
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            $this->throttle();
+
+            $headers = $this->buildAuthHeaders('POST', $path, $body);
+            $headers['Content-Type'] = 'application/json';
+
+            $fh = fopen($saveTo, 'wb');
+            if (! $fh) {
+                throw new \RuntimeException("Cannot open {$saveTo} for writing");
+            }
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_FILE => $fh,
+                CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_CONNECTTIMEOUT => 30,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+
+            $success = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+            fclose($fh);
+
+            if ($httpCode === 429 && $attempt < $maxRetries) {
+                $retryAfter = min(10 * pow(2, $attempt), 120);
+                Log::warning('Rate limited (429) on stream download, retry '.($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
+                $this->backoffThrottle();
+                @unlink($saveTo);
+                sleep($retryAfter);
+
+                continue;
+            }
+
+            $this->relaxThrottle();
+            break;
+        }
+
+        if (! $success || $httpCode >= 400) {
+            $efh = fopen($saveTo, 'rb');
+            $errorBody = $efh ? fread($efh, 1024) : '';
+            if ($efh) {
+                fclose($efh);
+            }
+            @unlink($saveTo);
+            throw new \RuntimeException("Stream download failed (HTTP {$httpCode}): ".($error ?: substr($errorBody, 0, 500)));
+        }
+
+        clearstatcache(true, $saveTo);
+        if (filesize($saveTo) === 0) {
+            @unlink($saveTo);
+            throw new \RuntimeException("Stream download returned empty file (HTTP {$httpCode})");
+        }
+    }
+
+    /**
+     * Make an authenticated request to the WordPress REST API.
+     */
+    public function request(string $method, string $endpoint, array $data = [], array $queryParams = [], int $timeout = 30): Response
+    {
+        [$url, $path] = $this->buildUrl($endpoint);
+
+        // Always add cache-busting parameter to bypass CDN/Cloudflare caching
+        $queryParams['_nocache'] = time();
+        $url .= '?'.http_build_query($queryParams);
+        $body = ! empty($data) ? json_encode($data) : '';
+
+        $response = $this->httpRequestWithRetry($method, $url, $path, $body, ['Accept' => 'application/json'], $timeout, $endpoint);
 
         if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
             throw new WordPressApiException(
@@ -195,59 +305,10 @@ class WordPressApiService
      */
     public function requestRaw(string $method, string $endpoint, array $data = [], int $timeout = 30): Response
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
-        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
+        [$url, $path] = $this->buildUrl($endpoint);
         $body = ! empty($data) ? json_encode($data) : '';
-        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
-        $maxRetries = 5;
-        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
-            $this->throttle();
-
-            // Fresh timestamp/nonce for each attempt
-            $timestamp = (string) time();
-            $nonce = bin2hex(random_bytes(16));
-
-            $stringToSign = implode('|', [
-                strtoupper($method),
-                $path,
-                $timestamp,
-                $nonce,
-                $body,
-            ]);
-
-            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
-
-            $request = Http::withHeaders([
-                'X-SAM-Key' => $apiKey,
-                'X-SAM-Timestamp' => $timestamp,
-                'X-SAM-Nonce' => $nonce,
-                'X-SAM-Signature' => $signature,
-                'User-Agent' => 'SimpleAD-Manager/2.0',
-            ])->timeout($timeout);
-
-            if (strtoupper($method) === 'GET') {
-                $response = $request->get($url);
-            } else {
-                $response = $request->withBody($body, 'application/json')->post($url);
-            }
-
-            if ($response->status() === 429 && $attempt < $maxRetries) {
-                $retryAfter = (int) $response->header('Retry-After') ?: min(10 * pow(2, $attempt), 120);
-                $retryAfter = min(max($retryAfter, 5), 120);
-                Log::warning("Rate limited (429) on raw {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
-                $this->backoffThrottle();
-                sleep($retryAfter);
-
-                continue;
-            }
-
-            $this->relaxThrottle();
-            break;
-        }
+        $response = $this->httpRequestWithRetry($method, $url, $path, $body, [], $timeout, "raw {$endpoint}");
 
         $response->throw();
 
@@ -447,33 +508,19 @@ class WordPressApiService
      */
     private function startAsyncExec(string $token, int $chunkIndex): array
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
-        $url = rtrim($baseUrl, '/').'/backup/prepare-chunk-exec';
+        [$url, $path] = $this->buildUrl('/backup/prepare-chunk-exec');
         $data = json_encode(['token' => $token, 'chunk_index' => $chunkIndex]);
-        $path = '/simplead/v1/backup/prepare-chunk-exec';
 
-        $timestamp = (string) time();
-        $nonce = bin2hex(random_bytes(16));
-        $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $data]);
-        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
+        $headers = $this->buildAuthHeaders('POST', $path, $data);
+        $headers['Content-Type'] = 'application/json';
+        $headers['Accept'] = 'application/json';
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $data,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'X-SAM-Key: '.$apiKey,
-                'X-SAM-Timestamp: '.$timestamp,
-                'X-SAM-Nonce: '.$nonce,
-                'X-SAM-Signature: '.$signature,
-                'User-Agent: SimpleAD-Manager/2.0',
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
+            CURLOPT_HTTPHEADER => $this->formatCurlHeaders($headers),
             CURLOPT_TIMEOUT => 300,
             CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_FOLLOWLOCATION => true,
@@ -676,83 +723,10 @@ class WordPressApiService
      */
     private function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
-        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
+        [$url, $path] = $this->buildUrl($endpoint);
         $body = ! empty($data) ? json_encode($data) : '';
-        $path = '/simplead/v1/'.ltrim($endpoint, '/');
 
-        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
-            $this->throttle();
-
-            // Fresh timestamp/nonce for each attempt
-            $timestamp = (string) time();
-            $nonce = bin2hex(random_bytes(16));
-            $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $body]);
-            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
-
-            $fh = fopen($saveTo, 'wb');
-            if (! $fh) {
-                throw new \RuntimeException("Cannot open {$saveTo} for writing");
-            }
-
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $body,
-                CURLOPT_FILE => $fh,
-                CURLOPT_HTTPHEADER => [
-                    'X-SAM-Key: '.$apiKey,
-                    'X-SAM-Timestamp: '.$timestamp,
-                    'X-SAM-Nonce: '.$nonce,
-                    'X-SAM-Signature: '.$signature,
-                    'User-Agent: SimpleAD-Manager/2.0',
-                    'Content-Type: application/json',
-                ],
-                CURLOPT_TIMEOUT => 600,
-                CURLOPT_CONNECTTIMEOUT => 30,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_SSL_VERIFYPEER => true,
-            ]);
-
-            $success = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-            fclose($fh);
-
-            if ($httpCode === 429 && $attempt < $maxRetries) {
-                $retryAfter = min(10 * pow(2, $attempt), 120);
-                Log::warning("Rate limited (429) on stream download {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
-                $this->backoffThrottle();
-                @unlink($saveTo);
-                sleep($retryAfter);
-
-                continue;
-            }
-
-            $this->relaxThrottle();
-            break;
-        }
-
-        if (! $success || $httpCode >= 400) {
-            // Read only first 1KB for error details (file could be huge)
-            $efh = fopen($saveTo, 'rb');
-            $errorBody = $efh ? fread($efh, 1024) : '';
-            if ($efh) {
-                fclose($efh);
-            }
-            @unlink($saveTo);
-            throw new \RuntimeException("Chunk download failed (HTTP {$httpCode}): ".($error ?: substr($errorBody, 0, 500)));
-        }
-
-        clearstatcache(true, $saveTo);
-        if (filesize($saveTo) === 0) {
-            @unlink($saveTo);
-            throw new \RuntimeException("Chunk download returned empty file (HTTP {$httpCode})");
-        }
+        $this->curlDownloadWithRetry($url, $path, $body, $saveTo, 600, $maxRetries);
     }
 
     /**
@@ -818,83 +792,13 @@ class WordPressApiService
      */
     public function streamDownload(string $endpoint, string $saveTo): void
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
-        $url = rtrim($baseUrl, '/').'/'.ltrim($endpoint, '/');
-        $path = '/simplead/v1/'.ltrim($endpoint, '/');
+        [$url, $path] = $this->buildUrl($endpoint);
 
         $dir = dirname($saveTo);
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        $maxRetries = 5;
-        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
-            $this->throttle();
-
-            // Fresh timestamp/nonce for each attempt
-            $timestamp = (string) time();
-            $nonce = bin2hex(random_bytes(16));
-            $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, '']);
-            $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
-
-            // Use curl directly — WP endpoints use readfile()+exit which Http::sink() doesn't handle
-            $fh = fopen($saveTo, 'wb');
-            if (! $fh) {
-                throw new \RuntimeException("Cannot open {$saveTo} for writing");
-            }
-
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => '',
-                CURLOPT_FILE => $fh,
-                CURLOPT_HTTPHEADER => [
-                    'X-SAM-Key: '.$apiKey,
-                    'X-SAM-Timestamp: '.$timestamp,
-                    'X-SAM-Nonce: '.$nonce,
-                    'X-SAM-Signature: '.$signature,
-                    'User-Agent: SimpleAD-Manager/2.0',
-                    'Content-Type: application/json',
-                ],
-                CURLOPT_TIMEOUT => 1800,
-                CURLOPT_CONNECTTIMEOUT => 30,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_SSL_VERIFYPEER => true,
-            ]);
-
-            $success = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-            fclose($fh);
-
-            if ($httpCode === 429 && $attempt < $maxRetries) {
-                $retryAfter = min(10 * pow(2, $attempt), 120);
-                Log::warning("Rate limited (429) on stream download {$endpoint}, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
-                $this->backoffThrottle();
-                @unlink($saveTo);
-                sleep($retryAfter);
-
-                continue;
-            }
-
-            $this->relaxThrottle();
-            break;
-        }
-
-        if (! $success || $httpCode >= 400) {
-            $body = file_get_contents($saveTo);
-            @unlink($saveTo);
-            throw new \RuntimeException("Stream download failed (HTTP {$httpCode}): ".($error ?: substr($body, 0, 500)));
-        }
-
-        $size = filesize($saveTo);
-        if ($size === 0) {
-            @unlink($saveTo);
-            throw new \RuntimeException("Stream download returned empty file (HTTP {$httpCode})");
-        }
+        $this->curlDownloadWithRetry($url, $path, '', $saveTo, 1800);
     }
 }

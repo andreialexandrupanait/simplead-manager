@@ -6,7 +6,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "aws/aws-sdk-php": "^3.369",
         "bacon/bacon-qr-code": "^3.0",
         "gotenberg/gotenberg-php": "^2.0",

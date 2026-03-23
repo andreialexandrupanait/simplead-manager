@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -67,7 +69,7 @@ class DatabaseDumpCommand extends Command
         }
 
         // Encrypt if BACKUP_ENCRYPTION_KEY is set
-        $encryptionKey = env('BACKUP_ENCRYPTION_KEY');
+        $encryptionKey = config('app.backup_encryption_key');
         if ($encryptionKey) {
             $encryptedPath = $filepath.'.enc';
             $encCommand = sprintf(

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Models\Site;
@@ -47,7 +49,7 @@ class PushConnectorPlugin implements ShouldQueue
                 }
 
                 // Flush OPcache via standalone file
-                $flushUrl = rtrim($this->site->url, '/') . '/wp-content/plugins/simplead-manager-connector/opcache-flush.php';
+                $flushUrl = rtrim($this->site->url, '/').'/wp-content/plugins/simplead-manager-connector/opcache-flush.php';
                 try {
                     Http::timeout(10)->get($flushUrl);
                 } catch (\Throwable) {
@@ -60,7 +62,7 @@ class PushConnectorPlugin implements ShouldQueue
                 }
 
                 $result['status'] = 'success';
-                $result['message'] = ($data['old_version'] ?? '?') . ' -> ' . ($data['new_version'] ?? '?');
+                $result['message'] = ($data['old_version'] ?? '?').' -> '.($data['new_version'] ?? '?');
             } else {
                 $error = $response->json('error.message') ?? "HTTP {$response->status()}";
                 $result['status'] = 'error';

@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Uptime;
 
 use App\Jobs\CheckUptime;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class UptimeOverview extends Component
 {
     public string $search = '';
 
+    #[Url]
     public string $filter = 'all';
 
     public function updatedSearch(): void
@@ -104,7 +108,7 @@ class UptimeOverview extends Component
                 'up' => $q->where('current_state', 'up'),
                 'down' => $q->where('current_state', 'down'),
                 'degraded' => $q->where('current_state', 'degraded'),
-                'paused' => $q->where('status', 'paused'),
+                'paused' => $q->where('uptime_monitors.status', 'paused'),
                 default => $q,
             })
             ->join('sites', 'uptime_monitors.site_id', '=', 'sites.id')

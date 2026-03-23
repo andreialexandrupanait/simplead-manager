@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Backups;
 
 use App\Jobs\CreateBackup;
@@ -92,10 +94,10 @@ class BackupsOverview extends Component
             })
             ->when($this->filter !== 'all', function ($q) {
                 if ($this->filter === 'in_progress') {
-                    return $q->whereIn('status', ['pending', 'in_progress']);
+                    return $q->whereIn('backups.status', ['pending', 'in_progress']);
                 }
 
-                return $q->where('status', $this->filter);
+                return $q->where('backups.status', $this->filter);
             })
             ->join('sites', 'backups.site_id', '=', 'sites.id')
             ->orderBy('sites.sort_order', 'asc')

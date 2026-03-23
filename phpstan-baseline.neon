@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Console/Commands/BackfillMonitors.php
-
-		-
 			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\RunPerformanceTest constructor expects App\\Models\\PerformanceMonitor in App\\Jobs\\RunPerformanceTest\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -17,12 +11,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Console/Commands/BackfillSiteScreenshots.php
-
-		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Console/Commands/DatabaseDumpCommand.php
 
 		-
 			message: '#^Parameter \#1 \$array of function rsort contains unresolvable type\.$#'
@@ -133,12 +121,6 @@ parameters:
 			path: app/Helpers/SiteStatusHelper.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Helpers/SiteStatusHelper.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between false and false will always evaluate to true\.$#'
 			identifier: identical.alwaysTrue
 			count: 1
@@ -176,12 +158,6 @@ parameters:
 
 		-
 			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:searchConsole\(\) through static\:\:\.$#'
-			identifier: staticClassAccess.privateMethod
-			count: 1
-			path: app/Helpers/SiteStatusHelper.php
-
-		-
-			message: '#^Unsafe call to private method App\\Helpers\\SiteStatusHelper\:\:ssl\(\) through static\:\:\.$#'
 			identifier: staticClassAccess.privateMethod
 			count: 1
 			path: app/Helpers/SiteStatusHelper.php
@@ -511,18 +487,6 @@ parameters:
 			path: app/Jobs/NotifyPerformanceDrop.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/NotifySslAlert.php
-
-		-
-			message: '#^Parameter \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/NotifySslAlert.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -823,12 +787,6 @@ parameters:
 			path: app/Livewire/Settings/Components/StorageDestinationForm.php
 
 		-
-			message: '#^Call to static method timeout\(\) on an unknown class App\\Livewire\\Settings\\Http\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Livewire/Settings/GeneralSettings.php
-
-		-
 			message: '#^Unsafe access to private property App\\Livewire\\Settings\\GeneralSettings\:\:\$hasSiteStatusesTable through static\:\:\.$#'
 			identifier: staticClassAccess.privateProperty
 			count: 4
@@ -1095,18 +1053,6 @@ parameters:
 		-
 			message: '#^Method App\\Livewire\\Sites\\Detail\\Security\\SecurityScanning\:\:latestScan\(\) should return App\\Models\\SecurityScan\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
-
-		-
-			message: '#^Method App\\Livewire\\Sites\\Detail\\Security\\SecurityScanning\:\:sslCertificate\(\) should return App\\Models\\SslCertificate\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
-
-		-
-			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Livewire/Sites/Detail/Security/SecurityScanning.php
 
@@ -1525,18 +1471,6 @@ parameters:
 			path: app/Livewire/Sites/Detail/SiteReports.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Sites/Detail/SiteReports.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status_label\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Sites/Detail/SiteReports.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uptime_30d\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1723,12 +1657,6 @@ parameters:
 			path: app/Mail/ReportGeneratedMail.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Mail/SslAlertMail.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$site\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1763,12 +1691,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/Backup.php
-
-		-
-			message: '#^Parameter \#1 \$certificate of job class App\\Jobs\\CheckSslCertificate constructor expects App\\Models\\SslCertificate in App\\Jobs\\CheckSslCertificate\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/Site.php
 
 		-
 			message: '#^Unsafe access to private property App\\Models\\Site\:\:\$twoPartTlds through static\:\:\.$#'
@@ -1861,12 +1783,6 @@ parameters:
 			path: app/Services/AppBackup/AppBackupService.php
 
 		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Services/AppBackup/AppBackupService.php
-
-		-
 			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 2
@@ -1941,7 +1857,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 4
+			count: 2
 			path: app/Services/DashboardService.php
 
 		-
@@ -1953,11 +1869,11 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
 			path: app/Services/DashboardService.php
 
 		-
-			message: '#^Offset ''critical''\|''warning'' on array\{critical\: 0, warning\: 1, info\: 2\} on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''critical'' on array\{critical\: 0, warning\: 1, info\: 2\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
 			path: app/Services/DashboardService.php
@@ -1971,6 +1887,12 @@ parameters:
 		-
 			message: '#^Parameter \#2 \$callback of function usort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/DashboardService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between 0 and 0 will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
 			count: 1
 			path: app/Services/DashboardService.php
 
@@ -2077,13 +1999,13 @@ parameters:
 			path: app/Services/ModuleConfigService.php
 
 		-
-			message: '#^Offset ''analytics''\|''backup''\|''cloudflare''\|''database_cleanup''\|''performance''\|''search_console''\|''security''\|''ssl''\|''uptime'' on array\{uptime\: 5, ssl\: 720, backup\: 1440, performance\: 10080, security\: 10080, analytics\: 1440, search_console\: 1440, cloudflare\: 360, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''analytics''\|''backup''\|''cloudflare''\|''database_cleanup''\|''performance''\|''search_console''\|''security''\|''uptime'' on array\{uptime\: 5, backup\: 1440, performance\: 10080, security\: 10080, analytics\: 1440, search_console\: 1440, cloudflare\: 360, database_cleanup\: 43200\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 2
 			path: app/Services/ModuleConfigService.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between ''alerts_enabled''\|''is_active''\|''is_enabled''\|''status'' and null will always evaluate to false\.$#'
+			message: '#^Strict comparison using \=\=\= between ''is_active''\|''is_enabled''\|''status'' and null will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Services/ModuleConfigService.php
@@ -2149,12 +2071,6 @@ parameters:
 			path: app/Services/ReportDataGatherer.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$days_remaining\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportDataGatherer.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dkim_exists\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2174,12 +2090,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$dmarc_policy\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportDataGatherer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expires_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/ReportDataGatherer.php
@@ -2209,18 +2119,6 @@ parameters:
 			path: app/Services/ReportDataGatherer.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$issuer\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportDataGatherer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$key_size\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportDataGatherer.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$latestDesktopTest\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2245,12 +2143,6 @@ parameters:
 			path: app/Services/ReportDataGatherer.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$protocol\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportDataGatherer.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$score\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2270,12 +2162,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/ReportDataGatherer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status_label\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/ReportDataGatherer.php
@@ -2515,12 +2401,6 @@ parameters:
 			path: app/Services/SecurityPresetService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$days_remaining\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SecurityScanService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$modified_count\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2529,7 +2409,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Services/SecurityScanService.php
 
 		-
@@ -2547,7 +2427,7 @@ parameters:
 		-
 			message: '#^Dead catch \- Exception is never thrown in the try block\.$#'
 			identifier: catch.neverThrown
-			count: 2
+			count: 1
 			path: app/Services/SecurityScanService.php
 
 		-
@@ -2625,23 +2505,5 @@ parameters:
 		-
 			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
 			identifier: identical.alwaysTrue
-			count: 1
-			path: app/Services/WordPressApiService.php
-
-		-
-			message: '#^Variable \$error might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
-			path: app/Services/WordPressApiService.php
-
-		-
-			message: '#^Variable \$httpCode might not be defined\.$#'
-			identifier: variable.undefined
-			count: 2
-			path: app/Services/WordPressApiService.php
-
-		-
-			message: '#^Variable \$success might not be defined\.$#'
-			identifier: variable.undefined
 			count: 1
 			path: app/Services/WordPressApiService.php

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Backup\Storage;
 
 use Aws\S3\MultipartUploader;

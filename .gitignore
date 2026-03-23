@@ -26,7 +26,9 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-.claude/
+# Claude Code — only ignore local/personal config
+.claude/settings.local.json
+.claude/memory/
 docker/certbot/conf/accounts/
 docker/certbot/conf/archive/
 docker/certbot/conf/live/
@@ -36,6 +38,9 @@ docker/certbot/conf/renewal/
 storage/logs/*.log
 storage/app/backups/
 storage/app/temp/
+
+# Debug scripts
+dispatch_*.php
 
 # OS files
 .DS_Store

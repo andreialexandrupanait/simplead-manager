@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backup Encryption Key
+    |--------------------------------------------------------------------------
+    |
+    | When set, database dumps will be encrypted with AES-256-CBC using this
+    | key. Leave null to disable dump encryption.
+    |
+    */
+
+    'backup_encryption_key' => env('BACKUP_ENCRYPTION_KEY'),
+
 ];
