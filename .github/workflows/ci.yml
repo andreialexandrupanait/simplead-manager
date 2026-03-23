@@ -113,10 +113,13 @@ jobs:
         run: php artisan key:generate
 
       - name: Configure test database for CI
-        run: sed -i 's/name="DB_HOST" value="pgsql"/name="DB_HOST" value="127.0.0.1"/' phpunit.xml
+        run: |
+          sed -i 's/name="DB_HOST" value="pgsql"/name="DB_HOST" value="127.0.0.1"/' phpunit.xml
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=simplead_testing/' .env
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=simplead/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=password/' .env
+          sed -i 's/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
 
       - name: Run tests
-        env:
-          CACHE_DRIVER: redis
-          REDIS_HOST: 127.0.0.1
         run: php artisan test
