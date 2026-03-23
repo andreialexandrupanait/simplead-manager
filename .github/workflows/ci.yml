@@ -106,20 +106,31 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
-      - name: Copy env
-        run: cp .env.example .env
+      - name: Create CI environment file
+        run: |
+          cat > .env << 'ENVEOF'
+          APP_ENV=testing
+          APP_KEY=
+          DB_CONNECTION=pgsql
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_DATABASE=simplead_testing
+          DB_USERNAME=simplead
+          DB_PASSWORD=password
+          DB_SSLMODE=prefer
+          CACHE_STORE=array
+          QUEUE_CONNECTION=sync
+          SESSION_DRIVER=array
+          REDIS_HOST=127.0.0.1
+          PULSE_ENABLED=false
+          ENVEOF
+          sed -i 's/^          //' .env
 
       - name: Generate key
         run: php artisan key:generate
 
-      - name: Configure test database for CI
-        run: |
-          sed -i 's/name="DB_HOST" value="pgsql"/name="DB_HOST" value="127.0.0.1"/' phpunit.xml
-          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
-          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=simplead_testing/' .env
-          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=simplead/' .env
-          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=password/' .env
-          sed -i 's/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+      - name: Override phpunit.xml for CI
+        run: sed -i 's/name="DB_HOST" value="pgsql"/name="DB_HOST" value="127.0.0.1"/' phpunit.xml
 
       - name: Run tests
         run: php artisan test
