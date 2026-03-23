@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Jobs\SyncWordPressSite;
 use App\Livewire\Dashboard\GlobalDashboard;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -45,7 +47,7 @@ class GlobalDashboardAuthorizationTest extends TestCase
             ->call('deleteSite')
             ->assertDispatched('notify');
 
-        $this->assertDatabaseMissing('sites', ['id' => $this->managerSite->id]);
+        $this->assertSoftDeleted('sites', ['id' => $this->managerSite->id]);
     }
 
     #[Test]
@@ -186,6 +188,8 @@ class GlobalDashboardAuthorizationTest extends TestCase
     #[Test]
     public function bulk_sync_scopes_to_own_sites_for_manager(): void
     {
+        Queue::fake();
+
         // Manager selects admin's site ID — should be filtered out
         Livewire::actingAs($this->manager)
             ->test(GlobalDashboard::class)
@@ -193,7 +197,7 @@ class GlobalDashboardAuthorizationTest extends TestCase
             ->call('bulkSync')
             ->assertDispatched('notify');
 
-        // The admin's site should not have been synced (query scoped)
-        // We just verify no error — the scoping prevents unauthorized access
+        // Only the manager's own site should have been queued — admin's site is filtered out
+        Queue::assertPushed(SyncWordPressSite::class, 1);
     }
 }

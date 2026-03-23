@@ -44,14 +44,16 @@ class BackupDownloadTest extends TestCase
     #[Test]
     public function owner_can_download_own_backup_with_signed_url(): void
     {
+        $basePath = storage_path('app/backups');
         $site = Site::factory()->for($this->manager)->create();
-        $destination = StorageDestination::factory()->local()->create();
+        $destination = StorageDestination::factory()->local()->create([
+            'config' => ['path' => $basePath],
+        ]);
         $backup = Backup::factory()->for($site)->for($destination)->completed()->create([
             'file_path' => 'test-backup.zip',
         ]);
 
         // Create the backup file
-        $basePath = $destination->config['path'] ?? storage_path('backups');
         @mkdir($basePath, 0755, true);
         file_put_contents($basePath.'/test-backup.zip', 'fake-backup-content');
 
@@ -79,13 +81,15 @@ class BackupDownloadTest extends TestCase
     #[Test]
     public function admin_can_download_any_backup(): void
     {
+        $basePath = storage_path('app/backups');
         $site = Site::factory()->for($this->manager)->create();
-        $destination = StorageDestination::factory()->local()->create();
+        $destination = StorageDestination::factory()->local()->create([
+            'config' => ['path' => $basePath],
+        ]);
         $backup = Backup::factory()->for($site)->for($destination)->completed()->create([
             'file_path' => 'admin-test-backup.zip',
         ]);
 
-        $basePath = $destination->config['path'] ?? storage_path('backups');
         @mkdir($basePath, 0755, true);
         file_put_contents($basePath.'/admin-test-backup.zip', 'fake-backup-content');
 

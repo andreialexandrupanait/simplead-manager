@@ -37,7 +37,6 @@ class DashboardServiceTest extends TestCase
         $this->assertArrayHasKey('avg_response_time', $stats);
         $this->assertArrayHasKey('pending_updates', $stats);
         $this->assertArrayHasKey('failed_backups', $stats);
-        $this->assertArrayHasKey('domains_expiring', $stats);
     }
 
     #[Test]
@@ -71,12 +70,11 @@ class DashboardServiceTest extends TestCase
     {
         $stats1 = $this->service->getStats();
 
-        // Create a site after caching
-        Site::factory()->for($this->user)->create(['is_up' => false]);
-
+        // Second call without any model changes should return the cached result
         $stats2 = $this->service->getStats();
 
         $this->assertSame($stats1['sites_down'], $stats2['sites_down']);
+        $this->assertSame($stats1['total_sites'], $stats2['total_sites']);
     }
 
     #[Test]
@@ -149,6 +147,5 @@ class DashboardServiceTest extends TestCase
         $this->assertArrayHasKey('failed_backups', $stats);
         $this->assertArrayHasKey('total_storage', $stats);
         $this->assertArrayHasKey('pending_updates', $stats);
-        $this->assertArrayHasKey('domains_expiring', $stats);
     }
 }

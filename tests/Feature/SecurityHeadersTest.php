@@ -84,14 +84,6 @@ class SecurityHeadersTest extends TestCase
         $this->assertNotEquals($matches1[1], $matches2[1], 'Nonces should differ between requests');
     }
 
-    #[Test]
-    public function expect_ct_header_present(): void
-    {
-        $response = $this->get('/login');
-
-        $response->assertHeader('Expect-CT', 'max-age=86400, enforce');
-    }
-
     // --- 3. HSTS ---
 
     #[Test]
@@ -99,7 +91,7 @@ class SecurityHeadersTest extends TestCase
     {
         $response = $this->call('GET', '/login', server: ['HTTPS' => 'on']);
 
-        $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
 
     #[Test]

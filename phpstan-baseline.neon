@@ -361,12 +361,6 @@ parameters:
 			path: app/Livewire/Dashboard/GlobalDashboard.php
 
 		-
-			message: '#^Call to an undefined method App\\Models\\User\:\:canDeleteResources\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Livewire/Dashboard/GlobalDashboard.php
-
-		-
 			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1241,6 +1235,12 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Models/StorageDestination.php
+
+		-
+			message: '#^Cannot call method canDeleteResources\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/User.php
 
 		-
 			message: '#^Cannot call method canManageSites\(\) on string\.$#'

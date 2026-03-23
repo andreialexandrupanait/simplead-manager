@@ -101,6 +101,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role->canManageSites();
     }
 
+    public function canDeleteResources(): bool
+    {
+        return $this->role->canDeleteResources();
+    }
+
     public function getInitialsAttribute(): string
     {
         $words = explode(' ', $this->name);
