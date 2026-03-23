@@ -74,7 +74,7 @@ jobs:
         env:
           POSTGRES_USER: simplead
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: simplead_test
+          POSTGRES_DB: simplead_testing
         ports:
           - 5432:5432
         options: >-
@@ -112,17 +112,11 @@ jobs:
       - name: Generate key
         run: php artisan key:generate
 
+      - name: Configure test database for CI
+        run: sed -i 's/name="DB_HOST" value="pgsql"/name="DB_HOST" value="127.0.0.1"/' phpunit.xml
+
       - name: Run tests
         env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: simplead_test
-          DB_USERNAME: simplead
-          DB_PASSWORD: password
-          DB_SSLMODE: prefer
           CACHE_DRIVER: redis
-          QUEUE_CONNECTION: sync
-          SESSION_DRIVER: array
           REDIS_HOST: 127.0.0.1
         run: php artisan test
