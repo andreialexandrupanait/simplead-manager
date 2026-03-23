@@ -1,6 +1,12 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Parameter \#1 \$monitor of job class App\\Jobs\\RunPerformanceTest constructor expects App\\Models\\PerformanceMonitor in App\\Jobs\\RunPerformanceTest\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/BackfillSiteScreenshots.php
+
+		-
 			message: '#^Parameter \#1 \$array of function rsort contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -357,6 +363,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method App\\Models\\User\:\:canDeleteResources\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CreateBackup constructor expects App\\Models\\Site in App\\Jobs\\CreateBackup\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Dashboard/GlobalDashboard.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\SyncWordPressSite constructor expects App\\Models\\Site in App\\Jobs\\SyncWordPressSite\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Livewire/Dashboard/GlobalDashboard.php
 
@@ -1027,6 +1045,12 @@ parameters:
 			path: app/Livewire/Sites/Detail/SiteReports.php
 
 		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$googleConnection\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1257,6 +1281,12 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$domain\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Services/Backup/ManifestService.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Services/Backup/ManifestService.php
 
