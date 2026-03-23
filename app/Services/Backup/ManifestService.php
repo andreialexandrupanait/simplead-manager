@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Backup;
 
 use App\Models\Backup;
+use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\WordPressApiService;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class ManifestService
      * If a session token is provided, tries to retrieve the pre-collected manifest first
      * (collected during prepare-init, avoids re-scanning the filesystem).
      */
-    public function generateAndStore(WordPressApiService $api, Backup $backup, $destination, ?string $sessionToken = null): void
+    public function generateAndStore(WordPressApiService $api, Backup $backup, StorageDestination $destination, ?string $sessionToken = null): void
     {
         $manifest = null;
 
@@ -106,6 +107,7 @@ class ManifestService
             throw new \RuntimeException("Backup {$backup->id} has no manifest path");
         }
 
+        /** @var StorageDestination|null $destination */
         $destination = $backup->storageDestination;
         if (! $destination) {
             throw new \RuntimeException("Backup {$backup->id} has no storage destination");

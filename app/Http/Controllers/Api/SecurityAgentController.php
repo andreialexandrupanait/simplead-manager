@@ -49,6 +49,7 @@ class SecurityAgentController extends Controller
         $processed = 0;
 
         foreach ($validated['results'] as $result) {
+            /** @var \App\Models\SecurityCommand|null $command */
             $command = $site->securityCommands()->find($result['command_id']);
             if (! $command) {
                 continue;

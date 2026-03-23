@@ -93,7 +93,7 @@ class StatusPageIncident extends Model
 
             $end = $this->resolved_at ?? now();
 
-            return $this->started_at->diffForHumans($end, true);
+            return $this->started_at->diffForHumans($end, \Carbon\CarbonInterface::DIFF_ABSOLUTE);
         });
     }
 }

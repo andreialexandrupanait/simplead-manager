@@ -37,7 +37,7 @@ class ReportRecommendationsManager extends Component
     {
         // Gather current site data for the recommendation engine
         $reportConfig = $this->site->reportConfig;
-        $language = $reportConfig?->language ?? 'ro';
+        $language = $reportConfig->language ?? 'ro';
 
         // We need to build a minimal data array for the recommendation service
         // by reading the latest snapshot and monitors

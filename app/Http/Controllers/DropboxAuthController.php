@@ -95,7 +95,7 @@ class DropboxAuthController extends Controller
 
         // Preserve existing paths if the destination already exists
         $existing = StorageDestination::where('type', 'dropbox')->first();
-        $existingConfig = $existing?->config ?? [];
+        $existingConfig = $existing->config ?? [];
 
         $config = [
             'access_token' => encrypt($data['access_token']),

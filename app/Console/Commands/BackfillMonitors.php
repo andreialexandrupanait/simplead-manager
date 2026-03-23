@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\RunPerformanceTest;
+use App\Models\PerformanceMonitor;
 use App\Models\Site;
 use Illuminate\Console\Command;
 
@@ -29,6 +30,7 @@ class BackfillMonitors extends Command
         foreach ($sites as $site) {
             // Create performance monitor if missing
             if (! $site->performanceMonitor) {
+                /** @var PerformanceMonitor $monitor */
                 $monitor = $site->performanceMonitor()->create([
                     'is_active' => true,
                     'frequency' => 'daily',

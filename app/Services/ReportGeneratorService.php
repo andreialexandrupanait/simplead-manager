@@ -33,7 +33,7 @@ class ReportGeneratorService
 
     public function generate(): string
     {
-        $this->language = $this->site->reportConfig?->language ?? 'ro';
+        $this->language = $this->site->reportConfig->language ?? 'ro';
 
         $currentSnapshot = $this->getSnapshot($this->site, $this->periodStart);
         $previousSnapshot = $this->getPreviousSnapshot($this->site, $this->periodStart);
@@ -58,7 +58,7 @@ class ReportGeneratorService
             'company_logo' => $logoService->resolveLogoPath($this->template->company_logo_path),
             'company_website' => $this->template->company_website,
             'primary_color' => $this->template->primary_color ?? '#7C3AED',
-            'client_name' => $this->site->client?->name ?? $this->site->name,
+            'client_name' => $this->site->client->name ?? $this->site->name,
             'client_logo' => $logoService->resolveClientLogo(),
         ];
 

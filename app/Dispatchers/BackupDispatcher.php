@@ -39,15 +39,18 @@ class BackupDispatcher
             ->each(function (BackupConfig $config) {
                 $backupType = $this->determineBackupType($config);
 
+                /** @var \App\Models\Site $site */
+                $site = $config->site;
+
                 if ($backupType === 'incremental') {
                     CreateIncrementalBackup::dispatch(
-                        $config->site,
+                        $site,
                         'scheduled',
                         $config->storage_destination_id
                     );
                 } else {
                     CreateBackup::dispatch(
-                        $config->site,
+                        $site,
                         $backupType,
                         'scheduled',
                         $config->storage_destination_id

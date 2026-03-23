@@ -66,7 +66,7 @@ class SecurityPresetService
                 $current = $currentSettings->get($compositeKey);
 
                 $presetEnabled = $config['enabled'] ?? false;
-                $currentEnabled = $current?->is_enabled ?? false;
+                $currentEnabled = $current->is_enabled ?? false;
 
                 if ($presetEnabled !== $currentEnabled || ($current && $current->setting_value !== ($config['value'] ?? null))) {
                     $diff[] = [
@@ -74,7 +74,7 @@ class SecurityPresetService
                         'key' => $key,
                         'current_enabled' => $currentEnabled,
                         'preset_enabled' => $presetEnabled,
-                        'current_value' => $current?->setting_value,
+                        'current_value' => $current->setting_value,
                         'preset_value' => $config['value'] ?? null,
                     ];
                 }

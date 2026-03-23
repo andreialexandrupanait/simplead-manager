@@ -93,6 +93,7 @@ class RetentionService
     {
         try {
             DB::transaction(function () use ($backup) {
+                /** @var StorageDestination|null $destination */
                 $destination = $backup->storageDestination;
 
                 if ($destination && $backup->file_path) {

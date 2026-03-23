@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Mail\BudgetViolationMail;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
+use App\Models\Site;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,6 +35,7 @@ class NotifyBudgetViolation implements ShouldQueue
 
     public function handle(): void
     {
+        /** @var Site $site */
         $site = $this->monitor->site;
 
         $violationLines = [];

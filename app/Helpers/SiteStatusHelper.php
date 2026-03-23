@@ -58,7 +58,7 @@ class SiteStatusHelper
         ];
     }
 
-    private static function uptime(Site $site): array
+    protected static function uptime(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'Uptime: Not monitored';
@@ -79,13 +79,15 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function responseTime(Site $site): array
+    protected static function responseTime(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'Response time: N/A';
 
-        if ($site->uptimeMonitor && $site->uptimeMonitor->avg_response_time) {
-            $rt = $site->uptimeMonitor->avg_response_time;
+        /** @var \App\Models\UptimeMonitor|null $monitor */
+        $monitor = $site->uptimeMonitor;
+        if ($monitor && $monitor->avg_response_time) {
+            $rt = $monitor->avg_response_time;
             $color = $rt < 500 ? 'text-green-500' : ($rt <= 2000 ? 'text-yellow-500' : 'text-red-500');
             $tip = 'Response: '.number_format($rt).'ms';
         }
@@ -93,13 +95,15 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function performance(Site $site): array
+    protected static function performance(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'Performance: Not monitored';
 
-        if ($site->performanceMonitor) {
-            $score = $site->performanceMonitor->latest_mobile_score ?? $site->performanceMonitor->latest_desktop_score;
+        /** @var \App\Models\PerformanceMonitor|null $perfMon */
+        $perfMon = $site->performanceMonitor;
+        if ($perfMon) {
+            $score = $perfMon->latest_mobile_score ?? $perfMon->latest_desktop_score;
             if ($score !== null) {
                 $color = $score >= 90 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
                 $tip = 'Performance: '.$score;
@@ -109,7 +113,7 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function plugins(Site $site, int $updates): array
+    protected static function plugins(Site $site, int $updates): array
     {
         $color = 'text-gray-300';
         $tip = 'Plugins: Not connected';
@@ -122,7 +126,7 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function users(Site $site): array
+    protected static function users(Site $site): array
     {
         $count = $site->site_users_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
@@ -131,7 +135,7 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function wpConnection(Site $site): array
+    protected static function wpConnection(Site $site): array
     {
         $color = $site->is_connected ? 'text-green-500' : 'text-gray-300';
         $tip = $site->is_connected ? 'WordPress connected' : 'Not connected';
@@ -139,13 +143,14 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function backup(Site $site): array
+    protected static function backup(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'Backups: Not configured';
 
-        if ($site->backupConfig) {
-            $bc = $site->backupConfig;
+        /** @var \App\Models\BackupConfig|null $bc */
+        $bc = $site->backupConfig;
+        if ($bc) {
             if (! $bc->is_enabled) {
                 $tip = 'Backups: Disabled';
             } elseif ($bc->last_backup_status === 'failed') {
@@ -171,7 +176,7 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function wpVersion(Site $site): array
+    protected static function wpVersion(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'WP version: Unknown';
@@ -189,7 +194,7 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function reports(Site $site): array
+    protected static function reports(Site $site): array
     {
         $count = $site->report_schedules_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
@@ -198,11 +203,12 @@ class SiteStatusHelper
         return compact('color', 'tip');
     }
 
-    private static function searchConsole(Site $site): array
+    protected static function searchConsole(Site $site): array
     {
         $color = 'text-gray-300';
         $tip = 'Search Console: Not connected';
 
+        /** @var \App\Models\SearchConsoleConnection|null $conn */
         $conn = $site->searchConsoleConnection;
         if ($conn) {
             if (! $conn->is_active) {

@@ -27,7 +27,7 @@ class ReportGeneratedMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $subject = $this->schedule?->email_subject
+        $subject = $this->schedule->email_subject
             ?? "Raport {$this->site->name} — {$this->report->period_start->format('d.m.Y')} - {$this->report->period_end->format('d.m.Y')}";
 
         return new Envelope(subject: $subject);

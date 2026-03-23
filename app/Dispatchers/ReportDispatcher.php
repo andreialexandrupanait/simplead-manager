@@ -42,6 +42,11 @@ class ReportDispatcher
                     return;
                 }
 
+                /** @var \App\Models\Site $site */
+                $site = $schedule->site;
+                /** @var \App\Models\ReportTemplate $template */
+                $template = $schedule->reportTemplate;
+
                 $period = $schedule->period ?? 'last_30_days';
                 [$periodStart, $periodEnd] = match ($period) {
                     'last_7_days' => [now()->subDays(7)->startOfDay(), now()->endOfDay()],
@@ -50,8 +55,8 @@ class ReportDispatcher
                 };
 
                 GenerateReport::dispatch(
-                    $schedule->site,
-                    $schedule->reportTemplate,
+                    $site,
+                    $template,
                     $periodStart,
                     $periodEnd,
                     'scheduled',

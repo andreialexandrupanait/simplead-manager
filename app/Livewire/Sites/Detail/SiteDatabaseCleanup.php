@@ -72,7 +72,7 @@ class SiteDatabaseCleanup extends Component
     #[Computed]
     public function healthIssues(): array
     {
-        return $this->latestHealthCheck?->issues ?? [];
+        return $this->latestHealthCheck->issues ?? [];
     }
 
     public function refreshHealth(): void

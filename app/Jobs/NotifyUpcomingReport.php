@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\ReportSchedule;
+use App\Models\Site;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,6 +25,7 @@ class NotifyUpcomingReport implements ShouldQueue
 
     public function handle(): void
     {
+        /** @var Site|null $site */
         $site = $this->schedule->site;
         if (! $site) {
             return;

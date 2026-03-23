@@ -34,7 +34,9 @@ class RegenerateReport extends Command
 
         $this->info("Regenerating report #{$report->id} for site {$report->site_id}...");
 
+        /** @var \App\Models\Site $site */
         $site = $report->site;
+        /** @var \App\Models\ReportTemplate $template */
         $template = $report->reportTemplate;
         $periodStart = Carbon::parse($report->period_start);
         $periodEnd = Carbon::parse($report->period_end);

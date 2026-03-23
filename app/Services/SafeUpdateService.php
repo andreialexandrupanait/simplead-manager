@@ -37,6 +37,7 @@ class SafeUpdateService
 
     public function runSafeUpdate(SafeUpdate $safeUpdate, ?int $userId = null): void
     {
+        /** @var \App\Models\Site $site */
         $site = $safeUpdate->site;
         $api = new WordPressApiService($site);
 

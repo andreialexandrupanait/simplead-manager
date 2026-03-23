@@ -8,6 +8,7 @@ use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Backup;
 use App\Models\BackupConfig;
+use App\Models\Site;
 use App\Models\StorageDestination;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
@@ -45,6 +46,7 @@ class BackupsOverview extends Component
         $queued = 0;
         $defaultDestination = null;
         foreach ($configs as $config) {
+            /** @var Site|null $site */
             $site = $config->site;
             if (! $site || ! $site->is_connected) {
                 continue;

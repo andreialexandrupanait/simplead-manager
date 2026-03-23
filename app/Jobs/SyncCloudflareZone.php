@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\CloudflareConnection;
 use App\Models\SiteCloudflare;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
@@ -36,6 +37,7 @@ class SyncCloudflareZone implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        /** @var CloudflareConnection|null $connection */
         $connection = $this->siteCloudflare->cloudflareConnection;
 
         if (! $connection || ! $connection->is_valid) {

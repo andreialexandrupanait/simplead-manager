@@ -174,6 +174,7 @@ class GlobalDashboard extends Component
             return;
         }
 
+        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         CreateBackup::dispatch($site, 'full', 'manual');
@@ -189,7 +190,9 @@ class GlobalDashboard extends Component
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         if ($site->uptimeMonitor) {
-            CheckUptime::dispatch($site->uptimeMonitor);
+            /** @var \App\Models\UptimeMonitor $uptimeMonitor */
+            $uptimeMonitor = $site->uptimeMonitor;
+            CheckUptime::dispatch($uptimeMonitor);
             $this->dispatch('notify', type: 'success', message: "Uptime check queued for {$site->name}.");
         }
     }
@@ -200,6 +203,7 @@ class GlobalDashboard extends Component
             return;
         }
 
+        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         SyncWordPressSite::dispatch($site);

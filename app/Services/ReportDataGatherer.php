@@ -132,7 +132,7 @@ class ReportDataGatherer
 
     // ─── Trend Helpers ───────────────────────────────────────────────
 
-    protected function calculateTrend(float|int|null $current, float|int|null $previous): array
+    protected function calculateTrend(float|int|string|null $current, float|int|string|null $previous): array
     {
         if ($previous === null || $previous == 0) {
             return [
@@ -165,7 +165,7 @@ class ReportDataGatherer
         ];
     }
 
-    protected function calculateTrendInverse(float|int|null $current, float|int|null $previous): array
+    protected function calculateTrendInverse(float|int|string|null $current, float|int|string|null $previous): array
     {
         $trend = $this->calculateTrend($current, $previous);
 
@@ -180,7 +180,7 @@ class ReportDataGatherer
 
     // ─── Number Formatting ───────────────────────────────────────────
 
-    protected function formatNumber(float|int|null $value, int $decimals = 0): string
+    protected function formatNumber(float|int|string|null $value, int $decimals = 0): string
     {
         if ($value === null) {
             return __('report.not_available', [], $this->language);
@@ -271,44 +271,44 @@ class ReportDataGatherer
 
         return [
             'updates' => [
-                'count' => $cur?->updates_applied ?? $this->countUpdatesInPeriod(),
-                'trend' => $this->calculateTrend($cur?->updates_applied, $prev?->updates_applied),
+                'count' => $cur->updates_applied ?? $this->countUpdatesInPeriod(),
+                'trend' => $this->calculateTrend($cur->updates_applied, $prev?->updates_applied),
             ],
             'uptime' => [
-                'percentage' => $cur?->uptime_percentage ?? $this->site->uptimeMonitor?->uptime_30d,
-                'trend' => $this->calculateTrend($cur?->uptime_percentage, $prev?->uptime_percentage),
-                'incidents' => $cur?->uptime_incidents_count ?? 0,
+                'percentage' => $cur->uptime_percentage ?? $this->site->uptimeMonitor?->uptime_30d,
+                'trend' => $this->calculateTrend($cur->uptime_percentage, $prev?->uptime_percentage),
+                'incidents' => $cur->uptime_incidents_count ?? 0,
             ],
             'backups' => [
-                'successful' => $cur?->backups_successful ?? $this->countBackupsInPeriod(),
-                'total' => $cur?->backups_total ?? $this->countBackupsInPeriod(),
-                'trend' => $this->calculateTrend($cur?->backups_successful, $prev?->backups_successful),
+                'successful' => $cur->backups_successful ?? $this->countBackupsInPeriod(),
+                'total' => $cur->backups_total ?? $this->countBackupsInPeriod(),
+                'trend' => $this->calculateTrend($cur->backups_successful, $prev?->backups_successful),
             ],
             'performance' => [
-                'mobile' => $cur?->performance_avg_mobile ?? $this->site->performanceMonitor?->latest_mobile_score,
-                'desktop' => $cur?->performance_avg_desktop ?? $this->site->performanceMonitor?->latest_desktop_score,
-                'mobile_trend' => $this->calculateTrend($cur?->performance_avg_mobile, $prev?->performance_avg_mobile),
-                'desktop_trend' => $this->calculateTrend($cur?->performance_avg_desktop, $prev?->performance_avg_desktop),
+                'mobile' => $cur->performance_avg_mobile ?? $this->site->performanceMonitor?->latest_mobile_score,
+                'desktop' => $cur->performance_avg_desktop ?? $this->site->performanceMonitor?->latest_desktop_score,
+                'mobile_trend' => $this->calculateTrend($cur->performance_avg_mobile, $prev?->performance_avg_mobile),
+                'desktop_trend' => $this->calculateTrend($cur->performance_avg_desktop, $prev?->performance_avg_desktop),
             ],
             'analytics' => [
-                'pageviews' => $cur?->analytics_pageviews,
-                'users' => $cur?->analytics_users,
-                'pageviews_trend' => $this->calculateTrend($cur?->analytics_pageviews, $prev?->analytics_pageviews),
-                'users_trend' => $this->calculateTrend($cur?->analytics_users, $prev?->analytics_users),
+                'pageviews' => $cur->analytics_pageviews,
+                'users' => $cur->analytics_users,
+                'pageviews_trend' => $this->calculateTrend($cur->analytics_pageviews, $prev?->analytics_pageviews),
+                'users_trend' => $this->calculateTrend($cur->analytics_users, $prev?->analytics_users),
             ],
             'search_console' => [
-                'clicks' => $cur?->search_console_clicks,
-                'impressions' => $cur?->search_console_impressions,
-                'clicks_trend' => $this->calculateTrend($cur?->search_console_clicks, $prev?->search_console_clicks),
-                'impressions_trend' => $this->calculateTrend($cur?->search_console_impressions, $prev?->search_console_impressions),
+                'clicks' => $cur->search_console_clicks,
+                'impressions' => $cur->search_console_impressions,
+                'clicks_trend' => $this->calculateTrend($cur->search_console_clicks, $prev?->search_console_clicks),
+                'impressions_trend' => $this->calculateTrend($cur->search_console_impressions, $prev?->search_console_impressions),
             ],
             'database' => [
                 'was_cleaned' => $this->wasDatabaseCleanedInPeriod(),
                 'space_saved' => $this->getDatabaseSpaceSavedInPeriod(),
             ],
             'security' => [
-                'score' => $cur?->security_avg_score,
-                'trend' => $this->calculateTrend($cur?->security_avg_score, $prev?->security_avg_score),
+                'score' => $cur->security_avg_score,
+                'trend' => $this->calculateTrend($cur->security_avg_score, $prev?->security_avg_score),
             ],
         ];
     }
@@ -443,7 +443,7 @@ class ReportDataGatherer
 
         $cur = $this->currentSnapshot;
         $prev = $this->previousSnapshot;
-        $uptimePct = $cur?->uptime_percentage ?? $monitor->uptime_30d;
+        $uptimePct = $cur->uptime_percentage ?? $monitor->uptime_30d;
 
         $downtimeBars = [];
         foreach ($incidents->take(6) as $idx => $inc) {
@@ -460,10 +460,10 @@ class ReportDataGatherer
         return [
             'available' => true,
             'uptime_percentage' => $uptimePct,
-            'uptime_trend' => $this->calculateTrend($cur?->uptime_percentage, $prev?->uptime_percentage),
+            'uptime_trend' => $this->calculateTrend($cur->uptime_percentage, $prev?->uptime_percentage),
             'avg_response_time' => $avgResponseTime ? round($avgResponseTime) : null,
             'response_time_trend' => $this->calculateTrendInverse(
-                $cur?->uptime_avg_response_ms ?? ($avgResponseTime ? round($avgResponseTime) : null),
+                $cur->uptime_avg_response_ms ?? ($avgResponseTime ? round($avgResponseTime) : null),
                 $prev?->uptime_avg_response_ms
             ),
             'incidents' => $incidents->map(fn ($i) => [
@@ -475,7 +475,7 @@ class ReportDataGatherer
             ])->toArray(),
             'incidents_count' => $incidents->count(),
             'incidents_trend' => $this->calculateTrendInverse(
-                $cur?->uptime_incidents_count ?? $incidents->count(),
+                $cur->uptime_incidents_count ?? $incidents->count(),
                 $prev?->uptime_incidents_count
             ),
             'total_downtime_minutes' => $totalDowntimeMinutes,
@@ -514,14 +514,14 @@ class ReportDataGatherer
         $donutChart = $this->chartService->generateDonutData($donutSegments, 120, 18);
 
         return [
-            'schedule_enabled' => (bool) $config?->is_enabled,
-            'frequency' => $config?->frequency ?? 'N/A',
-            'type' => $config?->type ?? 'N/A',
+            'schedule_enabled' => (bool) $config->is_enabled,
+            'frequency' => $config->frequency ?? 'N/A',
+            'type' => $config->type ?? 'N/A',
             'count' => $successfulCount,
             'failed_count' => $failedCount,
             'total_size' => $this->formatBytes($totalSize),
-            'successful_trend' => $this->calculateTrend($cur?->backups_successful ?? $successfulCount, $prev?->backups_successful),
-            'failed_trend' => $this->calculateTrendInverse($cur?->backups_failed ?? $failedCount, $prev?->backups_failed),
+            'successful_trend' => $this->calculateTrend($cur->backups_successful ?? $successfulCount, $prev?->backups_successful),
+            'failed_trend' => $this->calculateTrendInverse($cur->backups_failed ?? $failedCount, $prev?->backups_failed),
             'donut_chart' => $donutChart,
             'backups' => $backups->map(fn ($b) => [
                 'type' => $b->type,
@@ -584,8 +584,8 @@ class ReportDataGatherer
             'chart_points' => $chartPoints,
             'chart_y_labels' => $chartYLabels,
             'chart_x_labels' => $chartXLabels,
-            'pageviews_trend' => $this->calculateTrend($cur?->analytics_pageviews, $prev?->analytics_pageviews),
-            'users_trend' => $this->calculateTrend($cur?->analytics_users, $prev?->analytics_users),
+            'pageviews_trend' => $this->calculateTrend($cur->analytics_pageviews, $prev?->analytics_pageviews),
+            'users_trend' => $this->calculateTrend($cur->analytics_users, $prev?->analytics_users),
             'bounce_rate_trend' => $this->calculateTrendInverse($overview['bounce_rate'] ?? null, null),
             'duration_trend' => $this->calculateTrend($overview['avg_session_duration'] ?? null, null),
             'traffic_bar_chart' => $trafficBarChart,
@@ -623,7 +623,7 @@ class ReportDataGatherer
         }
 
         $overviewData = $overviewCache->data ?? [];
-        $performanceData = $caches->get('performance_over_time')?->data ?? [];
+        $performanceData = $caches->get('performance_over_time')->data ?? [];
 
         $cur = $this->currentSnapshot;
         $prev = $this->previousSnapshot;
@@ -652,16 +652,16 @@ class ReportDataGatherer
             'chart_x_labels' => $chartXLabels,
         ];
 
-        $mappedOverview['clicks_trend'] = $this->calculateTrend($cur?->search_console_clicks, $prev?->search_console_clicks);
-        $mappedOverview['impressions_trend'] = $this->calculateTrend($cur?->search_console_impressions, $prev?->search_console_impressions);
+        $mappedOverview['clicks_trend'] = $this->calculateTrend($cur->search_console_clicks, $prev?->search_console_clicks);
+        $mappedOverview['impressions_trend'] = $this->calculateTrend($cur->search_console_impressions, $prev?->search_console_impressions);
         $mappedOverview['ctr_trend'] = $this->calculateTrend(($overviewData['ctr'] ?? 0), null);
-        $mappedOverview['position_trend'] = $this->calculateTrendInverse($cur?->search_console_avg_position, $prev?->search_console_avg_position);
+        $mappedOverview['position_trend'] = $this->calculateTrendInverse($cur->search_console_avg_position, $prev?->search_console_avg_position);
 
-        $queries = collect($caches->get('queries')?->data ?? [])->map(fn ($q) => array_merge($q, [
+        $queries = collect($caches->get('queries')->data ?? [])->map(fn ($q) => array_merge($q, [
             'ctr' => ($q['ctr'] ?? 0) / 100,
         ]))->take(10)->toArray();
 
-        $pages = collect($caches->get('pages')?->data ?? [])->map(fn ($p) => array_merge($p, [
+        $pages = collect($caches->get('pages')->data ?? [])->map(fn ($p) => array_merge($p, [
             'ctr' => ($p['ctr'] ?? 0) / 100,
         ]))->take(10)->toArray();
 
@@ -669,8 +669,8 @@ class ReportDataGatherer
             'overview' => $mappedOverview,
             'queries' => $queries,
             'pages' => $pages,
-            'countries' => $caches->get('countries')?->data ?? [],
-            'devices' => $caches->get('devices')?->data ?? [],
+            'countries' => $caches->get('countries')->data ?? [],
+            'devices' => $caches->get('devices')->data ?? [],
             'dual_line_chart' => $dualLineChart,
             'dual_line_y_labels' => $dualLineYLabels,
             'dual_line_x_labels' => $chartXLabels,
@@ -697,8 +697,8 @@ class ReportDataGatherer
         $data = [
             'mobile_score' => $mobileTest?->performance_score,
             'desktop_score' => $desktopTest?->performance_score,
-            'mobile_trend' => $this->calculateTrend($cur?->performance_avg_mobile, $prev?->performance_avg_mobile),
-            'desktop_trend' => $this->calculateTrend($cur?->performance_avg_desktop, $prev?->performance_avg_desktop),
+            'mobile_trend' => $this->calculateTrend($cur->performance_avg_mobile, $prev?->performance_avg_mobile),
+            'desktop_trend' => $this->calculateTrend($cur->performance_avg_desktop, $prev?->performance_avg_desktop),
         ];
 
         if ($mobileTest) {
@@ -803,7 +803,7 @@ class ReportDataGatherer
 
         return [
             'score' => $latestScan->score,
-            'score_trend' => $this->calculateTrend($cur?->security_avg_score, $prev?->security_avg_score),
+            'score_trend' => $this->calculateTrend($cur->security_avg_score, $prev?->security_avg_score),
             'scanned_at' => $latestScan->scanned_at,
             'critical_count' => $latestScan->critical_count,
             'high_count' => $latestScan->high_count,
@@ -1057,9 +1057,9 @@ class ReportDataGatherer
         $cur = $this->currentSnapshot;
         $prev = $this->previousSnapshot;
 
-        $requests = $cur?->cloudflare_requests;
-        $bandwidth = $cur?->cloudflare_bandwidth_bytes;
-        $cacheRatio = $cur?->cloudflare_cache_hit_ratio;
+        $requests = $cur->cloudflare_requests;
+        $bandwidth = $cur->cloudflare_bandwidth_bytes;
+        $cacheRatio = $cur->cloudflare_cache_hit_ratio;
 
         return [
             'zone_name' => $cf->zone_name,

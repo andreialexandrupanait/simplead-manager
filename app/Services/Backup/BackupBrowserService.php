@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Backup;
 
 use App\Models\Backup;
+use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,7 @@ class BackupBrowserService
         mkdir($tempDir, 0755, true);
 
         try {
+            /** @var StorageDestination|null $destination */
             $destination = $backup->storageDestination;
             if (! $destination || ! $backup->file_path) {
                 throw new \RuntimeException('Backup storage destination or file path is missing.');

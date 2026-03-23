@@ -115,7 +115,7 @@ class ApplicationBackup extends Component
     #[Computed]
     public function backupLogEntries(): array
     {
-        return $this->activeBackup?->log ?? [];
+        return $this->activeBackup->log ?? [];
     }
 
     #[Computed]
@@ -275,6 +275,7 @@ class ApplicationBackup extends Component
         }
 
         // Remote: get temporary URL
+        /** @var StorageDestination $destination */
         $driver = StorageFactory::make($destination);
         $url = $driver->temporaryUrl($backup->storage_path);
 

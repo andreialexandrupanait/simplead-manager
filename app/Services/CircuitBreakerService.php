@@ -133,7 +133,7 @@ class CircuitBreakerService
     /**
      * Get or create health state for a site.
      */
-    private static function getOrCreateState(Site $site): SiteHealthState
+    protected static function getOrCreateState(Site $site): SiteHealthState
     {
         return SiteHealthState::firstOrCreate(
             ['site_id' => $site->id],

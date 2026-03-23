@@ -79,6 +79,7 @@ class UptimeOverview extends Component
         $created = 0;
 
         foreach ($sites as $site) {
+            /** @var UptimeMonitor $monitor */
             $monitor = $site->uptimeMonitor()->create([
                 'url' => $site->url,
             ]);

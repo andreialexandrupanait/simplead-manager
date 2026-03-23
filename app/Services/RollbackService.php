@@ -27,6 +27,7 @@ class RollbackService
 
     public function executeRollback(RollbackPoint $point, ?int $userId = null): array
     {
+        /** @var Site $site */
         $site = $point->site;
         $api = new WordPressApiService($site);
 

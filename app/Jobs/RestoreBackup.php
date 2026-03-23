@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Enums\BackupStatus;
 use App\Models\Backup;
+use App\Models\Site;
+use App\Models\StorageDestination;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\WordPressApiService;
@@ -92,7 +94,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function restoreSingleBackup(): void
     {
+        /** @var Site $site */
         $site = $this->backup->site;
+        /** @var StorageDestination|null $destination */
         $destination = $this->backup->storageDestination;
 
         if (! $destination || ! $this->backup->file_path) {
@@ -156,6 +160,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $stepNum = $i + 1;
             $pct = 10 + (int) (($stepNum / $chainLength) * 50); // 10-60%
 
+            /** @var StorageDestination|null $destination */
             $destination = $chainBackup->storageDestination;
             if (! $destination || ! $chainBackup->file_path) {
                 throw new \RuntimeException("Backup #{$chainBackup->id} in chain has no file path.");
@@ -263,6 +268,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         $this->reportRestoreProgress('restoring', 70, 'Sending restored data to WordPress...');
 
+        /** @var Site $site */
         $site = $this->backup->site;
         $api = new WordPressApiService($site);
         $this->ensurePluginUpToDate($api);
@@ -393,7 +399,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             'restore_progress_message' => Str::limit($message, 252),
         ]);
 
-        SyncWordPressSite::dispatch($this->backup->site);
+        /** @var Site $backupSite */
+        $backupSite = $this->backup->site;
+        SyncWordPressSite::dispatch($backupSite);
     }
 
     /**

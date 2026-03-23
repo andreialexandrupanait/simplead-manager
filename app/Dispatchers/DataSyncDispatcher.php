@@ -42,7 +42,9 @@ class DataSyncDispatcher
             )
             ->with('site')
             ->each(function (AnalyticsConnection $conn) {
-                FetchAnalyticsData::dispatch($conn->site, '28d');
+                /** @var \App\Models\Site $site */
+                $site = $conn->site;
+                FetchAnalyticsData::dispatch($site, '28d');
                 $conn->update(['next_sync_at' => now()->addMinutes($conn->interval_minutes)]);
             });
     }
@@ -59,7 +61,9 @@ class DataSyncDispatcher
             )
             ->with('site')
             ->each(function (SearchConsoleConnection $conn) {
-                FetchSearchConsoleData::dispatch($conn->site, '28d');
+                /** @var \App\Models\Site $site */
+                $site = $conn->site;
+                FetchSearchConsoleData::dispatch($site, '28d');
                 $conn->update(['next_sync_at' => now()->addMinutes($conn->interval_minutes)]);
             });
     }

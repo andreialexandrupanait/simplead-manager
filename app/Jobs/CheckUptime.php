@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Events\SiteRecovered;
 use App\Events\SiteWentDown;
+use App\Models\Site;
 use App\Models\UptimeCheck;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
@@ -58,14 +59,16 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         }
 
         // Sync to site
-        $this->monitor->site->update([
+        /** @var Site $monitorSite */
+        $monitorSite = $this->monitor->site;
+        $monitorSite->update([
             'is_up' => $this->monitor->current_state === \App\Enums\MonitorState::Up,
             'uptime_percentage' => $this->monitor->uptime_30d,
         ]);
 
         // Circuit breaker reporting
         if ($result['is_up']) {
-            CircuitBreakerService::recordSuccess($this->monitor->site);
+            CircuitBreakerService::recordSuccess($monitorSite);
         }
         // Note: uptime failures don't trip the circuit breaker (they're expected for monitoring)
         // Only connectivity/API failures trip it
@@ -270,10 +273,14 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             ]);
         }
 
+        /** @var \App\Models\UptimeIncident $incident */
+
         // Only notify when threshold is reached
         if ($this->monitor->consecutive_failures === $this->monitor->alert_after_failures) {
+            /** @var Site $downSite */
+            $downSite = $this->monitor->site;
             SiteWentDown::dispatch(
-                $this->monitor->site,
+                $downSite,
                 $incident,
                 $result['failure_reason'] ?? 'Unknown',
             );
@@ -292,9 +299,13 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
             $downtimeMinutes = $incident->started_at ? (int) $incident->started_at->diffInMinutes(now()) : 0;
 
+            /** @var Site $recoveredSite */
+            $recoveredSite = $this->monitor->site;
+            /** @var \App\Models\UptimeIncident $freshIncident */
+            $freshIncident = $incident->fresh();
             SiteRecovered::dispatch(
-                $this->monitor->site,
-                $incident->fresh(),
+                $recoveredSite,
+                $freshIncident,
                 $downtimeMinutes,
             );
         }

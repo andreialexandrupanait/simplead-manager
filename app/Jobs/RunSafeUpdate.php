@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\SafeUpdate;
+use App\Models\Site;
 use App\Services\Notifications\NotificationService;
 use App\Services\SafeUpdateService;
 use Illuminate\Bus\Queueable;
@@ -45,8 +46,10 @@ class RunSafeUpdate implements ShouldBeUnique, ShouldQueue
             'completed_at' => now(),
         ]);
 
+        /** @var Site $safeUpdateSite */
+        $safeUpdateSite = $this->safeUpdate->site;
         NotificationService::notifySiteEvent(
-            $this->safeUpdate->site,
+            $safeUpdateSite,
             'safe_update_failed',
             'Safe Update Failed',
             "Safe update failed for {$this->safeUpdate->name}: ".($exception?->getMessage() ?? 'Unknown error'),

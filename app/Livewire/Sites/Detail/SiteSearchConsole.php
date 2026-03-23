@@ -69,9 +69,9 @@ class SiteSearchConsole extends Component
         $google = $conn->googleConnection;
 
         return [
-            'email' => $google?->email,
+            'email' => $google->email,
             'property' => $conn->property_url,
-            'google_active' => $google?->is_active ?? false,
+            'google_active' => $google->is_active ?? false,
             'last_error' => $conn->last_error,
             'last_sync' => $conn->last_sync_at,
         ];
@@ -202,7 +202,7 @@ class SiteSearchConsole extends Component
 
     public function disconnectSearchConsole(): void
     {
-        $this->site->searchConsoleConnection?->delete();
+        $this->site->searchConsoleConnection->delete();
         SearchConsoleCache::where('site_id', $this->site->id)->delete();
         $this->site->unsetRelation('searchConsoleConnection');
 
@@ -211,7 +211,7 @@ class SiteSearchConsole extends Component
 
     private function resolveGoogleConnection(): ?GoogleConnection
     {
-        $existing = $this->site->searchConsoleConnection?->googleConnection;
+        $existing = $this->site->searchConsoleConnection->googleConnection;
         if ($existing && $existing->is_active) {
             return $existing;
         }
@@ -238,9 +238,9 @@ class SiteSearchConsole extends Component
             $caches = $query->get()->keyBy('data_type');
 
             $cache = $caches->get('overview');
-            $overview = $cache?->data;
-            $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
-            $queries = $caches->get('queries')?->data ?? [];
+            $overview = $cache->data;
+            $performanceOverTime = $caches->get('performance_over_time')->data ?? [];
+            $queries = $caches->get('queries')->data ?? [];
         }
 
         $googleConnections = GoogleConnection::where('is_active', true)->get();

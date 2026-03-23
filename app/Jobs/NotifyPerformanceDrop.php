@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Mail\PerformanceAlertMail;
 use App\Models\PerformanceMonitor;
+use App\Models\Site;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,6 +35,7 @@ class NotifyPerformanceDrop implements ShouldQueue
 
     public function handle(): void
     {
+        /** @var Site $site */
         $site = $this->monitor->site;
         $drop = $this->previousScore - $this->currentScore;
 

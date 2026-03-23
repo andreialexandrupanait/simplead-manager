@@ -86,6 +86,7 @@ class SecurityCommandService
         }
 
         // Recalculate site score
+        /** @var Site $site */
         $site = $command->site;
         $site->update([
             'security_hardening_score' => app(SecuritySettingsService::class)->getSecurityScore($site),

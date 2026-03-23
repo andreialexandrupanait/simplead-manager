@@ -41,6 +41,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
 
     public function handle(PageSpeedService $pageSpeed): void
     {
+        /** @var Site $site */
         $site = $this->monitor->site;
 
         $devices = $this->device === 'both' ? ['mobile', 'desktop'] : [$this->device];
@@ -112,6 +113,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
         }
 
         // Get latest completed mobile test for primary page
+        /** @var PerformanceTest|null $latestTest */
         $latestTest = $this->monitor->tests()
             ->where('device', 'mobile')
             ->where('status', 'completed')
@@ -296,6 +298,9 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
 
         $threshold = $this->monitor->score_drop_threshold;
 
+        /** @var Site $alertSite */
+        $alertSite = $this->monitor->site;
+
         // Check mobile score drop
         if ($this->monitor->previous_mobile_score !== null && $this->monitor->latest_mobile_score !== null) {
             $drop = $this->monitor->previous_mobile_score - $this->monitor->latest_mobile_score;
@@ -306,7 +311,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
                     $this->monitor->previous_mobile_score,
                     $this->monitor->latest_mobile_score
                 );
-                ActivityLogger::performanceScoreDrop($this->monitor->site, 'mobile', $this->monitor->previous_mobile_score, $this->monitor->latest_mobile_score);
+                ActivityLogger::performanceScoreDrop($alertSite, 'mobile', $this->monitor->previous_mobile_score, $this->monitor->latest_mobile_score);
             }
         }
 
@@ -320,7 +325,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
                     $this->monitor->previous_desktop_score,
                     $this->monitor->latest_desktop_score
                 );
-                ActivityLogger::performanceScoreDrop($this->monitor->site, 'desktop', $this->monitor->previous_desktop_score, $this->monitor->latest_desktop_score);
+                ActivityLogger::performanceScoreDrop($alertSite, 'desktop', $this->monitor->previous_desktop_score, $this->monitor->latest_desktop_score);
             }
         }
     }

@@ -139,7 +139,7 @@ class PerformanceOverview extends Component
         // For LCP and trend sorting, sort in-memory since they're on related models
         if ($this->sortBy === 'lcp') {
             $monitors = $monitors->sortBy(function ($m) {
-                return $m->latestMobileTest?->lcp ?? PHP_FLOAT_MAX;
+                return $m->latestMobileTest->lcp ?? PHP_FLOAT_MAX;
             }, SORT_REGULAR, $this->sortDir === 'desc');
         }
 

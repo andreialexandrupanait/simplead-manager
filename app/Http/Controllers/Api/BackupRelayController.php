@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Backup;
+use App\Models\StorageDestination;
 use App\Services\Backup\Storage\DropboxDriver;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +34,7 @@ class BackupRelayController extends Controller
             return response()->json(['error' => 'Invalid token'], 403);
         }
 
-        $offset = (int) $request->header('X-Chunk-Offset', 0);
+        $offset = (int) $request->header('X-Chunk-Offset', '0');
         $isLast = $request->header('X-Chunk-Is-Last') === '1';
         $chunkData = $request->getContent();
 
@@ -66,6 +67,7 @@ class BackupRelayController extends Controller
 
     protected function relayToDropbox(Backup $backup, array $context, string $data, int $offset, bool $isLast, string $cacheKey): void
     {
+        /** @var StorageDestination $destination */
         $destination = $backup->storageDestination;
         $driver = StorageFactory::make($destination);
 

@@ -257,8 +257,8 @@ class ProfileSettings extends Component
             'email' => $user->email,
             'timezone' => $user->timezone,
             'language' => $user->language,
-            'role' => $user->role?->value ?? $user->role,
-            'created_at' => $user->created_at?->toIso8601String(),
+            'role' => $user->role->value ?? $user->role,
+            'created_at' => $user->created_at->toIso8601String(),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         // Sites
@@ -268,7 +268,7 @@ class ProfileSettings extends Component
                 'name' => $s->name,
                 'url' => $s->url,
                 'status' => $s->status,
-                'created_at' => $s->created_at?->toIso8601String(),
+                'created_at' => $s->created_at->toIso8601String(),
             ])->toArray(),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         ));
@@ -281,11 +281,11 @@ class ProfileSettings extends Component
         $zip->addFromString('reports.json', json_encode(
             $reports->map(fn ($r) => [
                 'title' => $r->title,
-                'period_start' => $r->period_start?->toDateString(),
-                'period_end' => $r->period_end?->toDateString(),
+                'period_start' => $r->period_start->toDateString(),
+                'period_end' => $r->period_end->toDateString(),
                 'trigger' => $r->trigger,
                 'status' => $r->status,
-                'created_at' => $r->created_at?->toIso8601String(),
+                'created_at' => $r->created_at->toIso8601String(),
             ])->toArray(),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         ));
@@ -300,7 +300,7 @@ class ProfileSettings extends Component
             $logs->map(fn ($l) => [
                 'action' => $l->action,
                 'description' => $l->description,
-                'created_at' => $l->created_at?->toIso8601String(),
+                'created_at' => $l->created_at->toIso8601String(),
             ])->toArray(),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         ));

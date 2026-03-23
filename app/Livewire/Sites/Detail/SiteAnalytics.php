@@ -68,9 +68,9 @@ class SiteAnalytics extends Component
         $google = $conn->googleConnection;
 
         return [
-            'email' => $google?->email,
+            'email' => $google->email,
             'property' => $conn->property_name ?? $conn->property_id,
-            'google_active' => $google?->is_active ?? false,
+            'google_active' => $google->is_active ?? false,
             'last_error' => $conn->last_error,
             'last_sync' => $conn->last_sync_at,
         ];

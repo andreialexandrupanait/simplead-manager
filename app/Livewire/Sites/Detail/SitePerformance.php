@@ -84,13 +84,13 @@ class SitePerformance extends Component
     #[Computed]
     public function latestMobileTest(): ?PerformanceTest
     {
-        return $this->monitor?->latestMobileTest;
+        return $this->monitor->latestMobileTest;
     }
 
     #[Computed]
     public function latestDesktopTest(): ?PerformanceTest
     {
-        return $this->monitor?->latestDesktopTest;
+        return $this->monitor->latestDesktopTest;
     }
 
     #[Computed]
@@ -152,7 +152,7 @@ class SitePerformance extends Component
     #[Computed]
     public function budgetViolations(): array
     {
-        $budgets = $this->monitor?->budgets;
+        $budgets = $this->monitor->budgets;
         if (empty($budgets)) {
             return [];
         }
@@ -427,7 +427,7 @@ class SitePerformance extends Component
 
     public function removePage(int $pageId): void
     {
-        $page = PerformancePage::where('performance_monitor_id', $this->monitor?->id)->find($pageId);
+        $page = PerformancePage::where('performance_monitor_id', $this->monitor->id)->find($pageId);
         if (! $page) {
             return;
         }
@@ -471,7 +471,7 @@ class SitePerformance extends Component
 
     public function openBudgetModal(): void
     {
-        $budgets = $this->monitor?->budgets ?? [];
+        $budgets = $this->monitor->budgets ?? [];
         $this->budgetForm = [
             'performance_score' => $budgets['performance_score'] ?? '',
             'lcp' => $budgets['lcp'] ?? '',

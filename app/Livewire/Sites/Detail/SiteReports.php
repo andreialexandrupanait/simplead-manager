@@ -142,7 +142,7 @@ class SiteReports extends Component
         $this->loadingRecommendations = true;
 
         $data = $this->gatherSiteDataForRecs();
-        $language = $this->site->reportConfig?->language ?? 'ro';
+        $language = $this->site->reportConfig->language ?? 'ro';
         $recService = new ReportRecommendationService($data, $language);
         $recService->generateAndPersist($this->site);
 
@@ -318,7 +318,7 @@ class SiteReports extends Component
     protected function gatherSectionPreviews(): array
     {
         $template = ReportTemplate::find($this->selectedTemplateId);
-        $sections = $template?->sections ?? [];
+        $sections = $template->sections ?? [];
         $periodEnd = Carbon::today();
         $periodStart = $periodEnd->copy()->subDays(30);
         $previews = [];
@@ -404,7 +404,7 @@ class SiteReports extends Component
             'label' => __('report.section_label_uptime'),
             'status' => $status,
             'metrics' => [
-                ['label' => 'Uptime', 'value' => $pct !== null ? number_format($pct, 2).'%' : 'N/A'],
+                ['label' => 'Uptime', 'value' => $pct !== null ? number_format((float) $pct, 2).'%' : 'N/A'],
             ],
         ];
     }
@@ -787,6 +787,7 @@ class SiteReports extends Component
             'sendToEmail' => 'required|email',
         ]);
 
+        /** @var \App\Models\Report $report */
         $report = $this->site->reports()->findOrFail($this->sendReportId);
 
         Mail::to($this->sendToEmail)->queue(new ReportGeneratedMail($report, $this->site));
@@ -836,6 +837,7 @@ class SiteReports extends Component
             ->get();
 
         foreach ($reports as $report) {
+            /** @var \App\Models\Report $report */
             Mail::to($email)->queue(new ReportGeneratedMail($report, $this->site));
 
             $sentTo = $report->sent_to ?? [];

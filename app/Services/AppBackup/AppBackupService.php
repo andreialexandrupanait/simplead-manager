@@ -282,6 +282,7 @@ class AppBackupService
 
     public function downloadBackup(AppBackup $backup): string
     {
+        /** @var StorageDestination|null $destination */
         $destination = $backup->storageDestination;
 
         if (! $destination) {
@@ -446,6 +447,7 @@ class AppBackupService
 
     public function deleteBackup(AppBackup $backup): void
     {
+        /** @var StorageDestination|null $destination */
         $destination = $backup->storageDestination;
 
         if ($destination && $backup->storage_path) {

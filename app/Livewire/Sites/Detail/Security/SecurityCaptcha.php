@@ -113,7 +113,7 @@ class SecurityCaptcha extends Component
             $value['site_key'] = $this->siteKey;
             $value['secret_key'] = encrypt($this->secretKey);
         } elseif ($this->hasExistingKeys) {
-            $existing = $this->captchaSetting?->setting_value ?? [];
+            $existing = $this->captchaSetting->setting_value ?? [];
             $value['site_key'] = $existing['site_key'] ?? '';
             $value['secret_key'] = $existing['secret_key'] ?? '';
         }

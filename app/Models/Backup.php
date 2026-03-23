@@ -145,12 +145,12 @@ class Backup extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return $this->status?->color() ?? 'gray';
+        return $this->status->color() ?? 'gray';
     }
 
     public function getRestoreStatusColorAttribute(): string
     {
-        return $this->restore_status?->color() ?? 'gray';
+        return $this->restore_status->color() ?? 'gray';
     }
 
     public function getIsRestoringAttribute(): bool

@@ -116,8 +116,8 @@ class ModuleConfigService
 
         foreach (self::MODULE_MAP as $moduleKey => $config) {
             $mod = $planModules->get($moduleKey);
-            $enabled = $mod?->is_enabled ?? false;
-            $interval = $mod?->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
+            $enabled = $mod->is_enabled ?? false;
+            $interval = $mod->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
 
             $this->configureModule($site, $moduleKey, $enabled, $interval);
         }

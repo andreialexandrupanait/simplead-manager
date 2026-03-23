@@ -50,6 +50,10 @@ class MonitoringDispatcher
                 ->where('circuit_state', '!=', 'open')
                 ->where('is_monitoring_disabled', false)
             )
-            ->each(fn (SecurityMonitor $monitor) => RunSecurityScan::dispatch($monitor->site));
+            ->each(function (SecurityMonitor $monitor) {
+                /** @var \App\Models\Site $site */
+                $site = $monitor->site;
+                RunSecurityScan::dispatch($site);
+            });
     }
 }

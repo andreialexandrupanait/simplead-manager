@@ -78,8 +78,8 @@ class TweaksPerformance extends Component
 
         // Simple toggles
         foreach ($this->simpleToggleKeys as $key) {
-            $this->toggles[$key] = $settings->get($key)?->is_enabled ?? false;
-            $this->settingStatuses[$key] = $settings->get($key)?->status;
+            $this->toggles[$key] = $settings->get($key)->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)->status;
         }
 
         // Heartbeat

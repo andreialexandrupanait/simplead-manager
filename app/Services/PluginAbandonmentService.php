@@ -92,6 +92,7 @@ class PluginAbandonmentService
         $completed = 0;
 
         foreach ($plugins as $plugin) {
+            /** @var \App\Models\SitePlugin $plugin */
             if ($trackerKey && $total > 0) {
                 $pluginName = $plugin->name ?: $plugin->slug ?: 'plugin';
                 JobTracker::progress($trackerKey, (int) round($completed / $total * 90), "Checking {$pluginName}...");
