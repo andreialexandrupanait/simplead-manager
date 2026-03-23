@@ -134,7 +134,7 @@ class SAM_Security_Login {
         $request_path = wp_parse_url($request_uri, PHP_URL_PATH);
         $request_path = rtrim($request_path, '/');
 
-        // Allow admin-ajax.php and admin-post.php (used by themes/plugins for non-logged-in users)
+        // Allow admin-ajax.php and admin-post.php
         if (strpos($request_path, '/wp-admin/admin-ajax.php') !== false ||
             strpos($request_path, '/wp-admin/admin-post.php') !== false) {
             return;
@@ -145,47 +145,52 @@ class SAM_Security_Login {
             return;
         }
 
-        // Handle custom slug — set cookie and redirect to real wp-login.php
+        // Custom slug — load wp-login.php directly (URL stays as custom slug)
         if ($request_path === '/' . $custom_slug) {
-            if (!headers_sent()) {
-                setcookie('sam_login_access', wp_hash($custom_slug), 0, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true);
-            }
-            wp_safe_redirect(site_url('/wp-login.php'));
-            exit;
+            // Defer to wp_loaded so all plugins/themes are fully initialized
+            add_action('wp_loaded', [$this, 'load_login_page'], 0);
+            return;
         }
 
-        // Block direct access to wp-login.php (unless cookie is set)
+        // Block direct wp-login.php access
         if (strpos($request_path, '/wp-login.php') !== false) {
-            // Allow if cookie is set (came through custom slug)
-            if (isset($_COOKIE['sam_login_access'])) {
-                return;
-            }
-
-            // Allow logout action
+            // Allow logout action (so logout links still work)
             if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 return;
             }
-
-            // Block — redirect to homepage
-            wp_safe_redirect(home_url('/'), 302);
-            exit;
+            wp_die(
+                '<h1>403</h1><p>You do not have permission to access this page.</p>',
+                'Forbidden',
+                ['response' => 403]
+            );
         }
 
-        // Block /wp-admin/ for non-logged-in users — redirect to homepage
+        // Block /wp-admin/ for non-logged-in users
         if (strpos($request_path, '/wp-admin') !== false && !is_user_logged_in()) {
-            wp_safe_redirect(home_url('/'), 302);
-            exit;
+            wp_die(
+                '<h1>403</h1><p>You do not have permission to access this page.</p>',
+                'Forbidden',
+                ['response' => 403]
+            );
         }
+    }
+
+    /**
+     * Load wp-login.php directly — called on wp_loaded for custom slug requests.
+     */
+    public function load_login_page(): void {
+        global $error, $interim_login, $action, $user_login;
+        @require_once ABSPATH . 'wp-login.php';
+        die;
     }
 
     /**
      * Filter login URL to use custom slug.
      */
     public function filter_login_url(string $url, string $path, $scheme, $blog_id): string {
-        if (strpos($url, 'wp-login.php') !== false && !is_admin()) {
-            if (!is_user_logged_in()) {
-                return home_url('/');
-            }
+        if (strpos($url, 'wp-login.php') !== false) {
+            $custom_slug = $this->settings['custom_login_url']['slug'];
+            $url = str_replace('wp-login.php', $custom_slug, $url);
         }
         return $url;
     }
@@ -195,9 +200,8 @@ class SAM_Security_Login {
      */
     public function filter_login_redirect(string $location, int $status): string {
         if (strpos($location, 'wp-login.php') !== false) {
-            if (!is_user_logged_in()) {
-                return home_url('/');
-            }
+            $custom_slug = $this->settings['custom_login_url']['slug'];
+            $location = str_replace('wp-login.php', $custom_slug, $location);
         }
         return $location;
     }
