@@ -26,6 +26,7 @@
         <env name="DB_PORT" value="5432" force="true"/>
         <env name="DB_DATABASE" value="simplead_testing" force="true"/>
         <env name="DB_SSLMODE" value="prefer" force="true"/>
+        <env name="MAIL_FROM_ADDRESS" value="test@example.com" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="PULSE_ENABLED" value="false" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
