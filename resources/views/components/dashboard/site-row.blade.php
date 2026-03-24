@@ -38,7 +38,8 @@
 @endphp
 
 <div
-    class="group flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}"
+    class="group flex items-center gap-3 border-b border-gray-100 border-l-[3px] px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}"
+    style="border-left-color: {{ $site->siteStatus ? $site->siteStatus->color : 'transparent' }}"
     data-site-id="{{ $site->id }}"
     wire:key="site-{{ $site->id }}"
 >
@@ -63,11 +64,6 @@
 
     {{-- Site Identity --}}
     <div class="min-w-0 flex-1 flex items-center gap-2">
-        @if($site->siteStatus)
-            <span class="h-5 rounded-sm shrink-0"
-                  style="width: 3px; background-color: {{ $site->siteStatus->color }}"
-                  title="{{ $site->siteStatus->name }}"></span>
-        @endif
         <a href="{{ route('sites.overview', $site) }}"
            class="truncate text-sm font-medium text-gray-900 hover:opacity-80"
         >{{ $site->domain }}</a>

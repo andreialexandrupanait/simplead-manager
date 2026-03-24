@@ -34,99 +34,119 @@
             $storageLabel = '0 MB';
         }
     @endphp
+    @php
+        // Smart link for Alerts card
+        if ($stats['sites_down'] > 0) {
+            $alertsLink = route('uptime.index', ['filter' => 'down']);
+        } elseif ($stats['failed_backups'] > 0) {
+            $alertsLink = route('backups.index', ['filter' => 'failed']);
+        } else {
+            $alertsLink = route('uptime.index');
+        }
+    @endphp
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {{-- Sites --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['sites_down'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
-                    <x-icons.globe class="h-5 w-5 {{ $stats['sites_down'] > 0 ? 'text-red-500' : 'text-green-500' }}" />
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold text-gray-900">{{ $stats['total_sites'] }}</div>
-                    <div class="text-xs text-gray-500">Sites</div>
-                    <div class="mt-0.5 text-xs font-medium {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                        {{ $stats['sites_down'] === 0 ? 'all operational' : $stats['sites_down'] . ' down' }}
+        <a href="#sites" class="block">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['sites_down'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                        <x-icons.globe class="h-5 w-5 {{ $stats['sites_down'] > 0 ? 'text-red-500' : 'text-green-500' }}" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-gray-900">{{ $stats['total_sites'] }}</div>
+                        <div class="text-xs text-gray-500">Sites</div>
+                        <div class="mt-0.5 text-xs font-medium {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">
+                            {{ $stats['sites_down'] === 0 ? 'all operational' : $stats['sites_down'] . ' down' }}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </x-ui.card>
+            </x-ui.card>
+        </a>
 
         {{-- Uptime --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $uptimeBg }}">
-                    <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
+        <a href="{{ route('uptime.index') }}" class="block">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $uptimeBg }}">
+                        <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
+                        <div class="text-xs text-gray-500">Uptime</div>
+                        <div class="mt-0.5 text-xs text-gray-400">last 30 days</div>
+                    </div>
                 </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
-                    <div class="text-xs text-gray-500">Uptime</div>
-                    <div class="mt-0.5 text-xs text-gray-400">last 30 days</div>
-                </div>
-            </div>
-        </x-ui.card>
+            </x-ui.card>
+        </a>
 
         {{-- Backup Storage --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50">
-                    <x-icons.hard-drive class="h-5 w-5 text-purple-500" />
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
-                    <div class="text-xs text-gray-500">Backup Storage</div>
-                    <div class="mt-0.5 text-xs text-gray-400">
-                        {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' failed (24h)' : 'all healthy' }}
+        <a href="{{ route('backups.index') }}" class="block">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50">
+                        <x-icons.hard-drive class="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
+                        <div class="text-xs text-gray-500">Backup Storage</div>
+                        <div class="mt-0.5 text-xs text-gray-400">
+                            {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' failed (24h)' : 'all healthy' }}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </x-ui.card>
+            </x-ui.card>
+        </a>
 
         {{-- Backups Today --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
-                    <x-icons.check-circle class="h-5 w-5 text-blue-500" />
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold text-blue-600">{{ $stats['backups_today'] }}</div>
-                    <div class="text-xs text-gray-500">Backups Today</div>
-                    <div class="mt-0.5 text-xs text-gray-400">completed</div>
-                </div>
-            </div>
-        </x-ui.card>
-
-        {{-- Alerts --}}
-        <x-ui.card :padding="false" class="p-4">
-            <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
-                    @if($stats['total_alerts'] > 0)
-                        <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
-                    @else
-                        <x-icons.shield class="h-5 w-5 text-green-500" />
-                    @endif
-                </div>
-                <div class="min-w-0">
-                    <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
-                    <div class="text-xs text-gray-500">Alerts</div>
-                    <div class="mt-0.5 text-xs {{ $stats['total_alerts'] > 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
-                        @if($stats['total_alerts'] === 0)
-                            all clear
-                        @else
-                            @php
-                                $parts = [];
-                                if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' down';
-                                if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' backup';
-                            @endphp
-                            {{ implode(', ', $parts) }}
-                        @endif
+        <a href="{{ route('backups.index') }}" class="block">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                        <x-icons.check-circle class="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold text-blue-600">{{ $stats['backups_today'] }}</div>
+                        <div class="text-xs text-gray-500">Backups Today</div>
+                        <div class="mt-0.5 text-xs text-gray-400">completed</div>
                     </div>
                 </div>
-            </div>
-        </x-ui.card>
+            </x-ui.card>
+        </a>
+
+        {{-- Alerts --}}
+        <a href="{{ $alertsLink }}" class="block">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                        @if($stats['total_alerts'] > 0)
+                            <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
+                        @else
+                            <x-icons.shield class="h-5 w-5 text-green-500" />
+                        @endif
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
+                        <div class="text-xs text-gray-500">Alerts</div>
+                        <div class="mt-0.5 text-xs {{ $stats['total_alerts'] > 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
+                            @if($stats['total_alerts'] === 0)
+                                all clear
+                            @else
+                                @php
+                                    $parts = [];
+                                    if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' down';
+                                    if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' backup';
+                                @endphp
+                                {{ implode(', ', $parts) }}
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </x-ui.card>
+        </a>
     </div>
 
     {{-- Section 2: Sites List View --}}
-    <div class="mt-6">
+    <div id="sites" class="mt-6">
         <div class="mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Sites</h2>
         </div>
