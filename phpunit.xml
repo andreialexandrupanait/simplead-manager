@@ -30,5 +30,8 @@
         <env name="PULSE_ENABLED" value="false" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="SESSION_ENCRYPT" value="false" force="true"/>
+        <env name="SESSION_DOMAIN" value="" force="true"/>
+        <env name="SESSION_SECURE_COOKIE" value="false" force="true"/>
     </php>
 </phpunit>

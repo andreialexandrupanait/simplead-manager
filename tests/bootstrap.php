@@ -11,6 +11,7 @@ if (getenv('GITHUB_ACTIONS')) {
     $_ENV['DB_HOST'] = '127.0.0.1';
     $_ENV['DB_USERNAME'] = $_ENV['DB_USERNAME'] ?? 'simplead';
     $_ENV['DB_PASSWORD'] = $_ENV['DB_PASSWORD'] ?? 'password';
+    $_ENV['REDIS_HOST'] = '127.0.0.1';
 }
 
 foreach ($_ENV as $key => $value) {
