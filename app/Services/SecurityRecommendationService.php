@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class SecurityRecommendationService
 {
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
     public function check(Site $site): array
     {
         $this->seedDefaults($site);
@@ -26,7 +30,7 @@ class SecurityRecommendationService
         ];
 
         try {
-            $api = new WordPressApiService($site);
+            $api = $this->apiFactory->make($site);
             $result = $api->getSecurityCheck();
 
             $checks = $result['checks'] ?? [];
@@ -68,7 +72,7 @@ class SecurityRecommendationService
         }
 
         try {
-            $api = new WordPressApiService($site);
+            $api = $this->apiFactory->make($site);
             $result = $api->applySecurityFix($key);
 
             if ($result['success'] ?? false) {

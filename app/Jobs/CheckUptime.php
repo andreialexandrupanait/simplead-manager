@@ -219,22 +219,21 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
     protected function updateUptimeStats(): void
     {
         $monitor = $this->monitor;
-
         $now = now();
-        $stats = \Illuminate\Support\Facades\DB::selectOne('
-            SELECT
-                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_24h,
-                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_24h,
-                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_7d,
-                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_7d,
-                SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_30d,
-                SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_30d,
-                COUNT(*) as total_365d,
-                SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_365d,
-                AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response
-            FROM uptime_checks
-            WHERE monitor_id = ? AND checked_at >= ?
-        ', [
+
+        $baseQuery = UptimeCheck::forMonitorSince($monitor->id, $now->copy()->subDays(365));
+
+        $stats = $baseQuery->selectRaw(implode(', ', [
+            'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_24h',
+            'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_24h',
+            'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_7d',
+            'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_7d',
+            'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_30d',
+            'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_30d',
+            'COUNT(*) as total_365d',
+            'SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_365d',
+            'AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response',
+        ]), [
             $now->copy()->subHours(24),
             $now->copy()->subHours(24),
             $now->copy()->subDays(7),
@@ -242,9 +241,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             $now->copy()->subDays(30),
             $now->copy()->subDays(30),
             $now->copy()->subHours(24),
-            $monitor->id,
-            $now->copy()->subDays(365),
-        ]);
+        ])->first();
 
         $periods = [
             '24h' => [$stats->total_24h, $stats->up_24h],

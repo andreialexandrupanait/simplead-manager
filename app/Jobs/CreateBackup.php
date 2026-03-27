@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
 use App\Jobs\Concerns\BackupJobTrait;
@@ -15,7 +16,7 @@ use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -78,7 +79,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
             $this->prepare($destination);
 
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $this->refreshCapabilities($api);
 
             Log::info("Backup {$this->backupId}: starting pull flow", [
@@ -151,7 +152,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     {
         $this->checkCancelled();
 
-        $api = new WordPressApiService($this->site);
+        $api = app(WordPressApiServiceFactory::class)->make($this->site);
         $supportsChunked = $this->supportsChunkedDownload($api);
 
         $this->reportProgress('downloading_database', 10, 'Downloading database...');
@@ -212,7 +213,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     /**
      * Refresh backup capabilities from the WP plugin if stale (>24h).
      */
-    protected function refreshCapabilities(WordPressApiService $api): void
+    protected function refreshCapabilities(WordPressApiServiceInterface $api): void
     {
         $checkedAt = $this->site->backup_capabilities_checked_at;
         if ($checkedAt && $checkedAt->diffInHours(now()) < 24) {
@@ -257,7 +258,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     /**
      * Check if the WP plugin supports the chunked download endpoints.
      */
-    protected function supportsChunkedDownload(WordPressApiService $api): bool
+    protected function supportsChunkedDownload(WordPressApiServiceInterface $api): bool
     {
         // Use cached capabilities to avoid wasting a request on the rate limit
         $caps = $this->site->backup_capabilities;
@@ -386,7 +387,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         // Uses pre-collected manifest from the backup session if available (avoids re-scanning)
         if ($this->type === 'full') {
             try {
-                $api = new WordPressApiService($this->site);
+                $api = app(WordPressApiServiceFactory::class)->make($this->site);
                 $manifestService = new \App\Services\Backup\ManifestService;
                 $manifestService->generateAndStore($api, $this->backup, $destination, $this->filesSessionToken);
             } catch (\Throwable $e) {

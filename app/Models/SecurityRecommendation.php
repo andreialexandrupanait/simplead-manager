@@ -9,6 +9,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $key
+ * @property string $category
+ * @property string $title
+ * @property string $status
+ * @property bool $can_auto_fix
+ * @property \Illuminate\Support\Carbon|null $last_checked_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SecurityRecommendation extends Model
 {
     use HasFactory;

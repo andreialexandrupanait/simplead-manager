@@ -10,12 +10,16 @@ use Illuminate\Support\Facades\Log;
 
 class DatabaseHealthService
 {
-    public static function check(Site $site, ?string $trackerKey = null): DatabaseHealthCheck
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
+    public function check(Site $site, ?string $trackerKey = null): DatabaseHealthCheck
     {
         $startTime = microtime(true);
         Log::info("Database health check started for site {$site->id} ({$site->name})");
 
-        $api = new WordPressApiService($site);
+        $api = $this->apiFactory->make($site);
         $data = $api->getDatabaseHealth();
 
         if ($trackerKey) {

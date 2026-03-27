@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $notification_channel_id
+ * @property int|null $site_id
+ * @property string $event
+ * @property string $channel_type
+ * @property string $status
+ * @property string|null $message
+ * @property string|null $error_message
+ * @property array|null $metadata
+ * @property int|null $response_code
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read NotificationChannel|null $channel
+ * @property-read Site|null $site
+ */
 class NotificationLog extends Model
 {
     use HasFactory;

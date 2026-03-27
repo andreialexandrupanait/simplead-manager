@@ -10,6 +10,31 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $client_id
+ * @property string $slug
+ * @property string $title
+ * @property string|null $description
+ * @property string|null $logo_url
+ * @property string $primary_color
+ * @property string|null $custom_domain
+ * @property bool $is_public
+ * @property bool $show_uptime_percentage
+ * @property bool $show_response_time
+ * @property bool $show_incident_history
+ * @property int $incident_history_days
+ * @property bool $auto_incidents
+ * @property string|null $password_hash
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Client|null $client
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageSite> $statusPageSites
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncident> $incidents
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncident> $activeIncidents
+ */
 class StatusPage extends Model
 {
     use HasFactory;

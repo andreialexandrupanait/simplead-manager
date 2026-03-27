@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int|null $report_id
+ * @property int $site_id
+ * @property string $priority
+ * @property string $category
+ * @property string $title
+ * @property string $description
+ * @property bool $is_auto_generated
+ * @property bool $is_included
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Report|null $report
+ * @property-read \App\Models\Site|null $site
+ */
 class ReportRecommendation extends Model
 {
     protected $fillable = [

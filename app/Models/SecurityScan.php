@@ -10,6 +10,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $score
+ * @property int $critical_count
+ * @property int $high_count
+ * @property int $medium_count
+ * @property int $low_count
+ * @property int|null $scan_duration
+ * @property \Illuminate\Support\Carbon|null $scanned_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIssue> $issues
+ */
 class SecurityScan extends Model
 {
     use HasFactory;

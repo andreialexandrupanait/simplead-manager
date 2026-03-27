@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Contracts\WordPressApiServiceInterface;
 use App\Exceptions\WordPressApiException;
 use App\Models\Site;
 use App\Services\WordPress\Concerns\ManagesCron;
@@ -17,7 +18,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class WordPressApiService
+class WordPressApiService implements WordPressApiServiceInterface
 {
     use ManagesCron;
     use ManagesDatabase;
@@ -721,7 +722,7 @@ class WordPressApiService
      * Stream-download from a WP endpoint to a local file (for binary data with POST body).
      * Retries up to 5 times on 429 rate limiting with exponential backoff.
      */
-    private function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void
+    public function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void
     {
         [$url, $path] = $this->buildUrl($endpoint);
         $body = ! empty($data) ? json_encode($data) : '';

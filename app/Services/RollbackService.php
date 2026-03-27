@@ -12,6 +12,10 @@ use Illuminate\Support\Collection;
 
 class RollbackService
 {
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
     public function createRollbackPoint(Site $site, string $type, string $slug, string $fromVersion, string $toVersion): RollbackPoint
     {
         return RollbackPoint::create([
@@ -29,7 +33,7 @@ class RollbackService
     {
         /** @var Site $site */
         $site = $point->site;
-        $api = new WordPressApiService($site);
+        $api = $this->apiFactory->make($site);
 
         $result = $api->rollback($point->type, $point->slug, $point->from_version);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
 use App\Jobs\Concerns\BackupJobTrait;
@@ -16,7 +17,7 @@ use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -88,7 +89,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
             $this->prepare($destination, $parentBackup);
 
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
 
             // Step 1: Retrieve parent manifest
             $this->reportProgress('loading_manifest', 5, 'Loading previous manifest...');
@@ -186,7 +187,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
      * Download incremental file chunks using the chunked prepare flow.
      * Returns array of chunk file paths (no merge step).
      */
-    protected function downloadIncrementalFiles(WordPressApiService $api, string $token, int $totalChunks, string $saveTo): array
+    protected function downloadIncrementalFiles(WordPressApiServiceInterface $api, string $token, int $totalChunks, string $saveTo): array
     {
         $dir = dirname($saveTo);
         if (! is_dir($dir)) {
@@ -227,59 +228,13 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         return $chunkFiles;
     }
 
-    protected function streamDownloadChunk(WordPressApiService $api, string $token, int $chunkIndex, string $saveTo): void
+    protected function streamDownloadChunk(WordPressApiServiceInterface $api, string $token, int $chunkIndex, string $saveTo): void
     {
-        $apiKey = $this->site->api_key;
-        $apiSecret = $this->site->api_secret;
-        $baseUrl = $this->site->api_endpoint ?: rtrim($this->site->url, '/').'/wp-json/simplead/v1';
-
-        $url = rtrim($baseUrl, '/').'/backup/prepare-chunk-download';
-        $data = json_encode([
+        $api->streamDownloadTo('/backup/prepare-chunk-download', [
             'token' => $token,
             'chunk_index' => $chunkIndex,
             'delete' => true,
-        ]);
-        $path = '/simplead/v1/backup/prepare-chunk-download';
-
-        $timestamp = (string) time();
-        $nonce = bin2hex(random_bytes(16));
-        $stringToSign = implode('|', ['POST', $path, $timestamp, $nonce, $data]);
-        $signature = hash_hmac('sha256', $stringToSign, $apiSecret);
-
-        $fh = fopen($saveTo, 'wb');
-        if (! $fh) {
-            throw new \RuntimeException("Cannot open {$saveTo} for writing");
-        }
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $data,
-            CURLOPT_FILE => $fh,
-            CURLOPT_HTTPHEADER => [
-                'X-SAM-Key: '.$apiKey,
-                'X-SAM-Timestamp: '.$timestamp,
-                'X-SAM-Nonce: '.$nonce,
-                'X-SAM-Signature: '.$signature,
-                'User-Agent: SimpleAD-Manager/2.0',
-                'Content-Type: application/json',
-            ],
-            CURLOPT_TIMEOUT => 600,
-            CURLOPT_CONNECTTIMEOUT => 30,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => true,
-        ]);
-
-        $success = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        fclose($fh);
-
-        if (! $success || $httpCode >= 400) {
-            @unlink($saveTo);
-            throw new \RuntimeException("Incremental chunk download failed (HTTP {$httpCode}): ".$error);
-        }
+        ], $saveTo);
     }
 
     protected function createArchive(string $dbPath, array $filesChunkPaths, string $deletedFilesPath): array

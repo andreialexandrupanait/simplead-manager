@@ -11,6 +11,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property \App\Enums\SecurityCategory $category
+ * @property string $setting_key
+ * @property array|null $setting_value
+ * @property bool $is_enabled
+ * @property \Illuminate\Support\Carbon|null $applied_at
+ * @property \Illuminate\Support\Carbon|null $failed_at
+ * @property string|null $failure_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SecuritySetting extends Model
 {
     use HasFactory;

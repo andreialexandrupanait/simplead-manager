@@ -16,6 +16,97 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property int $id
+ * @property int|null $user_id
+ * @property int|null $client_id
+ * @property int|null $site_status_id
+ * @property int $sort_order
+ * @property string $name
+ * @property string $url
+ * @property string $status
+ * @property int|null $health_score
+ * @property int|null $security_hardening_score
+ * @property string|null $custom_login_slug
+ * @property string $type
+ * @property string|null $api_key
+ * @property string|null $api_secret
+ * @property string|null $api_endpoint
+ * @property bool $is_connected
+ * @property \Illuminate\Support\Carbon|null $last_synced_at
+ * @property string|null $wp_version
+ * @property string|null $php_version
+ * @property string|null $server_software
+ * @property bool $is_multisite
+ * @property float|null $uptime_percentage
+ * @property bool $is_up
+ * @property int $pending_updates_count
+ * @property string|null $connector_version
+ * @property bool $backup_ok
+ * @property \Illuminate\Support\Carbon|null $last_backup_at
+ * @property string|null $notes
+ * @property float|null $db_size_mb
+ * @property float|null $uploads_size_mb
+ * @property string|null $core_update_version
+ * @property string|null $favicon_path
+ * @property string|null $screenshot_path
+ * @property int|null $maintenance_plan_id
+ * @property bool $is_plan_customized
+ * @property array|null $backup_capabilities
+ * @property \Illuminate\Support\Carbon|null $backup_capabilities_checked_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ * @property-read \App\Models\Client|null $client
+ * @property-read \App\Models\SiteStatus|null $siteStatus
+ * @property-read \App\Models\MaintenancePlan|null $maintenancePlan
+ * @property-read \App\Models\UptimeMonitor|null $uptimeMonitor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SitePlugin> $sitePlugins
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteTheme> $siteThemes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteUser> $siteUsers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UpdateLog> $updateLogs
+ * @property-read \App\Models\BackupConfig|null $backupConfig
+ * @property-read \App\Models\PerformanceMonitor|null $performanceMonitor
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Backup> $backups
+ * @property-read \App\Models\Backup|null $latestCompletedBackup
+ * @property-read \App\Models\AnalyticsConnection|null $analyticsConnection
+ * @property-read \App\Models\SearchConsoleConnection|null $searchConsoleConnection
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AnalyticsCache> $analyticsCaches
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SearchConsoleCache> $searchConsoleCaches
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportSchedule> $reportSchedules
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Report> $reports
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportRecommendation> $reportRecommendations
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ActivityLog> $activityLogs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CoreFileCheck> $coreFileChecks
+ * @property-read \App\Models\CoreFileCheck|null $latestCoreFileCheck
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SitePluginConflict> $sitePluginConflicts
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DatabaseCleanup> $databaseCleanups
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DatabaseHealthCheck> $databaseHealthChecks
+ * @property-read \App\Models\DatabaseHealthCheck|null $latestDatabaseHealthCheck
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EmailHealthCheck> $emailHealthChecks
+ * @property-read \App\Models\EmailHealthCheck|null $latestEmailHealthCheck
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityScan> $securityScans
+ * @property-read \App\Models\SecurityScan|null $latestSecurityScan
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIssue> $securityIssues
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityRecommendation> $securityRecommendations
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\VulnerabilityAlert> $vulnerabilityAlerts
+ * @property-read \App\Models\SiteCloudflare|null $siteCloudflare
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\RollbackPoint> $rollbackPoints
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SafeUpdate> $safeUpdates
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TrackedKeyword> $trackedKeywords
+ * @property-read \App\Models\SecurityMonitor|null $securityMonitor
+ * @property-read \App\Models\DatabaseCleanupConfig|null $databaseCleanupConfig
+ * @property-read \App\Models\SiteHealthState|null $healthState
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteMonthlySnapshot> $monthlySnapshots
+ * @property-read \App\Models\SiteReportConfig|null $reportConfig
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecuritySetting> $securitySettings
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityCommand> $securityCommands
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityPreset> $securityPresets
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityActivityLog> $securityActivityLogs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIpList> $securityIpLists
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityBannedIp> $securityBannedIps
+ */
 class Site extends Model
 {
     use HasDomainExtraction, HasSiteRelationships, HasSiteScopes;

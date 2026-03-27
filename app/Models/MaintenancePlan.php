@@ -9,6 +9,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $description
+ * @property bool $is_default
+ * @property int $sort_order
+ * @property array|null $security_settings
+ * @property array|null $tweak_settings
+ * @property bool $include_modules
+ * @property bool $include_security
+ * @property bool $include_tweaks
+ * @property int|null $source_site_id
+ * @property int|null $created_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Site> $sites
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MaintenancePlanModule> $planModules
+ * @property-read Site|null $sourceSite
+ * @property-read User|null $creator
+ */
 class MaintenancePlan extends Model
 {
     use HasFactory;

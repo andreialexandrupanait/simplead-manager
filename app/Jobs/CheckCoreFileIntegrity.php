@@ -33,10 +33,10 @@ class CheckCoreFileIntegrity implements ShouldBeUnique, ShouldQueue
         return 'core-integrity-'.$this->site->id;
     }
 
-    public function handle(): void
+    public function handle(CoreFileIntegrityService $service): void
     {
         JobTracker::start($this->uniqueId(), 'Checking core file integrity...');
-        CoreFileIntegrityService::check($this->site, $this->uniqueId());
+        $service->check($this->site, $this->uniqueId());
         JobTracker::complete($this->uniqueId(), 'Core file integrity check complete');
     }
 

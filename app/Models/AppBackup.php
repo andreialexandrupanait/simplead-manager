@@ -9,6 +9,37 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $type
+ * @property string $trigger
+ * @property array|null $components
+ * @property string $status
+ * @property int $progress
+ * @property string|null $error_message
+ * @property array|null $log
+ * @property int|null $storage_destination_id
+ * @property string|null $storage_path
+ * @property string|null $file_name
+ * @property int|null $file_size
+ * @property string|null $checksum
+ * @property array|null $component_sizes
+ * @property string|null $app_version
+ * @property string|null $laravel_version
+ * @property string|null $php_version
+ * @property int $sites_count
+ * @property int $users_count
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property int|null $duration_seconds
+ * @property bool $is_locked
+ * @property string|null $lock_reason
+ * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\StorageDestination|null $storageDestination
+ */
 class AppBackup extends Model
 {
     use HasFactory;

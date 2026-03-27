@@ -10,17 +10,21 @@ use Illuminate\Support\Facades\Log;
 
 class DatabaseCleanupService
 {
-    public static function getStats(Site $site): array
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
+    public function getStats(Site $site): array
     {
-        $api = new WordPressApiService($site);
+        $api = $this->apiFactory->make($site);
 
         return $api->getDbCleanupStats();
     }
 
-    public static function run(Site $site, array $options): DatabaseCleanup
+    public function run(Site $site, array $options): DatabaseCleanup
     {
         try {
-            $api = new WordPressApiService($site);
+            $api = $this->apiFactory->make($site);
             $result = $api->runDbCleanup($options);
 
             $cleanup = DatabaseCleanup::create([

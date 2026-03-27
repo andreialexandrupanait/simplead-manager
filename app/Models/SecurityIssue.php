@@ -9,6 +9,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int|null $security_scan_id
+ * @property string $category
+ * @property string $type
+ * @property string $severity
+ * @property string $title
+ * @property string|null $description
+ * @property string|null $recommendation
+ * @property bool $is_fixed
+ * @property bool $is_ignored
+ * @property \Illuminate\Support\Carbon|null $first_detected_at
+ * @property \Illuminate\Support\Carbon|null $fixed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\SecurityScan|null $securityScan
+ */
 class SecurityIssue extends Model
 {
     use HasFactory;

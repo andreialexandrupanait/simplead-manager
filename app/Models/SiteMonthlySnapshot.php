@@ -8,6 +8,35 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $year
+ * @property int $month
+ * @property float|null $uptime_avg_response_ms
+ * @property float|null $uptime_percentage
+ * @property int|null $uptime_down_checks
+ * @property int|null $uptime_incidents_count
+ * @property int|null $backups_total
+ * @property int|null $backups_successful
+ * @property int|null $backups_failed
+ * @property int|null $updates_applied
+ * @property float|null $security_avg_score
+ * @property float|null $performance_avg_desktop
+ * @property float|null $performance_avg_mobile
+ * @property int|null $analytics_users
+ * @property int|null $analytics_sessions
+ * @property int|null $analytics_pageviews
+ * @property int|null $search_console_clicks
+ * @property int|null $search_console_impressions
+ * @property float|null $search_console_avg_position
+ * @property int|null $cloudflare_requests
+ * @property int|null $cloudflare_bandwidth_bytes
+ * @property float|null $cloudflare_cache_hit_ratio
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SiteMonthlySnapshot extends Model
 {
     use HasFactory;

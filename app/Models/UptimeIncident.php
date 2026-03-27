@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $monitor_id
+ * @property string $status
+ * @property string|null $cause
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $resolved_at
+ * @property array|null $notified_via
+ * @property \Illuminate\Support\Carbon|null $notified_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string $duration
+ * @property-read UptimeMonitor|null $monitor
+ */
 class UptimeIncident extends Model
 {
     use HasFactory;

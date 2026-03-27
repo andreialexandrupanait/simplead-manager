@@ -10,6 +10,28 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $cloudflare_connection_id
+ * @property string $zone_id
+ * @property string $zone_name
+ * @property string|null $plan_type
+ * @property string $status
+ * @property bool $is_paused
+ * @property string|null $ssl_mode
+ * @property string|null $cache_level
+ * @property \Illuminate\Support\Carbon|null $connected_at
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $next_sync_at
+ * @property int $interval_minutes
+ * @property \Illuminate\Support\Carbon|null $last_sync_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\CloudflareConnection|null $cloudflareConnection
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CloudflareCachePurge> $cachePurges
+ */
 class SiteCloudflare extends Model
 {
     use HasFactory;

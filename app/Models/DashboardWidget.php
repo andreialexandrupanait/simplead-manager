@@ -9,6 +9,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $widget_type
+ * @property array|null $config
+ * @property int $grid_x
+ * @property int $grid_y
+ * @property int $grid_w
+ * @property int $grid_h
+ * @property bool $is_visible
+ * @property int $sort_order
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User|null $user
+ */
 class DashboardWidget extends Model
 {
     use HasFactory;

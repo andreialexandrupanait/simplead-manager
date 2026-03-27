@@ -9,6 +9,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $plugin_a_slug
+ * @property string $plugin_b_slug
+ * @property int|null $plugin_conflict_id
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $detected_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\PluginConflict|null $conflict
+ */
 class SitePluginConflict extends Model
 {
     use HasFactory;

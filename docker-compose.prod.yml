@@ -143,10 +143,15 @@ services:
         cp /etc/nginx/templates/http.conf /etc/nginx/conf.d/app.conf;
         echo "No SSL certificates - HTTP only";
       fi;
+      if [ -f /etc/letsencrypt/live/staging.simplead.ro/fullchain.pem ]; then
+        cp /etc/nginx/templates/staging-proxy.conf /etc/nginx/conf.d/staging-proxy.conf;
+        echo "Staging proxy enabled";
+      fi;
       exec nginx -g "daemon off;"
       '
     networks:
       - simplead
+      - simplead-staging
     depends_on:
       app:
         condition: service_healthy
@@ -322,6 +327,9 @@ services:
 networks:
   simplead:
     driver: bridge
+  simplead-staging:
+    external: true
+    name: simplead-staging_simplead-staging
 
 volumes:
   simplead-pgsql:

@@ -9,6 +9,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $status_page_id
+ * @property int $site_id
+ * @property string|null $display_name
+ * @property int $sort_order
+ * @property bool $is_visible
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\StatusPage|null $statusPage
+ * @property-read \App\Models\Site|null $site
+ */
 class StatusPageSite extends Model
 {
     use HasFactory;

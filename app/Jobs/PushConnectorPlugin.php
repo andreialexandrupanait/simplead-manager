@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Site;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,7 +36,7 @@ class PushConnectorPlugin implements ShouldQueue
         $result = ['site' => $this->site->name, 'site_id' => $this->site->id];
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('POST', '/self-update', [
                 'download_url' => $this->downloadUrl,
             ], [], 120);

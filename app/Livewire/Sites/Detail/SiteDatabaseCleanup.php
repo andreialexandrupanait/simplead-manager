@@ -19,6 +19,8 @@ class SiteDatabaseCleanup extends Component
 
     public Site $site;
 
+    protected DatabaseCleanupService $cleanupService;
+
     public ?array $stats = null;
 
     public bool $statsLoading = false;
@@ -42,6 +44,11 @@ class SiteDatabaseCleanup extends Component
     protected function jobTrackingKeys(): array
     {
         return ['health' => 'db-health-'.$this->site->id];
+    }
+
+    public function boot(DatabaseCleanupService $cleanupService): void
+    {
+        $this->cleanupService = $cleanupService;
     }
 
     public function mount(Site $site): void
@@ -100,7 +107,7 @@ class SiteDatabaseCleanup extends Component
         $this->statsLoading = true;
 
         try {
-            $this->stats = DatabaseCleanupService::getStats($this->site);
+            $this->stats = $this->cleanupService->getStats($this->site);
         } catch (\Exception $e) {
             session()->flash('db-error', "Failed to load stats: {$e->getMessage()}");
             $this->stats = null;
@@ -127,7 +134,7 @@ class SiteDatabaseCleanup extends Component
             'orphaned_meta' => $this->cleanOrphanedMeta,
         ];
 
-        $cleanup = DatabaseCleanupService::run($this->site, $options);
+        $cleanup = $this->cleanupService->run($this->site, $options);
 
         if ($cleanup->status === 'completed') {
             session()->flash('db-success', "Cleanup completed: {$cleanup->total_deleted} items deleted, {$cleanup->formatted_space_saved} saved.");

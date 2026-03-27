@@ -8,6 +8,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $revisions_deleted
+ * @property int $auto_drafts_deleted
+ * @property int $trash_posts_deleted
+ * @property int $spam_comments_deleted
+ * @property int $trash_comments_deleted
+ * @property int $transients_deleted
+ * @property int $orphaned_meta_deleted
+ * @property int $revisions_saved
+ * @property int $auto_drafts_saved
+ * @property int $trash_posts_saved
+ * @property int $spam_comments_saved
+ * @property int $trash_comments_saved
+ * @property int $transients_saved
+ * @property int $orphaned_saved
+ * @property int $space_saved
+ * @property string $status
+ * @property string|null $error_message
+ * @property \Illuminate\Support\Carbon|null $cleaned_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class DatabaseCleanup extends Model
 {
     use HasFactory;

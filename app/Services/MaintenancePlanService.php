@@ -213,6 +213,111 @@ class MaintenancePlanService
         }
     }
 
+    /**
+     * Save (create or update) a maintenance plan with its modules.
+     */
+    public function savePlan(
+        array $planData,
+        array $moduleConfigs,
+        ?array $securitySettings,
+        ?array $tweakSettings,
+        ?int $editingId = null,
+    ): MaintenancePlan {
+        if ($planData['is_default'] ?? false) {
+            MaintenancePlan::where('is_default', true)
+                ->when($editingId, fn ($q) => $q->where('id', '!=', $editingId))
+                ->update(['is_default' => false]);
+        }
+
+        $data = array_merge($planData, [
+            'security_settings' => $securitySettings,
+            'tweak_settings' => $tweakSettings,
+        ]);
+
+        if (! $editingId) {
+            $data['created_by'] = auth()->id();
+        }
+
+        $plan = MaintenancePlan::updateOrCreate(
+            ['id' => $editingId],
+            $data,
+        );
+
+        if ($planData['include_modules'] ?? false) {
+            foreach ($moduleConfigs as $key => $moduleData) {
+                MaintenancePlanModule::updateOrCreate(
+                    ['maintenance_plan_id' => $plan->id, 'module_key' => $key],
+                    $moduleData,
+                );
+            }
+        }
+
+        return $plan;
+    }
+
+    /**
+     * Delete a maintenance plan if no sites are using it.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function deletePlan(int $planId): array
+    {
+        $plan = MaintenancePlan::withCount('sites')->findOrFail($planId);
+
+        if ($plan->sites_count > 0) {
+            return [
+                'success' => false,
+                'message' => "Cannot delete \"{$plan->name}\" — {$plan->sites_count} site(s) are using it.",
+            ];
+        }
+
+        $plan->delete();
+
+        return ['success' => true, 'message' => 'Plan deleted.'];
+    }
+
+    /**
+     * Count total settings in a settings JSON blob.
+     */
+    public static function countSettings(?array $settings): int
+    {
+        if (! $settings) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($settings as $categorySettings) {
+            if (is_array($categorySettings)) {
+                $count += count($categorySettings);
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Count enabled settings in a settings JSON blob.
+     */
+    public static function countEnabledSettings(?array $settings): int
+    {
+        if (! $settings) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($settings as $categorySettings) {
+            if (is_array($categorySettings)) {
+                foreach ($categorySettings as $config) {
+                    if ($config['enabled'] ?? false) {
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        return $count;
+    }
+
     private function applyBackupConfigFromPlan(MaintenancePlan $plan, Site $site): void
     {
         $backupModule = $plan->planModules->firstWhere('module_key', 'backup');

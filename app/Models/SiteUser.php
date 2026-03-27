@@ -9,6 +9,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $wp_user_id
+ * @property string $username
+ * @property string|null $email
+ * @property string|null $display_name
+ * @property string|null $role
+ * @property string|null $avatar_url
+ * @property int $posts_count
+ * @property \Illuminate\Support\Carbon|null $registered_at
+ * @property \Illuminate\Support\Carbon|null $last_login_at
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $synced_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SiteUser extends Model
 {
     use HasFactory;

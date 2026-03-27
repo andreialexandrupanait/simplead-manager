@@ -135,4 +135,16 @@ return [
 
     'backup_encryption_key' => env('BACKUP_ENCRYPTION_KEY'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Staging Mode
+    |--------------------------------------------------------------------------
+    |
+    | When true, guards in critical jobs prevent accidental actions on
+    | real WordPress sites (e.g. pushing plugins, security settings).
+    |
+    */
+
+    'staging_mode' => (bool) env('STAGING_MODE', false),
+
 ];

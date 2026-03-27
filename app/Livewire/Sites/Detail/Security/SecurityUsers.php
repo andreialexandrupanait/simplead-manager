@@ -9,7 +9,7 @@ use App\Livewire\Traits\WithSorting;
 use App\Models\Site;
 use App\Models\SiteUser;
 use App\Services\ActivityLogger;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -119,7 +119,7 @@ class SecurityUsers extends Component
         ]);
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->createUser([
                 'username' => $this->newUsername,
                 'email' => $this->newEmail,
@@ -160,7 +160,7 @@ class SecurityUsers extends Component
         ]);
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->updateUser($this->editingUserId, [
                 'email' => $this->editEmail,
                 'role' => $this->editRole,
@@ -191,7 +191,7 @@ class SecurityUsers extends Component
     public function deleteUser(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->deleteUser($this->deletingUserId, $this->reassignTo);
 
             // Remove local record
@@ -218,7 +218,7 @@ class SecurityUsers extends Component
     private function syncUsers(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $result = $api->getUsers();
             $users = $result['users'] ?? [];
             $now = now();

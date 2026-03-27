@@ -12,6 +12,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property \App\Enums\SecurityCategory $category
+ * @property string $action
+ * @property array|null $payload
+ * @property \App\Enums\SecurityCommandPriority $priority
+ * @property \App\Enums\SecurityCommandStatus $status
+ * @property \Illuminate\Support\Carbon|null $picked_up_at
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property array|null $result
+ * @property int $attempts
+ * @property int $max_attempts
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SecurityCommand extends Model
 {
     use HasFactory;

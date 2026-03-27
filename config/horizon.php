@@ -291,6 +291,24 @@ return [
             ],
         ],
 
+        'staging' => [
+            'supervisor-uptime' => [
+                'maxProcesses' => (int) env('HORIZON_UPTIME_WORKERS', 1),
+            ],
+            'supervisor-sync' => [
+                'maxProcesses' => (int) env('HORIZON_SYNC_WORKERS', 1),
+            ],
+            'supervisor-backups' => [
+                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 1),
+            ],
+            'supervisor-notifications' => [
+                'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 1),
+            ],
+            'supervisor-general' => [
+                'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 1),
+            ],
+        ],
+
         'local' => [
             'supervisor-uptime' => [
                 'maxProcesses' => 2,

@@ -8,6 +8,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string|null $wp_version
+ * @property int $total_files
+ * @property int $modified_count
+ * @property int $missing_count
+ * @property int $unknown_count
+ * @property array|null $modified_files
+ * @property array|null $missing_files
+ * @property array|null $unknown_files
+ * @property string $status
+ * @property string|null $error_message
+ * @property \Illuminate\Support\Carbon|null $checked_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class CoreFileCheck extends Model
 {
     use HasFactory;

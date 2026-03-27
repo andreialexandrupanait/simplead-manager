@@ -9,6 +9,28 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property bool $is_enabled
+ * @property string $frequency
+ * @property string $time
+ * @property int|null $day_of_week
+ * @property int|null $day_of_month
+ * @property string $timezone
+ * @property string $type
+ * @property array|null $components
+ * @property int|null $storage_destination_id
+ * @property string $retention_type
+ * @property int $retention_value
+ * @property bool $encrypt_backup
+ * @property string|null $encryption_password
+ * @property \Illuminate\Support\Carbon|null $last_backup_at
+ * @property \Illuminate\Support\Carbon|null $next_backup_at
+ * @property string|null $last_backup_status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\StorageDestination|null $storageDestination
+ */
 class AppBackupConfig extends Model
 {
     use HasFactory;

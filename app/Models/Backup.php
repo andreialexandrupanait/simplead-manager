@@ -12,6 +12,55 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int|null $storage_destination_id
+ * @property string $type
+ * @property string $trigger
+ * @property \App\Enums\BackupStatus $status
+ * @property string|null $stage
+ * @property int $progress_percent
+ * @property string|null $progress_message
+ * @property string|null $error_message
+ * @property string|null $file_path
+ * @property string|null $file_name
+ * @property int|null $file_size
+ * @property string|null $checksum
+ * @property string|null $upload_method
+ * @property bool $includes_files
+ * @property bool $includes_database
+ * @property string|null $wp_version
+ * @property string|null $php_version
+ * @property int|null $plugins_count
+ * @property int|null $themes_count
+ * @property float|null $db_size_mb
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property int|null $duration_seconds
+ * @property bool $is_locked
+ * @property string|null $lock_reason
+ * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property \Illuminate\Support\Carbon|null $last_restored_at
+ * @property string|null $notes
+ * @property \App\Enums\BackupStatus $restore_status
+ * @property string|null $restore_stage
+ * @property int $restore_progress_percent
+ * @property string|null $restore_progress_message
+ * @property string|null $restore_error_message
+ * @property int|null $parent_backup_id
+ * @property string|null $manifest_path
+ * @property int|null $files_changed_count
+ * @property int|null $files_deleted_count
+ * @property int|null $files_total_count
+ * @property string|null $preparation_method
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\StorageDestination|null $storageDestination
+ * @property-read \App\Models\Backup|null $parentBackup
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Backup> $incrementals
+ */
 class Backup extends Model
 {
     use HasFactory;

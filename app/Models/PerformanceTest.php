@@ -8,6 +8,58 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $performance_monitor_id
+ * @property int|null $performance_page_id
+ * @property string $device
+ * @property string $url
+ * @property int|null $performance_score
+ * @property int|null $accessibility_score
+ * @property int|null $best_practices_score
+ * @property float|null $fcp
+ * @property float|null $lcp
+ * @property float|null $cls
+ * @property float|null $tbt
+ * @property float|null $si
+ * @property float|null $tti
+ * @property float|null $field_fcp
+ * @property float|null $field_lcp
+ * @property float|null $field_cls
+ * @property float|null $field_inp
+ * @property float|null $field_ttfb
+ * @property int|null $total_requests
+ * @property int|null $total_size_bytes
+ * @property int|null $html_size
+ * @property int|null $css_size
+ * @property int|null $js_size
+ * @property int|null $image_size
+ * @property int|null $font_size
+ * @property array|null $opportunities
+ * @property array|null $diagnostics
+ * @property array|null $third_party_scripts
+ * @property int|null $dom_elements
+ * @property int|null $dom_max_depth
+ * @property int|null $dom_max_children
+ * @property int|null $unused_js_bytes
+ * @property int|null $unused_css_bytes
+ * @property array|null $unused_js_details
+ * @property array|null $unused_css_details
+ * @property array|null $image_audit
+ * @property array|null $wp_health_checks
+ * @property string|null $screenshot_final
+ * @property array|null $filmstrip
+ * @property string $status
+ * @property string|null $error_message
+ * @property string|null $lighthouse_version
+ * @property \Illuminate\Support\Carbon|null $tested_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\PerformanceMonitor|null $monitor
+ * @property-read \App\Models\PerformancePage|null $page
+ */
 class PerformanceTest extends Model
 {
     use HasFactory;
@@ -140,6 +192,8 @@ class PerformanceTest extends Model
         if ($value === null) {
             return '—';
         }
+
+        $value = (float) $value;
 
         return match ($metric) {
             'fcp', 'lcp', 'si', 'tti', 'field_fcp', 'field_lcp' => round($value, 1).' s',

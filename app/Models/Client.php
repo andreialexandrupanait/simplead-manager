@@ -10,6 +10,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $email
+ * @property string|null $phone
+ * @property string|null $company
+ * @property string|null $website
+ * @property string|null $address
+ * @property string|null $city
+ * @property string|null $country
+ * @property string|null $vat_number
+ * @property string|null $registration_number
+ * @property string|null $logo
+ * @property string|null $notes
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Site> $sites
+ */
 class Client extends Model
 {
     use HasFactory, SoftDeletes;

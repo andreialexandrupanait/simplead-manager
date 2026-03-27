@@ -8,6 +8,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $consecutive_failures
+ * @property \Illuminate\Support\Carbon|null $last_failure_at
+ * @property string|null $last_failure_reason
+ * @property string $circuit_state
+ * @property \Illuminate\Support\Carbon|null $circuit_opened_at
+ * @property int $circuit_breaks_last_24h
+ * @property \Illuminate\Support\Carbon|null $circuit_breaks_reset_at
+ * @property bool $is_monitoring_disabled
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SiteHealthState extends Model
 {
     use HasFactory;

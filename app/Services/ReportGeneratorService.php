@@ -7,6 +7,22 @@ namespace App\Services;
 use App\Models\ReportTemplate;
 use App\Models\Site;
 use App\Models\SiteMonthlySnapshot;
+use App\Services\Reports\Sections\AnalyticsGatherer;
+use App\Services\Reports\Sections\BackupsGatherer;
+use App\Services\Reports\Sections\CloudflareGatherer;
+use App\Services\Reports\Sections\DatabaseGatherer;
+use App\Services\Reports\Sections\DatabaseHealthGatherer;
+use App\Services\Reports\Sections\EmailGatherer;
+use App\Services\Reports\Sections\ExecutiveSnapshotGatherer;
+use App\Services\Reports\Sections\OverviewGatherer;
+use App\Services\Reports\Sections\PerformanceGatherer;
+use App\Services\Reports\Sections\PluginInventoryGatherer;
+use App\Services\Reports\Sections\SearchConsoleGatherer;
+use App\Services\Reports\Sections\SecurityChecksGatherer;
+use App\Services\Reports\Sections\SecurityGatherer;
+use App\Services\Reports\Sections\UpdatesGatherer;
+use App\Services\Reports\Sections\UptimeGatherer;
+use App\Services\Reports\Sections\WpUsersGatherer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -48,6 +64,7 @@ class ReportGeneratorService
             $previousSnapshot,
             $this->chartService,
             $this->language,
+            $this->buildGatherers(),
         );
         $this->data = $gatherer->gather($this->excludedSections);
 
@@ -143,6 +160,28 @@ class ReportGeneratorService
     public function getData(): array
     {
         return $this->data;
+    }
+
+    protected function buildGatherers(): array
+    {
+        return [
+            new OverviewGatherer,
+            new UpdatesGatherer,
+            new UptimeGatherer,
+            new BackupsGatherer,
+            new AnalyticsGatherer,
+            new SearchConsoleGatherer,
+            new PerformanceGatherer,
+            new DatabaseGatherer,
+            new SecurityGatherer,
+            new PluginInventoryGatherer,
+            new DatabaseHealthGatherer,
+            new CloudflareGatherer,
+            new WpUsersGatherer,
+            new SecurityChecksGatherer,
+            new EmailGatherer,
+            new ExecutiveSnapshotGatherer,
+        ];
     }
 
     protected function getSnapshot(Site $site, Carbon $periodStart): ?SiteMonthlySnapshot

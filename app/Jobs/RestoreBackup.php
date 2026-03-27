@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\Storage\StorageFactory;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,6 +29,8 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     public int $timeout = 3600;
 
     public int $tries = 1;
+
+    public int $memory = 1024;
 
     protected ?string $tempDir = null;
 
@@ -132,7 +135,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
 
-        $api = new WordPressApiService($site);
+        $api = app(WordPressApiServiceFactory::class)->make($site);
         $this->ensurePluginUpToDate($api);
         $this->doRestore($api, $this->tempDir);
     }
@@ -270,7 +273,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         /** @var Site $site */
         $site = $this->backup->site;
-        $api = new WordPressApiService($site);
+        $api = app(WordPressApiServiceFactory::class)->make($site);
         $this->ensurePluginUpToDate($api);
         $this->doRestore($api, $this->tempDir);
     }
@@ -342,7 +345,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     /**
      * Common restore logic: send files and/or DB to WordPress.
      */
-    protected function doRestore(WordPressApiService $api, string $baseDir): void
+    protected function doRestore(WordPressApiServiceInterface $api, string $baseDir): void
     {
         // Handle v2 format: merge chunk zips into files.zip
         $this->mergeChunkZipsForRestore($baseDir);
@@ -413,7 +416,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
      * page load. The regeneration can crash on pages with complex dynamic tags.
      * Deactivating first forces a clean initialization through the activation path.
      */
-    protected function runPostRestoreVerification(WordPressApiService $api): string
+    protected function runPostRestoreVerification(WordPressApiServiceInterface $api): string
     {
         $results = [];
 
@@ -613,7 +616,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     /**
      * Send restore data to the WP site via temporary download URL.
      */
-    protected function sendRestoreData(WordPressApiService $api, string $type, string $filePath): void
+    protected function sendRestoreData(WordPressApiServiceInterface $api, string $type, string $filePath): void
     {
         $token = bin2hex(random_bytes(32));
         $storagePath = storage_path("app/temp/restore-{$token}");
@@ -642,7 +645,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
      * Retries up to 3 times. Never throws — returns false on failure so the
      * restore can continue even if the plugin update fails.
      */
-    protected function ensurePluginUpToDate(WordPressApiService $api): bool
+    protected function ensurePluginUpToDate(WordPressApiServiceInterface $api): bool
     {
         Log::info("Pushing latest connector plugin for backup {$this->backup->id}");
 

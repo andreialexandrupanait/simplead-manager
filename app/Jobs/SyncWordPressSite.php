@@ -9,7 +9,7 @@ use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\PluginConflictService;
 use App\Services\SecurityRecommendationService;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,7 +44,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
     {
         JobTracker::start($this->uniqueId(), 'Syncing site data...');
 
-        $api = new WordPressApiService($this->site);
+        $api = app(WordPressApiServiceFactory::class)->make($this->site);
 
         try {
             // Sync site info

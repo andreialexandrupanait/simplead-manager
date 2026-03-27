@@ -13,7 +13,7 @@ use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CloudflareService;
 use App\Services\GoogleApiService;
 use App\Services\Notifications\NotificationService;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -142,7 +142,7 @@ class ValidateExternalConnections implements ShouldQueue
             ->whereNotNull('api_key')
             ->each(function (Site $site) use (&$failures) {
                 try {
-                    $api = new WordPressApiService($site);
+                    $api = app(WordPressApiServiceFactory::class)->make($site);
                     $api->healthCheck();
                 } catch (\Exception $e) {
                     $failures[] = ['name' => "WordPress: {$site->name}", 'error' => $e->getMessage()];

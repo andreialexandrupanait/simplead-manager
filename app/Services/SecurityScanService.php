@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 class SecurityScanService
 {
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
     private const SEVERITY_PENALTIES = [
         'critical' => 20,
         'high' => 10,
@@ -189,7 +193,7 @@ class SecurityScanService
 
         try {
             if ($site->is_connected) {
-                $api = new WordPressApiService($site);
+                $api = $this->apiFactory->make($site);
                 $siteInfo = $api->getInfo();
                 if (! empty($siteInfo['debug_mode'])) {
                     return [[

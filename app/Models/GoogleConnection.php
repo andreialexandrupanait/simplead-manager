@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $google_id
+ * @property string $email
+ * @property string|null $name
+ * @property string|null $avatar_url
+ * @property string|null $access_token
+ * @property string|null $refresh_token
+ * @property \Illuminate\Support\Carbon|null $token_expires_at
+ * @property array|null $scopes
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $last_used_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, AnalyticsConnection> $analyticsConnections
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SearchConsoleConnection> $searchConsoleConnections
+ */
 class GoogleConnection extends Model
 {
     use HasFactory;

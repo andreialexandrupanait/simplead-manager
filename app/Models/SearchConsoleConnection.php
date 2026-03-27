@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $google_connection_id
+ * @property string $property_url
+ * @property string $property_type
+ * @property string|null $permission_level
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $last_sync_at
+ * @property \Illuminate\Support\Carbon|null $next_sync_at
+ * @property int $interval_minutes
+ * @property string|null $last_error
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\GoogleConnection|null $googleConnection
+ */
 class SearchConsoleConnection extends Model
 {
     use HasFactory;

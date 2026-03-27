@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $type
+ * @property array|null $config
+ * @property bool $is_default
+ * @property bool $is_active
+ * @property int $used_bytes
+ * @property int|null $quota_bytes
+ * @property \Illuminate\Support\Carbon|null $last_tested_at
+ * @property bool|null $last_test_passed
+ * @property string|null $last_test_error
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Backup> $backups
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\BackupConfig> $backupConfigs
+ */
 class StorageDestination extends Model
 {
     use HasFactory;

@@ -7,7 +7,7 @@ namespace App\Jobs;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -32,7 +32,7 @@ class VerifySecurityState implements ShouldQueue
     public function handle(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $state = $api->getSecurityState();
         } catch (\Exception $e) {
             Log::warning('VerifySecurityState: failed to fetch state', [

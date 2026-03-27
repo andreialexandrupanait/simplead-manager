@@ -11,6 +11,33 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int|null $report_template_id
+ * @property int|null $report_schedule_id
+ * @property string $title
+ * @property \Illuminate\Support\Carbon $period_start
+ * @property \Illuminate\Support\Carbon $period_end
+ * @property string|null $file_path
+ * @property string|null $file_name
+ * @property int|null $file_size
+ * @property int|null $page_count
+ * @property \App\Enums\ReportStatus $status
+ * @property string|null $error_message
+ * @property string $trigger
+ * @property bool $was_sent
+ * @property \Illuminate\Support\Carbon|null $sent_at
+ * @property array|null $sent_to
+ * @property array|null $data_snapshot
+ * @property \Illuminate\Support\Carbon|null $generated_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\ReportTemplate|null $reportTemplate
+ * @property-read \App\Models\ReportSchedule|null $reportSchedule
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportRecommendation> $recommendations
+ */
 class Report extends Model
 {
     use HasFactory;

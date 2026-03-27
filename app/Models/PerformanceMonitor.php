@@ -10,6 +10,33 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property bool $is_active
+ * @property string $frequency
+ * @property string $test_time
+ * @property int|null $day_of_week
+ * @property int $interval_minutes
+ * @property bool $alert_on_score_drop
+ * @property int $score_drop_threshold
+ * @property bool $alert_on_poor_vitals
+ * @property array|null $budgets
+ * @property int|null $latest_mobile_score
+ * @property int|null $latest_desktop_score
+ * @property int|null $previous_mobile_score
+ * @property int|null $previous_desktop_score
+ * @property \Illuminate\Support\Carbon|null $last_tested_at
+ * @property \Illuminate\Support\Carbon|null $next_test_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PerformanceTest> $tests
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PerformancePage> $pages
+ * @property-read \App\Models\PerformancePage|null $primaryPage
+ * @property-read \App\Models\PerformanceTest|null $latestMobileTest
+ * @property-read \App\Models\PerformanceTest|null $latestDesktopTest
+ */
 class PerformanceMonitor extends Model
 {
     use HasFactory;

@@ -8,6 +8,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $type
+ * @property string $slug
+ * @property string $name
+ * @property string $from_version
+ * @property string $to_version
+ * @property string $status
+ * @property array|null $health_check_results
+ * @property string|null $error_message
+ * @property bool $auto_rollback
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SafeUpdate extends Model
 {
     use HasFactory;

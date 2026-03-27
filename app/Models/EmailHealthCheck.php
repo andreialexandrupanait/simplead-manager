@@ -8,6 +8,32 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $domain
+ * @property bool $spf_exists
+ * @property string|null $spf_record
+ * @property string|null $spf_status
+ * @property array|null $spf_issues
+ * @property bool $dkim_exists
+ * @property string|null $dkim_selector
+ * @property string|null $dkim_status
+ * @property bool $dmarc_exists
+ * @property string|null $dmarc_record
+ * @property string|null $dmarc_policy
+ * @property string|null $dmarc_status
+ * @property array|null $blacklists_checked
+ * @property int $blacklists_clean
+ * @property int $blacklists_listed
+ * @property array|null $mx_records
+ * @property int $score
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $checked_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read Site|null $site
+ */
 class EmailHealthCheck extends Model
 {
     use HasFactory;

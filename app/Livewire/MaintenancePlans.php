@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\MaintenancePlan;
-use App\Models\MaintenancePlanModule;
 use App\Models\Site;
 use App\Services\MaintenancePlanService;
 use App\Services\ModuleConfigService;
@@ -442,70 +441,10 @@ class MaintenancePlans extends Component
             'planSortOrder' => 'required|integer|min:0',
         ]);
 
-        if ($this->planIsDefault) {
-            MaintenancePlan::where('is_default', true)
-                ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
-                ->update(['is_default' => false]);
-        }
+        $securitySettings = $this->includeSecurity ? $this->buildSecuritySettings() : null;
+        $tweakSettings = $this->includeTweaks ? $this->buildTweakSettings() : null;
 
-        // Build security settings JSON
-        $securitySettings = null;
-        if ($this->includeSecurity) {
-            $securitySettings = [];
-            foreach ($this->securitySettingLabels as $category => $group) {
-                foreach ($group['settings'] as $key => $label) {
-                    $value = null;
-
-                    if ($key === 'brute_force_protection') {
-                        $value = [
-                            'max_attempts' => $this->bruteForceMaxAttempts,
-                            'window_minutes' => $this->bruteForceWindow,
-                            'block_duration_minutes' => $this->bruteForceBlockDuration,
-                        ];
-                    }
-
-                    $securitySettings[$category][$key] = [
-                        'enabled' => $this->securityToggles[$key] ?? false,
-                        'value' => $value,
-                    ];
-                }
-            }
-        }
-
-        // Build tweak settings JSON
-        $tweakSettings = null;
-        if ($this->includeTweaks) {
-            $tweakSettings = [];
-            foreach ($this->tweakSettingLabels as $category => $group) {
-                foreach ($group['settings'] as $key => $label) {
-                    $value = null;
-
-                    if ($key === 'heartbeat_control') {
-                        $value = [
-                            'frontend' => $this->heartbeatFrontend,
-                            'dashboard' => $this->heartbeatDashboard,
-                            'editor' => $this->heartbeatEditor,
-                            'interval' => $this->heartbeatInterval,
-                        ];
-                    } elseif ($key === 'revisions_control') {
-                        $value = ['limit' => $this->revisionsLimit];
-                    } elseif ($key === 'image_upload_control') {
-                        $value = [
-                            'max_width' => $this->imageMaxWidth,
-                            'max_height' => $this->imageMaxHeight,
-                            'jpeg_quality' => $this->jpegQuality,
-                        ];
-                    }
-
-                    $tweakSettings[$category][$key] = [
-                        'enabled' => $this->tweakToggles[$key] ?? false,
-                        'value' => $value,
-                    ];
-                }
-            }
-        }
-
-        $data = [
+        $planData = [
             'name' => $this->planName,
             'description' => $this->planDescription,
             'is_default' => $this->planIsDefault,
@@ -513,47 +452,98 @@ class MaintenancePlans extends Component
             'include_modules' => $this->includeModules,
             'include_security' => $this->includeSecurity,
             'include_tweaks' => $this->includeTweaks,
-            'security_settings' => $securitySettings,
-            'tweak_settings' => $tweakSettings,
         ];
 
-        if (! $this->editingId) {
-            $data['created_by'] = auth()->id();
-        }
+        $moduleConfigs = [];
+        foreach ($this->planModules as $key => $config) {
+            $moduleData = ['is_enabled' => $config['enabled'] ?? false];
 
-        $plan = MaintenancePlan::updateOrCreate(
-            ['id' => $this->editingId],
-            $data,
-        );
-
-        // Save modules
-        if ($this->includeModules) {
-            foreach ($this->planModules as $key => $config) {
-                $moduleData = ['is_enabled' => $config['enabled'] ?? false];
-
-                // Save backup config on the backup module
-                if ($key === 'backup' && ($config['enabled'] ?? false)) {
-                    $moduleData['config'] = [
-                        'frequency' => $this->backupFrequency,
-                        'time' => $this->backupTime,
-                        'timezone' => $this->backupTimezone,
-                        'type' => $this->backupType,
-                        'retention_type' => $this->backupRetentionType,
-                        'retention_value' => $this->backupRetentionValue,
-                        'backup_before_updates' => $this->backupBeforeUpdates,
-                    ];
-                }
-
-                MaintenancePlanModule::updateOrCreate(
-                    ['maintenance_plan_id' => $plan->id, 'module_key' => $key],
-                    $moduleData,
-                );
+            if ($key === 'backup' && ($config['enabled'] ?? false)) {
+                $moduleData['config'] = [
+                    'frequency' => $this->backupFrequency,
+                    'time' => $this->backupTime,
+                    'timezone' => $this->backupTimezone,
+                    'type' => $this->backupType,
+                    'retention_type' => $this->backupRetentionType,
+                    'retention_value' => $this->backupRetentionValue,
+                    'backup_before_updates' => $this->backupBeforeUpdates,
+                ];
             }
+
+            $moduleConfigs[$key] = $moduleData;
         }
 
         $wasEditing = $this->editingId;
+
+        app(MaintenancePlanService::class)->savePlan(
+            $planData,
+            $moduleConfigs,
+            $securitySettings,
+            $tweakSettings,
+            $this->editingId,
+        );
+
         $this->backToList();
         $this->dispatch('notify', type: 'success', message: $wasEditing ? 'Plan updated.' : 'Plan created.');
+    }
+
+    private function buildSecuritySettings(): array
+    {
+        $securitySettings = [];
+        foreach ($this->securitySettingLabels as $category => $group) {
+            foreach ($group['settings'] as $key => $label) {
+                $value = null;
+
+                if ($key === 'brute_force_protection') {
+                    $value = [
+                        'max_attempts' => $this->bruteForceMaxAttempts,
+                        'window_minutes' => $this->bruteForceWindow,
+                        'block_duration_minutes' => $this->bruteForceBlockDuration,
+                    ];
+                }
+
+                $securitySettings[$category][$key] = [
+                    'enabled' => $this->securityToggles[$key] ?? false,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return $securitySettings;
+    }
+
+    private function buildTweakSettings(): array
+    {
+        $tweakSettings = [];
+        foreach ($this->tweakSettingLabels as $category => $group) {
+            foreach ($group['settings'] as $key => $label) {
+                $value = null;
+
+                if ($key === 'heartbeat_control') {
+                    $value = [
+                        'frontend' => $this->heartbeatFrontend,
+                        'dashboard' => $this->heartbeatDashboard,
+                        'editor' => $this->heartbeatEditor,
+                        'interval' => $this->heartbeatInterval,
+                    ];
+                } elseif ($key === 'revisions_control') {
+                    $value = ['limit' => $this->revisionsLimit];
+                } elseif ($key === 'image_upload_control') {
+                    $value = [
+                        'max_width' => $this->imageMaxWidth,
+                        'max_height' => $this->imageMaxHeight,
+                        'jpeg_quality' => $this->jpegQuality,
+                    ];
+                }
+
+                $tweakSettings[$category][$key] = [
+                    'enabled' => $this->tweakToggles[$key] ?? false,
+                    'value' => $value,
+                ];
+            }
+        }
+
+        return $tweakSettings;
     }
 
     public function toggleModuleInForm(string $module): void
@@ -640,19 +630,17 @@ class MaintenancePlans extends Component
             return;
         }
 
-        $plan = MaintenancePlan::withCount('sites')->findOrFail($this->confirmDeleteId);
+        $result = app(MaintenancePlanService::class)->deletePlan($this->confirmDeleteId);
+        $this->confirmDeleteId = null;
 
-        if ($plan->sites_count > 0) {
-            $this->dispatch('notify', type: 'error', message: "Cannot delete \"{$plan->name}\" — {$plan->sites_count} site(s) are using it.");
-            $this->confirmDeleteId = null;
+        if (! $result['success']) {
+            $this->dispatch('notify', type: 'error', message: $result['message']);
 
             return;
         }
 
-        $plan->delete();
-        $this->confirmDeleteId = null;
         unset($this->plans);
-        $this->dispatch('notify', type: 'success', message: 'Plan deleted.');
+        $this->dispatch('notify', type: 'success', message: $result['message']);
     }
 
     public function cancelDelete(): void
@@ -748,46 +736,14 @@ class MaintenancePlans extends Component
         $this->bruteForceBlockDuration = 60;
     }
 
-    /**
-     * Count settings in a JSON settings blob (for display).
-     */
     public function countSettings(?array $settings): int
     {
-        if (! $settings) {
-            return 0;
-        }
-
-        $count = 0;
-        foreach ($settings as $categorySettings) {
-            if (is_array($categorySettings)) {
-                $count += count($categorySettings);
-            }
-        }
-
-        return $count;
+        return MaintenancePlanService::countSettings($settings);
     }
 
-    /**
-     * Count enabled settings in a JSON settings blob (for display).
-     */
     public function countEnabledSettings(?array $settings): int
     {
-        if (! $settings) {
-            return 0;
-        }
-
-        $count = 0;
-        foreach ($settings as $categorySettings) {
-            if (is_array($categorySettings)) {
-                foreach ($categorySettings as $config) {
-                    if ($config['enabled'] ?? false) {
-                        $count++;
-                    }
-                }
-            }
-        }
-
-        return $count;
+        return MaintenancePlanService::countEnabledSettings($settings);
     }
 
     public function render()

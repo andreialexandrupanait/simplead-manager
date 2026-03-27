@@ -8,6 +8,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property bool $is_enabled
+ * @property string $frequency
+ * @property array|null $auto_clean_types
+ * @property \Illuminate\Support\Carbon|null $next_cleanup_at
+ * @property \Illuminate\Support\Carbon|null $last_cleanup_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class DatabaseCleanupConfig extends Model
 {
     use HasFactory;

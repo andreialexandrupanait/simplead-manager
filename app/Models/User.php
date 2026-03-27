@@ -11,6 +11,29 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string $password
+ * @property string|null $remember_token
+ * @property bool $is_admin
+ * @property \App\Enums\UserRole $role
+ * @property string $timezone
+ * @property string $date_format
+ * @property string $language
+ * @property bool $two_factor_enabled
+ * @property string|null $two_factor_secret
+ * @property array|null $two_factor_recovery_codes
+ * @property string|null $avatar_path
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string $initials
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Site> $sites
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, DashboardWidget> $dashboardWidgets
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, ActivityLog> $activityLogs
+ */
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */

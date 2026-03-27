@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 class CoreFileIntegrityService
 {
+    public function __construct(
+        protected WordPressApiServiceFactory $apiFactory,
+    ) {}
+
     public static function fetchOfficialChecksums(string $version, string $locale = 'en_US'): array
     {
         $response = Http::timeout(15)->get('https://api.wordpress.org/core/checksums/1.0/', [
@@ -26,13 +30,13 @@ class CoreFileIntegrityService
         return $data['checksums'] ?? [];
     }
 
-    public static function check(Site $site, ?string $trackerKey = null): CoreFileCheck
+    public function check(Site $site, ?string $trackerKey = null): CoreFileCheck
     {
         $startTime = microtime(true);
         Log::info("Core file integrity check started for site {$site->id} ({$site->name})");
 
         try {
-            $api = new WordPressApiService($site);
+            $api = $this->apiFactory->make($site);
             $siteFiles = $api->getCoreIntegrityCheck();
 
             if ($trackerKey) {

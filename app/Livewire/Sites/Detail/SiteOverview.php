@@ -10,7 +10,7 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\AnalyticsCache;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -247,7 +247,7 @@ class SiteOverview extends Component
     public function loadServerResources(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $this->serverResources = $api->getServerResources();
             $this->serverResourcesLoadedAt = now()->toIso8601String();
 
@@ -263,7 +263,7 @@ class SiteOverview extends Component
     public function clearCache(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $result = $api->clearCache();
             $cleared = $result['cleared'] ?? [];
             $this->dispatch('notify', type: 'success', message: 'Cache cleared ('.count($cleared).' layer'.(count($cleared) !== 1 ? 's' : '').')');
@@ -275,7 +275,7 @@ class SiteOverview extends Component
     public function openWpAdmin(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $result = $api->getLoginUrl();
 
             if (! empty($result['login_url'])) {

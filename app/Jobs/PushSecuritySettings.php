@@ -8,7 +8,7 @@ use App\Models\SecurityIpList;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -50,7 +50,7 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
         }
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('POST', '/security-settings', $payload);
 
             if ($response->successful()) {

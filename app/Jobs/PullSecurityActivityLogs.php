@@ -7,7 +7,7 @@ namespace App\Jobs;
 use App\Models\SecurityActivityLog;
 use App\Models\Site;
 use App\Services\SecurityActivityService;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +39,7 @@ class PullSecurityActivityLogs implements ShouldQueue
         $since = $lastLog?->occurred_at?->toIso8601String();
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/audit-logs', [], $since ? ['since' => $since] : []);
 
             if (! $response->successful()) {

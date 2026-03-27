@@ -83,8 +83,9 @@ return [
         ],
 
         // NOTE: PgBouncer in transaction mode does not support server-side prepared statements.
-        // Laravel uses emulated prepared statements by default (PDO::ATTR_EMULATE_PREPARES = true),
-        // which is compatible. Do NOT set PDO::ATTR_EMULATE_PREPARES to false.
+        // PDO pgsql defaults to ATTR_EMULATE_PREPARES=false, but Laravel's query builder
+        // uses emulated prepares internally for most queries. Migrations and other DDL
+        // should be run directly against PostgreSQL (bypassing PgBouncer) when possible.
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

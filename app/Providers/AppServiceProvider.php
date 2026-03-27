@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(\App\Services\WordPressApiServiceFactory::class);
         $this->app->singleton(\App\Services\SettingsService::class);
         $this->app->singleton(\App\Services\DashboardService::class);
         $this->app->singleton(\App\Services\GotenbergService::class);

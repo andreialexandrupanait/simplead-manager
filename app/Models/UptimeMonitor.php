@@ -13,6 +13,50 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $type
+ * @property string $url
+ * @property int $timeout
+ * @property string $http_method
+ * @property array|null $http_headers
+ * @property string|null $http_body
+ * @property array|null $accepted_status_codes
+ * @property bool $follow_redirects
+ * @property string|null $auth_type
+ * @property string|null $auth_username
+ * @property string|null $auth_password
+ * @property string|null $auth_token
+ * @property string|null $keyword
+ * @property string|null $keyword_type
+ * @property bool $keyword_case_sensitive
+ * @property bool $check_ssl
+ * @property int $ssl_expiry_threshold
+ * @property int $alert_after_failures
+ * @property array|null $alert_contacts
+ * @property int $consecutive_failures
+ * @property \App\Enums\MonitorStatus $status
+ * @property \App\Enums\MonitorState $current_state
+ * @property \Illuminate\Support\Carbon|null $last_checked_at
+ * @property \Illuminate\Support\Carbon|null $next_check_at
+ * @property \Illuminate\Support\Carbon|null $last_state_change_at
+ * @property float|null $uptime_24h
+ * @property float|null $uptime_7d
+ * @property float|null $uptime_30d
+ * @property float|null $uptime_365d
+ * @property int|null $avg_response_time
+ * @property int|null $last_response_time
+ * @property string|null $last_failure_reason
+ * @property int $interval_minutes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read Site|null $site
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, UptimeCheck> $checks
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, UptimeIncident> $incidents
+ * @property-read UptimeCheck|null $latestCheck
+ * @property-read UptimeIncident|null $ongoingIncident
+ */
 class UptimeMonitor extends Model
 {
     use HasFactory;

@@ -11,6 +11,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $status_page_id
+ * @property int|null $site_id
+ * @property string $title
+ * @property string|null $description
+ * @property string $status
+ * @property string $severity
+ * @property bool $is_scheduled
+ * @property \Illuminate\Support\Carbon|null $scheduled_start_at
+ * @property \Illuminate\Support\Carbon|null $scheduled_end_at
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $resolved_at
+ * @property bool $auto_created
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\StatusPage|null $statusPage
+ * @property-read \App\Models\Site|null $site
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncidentUpdate> $updates
+ */
 class StatusPageIncident extends Model
 {
     use HasFactory;

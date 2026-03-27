@@ -9,6 +9,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $type
+ * @property array|null $config
+ * @property array|null $event_subscriptions
+ * @property bool $is_default
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $last_used_at
+ * @property string|null $last_error
+ * @property \Illuminate\Support\Carbon|null $last_error_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, NotificationLog> $logs
+ */
 class NotificationChannel extends Model
 {
     use HasFactory;

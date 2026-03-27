@@ -10,6 +10,33 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $report_template_id
+ * @property bool $is_active
+ * @property string $frequency
+ * @property int|null $day_of_week
+ * @property int|null $day_of_month
+ * @property string $time
+ * @property string $timezone
+ * @property string $period
+ * @property array|null $recipient_emails
+ * @property bool $send_copy_to_admin
+ * @property string|null $email_subject
+ * @property string|null $email_body
+ * @property string|null $client_name
+ * @property string|null $client_logo_path
+ * @property \Illuminate\Support\Carbon|null $last_generated_at
+ * @property \Illuminate\Support\Carbon|null $last_sent_at
+ * @property \Illuminate\Support\Carbon|null $next_run_at
+ * @property \Illuminate\Support\Carbon|null $reminder_sent_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ * @property-read \App\Models\ReportTemplate|null $reportTemplate
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Report> $reports
+ */
 class ReportSchedule extends Model
 {
     use HasFactory;

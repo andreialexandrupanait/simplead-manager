@@ -9,6 +9,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $file
+ * @property string $slug
+ * @property string $name
+ * @property string|null $version
+ * @property string|null $author
+ * @property string|null $author_uri
+ * @property string|null $plugin_uri
+ * @property string|null $description
+ * @property bool $is_active
+ * @property bool $has_update
+ * @property string|null $update_version
+ * @property string|null $requires_wp
+ * @property string|null $requires_php
+ * @property bool $auto_update
+ * @property \Illuminate\Support\Carbon|null $wp_org_last_updated
+ * @property bool|null $is_on_wp_org
+ * @property bool $is_abandoned
+ * @property bool $is_closed
+ * @property string|null $closed_reason
+ * @property \Illuminate\Support\Carbon|null $abandoned_checked_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SitePlugin extends Model
 {
     use HasFactory;

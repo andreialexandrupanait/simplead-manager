@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property int $total_size
+ * @property int $total_tables
+ * @property array|null $tables_data
+ * @property array|null $largest_tables
+ * @property array|null $tables_with_overhead
+ * @property int $myisam_count
+ * @property int $autoload_size
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $checked_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class DatabaseHealthCheck extends Model
 {
     use HasFactory;

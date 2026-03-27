@@ -10,8 +10,8 @@ use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UpdateLog;
-use App\Services\ActivityLogger;
-use App\Services\WordPressApiService;
+use App\Services\PluginManagerService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
@@ -143,11 +143,6 @@ class SitePlugins extends Component
     private function escapeLike(string $value): string
     {
         return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
-    }
-
-    private function cleanErrorMessage(string $message): string
-    {
-        return \Illuminate\Support\Str::limit(trim(strip_tags($message)), 200);
     }
 
     #[Computed]
@@ -288,56 +283,13 @@ class SitePlugins extends Component
 
     private function performUpdate(string $type, string $identifier, string $name, string $slug, ?string $currentVersion, ?string $updateVersion): array
     {
-        try {
-            $api = new WordPressApiService($this->site);
-            $result = $type === 'plugin'
-                ? $api->updatePlugins([$identifier])
-                : $api->updateThemes([$identifier]);
+        $result = app(PluginManagerService::class)->performUpdate($this->site, $type, $identifier, $name, $slug, $currentVersion, $updateVersion);
 
-            $updateResult = $result['results'][$identifier] ?? [];
-
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => $type,
-                'name' => $name,
-                'slug' => $slug,
-                'from_version' => $updateResult['from_version'] ?? $currentVersion,
-                'to_version' => $updateResult['to_version'] ?? $updateVersion,
-                'success' => $updateResult['success'] ?? false,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            $success = $updateResult['success'] ?? false;
-            if (! $success) {
-                $errorMsg = $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed');
-                $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: ".$errorMsg);
-            }
-
-            return [
-                'success' => $success,
-                'message' => $success
-                    ? 'Updated to v'.($updateResult['to_version'] ?? $updateVersion)
-                    : $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
-                'version' => $updateResult['to_version'] ?? $updateVersion,
-            ];
-        } catch (\Exception $e) {
-            Log::warning("{$type} update failed: {$name} on site {$this->site->name}", [
-                'type' => $type,
-                'slug' => $slug,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: ".$cleanMsg);
-
-            return [
-                'success' => false,
-                'message' => 'Failed: '.$cleanMsg,
-                'version' => null,
-            ];
+        if (! $result['success']) {
+            $this->dispatch('notify', type: 'error', message: "Update failed for {$name}: ".$result['message']);
         }
+
+        return $result;
     }
 
     public function getUpdatablePluginIds(): array
@@ -359,67 +311,17 @@ class SitePlugins extends Component
 
     public function activatePlugin(int $id): void
     {
-        $plugin = $this->site->sitePlugins()->findOrFail($id);
-
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->activatePlugin($plugin->file);
-            $plugin->update(['is_active' => true]);
-            ActivityLogger::pluginActivated($this->site, $plugin->name);
-            $this->updateResults['plugin_'.$id] = [
-                'success' => true,
-                'message' => "{$plugin->name} activated.",
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'success', message: "{$plugin->name} activated.");
-        } catch (\Exception $e) {
-            Log::warning("Plugin activation failed: {$plugin->name} on site {$this->site->name}", [
-                'plugin' => $plugin->file,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_'.$id] = [
-                'success' => false,
-                'message' => 'Activate failed: '.$cleanMsg,
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'error', message: 'Activate failed: '.$cleanMsg);
-        }
-
+        $result = app(PluginManagerService::class)->activatePlugin($this->site, $id);
+        $this->updateResults['plugin_'.$id] = $result + ['version' => null];
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
         unset($this->plugins, $this->pluginCounts);
     }
 
     public function deactivatePlugin(int $id): void
     {
-        $plugin = $this->site->sitePlugins()->findOrFail($id);
-
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deactivatePlugin($plugin->file);
-            $plugin->update(['is_active' => false]);
-            ActivityLogger::pluginDeactivated($this->site, $plugin->name);
-            $this->updateResults['plugin_'.$id] = [
-                'success' => true,
-                'message' => "{$plugin->name} deactivated.",
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'success', message: "{$plugin->name} deactivated.");
-        } catch (\Exception $e) {
-            Log::warning("Plugin deactivation failed: {$plugin->name} on site {$this->site->name}", [
-                'plugin' => $plugin->file,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_'.$id] = [
-                'success' => false,
-                'message' => 'Deactivate failed: '.$cleanMsg,
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'error', message: 'Deactivate failed: '.$cleanMsg);
-        }
-
+        $result = app(PluginManagerService::class)->deactivatePlugin($this->site, $id);
+        $this->updateResults['plugin_'.$id] = $result + ['version' => null];
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
         unset($this->plugins, $this->pluginCounts);
     }
 
@@ -437,16 +339,12 @@ class SitePlugins extends Component
             return;
         }
 
-        $plugin = $this->site->sitePlugins()->findOrFail($this->confirmingDeleteId);
+        $result = app(PluginManagerService::class)->deletePlugin($this->site, $this->confirmingDeleteId);
 
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deletePlugin($plugin->file);
-            $plugin->delete();
-            ActivityLogger::pluginDeleted($this->site, $plugin->name);
-            session()->flash('update-success', "{$plugin->name} deleted.");
-        } catch (\Exception $e) {
-            session()->flash('update-error', "Delete failed: {$e->getMessage()}");
+        if ($result['success']) {
+            session()->flash('update-success', $result['message']);
+        } else {
+            session()->flash('update-error', $result['message']);
         }
 
         $this->confirmingDeleteId = null;
@@ -457,30 +355,11 @@ class SitePlugins extends Component
 
     public function activateTheme(int $id): void
     {
-        $theme = $this->site->siteThemes()->findOrFail($id);
+        $result = app(PluginManagerService::class)->activateTheme($this->site, $id);
+        $this->updateResults['theme_'.$id] = $result + ['version' => null];
 
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->activateTheme($theme->slug);
-            ActivityLogger::themeActivated($this->site, $theme->name);
-            $this->updateResults['theme_'.$id] = [
-                'success' => true,
-                'message' => "{$theme->name} activated.",
-                'version' => null,
-            ];
-        } catch (\Exception $e) {
-            Log::warning("Theme activation failed: {$theme->name} on site {$this->site->name}", [
-                'theme' => $theme->slug,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $cleanMsg = $this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['theme_'.$id] = [
-                'success' => false,
-                'message' => 'Activate failed: '.$cleanMsg,
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'error', message: 'Activate failed: '.$cleanMsg);
+        if (! $result['success']) {
+            $this->dispatch('notify', type: 'error', message: $result['message']);
         }
 
         unset($this->themes, $this->themeCounts);
@@ -504,19 +383,8 @@ class SitePlugins extends Component
 
     public function deleteThemeById(int $id): void
     {
-        $theme = $this->site->siteThemes()->findOrFail($id);
-
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deleteTheme($theme->slug);
-            $theme->delete();
-            ActivityLogger::themeDeleted($this->site, $theme->name);
-            $this->dispatch('notify', type: 'success', message: "{$theme->name} deleted.");
-        } catch (\Exception $e) {
-            Log::error('deleteTheme failed', ['error' => $e->getMessage(), 'theme' => $theme->slug]);
-            $this->dispatch('notify', type: 'error', message: 'Delete failed: '.$this->cleanErrorMessage($e->getMessage()));
-        }
-
+        $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
+        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
         unset($this->themes, $this->themeCounts);
     }
 
@@ -526,16 +394,12 @@ class SitePlugins extends Component
             return;
         }
 
-        $theme = $this->site->siteThemes()->findOrFail($this->confirmingDeleteThemeId);
+        $result = app(PluginManagerService::class)->deleteTheme($this->site, $this->confirmingDeleteThemeId);
 
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deleteTheme($theme->slug);
-            $theme->delete();
-            ActivityLogger::themeDeleted($this->site, $theme->name);
-            session()->flash('update-success', "{$theme->name} deleted.");
-        } catch (\Exception $e) {
-            session()->flash('update-error', "Delete failed: {$e->getMessage()}");
+        if ($result['success']) {
+            session()->flash('update-success', $result['message']);
+        } else {
+            session()->flash('update-error', $result['message']);
         }
 
         $this->confirmingDeleteThemeId = null;
@@ -549,182 +413,48 @@ class SitePlugins extends Component
 
     public function deletePluginDirect(int $id): array
     {
-        $plugin = $this->site->sitePlugins()->findOrFail($id);
+        $result = app(PluginManagerService::class)->deletePlugin($this->site, $id);
 
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deletePlugin($plugin->file);
-            $plugin->delete();
-            ActivityLogger::pluginDeleted($this->site, $plugin->name);
-            unset($this->plugins, $this->pluginCounts);
-
-            return ['success' => true, 'message' => "{$plugin->name} deleted.", 'name' => $plugin->name];
-        } catch (\Exception $e) {
-            Log::warning("Plugin delete failed: {$plugin->name} on site {$this->site->name}", [
-                'plugin' => $plugin->file,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $msg = 'Delete failed: '.$this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['plugin_'.$id] = ['success' => false, 'message' => $msg, 'version' => null];
-            unset($this->plugins, $this->pluginCounts);
-
-            return ['success' => false, 'message' => $msg, 'name' => $plugin->name];
-        }
-    }
-
-    public function deleteThemeDirect(int $id): array
-    {
-        $theme = $this->site->siteThemes()->findOrFail($id);
-
-        try {
-            $api = new WordPressApiService($this->site);
-            $api->deleteTheme($theme->slug);
-            $theme->delete();
-            ActivityLogger::themeDeleted($this->site, $theme->name);
-            unset($this->themes, $this->themeCounts);
-
-            return ['success' => true, 'message' => "{$theme->name} deleted.", 'name' => $theme->name];
-        } catch (\Exception $e) {
-            Log::warning("Theme delete failed: {$theme->name} on site {$this->site->name}", [
-                'theme' => $theme->slug,
-                'site_id' => $this->site->id,
-                'error' => $e->getMessage(),
-            ]);
-            $msg = 'Delete failed: '.$this->cleanErrorMessage($e->getMessage());
-            $this->updateResults['theme_'.$id] = ['success' => false, 'message' => $msg, 'version' => null];
-            unset($this->themes, $this->themeCounts);
-
-            return ['success' => false, 'message' => $msg, 'name' => $theme->name];
-        }
-    }
-
-    public function bulkUpdatePlugins(array $ids): array
-    {
-        $plugins = $this->site->sitePlugins()->whereIn('id', $ids)->where('has_update', true)->get();
-        if ($plugins->isEmpty()) {
-            return ['success' => 0, 'failed' => 0];
-        }
-
-        $this->runPreUpdateBackup();
-        $api = new WordPressApiService($this->site);
-
-        try {
-            $result = $api->updatePlugins($plugins->pluck('file')->toArray());
-            $apiResults = $result['results'] ?? [];
-        } catch (\Exception $e) {
-            return ['success' => 0, 'failed' => count($plugins), 'error' => $e->getMessage()];
-        }
-
-        $success = 0;
-        $failed = 0;
-
-        foreach ($plugins as $plugin) {
-            $updateResult = $apiResults[$plugin->file] ?? [];
-            $wasSuccess = $updateResult['success'] ?? false;
-
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'plugin',
-                'name' => $plugin->name,
-                'slug' => $plugin->slug,
-                'from_version' => $plugin->version,
-                'to_version' => $plugin->update_version,
-                'success' => $wasSuccess,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            if ($wasSuccess) {
-                $success++;
-                $plugin->update([
-                    'version' => $plugin->update_version,
-                    'has_update' => false,
-                    'update_version' => null,
-                ]);
-                $this->updateResults['plugin_'.$plugin->id] = [
-                    'success' => true,
-                    'message' => "Updated to v{$plugin->update_version}",
-                    'version' => $plugin->update_version,
-                ];
-            } else {
-                $failed++;
-                $this->updateResults['plugin_'.$plugin->id] = [
-                    'success' => false,
-                    'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
-                    'version' => null,
-                ];
-            }
+        if (! $result['success']) {
+            $this->updateResults['plugin_'.$id] = ['success' => false, 'message' => $result['message'], 'version' => null];
         }
 
         unset($this->plugins, $this->pluginCounts);
 
-        return ['success' => $success, 'failed' => $failed];
+        return $result;
     }
 
-    public function bulkUpdateThemes(array $ids): array
+    public function deleteThemeDirect(int $id): array
     {
-        $themes = $this->site->siteThemes()->whereIn('id', $ids)->where('has_update', true)->get();
-        if ($themes->isEmpty()) {
-            return ['success' => 0, 'failed' => 0];
-        }
+        $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
 
-        $this->runPreUpdateBackup();
-        $api = new WordPressApiService($this->site);
-
-        try {
-            $result = $api->updateThemes($themes->pluck('slug')->toArray());
-            $apiResults = $result['results'] ?? [];
-        } catch (\Exception $e) {
-            return ['success' => 0, 'failed' => count($themes), 'error' => $e->getMessage()];
-        }
-
-        $success = 0;
-        $failed = 0;
-
-        foreach ($themes as $theme) {
-            $updateResult = $apiResults[$theme->slug] ?? [];
-            $wasSuccess = $updateResult['success'] ?? false;
-
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'theme',
-                'name' => $theme->name,
-                'slug' => $theme->slug,
-                'from_version' => $theme->version,
-                'to_version' => $theme->update_version,
-                'success' => $wasSuccess,
-                'error_message' => $updateResult['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            if ($wasSuccess) {
-                $success++;
-                $theme->update([
-                    'version' => $theme->update_version,
-                    'has_update' => false,
-                    'update_version' => null,
-                ]);
-                $this->updateResults['theme_'.$theme->id] = [
-                    'success' => true,
-                    'message' => "Updated to v{$theme->update_version}",
-                    'version' => $theme->update_version,
-                ];
-            } else {
-                $failed++;
-                $this->updateResults['theme_'.$theme->id] = [
-                    'success' => false,
-                    'message' => $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
-                    'version' => null,
-                ];
-            }
+        if (! $result['success']) {
+            $this->updateResults['theme_'.$id] = ['success' => false, 'message' => $result['message'], 'version' => null];
         }
 
         unset($this->themes, $this->themeCounts);
 
-        return ['success' => $success, 'failed' => $failed];
+        return $result;
+    }
+
+    public function bulkUpdatePlugins(array $ids): array
+    {
+        $this->runPreUpdateBackup();
+        $result = app(PluginManagerService::class)->bulkUpdatePlugins($this->site, $ids);
+        $this->updateResults = array_merge($this->updateResults, $result['results']);
+        unset($this->plugins, $this->pluginCounts);
+
+        return ['success' => $result['success'], 'failed' => $result['failed']];
+    }
+
+    public function bulkUpdateThemes(array $ids): array
+    {
+        $this->runPreUpdateBackup();
+        $result = app(PluginManagerService::class)->bulkUpdateThemes($this->site, $ids);
+        $this->updateResults = array_merge($this->updateResults, $result['results']);
+        unset($this->themes, $this->themeCounts);
+
+        return ['success' => $result['success'], 'failed' => $result['failed']];
     }
 
     public function getFilteredPluginIds(): array
@@ -754,7 +484,7 @@ class SitePlugins extends Component
     public function openWpAdmin(): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $result = $api->getLoginUrl();
 
             if (! empty($result['login_url'])) {
@@ -786,28 +516,12 @@ class SitePlugins extends Component
     public function updateCore(): void
     {
         $this->runPreUpdateBackup();
+        $result = app(PluginManagerService::class)->updateCore($this->site);
 
-        try {
-            $api = new WordPressApiService($this->site);
-            $result = $api->updateCore();
-
-            UpdateLog::create([
-                'site_id' => $this->site->id,
-                'user_id' => auth()->id(),
-                'type' => 'core',
-                'name' => 'WordPress Core',
-                'slug' => 'wordpress',
-                'from_version' => $this->site->wp_version,
-                'to_version' => $this->site->core_update_version,
-                'success' => $result['success'] ?? false,
-                'error_message' => $result['error'] ?? null,
-                'performed_at' => now(),
-            ]);
-
-            ActivityLogger::coreUpdated($this->site, $this->site->wp_version, $this->site->core_update_version);
-            session()->flash('update-success', 'WordPress core update initiated.');
-        } catch (\Exception $e) {
-            session()->flash('update-error', "Core update failed: {$e->getMessage()}");
+        if ($result['success']) {
+            session()->flash('update-success', $result['message']);
+        } else {
+            session()->flash('update-error', $result['message']);
         }
     }
 

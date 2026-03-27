@@ -13,6 +13,7 @@ class SafeUpdateService
 {
     public function __construct(
         protected RollbackService $rollbackService,
+        protected WordPressApiServiceFactory $apiFactory,
     ) {}
 
     public function createSafeUpdate(
@@ -39,7 +40,7 @@ class SafeUpdateService
     {
         /** @var \App\Models\Site $site */
         $site = $safeUpdate->site;
-        $api = new WordPressApiService($site);
+        $api = $this->apiFactory->make($site);
 
         try {
             // Step 1: Backup
@@ -116,7 +117,7 @@ class SafeUpdateService
     public function runHealthChecks(\App\Models\Site $site): array
     {
         try {
-            $api = new WordPressApiService($site);
+            $api = $this->apiFactory->make($site);
             $result = $api->healthCheck();
 
             $checks = $result['checks'] ?? [];

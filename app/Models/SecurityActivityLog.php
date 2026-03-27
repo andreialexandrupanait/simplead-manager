@@ -9,6 +9,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $event_type
+ * @property string $event_category
+ * @property string|null $username
+ * @property string|null $object_type
+ * @property string|null $object_name
+ * @property string|null $action
+ * @property string|null $ip_address
+ * @property string|null $user_agent
+ * @property array|null $details
+ * @property \Illuminate\Support\Carbon $occurred_at
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SecurityActivityLog extends Model
 {
     use HasFactory;

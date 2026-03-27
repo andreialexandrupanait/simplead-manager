@@ -6,7 +6,7 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -63,7 +63,7 @@ class SiteCron extends Component
         $this->loading = true;
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $this->cronData = $api->getCronList();
         } catch (\Exception $e) {
             Log::warning("Failed to load crons for site {$this->site->name}", [
@@ -81,7 +81,7 @@ class SiteCron extends Component
     public function runCron(string $hook, array $args = []): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->runCron($hook, ! empty($args) ? $args : null);
             $this->dispatch('notify', type: 'success', message: "Cron hook '{$hook}' executed successfully.");
             $this->loadCrons();
@@ -97,7 +97,7 @@ class SiteCron extends Component
     public function disableCron(string $hook): void
     {
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->disableCron($hook);
             $this->dispatch('notify', type: 'success', message: "Cron hook '{$hook}' disabled.");
             $this->loadCrons();
@@ -124,7 +124,7 @@ class SiteCron extends Component
         }
 
         try {
-            $api = new WordPressApiService($this->site);
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->enableCron($this->enablingHook, $this->enableSchedule);
             $this->dispatch('notify', type: 'success', message: "Cron hook '{$this->enablingHook}' enabled with schedule '{$this->enableSchedule}'.");
             $this->loadCrons();

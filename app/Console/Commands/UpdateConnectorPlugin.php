@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Site;
-use App\Services\WordPressApiService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\URL;
 
@@ -74,7 +74,7 @@ class UpdateConnectorPlugin extends Command
         $label = "{$site->name} ({$site->url})";
 
         try {
-            $api = new WordPressApiService($site);
+            $api = app(WordPressApiServiceFactory::class)->make($site);
             $response = $api->request('POST', '/self-update', [
                 'download_url' => $downloadUrl,
             ], [], 120);

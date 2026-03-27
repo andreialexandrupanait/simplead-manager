@@ -39,33 +39,21 @@ class DashboardService
         $pendingThemeUpdates = \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count();
         $pendingCoreUpdates = Site::whereNotNull('core_update_version')->count();
 
-        $failedBackups = Backup::whereHas('site')
-            ->where('status', BackupStatus::Failed)
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
-
-        $totalStorageBytes = Backup::whereHas('site')
-            ->where('status', BackupStatus::Completed)
-            ->sum('file_size');
-
-        $backupsToday = Backup::whereHas('site')
-            ->where('status', BackupStatus::Completed)
-            ->whereDate('completed_at', today())
-            ->count();
+        $backups = $this->getBackupCounts();
 
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
-            'avg_uptime' => $avgUptime ? round($avgUptime, 2) : null,
-            'avg_response_time' => $avgResponseTime ? (int) round($avgResponseTime) : null,
+            'avg_uptime' => $avgUptime ? round((float) $avgUptime, 2) : null,
+            'avg_response_time' => $avgResponseTime ? (int) round((float) $avgResponseTime) : null,
             'pending_updates' => $pendingPluginUpdates + $pendingThemeUpdates + $pendingCoreUpdates,
             'pending_plugin_updates' => $pendingPluginUpdates,
             'pending_theme_updates' => $pendingThemeUpdates,
             'pending_core_updates' => $pendingCoreUpdates,
-            'failed_backups' => $failedBackups,
-            'total_alerts' => $sitesDown + $failedBackups,
-            'backup_storage_bytes' => $totalStorageBytes,
-            'backups_today' => $backupsToday,
+            'failed_backups' => $backups['failed_backups'],
+            'total_alerts' => $sitesDown + $backups['failed_backups'],
+            'backup_storage_bytes' => $backups['total_storage_bytes'],
+            'backups_today' => $backups['backups_today'],
         ];
     }
 
@@ -264,12 +252,11 @@ class DashboardService
     private function computeSummaryStats(): array
     {
         $stats = $this->getStats();
-        $backups = $this->getBackupCounts();
 
         return [
-            'backups_today' => $backups['backups_today'],
+            'backups_today' => $stats['backups_today'],
             'failed_backups' => $stats['failed_backups'],
-            'total_storage' => $backups['total_storage_bytes'],
+            'total_storage' => $stats['backup_storage_bytes'],
             'pending_updates' => $stats['pending_updates'],
         ];
     }

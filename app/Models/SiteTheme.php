@@ -8,6 +8,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $slug
+ * @property string $name
+ * @property string|null $version
+ * @property string|null $author
+ * @property string|null $author_uri
+ * @property string|null $description
+ * @property bool $is_active
+ * @property bool $is_child_theme
+ * @property string|null $parent_theme
+ * @property bool $has_update
+ * @property string|null $update_version
+ * @property string|null $screenshot_url
+ * @property bool $auto_update
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class SiteTheme extends Model
 {
     use HasFactory;
