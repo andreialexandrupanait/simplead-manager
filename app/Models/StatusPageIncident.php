@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \App\Models\StatusPage|null $statusPage
  * @property-read \App\Models\Site|null $site
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncidentUpdate> $updates
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> active()
  * @method static \Illuminate\Database\Eloquent\Builder<static> recent(int $days = 90)
  */

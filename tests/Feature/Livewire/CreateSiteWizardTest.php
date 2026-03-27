@@ -64,7 +64,7 @@ class CreateSiteWizardTest extends TestCase
 
         $site = Site::where('url', 'https://health-state-check.com')->firstOrFail();
 
-        $this->assertDatabaseHas('site_health_states', [
+        $this->assertDatabaseHas('site_health_state', [
             'site_id' => $site->id,
             'circuit_state' => 'closed',
         ]);

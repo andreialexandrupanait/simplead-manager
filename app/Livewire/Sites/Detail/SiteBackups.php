@@ -88,7 +88,7 @@ class SiteBackups extends Component
     #[Computed]
     public function storageUsage()
     {
-        $totalSize = Backup::where('site_id', $this->site->id)
+        $totalSize = (int) Backup::where('site_id', $this->site->id)
             ->where('status', 'completed')
             ->sum('file_size');
 

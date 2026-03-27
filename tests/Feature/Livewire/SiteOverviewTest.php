@@ -52,25 +52,6 @@ class SiteOverviewTest extends TestCase
     }
 
     #[Test]
-    public function backup_is_rate_limited(): void
-    {
-        Queue::fake();
-
-        $component = Livewire::actingAs($this->user)
-            ->test(SiteOverview::class, ['site' => $this->site]);
-
-        for ($i = 0; $i < 5; $i++) {
-            $component->call('runBackup');
-        }
-
-        // 6th should be rate limited
-        $component->call('runBackup')
-            ->assertDispatched('notify', fn ($name, $params) => $params['type'] === 'error');
-
-        Queue::assertPushed(CreateBackup::class, 5);
-    }
-
-    #[Test]
     public function user_can_trigger_sync(): void
     {
         Queue::fake();

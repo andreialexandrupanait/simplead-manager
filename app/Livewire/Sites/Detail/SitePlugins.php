@@ -14,7 +14,6 @@ use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
 use App\Services\WordPressApiServiceFactory;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;

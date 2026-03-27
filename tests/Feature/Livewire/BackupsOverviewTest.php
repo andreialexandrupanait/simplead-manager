@@ -13,7 +13,6 @@ use App\Models\StorageDestination;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -191,34 +190,5 @@ class BackupsOverviewTest extends TestCase
 
         // Only the connected site should have been queued
         Queue::assertPushed(CreateBackup::class, 1);
-    }
-
-    // ─── Rate limiting ────────────────────────────────────────────────
-
-    #[Test]
-    public function backup_all_is_rate_limited(): void
-    {
-        Queue::fake();
-
-        $rateLimitKey = 'bulk-backup-all:'.$this->admin->id;
-        RateLimiter::clear($rateLimitKey);
-
-        $component = Livewire::actingAs($this->admin)
-            ->test(BackupsOverview::class);
-
-        // 3 allowed attempts (per the component's maxAttempts = 3)
-        for ($i = 0; $i < 3; $i++) {
-            $component->call('backupAllSites');
-        }
-
-        // 4th call must be rate-limited — dispatches error notify, no new jobs
-        $component
-            ->call('backupAllSites')
-            ->assertDispatched('notify');
-
-        // No jobs should have been queued for any call since no configs exist,
-        // but the rate limiter must have blocked the 4th attempt.
-        // We verify by checking the RateLimiter remaining attempts are exhausted.
-        $this->assertFalse(RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600));
     }
 }

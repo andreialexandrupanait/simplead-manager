@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Contracts\WordPressApiServiceInterface;
 use App\Models\Site;
 use App\Services\WordPress\Concerns\ManagesCron;
-
 use App\Services\WordPress\Concerns\ManagesDatabase;
 use App\Services\WordPress\Concerns\ManagesPlugins;
 use App\Services\WordPress\Concerns\ManagesSecurity;

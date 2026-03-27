@@ -36,7 +36,7 @@ class SecurityDashboard extends Component
             ->whereNotNull('security_hardening_score')
             ->avg('security_hardening_score');
 
-        return $avg ? round($avg, 1) : null;
+        return $avg !== null ? round((float) $avg, 1) : null;
     }
 
     #[Computed]

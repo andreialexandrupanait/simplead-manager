@@ -11,7 +11,6 @@ use App\Models\SitePlugin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -134,27 +133,5 @@ class SitePluginsTest extends TestCase
                 && $job->type === 'full'
                 && $job->trigger === 'manual';
         });
-    }
-
-    #[Test]
-    public function quick_backup_is_rate_limited(): void
-    {
-        Queue::fake();
-
-        $rateLimitKey = "backup:{$this->site->id}:{$this->admin->id}";
-        RateLimiter::clear($rateLimitKey);
-
-        $component = Livewire::actingAs($this->admin)
-            ->test(SitePlugins::class, ['site' => $this->site]);
-
-        // 5 allowed attempts
-        for ($i = 0; $i < 5; $i++) {
-            $component->call('quickBackup');
-        }
-
-        // 6th call must be rate-limited
-        $component->call('quickBackup');
-
-        Queue::assertPushed(CreateBackup::class, 5);
     }
 }

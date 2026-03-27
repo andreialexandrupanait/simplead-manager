@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property-read \App\Models\Site|null $site
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static> available()
  */
 class RollbackPoint extends Model

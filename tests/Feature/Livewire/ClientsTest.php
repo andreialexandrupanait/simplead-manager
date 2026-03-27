@@ -59,7 +59,11 @@ class ClientsTest extends TestCase
     #[Test]
     public function admin_can_update_client(): void
     {
-        $client = Client::factory()->active()->create(['name' => 'Old Name']);
+        $client = Client::factory()->active()->create([
+            'name' => 'Old Name',
+            'vat_number' => null,
+            'registration_number' => null,
+        ]);
 
         Livewire::actingAs($this->admin)
             ->test(ClientForm::class, ['client' => $client])

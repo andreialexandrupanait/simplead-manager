@@ -30,8 +30,6 @@ class BackupConfigFactory extends Factory
             'day_of_month' => fake()->numberBetween(1, 28),
             'timezone' => fake()->timezone(),
             'type' => fake()->randomElement(['full', 'files', 'database']),
-            'exclude_paths' => [],
-            'exclude_tables' => [],
             'storage_destination_id' => StorageDestination::factory(),
             'retention_type' => fake()->randomElement(['count', 'days']),
             'retention_value' => fake()->randomElement([7, 14, 30, 90]),

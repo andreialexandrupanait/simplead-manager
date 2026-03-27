@@ -102,8 +102,8 @@ class UptimeOverview extends Component
             ->whereHas('site')
             ->with('site')
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%"))
-                    ->orWhere('url', 'ilike', "%{$this->search}%");
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
+                    ->orWhere('url', 'ilike', "%{$this->search}%"));
             })
             ->when($this->filter !== 'all', fn ($q) => match ($this->filter) {
                 'up' => $q->where('current_state', 'up'),
