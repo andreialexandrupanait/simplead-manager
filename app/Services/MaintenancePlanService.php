@@ -104,8 +104,8 @@ class MaintenancePlanService
         return $site->securitySettings()
             ->whereIn('category', $categories)
             ->get()
-            ->groupBy(fn ($s) => $s->category->value ?? $s->category)
-            ->map(fn ($settings) => $settings->mapWithKeys(fn ($s) => [
+            ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category)
+            ->map(fn (\Illuminate\Support\Collection $settings) => $settings->mapWithKeys(fn (SecuritySetting $s) => [
                 $s->setting_key => [
                     'value' => $s->setting_value,
                     'enabled' => $s->is_enabled,
@@ -122,8 +122,8 @@ class MaintenancePlanService
         return $site->securitySettings()
             ->whereIn('category', SiteTweaksSettingsService::TWEAK_CATEGORIES)
             ->get()
-            ->groupBy(fn ($s) => $s->category->value ?? $s->category)
-            ->map(fn ($settings) => $settings->mapWithKeys(fn ($s) => [
+            ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category)
+            ->map(fn (\Illuminate\Support\Collection $settings) => $settings->mapWithKeys(fn (SecuritySetting $s) => [
                 $s->setting_key => [
                     'value' => $s->setting_value,
                     'enabled' => $s->is_enabled,

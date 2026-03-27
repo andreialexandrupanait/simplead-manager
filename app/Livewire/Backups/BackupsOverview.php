@@ -92,7 +92,7 @@ class BackupsOverview extends Component
             ->with(['site', 'storageDestination'])
             ->when($this->search, function ($q) {
                 $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('domain', 'ilike', "%{$this->search}%"));
+                    ->orWhere('url', 'ilike', "%{$this->search}%"));
             })
             ->when($this->filter !== 'all', function ($q) {
                 if ($this->filter === 'in_progress') {

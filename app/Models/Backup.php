@@ -194,12 +194,12 @@ class Backup extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return $this->status->color() ?? 'gray';
+        return $this->status->color();
     }
 
     public function getRestoreStatusColorAttribute(): string
     {
-        return $this->restore_status->color() ?? 'gray';
+        return $this->restore_status->color();
     }
 
     public function getIsRestoringAttribute(): bool
@@ -244,7 +244,7 @@ class Backup extends Model
             return '0 B';
         }
 
-        $i = floor(log($abs, 1024));
+        $i = (int) floor(log($abs, 1024));
         $formatted = round($abs / pow(1024, $i), 1).' '.$units[$i];
 
         return $diff >= 0 ? '+'.$formatted : '-'.$formatted;

@@ -74,7 +74,7 @@ class HealthCheckController extends Controller
         $free = disk_free_space('/');
         $total = disk_total_space('/');
 
-        if ($total === 0) {
+        if ($total === false || $total == 0) {
             return ['status' => 'fail', 'message' => 'Cannot read disk space'];
         }
 

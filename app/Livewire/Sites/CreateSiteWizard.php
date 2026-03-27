@@ -91,7 +91,7 @@ class CreateSiteWizard extends Component
                 $isSslError = in_array($errno, [
                     CURLE_SSL_CERTPROBLEM,
                     CURLE_SSL_CIPHER,
-                    CURLE_PEER_FAILED_VERIFICATION,
+                    defined('CURLE_PEER_FAILED_VERIFICATION') ? CURLE_PEER_FAILED_VERIFICATION : 60,
                     CURLE_SSL_PINNEDPUBKEYNOTMATCH,
                     60, // CURLE_SSL_CACERT
                     51, // CURLE_SSL_PEER_CERTIFICATE

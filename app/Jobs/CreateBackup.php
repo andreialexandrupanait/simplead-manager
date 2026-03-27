@@ -410,7 +410,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         }
 
         $destination->increment('used_bytes', $fileSize);
-        (new RetentionService)->apply($this->site, $destination);
+        app(RetentionService::class)->apply($this->site, $destination);
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Backup complete');

@@ -37,6 +37,16 @@ interface StorageDriver
     public function list(string $directory = ''): array;
 
     /**
+     * Upload a file using an absolute remote path (bypasses base path prefix).
+     */
+    public function uploadToAbsolutePath(string $localPath, string $absoluteRemotePath): void;
+
+    /**
+     * List folders at an absolute path. Returns empty array if not supported.
+     */
+    public function listFolders(string $absolutePath = ''): array;
+
+    /**
      * Test the connection to the storage destination.
      */
     public function test(): bool;

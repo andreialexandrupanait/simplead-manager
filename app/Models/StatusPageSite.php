@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\MonitorState;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -66,7 +67,7 @@ class StatusPageSite extends Model
             }
 
             $monitor = $site->uptimeMonitor;
-            if ($monitor && $monitor->current_state === 'degraded') {
+            if ($monitor && $monitor->current_state === MonitorState::Degraded) {
                 return 'degraded';
             }
 

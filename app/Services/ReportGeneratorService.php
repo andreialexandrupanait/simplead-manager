@@ -120,9 +120,9 @@ class ReportGeneratorService
         $closingHtml = View::make('reports.report-closing', $viewData)->render();
 
         // Footer HTML for body pages (Chrome native page numbering)
-        $pc = e($branding['primary_color'] ?? '#7C3AED');
+        $pc = e($branding['primary_color']);
         $reportTitle = mb_strtoupper(__('report.title', [], $this->language));
-        $clientName = mb_strtoupper(e($branding['client_name'] ?? ''));
+        $clientName = mb_strtoupper(e($branding['client_name']));
         $footerHtml = '<html><head><style>'
             .'#f { width: 100%; border-collapse: collapse; font-family: Inter, Arial, sans-serif; font-size: 7pt; color: #94a3b8; }'
             .'#f td { padding: 4px 12mm; vertical-align: middle; }'

@@ -67,12 +67,9 @@ class SiteStatusHelper
             if ($site->is_up === true) {
                 $color = 'text-green-500';
                 $tip = 'Site is up'.($site->uptime_percentage ? ' — '.$site->uptime_percentage.'%' : '');
-            } elseif ($site->is_up === false) {
+            } else {
                 $color = 'text-red-500';
                 $tip = 'Site is DOWN';
-            } else {
-                $color = 'text-yellow-500';
-                $tip = 'Uptime: Checking...';
             }
         }
 

@@ -13,12 +13,6 @@ parameters:
 			path: app/Helpers/FormatHelper.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between false and false will always evaluate to true\.$#'
-			identifier: identical.alwaysTrue
-			count: 1
-			path: app/Helpers/SiteStatusHelper.php
-
-		-
 			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\DropboxDriver\:\:appendToUploadSession\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -175,12 +169,6 @@ parameters:
 			path: app/Jobs/GenerateReport.php
 
 		-
-			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
-			identifier: greater.alwaysTrue
-			count: 1
-			path: app/Jobs/NotifyIncident.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cls\.$#'
 			identifier: property.notFound
 			count: 1
@@ -295,20 +283,8 @@ parameters:
 			path: app/Livewire/Dashboard/GlobalDashboard.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 2
-			path: app/Livewire/Dashboard/GlobalDashboard.php
-
-		-
 			message: '#^Call to an undefined method App\\Services\\Backup\\Storage\\StorageDriver\:\:listFolders\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: app/Livewire/Settings/Components/StorageDestinationForm.php
-
-		-
-			message: '#^Instanceof between Throwable and Illuminate\\Contracts\\Encryption\\DecryptException will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
 			count: 1
 			path: app/Livewire/Settings/Components/StorageDestinationForm.php
 
@@ -361,52 +337,10 @@ parameters:
 			path: app/Livewire/Settings/ProfileSettings.php
 
 		-
-			message: '#^Method App\\Livewire\\Settings\\ProfileSettings\:\:exportData\(\) should return Symfony\\Component\\HttpFoundation\\StreamedResponse but returns Illuminate\\Http\\Response\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
-			message: '#^Method App\\Livewire\\Settings\\ProfileSettings\:\:exportData\(\) should return Symfony\\Component\\HttpFoundation\\StreamedResponse but returns Symfony\\Component\\HttpFoundation\\BinaryFileResponse\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 2
 			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
-			message: '#^Constant CURLE_PEER_FAILED_VERIFICATION not found\.$#'
-			identifier: constant.notFound
-			count: 1
-			path: app/Livewire/Sites/CreateSiteWizard.php
-
-		-
-			message: '#^Offset string on array\{\} in isset\(\) does not exist\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
-
-		-
-			message: '#^Parameter \#1 \$array \(list\) of array_values is already a list, call has no effect\.$#'
-			identifier: arrayValues.list
-			count: 1
-			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
-
-		-
-			message: '#^Property App\\Livewire\\Sites\\Detail\\Components\\RestoreConfirmation\:\:\$preRestoreStatus \(string\|null\) does not accept App\\Enums\\BackupStatus\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between App\\Enums\\BackupStatus and ''completed'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Livewire/Sites/Detail/Components/RestoreConfirmation.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\SecurityMonitor\:\:\$latest_score\.$#'
@@ -439,18 +373,6 @@ parameters:
 			path: app/Livewire/Sites/Detail/Security/SecurityLogin.php
 
 		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Livewire/Sites/Detail/SiteAnalytics.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Livewire/Sites/Detail/SiteAnalytics.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
 			identifier: property.notFound
 			count: 2
@@ -472,12 +394,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storageDestination\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Livewire/Sites/Detail/SiteBackups.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:incrementals\(\)\.$#'
-			identifier: method.notFound
-			count: 1
 			path: app/Livewire/Sites/Detail/SiteBackups.php
 
 		-
@@ -727,18 +643,6 @@ parameters:
 			path: app/Models/StatusPage.php
 
 		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: app/Models/StatusPageSite.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between App\\Enums\\MonitorState and ''degraded'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StatusPageSite.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between int\<min, \-1\>\|int\<1, max\> and 0 will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
@@ -775,18 +679,6 @@ parameters:
 			path: app/Services/BulkSettingsCopyService.php
 
 		-
-			message: '#^Offset ''critical'' on array\{critical\: 0, warning\: 1, info\: 2\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/DashboardService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between 0 and 0 will always evaluate to false\.$#'
-			identifier: notIdentical.alwaysFalse
-			count: 1
-			path: app/Services/DashboardService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category\.$#'
 			identifier: property.notFound
 			count: 2
@@ -821,18 +713,6 @@ parameters:
 			identifier: argument.unresolvableType
 			count: 2
 			path: app/Services/MaintenancePlanService.php
-
-		-
-			message: '#^Offset ''analytics''\|''backup''\|''cloudflare''\|''database_cleanup''\|''performance''\|''search_console''\|''security''\|''uptime'' on array\{uptime\: 5, backup\: 1440, performance\: 10080, security\: 10080, analytics\: 1440, search_console\: 1440, cloudflare\: 360, database_cleanup\: 43200\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/ModuleConfigService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between ''is_active''\|''is_enabled''\|''status'' and null will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/ModuleConfigService.php
 
 		-
 			message: '#^Dead catch \- RedisException is never thrown in the try block\.$#'
@@ -877,18 +757,6 @@ parameters:
 			path: app/Services/PluginManagerService.php
 
 		-
-			message: '#^Offset ''client_name'' on array\{company_name\: string, company_logo\: string\|null, company_website\: string\|null, primary_color\: string, client_name\: string, client_logo\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/ReportGeneratorService.php
-
-		-
-			message: '#^Offset ''primary_color'' on array\{company_name\: string, company_logo\: string\|null, company_website\: string\|null, primary_color\: string, client_name\: string, client_logo\: string\|null\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/ReportGeneratorService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Client\:\:\$logo_path\.$#'
 			identifier: property.notFound
 			count: 2
@@ -899,12 +767,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Reports/Sections/CloudflareGatherer.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:available\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/RollbackService.php
 
 		-
 			message: '#^Match expression does not handle remaining value\: string$#'
@@ -923,12 +785,6 @@ parameters:
 			identifier: encapsedStringPart.nonString
 			count: 1
 			path: app/Services/SecurityPresetService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:active\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/SecurityScanService.php
 
 		-
 			message: '#^Dead catch \- Exception is never thrown in the try block\.$#'
@@ -967,18 +823,6 @@ parameters:
 			path: app/Services/StatusPageService.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:active\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Services/StatusPageService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:recent\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/StatusPageService.php
-
-		-
 			message: '#^Method App\\Services\\StatusPageService\:\:createAutoIncident\(\) should return App\\Models\\StatusPageIncident but returns Illuminate\\Database\\Eloquent\\Model\.$#'
 			identifier: return.type
 			count: 1
@@ -1008,8 +852,3 @@ parameters:
 			count: 5
 			path: app/Services/VulnerabilityCheckService.php
 
-		-
-			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
-			identifier: identical.alwaysTrue
-			count: 1
-			path: app/Services/WordPressApiService.php

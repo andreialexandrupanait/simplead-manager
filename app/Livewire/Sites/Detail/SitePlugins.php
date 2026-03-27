@@ -9,20 +9,19 @@ use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
+use App\Models\SitePlugin;
+use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SitePlugins extends Component
 {
     use WithJobTracking, WithSiteAuthorization;
-
-    private static ?bool $hasSiteUsersTable = null;
 
     public Site $site;
 
@@ -121,10 +120,6 @@ class SitePlugins extends Component
     #[Computed]
     public function users()
     {
-        if (! (static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
-            return collect();
-        }
-
         $query = $this->site->siteUsers();
 
         if ($this->search) {
@@ -148,6 +143,7 @@ class SitePlugins extends Component
     #[Computed]
     public function pluginCounts()
     {
+        /** @var \stdClass $counts */
         $counts = $this->site->sitePlugins()
             ->selectRaw('
                 COUNT(*) as total,
@@ -168,6 +164,7 @@ class SitePlugins extends Component
     #[Computed]
     public function themeCounts()
     {
+        /** @var \stdClass $counts */
         $counts = $this->site->siteThemes()
             ->selectRaw('
                 COUNT(*) as total,
@@ -186,10 +183,6 @@ class SitePlugins extends Component
     #[Computed]
     public function userCount()
     {
-        if (! (static::$hasSiteUsersTable ??= Schema::hasTable('site_users'))) {
-            return 0;
-        }
-
         return $this->site->siteUsers()->count();
     }
 
@@ -245,6 +238,7 @@ class SitePlugins extends Component
 
     public function updateSinglePlugin(int $pluginId): array
     {
+        /** @var SitePlugin $plugin */
         $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
         $result = $this->performUpdate('plugin', $plugin->file, $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version);
 
@@ -264,6 +258,7 @@ class SitePlugins extends Component
 
     public function updateSingleTheme(int $themeId): array
     {
+        /** @var SiteTheme $theme */
         $theme = $this->site->siteThemes()->findOrFail($themeId);
         $result = $this->performUpdate('theme', $theme->slug, $theme->name, $theme->slug, $theme->version, $theme->update_version);
 
@@ -327,6 +322,7 @@ class SitePlugins extends Component
 
     public function confirmDeletePlugin(int $id): void
     {
+        /** @var SitePlugin $plugin */
         $plugin = $this->site->sitePlugins()->findOrFail($id);
         $this->confirmingDeleteId = $id;
         $this->confirmingDeleteName = $plugin->name;
@@ -367,6 +363,7 @@ class SitePlugins extends Component
 
     public function confirmDeleteTheme(int $id): void
     {
+        /** @var SiteTheme $theme */
         $theme = $this->site->siteThemes()->findOrFail($id);
         $this->confirmingDeleteThemeId = $id;
         $this->confirmingDeleteThemeName = $theme->name;
@@ -529,11 +526,7 @@ class SitePlugins extends Component
     {
         $config = $this->site->backupConfig;
         if ($config?->backup_before_updates) {
-            try {
-                CreateBackup::dispatchSync($this->site, 'database', 'pre_update', $config->storage_destination_id);
-            } catch (\Exception $e) {
-                Log::warning("Pre-update backup failed for site {$this->site->id}: {$e->getMessage()}");
-            }
+            CreateBackup::dispatch($this->site, 'database', 'pre_update', $config->storage_destination_id);
         }
     }
 
@@ -542,8 +535,10 @@ class SitePlugins extends Component
     public function toggleAutoUpdate(string $type, int $id): void
     {
         if ($type === 'plugin') {
+            /** @var SitePlugin $item */
             $item = $this->site->sitePlugins()->findOrFail($id);
         } else {
+            /** @var SiteTheme $item */
             $item = $this->site->siteThemes()->findOrFail($id);
         }
 
@@ -558,8 +553,10 @@ class SitePlugins extends Component
     public function showDetail(string $type, int $id): void
     {
         if ($type === 'plugin') {
+            /** @var SitePlugin $item */
             $item = $this->site->sitePlugins()->findOrFail($id);
         } else {
+            /** @var SiteTheme $item */
             $item = $this->site->siteThemes()->findOrFail($id);
         }
 

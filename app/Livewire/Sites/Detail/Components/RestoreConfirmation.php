@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Components;
 
+use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\RestoreBackup;
 use App\Models\Backup;
@@ -121,6 +122,7 @@ class RestoreConfirmation extends Component
      */
     protected function buildTree(array $files): array
     {
+        /** @var array<string, mixed> $tree */
         $tree = [];
 
         foreach ($files as $file) {
@@ -175,7 +177,7 @@ class RestoreConfirmation extends Component
         usort($dirs, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
         usort($files, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
 
-        return array_values(array_merge($dirs, $files));
+        return array_merge($dirs, $files);
     }
 
     public function restore(): void
@@ -218,9 +220,9 @@ class RestoreConfirmation extends Component
             return;
         }
 
-        $this->preRestoreStatus = $preBackup->status;
+        $this->preRestoreStatus = $preBackup->status->value;
 
-        if ($preBackup->status === 'completed') {
+        if ($preBackup->status === BackupStatus::Completed) {
             // Auto-dispatch restore now
             $this->dispatchRestore();
         }

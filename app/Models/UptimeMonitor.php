@@ -56,6 +56,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, UptimeIncident> $incidents
  * @property-read UptimeCheck|null $latestCheck
  * @property-read UptimeIncident|null $ongoingIncident
+ * @property-read int|null $up
+ * @property-read int|null $down
+ * @property-read int|null $degraded
+ * @property-read int|null $paused
+ * @property-read int|null $total
  */
 class UptimeMonitor extends Model
 {

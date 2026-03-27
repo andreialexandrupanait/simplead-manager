@@ -17,7 +17,7 @@ class DropboxDriver implements StorageDriver
 
     protected const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
 
-    protected const LARGE_FILE_THRESHOLD = 150 * 1024 * 1024; // 150MB
+    protected const LARGE_FILE_THRESHOLD = 8 * 1024 * 1024; // 8MB — match chunk size to avoid loading large files into memory
 
     public function __construct(
         protected StorageDestination $destination
@@ -62,6 +62,57 @@ class DropboxDriver implements StorageDriver
                 'Content-Type' => 'application/octet-stream',
             ],
             'body' => file_get_contents($localPath),
+        ]);
+    }
+
+    public function startUploadSession(string $data): string
+    {
+        $response = $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/start', [
+            'headers' => [
+                'Dropbox-API-Arg' => json_encode(['close' => false]),
+                'Content-Type' => 'application/octet-stream',
+            ],
+            'body' => $data,
+        ]);
+
+        return $response['session_id'];
+    }
+
+    public function appendToUploadSession(string $sessionId, int $offset, string $data): void
+    {
+        $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/append_v2', [
+            'headers' => [
+                'Dropbox-API-Arg' => json_encode([
+                    'cursor' => [
+                        'session_id' => $sessionId,
+                        'offset' => $offset,
+                    ],
+                    'close' => false,
+                ]),
+                'Content-Type' => 'application/octet-stream',
+            ],
+            'body' => $data,
+        ]);
+    }
+
+    public function finishUploadSession(string $sessionId, int $offset, string $data, string $remotePath): void
+    {
+        $this->apiRequest('https://content.dropboxapi.com/2/files/upload_session/finish', [
+            'headers' => [
+                'Dropbox-API-Arg' => json_encode([
+                    'cursor' => [
+                        'session_id' => $sessionId,
+                        'offset' => $offset,
+                    ],
+                    'commit' => [
+                        'path' => $remotePath,
+                        'mode' => 'overwrite',
+                        'autorename' => false,
+                    ],
+                ]),
+                'Content-Type' => 'application/octet-stream',
+            ],
+            'body' => $data,
         ]);
     }
 

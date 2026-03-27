@@ -13,7 +13,7 @@ class FormatHelper
         }
 
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = floor(log($bytes, 1024));
+        $i = (int) floor(log($bytes, 1024));
 
         return round($bytes / pow(1024, $i), $precision).' '.$units[$i];
     }

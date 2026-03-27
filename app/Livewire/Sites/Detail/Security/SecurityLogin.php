@@ -160,6 +160,7 @@ class SecurityLogin extends Component
             $now = now();
 
             foreach ($settings as $setting) {
+                /** @var SecuritySetting $setting */
                 $key = $setting->setting_key;
                 $active = ! empty($loginState[$key]['enabled']);
 

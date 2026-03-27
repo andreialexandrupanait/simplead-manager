@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageSite> $statusPageSites
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncident> $incidents
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\StatusPageIncident> $activeIncidents
+ * @property-read string|null $overall_status
  */
 class StatusPage extends Model
 {
@@ -100,12 +101,12 @@ class StatusPage extends Model
                 return 'operational';
             }
 
-            $hasOutage = $sites->contains(fn ($sps) => $sps->site && ! $sps->site->is_up);
+            $hasOutage = $sites->contains(fn (StatusPageSite $sps) => $sps->site && ! $sps->site->is_up);
             if ($hasOutage) {
                 return 'outage';
             }
 
-            $hasDegraded = $sites->contains(fn ($sps) => $sps->site?->uptimeMonitor?->current_state === 'degraded');
+            $hasDegraded = $sites->contains(fn (StatusPageSite $sps) => $sps->site?->uptimeMonitor?->current_state === 'degraded');
             if ($hasDegraded) {
                 return 'degraded';
             }

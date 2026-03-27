@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\MonitorState;
 use App\Events\SiteRecovered;
 use App\Events\SiteWentDown;
 use App\Models\Site;
@@ -178,6 +179,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     protected function saveCheck(array $result): UptimeCheck
     {
+        /** @var UptimeCheck */
         return $this->monitor->checks()->create([
             'is_up' => $result['is_up'],
             'response_time' => $result['response_time'],
@@ -194,14 +196,14 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
         if ($result['is_up']) {
             $this->monitor->consecutive_failures = 0;
-            $this->monitor->current_state = 'up';
+            $this->monitor->current_state = MonitorState::Up;
         } else {
             $this->monitor->consecutive_failures++;
 
             if ($this->monitor->consecutive_failures >= $this->monitor->alert_after_failures) {
-                $this->monitor->current_state = 'down';
+                $this->monitor->current_state = MonitorState::Down;
             } else {
-                $this->monitor->current_state = 'degraded';
+                $this->monitor->current_state = MonitorState::Degraded;
             }
         }
 

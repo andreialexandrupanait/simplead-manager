@@ -693,6 +693,7 @@ class SiteReports extends Component
 
     public function openScheduleModal(): void
     {
+        /** @var ReportSchedule|null $schedule */
         $schedule = $this->site->reportSchedules()->first();
 
         if ($schedule) {
@@ -812,6 +813,7 @@ class SiteReports extends Component
         $reports = $this->site->reports()->whereIn('id', $ids)->get();
 
         foreach ($reports as $report) {
+            /** @var \App\Models\Report $report */
             if ($report->file_path) {
                 Storage::disk('local')->delete($report->file_path);
             }
@@ -856,6 +858,7 @@ class SiteReports extends Component
 
     public function deleteReport(int $reportId): void
     {
+        /** @var \App\Models\Report $report */
         $report = $this->site->reports()->findOrFail($reportId);
 
         if ($report->file_path) {

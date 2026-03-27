@@ -97,6 +97,16 @@ class LocalDriver implements StorageDriver
         return $files;
     }
 
+    public function listFolders(string $absolutePath = ''): array
+    {
+        return [];
+    }
+
+    public function uploadToAbsolutePath(string $localPath, string $absoluteRemotePath): void
+    {
+        $this->upload($localPath, $absoluteRemotePath);
+    }
+
     public function temporaryUrl(string $remotePath, int $expiresInMinutes = 60): ?string
     {
         return null;

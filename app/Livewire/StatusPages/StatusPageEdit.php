@@ -7,6 +7,8 @@ namespace App\Livewire\StatusPages;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\StatusPage;
+use App\Models\StatusPageIncident;
+use App\Models\StatusPageSite;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -194,6 +196,7 @@ class StatusPageEdit extends Component
             return;
         }
 
+        /** @var StatusPageIncident $incident */
         $incident = $this->statusPage->incidents()->create([
             'site_id' => $this->incidentSiteId ?: null,
             'title' => $this->incidentTitle,
@@ -218,6 +221,7 @@ class StatusPageEdit extends Component
         if (! $this->statusPage) {
             return;
         }
+        /** @var StatusPageIncident $incident */
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => $status,
@@ -232,6 +236,7 @@ class StatusPageEdit extends Component
         if (! $this->statusPage) {
             return;
         }
+        /** @var StatusPageIncident $incident */
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
         $incident->update([
             'status' => 'resolved',
@@ -257,6 +262,7 @@ class StatusPageEdit extends Component
         if (! $this->statusPage) {
             return;
         }
+        /** @var StatusPageIncident $incident */
         $incident = $this->statusPage->incidents()->findOrFail($incidentId);
 
         $incident->update([
@@ -290,14 +296,17 @@ class StatusPageEdit extends Component
             return;
         }
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, StatusPageSite> $sites */
         $sites = $this->statusPage->statusPageSites()->orderBy('sort_order')->get();
-        $index = $sites->search(fn ($s) => $s->site_id === $siteId);
+        $index = $sites->search(fn (StatusPageSite $s) => $s->site_id === $siteId);
 
         if ($index === false || $index === 0) {
             return;
         }
 
+        /** @var StatusPageSite $current */
         $current = $sites[$index];
+        /** @var StatusPageSite $previous */
         $previous = $sites[$index - 1];
 
         $tempOrder = $current->sort_order;
@@ -313,14 +322,17 @@ class StatusPageEdit extends Component
             return;
         }
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, StatusPageSite> $sites */
         $sites = $this->statusPage->statusPageSites()->orderBy('sort_order')->get();
-        $index = $sites->search(fn ($s) => $s->site_id === $siteId);
+        $index = $sites->search(fn (StatusPageSite $s) => $s->site_id === $siteId);
 
         if ($index === false || $index >= $sites->count() - 1) {
             return;
         }
 
+        /** @var StatusPageSite $current */
         $current = $sites[$index];
+        /** @var StatusPageSite $next */
         $next = $sites[$index + 1];
 
         $tempOrder = $current->sort_order;

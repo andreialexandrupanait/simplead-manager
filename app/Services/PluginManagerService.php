@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Site;
+use App\Models\SitePlugin;
+use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -260,6 +262,7 @@ class PluginManagerService
         $results = [];
 
         foreach ($plugins as $plugin) {
+            /** @var SitePlugin $plugin */
             $updateResult = $apiResults[$plugin->file] ?? [];
             $wasSuccess = $updateResult['success'] ?? false;
 
@@ -335,6 +338,7 @@ class PluginManagerService
         $results = [];
 
         foreach ($themes as $theme) {
+            /** @var SiteTheme $theme */
             $updateResult = $apiResults[$theme->slug] ?? [];
             $wasSuccess = $updateResult['success'] ?? false;
 

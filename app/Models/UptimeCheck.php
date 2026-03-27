@@ -20,6 +20,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $ssl_expires_at
  * @property \Illuminate\Support\Carbon|null $checked_at
  * @property-read UptimeMonitor|null $monitor
+ * @property-read int|null $total_24h
+ * @property-read int|null $total_7d
+ * @property-read int|null $total_30d
+ * @property-read int|null $total_365d
+ * @property-read int|null $up_24h
+ * @property-read int|null $up_7d
+ * @property-read int|null $up_30d
+ * @property-read int|null $up_365d
  */
 class UptimeCheck extends Model
 {

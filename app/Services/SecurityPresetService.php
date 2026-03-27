@@ -31,7 +31,7 @@ class SecurityPresetService
         $siteSettings = SecuritySetting::where('site_id', $site->id)->get();
 
         foreach ($siteSettings as $setting) {
-            $settings[$setting->category][$setting->setting_key] = [
+            $settings[$setting->category->value][$setting->setting_key] = [
                 'value' => $setting->setting_value,
                 'enabled' => $setting->is_enabled,
             ];
@@ -50,7 +50,7 @@ class SecurityPresetService
         $diff = [];
         $currentSettings = SecuritySetting::where('site_id', $site->id)
             ->get()
-            ->keyBy(fn ($s) => "{$s->category}.{$s->setting_key}");
+            ->keyBy(fn (SecuritySetting $s) => "{$s->category->value}.{$s->setting_key}");
 
         foreach ($preset->settings as $category => $categorySettings) {
             if (! is_array($categorySettings)) {

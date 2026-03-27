@@ -246,7 +246,7 @@
             <div class="mt-6 border-t border-gray-100 pt-4">
                 <h4 class="text-sm font-medium text-gray-700 mb-3">{{ __('Changelog') }}</h4>
                 <div class="space-y-3 max-h-64 overflow-y-auto">
-                    @foreach(\App\Livewire\Settings\GeneralSettings::CONNECTOR_CHANGELOG as $version => $entry)
+                    @foreach(config('connector.changelog') as $version => $entry)
                         @if($version === 'unreleased')
                             @if(!empty($entry['changes']))
                                 <div class="opacity-60">

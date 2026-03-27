@@ -170,7 +170,7 @@ class StorageDestinationForm extends Component
             $this->browserFolders = [];
         } catch (\Throwable $e) {
             $message = $e->getMessage();
-            if ($e instanceof DecryptException || str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
+            if (str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
                 $this->browserError = 'Dropbox credentials could not be decrypted. Please reconnect Dropbox.';
             } elseif (str_contains($message, '401') || str_contains($message, 'expired')) {
                 $this->browserError = 'Dropbox token expired. Please reconnect Dropbox.';

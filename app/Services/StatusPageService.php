@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Site;
 use App\Models\StatusPage;
 use App\Models\StatusPageIncident;
+use App\Models\StatusPageSite;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
@@ -25,6 +26,7 @@ class StatusPageService
             return $existing;
         }
 
+        /** @var StatusPageIncident $incident */
         $incident = $statusPage->incidents()->create([
             'site_id' => $site->id,
             'title' => "{$site->name} is experiencing issues",
@@ -52,6 +54,7 @@ class StatusPageService
             ->get();
 
         foreach ($incidents as $incident) {
+            /** @var StatusPageIncident $incident */
             $incident->update([
                 'status' => 'resolved',
                 'resolved_at' => now(),
@@ -71,7 +74,7 @@ class StatusPageService
                 ->where('is_visible', true)
                 ->with(['site.uptimeMonitor'])
                 ->get()
-                ->map(fn ($sps) => [
+                ->map(fn (StatusPageSite $sps) => [
                     'name' => $sps->name,
                     'status' => $sps->current_status,
                     'uptime_percentage' => $sps->site?->uptime_percentage,

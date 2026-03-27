@@ -325,6 +325,7 @@ class SiteBackups extends Component
 
     public function toggleLock(int $backupId): void
     {
+        /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
         $backup->update([
             'is_locked' => ! $backup->is_locked,
@@ -334,6 +335,7 @@ class SiteBackups extends Component
 
     public function deleteBackup(int $backupId): void
     {
+        /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
 
         if ($backup->is_locked) {
@@ -364,12 +366,14 @@ class SiteBackups extends Component
 
     public function updateNotes(int $backupId, string $notes): void
     {
+        /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
         $backup->update(['notes' => $notes]);
     }
 
     public function downloadBackup(int $backupId): mixed
     {
+        /** @var Backup $backup */
         $backup = $this->site->backups()->with('storageDestination')->findOrFail($backupId);
 
         if (! $backup->storageDestination || ! $backup->file_path) {

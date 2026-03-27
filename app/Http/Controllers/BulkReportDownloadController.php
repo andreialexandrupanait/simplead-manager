@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Report;
 use App\Models\Site;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,7 @@ class BulkReportDownloadController extends Controller
         abort_unless($zip->open($zipPath, ZipArchive::CREATE) === true, 500);
 
         foreach ($reports as $report) {
+            /** @var Report $report */
             $filePath = Storage::disk('local')->path($report->file_path);
             if (file_exists($filePath)) {
                 $zip->addFile($filePath, $report->file_name ?? 'report-'.$report->id.'.pdf');

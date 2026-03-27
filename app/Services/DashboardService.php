@@ -111,17 +111,8 @@ class DashboardService
             ];
         }
 
-        // Sort: critical first, then warning, then by timestamp desc
-        usort($alerts, function ($a, $b) {
-            $severityOrder = ['critical' => 0, 'warning' => 1, 'info' => 2];
-            $aSev = $severityOrder[$a['severity']] ?? 2;
-            $bSev = $severityOrder[$b['severity']] ?? 2;
-            if ($aSev !== $bSev) {
-                return $aSev - $bSev;
-            }
-
-            return ($b['timestamp'] ?? now()) <=> ($a['timestamp'] ?? now());
-        });
+        // Sort by timestamp desc (all current alert types have the same severity)
+        usort($alerts, fn ($a, $b) => ($b['timestamp'] ?? now()) <=> ($a['timestamp'] ?? now()));
 
         return $alerts;
     }
@@ -158,7 +149,7 @@ class DashboardService
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('domain', 'ilike', "%{$search}%");
+                    ->orWhere('url', 'ilike', "%{$search}%");
             });
         }
 

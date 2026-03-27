@@ -129,6 +129,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
         }
 
         // Get previous test to compare
+        /** @var PerformanceTest|null $previousTest */
         $previousTest = $this->monitor->tests()
             ->where('device', 'mobile')
             ->where('status', 'completed')
@@ -251,6 +252,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
         ]);
 
         // Scope to primary page (null page_id OR page.is_primary = true)
+        /** @var PerformanceTest|null $latestMobile */
         $latestMobile = $this->monitor->tests()
             ->where('device', 'mobile')
             ->where('status', 'completed')
@@ -261,6 +263,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
             ->latest('tested_at')
             ->first();
 
+        /** @var PerformanceTest|null $latestDesktop */
         $latestDesktop = $this->monitor->tests()
             ->where('device', 'desktop')
             ->where('status', 'completed')

@@ -15,7 +15,6 @@ use App\Models\ReportTemplate;
 use App\Models\Site;
 use App\Models\SiteStatus;
 use App\Services\DashboardService;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -70,10 +69,6 @@ class GlobalDashboard extends Component
     #[Computed]
     public function siteStatuses()
     {
-        if (! Schema::hasTable('site_statuses')) {
-            return collect();
-        }
-
         return SiteStatus::withCount('sites')->orderBy('sort_order')->get();
     }
 
@@ -90,14 +85,14 @@ class GlobalDashboard extends Component
 
     public function updatedStatusFilter(): void
     {
-        $this->statusFilter = $this->statusFilter === '' ? null : (int) $this->statusFilter;
+        $this->statusFilter = empty($this->statusFilter) ? null : (int) $this->statusFilter;
         $this->resetPage();
         unset($this->sites);
     }
 
     public function updatedClientFilter(): void
     {
-        $this->clientFilter = $this->clientFilter === '' ? null : (int) $this->clientFilter;
+        $this->clientFilter = empty($this->clientFilter) ? null : (int) $this->clientFilter;
         $this->resetPage();
         unset($this->sites);
     }
@@ -158,10 +153,6 @@ class GlobalDashboard extends Component
 
     public function setSiteStatus(int $siteId, ?int $statusId): void
     {
-        if (! Schema::hasTable('site_statuses')) {
-            return;
-        }
-
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         $site->update(['site_status_id' => $statusId]);
@@ -174,7 +165,6 @@ class GlobalDashboard extends Component
             return;
         }
 
-        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         CreateBackup::dispatch($site, 'full', 'manual');
@@ -187,6 +177,7 @@ class GlobalDashboard extends Component
             return;
         }
 
+        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         if ($site->uptimeMonitor) {
@@ -203,7 +194,6 @@ class GlobalDashboard extends Component
             return;
         }
 
-        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         SyncWordPressSite::dispatch($site);
@@ -300,7 +290,7 @@ class GlobalDashboard extends Component
     {
         abort_unless(auth()->user()->canManageSites(), 403);
 
-        if (! $this->reordering || ! Schema::hasColumn('sites', 'sort_order')) {
+        if (! $this->reordering) {
             return;
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
+use App\Models\UptimeCheck;
 use App\Models\UptimeMonitor;
 use Livewire\Component;
 
@@ -42,7 +43,7 @@ class ResponseTimeChart extends Component
             default => 'H:i',
         };
 
-        $labels = $checks->map(fn ($c) => $c->checked_at->format($format))->toArray();
+        $labels = $checks->map(fn (UptimeCheck $c) => $c->checked_at->format($format))->toArray();
         $data = $checks->pluck('response_time')->toArray();
 
         return [
@@ -66,6 +67,7 @@ class ResponseTimeChart extends Component
             ->where('is_up', true)
             ->whereNotNull('response_time');
 
+        /** @var \stdClass $stats */
         $stats = (clone $query)->selectRaw('AVG(response_time) as avg_rt, MIN(response_time) as min_rt, MAX(response_time) as max_rt, COUNT(*) as total')->first();
 
         $avg = (int) round($stats->avg_rt ?? 0);

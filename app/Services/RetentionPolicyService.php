@@ -65,7 +65,7 @@ class RetentionPolicyService
             'min' => 14,
             'max' => 365,
             'tables' => [
-                ['table' => 'notification_logs', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Notification logs', 'condition' => null, 'hasTable' => true],
+                ['table' => 'notification_logs', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Notification logs', 'condition' => null, 'hasTable' => false],
             ],
         ],
         'system' => [
@@ -77,7 +77,7 @@ class RetentionPolicyService
                 ['table' => 'database_health_checks', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Database health checks', 'condition' => null, 'hasTable' => false],
                 ['table' => 'email_health_checks', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Email health checks', 'condition' => null, 'hasTable' => false],
                 ['table' => 'database_cleanups', 'column' => 'cleaned_at', 'col_type' => 'timestamp', 'label' => 'Database cleanups', 'condition' => null, 'hasTable' => false],
-                ['table' => 'cloudflare_cache_purges', 'column' => 'purged_at', 'col_type' => 'timestamp', 'label' => 'Cloudflare cache purges', 'condition' => null, 'hasTable' => true],
+                ['table' => 'cloudflare_cache_purges', 'column' => 'purged_at', 'col_type' => 'timestamp', 'label' => 'Cloudflare cache purges', 'condition' => null, 'hasTable' => false],
                 ['table' => 'update_logs', 'column' => 'performed_at', 'col_type' => 'timestamp', 'label' => 'Update logs', 'condition' => null, 'hasTable' => false],
                 ['table' => 'safe_updates', 'column' => 'completed_at', 'col_type' => 'timestamp', 'label' => 'Safe updates', 'condition' => ['status', 'in', ['completed', 'failed']], 'hasTable' => false],
             ],
@@ -88,9 +88,9 @@ class RetentionPolicyService
             'min' => 30,
             'max' => 365,
             'tables' => [
-                ['table' => 'security_activity_logs', 'column' => 'occurred_at', 'col_type' => 'timestamp', 'label' => 'Security activity logs', 'condition' => null, 'hasTable' => true],
-                ['table' => 'security_commands', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security commands (completed)', 'condition' => ['status', 'in', ['completed', 'failed', 'cancelled']], 'hasTable' => true],
-                ['table' => 'security_banned_ips', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security banned IPs', 'condition' => null, 'hasTable' => true],
+                ['table' => 'security_activity_logs', 'column' => 'occurred_at', 'col_type' => 'timestamp', 'label' => 'Security activity logs', 'condition' => null, 'hasTable' => false],
+                ['table' => 'security_commands', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security commands (completed)', 'condition' => ['status', 'in', ['completed', 'failed', 'cancelled']], 'hasTable' => false],
+                ['table' => 'security_banned_ips', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security banned IPs', 'condition' => null, 'hasTable' => false],
             ],
         ],
         'failed_jobs' => [

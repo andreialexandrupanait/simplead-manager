@@ -35,6 +35,7 @@ class BulkSettingsCopyService
         $pushed = 0;
         foreach ($targets as $target) {
             foreach ($settings as $setting) {
+                /** @var SecuritySetting $setting */
                 $category = $setting->category->value ?? $setting->category;
                 SecuritySetting::updateOrCreate(
                     ['site_id' => $target->id, 'category' => $category, 'setting_key' => $setting->setting_key],
@@ -61,7 +62,7 @@ class BulkSettingsCopyService
         $settings = $source->securitySettings()
             ->whereIn('category', $categories)
             ->get()
-            ->groupBy(fn ($s) => $s->category->value ?? $s->category);
+            ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category);
 
         if ($settings->isEmpty()) {
             return ['total' => 0, 'pushed' => 0];
@@ -71,6 +72,7 @@ class BulkSettingsCopyService
         foreach ($targets as $target) {
             foreach ($settings as $category => $categorySettings) {
                 foreach ($categorySettings as $s) {
+                    /** @var SecuritySetting $s */
                     $this->tweaksService->applySetting($target, $category, $s->setting_key, $s->setting_value, $s->is_enabled);
                 }
             }

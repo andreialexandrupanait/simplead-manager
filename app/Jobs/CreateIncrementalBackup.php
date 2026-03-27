@@ -75,7 +75,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
                 throw new BackupException('No storage destination available.', site: $this->site);
             }
 
-            $manifestService = new ManifestService;
+            $manifestService = app(ManifestService::class);
 
             // Find parent backup with manifest
             $parentBackup = $manifestService->findLatestManifestBackup($this->site->id);
@@ -381,7 +381,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         }
 
         $destination->increment('used_bytes', $fileSize);
-        (new RetentionService)->apply($this->site, $destination);
+        app(RetentionService::class)->apply($this->site, $destination);
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Incremental backup complete');

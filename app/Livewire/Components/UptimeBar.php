@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
+use App\Models\UptimeCheck;
 use App\Models\UptimeMonitor;
 use Livewire\Component;
 
@@ -23,6 +24,7 @@ class UptimeBar extends Component
         $startOfPeriod = now()->subHours(24);
 
         foreach ($checks as $check) {
+            /** @var UptimeCheck $check */
             $minutesSinceStart = $startOfPeriod->diffInMinutes($check->checked_at);
             $index = min(95, intdiv((int) $minutesSinceStart, 15));
 

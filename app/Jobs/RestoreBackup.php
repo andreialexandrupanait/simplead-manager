@@ -146,7 +146,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function restoreFromChain(): void
     {
-        $manifestService = new ManifestService;
+        $manifestService = app(ManifestService::class);
         $chain = $manifestService->getChain($this->backup);
         $chainLength = count($chain);
 
@@ -385,7 +385,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $message = 'Selective restore completed ('.count($this->selectedFiles).' files restored)';
         }
         if ($this->backup->isIncremental()) {
-            $manifestService = new ManifestService;
+            $manifestService = app(ManifestService::class);
             $chainLength = count($manifestService->getChain($this->backup));
             $message = "Chain restore completed ({$chainLength} backups merged)";
         }

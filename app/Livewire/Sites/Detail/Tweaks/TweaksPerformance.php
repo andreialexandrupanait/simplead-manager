@@ -181,6 +181,7 @@ class TweaksPerformance extends Component
             $now = now();
 
             foreach ($settings as $setting) {
+                /** @var \App\Models\SecuritySetting $setting */
                 $key = $setting->setting_key;
                 $active = ! empty($perfVerified[$key]['active'])
                     || (empty($perfVerified) && ! empty($perfSettings[$key]));

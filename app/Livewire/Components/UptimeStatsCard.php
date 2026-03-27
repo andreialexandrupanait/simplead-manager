@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
+use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
 use Livewire\Component;
 
@@ -33,7 +34,7 @@ class UptimeStatsCard extends Component
 
         $incidentCount = $incidents->count();
 
-        $totalDowntimeMinutes = $incidents->sum(function ($incident) {
+        $totalDowntimeMinutes = $incidents->sum(function (UptimeIncident $incident) {
             $end = $incident->resolved_at ?? now();
 
             return $incident->started_at->diffInMinutes($end);

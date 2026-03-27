@@ -117,7 +117,7 @@ class ModuleConfigService
         foreach (self::MODULE_MAP as $moduleKey => $config) {
             $mod = $planModules->get($moduleKey);
             $enabled = $mod->is_enabled ?? false;
-            $interval = $mod->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey] ?? null;
+            $interval = $mod->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey];
 
             $this->configureModule($site, $moduleKey, $enabled, $interval);
         }
@@ -143,10 +143,6 @@ class ModuleConfigService
                 $this->createModuleRecord($site, $module, $enabled);
             }
 
-            return;
-        }
-
-        if ($config['enabled_column'] === null) {
             return;
         }
 
@@ -195,7 +191,7 @@ class ModuleConfigService
             $config[$moduleKey] = [
                 'exists' => $record !== null,
                 'enabled' => $this->resolveEnabled($record, $map),
-                'interval' => $record && $map['interval_column'] ? $record->{$map['interval_column']} : (self::DEFAULT_INTERVALS[$moduleKey] ?? null),
+                'interval' => $record && $map['interval_column'] ? $record->{$map['interval_column']} : self::DEFAULT_INTERVALS[$moduleKey],
                 'requires_connection' => in_array($moduleKey, self::CONNECTION_REQUIRED),
                 'is_connected' => $record !== null && ! in_array($moduleKey, self::CONNECTION_REQUIRED),
             ];

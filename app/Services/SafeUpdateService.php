@@ -56,6 +56,7 @@ class SafeUpdateService
                 'plugin' => $api->updatePlugins([$safeUpdate->slug]),
                 'theme' => $api->updateThemes([$safeUpdate->slug]),
                 'core' => $api->updateCore(),
+                default => throw new \InvalidArgumentException("Unknown update type: {$safeUpdate->type}"),
             };
 
             // Step 3: Create rollback point

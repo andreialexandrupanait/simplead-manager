@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Sites\Detail\Security;
 
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
 use Livewire\Attributes\Computed;
@@ -132,6 +133,7 @@ class SecurityHardening extends Component
             $now = now();
 
             foreach ($settings as $setting) {
+                /** @var SecuritySetting $setting */
                 $key = $setting->setting_key;
                 $cat = $setting->category->value ?? $setting->category;
 

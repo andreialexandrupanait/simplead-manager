@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \App\Models\Site|null $site
  * @property-read \App\Models\CloudflareConnection|null $cloudflareConnection
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CloudflareCachePurge> $cachePurges
+ * @property-read string|null $plan_label
  */
 class SiteCloudflare extends Model
 {

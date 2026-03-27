@@ -103,6 +103,7 @@ class TweaksSiteControl extends Component
             $now = now();
 
             foreach ($settings as $setting) {
+                /** @var \App\Models\SecuritySetting $setting */
                 $key = $setting->setting_key;
                 $active = ! empty($scVerified[$key]['active'])
                     || (empty($scVerified) && ! empty($scSettings[$key]));

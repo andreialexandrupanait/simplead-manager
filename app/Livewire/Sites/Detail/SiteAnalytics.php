@@ -276,9 +276,7 @@ class SiteAnalytics extends Component
                 $topPages = $data['top_pages'] ?? [];
 
                 // Build annotations from update logs
-                if ($cache->start_date && $cache->end_date) {
-                    $annotations = $this->getAnnotations($cache->start_date, $cache->end_date, $usersOverTime);
-                }
+                $annotations = $this->getAnnotations($cache->start_date, $cache->end_date, $usersOverTime);
             }
         }
 

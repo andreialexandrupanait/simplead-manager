@@ -13,9 +13,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Locked;
+use Illuminate\Http\Response;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use PragmaRX\Google2FA\Google2FA;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
 
@@ -239,7 +241,7 @@ class ProfileSettings extends Component
         $this->showingRecoveryCodes = true;
     }
 
-    public function exportData(): StreamedResponse
+    public function exportData(): StreamedResponse|BinaryFileResponse|Response
     {
         $user = Auth::user();
         $zipPath = storage_path('app/temp/data-export-'.uniqid().'.zip');
@@ -264,7 +266,7 @@ class ProfileSettings extends Component
         // Sites
         $sites = $user->sites()->select('id', 'name', 'url', 'status', 'created_at')->get();
         $zip->addFromString('sites.json', json_encode(
-            $sites->map(fn ($s) => [
+            $sites->map(fn (\App\Models\Site $s) => [
                 'name' => $s->name,
                 'url' => $s->url,
                 'status' => $s->status,
@@ -279,7 +281,7 @@ class ProfileSettings extends Component
             ->select('id', 'site_id', 'title', 'period_start', 'period_end', 'trigger', 'status', 'created_at')
             ->get();
         $zip->addFromString('reports.json', json_encode(
-            $reports->map(fn ($r) => [
+            $reports->map(fn (\App\Models\Report $r) => [
                 'title' => $r->title,
                 'period_start' => $r->period_start->toDateString(),
                 'period_end' => $r->period_end->toDateString(),

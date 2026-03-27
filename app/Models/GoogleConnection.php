@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $last_used_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read int|null $sites_using
  * @property-read \Illuminate\Database\Eloquent\Collection<int, AnalyticsConnection> $analyticsConnections
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SearchConsoleConnection> $searchConsoleConnections
  */

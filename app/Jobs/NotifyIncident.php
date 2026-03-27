@@ -64,7 +64,7 @@ class NotifyIncident implements ShouldQueue
 
         // Use monitor-specific contacts if defined
         $channelIds = null;
-        if ($monitor->alert_contacts && count($monitor->alert_contacts) > 0) {
+        if ($monitor->alert_contacts) {
             $channelIds = $monitor->alert_contacts;
         }
 
