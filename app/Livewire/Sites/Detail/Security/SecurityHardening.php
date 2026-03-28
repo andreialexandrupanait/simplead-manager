@@ -58,13 +58,13 @@ class SecurityHardening extends Component
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['hardening'] as $key) {
             /** @var \App\Models\SecuritySetting|null $setting */
             $setting = $settings->get($key);
-            $this->hardeningToggles[$key] = $setting?->is_enabled ?? false;
+            $this->hardeningToggles[$key] = $setting !== null && $setting->is_enabled;
             $this->settingStatuses[$key] = $setting?->status;
         }
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['htaccess'] as $key) {
             /** @var \App\Models\SecuritySetting|null $setting */
             $setting = $settings->get($key);
-            $this->htaccessToggles[$key] = $setting?->is_enabled ?? false;
+            $this->htaccessToggles[$key] = $setting !== null && $setting->is_enabled;
             $this->settingStatuses[$key] = $setting?->status;
         }
     }
