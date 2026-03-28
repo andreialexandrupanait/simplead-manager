@@ -248,6 +248,84 @@ class SiteAnalytics extends Component
         return GoogleConnection::where('is_active', true)->first();
     }
 
+    #[Computed]
+    public function trendAnalysis(): ?array
+    {
+        $current = AnalyticsCache::where('site_id', $this->site->id)
+            ->where('date_range', '28d')
+            ->latest('fetched_at')
+            ->first();
+
+        if (! $current || empty($current->data['overview'])) {
+            return null;
+        }
+
+        $curOverview = $current->data['overview'];
+
+        // Get previous period for comparison
+        $previous = AnalyticsCache::where('site_id', $this->site->id)
+            ->where('date_range', '28d')
+            ->where('fetched_at', '<', $current->fetched_at->subDays(7))
+            ->latest('fetched_at')
+            ->first();
+
+        $prevOverview = $previous?->data['overview'] ?? null;
+
+        $metrics = ['pageviews', 'total_users', 'sessions', 'bounce_rate'];
+        $trends = [];
+
+        foreach ($metrics as $metric) {
+            $currentVal = $curOverview[$metric] ?? 0;
+            $previousVal = $prevOverview[$metric] ?? null;
+            $change = null;
+            $changePercent = null;
+
+            if ($previousVal !== null && $previousVal != 0) {
+                $change = $currentVal - $previousVal;
+                $changePercent = round(($change / $previousVal) * 100, 1);
+            }
+
+            $trends[$metric] = [
+                'current' => $currentVal,
+                'previous' => $previousVal,
+                'change' => $change,
+                'change_percent' => $changePercent,
+            ];
+        }
+
+        // Anomaly detection on daily users (Z-score > 2)
+        $dailyUsers = collect($current->data['users_over_time'] ?? [])
+            ->pluck('users')
+            ->map(fn ($v) => (float) $v)
+            ->values();
+
+        $anomalies = [];
+        if ($dailyUsers->count() >= 7) {
+            $mean = $dailyUsers->avg();
+            $stdDev = sqrt($dailyUsers->map(fn ($v) => pow($v - $mean, 2))->avg());
+
+            if ($stdDev > 0) {
+                $dates = collect($current->data['users_over_time'] ?? [])->pluck('date')->values();
+                foreach ($dailyUsers as $i => $value) {
+                    $zScore = abs(($value - $mean) / $stdDev);
+                    if ($zScore > 2) {
+                        $anomalies[] = [
+                            'date' => $dates[$i] ?? null,
+                            'value' => (int) $value,
+                            'z_score' => round($zScore, 2),
+                            'direction' => $value > $mean ? 'spike' : 'drop',
+                        ];
+                    }
+                }
+            }
+        }
+
+        return [
+            'trends' => $trends,
+            'anomalies' => $anomalies,
+        ];
+    }
+
     public function render()
     {
         $connection = $this->site->analyticsConnection;

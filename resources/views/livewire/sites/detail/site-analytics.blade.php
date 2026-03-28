@@ -71,6 +71,43 @@
                 </p>
             @endif
 
+            {{-- Trend Analysis & Anomalies --}}
+            @if($this->trendAnalysis)
+                @php $ta = $this->trendAnalysis; @endphp
+
+                {{-- Anomaly Alerts --}}
+                @if(!empty($ta['anomalies']))
+                    <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        <h4 class="text-sm font-semibold text-amber-800 mb-1">Traffic Anomalies Detected</h4>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($ta['anomalies'] as $anomaly)
+                                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $anomaly['direction'] === 'spike' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $anomaly['direction'] === 'spike' ? '+' : '' }}{{ $anomaly['value'] }} users on {{ \Carbon\Carbon::parse($anomaly['date'])->format('M j') }}
+                                    ({{ $anomaly['z_score'] }}&sigma;)
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Week-over-Week Trends --}}
+                @if(!empty($ta['trends']))
+                    <div class="mb-4 grid grid-cols-4 gap-3">
+                        @foreach(['pageviews' => 'Pageviews', 'total_users' => 'Users', 'sessions' => 'Sessions', 'bounce_rate' => 'Bounce Rate'] as $key => $label)
+                            @php $t = $ta['trends'][$key] ?? null; @endphp
+                            @if($t && $t['change_percent'] !== null)
+                                <div class="rounded-lg border border-gray-200 px-3 py-2">
+                                    <p class="text-xs text-gray-500">{{ $label }} vs prev week</p>
+                                    <p class="text-sm font-semibold {{ ($key === 'bounce_rate' ? $t['change_percent'] < 0 : $t['change_percent'] > 0) ? 'text-green-600' : ($t['change_percent'] == 0 ? 'text-gray-500' : 'text-red-600') }}">
+                                        {{ $t['change_percent'] > 0 ? '+' : '' }}{{ $t['change_percent'] }}%
+                                    </p>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+            @endif
+
             @if($overview)
             {{-- Overview metric cards --}}
             <div class="grid grid-cols-3 gap-4">
