@@ -58,6 +58,7 @@ class PerformanceMonitor extends Model
         'previous_desktop_score',
         'last_tested_at',
         'next_test_at',
+        'competitor_urls',
     ];
 
     protected $casts = [
@@ -66,6 +67,7 @@ class PerformanceMonitor extends Model
         'alert_on_poor_vitals' => 'boolean',
         'interval_minutes' => 'integer',
         'budgets' => 'array',
+        'competitor_urls' => 'array',
         'last_tested_at' => 'datetime',
         'next_test_at' => 'datetime',
     ];

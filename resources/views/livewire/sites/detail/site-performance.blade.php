@@ -272,6 +272,60 @@
             @endif
         </x-ui.card>
 
+        {{-- Competitor Benchmarking --}}
+        @if($this->monitor)
+            <x-ui.card class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Competitor Benchmarking</h3>
+
+                @if(!empty($this->competitorComparison))
+                    <div class="overflow-x-auto mb-4">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="py-2 text-left font-medium text-gray-500">Site</th>
+                                    <th class="py-2 text-center font-medium text-gray-500">Mobile</th>
+                                    <th class="py-2 text-center font-medium text-gray-500">Desktop</th>
+                                    <th class="py-2 text-right font-medium text-gray-500"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-gray-100 bg-purple-50">
+                                    <td class="py-2 font-medium text-gray-900">{{ $this->site->name }} (you)</td>
+                                    <td class="py-2 text-center font-semibold">{{ $this->monitor->latest_mobile_score ?? '—' }}</td>
+                                    <td class="py-2 text-center font-semibold">{{ $this->monitor->latest_desktop_score ?? '—' }}</td>
+                                    <td></td>
+                                </tr>
+                                @foreach($this->competitorComparison as $i => $comp)
+                                    <tr class="border-b border-gray-100">
+                                        <td class="py-2 text-gray-700">{{ $comp['domain'] }}</td>
+                                        <td class="py-2 text-center {{ ($comp['mobile_score'] ?? 0) < ($this->monitor->latest_mobile_score ?? 0) ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $comp['mobile_score'] ?? '—' }}
+                                        </td>
+                                        <td class="py-2 text-center {{ ($comp['desktop_score'] ?? 0) < ($this->monitor->latest_desktop_score ?? 0) ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $comp['desktop_score'] ?? '—' }}
+                                        </td>
+                                        <td class="py-2 text-right">
+                                            <button wire:click="removeCompetitor({{ $i }})" class="text-xs text-red-500 hover:text-red-700">Remove</button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                @if(count($this->monitor->competitor_urls ?? []) < 5)
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <x-ui.input type="url" wire:model="newCompetitorUrl" placeholder="https://competitor.com" />
+                            @error('newCompetitorUrl') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <x-ui.button wire:click="addCompetitor" size="sm">Add Competitor</x-ui.button>
+                    </div>
+                @endif
+            </x-ui.card>
+        @endif
+
         {{-- Test History Table --}}
         @if($this->testHistory->count() > 0)
             <x-ui.card class="overflow-hidden">
