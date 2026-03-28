@@ -113,6 +113,12 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
 
+        // Decrypt if encrypted
+        if ($this->backup->is_encrypted) {
+            $this->reportRestoreProgress('decrypting', 27, 'Decrypting backup...');
+            $localPath = \App\Services\Backup\BackupEncryptionService::decryptFile($localPath);
+        }
+
         // Verify checksum
         if ($this->backup->checksum) {
             $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');

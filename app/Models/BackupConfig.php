@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $retention_type
  * @property int $retention_value
  * @property bool $backup_before_updates
+ * @property bool $encrypt_backups
  * @property \Illuminate\Support\Carbon|null $last_backup_at
  * @property \Illuminate\Support\Carbon|null $next_backup_at
  * @property string|null $last_backup_status
@@ -50,6 +51,7 @@ class BackupConfig extends Model
         'retention_type',
         'retention_value',
         'backup_before_updates',
+        'encrypt_backups',
         'last_backup_at',
         'next_backup_at',
         'last_backup_status',
@@ -61,6 +63,7 @@ class BackupConfig extends Model
     protected $casts = [
         'is_enabled' => 'boolean',
         'backup_before_updates' => 'boolean',
+        'encrypt_backups' => 'boolean',
         'day_of_week' => 'integer',
         'day_of_month' => 'integer',
         'retention_value' => 'integer',

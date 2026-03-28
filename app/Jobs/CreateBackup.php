@@ -91,8 +91,19 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
             [$dbPath, $filesChunkPaths] = $this->downloadData();
             [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
+
+            // Encrypt if configured
+            $isEncrypted = false;
+            if ($this->site->backupConfig?->encrypt_backups) {
+                $this->reportProgress('encrypting', 80, 'Encrypting backup...');
+                $combinedPath = \App\Services\Backup\BackupEncryptionService::encryptFile($combinedPath);
+                $fileName .= '.enc';
+                $fileSize = filesize($combinedPath);
+                $isEncrypted = true;
+            }
+
             $remotePath = $this->upload($destination, $combinedPath, $fileName);
-            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
+            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $isEncrypted);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -364,7 +375,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         return $remotePath;
     }
 
-    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum): void
+    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, bool $isEncrypted = false): void
     {
         $this->backup->update([
             'status' => BackupStatus::Completed,
@@ -379,6 +390,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
             'is_locked' => $this->trigger === 'pre_update',
             'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
+            'is_encrypted' => $isEncrypted,
         ]);
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);

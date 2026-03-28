@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $completed_at
  * @property int|null $duration_seconds
  * @property bool $is_locked
+ * @property bool $is_encrypted
  * @property string|null $lock_reason
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $last_restored_at
@@ -90,6 +91,7 @@ class Backup extends Model
         'completed_at',
         'duration_seconds',
         'is_locked',
+        'is_encrypted',
         'lock_reason',
         'expires_at',
         'last_restored_at',
@@ -115,6 +117,7 @@ class Backup extends Model
         'includes_files' => 'boolean',
         'includes_database' => 'boolean',
         'is_locked' => 'boolean',
+        'is_encrypted' => 'boolean',
         'file_size' => 'integer',
         'plugins_count' => 'integer',
         'themes_count' => 'integer',
