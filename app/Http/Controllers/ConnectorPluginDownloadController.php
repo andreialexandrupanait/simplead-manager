@@ -37,8 +37,12 @@ class ConnectorPluginDownloadController extends Controller
 
         $zip->close();
 
+        $version = config('connector.current_version', '0.0.0');
+
         return response()->download($tempFile, 'simplead-manager-connector.zip', [
             'Content-Type' => 'application/zip',
+            'Cache-Control' => 'public, max-age=3600',
+            'ETag' => '"connector-'.$version.'"',
         ])->deleteFileAfterSend(true);
     }
 }

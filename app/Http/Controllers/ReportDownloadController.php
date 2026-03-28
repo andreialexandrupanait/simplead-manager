@@ -30,14 +30,19 @@ class ReportDownloadController extends Controller
             abort(404, 'Report file not found.');
         }
 
+        $cacheHeaders = [
+            'Cache-Control' => 'private, max-age=86400',
+            'ETag' => '"report-'.$report->id.'-'.($report->generated_at->timestamp ?? 0).'"',
+        ];
+
         // Preview mode: display inline in browser
         if ($request->query('preview')) {
-            return response()->file($filePath, [
+            return response()->file($filePath, array_merge([
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="'.($report->file_name ?? 'report.pdf').'"',
-            ]);
+            ], $cacheHeaders));
         }
 
-        return response()->download($filePath, $report->file_name ?? 'report.pdf');
+        return response()->download($filePath, $report->file_name ?? 'report.pdf', $cacheHeaders);
     }
 }

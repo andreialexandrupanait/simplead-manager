@@ -28,7 +28,8 @@ class HealthCheckController extends Controller
             'status' => $status,
             'checks' => $checks,
             'timestamp' => now()->toIso8601String(),
-        ], $status === 'fail' ? 503 : 200);
+        ], $status === 'fail' ? 503 : 200)
+            ->header('Cache-Control', 'no-store');
     }
 
     private function checkDatabase(): array

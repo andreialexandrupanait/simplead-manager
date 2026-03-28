@@ -58,7 +58,7 @@ class StatusPageController extends Controller
         return response()->json([
             'status' => 'ok',
             'data' => $data,
-        ]);
+        ])->header('Cache-Control', 'public, max-age=60');
     }
 
     public function authenticate(Request $request, string $slug)
