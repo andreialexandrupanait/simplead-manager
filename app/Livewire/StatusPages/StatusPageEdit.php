@@ -45,6 +45,10 @@ class StatusPageEdit extends Component
 
     public bool $autoIncidents = true;
 
+    public ?string $slaTarget = null;
+
+    public bool $showSla = false;
+
     public string $password = '';
 
     public ?int $clientId = null;
@@ -82,6 +86,8 @@ class StatusPageEdit extends Component
             $this->showIncidentHistory = $statusPage->show_incident_history;
             $this->incidentHistoryDays = $statusPage->incident_history_days;
             $this->autoIncidents = $statusPage->auto_incidents;
+            $this->slaTarget = $statusPage->sla_target ? (string) $statusPage->sla_target : null;
+            $this->showSla = $statusPage->show_sla;
             $this->clientId = $statusPage->client_id;
             $this->customDomain = $statusPage->custom_domain ?? '';
             $this->selectedSites = $statusPage->statusPageSites->pluck('site_id')->toArray();
@@ -144,6 +150,8 @@ class StatusPageEdit extends Component
             'show_incident_history' => $this->showIncidentHistory,
             'incident_history_days' => $this->incidentHistoryDays,
             'auto_incidents' => $this->autoIncidents,
+            'sla_target' => $this->slaTarget ? (float) $this->slaTarget : null,
+            'show_sla' => $this->showSla,
             'client_id' => $this->clientId ?: null,
             'custom_domain' => $this->customDomain ?: null,
         ];

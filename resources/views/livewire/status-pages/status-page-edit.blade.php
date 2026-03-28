@@ -107,6 +107,16 @@
                     <input type="checkbox" wire:model="autoIncidents" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <span class="text-sm text-gray-700">Auto-create incidents on downtime</span>
                 </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" wire:model="showSla" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <span class="text-sm text-gray-700">Show SLA compliance</span>
+                </label>
+            </div>
+
+            <div class="mt-3" x-show="$wire.showSla" x-cloak>
+                <label class="block text-sm font-medium text-gray-700 mb-1">SLA Target (%)</label>
+                <x-ui.input type="number" wire:model="slaTarget" step="0.01" min="90" max="100" placeholder="99.90" class="w-32" />
+                <p class="mt-1 text-xs text-gray-500">e.g. 99.9 for "three nines" availability</p>
             </div>
         </x-ui.card>
 

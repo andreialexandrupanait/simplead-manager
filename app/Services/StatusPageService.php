@@ -101,6 +101,12 @@ class StatusPageService
                 ->orderBy('scheduled_start_at')
                 ->get();
 
+            // SLA computation
+            $sla = null;
+            if ($statusPage->show_sla && $statusPage->sla_target) {
+                $sla = static::computeSla($statusPageSites, (float) $statusPage->sla_target);
+            }
+
             return [ // @phpstan-ignore return.type
                 'title' => $statusPage->title,
                 'description' => $statusPage->description,
@@ -114,8 +120,55 @@ class StatusPageService
                 'active_incidents' => $activeIncidents,
                 'recent_incidents' => $recentIncidents,
                 'scheduled_maintenance' => $scheduledMaintenance,
+                'sla' => $sla,
             ];
         });
+    }
+
+    /**
+     * Compute SLA data: current month actual uptime vs target, plus last 3 months history.
+     */
+    /** @param \Illuminate\Database\Eloquent\Collection<int, StatusPageSite> $sites */
+    protected static function computeSla(\Illuminate\Database\Eloquent\Collection $sites, float $target): array
+    {
+        /** @var \Illuminate\Support\Collection<int, \App\Models\UptimeMonitor> $monitors */
+        $monitors = $sites->map(fn ($sps) => $sps->site?->uptimeMonitor)->filter();
+
+        if ($monitors->isEmpty()) {
+            return ['target' => $target, 'current' => null, 'met' => null, 'history' => []];
+        }
+
+        // Current month average uptime across all monitors
+        $currentUptime = round((float) $monitors->avg('uptime_30d'), 3);
+        $met = $currentUptime >= $target;
+
+        // Monthly history (last 3 months from snapshots)
+        $history = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $date = now()->subMonths($i);
+            $year = (int) $date->format('Y');
+            $month = (int) $date->format('n');
+
+            $siteIds = $sites->pluck('site_id')->filter();
+            $avg = \App\Models\SiteMonthlySnapshot::whereIn('site_id', $siteIds)
+                ->where('year', $year)
+                ->where('month', $month)
+                ->whereNotNull('uptime_percentage')
+                ->avg('uptime_percentage');
+
+            $history[] = [
+                'month' => $date->format('M Y'),
+                'uptime' => $avg !== null ? round((float) $avg, 3) : null,
+                'met' => $avg !== null ? (float) $avg >= $target : null,
+            ];
+        }
+
+        return [
+            'target' => $target,
+            'current' => $currentUptime,
+            'met' => $met,
+            'history' => $history,
+        ];
     }
 
     public static function verifyPassword(StatusPage $statusPage, string $password): bool

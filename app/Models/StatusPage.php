@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $show_incident_history
  * @property int $incident_history_days
  * @property bool $auto_incidents
+ * @property float|null $sla_target
+ * @property bool $show_sla
  * @property string|null $password_hash
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -56,6 +58,8 @@ class StatusPage extends Model
         'show_incident_history',
         'incident_history_days',
         'auto_incidents',
+        'sla_target',
+        'show_sla',
         'password_hash',
     ];
 
@@ -66,6 +70,8 @@ class StatusPage extends Model
         'show_incident_history' => 'boolean',
         'incident_history_days' => 'integer',
         'auto_incidents' => 'boolean',
+        'sla_target' => 'decimal:2',
+        'show_sla' => 'boolean',
     ];
 
     public function user(): BelongsTo

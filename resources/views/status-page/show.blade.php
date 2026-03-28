@@ -88,6 +88,42 @@
             </div>
         </div>
 
+        {{-- SLA Compliance --}}
+        @if(!empty($data['sla']))
+            <div class="mb-8">
+                <h2 class="mb-4 text-lg font-semibold text-gray-900">SLA Compliance</h2>
+                <div class="rounded-xl border border-gray-200 bg-white p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Current Month</p>
+                            <p class="text-3xl font-bold {{ $data['sla']['met'] ? 'text-green-600' : 'text-red-600' }}">
+                                {{ $data['sla']['current'] !== null ? number_format($data['sla']['current'], 3) . '%' : 'N/A' }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Target</p>
+                            <p class="text-xl font-semibold text-gray-700">{{ number_format($data['sla']['target'], 2) }}%</p>
+                        </div>
+                    </div>
+                    @if(!empty($data['sla']['history']))
+                        <div class="border-t border-gray-100 pt-3 mt-3">
+                            <p class="text-xs font-medium text-gray-500 uppercase mb-2">Previous Months</p>
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach($data['sla']['history'] as $month)
+                                    <div class="text-center">
+                                        <p class="text-xs text-gray-500">{{ $month['month'] }}</p>
+                                        <p class="text-sm font-semibold {{ $month['met'] ? 'text-green-600' : ($month['met'] === false ? 'text-red-600' : 'text-gray-400') }}">
+                                            {{ $month['uptime'] !== null ? number_format($month['uptime'], 3) . '%' : 'N/A' }}
+                                        </p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         {{-- Scheduled Maintenance --}}
         @if($data['scheduled_maintenance']->isNotEmpty())
             <div class="mb-8">
