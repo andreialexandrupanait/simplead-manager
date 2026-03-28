@@ -547,6 +547,22 @@ class SitePlugins extends Component
         unset($this->plugins, $this->themes);
     }
 
+    // ── License Management ──
+
+    public function updateLicense(int $pluginId, ?string $licenseKey, ?string $expiresAt, ?string $status): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        $plugin = SitePlugin::where('site_id', $this->site->id)->findOrFail($pluginId);
+        $plugin->update([
+            'license_key' => $licenseKey ?: null,
+            'license_expires_at' => $expiresAt ?: null,
+            'license_status' => $status ?: null,
+        ]);
+
+        unset($this->plugins);
+    }
+
     // ── Detail Modal ──
 
     public function showDetail(string $type, int $id): void
@@ -575,6 +591,8 @@ class SitePlugins extends Component
             'is_closed' => $item->is_closed ?? false,
             'closed_reason' => $item->closed_reason ?? null,
             'wp_org_last_updated' => $item->wp_org_last_updated?->format('M j, Y'),
+            'license_status' => $item instanceof SitePlugin ? $item->license_status : null,
+            'license_expires_at' => $item instanceof SitePlugin ? $item->license_expires_at?->format('M j, Y') : null,
         ];
 
         $this->dispatch('open-modal-plugin-detail');

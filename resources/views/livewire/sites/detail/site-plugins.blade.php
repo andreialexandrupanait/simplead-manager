@@ -987,6 +987,17 @@
                     @if($detailItem['wp_org_last_updated'])
                         <div><span class="text-gray-500">Last WP.org Update:</span> <span class="text-gray-900">{{ $detailItem['wp_org_last_updated'] }}</span></div>
                     @endif
+                    @if($detailItem['license_status'])
+                        <div>
+                            <span class="text-gray-500">License:</span>
+                            <span class="{{ $detailItem['license_status'] === 'active' ? 'text-green-600' : ($detailItem['license_status'] === 'expired' ? 'text-red-600' : 'text-yellow-600') }}">
+                                {{ ucfirst($detailItem['license_status']) }}
+                            </span>
+                            @if($detailItem['license_expires_at'])
+                                <span class="text-gray-400 text-xs">{{ $detailItem['license_expires_at'] }}</span>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Description --}}

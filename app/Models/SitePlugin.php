@@ -62,6 +62,9 @@ class SitePlugin extends Model
         'is_closed',
         'closed_reason',
         'abandoned_checked_at',
+        'license_key',
+        'license_expires_at',
+        'license_status',
     ];
 
     protected $casts = [
@@ -73,7 +76,21 @@ class SitePlugin extends Model
         'is_closed' => 'boolean',
         'wp_org_last_updated' => 'datetime',
         'abandoned_checked_at' => 'datetime',
+        'license_key' => 'encrypted',
+        'license_expires_at' => 'datetime',
     ];
+
+    public function isLicenseExpiring(int $daysThreshold = 30): bool
+    {
+        return $this->license_expires_at !== null
+            && $this->license_expires_at->isFuture()
+            && $this->license_expires_at->diffInDays(now()) <= $daysThreshold;
+    }
+
+    public function isLicenseExpired(): bool
+    {
+        return $this->license_expires_at !== null && $this->license_expires_at->isPast();
+    }
 
     public function scopeAbandoned(Builder $query): Builder
     {
