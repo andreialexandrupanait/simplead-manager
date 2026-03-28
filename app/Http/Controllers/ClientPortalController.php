@@ -37,6 +37,23 @@ class ClientPortalController extends Controller
         ]);
     }
 
+    public function viewReport(string $token, Report $report)
+    {
+        $client = Client::where('portal_token', $token)
+            ->where('portal_enabled', true)
+            ->firstOrFail();
+
+        $siteIds = $client->sites()->pluck('id');
+        if (! $siteIds->contains($report->site_id)) {
+            abort(403);
+        }
+
+        return view('client-portal.report', [
+            'client' => $client,
+            'report' => $report,
+        ]);
+    }
+
     public function downloadReport(string $token, Report $report)
     {
         $client = Client::where('portal_token', $token)

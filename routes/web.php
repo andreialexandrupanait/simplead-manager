@@ -193,6 +193,7 @@ Route::get('/notifications/ack/{token}', \App\Http\Controllers\NotificationAckCo
 
 // Client Portal (public, token-based)
 Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');
+Route::get('/portal/{token}/reports/{report}', [\App\Http\Controllers\ClientPortalController::class, 'viewReport'])->name('client-portal.report')->middleware('throttle:60,1');
 Route::get('/portal/{token}/reports/{report}/download', [\App\Http\Controllers\ClientPortalController::class, 'downloadReport'])->name('client-portal.download')->middleware('throttle:10,1');
 
 // Invitation accept (public)

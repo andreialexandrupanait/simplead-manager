@@ -27,6 +27,7 @@ class UptimeStatsCard extends Component
         };
 
         $uptime = $this->monitor->{"uptime_{$this->period}"};
+        $uptime = $uptime !== null ? (float) $uptime : null;
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\UptimeIncident> $incidents */
         $incidents = $this->monitor->incidents()
@@ -42,6 +43,7 @@ class UptimeStatsCard extends Component
         });
 
         // Format downtime
+        $totalDowntimeMinutes = (int) $totalDowntimeMinutes;
         if ($totalDowntimeMinutes < 60) {
             $downtime = $totalDowntimeMinutes.'m';
         } elseif ($totalDowntimeMinutes < 1440) {
