@@ -136,7 +136,7 @@ jobs:
           DB_SSLMODE: prefer
         run: |
           php artisan migrate --force
-          php artisan migrate:rollback --step=5
+          php artisan migrate:rollback --step=5 --force
           php artisan migrate --force
 
       - name: Run tests
