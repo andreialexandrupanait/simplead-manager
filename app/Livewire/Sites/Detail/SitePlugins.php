@@ -566,7 +566,7 @@ class SitePlugins extends Component
             'version' => $item->version,
             'author' => $item->author,
             'description' => $item->description,
-            'url' => $item->url,
+            'url' => $item instanceof SitePlugin ? $item->plugin_uri : null,
             'is_active' => $item->is_active,
             'auto_update' => $item->auto_update,
             'has_update' => $item->has_update,

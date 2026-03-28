@@ -35,6 +35,7 @@ class SiteBackups extends Component
         $this->site = $site;
 
         // If there's an in-progress backup on page load, track it
+        /** @var Backup|null $active */
         $active = $this->site->backups()
             ->whereIn('status', ['pending', 'in_progress'])
             ->latest()
@@ -44,6 +45,7 @@ class SiteBackups extends Component
         }
 
         // If there's an in-progress restore on page load, track it
+        /** @var Backup|null $activeRestore */
         $activeRestore = $this->site->backups()
             ->whereIn('restore_status', ['pending', 'in_progress'])
             ->latest()

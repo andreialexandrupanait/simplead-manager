@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\MonitorState;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -106,7 +107,7 @@ class StatusPage extends Model
                 return 'outage';
             }
 
-            $hasDegraded = $sites->contains(fn (StatusPageSite $sps) => $sps->site?->uptimeMonitor?->current_state === 'degraded');
+            $hasDegraded = $sites->contains(fn (StatusPageSite $sps) => $sps->site?->uptimeMonitor?->current_state === MonitorState::Degraded);
             if ($hasDegraded) {
                 return 'degraded';
             }

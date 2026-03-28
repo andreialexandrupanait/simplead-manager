@@ -294,13 +294,14 @@ class ProfileSettings extends Component
 
         // Activity logs
         $logs = $user->activityLogs()
-            ->select('id', 'action', 'description', 'created_at')
+            ->select('id', 'type', 'title', 'description', 'created_at')
             ->orderByDesc('created_at')
             ->limit(5000)
             ->get();
         $zip->addFromString('activity-logs.json', json_encode(
-            $logs->map(fn ($l) => [
-                'action' => $l->action,
+            $logs->map(fn (\App\Models\ActivityLog $l) => [
+                'type' => $l->type,
+                'title' => $l->title,
                 'description' => $l->description,
                 'created_at' => $l->created_at->toIso8601String(),
             ])->toArray(),

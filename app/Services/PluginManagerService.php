@@ -84,6 +84,7 @@ class PluginManagerService
      */
     public function activatePlugin(Site $site, int $pluginId): array
     {
+        /** @var SitePlugin $plugin */
         $plugin = $site->sitePlugins()->findOrFail($pluginId);
 
         try {
@@ -114,6 +115,7 @@ class PluginManagerService
      */
     public function deactivatePlugin(Site $site, int $pluginId): array
     {
+        /** @var SitePlugin $plugin */
         $plugin = $site->sitePlugins()->findOrFail($pluginId);
 
         try {
@@ -144,6 +146,7 @@ class PluginManagerService
      */
     public function deletePlugin(Site $site, int $pluginId): array
     {
+        /** @var SitePlugin $plugin */
         $plugin = $site->sitePlugins()->findOrFail($pluginId);
 
         try {
@@ -175,6 +178,7 @@ class PluginManagerService
      */
     public function activateTheme(Site $site, int $themeId): array
     {
+        /** @var SiteTheme $theme */
         $theme = $site->siteThemes()->findOrFail($themeId);
 
         try {
@@ -204,6 +208,7 @@ class PluginManagerService
      */
     public function deleteTheme(Site $site, int $themeId): array
     {
+        /** @var SiteTheme $theme */
         $theme = $site->siteThemes()->findOrFail($themeId);
 
         try {

@@ -19,18 +19,6 @@ parameters:
 			path: app/Jobs/RetentionCleanup.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/RunPerformanceTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/RunPerformanceTest.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: non\-falsy\-string, Closure\(App\\Models\\UptimeCheck\)\: non\-falsy\-string given\.$#'
 			identifier: argument.type
 			count: 1
@@ -67,46 +55,16 @@ parameters:
 			path: app/Livewire/Settings/IntegrationsSettings.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$action\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Livewire/Settings/ProfileSettings.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{name\: string, url\: string, status\: string, created_at\: string\}, Closure\(App\\Models\\Site\)\: array\{name\: string, url\: string, status\: string, created_at\: string\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Livewire/Settings/ProfileSettings.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Livewire/Sites/Detail/SiteBackups.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SitePlugin\|App\\Models\\SiteTheme\:\:\$url\.$#'
-			identifier: property.notFound
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{type\: string, title\: string, description\: string\|null, created_at\: string\}, Closure\(App\\Models\\ActivityLog\)\: array\{type\: string, title\: string, description\: string\|null, created_at\: string\} given\.$#'
+			identifier: argument.type
 			count: 1
-			path: app/Livewire/Sites/Detail/SitePlugins.php
+			path: app/Livewire/Settings/ProfileSettings.php
 
 		-
 			message: '#^Unsafe access to private property App\\Models\\Site\:\:\$twoPartTlds through static\:\:\.$#'
@@ -117,19 +75,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(App\\Models\\StatusPageSite\)\: bool given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Models/StatusPage.php
-
-		-
-			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(App\\Models\\StatusPageSite\)\: false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/StatusPage.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between App\\Enums\\MonitorState\|null and ''degraded'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
+			count: 2
 			path: app/Models/StatusPage.php
 
 		-
@@ -169,24 +115,6 @@ parameters:
 			path: app/Services/Notifications/NotificationService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Services/PluginManagerService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 19
-			path: app/Services/PluginManagerService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/PluginManagerService.php
-
-		-
 			message: '#^Left side of && is always false\.$#'
 			identifier: booleanAnd.leftAlwaysFalse
 			count: 1
@@ -211,18 +139,6 @@ parameters:
 			path: app/Services/SecurityScanService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StatusPageSite\:\:\$current_status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/StatusPageService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StatusPageSite\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/StatusPageService.php
-
-		-
 			message: '#^Anonymous function should return array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, \.\.\.\} but returns array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, \.\.\.\}\.$#'
 			identifier: return.type
 			count: 1
@@ -241,25 +157,13 @@ parameters:
 			path: app/Services/StatusPageService.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/StatusPageService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{name\: mixed, status\: mixed, uptime_percentage\: float\|null, response_time\: int\|null\}, Closure\(App\\Models\\StatusPageSite\)\: array\{name\: mixed, status\: mixed, uptime_percentage\: float\|null, response_time\: int\|null\} given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{name\: string\|null, status\: string, uptime_percentage\: float\|null, response_time\: int\|null\}, Closure\(App\\Models\\StatusPageSite\)\: array\{name\: string\|null, status\: string, uptime_percentage\: float\|null, response_time\: int\|null\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/StatusPageService.php
 
 		-
-			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/StatusPageService.php
-
-		-
-			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) expects Closure\(\)\: array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, sites\: Illuminate\\Support\\Collection\<int, array\{name\: mixed, status\: mixed, uptime_percentage\: float\|null, response_time\: int\|null\}\>, active_incidents\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>, recent_incidents\: mixed, scheduled_maintenance\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\}, Closure\(\)\: array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, sites\: Illuminate\\Support\\Collection\<int, array\{name\: mixed, status\: mixed, uptime_percentage\: float\|null, response_time\: int\|null\}\>, active_incidents\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>, recent_incidents\: mixed, scheduled_maintenance\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\} given\.$#'
+			message: '#^Parameter \#3 \$callback of static method Illuminate\\Cache\\Repository\:\:remember\(\) expects Closure\(\)\: array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, sites\: Illuminate\\Support\\Collection\<int, array\{name\: string\|null, status\: string, uptime_percentage\: float\|null, response_time\: int\|null\}\>, active_incidents\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>, recent_incidents\: mixed, scheduled_maintenance\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\}, Closure\(\)\: array\{title\: string, description\: string\|null, logo_url\: string\|null, primary_color\: string, overall_status\: string\|null, show_uptime_percentage\: bool, show_response_time\: bool, show_incident_history\: bool, sites\: Illuminate\\Support\\Collection\<int, array\{name\: string\|null, status\: string, uptime_percentage\: float\|null, response_time\: int\|null\}\>, active_incidents\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>, recent_incidents\: mixed, scheduled_maintenance\: Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/StatusPageService.php

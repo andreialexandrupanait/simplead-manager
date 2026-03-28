@@ -53,6 +53,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
         } else {
             $first = true;
             foreach ($pages as $page) {
+                /** @var \App\Models\PerformancePage $page */
                 if (! $first) {
                     sleep(2); // Rate-limit between API calls
                 }

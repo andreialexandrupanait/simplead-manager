@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\StatusPage|null $statusPage
  * @property-read \App\Models\Site|null $site
+ * @property-read string|null $name
+ * @property-read string $current_status
  */
 class StatusPageSite extends Model
 {

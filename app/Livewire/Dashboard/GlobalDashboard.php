@@ -165,6 +165,7 @@ class GlobalDashboard extends Component
             return;
         }
 
+        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         CreateBackup::dispatch($site, 'full', 'manual');
@@ -194,6 +195,7 @@ class GlobalDashboard extends Component
             return;
         }
 
+        /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
         SyncWordPressSite::dispatch($site);
