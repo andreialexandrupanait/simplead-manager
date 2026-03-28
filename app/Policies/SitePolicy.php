@@ -16,7 +16,7 @@ class SitePolicy
 
     public function view(User $user, Site $site): bool
     {
-        return $user->isAdmin() || $site->user_id === $user->id;
+        return $user->canAccessSite($site);
     }
 
     public function create(User $user): bool
@@ -30,7 +30,7 @@ class SitePolicy
             return false;
         }
 
-        return $user->isAdmin() || $site->user_id === $user->id;
+        return $user->canAccessSite($site);
     }
 
     public function delete(User $user, Site $site): bool

@@ -17,11 +17,7 @@ trait WithSiteAuthorization
             throw new AuthorizationException('Unauthenticated.');
         }
 
-        if ($user->isAdmin()) {
-            return;
-        }
-
-        if ($site->user_id !== $user->id) {
+        if (! $user->canAccessSite($site)) {
             abort(403, 'You do not have access to this site.');
         }
     }

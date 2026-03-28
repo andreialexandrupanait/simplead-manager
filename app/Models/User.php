@@ -109,6 +109,34 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(PersonalAccessToken::class);
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<Client, $this> */
+    public function assignedClients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Client::class);
+    }
+
+    /**
+     * Check if user can access a site — either owns it directly or is assigned to its client.
+     */
+    public function canAccessSite(Site $site): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Direct ownership
+        if ($site->user_id === $this->id) {
+            return true;
+        }
+
+        // Client assignment
+        if ($site->client_id && $this->assignedClients()->where('clients.id', $site->client_id)->exists()) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;

@@ -78,6 +78,13 @@
                                 @endif
                             </p>
                             <p class="text-xs text-gray-500">{{ $user->email }}</p>
+                            @if($user->assignedClients->isNotEmpty())
+                                <div class="flex flex-wrap gap-1 mt-0.5">
+                                    @foreach($user->assignedClients as $ac)
+                                        <span class="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs text-purple-700">{{ $ac->name }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -87,6 +94,22 @@
                                     <option value="{{ $role->value }}" @selected($user->role === $role)>{{ $role->label() }}</option>
                                 @endforeach
                             </x-ui.select>
+                            @if($clients->isNotEmpty() && !$user->isAdmin())
+                                <x-ui.dropdown>
+                                    <x-slot:trigger>
+                                        <button class="text-xs text-gray-500 hover:text-purple-600">Clients</button>
+                                    </x-slot:trigger>
+                                    @foreach($clients as $client)
+                                        <button wire:click="toggleClientAssignment({{ $user->id }}, {{ $client->id }})"
+                                                class="w-full px-4 py-2 text-left text-xs hover:bg-gray-50 flex items-center justify-between">
+                                            {{ $client->name }}
+                                            @if($user->assignedClients->contains('id', $client->id))
+                                                <svg class="h-3.5 w-3.5 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                            @endif
+                                        </button>
+                                    @endforeach
+                                </x-ui.dropdown>
+                            @endif
                             <button wire:click="confirmDeleteUser({{ $user->id }})"
                                     class="text-xs text-red-600 hover:text-red-800">Remove</button>
                         @else

@@ -20,7 +20,9 @@ class ClientPolicy
             return true;
         }
 
-        return $client->sites()->where('user_id', $user->id)->exists();
+        // Direct assignment or owns a site under this client
+        return $user->assignedClients()->where('clients.id', $client->id)->exists()
+            || $client->sites()->where('user_id', $user->id)->exists();
     }
 
     public function create(User $user): bool
@@ -38,7 +40,8 @@ class ClientPolicy
             return true;
         }
 
-        return $client->sites()->where('user_id', $user->id)->exists();
+        return $user->assignedClients()->where('clients.id', $client->id)->exists()
+            || $client->sites()->where('user_id', $user->id)->exists();
     }
 
     public function delete(User $user, Client $client): bool

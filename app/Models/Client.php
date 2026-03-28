@@ -60,6 +60,12 @@ class Client extends Model
         return $this->hasMany(Site::class);
     }
 
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<User, $this> */
+    public function assignedUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');

@@ -6,6 +6,7 @@ namespace App\Livewire\Settings;
 
 use App\Enums\UserRole;
 use App\Mail\UserInvitationMail;
+use App\Models\Client;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -116,18 +117,30 @@ class UserManagement extends Component
         $user->update(['role' => $role]);
     }
 
+    public function toggleClientAssignment(int $userId, int $clientId): void
+    {
+        if ($userId === auth()->id()) {
+            return;
+        }
+
+        $user = User::findOrFail($userId);
+        $user->assignedClients()->toggle($clientId);
+    }
+
     public function render()
     {
-        $users = User::orderBy('name')->get();
+        $users = User::with('assignedClients')->orderBy('name')->get();
         $pendingInvitations = Invitation::whereNull('accepted_at')
             ->with('inviter')
             ->orderByDesc('created_at')
             ->get();
+        $clients = Client::orderBy('name')->get(['id', 'name']);
 
         return view('livewire.settings.user-management', [
             'users' => $users,
             'pendingInvitations' => $pendingInvitations,
             'roles' => UserRole::cases(),
+            'clients' => $clients,
         ])->layout('components.layouts.app', ['title' => 'Users & Invitations']);
     }
 }
