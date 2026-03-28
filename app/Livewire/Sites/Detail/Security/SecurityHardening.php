@@ -56,12 +56,16 @@ class SecurityHardening extends Component
             ->keyBy('setting_key');
 
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['hardening'] as $key) {
-            $this->hardeningToggles[$key] = $settings->get($key)?->is_enabled ?? false;
-            $this->settingStatuses[$key] = $settings->get($key)?->status;
+            /** @var \App\Models\SecuritySetting|null $setting */
+            $setting = $settings->get($key);
+            $this->hardeningToggles[$key] = $setting?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $setting?->status;
         }
         foreach (SecuritySettingsService::VALID_SETTING_KEYS['htaccess'] as $key) {
-            $this->htaccessToggles[$key] = $settings->get($key)?->is_enabled ?? false;
-            $this->settingStatuses[$key] = $settings->get($key)?->status;
+            /** @var \App\Models\SecuritySetting|null $setting */
+            $setting = $settings->get($key);
+            $this->htaccessToggles[$key] = $setting?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $setting?->status;
         }
     }
 
