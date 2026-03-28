@@ -128,6 +128,11 @@ jobs:
         run: php artisan key:generate
 
       - name: Verify migrations
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: simplead_testing
+          DB_USERNAME: simplead
+          DB_PASSWORD: password
         run: |
           php artisan migrate --force
           php artisan migrate:rollback --step=5
