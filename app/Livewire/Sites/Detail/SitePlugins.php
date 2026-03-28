@@ -563,6 +563,55 @@ class SitePlugins extends Component
         unset($this->plugins);
     }
 
+    // ── Rollback ──
+
+    public function rollbackPlugin(int $pluginId): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        $plugin = SitePlugin::where('site_id', $this->site->id)->findOrFail($pluginId);
+
+        // Find last update log to determine previous version
+        $lastUpdate = UpdateLog::where('site_id', $this->site->id)
+            ->where('type', 'plugin')
+            ->where('name', $plugin->slug)
+            ->where('success', true)
+            ->orderByDesc('performed_at')
+            ->first();
+
+        if (! $lastUpdate || ! $lastUpdate->from_version) {
+            session()->flash('plugin-error', 'No previous version found to rollback to.');
+
+            return;
+        }
+
+        try {
+            $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
+            $result = $api->rollback('plugin', $plugin->slug, $lastUpdate->from_version);
+
+            if (! empty($result['success'])) {
+                $plugin->update(['version' => $lastUpdate->from_version, 'has_update' => true]);
+
+                UpdateLog::create([
+                    'site_id' => $this->site->id,
+                    'type' => 'plugin',
+                    'name' => $plugin->slug,
+                    'from_version' => $plugin->version,
+                    'to_version' => $lastUpdate->from_version,
+                    'success' => true,
+                    'performed_at' => now(),
+                ]);
+
+                unset($this->plugins, $this->updateHistory);
+                session()->flash('plugin-success', "{$plugin->name} rolled back to {$lastUpdate->from_version}.");
+            } else {
+                session()->flash('plugin-error', 'Rollback failed: '.($result['error']['message'] ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            session()->flash('plugin-error', 'Rollback failed: '.$e->getMessage());
+        }
+    }
+
     // ── Detail Modal ──
 
     public function showDetail(string $type, int $id): void
@@ -576,6 +625,7 @@ class SitePlugins extends Component
         }
 
         $this->detailItem = [
+            'id' => $item->id,
             'type' => $type,
             'name' => $item->name,
             'slug' => $item->slug,
@@ -593,6 +643,11 @@ class SitePlugins extends Component
             'wp_org_last_updated' => $item->wp_org_last_updated?->format('M j, Y'),
             'license_status' => $item instanceof SitePlugin ? $item->license_status : null,
             'license_expires_at' => $item instanceof SitePlugin ? $item->license_expires_at?->format('M j, Y') : null,
+            'can_rollback' => $item instanceof SitePlugin && UpdateLog::where('site_id', $this->site->id)
+                ->where('type', 'plugin')->where('name', $item->slug)->where('success', true)->exists(),
+            'rollback_version' => $item instanceof SitePlugin ? UpdateLog::where('site_id', $this->site->id)
+                ->where('type', 'plugin')->where('name', $item->slug)->where('success', true)
+                ->orderByDesc('performed_at')->value('from_version') : null,
         ];
 
         $this->dispatch('open-modal-plugin-detail');

@@ -1018,6 +1018,23 @@
                     </div>
                 @endif
 
+                {{-- Rollback --}}
+                @if($detailItem['can_rollback'] && $detailItem['rollback_version'] && $detailItem['type'] === 'plugin')
+                    <div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-blue-800">Rollback available</p>
+                            <p class="text-xs text-blue-600">Revert to version {{ $detailItem['rollback_version'] }}</p>
+                        </div>
+                        <button wire:click="rollbackPlugin({{ $detailItem['id'] ?? 0 }})"
+                                wire:confirm="Rollback {{ $detailItem['name'] }} to version {{ $detailItem['rollback_version'] }}?"
+                                wire:loading.attr="disabled"
+                                class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="rollbackPlugin">Rollback</span>
+                            <span wire:loading wire:target="rollbackPlugin">Rolling back...</span>
+                        </button>
+                    </div>
+                @endif
+
                 {{-- Quick links --}}
                 <div class="mt-4 flex items-center gap-2 border-t pt-3">
                     <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Plugins</a>
