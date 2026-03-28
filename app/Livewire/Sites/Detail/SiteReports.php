@@ -7,7 +7,6 @@ namespace App\Livewire\Sites\Detail;
 use App\Jobs\GenerateReport;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
-use App\Mail\ReportGeneratedMail;
 use App\Models\AnalyticsCache;
 use App\Models\Backup;
 use App\Models\DatabaseHealthCheck;
@@ -21,10 +20,9 @@ use App\Models\SiteCloudflare;
 use App\Models\SitePlugin;
 use App\Models\SiteUser;
 use App\Models\UpdateLog;
+use App\Services\ReportManagementService;
 use App\Services\ReportRecommendationService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -727,37 +725,21 @@ class SiteReports extends Component
             'schedulePeriod' => 'required|in:last_7_days,last_30_days,last_month',
         ]);
 
-        $recipients = $this->scheduleRecipientEmails
-            ? array_map('trim', explode(',', $this->scheduleRecipientEmails))
-            : [];
-        $recipients = array_filter($recipients);
-
-        $data = [
-            'site_id' => $this->site->id,
-            'report_template_id' => $this->scheduleTemplateId,
+        app(ReportManagementService::class)->saveSchedule($this->site, [
+            'template_id' => $this->scheduleTemplateId,
             'is_active' => $this->scheduleActive,
             'frequency' => $this->scheduleFrequency,
-            'day_of_week' => $this->scheduleFrequency === 'weekly' ? $this->scheduleDayOfWeek : null,
-            'day_of_month' => $this->scheduleFrequency === 'monthly' ? $this->scheduleDayOfMonth : null,
+            'day_of_week' => $this->scheduleDayOfWeek,
+            'day_of_month' => $this->scheduleDayOfMonth,
             'time' => $this->scheduleTime,
             'timezone' => $this->scheduleTimezone,
             'period' => $this->schedulePeriod,
-            'recipient_emails' => $recipients,
+            'recipient_emails_raw' => $this->scheduleRecipientEmails,
             'send_copy_to_admin' => $this->scheduleSendCopyToAdmin,
-            'email_subject' => $this->scheduleEmailSubject ?: null,
-            'email_body' => $this->scheduleEmailBody ?: null,
-            'client_name' => $this->scheduleClientName ?: null,
-        ];
-
-        if ($this->editingScheduleId) {
-            $schedule = ReportSchedule::findOrFail($this->editingScheduleId);
-            $schedule->update($data);
-        } else {
-            $schedule = ReportSchedule::create($data);
-        }
-
-        // Calculate next run
-        $schedule->update(['next_run_at' => $schedule->calculateNextRun()]);
+            'email_subject' => $this->scheduleEmailSubject,
+            'email_body' => $this->scheduleEmailBody,
+            'client_name' => $this->scheduleClientName,
+        ], $this->editingScheduleId);
 
         $this->showScheduleModal = false;
         session()->flash('report-success', 'Report schedule saved.');
@@ -791,15 +773,7 @@ class SiteReports extends Component
         /** @var \App\Models\Report $report */
         $report = $this->site->reports()->findOrFail($this->sendReportId);
 
-        Mail::to($this->sendToEmail)->queue(new ReportGeneratedMail($report, $this->site));
-
-        $sentTo = $report->sent_to ?? [];
-        $sentTo[] = $this->sendToEmail;
-        $report->update([
-            'was_sent' => true,
-            'sent_at' => now(),
-            'sent_to' => array_unique($sentTo),
-        ]);
+        app(ReportManagementService::class)->sendReport($report, [$this->sendToEmail]);
 
         $this->showSendModal = false;
         $this->sendReportId = null;
@@ -810,17 +784,7 @@ class SiteReports extends Component
 
     public function bulkDelete(array $ids): void
     {
-        $reports = $this->site->reports()->whereIn('id', $ids)->get();
-
-        foreach ($reports as $report) {
-            /** @var \App\Models\Report $report */
-            if ($report->file_path) {
-                Storage::disk('local')->delete($report->file_path);
-            }
-            $report->delete();
-        }
-
-        $count = $reports->count();
+        $count = app(ReportManagementService::class)->deleteReports($ids, $this->site);
         session()->flash('report-success', $count.' report(s) deleted.');
     }
 
@@ -832,40 +796,15 @@ class SiteReports extends Component
             'bulkSendEmail' => 'required|email',
         ]);
 
-        $reports = $this->site->reports()
-            ->whereIn('id', $ids)
-            ->where('status', 'completed')
-            ->whereNotNull('file_path')
-            ->get();
-
-        foreach ($reports as $report) {
-            /** @var \App\Models\Report $report */
-            Mail::to($email)->queue(new ReportGeneratedMail($report, $this->site));
-
-            $sentTo = $report->sent_to ?? [];
-            $sentTo[] = $email;
-            $report->update([
-                'was_sent' => true,
-                'sent_at' => now(),
-                'sent_to' => array_unique($sentTo),
-            ]);
-        }
+        $count = app(ReportManagementService::class)->bulkSend($ids, $email, $this->site);
 
         $this->bulkSendEmail = '';
-        $count = $reports->count();
         session()->flash('report-success', $count.' report(s) sent to '.$email);
     }
 
     public function deleteReport(int $reportId): void
     {
-        /** @var \App\Models\Report $report */
-        $report = $this->site->reports()->findOrFail($reportId);
-
-        if ($report->file_path) {
-            \Illuminate\Support\Facades\Storage::disk('local')->delete($report->file_path);
-        }
-
-        $report->delete();
+        app(ReportManagementService::class)->deleteReports([$reportId], $this->site);
         session()->flash('report-success', 'Report deleted.');
     }
 
