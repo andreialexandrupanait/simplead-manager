@@ -178,6 +178,56 @@
         @endif
     </x-ui.card>
 
+    {{-- Escalation Rules --}}
+    <x-ui.card class="mt-6">
+        <h3 class="text-base font-semibold text-gray-900 mb-2">Escalation Rules</h3>
+        <p class="text-sm text-gray-500 mb-4">If a critical alert isn't acknowledged within the delay, escalate to another channel.</p>
+
+        @if($this->escalationRules->isNotEmpty())
+            <div class="divide-y divide-gray-100 mb-4">
+                @foreach($this->escalationRules as $rule)
+                    <div class="flex items-center justify-between py-2">
+                        <span class="text-sm text-gray-700">
+                            {{ $rule->sourceChannel->name }}
+                            <span class="text-gray-400 mx-1">&rarr;</span>
+                            {{ $rule->escalationChannel->name }}
+                            <span class="text-xs text-gray-400">({{ $rule->delay_minutes }}min)</span>
+                        </span>
+                        <button wire:click="deleteEscalationRule({{ $rule->id }})" class="text-xs text-red-600 hover:text-red-800">Remove</button>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        <div class="flex items-end gap-3">
+            <div class="flex-1">
+                <label class="block text-xs text-gray-600 mb-1">From channel</label>
+                <x-ui.select wire:model="escalationSourceId" class="text-sm">
+                    <option value="">Select...</option>
+                    @foreach($this->channels as $ch)
+                        <option value="{{ $ch->id }}">{{ $ch->name }}</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs text-gray-600 mb-1">Escalate to</label>
+                <x-ui.select wire:model="escalationTargetId" class="text-sm">
+                    <option value="">Select...</option>
+                    @foreach($this->channels as $ch)
+                        <option value="{{ $ch->id }}">{{ $ch->name }}</option>
+                    @endforeach
+                </x-ui.select>
+            </div>
+            <div class="w-24">
+                <label class="block text-xs text-gray-600 mb-1">Delay (min)</label>
+                <x-ui.input type="number" wire:model="escalationDelay" min="5" max="120" class="text-sm" />
+            </div>
+            <x-ui.button wire:click="addEscalationRule" size="sm">Add</x-ui.button>
+        </div>
+        @error('escalationSourceId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('escalationTargetId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+    </x-ui.card>
+
     {{-- Channel Form Modal --}}
     <livewire:settings.components.channel-form />
 

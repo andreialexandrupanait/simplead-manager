@@ -65,6 +65,8 @@ class SendNotificationJob implements ShouldQueue
         };
 
         // Log the notification
+        $ackToken = in_array($this->severity, ['critical', 'warning']) ? \Illuminate\Support\Str::random(64) : null;
+
         NotificationLog::create([
             'notification_channel_id' => $this->channel->id,
             'site_id' => $this->site?->id,
@@ -74,6 +76,8 @@ class SendNotificationJob implements ShouldQueue
             'message' => $this->message,
             'error_message' => $result['error'] ?? null,
             'response_code' => $result['response_code'] ?? null,
+            'severity' => $this->severity,
+            'ack_token' => $ackToken,
             'metadata' => [
                 'title' => $this->title,
                 'severity' => $this->severity,

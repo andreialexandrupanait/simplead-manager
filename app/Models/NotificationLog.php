@@ -19,6 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $error_message
  * @property array|null $metadata
  * @property int|null $response_code
+ * @property string|null $ack_token
+ * @property \Illuminate\Support\Carbon|null $acknowledged_at
+ * @property string|null $severity
+ * @property bool $escalated
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read NotificationChannel|null $channel
@@ -38,10 +42,16 @@ class NotificationLog extends Model
         'error_message',
         'metadata',
         'response_code',
+        'severity',
+        'ack_token',
+        'acknowledged_at',
+        'escalated',
     ];
 
     protected $casts = [
         'metadata' => 'array',
+        'acknowledged_at' => 'datetime',
+        'escalated' => 'boolean',
     ];
 
     public function channel(): BelongsTo

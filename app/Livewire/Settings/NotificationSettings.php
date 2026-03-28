@@ -6,6 +6,7 @@ namespace App\Livewire\Settings;
 
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
+use App\Models\NotificationEscalationRule;
 use App\Models\NotificationTemplate;
 use App\Services\SettingsService;
 use Livewire\Attributes\Computed;
@@ -156,6 +157,47 @@ class NotificationSettings extends Component
         NotificationTemplate::findOrFail($id)->delete();
         unset($this->notificationTemplates);
         session()->flash('success', 'Template deleted.');
+    }
+
+    // --- Escalation Rules ---
+
+    public ?int $escalationSourceId = null;
+
+    public ?int $escalationTargetId = null;
+
+    public int $escalationDelay = 15;
+
+    #[Computed]
+    public function escalationRules()
+    {
+        return NotificationEscalationRule::with(['sourceChannel', 'escalationChannel'])->get();
+    }
+
+    public function addEscalationRule(): void
+    {
+        $this->validate([
+            'escalationSourceId' => 'required|exists:notification_channels,id',
+            'escalationTargetId' => 'required|exists:notification_channels,id|different:escalationSourceId',
+            'escalationDelay' => 'required|integer|min:5|max:120',
+        ]);
+
+        NotificationEscalationRule::create([
+            'source_channel_id' => $this->escalationSourceId,
+            'escalation_channel_id' => $this->escalationTargetId,
+            'delay_minutes' => $this->escalationDelay,
+            'severity' => 'critical',
+        ]);
+
+        $this->reset('escalationSourceId', 'escalationTargetId');
+        $this->escalationDelay = 15;
+        unset($this->escalationRules);
+        session()->flash('success', 'Escalation rule created.');
+    }
+
+    public function deleteEscalationRule(int $id): void
+    {
+        NotificationEscalationRule::findOrFail($id)->delete();
+        unset($this->escalationRules);
     }
 
     public function render()

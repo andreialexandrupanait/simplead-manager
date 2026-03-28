@@ -128,6 +128,12 @@ Schedule::job(new \App\Jobs\ProcessNotificationBatch)
     ->onOneServer()
     ->withoutOverlapping();
 
+Schedule::job(new \App\Jobs\ProcessNotificationEscalations)
+    ->everyFiveMinutes()
+    ->name('process-notification-escalations')
+    ->onOneServer()
+    ->withoutOverlapping();
+
 // Daily health digest email
 Schedule::job(new \App\Jobs\SendDailyDigest)
     ->dailyAt('07:00')

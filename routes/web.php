@@ -183,6 +183,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 });
 
 // Public status pages (no auth)
+// Notification acknowledgment (public, token-based)
+Route::get('/notifications/ack/{token}', \App\Http\Controllers\NotificationAckController::class)->name('notifications.ack')->middleware('throttle:30,1');
+
 // Client Portal (public, token-based)
 Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');
 Route::get('/portal/{token}/reports/{report}/download', [\App\Http\Controllers\ClientPortalController::class, 'downloadReport'])->name('client-portal.download')->middleware('throttle:10,1');
