@@ -133,6 +133,7 @@ jobs:
           DB_DATABASE: simplead_testing
           DB_USERNAME: simplead
           DB_PASSWORD: password
+          DB_SSLMODE: prefer
         run: |
           php artisan migrate --force
           php artisan migrate:rollback --step=5
