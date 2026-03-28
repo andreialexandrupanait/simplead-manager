@@ -6,6 +6,7 @@ namespace App\Services\Notifications;
 
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
+use App\Models\NotificationTemplate;
 use App\Models\Site;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Cache;
@@ -48,6 +49,13 @@ class NotificationService
         // Deduplication — skip if same event+site was sent recently
         if (static::isDuplicate($event, $site->id)) {
             return;
+        }
+
+        // Apply notification template if configured
+        $template = NotificationTemplate::where('event', $event)->where('is_active', true)->first();
+        if ($template) {
+            $title = $template->renderTitle($site, $title, ['severity' => $severity, 'details' => $message]);
+            $message = $template->renderMessage($site, $message, ['severity' => $severity, 'details' => $message]);
         }
 
         // Resolve channels

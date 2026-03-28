@@ -15,6 +15,15 @@ class UptimeOverview extends Component
 {
     public string $search = '';
 
+    // Maintenance window modal
+    public ?int $maintenanceMonitorId = null;
+
+    public string $maintenanceStartsAt = '';
+
+    public string $maintenanceEndsAt = '';
+
+    public string $maintenanceReason = '';
+
     #[Url]
     public string $filter = 'all';
 
@@ -66,6 +75,39 @@ class UptimeOverview extends Component
     public function deleteMonitor(int $id): void
     {
         UptimeMonitor::whereHas('site')->findOrFail($id)->delete();
+    }
+
+    public function openMaintenanceModal(int $id): void
+    {
+        $monitor = UptimeMonitor::findOrFail($id);
+        $this->maintenanceMonitorId = $id;
+        $this->maintenanceStartsAt = $monitor->maintenance_starts_at?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i');
+        $this->maintenanceEndsAt = $monitor->maintenance_ends_at?->format('Y-m-d\TH:i') ?? now()->addHours(2)->format('Y-m-d\TH:i');
+        $this->maintenanceReason = $monitor->maintenance_reason ?? '';
+        $this->dispatch('open-modal-maintenance-window');
+    }
+
+    public function setMaintenanceWindow(): void
+    {
+        $this->validate([
+            'maintenanceStartsAt' => 'required|date',
+            'maintenanceEndsAt' => 'required|date|after:maintenanceStartsAt',
+            'maintenanceReason' => 'nullable|string|max:255',
+        ]);
+
+        UptimeMonitor::findOrFail($this->maintenanceMonitorId)->update([
+            'maintenance_starts_at' => $this->maintenanceStartsAt,
+            'maintenance_ends_at' => $this->maintenanceEndsAt,
+            'maintenance_reason' => $this->maintenanceReason ?: null,
+        ]);
+
+        $this->dispatch('close-modal-maintenance-window');
+        $this->reset('maintenanceMonitorId', 'maintenanceStartsAt', 'maintenanceEndsAt', 'maintenanceReason');
+    }
+
+    public function clearMaintenanceWindow(int $id): void
+    {
+        UptimeMonitor::findOrFail($id)->clearMaintenanceWindow();
     }
 
     public function getSitesWithoutMonitorCountProperty(): int

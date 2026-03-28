@@ -104,6 +104,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function personalAccessTokens(): HasMany
+    {
+        return $this->hasMany(PersonalAccessToken::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;

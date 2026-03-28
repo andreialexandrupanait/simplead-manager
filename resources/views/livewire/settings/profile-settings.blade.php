@@ -164,5 +164,56 @@
                 <span wire:loading wire:target="deleteAccount">{{ __('Deleting...') }}</span>
             </x-ui.button>
         </x-ui.card>
+
+        {{-- API Tokens Section --}}
+        <x-ui.card>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('API Tokens') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('Create personal access tokens to authenticate with the API.') }}</p>
+
+            @if($newTokenPlainText)
+                <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                    <p class="text-sm font-medium text-green-800 mb-2">{{ __('Token created! Copy it now — it won\'t be shown again.') }}</p>
+                    <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded bg-white px-3 py-2 text-xs font-mono text-gray-900 border select-all">{{ $newTokenPlainText }}</code>
+                        <x-ui.button size="sm" variant="secondary" wire:click="dismissNewToken">{{ __('Done') }}</x-ui.button>
+                    </div>
+                </div>
+            @endif
+
+            <div class="flex items-end gap-3 mb-4">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Token name') }}</label>
+                    <x-ui.input type="text" wire:model="newTokenName" placeholder="e.g. CI/CD Pipeline" />
+                    @error('newTokenName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <x-ui.button wire:click="createApiToken" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="createApiToken">{{ __('Create Token') }}</span>
+                    <span wire:loading wire:target="createApiToken">{{ __('Creating...') }}</span>
+                </x-ui.button>
+            </div>
+
+            @if($this->apiTokens->isNotEmpty())
+                <div class="divide-y divide-gray-100 border-t border-gray-100">
+                    @foreach($this->apiTokens as $token)
+                        <div class="flex items-center justify-between py-3">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ $token->name }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ __('Created') }} {{ $token->created_at->diffForHumans() }}
+                                    @if($token->last_used_at)
+                                        &middot; {{ __('Last used') }} {{ $token->last_used_at->diffForHumans() }}
+                                    @else
+                                        &middot; {{ __('Never used') }}
+                                    @endif
+                                </p>
+                            </div>
+                            <button wire:click="revokeApiToken({{ $token->id }})"
+                                    wire:confirm="{{ __('Revoke this token? Any applications using it will lose access.') }}"
+                                    class="text-xs text-red-600 hover:text-red-800">{{ __('Revoke') }}</button>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </x-ui.card>
     </div>
 </div>

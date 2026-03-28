@@ -43,6 +43,10 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        if ($this->monitor->isInMaintenanceWindow()) {
+            return;
+        }
+
         JobTracker::start($this->uniqueId(), 'Checking uptime...');
 
         $result = $this->performCheck();

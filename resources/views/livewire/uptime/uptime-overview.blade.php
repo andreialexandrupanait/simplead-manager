@@ -108,6 +108,9 @@
                                 @if($isPaused)
                                     <x-ui.badge variant="gray">Paused</x-ui.badge>
                                 @endif
+                                @if($monitor->isInMaintenanceWindow())
+                                    <x-ui.badge variant="warning" title="{{ $monitor->maintenance_reason }}">Maintenance</x-ui.badge>
+                                @endif
                             </div>
                             <p class="truncate text-xs text-gray-500">{{ $monitor->url }}</p>
                         </div>
@@ -167,6 +170,17 @@
                                     Pause
                                 </button>
                             @endif
+                            @if($monitor->isInMaintenanceWindow())
+                                <button wire:click="clearMaintenanceWindow({{ $monitor->id }})"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    Clear Maintenance
+                                </button>
+                            @else
+                                <button wire:click="openMaintenanceModal({{ $monitor->id }})"
+                                        class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                    Schedule Maintenance
+                                </button>
+                            @endif
                             <button wire:click="deleteMonitor({{ $monitor->id }})"
                                     wire:confirm="Are you sure you want to delete this monitor?"
                                     wire:loading.attr="disabled"
@@ -189,4 +203,38 @@
 
     {{-- Configure Monitor Modal --}}
     <livewire:uptime.configure-monitor />
+
+    {{-- Maintenance Window Modal --}}
+    <x-ui.modal name="maintenance-window">
+        <h2 class="text-lg font-semibold text-gray-900">Schedule Maintenance Window</h2>
+        <p class="mt-1 text-sm text-gray-500">Uptime checks will be skipped during this window.</p>
+
+        <div class="mt-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Start</label>
+                <input type="datetime-local" wire:model="maintenanceStartsAt"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+                @error('maintenanceStartsAt') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">End</label>
+                <input type="datetime-local" wire:model="maintenanceEndsAt"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+                @error('maintenanceEndsAt') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Reason (optional)</label>
+                <input type="text" wire:model="maintenanceReason" placeholder="e.g. Server migration"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-maintenance-window')">Cancel</x-ui.button>
+            <x-ui.button wire:click="setMaintenanceWindow" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="setMaintenanceWindow">Schedule</span>
+                <span wire:loading wire:target="setMaintenanceWindow">Saving...</span>
+            </x-ui.button>
+        </div>
+    </x-ui.modal>
 </div>

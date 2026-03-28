@@ -158,6 +158,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 
+        // Users & Invitations
+        Route::get('/users', Settings\UserManagement::class)->name('settings.users');
+
         // Maintenance Plans (redirect to standalone page)
         Route::redirect('/site-presets', '/maintenance-plans')->name('settings.maintenance-plans');
 
@@ -180,6 +183,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 });
 
 // Public status pages (no auth)
+// Invitation accept (public)
+Route::get('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'show'])->name('invitation.accept');
+Route::post('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'store'])->middleware('throttle:10,1');
+
 Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show')->middleware('throttle:status-page');
 Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:status-page-auth');
 Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api')->middleware('throttle:status-page');
+Route::get('/status/{slug}/badge.svg', [\App\Http\Controllers\StatusPageController::class, 'badge'])->name('status-page.badge')->middleware('throttle:status-page');

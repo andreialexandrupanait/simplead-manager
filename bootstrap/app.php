@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'site.context' => \App\Http\Middleware\SetCurrentSite::class,
             'role' => \App\Http\Middleware\RequireRole::class,
             'agent.auth' => \App\Http\Middleware\AuthenticateAgent::class,
+            'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

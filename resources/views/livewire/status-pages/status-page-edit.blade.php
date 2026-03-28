@@ -188,7 +188,17 @@
 
                 {{-- Create Incident --}}
                 <div class="rounded-lg border border-gray-200 p-4 mb-4">
-                    <h4 class="text-sm font-medium text-gray-900 mb-3">Create Incident</h4>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-900">Create Incident</h4>
+                        @if($this->incidentTemplates->isNotEmpty())
+                            <x-ui.select wire:change="applyIncidentTemplate($event.target.value)" class="w-auto text-xs">
+                                <option value="">Use template...</option>
+                                @foreach($this->incidentTemplates as $tmpl)
+                                    <option value="{{ $tmpl->id }}">{{ $tmpl->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        @endif
+                    </div>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div class="sm:col-span-2">
                             <x-ui.input type="text" wire:model="incidentTitle" placeholder="Incident title" />

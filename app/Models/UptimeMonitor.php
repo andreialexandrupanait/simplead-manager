@@ -49,6 +49,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int|null $last_response_time
  * @property string|null $last_failure_reason
  * @property int $interval_minutes
+ * @property \Illuminate\Support\Carbon|null $maintenance_starts_at
+ * @property \Illuminate\Support\Carbon|null $maintenance_ends_at
+ * @property string|null $maintenance_reason
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Site|null $site
@@ -99,6 +102,9 @@ class UptimeMonitor extends Model
         'last_response_time',
         'last_failure_reason',
         'interval_minutes',
+        'maintenance_starts_at',
+        'maintenance_ends_at',
+        'maintenance_reason',
     ];
 
     protected $casts = [
@@ -120,11 +126,31 @@ class UptimeMonitor extends Model
         'avg_response_time' => 'integer',
         'last_response_time' => 'integer',
         'interval_minutes' => 'integer',
+        'maintenance_starts_at' => 'datetime',
+        'maintenance_ends_at' => 'datetime',
     ];
 
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function isInMaintenanceWindow(): bool
+    {
+        if (! $this->maintenance_starts_at || ! $this->maintenance_ends_at) {
+            return false;
+        }
+
+        return now()->between($this->maintenance_starts_at, $this->maintenance_ends_at);
+    }
+
+    public function clearMaintenanceWindow(): void
+    {
+        $this->update([
+            'maintenance_starts_at' => null,
+            'maintenance_ends_at' => null,
+            'maintenance_reason' => null,
+        ]);
     }
 
     public function checks(): HasMany

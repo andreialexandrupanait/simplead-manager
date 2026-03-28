@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
+use App\Models\PersonalAccessToken;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -315,6 +317,46 @@ class ProfileSettings extends Component
         $fileName = 'my-data-'.now()->format('Y-m-d').'.zip';
 
         return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    // --- API Tokens ---
+
+    public string $newTokenName = '';
+
+    public ?string $newTokenPlainText = null;
+
+    #[Computed]
+    public function apiTokens()
+    {
+        return auth()->user()->personalAccessTokens()->orderByDesc('created_at')->get();
+    }
+
+    public function createApiToken(): void
+    {
+        $this->validate(['newTokenName' => 'required|string|max:255']);
+
+        $plainText = Str::random(64);
+
+        auth()->user()->personalAccessTokens()->create([
+            'name' => $this->newTokenName,
+            'token' => hash('sha256', $plainText),
+        ]);
+
+        $this->newTokenPlainText = $plainText;
+        $this->newTokenName = '';
+        unset($this->apiTokens);
+    }
+
+    public function dismissNewToken(): void
+    {
+        $this->newTokenPlainText = null;
+    }
+
+    public function revokeApiToken(int $id): void
+    {
+        PersonalAccessToken::where('user_id', auth()->id())->findOrFail($id)->delete();
+        unset($this->apiTokens);
+        session()->flash('token-revoked', 'Token revoked.');
     }
 
     public function render()

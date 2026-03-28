@@ -6,6 +6,7 @@ namespace App\Livewire\Settings;
 
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
+use App\Models\NotificationTemplate;
 use App\Services\SettingsService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -90,6 +91,71 @@ class NotificationSettings extends Component
     public function channels()
     {
         return NotificationChannel::orderBy('name')->get();
+    }
+
+    // --- Message Templates ---
+
+    public ?int $editingTemplateId = null;
+
+    public string $templateEvent = '';
+
+    public string $templateTitle = '';
+
+    public string $templateMessage = '';
+
+    public bool $templateIsActive = true;
+
+    #[Computed]
+    public function notificationTemplates()
+    {
+        return NotificationTemplate::orderBy('event')->get();
+    }
+
+    public function editTemplate(?int $id = null): void
+    {
+        if ($id) {
+            $template = NotificationTemplate::findOrFail($id);
+            $this->editingTemplateId = $id;
+            $this->templateEvent = $template->event;
+            $this->templateTitle = $template->title_template;
+            $this->templateMessage = $template->message_template;
+            $this->templateIsActive = $template->is_active;
+        } else {
+            $this->reset('editingTemplateId', 'templateEvent', 'templateTitle', 'templateMessage');
+            $this->templateIsActive = true;
+        }
+        $this->dispatch('open-modal-notification-template');
+    }
+
+    public function saveTemplate(): void
+    {
+        $this->validate([
+            'templateEvent' => 'required|string|max:100',
+            'templateTitle' => 'required|string|max:255',
+            'templateMessage' => 'required|string|max:2000',
+        ]);
+
+        NotificationTemplate::updateOrCreate(
+            ['id' => $this->editingTemplateId],
+            [
+                'event' => $this->templateEvent,
+                'title_template' => $this->templateTitle,
+                'message_template' => $this->templateMessage,
+                'is_active' => $this->templateIsActive,
+            ]
+        );
+
+        $this->dispatch('close-modal-notification-template');
+        $this->reset('editingTemplateId', 'templateEvent', 'templateTitle', 'templateMessage');
+        unset($this->notificationTemplates);
+        session()->flash('success', 'Template saved.');
+    }
+
+    public function deleteTemplate(int $id): void
+    {
+        NotificationTemplate::findOrFail($id)->delete();
+        unset($this->notificationTemplates);
+        session()->flash('success', 'Template deleted.');
     }
 
     public function render()

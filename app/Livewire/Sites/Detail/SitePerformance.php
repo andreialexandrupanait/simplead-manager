@@ -213,6 +213,7 @@ class SitePerformance extends Component
         $days = match ($this->historyRange) {
             '7d' => 7,
             '90d' => 90,
+            '180d' => 180,
             default => 30,
         };
 
@@ -286,6 +287,46 @@ class SitePerformance extends Component
     }
 
     #[Computed]
+    public function trendSummary(): array
+    {
+        if (! $this->monitor) {
+            return [];
+        }
+
+        $current = PerformanceTest::where('performance_monitor_id', $this->monitor->id)
+            ->where('status', 'completed')
+            ->whereNull('performance_page_id')
+            ->where('tested_at', '>=', now()->subDays(30))
+            ->get();
+
+        $previous = PerformanceTest::where('performance_monitor_id', $this->monitor->id)
+            ->where('status', 'completed')
+            ->whereNull('performance_page_id')
+            ->whereBetween('tested_at', [now()->subDays(60), now()->subDays(30)])
+            ->get();
+
+        if ($current->isEmpty()) {
+            return [];
+        }
+
+        $currentMobile = (int) round($current->where('device', 'mobile')->avg('performance_score') ?? 0);
+        $currentDesktop = (int) round($current->where('device', 'desktop')->avg('performance_score') ?? 0);
+        $prevMobile = $previous->where('device', 'mobile')->avg('performance_score');
+        $prevDesktop = $previous->where('device', 'desktop')->avg('performance_score');
+
+        return [
+            'mobile' => [
+                'current' => $currentMobile,
+                'change' => $prevMobile ? $currentMobile - (int) round($prevMobile) : null,
+            ],
+            'desktop' => [
+                'current' => $currentDesktop,
+                'change' => $prevDesktop ? $currentDesktop - (int) round($prevDesktop) : null,
+            ],
+        ];
+    }
+
+    #[Computed]
     public function scoreHistory(): array
     {
         if (! $this->monitor) {
@@ -295,6 +336,7 @@ class SitePerformance extends Component
         $days = match ($this->historyRange) {
             '7d' => 7,
             '90d' => 90,
+            '180d' => 180,
             default => 30,
         };
 

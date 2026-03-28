@@ -143,6 +143,81 @@
         </form>
     </div>
 
+    {{-- Message Templates --}}
+    <x-ui.card class="mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-base font-semibold text-gray-900">Message Templates</h3>
+                <p class="text-sm text-gray-500">Customize notification messages per event type. Use placeholders: <code class="text-xs bg-gray-100 px-1 rounded">{site_name}</code>, <code class="text-xs bg-gray-100 px-1 rounded">{site_url}</code>, <code class="text-xs bg-gray-100 px-1 rounded">{details}</code></p>
+            </div>
+            <x-ui.button size="sm" wire:click="editTemplate">Add Template</x-ui.button>
+        </div>
+
+        @if($this->notificationTemplates->isEmpty())
+            <p class="text-sm text-gray-400 italic">No custom templates. Default messages will be used.</p>
+        @else
+            <div class="divide-y divide-gray-100">
+                @foreach($this->notificationTemplates as $tmpl)
+                    <div class="flex items-center justify-between py-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-medium text-gray-900">{{ \App\Models\NotificationTemplate::EVENTS[$tmpl->event] ?? $tmpl->event }}</span>
+                                @if(!$tmpl->is_active)
+                                    <x-ui.badge variant="gray">Disabled</x-ui.badge>
+                                @endif
+                            </div>
+                            <p class="text-xs text-gray-500 truncate">{{ $tmpl->title_template }}</p>
+                        </div>
+                        <div class="flex gap-2 ml-4">
+                            <button wire:click="editTemplate({{ $tmpl->id }})" class="text-xs text-purple-600 hover:text-purple-800">Edit</button>
+                            <button wire:click="deleteTemplate({{ $tmpl->id }})" wire:confirm="Delete this template?" class="text-xs text-red-600 hover:text-red-800">Delete</button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </x-ui.card>
+
     {{-- Channel Form Modal --}}
     <livewire:settings.components.channel-form />
+
+    {{-- Template Form Modal --}}
+    <x-ui.modal name="notification-template" maxWidth="lg">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $editingTemplateId ? 'Edit Template' : 'New Template' }}</h3>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Event</label>
+                <x-ui.select wire:model="templateEvent">
+                    <option value="">Select event...</option>
+                    @foreach(\App\Models\NotificationTemplate::EVENTS as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </x-ui.select>
+                @error('templateEvent') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Title Template</label>
+                <x-ui.input type="text" wire:model="templateTitle" placeholder="e.g. {site_name} is down!" />
+                @error('templateTitle') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
+                <textarea wire:model="templateMessage" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="e.g. {site_name} ({site_url}) is currently experiencing issues. {details}"></textarea>
+                @error('templateMessage') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:model="templateIsActive" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <span class="text-sm text-gray-700">Active</span>
+            </label>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-notification-template')">Cancel</x-ui.button>
+            <x-ui.button wire:click="saveTemplate">Save Template</x-ui.button>
+        </div>
+    </x-ui.modal>
 </div>

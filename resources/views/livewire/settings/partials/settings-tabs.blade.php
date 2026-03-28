@@ -13,6 +13,7 @@
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
                     ['route' => 'settings.data-retention', 'label' => __('Data Retention')],
                     ['route' => 'settings.application-backup', 'label' => __('Application Backup')],
+                    ['route' => 'settings.users', 'label' => __('Users')],
                 ], $tabs);
             }
         @endphp

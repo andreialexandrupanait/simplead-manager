@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Site;
 use App\Models\StatusPage;
 use App\Models\StatusPageIncident;
+use App\Models\StatusPageIncidentTemplate;
 use App\Models\StatusPageSite;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
@@ -184,6 +185,14 @@ class StatusPageEdit extends Component
         $this->redirect(route('settings.status-pages.edit', $this->statusPage), navigate: true);
     }
 
+    public function applyIncidentTemplate(int $templateId): void
+    {
+        $template = StatusPageIncidentTemplate::findOrFail($templateId);
+        $this->incidentTitle = $template->title;
+        $this->incidentDescription = $template->description ?? '';
+        $this->incidentSeverity = $template->severity;
+    }
+
     public function createIncident(): void
     {
         $this->validate([
@@ -348,6 +357,12 @@ class StatusPageEdit extends Component
             $this->statusPage->update(['password_hash' => null]);
             session()->flash('success', 'Password protection removed.');
         }
+    }
+
+    #[Computed]
+    public function incidentTemplates()
+    {
+        return StatusPageIncidentTemplate::orderBy('sort_order')->orderBy('name')->get();
     }
 
     public function render()
