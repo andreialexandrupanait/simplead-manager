@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\Notifications\NotificationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -217,7 +218,7 @@ class AppBackupService
 
             return $backup;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Application backup failed: '.$e->getMessage());
 
             $backup->update([
@@ -247,7 +248,7 @@ class AppBackupService
         } finally {
             try {
                 $this->cleanupDir($tempDir);
-            } catch (\Exception $e) {
+            } catch (\RuntimeException $e) {
                 Log::warning("Failed to cleanup temp dir: {$e->getMessage()}");
             }
         }
@@ -274,7 +275,7 @@ class AppBackupService
         foreach ($toDelete as $oldBackup) {
             try {
                 $this->deleteBackup($oldBackup);
-            } catch (\Exception $e) {
+            } catch (\RuntimeException $e) {
                 Log::warning("Failed to delete old app backup {$oldBackup->id}: {$e->getMessage()}");
             }
         }
@@ -455,7 +456,7 @@ class AppBackupService
                 $driver = StorageFactory::make($destination);
                 $driver->delete($backup->storage_path);
                 $destination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
-            } catch (\Exception $e) {
+            } catch (\RuntimeException $e) {
                 Log::warning("Failed to delete app backup file {$backup->storage_path}: {$e->getMessage()}");
             }
         } elseif (! $destination && $backup->storage_path) {
@@ -476,7 +477,7 @@ class AppBackupService
             ->each(function (AppBackup $backup) {
                 try {
                     $this->deleteBackup($backup);
-                } catch (\Exception $e) {
+                } catch (\RuntimeException $e) {
                     Log::warning("Failed to clean expired app backup {$backup->id}: {$e->getMessage()}");
                 }
             });
@@ -586,23 +587,46 @@ class AppBackupService
 
     protected function reconstructEnvFromEnvironment(): string
     {
-        $keys = [
-            'APP_NAME', 'APP_ENV', 'APP_KEY', 'APP_DEBUG', 'APP_URL',
-            'LOG_CHANNEL', 'LOG_LEVEL',
-            'DB_CONNECTION', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
-            'REDIS_HOST', 'REDIS_PASSWORD', 'REDIS_PORT',
-            'MAIL_MAILER', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_USERNAME', 'MAIL_PASSWORD',
-            'MAIL_ENCRYPTION', 'MAIL_FROM_ADDRESS', 'MAIL_FROM_NAME',
-            'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION', 'AWS_BUCKET',
-            'QUEUE_CONNECTION', 'SESSION_DRIVER', 'CACHE_STORE',
-            'FILESYSTEM_DISK',
+        $mapping = [
+            'APP_NAME' => config('app.name'),
+            'APP_ENV' => config('app.env'),
+            'APP_KEY' => config('app.key'),
+            'APP_DEBUG' => config('app.debug') ? 'true' : 'false',
+            'APP_URL' => config('app.url'),
+            'LOG_CHANNEL' => config('logging.default'),
+            'LOG_LEVEL' => config('logging.channels.'.config('logging.default').'.level'),
+            'DB_CONNECTION' => config('database.default'),
+            'DB_HOST' => config('database.connections.pgsql.host'),
+            'DB_PORT' => config('database.connections.pgsql.port'),
+            'DB_DATABASE' => config('database.connections.pgsql.database'),
+            'DB_USERNAME' => config('database.connections.pgsql.username'),
+            'DB_PASSWORD' => config('database.connections.pgsql.password'),
+            'REDIS_HOST' => config('database.redis.default.host'),
+            'REDIS_PASSWORD' => config('database.redis.default.password'),
+            'REDIS_PORT' => config('database.redis.default.port'),
+            'MAIL_MAILER' => config('mail.default'),
+            'MAIL_HOST' => config('mail.mailers.smtp.host'),
+            'MAIL_PORT' => config('mail.mailers.smtp.port'),
+            'MAIL_USERNAME' => config('mail.mailers.smtp.username'),
+            'MAIL_PASSWORD' => config('mail.mailers.smtp.password'),
+            'MAIL_ENCRYPTION' => config('mail.mailers.smtp.encryption'),
+            'MAIL_FROM_ADDRESS' => config('mail.from.address'),
+            'MAIL_FROM_NAME' => config('mail.from.name'),
+            'AWS_ACCESS_KEY_ID' => config('filesystems.disks.s3.key'),
+            'AWS_SECRET_ACCESS_KEY' => config('filesystems.disks.s3.secret'),
+            'AWS_DEFAULT_REGION' => config('filesystems.disks.s3.region'),
+            'AWS_BUCKET' => config('filesystems.disks.s3.bucket'),
+            'QUEUE_CONNECTION' => config('queue.default'),
+            'SESSION_DRIVER' => config('session.driver'),
+            'CACHE_STORE' => config('cache.default'),
+            'FILESYSTEM_DISK' => config('filesystems.default'),
         ];
 
         $lines = [];
-        foreach ($keys as $key) {
-            $value = getenv($key) ?: null;
+        foreach ($mapping as $key => $value) {
             if ($value !== null) {
-                $value = str_contains((string) $value, ' ') ? "\"$value\"" : $value;
+                $value = (string) $value;
+                $value = str_contains($value, ' ') ? "\"$value\"" : $value;
                 $lines[] = "$key=$value";
             }
         }
@@ -785,7 +809,7 @@ class AppBackupService
                     continue;
                 }
                 $counts[$table->tablename] = DB::table($table->tablename)->count();
-            } catch (\Exception $e) {
+            } catch (QueryException) {
                 // Skip tables that can't be counted
             }
         }
@@ -865,7 +889,7 @@ class AppBackupService
                     '"'.$seq->column_name.'"',
                     '"'.$seq->table_name.'"',
                 ));
-            } catch (\Exception $e) {
+            } catch (QueryException $e) {
                 Log::warning("Failed to reset sequence {$seq->sequence_name}: {$e->getMessage()}");
             }
         }

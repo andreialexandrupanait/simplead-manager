@@ -150,7 +150,7 @@ class NotificationService
 
             Redis::rpush(self::BUFFER_KEY, json_encode($item));
             Redis::expire(self::BUFFER_KEY, self::BUFFER_TTL);
-        } catch (\RedisException|\Throwable $e) {
+        } catch (\Throwable $e) {
             // Redis unavailable — fall back to immediate dispatch
             SendNotificationJob::dispatch(
                 $channel, $site, $event, $title, $message,

@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
  * @property-read \App\Models\SecurityScan|null $securityScan
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static> active()
  */
 class SecurityIssue extends Model
 {

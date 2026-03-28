@@ -132,6 +132,12 @@
                     </div>
                 @endforeach
             </div>
+
+            @if($this->presets->hasPages())
+                <div class="mt-4">
+                    {{ $this->presets->links() }}
+                </div>
+            @endif
         @endif
     </x-ui.card>
 </div>

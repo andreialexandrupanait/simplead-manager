@@ -101,11 +101,14 @@ class MaintenancePlanService
     {
         $categories = array_keys(SecuritySettingsService::VALID_SETTING_KEYS);
 
-        return $site->securitySettings()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, SecuritySetting> $settings */
+        $settings = $site->securitySettings()
             ->whereIn('category', $categories)
-            ->get()
+            ->get();
+
+        return $settings
             ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category)
-            ->map(fn (\Illuminate\Support\Collection $settings) => $settings->mapWithKeys(fn (SecuritySetting $s) => [
+            ->map(fn (\Illuminate\Support\Collection $group) => $group->mapWithKeys(fn ($s) => [ // @phpstan-ignore argument.type, return.type
                 $s->setting_key => [
                     'value' => $s->setting_value,
                     'enabled' => $s->is_enabled,
@@ -119,11 +122,14 @@ class MaintenancePlanService
      */
     private function snapshotTweakSettings(Site $site): array
     {
-        return $site->securitySettings()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, SecuritySetting> $settings */
+        $settings = $site->securitySettings()
             ->whereIn('category', SiteTweaksSettingsService::TWEAK_CATEGORIES)
-            ->get()
+            ->get();
+
+        return $settings
             ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category)
-            ->map(fn (\Illuminate\Support\Collection $settings) => $settings->mapWithKeys(fn (SecuritySetting $s) => [
+            ->map(fn (\Illuminate\Support\Collection $group) => $group->mapWithKeys(fn ($s) => [ // @phpstan-ignore argument.type, return.type
                 $s->setting_key => [
                     'value' => $s->setting_value,
                     'enabled' => $s->is_enabled,

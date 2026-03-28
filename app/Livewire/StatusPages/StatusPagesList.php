@@ -5,21 +5,26 @@ declare(strict_types=1);
 namespace App\Livewire\StatusPages;
 
 use App\Models\StatusPage;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class StatusPagesList extends Component
 {
+    use WithPagination;
+
     public ?int $deletingId = null;
 
-    #[Computed]
-    public function statusPages()
+    public function render()
     {
-        return StatusPage::withCount(['statusPageSites', 'incidents' => function ($q) {
+        $statusPages = StatusPage::withCount(['statusPageSites', 'incidents' => function ($q) {
             $q->active();
         }])
             ->orderByDesc('created_at')
-            ->get();
+            ->simplePaginate(15);
+
+        return view('livewire.status-pages.status-pages-list', [
+            'statusPages' => $statusPages,
+        ])->layout('components.layouts.app', ['title' => 'Status Pages']);
     }
 
     public function confirmDelete(int $id): void
@@ -36,13 +41,6 @@ class StatusPagesList extends Component
 
         $this->dispatch('close-modal-delete-status-page');
         $this->deletingId = null;
-        unset($this->statusPages);
         session()->flash('success', 'Status page deleted.');
-    }
-
-    public function render()
-    {
-        return view('livewire.status-pages.status-pages-list')
-            ->layout('components.layouts.app', ['title' => 'Status Pages']);
     }
 }

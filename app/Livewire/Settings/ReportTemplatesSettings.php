@@ -6,9 +6,12 @@ namespace App\Livewire\Settings;
 
 use App\Models\ReportTemplate;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class ReportTemplatesSettings extends Component
 {
+    use WithPagination;
+
     public ?int $editingTemplateId = null;
 
     public string $name = '';
@@ -319,7 +322,7 @@ class ReportTemplatesSettings extends Component
 
     public function render()
     {
-        $templates = ReportTemplate::withCount('schedules')->orderBy('name')->get();
+        $templates = ReportTemplate::withCount('schedules')->orderBy('name')->simplePaginate(15);
 
         return view('livewire.settings.report-templates-settings', [
             'templates' => $templates,

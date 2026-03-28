@@ -10,9 +10,12 @@ use App\Services\SecurityPresetService;
 use App\Services\SecuritySettingsService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class PresetManager extends Component
 {
+    use WithPagination;
+
     // Form state
     public bool $showForm = false;
 
@@ -46,7 +49,7 @@ class PresetManager extends Component
     #[Computed]
     public function presets()
     {
-        return SecurityPreset::withCount('sites')->orderBy('name')->get();
+        return SecurityPreset::withCount('sites')->orderBy('name')->simplePaginate(15);
     }
 
     #[Computed]

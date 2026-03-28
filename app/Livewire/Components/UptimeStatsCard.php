@@ -28,6 +28,7 @@ class UptimeStatsCard extends Component
 
         $uptime = $this->monitor->{"uptime_{$this->period}"};
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\UptimeIncident> $incidents */
         $incidents = $this->monitor->incidents()
             ->where('started_at', '>=', $since)
             ->get();

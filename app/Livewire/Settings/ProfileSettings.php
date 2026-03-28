@@ -264,6 +264,7 @@ class ProfileSettings extends Component
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         // Sites
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\Site> $sites */
         $sites = $user->sites()->select('id', 'name', 'url', 'status', 'created_at')->get();
         $zip->addFromString('sites.json', json_encode(
             $sites->map(fn (\App\Models\Site $s) => [
@@ -293,6 +294,7 @@ class ProfileSettings extends Component
         ));
 
         // Activity logs
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ActivityLog> $logs */
         $logs = $user->activityLogs()
             ->select('id', 'type', 'title', 'description', 'created_at')
             ->orderByDesc('created_at')

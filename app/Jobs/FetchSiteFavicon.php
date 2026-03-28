@@ -72,7 +72,7 @@ class FetchSiteFavicon implements ShouldQueue
                 ->get($url);
 
             if ($response->successful() && strlen($response->body()) > 0) {
-                $contentType = $response->header('Content-Type') ?? '';
+                $contentType = $response->header('Content-Type');
                 // Accept image types and ICO (which sometimes comes as application/octet-stream)
                 if (str_contains($contentType, 'image') || str_contains($contentType, 'octet-stream') || str_contains($contentType, 'x-icon')) {
                     return $response->body();

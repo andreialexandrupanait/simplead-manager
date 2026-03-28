@@ -16,7 +16,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 class RetentionCleanup implements ShouldQueue
 {
@@ -71,10 +70,6 @@ class RetentionCleanup implements ShouldQueue
             JobTracker::progress(self::JOB_KEY, $progress, "Cleaning {$config['label']}...");
 
             foreach ($config['tables'] as $tableConfig) {
-                if ($tableConfig['hasTable'] && ! Schema::hasTable($tableConfig['table'])) {
-                    continue;
-                }
-
                 if (now()->gte($deadline)) {
                     $hitDeadline = true;
                     break;

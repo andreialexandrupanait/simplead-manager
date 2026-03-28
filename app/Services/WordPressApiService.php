@@ -390,7 +390,7 @@ class WordPressApiService implements WordPressApiServiceInterface
                     }
 
                     // Pipeline: start async exec for next chunk BEFORE downloading current
-                    if ($i + 1 < $totalChunks && $pendingExec === null) {
+                    if ($i + 1 < $totalChunks) {
                         $pendingExec = $this->startAsyncExec($token, $i + 1);
                     }
 

@@ -96,6 +96,7 @@ class StatusPage extends Model
     protected function overallStatus(): Attribute
     {
         return Attribute::get(function () {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, StatusPageSite> $sites */
             $sites = $this->statusPageSites()->with('site.uptimeMonitor')->get();
 
             if ($sites->isEmpty()) {

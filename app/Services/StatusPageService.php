@@ -16,7 +16,7 @@ class StatusPageService
     public static function createAutoIncident(StatusPage $statusPage, Site $site, string $reason): StatusPageIncident
     {
         // Don't create duplicate auto-incidents
-        $existing = $statusPage->incidents()
+        $existing = StatusPageIncident::where('status_page_id', $statusPage->id)
             ->where('site_id', $site->id)
             ->where('auto_created', true)
             ->active()
@@ -47,7 +47,7 @@ class StatusPageService
 
     public static function resolveAutoIncident(StatusPage $statusPage, Site $site): void
     {
-        $incidents = $statusPage->incidents()
+        $incidents = StatusPageIncident::where('status_page_id', $statusPage->id)
             ->where('site_id', $site->id)
             ->where('auto_created', true)
             ->active()
@@ -69,24 +69,26 @@ class StatusPageService
 
     public static function getPublicData(StatusPage $statusPage): array
     {
-        return Cache::remember("status-page:{$statusPage->id}", 60, function () use ($statusPage) {
-            $sites = $statusPage->statusPageSites()
+        return Cache::remember("status-page:{$statusPage->id}", 60, function () use ($statusPage) { // @phpstan-ignore argument.type
+            /** @var \Illuminate\Database\Eloquent\Collection<int, StatusPageSite> $statusPageSites */
+            $statusPageSites = $statusPage->statusPageSites()
                 ->where('is_visible', true)
                 ->with(['site.uptimeMonitor'])
-                ->get()
-                ->map(fn (StatusPageSite $sps) => [
-                    'name' => $sps->name,
-                    'status' => $sps->current_status,
-                    'uptime_percentage' => $sps->site?->uptime_percentage,
-                    'response_time' => $sps->site?->uptimeMonitor?->avg_response_time,
-                ]);
+                ->get();
+
+            $sites = $statusPageSites->map(fn (StatusPageSite $sps) => [
+                'name' => $sps->name,
+                'status' => $sps->current_status,
+                'uptime_percentage' => $sps->site?->uptime_percentage,
+                'response_time' => $sps->site?->uptimeMonitor?->avg_response_time,
+            ]);
 
             $activeIncidents = $statusPage->activeIncidents()
                 ->with('updates')
                 ->orderByDesc('started_at')
                 ->get();
 
-            $recentIncidents = $statusPage->incidents()
+            $recentIncidents = StatusPageIncident::where('status_page_id', $statusPage->id)
                 ->where('status', 'resolved')
                 ->recent($statusPage->incident_history_days)
                 ->with('updates')
@@ -99,7 +101,7 @@ class StatusPageService
                 ->orderBy('scheduled_start_at')
                 ->get();
 
-            return [
+            return [ // @phpstan-ignore return.type
                 'title' => $statusPage->title,
                 'description' => $statusPage->description,
                 'logo_url' => $statusPage->logo_url,

@@ -41,7 +41,7 @@ trait HasDomainExtraction
 
         if (count($parts) > 2) {
             $lastTwo = implode('.', array_slice($parts, -2));
-            if (in_array($lastTwo, static::$twoPartTlds)) {
+            if (in_array($lastTwo, self::$twoPartTlds)) {
                 $parts = array_slice($parts, -3);
             } else {
                 $parts = array_slice($parts, -2);

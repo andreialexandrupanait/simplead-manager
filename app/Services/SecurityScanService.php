@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\ExternalServiceException;
+use App\Exceptions\WordPressApiException;
 use App\Models\SecurityIssue;
 use App\Models\SecurityScan;
 use App\Models\Site;
+use App\Models\VulnerabilityAlert;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Log;
 
@@ -111,23 +114,19 @@ class SecurityScanService
             JobTracker::progress($trackerKey, 10, 'Checking WordPress version...');
         }
 
-        try {
-            $wpVersion = $site->wp_version;
-            $recommended = config('security.wordpress.recommended_version', '6.4');
-            $minimum = config('security.wordpress.minimum_version', '6.0');
+        $wpVersion = $site->wp_version;
+        $recommended = config('security.wordpress.recommended_version', '6.4');
+        $minimum = config('security.wordpress.minimum_version', '6.0');
 
-            if ($wpVersion && version_compare($wpVersion, $recommended, '<')) {
-                return [[
-                    'category' => 'core',
-                    'type' => 'wp_outdated',
-                    'severity' => version_compare($wpVersion, $minimum, '<') ? 'critical' : 'high',
-                    'title' => "WordPress {$wpVersion} is outdated",
-                    'description' => 'Running an outdated WordPress version exposes the site to known vulnerabilities.',
-                    'recommendation' => 'Update WordPress to the latest version.',
-                ]];
-            }
-        } catch (\Exception $e) {
-            Log::warning("Security scan: WP version check failed for site {$site->id}: {$e->getMessage()}");
+        if ($wpVersion && version_compare($wpVersion, $recommended, '<')) {
+            return [[
+                'category' => 'core',
+                'type' => 'wp_outdated',
+                'severity' => version_compare($wpVersion, $minimum, '<') ? 'critical' : 'high',
+                'title' => "WordPress {$wpVersion} is outdated",
+                'description' => 'Running an outdated WordPress version exposes the site to known vulnerabilities.',
+                'recommendation' => 'Update WordPress to the latest version.',
+            ]];
         }
 
         return [];
@@ -141,7 +140,7 @@ class SecurityScanService
 
         try {
             VulnerabilityCheckService::check($site);
-        } catch (\Exception $e) {
+        } catch (ExternalServiceException|\Exception $e) {
             Log::warning("Security scan: vulnerability check failed for site {$site->id}: {$e->getMessage()}");
         }
     }
@@ -154,32 +153,28 @@ class SecurityScanService
 
         $issues = [];
 
-        try {
-            $coreCheck = $site->latestCoreFileCheck;
-            if ($coreCheck && $coreCheck->status === 'modified') {
-                if ($coreCheck->modified_count > 0) {
-                    $issues[] = [
-                        'category' => 'core',
-                        'type' => 'core_files_modified',
-                        'severity' => 'high',
-                        'title' => "{$coreCheck->modified_count} core file(s) modified",
-                        'description' => 'WordPress core files have been modified from their original versions.',
-                        'recommendation' => 'Reinstall WordPress core files or investigate the modifications.',
-                    ];
-                }
-                if ($coreCheck->unknown_count > 0) {
-                    $issues[] = [
-                        'category' => 'core',
-                        'type' => 'core_unknown_files',
-                        'severity' => 'medium',
-                        'title' => "{$coreCheck->unknown_count} unknown file(s) in core directories",
-                        'description' => 'Unknown files were found in WordPress core directories.',
-                        'recommendation' => 'Review and remove any suspicious files from core directories.',
-                    ];
-                }
+        $coreCheck = $site->latestCoreFileCheck;
+        if ($coreCheck && $coreCheck->status === 'modified') {
+            if ($coreCheck->modified_count > 0) {
+                $issues[] = [
+                    'category' => 'core',
+                    'type' => 'core_files_modified',
+                    'severity' => 'high',
+                    'title' => "{$coreCheck->modified_count} core file(s) modified",
+                    'description' => 'WordPress core files have been modified from their original versions.',
+                    'recommendation' => 'Reinstall WordPress core files or investigate the modifications.',
+                ];
             }
-        } catch (\Exception $e) {
-            Log::warning("Security scan: core integrity check failed for site {$site->id}: {$e->getMessage()}");
+            if ($coreCheck->unknown_count > 0) {
+                $issues[] = [
+                    'category' => 'core',
+                    'type' => 'core_unknown_files',
+                    'severity' => 'medium',
+                    'title' => "{$coreCheck->unknown_count} unknown file(s) in core directories",
+                    'description' => 'Unknown files were found in WordPress core directories.',
+                    'recommendation' => 'Review and remove any suspicious files from core directories.',
+                ];
+            }
         }
 
         return $issues;
@@ -206,7 +201,7 @@ class SecurityScanService
                     ]];
                 }
             }
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|\RuntimeException $e) {
             Log::warning("Security scan: debug mode check failed for site {$site->id}: {$e->getMessage()}");
         }
 
@@ -247,8 +242,9 @@ class SecurityScanService
 
     private function calculateScore(Site $site): array
     {
-        $allItems = SecurityIssue::where('site_id', $site->id)->active()->get()
-            ->merge($site->vulnerabilityAlerts()->active()->get());
+        $allItems = collect()
+            ->concat(SecurityIssue::where('site_id', $site->id)->active()->get())
+            ->concat(VulnerabilityAlert::where('site_id', $site->id)->active()->get());
 
         $score = 100;
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];

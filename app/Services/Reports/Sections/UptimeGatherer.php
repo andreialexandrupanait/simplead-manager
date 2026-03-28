@@ -50,7 +50,7 @@ class UptimeGatherer extends BaseReportSectionGatherer
             ->get()
             ->toArray();
 
-        $avgResponseTime = UptimeCheck::where('monitor_id', $monitor->id)
+        $avgResponseTime = (float) UptimeCheck::where('monitor_id', $monitor->id)
             ->whereBetween('checked_at', [$periodStart, $periodEnd])
             ->where('is_up', true)
             ->avg('response_time');

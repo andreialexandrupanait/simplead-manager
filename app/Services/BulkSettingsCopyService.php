@@ -59,10 +59,11 @@ class BulkSettingsCopyService
     public function copyTweakSettings(Site $source, Collection $targets): array
     {
         $categories = SiteTweaksSettingsService::TWEAK_CATEGORIES;
-        $settings = $source->securitySettings()
+        /** @var \Illuminate\Database\Eloquent\Collection<int, SecuritySetting> $rawSettings */
+        $rawSettings = $source->securitySettings()
             ->whereIn('category', $categories)
-            ->get()
-            ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category);
+            ->get();
+        $settings = $rawSettings->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category);
 
         if ($settings->isEmpty()) {
             return ['total' => 0, 'pushed' => 0];

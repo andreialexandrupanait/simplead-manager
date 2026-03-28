@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 
 trait WithBulkSiteActions
 {
+    /** @return \Illuminate\Database\Eloquent\Builder<Site> */
     protected function scopedSiteQuery(array $siteIds): \Illuminate\Database\Eloquent\Builder
     {
         return Site::whereIn('id', $siteIds)

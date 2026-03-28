@@ -73,9 +73,10 @@ class DatabaseDumpCommand extends Command
         if ($encryptionKey) {
             $encryptedPath = $filepath.'.enc';
             $encCommand = sprintf(
-                'openssl enc -aes-256-cbc -salt -pbkdf2 -in %s -out %s -pass env:BACKUP_ENCRYPTION_KEY 2>&1',
+                'openssl enc -aes-256-cbc -salt -pbkdf2 -in %s -out %s -pass pass:%s 2>&1',
                 escapeshellarg($filepath),
-                escapeshellarg($encryptedPath)
+                escapeshellarg($encryptedPath),
+                escapeshellarg($encryptionKey)
             );
 
             exec($encCommand, $encOutput, $encExit);
@@ -110,8 +111,8 @@ class DatabaseDumpCommand extends Command
     protected function cleanup(string $dir, int $keep): void
     {
         $files = array_merge(
-            glob("{$dir}/db_dump_*.sql.gz"),
-            glob("{$dir}/db_dump_*.sql.gz.enc")
+            glob("{$dir}/db_dump_*.sql.gz") ?: [],
+            glob("{$dir}/db_dump_*.sql.gz.enc") ?: []
         );
         rsort($files); // newest first
 

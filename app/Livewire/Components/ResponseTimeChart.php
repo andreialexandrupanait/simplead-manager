@@ -29,6 +29,7 @@ class ResponseTimeChart extends Component
             default => now()->subHours(24),
         };
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\UptimeCheck> $checks */
         $checks = $this->monitor->checks()
             ->where('checked_at', '>=', $since)
             ->whereNotNull('response_time')

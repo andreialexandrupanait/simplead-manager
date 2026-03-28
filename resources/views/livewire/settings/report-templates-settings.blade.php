@@ -115,6 +115,12 @@
                 </x-ui.empty-state>
             </x-ui.card>
         @endforelse
+
+        @if($templates->hasPages())
+            <div class="mt-4">
+                {{ $templates->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- Create/Edit Form Modal --}}

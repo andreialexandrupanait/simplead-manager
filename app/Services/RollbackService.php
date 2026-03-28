@@ -66,7 +66,7 @@ class RollbackService
 
     public function getAvailablePoints(Site $site): Collection
     {
-        return $site->rollbackPoints()
+        return RollbackPoint::where('site_id', $site->id)
             ->available()
             ->orderByDesc('created_at')
             ->get();

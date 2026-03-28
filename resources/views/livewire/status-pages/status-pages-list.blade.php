@@ -11,7 +11,7 @@
         </x-ui.button>
     </div>
 
-    @if($this->statusPages->isEmpty())
+    @if($statusPages->isEmpty())
         <x-ui.card>
             <x-ui.empty-state
                 title="No status pages"
@@ -21,7 +21,7 @@
         </x-ui.card>
     @else
         <div class="space-y-4">
-            @foreach($this->statusPages as $page)
+            @foreach($statusPages as $page)
                 <x-ui.card>
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">
@@ -66,6 +66,10 @@
                     </div>
                 </x-ui.card>
             @endforeach
+        </div>
+
+        <div class="mt-4">
+            {{ $statusPages->links() }}
         </div>
     @endif
 
