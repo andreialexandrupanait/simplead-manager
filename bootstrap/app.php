@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\SetCurrentSite::class,
+            \App\Http\Middleware\EnforceTwoFactor::class,
         ]);
 
         $middleware->alias([

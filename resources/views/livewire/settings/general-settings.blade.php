@@ -110,6 +110,16 @@
             </div>
         </x-ui.card>
 
+        {{-- Security --}}
+        <x-ui.card>
+            <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Security') }}</h3>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:model="mfaRequired" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <span class="text-sm text-gray-700">{{ __('Require two-factor authentication for all users') }}</span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500">{{ __('Users without 2FA enabled will be redirected to their profile to set it up.') }}</p>
+        </x-ui.card>
+
         <div class="flex justify-end">
             <x-ui.button type="submit" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="save">{{ __('Save Settings') }}</span>
