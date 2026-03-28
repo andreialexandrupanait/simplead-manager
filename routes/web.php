@@ -182,6 +182,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     });
 });
 
+// Google SSO
+Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'redirect'])->name('auth.google')->middleware('guest');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'callback'])->name('auth.google.callback')->middleware('guest');
+
 // Public status pages (no auth)
 // Notification acknowledgment (public, token-based)
 Route::get('/notifications/ack/{token}', \App\Http\Controllers\NotificationAckController::class)->name('notifications.ack')->middleware('throttle:30,1');
