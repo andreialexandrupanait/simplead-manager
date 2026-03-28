@@ -52,6 +52,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property \Illuminate\Support\Carbon|null $maintenance_starts_at
  * @property \Illuminate\Support\Carbon|null $maintenance_ends_at
  * @property string|null $maintenance_reason
+ * @property array|null $check_locations
+ * @property bool $require_all_locations_down
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Site|null $site
@@ -68,6 +70,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class UptimeMonitor extends Model
 {
     use HasFactory;
+
+    /**
+     * Available check locations. 'primary' is the main server.
+     * External locations will be added as probe integrations are built.
+     */
+    public const LOCATIONS = [
+        'primary' => ['label' => 'Primary (Server)', 'region' => 'EU'],
+    ];
 
     protected $fillable = [
         'site_id',
@@ -105,6 +115,8 @@ class UptimeMonitor extends Model
         'maintenance_starts_at',
         'maintenance_ends_at',
         'maintenance_reason',
+        'check_locations',
+        'require_all_locations_down',
     ];
 
     protected $casts = [
@@ -128,6 +140,8 @@ class UptimeMonitor extends Model
         'interval_minutes' => 'integer',
         'maintenance_starts_at' => 'datetime',
         'maintenance_ends_at' => 'datetime',
+        'check_locations' => 'array',
+        'require_all_locations_down' => 'boolean',
     ];
 
     public function site(): BelongsTo

@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $is_up
  * @property int|null $response_time
  * @property int|null $status_code
+ * @property string $location
  * @property string|null $failure_reason
  * @property bool|null $keyword_found
  * @property \Illuminate\Support\Carbon|null $ssl_expires_at
@@ -40,6 +41,7 @@ class UptimeCheck extends Model
         'is_up',
         'response_time',
         'status_code',
+        'location',
         'failure_reason',
         'keyword_found',
         'ssl_expires_at',

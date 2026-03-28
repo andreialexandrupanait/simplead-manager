@@ -188,6 +188,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             'is_up' => $result['is_up'],
             'response_time' => $result['response_time'],
             'status_code' => $result['status_code'],
+            'location' => 'primary',
             'failure_reason' => $result['failure_reason'],
             'keyword_found' => $result['keyword_found'],
             'checked_at' => now(),
