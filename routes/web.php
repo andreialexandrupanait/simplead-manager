@@ -183,6 +183,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 });
 
 // Public status pages (no auth)
+// Client Portal (public, token-based)
+Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');
+Route::get('/portal/{token}/reports/{report}/download', [\App\Http\Controllers\ClientPortalController::class, 'downloadReport'])->name('client-portal.download')->middleware('throttle:10,1');
+
 // Invitation accept (public)
 Route::get('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'show'])->name('invitation.accept');
 Route::post('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'store'])->middleware('throttle:10,1');

@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $portal_token
+ * @property bool $portal_enabled
  * @property-read string|null $logo_path
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Site> $sites
  */
@@ -49,10 +51,13 @@ class Client extends Model
         'logo',
         'notes',
         'status',
+        'portal_token',
+        'portal_enabled',
     ];
 
     protected $casts = [
         'deleted_at' => 'datetime',
+        'portal_enabled' => 'boolean',
     ];
 
     public function sites(): HasMany

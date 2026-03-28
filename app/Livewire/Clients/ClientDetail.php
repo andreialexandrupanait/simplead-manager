@@ -6,6 +6,7 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class ClientDetail extends Component
@@ -23,6 +24,24 @@ class ClientDetail extends Component
     public function confirmDelete(): void
     {
         $this->dispatch('open-modal-delete-client');
+    }
+
+    public function togglePortal(): void
+    {
+        $this->authorize('update', $this->client);
+
+        if (! $this->client->portal_token) {
+            $this->client->portal_token = Str::random(64);
+        }
+
+        $this->client->portal_enabled = ! $this->client->portal_enabled;
+        $this->client->save();
+    }
+
+    public function regeneratePortalToken(): void
+    {
+        $this->authorize('update', $this->client);
+        $this->client->update(['portal_token' => Str::random(64)]);
     }
 
     public function delete(): void

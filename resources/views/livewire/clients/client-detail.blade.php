@@ -131,6 +131,31 @@
         </x-ui.card>
     </div>
 
+    {{-- Client Portal --}}
+    <x-ui.card class="mt-6">
+        <h3 class="text-base font-semibold text-gray-900 mb-3">Client Portal</h3>
+        <p class="text-sm text-gray-500 mb-3">Share a link with your client so they can view reports and site status without logging in.</p>
+
+        <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:click="togglePortal" @checked($client->portal_enabled)
+                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <span class="text-sm text-gray-700">Enable portal</span>
+            </label>
+        </div>
+
+        @if($client->portal_enabled && $client->portal_token)
+            <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Portal URL</label>
+                <div class="flex items-center gap-2">
+                    <code class="flex-1 rounded bg-white border px-3 py-1.5 text-xs font-mono text-gray-900 select-all truncate">{{ route('client-portal.show', $client->portal_token) }}</code>
+                    <button wire:click="regeneratePortalToken" wire:confirm="Regenerate token? The old link will stop working."
+                            class="text-xs text-gray-500 hover:text-purple-600 whitespace-nowrap">Regenerate</button>
+                </div>
+            </div>
+        @endif
+    </x-ui.card>
+
     {{-- Delete Confirmation Modal --}}
     <x-ui.modal name="delete-client" maxWidth="sm">
         <div class="text-center">
