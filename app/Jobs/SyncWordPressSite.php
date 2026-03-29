@@ -198,21 +198,21 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             // Auto-check plugin conflicts after sync
             try {
                 PluginConflictService::checkSite($this->site);
-            } catch (RequestException|\RuntimeException $e) {
+            } catch (\Exception $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Run security checks
             try {
                 app(SecurityRecommendationService::class)->check($this->site);
-            } catch (RequestException|\RuntimeException $e) {
+            } catch (\Exception $e) {
                 Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Pull security activity logs from WordPress
             try {
                 PullSecurityActivityLogs::dispatch($this->site);
-            } catch (RequestException|\RuntimeException $e) {
+            } catch (\Exception $e) {
                 Log::info("Security activity log pull skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
