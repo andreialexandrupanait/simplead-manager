@@ -157,6 +157,14 @@ $COMPOSE exec -T app php artisan queue:restart
 
 $COMPOSE exec -T app php artisan up 2>/dev/null || true
 
+# ── Step 11: Restart staging pgbouncer + production nginx ────────────────────
+
+log "Restarting staging PgBouncer (clear cached prepared statements after DDL)..."
+$COMPOSE restart db-proxy 2>/dev/null || warn "Could not restart staging db-proxy (may not exist)"
+
+log "Restarting production nginx (clear DNS cache for staging containers)..."
+$PROD_COMPOSE restart nginx 2>/dev/null || warn "Could not restart production nginx"
+
 # ── Verify ────────────────────────────────────────────────────────────────────
 
 echo ""

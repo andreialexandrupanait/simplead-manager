@@ -451,8 +451,8 @@ class SiteReports extends Component
             'label' => __('report.section_label_analytics'),
             'status' => 'neutral',
             'metrics' => [
-                ['label' => 'Users', 'value' => number_format($overview['total_users'] ?? 0)],
-                ['label' => 'Pageviews', 'value' => number_format($overview['pageviews'] ?? 0)],
+                ['label' => 'Users', 'value' => number_format((int) ($overview['total_users'] ?? 0))],
+                ['label' => 'Pageviews', 'value' => number_format((int) ($overview['pageviews'] ?? 0))],
             ],
         ];
     }
@@ -479,8 +479,8 @@ class SiteReports extends Component
             'label' => __('report.section_label_search_console'),
             'status' => 'neutral',
             'metrics' => [
-                ['label' => 'Clicks', 'value' => number_format($data['clicks'] ?? 0)],
-                ['label' => 'Impressions', 'value' => number_format($data['impressions'] ?? 0)],
+                ['label' => 'Clicks', 'value' => number_format((int) ($data['clicks'] ?? 0))],
+                ['label' => 'Impressions', 'value' => number_format((int) ($data['impressions'] ?? 0))],
             ],
         ];
     }
@@ -631,8 +631,8 @@ class SiteReports extends Component
             'label' => __('report.section_label_cloudflare'),
             'status' => 'neutral',
             'metrics' => [
-                ['label' => 'Requests', 'value' => $requests !== null ? number_format($requests) : 'N/A'],
-                ['label' => 'Cache hit', 'value' => $cacheRatio !== null ? number_format($cacheRatio, 1).'%' : 'N/A'],
+                ['label' => 'Requests', 'value' => $requests !== null ? number_format((int) $requests) : 'N/A'],
+                ['label' => 'Cache hit', 'value' => $cacheRatio !== null ? number_format((float) $cacheRatio, 1).'%' : 'N/A'],
             ],
         ];
     }
