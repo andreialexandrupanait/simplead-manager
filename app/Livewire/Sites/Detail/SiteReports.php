@@ -499,7 +499,8 @@ class SiteReports extends Component
         $mobile = $monitor->latestMobileTest?->performance_score;
         $desktop = $monitor->latestDesktopTest?->performance_score;
 
-        $worstScore = min(array_filter([$mobile, $desktop], fn ($v) => $v !== null)) ?: null;
+        $scores = array_filter([$mobile, $desktop], fn ($v) => $v !== null);
+        $worstScore = $scores ? min($scores) : null;
         $status = $worstScore === null ? 'no-data' : ($worstScore >= 90 ? 'good' : ($worstScore >= 50 ? 'warning' : 'bad'));
 
         return [
