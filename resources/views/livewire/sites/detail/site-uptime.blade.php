@@ -53,22 +53,22 @@
                 <div class="mt-2 flex items-center gap-2">
                     @php
                         $stateColor = match($monitor->current_state) {
-                            'up' => 'bg-green-500',
-                            'down' => 'bg-red-500',
-                            'degraded' => 'bg-yellow-500',
+                            \App\Enums\MonitorState::Up => 'bg-green-500',
+                            \App\Enums\MonitorState::Down => 'bg-red-500',
+                            \App\Enums\MonitorState::Degraded => 'bg-yellow-500',
                             default => 'bg-gray-400',
                         };
                         $stateLabel = match($monitor->current_state) {
-                            'up' => 'Online',
-                            'down' => 'Down',
-                            'degraded' => 'Degraded',
+                            \App\Enums\MonitorState::Up => 'Online',
+                            \App\Enums\MonitorState::Down => 'Down',
+                            \App\Enums\MonitorState::Degraded => 'Degraded',
                             default => 'Unknown',
                         };
                     @endphp
                     <span class="h-3 w-3 rounded-full {{ $stateColor }}"></span>
                     <span class="text-lg font-bold text-gray-900">{{ $stateLabel }}</span>
                 </div>
-                @if($monitor->status === 'paused')
+                @if($monitor->status === \App\Enums\MonitorStatus::Paused)
                     <p class="mt-1 text-xs text-yellow-600">Monitoring paused</p>
                 @endif
             </x-ui.card>
@@ -98,22 +98,22 @@
                 <div class="mt-2 flex items-center gap-2">
                     @php
                         $stateColor = match($monitor->current_state) {
-                            'up' => 'bg-green-500',
-                            'down' => 'bg-red-500',
-                            'degraded' => 'bg-yellow-500',
+                            \App\Enums\MonitorState::Up => 'bg-green-500',
+                            \App\Enums\MonitorState::Down => 'bg-red-500',
+                            \App\Enums\MonitorState::Degraded => 'bg-yellow-500',
                             default => 'bg-gray-400',
                         };
                         $stateLabel = match($monitor->current_state) {
-                            'up' => 'Online',
-                            'down' => 'Down',
-                            'degraded' => 'Degraded',
+                            \App\Enums\MonitorState::Up => 'Online',
+                            \App\Enums\MonitorState::Down => 'Down',
+                            \App\Enums\MonitorState::Degraded => 'Degraded',
                             default => 'Unknown',
                         };
                     @endphp
                     <span class="h-3 w-3 rounded-full {{ $stateColor }}"></span>
                     <span class="text-lg font-bold text-gray-900">{{ $stateLabel }}</span>
                 </div>
-                @if($monitor->status === 'paused')
+                @if($monitor->status === \App\Enums\MonitorStatus::Paused)
                     <p class="mt-1 text-xs text-yellow-600">Monitoring paused</p>
                 @endif
             </x-ui.card>

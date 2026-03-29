@@ -30,6 +30,7 @@ storage/logs/*
 storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/app/private/reports
 
 # Test code — not needed in production image
 tests

@@ -132,6 +132,10 @@ class ReportDataGatherer
             $this->data['recommendations_approved'] = $approvedRecs;
         }
 
+        $this->data['_meta'] = [
+            'sections' => array_values(array_diff($this->template->sections ?? [], $this->excludedSections)),
+        ];
+
         return $this->data;
     }
 

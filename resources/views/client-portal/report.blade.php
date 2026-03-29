@@ -4,8 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $report->title }} — {{ $client->name }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/report.js'])
     <style>
         html { scroll-behavior: smooth; }
         [id] { scroll-margin-top: 5.5rem; }
@@ -64,7 +63,10 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen" x-data="reportNav()">
-    @php $s = $report->data_snapshot ?? []; @endphp
+    @php
+        $s = $report->data_snapshot ?? [];
+        $enabledSections = $s['_meta']['sections'] ?? array_keys($s);
+    @endphp
 
     {{-- ── Fixed Header (72px) ─────────────────────────────────────────────── --}}
     <header class="sticky top-0 z-20 h-[72px] border-b border-gray-200 bg-white/95 backdrop-blur flex items-center">
@@ -85,21 +87,22 @@
 
     {{-- ── Mobile nav (horizontal scroll) ──────────────────────────────────── --}}
     @php
+        $on = array_flip($enabledSections);
         $nav = array_filter([
-            'overview' => isset($s['executive_snapshot']) || isset($s['overview']) ? 'Overview' : null,
-            'uptime' => isset($s['uptime']) ? 'Uptime' : null,
-            'security' => isset($s['security']) ? 'Security' : null,
-            'updates' => isset($s['updates']) ? 'Updates' : null,
-            'backups' => isset($s['backups']) ? 'Backups' : null,
-            'analytics' => !empty($s['analytics']) ? 'Analytics' : null,
-            'search_console' => !empty($s['search_console']) ? 'Search Console' : null,
-            'performance' => !empty($s['performance']) ? 'Performance' : null,
-            'plugins' => isset($s['plugin_inventory']) ? 'Plugins' : null,
-            'database' => !empty($s['database_health']) ? 'Database' : null,
-            'cloudflare' => !empty($s['cloudflare']) ? 'Cloudflare' : null,
-            'users' => !empty($s['wp_users']) ? 'WP Users' : null,
-            'email' => !empty($s['email']) ? 'Email' : null,
-            'recommendations' => isset($s['recommendations']) ? 'Actions' : null,
+            'overview' => isset($on['overview']) && (isset($s['executive_snapshot']) || isset($s['overview'])) ? 'Overview' : null,
+            'uptime' => isset($on['uptime']) && isset($s['uptime']) ? 'Uptime' : null,
+            'security' => isset($on['security']) && isset($s['security']) ? 'Security' : null,
+            'updates' => isset($on['updates']) && isset($s['updates']) ? 'Updates' : null,
+            'backups' => isset($on['backups']) && isset($s['backups']) ? 'Backups' : null,
+            'analytics' => isset($on['analytics']) && !empty($s['analytics']) ? 'Analytics' : null,
+            'search_console' => isset($on['search_console']) && !empty($s['search_console']) ? 'Search Console' : null,
+            'performance' => isset($on['performance']) && !empty($s['performance']) ? 'Performance' : null,
+            'plugins' => isset($on['plugin_inventory']) && isset($s['plugin_inventory']) ? 'Plugins' : null,
+            'database' => isset($on['database_health']) && !empty($s['database_health']) ? 'Database' : null,
+            'cloudflare' => isset($on['cloudflare']) && !empty($s['cloudflare']) ? 'Cloudflare' : null,
+            'users' => isset($on['wp_users']) && !empty($s['wp_users']) ? 'WP Users' : null,
+            'email' => isset($on['infrastructure']) && !empty($s['email']) ? 'Email' : null,
+            'recommendations' => isset($on['overview']) && isset($s['recommendations']) ? 'Actions' : null,
         ]);
     @endphp
     <div class="lg:hidden sticky top-[72px] z-10 bg-white border-b border-gray-100 no-print">
@@ -129,7 +132,7 @@
         <div class="flex-1 min-w-0 space-y-6">
 
             {{-- ═══ OVERVIEW (hero) ═══ --}}
-            @if(isset($s['overview']) || isset($s['executive_snapshot']))
+            @if(isset($on['overview']) && (isset($s['overview']) || isset($s['executive_snapshot'])))
             @php $ov = $s['overview'] ?? []; @endphp
             <section id="overview" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -199,7 +202,7 @@
             @endif
 
             {{-- ═══ UPTIME ═══ --}}
-            @if(isset($s['uptime']) && ($s['uptime']['available'] ?? false))
+            @if(isset($on['uptime']) && isset($s['uptime']) && ($s['uptime']['available'] ?? false))
             @php $ut = $s['uptime']; @endphp
             <section id="uptime" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -240,7 +243,7 @@
                                 <tr>
                                     <td class="px-4 py-3"><x-ui.badge :variant="($inc['status'] ?? '') === 'resolved' ? 'green' : 'red'">{{ ucfirst($inc['status'] ?? 'unknown') }}</x-ui.badge></td>
                                     <td class="px-4 py-3 text-sm text-gray-700">{{ $inc['cause'] ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $inc['started_at'] ?? '' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($inc['started_at']) ? \Carbon\Carbon::parse($inc['started_at'])->format('d M Y, H:i') : '' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500">{{ $inc['duration'] ?? '' }}</td>
                                 </tr>
                             @endforeach
@@ -251,7 +254,7 @@
             @endif
 
             {{-- ═══ SECURITY ═══ --}}
-            @if(isset($s['security']))
+            @if(isset($on['security']) && isset($s['security']))
             @php $sec = $s['security']; @endphp
             <section id="security" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -320,7 +323,7 @@
             @endif
 
             {{-- ═══ UPDATES ═══ --}}
-            @if(isset($s['updates']))
+            @if(isset($on['updates']) && isset($s['updates']))
             @php $upd = $s['updates']; @endphp
             <section id="updates" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -351,7 +354,7 @@
                                     <td class="px-4 py-3"><x-ui.badge variant="gray">{{ $u['type'] ?? '' }}</x-ui.badge></td>
                                     <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['from_version'] ?? '' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['to_version'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $u['performed_at'] ?? '' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($u['performed_at']) ? \Carbon\Carbon::parse($u['performed_at'])->format('d M Y') : '' }}</td>
                                     <td class="px-4 py-3">@if($u['success'] ?? true)<x-ui.badge variant="green">OK</x-ui.badge>@else<x-ui.badge variant="red">Failed</x-ui.badge>@endif</td>
                                 </tr>
                             @endforeach
@@ -362,7 +365,7 @@
             @endif
 
             {{-- ═══ BACKUPS ═══ --}}
-            @if(isset($s['backups']))
+            @if(isset($on['backups']) && isset($s['backups']))
             @php $bk = $s['backups']; $bkSuccess = (int)($bk['count'] ?? 0); $bkFailed = (int)($bk['failed_count'] ?? 0); @endphp
             <section id="backups" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -405,7 +408,7 @@
                                     <td class="px-4 py-3"><x-ui.badge :variant="($b['status'] ?? '') === 'completed' ? 'green' : 'red'">{{ ucfirst($b['status'] ?? '') }}</x-ui.badge></td>
                                     <td class="px-4 py-3 text-sm text-gray-500">{{ $b['file_size'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-gray-500">{{ $b['trigger'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $b['created_at'] ?? '' }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($b['created_at']) ? \Carbon\Carbon::parse($b['created_at'])->format('d M Y, H:i') : '' }}</td>
                                 </tr>
                             @endforeach
                         </x-ui.table>
@@ -415,7 +418,7 @@
             @endif
 
             {{-- ═══ ANALYTICS ═══ --}}
-            @if(!empty($s['analytics']))
+            @if(isset($on['analytics']) && !empty($s['analytics']))
             @php $an = $s['analytics']; @endphp
             <section id="analytics" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -495,7 +498,7 @@
             @endif
 
             {{-- ═══ SEARCH CONSOLE ═══ --}}
-            @if(!empty($s['search_console']))
+            @if(isset($on['search_console']) && !empty($s['search_console']))
             @php $sc = $s['search_console']; $scOv = $sc['overview'] ?? $sc; @endphp
             <section id="search_console" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -570,7 +573,7 @@
             @endif
 
             {{-- ═══ PERFORMANCE ═══ --}}
-            @if(!empty($s['performance']))
+            @if(isset($on['performance']) && !empty($s['performance']))
             @php $perf = $s['performance']; @endphp
             <section id="performance" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -605,7 +608,7 @@
             <div class="space-y-4">
 
                 {{-- ═══ PLUGIN INVENTORY ═══ --}}
-                @if(isset($s['plugin_inventory']))
+                @if(isset($on['plugin_inventory']) && isset($s['plugin_inventory']))
                 @php $inv = $s['plugin_inventory']; @endphp
                 <section id="plugins" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
@@ -657,7 +660,7 @@
 
                 {{-- ═══ INFRASTRUCTURE ROW (Database + Cloudflare + Email) ═══ --}}
                 <div class="grid gap-4 sm:grid-cols-3">
-                    @if(!empty($s['database_health']))
+                    @if(isset($on['database_health']) && !empty($s['database_health']))
                     @php $dbh = $s['database_health']; @endphp
                     <section id="database" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
@@ -672,7 +675,7 @@
                     </section>
                     @endif
 
-                    @if(!empty($s['cloudflare']))
+                    @if(isset($on['cloudflare']) && !empty($s['cloudflare']))
                     @php $cf = $s['cloudflare']; @endphp
                     <section id="cloudflare" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
@@ -687,7 +690,7 @@
                     </section>
                     @endif
 
-                    @if(!empty($s['email']))
+                    @if(isset($on['infrastructure']) && !empty($s['email']))
                     @php $em = $s['email']; @endphp
                     <section id="email" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
@@ -711,7 +714,7 @@
                 </div>
 
                 {{-- ═══ WP USERS ═══ --}}
-                @if(!empty($s['wp_users']))
+                @if(isset($on['wp_users']) && !empty($s['wp_users']))
                 @php $wpu = $s['wp_users']; @endphp
                 <section id="users" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
@@ -726,12 +729,12 @@
                                 <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
                                 <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
                             </x-slot:head>
-                            @foreach($wpu['users'] ?? $wpu as $user)
+                            @foreach($wpu['user_list'] ?? [] as $user)
                                 <tr>
                                     <td class="px-4 py-2.5 text-sm font-medium text-gray-700">{{ $user['username'] ?? $user['display_name'] ?? '' }}</td>
                                     <td class="px-4 py-2.5 text-sm text-gray-500">{{ $user['email'] ?? '' }}</td>
                                     <td class="px-4 py-2.5"><x-ui.badge variant="gray">{{ ucfirst($user['role'] ?? '') }}</x-ui.badge></td>
-                                    <td class="px-4 py-2.5 text-sm text-gray-500">{{ $user['last_login'] ?? '—' }}</td>
+                                    <td class="px-4 py-2.5 text-sm text-gray-500">{{ $user['last_login_at'] ?? 'Never' }}</td>
                                 </tr>
                             @endforeach
                         </x-ui.table>
@@ -740,7 +743,7 @@
                 @endif
 
                 {{-- ═══ SECURITY CHECKS ═══ --}}
-                @if(!empty($s['security_checks']))
+                @if(isset($on['security_checks']) && !empty($s['security_checks']))
                 @php $schk = $s['security_checks']; @endphp
                 <section class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
@@ -770,7 +773,7 @@
             </div>{{-- end secondary sections --}}
 
             {{-- ═══ RECOMMENDATIONS (standalone, prominent) ═══ --}}
-            @if(!empty($s['recommendations']))
+            @if(isset($on['overview']) && !empty($s['recommendations']))
             @php $recs = $s['recommendations']; @endphp
             <section id="recommendations" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">

@@ -28,7 +28,7 @@
 
     <x-sidebar.sidebar-item
         :href="route('security.index')"
-        icon="shield"
+        icon="shield-check"
         :active="request()->routeIs('security.*')"
     >
         {{ __('Security') }}

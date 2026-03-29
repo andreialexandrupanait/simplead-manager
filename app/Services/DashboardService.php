@@ -89,7 +89,7 @@ class DashboardService
             ];
         }
 
-        // Backup failures (last 24h) — one alert per site (deduped)
+        // Backup failures (last 24h) — only if no successful backup happened after
         $failedBackups = Backup::whereHas('site')
             ->where('status', BackupStatus::Failed)
             ->where('created_at', '>=', now()->subDay())
@@ -98,6 +98,16 @@ class DashboardService
 
         $failedBysite = $failedBackups->groupBy('site_id');
         foreach ($failedBysite as $siteId => $backups) {
+            $lastFailedAt = $backups->max('created_at');
+            $hasSuccessAfter = Backup::where('site_id', $siteId)
+                ->where('status', BackupStatus::Completed)
+                ->where('created_at', '>', $lastFailedAt)
+                ->exists();
+
+            if ($hasSuccessAfter) {
+                continue;
+            }
+
             $site = $backups->first()->site;
             $alerts[] = [
                 'key' => "backup_failed_{$site->id}",
@@ -106,7 +116,7 @@ class DashboardService
                 'title' => "Backup failed for {$site->name}",
                 'description' => null,
                 'url' => route('sites.backups', $site),
-                'timestamp' => $backups->max('created_at'),
+                'timestamp' => $lastFailedAt,
                 'action' => "retry_backup_{$site->id}",
             ];
         }

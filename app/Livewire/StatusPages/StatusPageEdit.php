@@ -97,7 +97,8 @@ class StatusPageEdit extends Component
     public function updatedTitle(): void
     {
         if (! $this->statusPage) {
-            $this->slug = Str::slug($this->title);
+            $slug = Str::slug($this->title);
+            $this->slug = $slug === 'status' ? $slug.'-page' : $slug;
         }
     }
 
@@ -131,7 +132,7 @@ class StatusPageEdit extends Component
     {
         $this->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|alpha_dash|unique:status_pages,slug'.($this->statusPage ? ",{$this->statusPage->id}" : ''),
+            'slug' => 'required|string|max:255|alpha_dash|not_in:status|unique:status_pages,slug'.($this->statusPage ? ",{$this->statusPage->id}" : ''),
             'description' => 'nullable|string|max:1000',
             'logoUrl' => 'nullable|string|max:500',
             'primaryColor' => 'required|string|max:20',

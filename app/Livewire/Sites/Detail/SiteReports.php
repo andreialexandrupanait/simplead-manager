@@ -823,10 +823,13 @@ class SiteReports extends Component
             ->paginate(15);
         $templates = ReportTemplate::orderBy('name')->get();
 
+        $portalToken = $this->site->client?->portal_enabled ? $this->site->client->portal_token : null;
+
         return view('livewire.sites.detail.site-reports', [
             'schedule' => $schedule,
             'reports' => $reports,
             'templates' => $templates,
+            'portalToken' => $portalToken,
         ])
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
