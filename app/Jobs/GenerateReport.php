@@ -182,7 +182,8 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 
             Log::error("Report generation failed for site {$this->site->id}", [
                 'exception' => get_class($e),
-                'code' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile().':'.$e->getLine(),
             ]);
         }
     }

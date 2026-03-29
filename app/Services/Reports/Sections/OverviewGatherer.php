@@ -31,44 +31,44 @@ class OverviewGatherer extends BaseReportSectionGatherer
 
         return [
             'updates' => [
-                'count' => $cur->updates_applied ?? $this->countUpdatesInPeriod($site, $periodStart, $periodEnd),
-                'trend' => $this->calculateTrend($cur->updates_applied, $prev?->updates_applied),
+                'count' => $cur?->updates_applied ?? $this->countUpdatesInPeriod($site, $periodStart, $periodEnd),
+                'trend' => $this->calculateTrend($cur?->updates_applied, $prev?->updates_applied),
             ],
             'uptime' => [
-                'percentage' => $cur->uptime_percentage ?? $site->uptimeMonitor?->uptime_30d,
-                'trend' => $this->calculateTrend($cur->uptime_percentage, $prev?->uptime_percentage),
-                'incidents' => $cur->uptime_incidents_count ?? 0,
+                'percentage' => $cur?->uptime_percentage ?? $site->uptimeMonitor?->uptime_30d,
+                'trend' => $this->calculateTrend($cur?->uptime_percentage, $prev?->uptime_percentage),
+                'incidents' => $cur?->uptime_incidents_count ?? 0,
             ],
             'backups' => [
-                'successful' => $cur->backups_successful ?? $this->countBackupsInPeriod($site, $periodStart, $periodEnd),
-                'total' => $cur->backups_total ?? $this->countBackupsInPeriod($site, $periodStart, $periodEnd),
-                'trend' => $this->calculateTrend($cur->backups_successful, $prev?->backups_successful),
+                'successful' => $cur?->backups_successful ?? $this->countBackupsInPeriod($site, $periodStart, $periodEnd),
+                'total' => $cur?->backups_total ?? $this->countBackupsInPeriod($site, $periodStart, $periodEnd),
+                'trend' => $this->calculateTrend($cur?->backups_successful, $prev?->backups_successful),
             ],
             'performance' => [
-                'mobile' => $cur->performance_avg_mobile ?? $site->performanceMonitor?->latest_mobile_score,
-                'desktop' => $cur->performance_avg_desktop ?? $site->performanceMonitor?->latest_desktop_score,
-                'mobile_trend' => $this->calculateTrend($cur->performance_avg_mobile, $prev?->performance_avg_mobile),
-                'desktop_trend' => $this->calculateTrend($cur->performance_avg_desktop, $prev?->performance_avg_desktop),
+                'mobile' => $cur?->performance_avg_mobile ?? $site->performanceMonitor?->latest_mobile_score,
+                'desktop' => $cur?->performance_avg_desktop ?? $site->performanceMonitor?->latest_desktop_score,
+                'mobile_trend' => $this->calculateTrend($cur?->performance_avg_mobile, $prev?->performance_avg_mobile),
+                'desktop_trend' => $this->calculateTrend($cur?->performance_avg_desktop, $prev?->performance_avg_desktop),
             ],
             'analytics' => [
-                'pageviews' => $cur->analytics_pageviews,
-                'users' => $cur->analytics_users,
-                'pageviews_trend' => $this->calculateTrend($cur->analytics_pageviews, $prev?->analytics_pageviews),
-                'users_trend' => $this->calculateTrend($cur->analytics_users, $prev?->analytics_users),
+                'pageviews' => $cur?->analytics_pageviews,
+                'users' => $cur?->analytics_users,
+                'pageviews_trend' => $this->calculateTrend($cur?->analytics_pageviews, $prev?->analytics_pageviews),
+                'users_trend' => $this->calculateTrend($cur?->analytics_users, $prev?->analytics_users),
             ],
             'search_console' => [
-                'clicks' => $cur->search_console_clicks,
-                'impressions' => $cur->search_console_impressions,
-                'clicks_trend' => $this->calculateTrend($cur->search_console_clicks, $prev?->search_console_clicks),
-                'impressions_trend' => $this->calculateTrend($cur->search_console_impressions, $prev?->search_console_impressions),
+                'clicks' => $cur?->search_console_clicks,
+                'impressions' => $cur?->search_console_impressions,
+                'clicks_trend' => $this->calculateTrend($cur?->search_console_clicks, $prev?->search_console_clicks),
+                'impressions_trend' => $this->calculateTrend($cur?->search_console_impressions, $prev?->search_console_impressions),
             ],
             'database' => [
                 'was_cleaned' => $this->wasDatabaseCleanedInPeriod($site, $periodStart, $periodEnd),
                 'space_saved' => $this->getDatabaseSpaceSavedInPeriod($site, $periodStart, $periodEnd),
             ],
             'security' => [
-                'score' => $cur->security_avg_score,
-                'trend' => $this->calculateTrend($cur->security_avg_score, $prev?->security_avg_score),
+                'score' => $cur?->security_avg_score,
+                'trend' => $this->calculateTrend($cur?->security_avg_score, $prev?->security_avg_score),
             ],
         ];
     }
