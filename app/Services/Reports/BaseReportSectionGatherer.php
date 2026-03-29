@@ -77,12 +77,12 @@ abstract class BaseReportSectionGatherer implements ReportSectionGathererInterfa
         return number_format((float) $value, $decimals, $decimalSep, $thousandsSep);
     }
 
-    protected function formatBytes(int $bytes): string
+    protected function formatBytes(int|float|string $bytes): string
     {
         return \App\Helpers\FormatHelper::bytes($bytes);
     }
 
-    protected function formatDuration(int $minutes): string
+    protected function formatDuration(int|float|string $minutes): string
     {
         if ($minutes <= 0) {
             return '0 min';
@@ -100,20 +100,24 @@ abstract class BaseReportSectionGatherer implements ReportSectionGathererInterfa
 
     // ─── Status Helpers ──────────────────────────────────────────────
 
-    protected function getUptimeStatus(?float $pct): string
+    protected function getUptimeStatus(float|int|string|null $pct): string
     {
         if ($pct === null) {
             return 'neutral';
         }
 
+        $pct = (float) $pct;
+
         return $pct >= 99.5 ? 'good' : ($pct >= 95 ? 'warning' : 'danger');
     }
 
-    protected function getScoreStatus(?float $score): string
+    protected function getScoreStatus(float|int|string|null $score): string
     {
         if ($score === null) {
             return 'neutral';
         }
+
+        $score = (float) $score;
 
         return $score >= 90 ? 'good' : ($score >= 50 ? 'warning' : 'danger');
     }
