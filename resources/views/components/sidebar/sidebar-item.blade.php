@@ -1,6 +1,7 @@
 @props(['href', 'icon', 'active' => false, 'inactive' => false])
 
 <a href="{{ $href }}"
+   @click="mobileSidebarOpen = false"
    @mouseenter="showSidebarTooltip($el)"
    @mouseleave="hideSidebarTooltip()"
    @if($active) aria-current="page" @endif

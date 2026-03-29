@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
-use App\Jobs\PushSecuritySettings;
 use App\Livewire\Security\PresetManager;
 use App\Models\SecurityPreset;
 use App\Models\SecuritySetting;

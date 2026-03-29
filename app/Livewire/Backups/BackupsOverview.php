@@ -5,18 +5,24 @@ declare(strict_types=1);
 namespace App\Livewire\Backups;
 
 use App\Jobs\CreateBackup;
+use App\Livewire\Traits\WithSorting;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class BackupsOverview extends Component
 {
-    use WithTableFilters;
+    use WithSorting, WithTableFilters;
+
+    protected string $defaultSortBy = 'created_at';
+
+    protected string $defaultSortDir = 'desc';
 
     #[Computed]
     public function stats(): array
@@ -86,6 +92,57 @@ class BackupsOverview extends Component
         $this->dispatch('notify', type: 'success', message: "Queued backups for {$queued} site(s).");
     }
 
+    public function deleteBackup(int $backupId): void
+    {
+        $backup = Backup::findOrFail($backupId);
+
+        if ($backup->is_locked) {
+            session()->flash('backup-error', 'Cannot delete a locked backup.');
+
+            return;
+        }
+
+        try {
+            if ($backup->storageDestination && $backup->file_path) {
+                $driver = StorageFactory::make($backup->storageDestination);
+                $driver->delete($backup->file_path);
+                $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
+            }
+        } catch (\Exception) {
+            // Continue with deletion even if storage removal fails
+        }
+
+        $backup->delete();
+        session()->flash('backup-success', 'Backup deleted.');
+    }
+
+    public function bulkDelete(array $ids): void
+    {
+        $backups = Backup::whereIn('id', $ids)->where('is_locked', false)->get();
+        $count = 0;
+
+        foreach ($backups as $backup) {
+            try {
+                if ($backup->storageDestination && $backup->file_path) {
+                    $driver = StorageFactory::make($backup->storageDestination);
+                    $driver->delete($backup->file_path);
+                    $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
+                }
+            } catch (\Exception) {
+                // Continue
+            }
+            $backup->delete();
+            $count++;
+        }
+
+        $skipped = count($ids) - $count;
+        $msg = "{$count} backup(s) deleted.";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} locked backup(s) skipped.";
+        }
+        session()->flash('backup-success', $msg);
+    }
+
     public function render()
     {
         $backups = Backup::query()
@@ -102,7 +159,10 @@ class BackupsOverview extends Component
                 return $q->where('backups.status', $this->filter);
             })
             ->join('sites', 'backups.site_id', '=', 'sites.id')
-            ->orderByDesc('backups.created_at')
+            ->orderBy(
+                in_array($this->sortBy, ['created_at', 'type', 'file_size', 'status']) ? "backups.{$this->sortBy}" : 'backups.created_at',
+                $this->sortDir
+            )
             ->select('backups.*')
             ->paginate(25);
 

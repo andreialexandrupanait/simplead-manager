@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Security;
 
+use App\Livewire\Traits\WithSorting;
 use App\Models\SecurityCommand;
 use App\Models\SecurityPreset;
 use App\Models\Site;
@@ -14,12 +15,15 @@ use Livewire\Component;
 
 class SecurityDashboard extends Component
 {
+    use WithSorting;
+
+    protected string $defaultSortBy = 'security_hardening_score';
+
+    protected string $defaultSortDir = 'desc';
+
     public string $scoreFilter = '';
 
     public string $search = '';
-
-    // Bulk actions
-    public array $selectedSites = [];
 
     public ?int $bulkPresetId = null;
 
@@ -84,7 +88,10 @@ class SecurityDashboard extends Component
                     ->orderByDesc('applied_at')
                     ->limit(1),
             ])
-            ->orderByDesc('security_hardening_score');
+            ->orderBy(
+                in_array($this->sortBy, ['name', 'security_hardening_score']) ? $this->sortBy : 'security_hardening_score',
+                $this->sortDir
+            );
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -119,9 +126,9 @@ class SecurityDashboard extends Component
         unset($this->sites);
     }
 
-    public function bulkApplyPreset(): void
+    public function bulkApplyPreset(array $ids): void
     {
-        if (empty($this->selectedSites) || ! $this->bulkPresetId) {
+        if (empty($ids) || ! $this->bulkPresetId) {
             return;
         }
 
@@ -130,10 +137,9 @@ class SecurityDashboard extends Component
             return;
         }
 
-        $sites = $this->scopedSiteQuery()->whereIn('id', $this->selectedSites)->get();
+        $sites = $this->scopedSiteQuery()->whereIn('id', $ids)->get();
         app(SecuritySettingsService::class)->applyPreset($preset, $sites);
 
-        $this->selectedSites = [];
         $this->bulkPresetId = null;
         unset($this->sites, $this->pendingCommandsCount);
 

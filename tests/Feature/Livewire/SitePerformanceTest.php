@@ -8,7 +8,6 @@ use App\Jobs\RunPerformanceTest;
 use App\Livewire\Sites\Detail\SitePerformance;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformancePage;
-use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

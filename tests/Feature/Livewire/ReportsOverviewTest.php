@@ -7,7 +7,6 @@ namespace Tests\Feature\Livewire;
 use App\Enums\ReportStatus;
 use App\Livewire\Reports\ReportsOverview;
 use App\Models\Report;
-use App\Models\ReportTemplate;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

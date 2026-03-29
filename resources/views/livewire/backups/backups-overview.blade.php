@@ -10,6 +10,7 @@
     </div>
 
     <x-ui.flash-alert type="success" key="backup-success" />
+    <x-ui.flash-alert type="error" key="backup-error" />
 
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -54,25 +55,60 @@
     </div>
 
     {{-- Backups Table --}}
-    <x-ui.card>
+    <x-ui.card class="overflow-hidden !p-0"
+        x-data="{
+            selected: [],
+            get allSelected() {
+                return this.selected.length === {{ $backups->count() }} && this.selected.length > 0;
+            },
+            toggleAll() {
+                if (this.allSelected) {
+                    this.selected = [];
+                } else {
+                    this.selected = [{{ $backups->pluck('id')->implode(',') }}];
+                }
+            }
+        }"
+    >
+        {{-- Bulk action bar --}}
+        <div x-show="selected.length > 0" x-cloak class="flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
+            <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
+            <button
+                @click="if (confirm('Delete ' + selected.length + ' backup(s)? This cannot be undone.')) { $wire.bulkDelete(selected).then(() => selected = []) }"
+                class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+            >
+                <x-icons.x class="mr-1 h-3.5 w-3.5" />
+                Delete Selected
+            </button>
+        </div>
+
         @if($backups->isEmpty())
             <p class="text-sm text-gray-500 text-center py-8">No backups found.</p>
         @else
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
+                    <thead class="bg-gray-50">
                         <tr>
+                            <th class="w-10 px-3 py-2">
+                                <input type="checkbox" :checked="allSelected" @change="toggleAll()"
+                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                            </th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Site</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                            <x-ui.sortable-th column="created_at" :sortBy="$sortBy" :sortDir="$sortDir">Date</x-ui.sortable-th>
+                            <x-ui.sortable-th column="type" :sortBy="$sortBy" :sortDir="$sortDir">Type</x-ui.sortable-th>
+                            <x-ui.sortable-th column="file_size" :sortBy="$sortBy" :sortDir="$sortDir">Size</x-ui.sortable-th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Storage</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <x-ui.sortable-th column="status" :sortBy="$sortBy" :sortDir="$sortDir">Status</x-ui.sortable-th>
+                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($backups as $backup)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $backup->id }}) && 'bg-purple-50/50'">
+                                <td class="px-3 py-3">
+                                    <input type="checkbox" value="{{ $backup->id }}" x-model.number="selected"
+                                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                </td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($backup->site)
                                         <a href="{{ route('sites.backups', $backup->site) }}" class="text-purple-600 hover:text-purple-800 font-medium">
@@ -96,15 +132,26 @@
                                         <x-ui.badge variant="purple" class="ml-1">Locked</x-ui.badge>
                                     @endif
                                 </td>
+                                <td class="px-3 py-3 text-right">
+                                    <button wire:click="deleteBackup({{ $backup->id }})"
+                                            wire:confirm="Delete this backup? This cannot be undone."
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                                            title="Delete">
+                                        <x-icons.x class="h-3.5 w-3.5" />
+                                    </button>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
 
-            <div class="mt-4">
-                {{ $backups->links() }}
-            </div>
+            @if($backups->hasPages())
+                <div class="border-t border-gray-200 px-5 py-3">
+                    {{ $backups->links() }}
+                </div>
+            @endif
         @endif
     </x-ui.card>
 </div>

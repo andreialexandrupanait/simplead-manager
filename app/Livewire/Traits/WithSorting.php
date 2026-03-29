@@ -24,6 +24,17 @@ trait WithSorting
         }
     }
 
+    public function initializeWithSorting(): void
+    {
+        // Allow components to set default sort via protected properties
+        if (! request()->has('sortBy') && property_exists($this, 'defaultSortBy')) {
+            $this->sortBy = $this->defaultSortBy;
+        }
+        if (! request()->has('sortDir') && property_exists($this, 'defaultSortDir')) {
+            $this->sortDir = $this->defaultSortDir;
+        }
+    }
+
     /**
      * Apply sorting to a query builder.
      */

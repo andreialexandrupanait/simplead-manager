@@ -70,7 +70,7 @@ class BulkSettingsTest extends TestCase
         Livewire::actingAs($this->admin)
             ->test(BulkSettings::class)
             ->call('goToStep', 2)
-            ->assertSee( 'Please select at least one site.');
+            ->assertSee('Please select at least one site.');
     }
 
     #[Test]
@@ -92,7 +92,7 @@ class BulkSettingsTest extends TestCase
             ->set('selectedSiteIds', [(string) $this->site->id])
             ->call('goToStep', 2)
             ->call('goToStep', 3)
-            ->assertSee( 'Please choose an operation.');
+            ->assertSee('Please choose an operation.');
     }
 
     #[Test]
@@ -145,6 +145,6 @@ class BulkSettingsTest extends TestCase
             ->set('selectedSiteIds', [(string) $this->site->id])
             ->set('operation', 'copy_from_site')
             ->call('apply')
-            ->assertSee( 'Please select a source site.');
+            ->assertSee('Please select a source site.');
     }
 }

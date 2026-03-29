@@ -7,6 +7,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Jobs\GenerateReport;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithSorting;
 use App\Models\AnalyticsCache;
 use App\Models\Backup;
 use App\Models\DatabaseHealthCheck;
@@ -28,7 +29,11 @@ use Livewire\WithPagination;
 
 class SiteReports extends Component
 {
-    use WithJobTracking, WithPagination, WithSiteAuthorization;
+    use WithJobTracking, WithPagination, WithSiteAuthorization, WithSorting;
+
+    protected string $defaultSortBy = 'created_at';
+
+    protected string $defaultSortDir = 'desc';
 
     public Site $site;
 
@@ -819,7 +824,10 @@ class SiteReports extends Component
         $schedule = $this->site->reportSchedules()->with('reportTemplate')->first();
         $reports = $this->site->reports()
             ->with('reportTemplate')
-            ->orderByDesc('created_at')
+            ->orderBy(
+                in_array($this->sortBy, ['created_at', 'period_start', 'status', 'file_size']) ? $this->sortBy : 'created_at',
+                $this->sortDir
+            )
             ->paginate(15);
         $templates = ReportTemplate::orderBy('name')->get();
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Reports;
 
-use App\Enums\ReportStatus;
+use App\Livewire\Traits\WithSorting;
 use App\Models\Report;
 use App\Models\Site;
 use Livewire\Attributes\Url;
@@ -13,7 +13,11 @@ use Livewire\WithPagination;
 
 class ReportsOverview extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSorting;
+
+    protected string $defaultSortBy = 'created_at';
+
+    protected string $defaultSortDir = 'desc';
 
     #[Url]
     public string $search = '';
@@ -54,7 +58,10 @@ class ReportsOverview extends Component
             ->when($this->search, fn ($q) => $q->where('title', 'ilike', "%{$this->search}%"))
             ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
             ->when($this->siteFilter, fn ($q) => $q->where('site_id', $this->siteFilter))
-            ->orderByDesc('created_at')
+            ->orderBy(
+                in_array($this->sortBy, ['created_at', 'period_start', 'status', 'file_size']) ? $this->sortBy : 'created_at',
+                $this->sortDir
+            )
             ->paginate(20);
 
         $sites = Site::orderBy('name')->get(['id', 'name']);

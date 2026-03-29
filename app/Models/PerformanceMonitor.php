@@ -95,16 +95,18 @@ class PerformanceMonitor extends Model
     public function latestMobileTest(): HasOne
     {
         return $this->hasOne(PerformanceTest::class)
-            ->where('device', 'mobile')
-            ->where('status', 'completed')
-            ->latestOfMany('tested_at');
+            ->ofMany(
+                ['tested_at' => 'max'],
+                fn ($q) => $q->where('device', 'mobile')->where('status', 'completed')
+            );
     }
 
     public function latestDesktopTest(): HasOne
     {
         return $this->hasOne(PerformanceTest::class)
-            ->where('device', 'desktop')
-            ->where('status', 'completed')
-            ->latestOfMany('tested_at');
+            ->ofMany(
+                ['tested_at' => 'max'],
+                fn ($q) => $q->where('device', 'desktop')->where('status', 'completed')
+            );
     }
 }

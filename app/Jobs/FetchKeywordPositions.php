@@ -9,10 +9,10 @@ use App\Models\Site;
 use App\Models\TrackedKeyword;
 use App\Services\GoogleSearchConsoleService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 

@@ -31,6 +31,7 @@ storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
 storage/app/private/reports
+storage/framework/testing
 
 # Test code — not needed in production image
 tests

@@ -7,7 +7,6 @@ namespace Tests\Feature\Livewire;
 use App\Jobs\CheckDatabaseHealthJob;
 use App\Livewire\Sites\Detail\SiteDatabaseCleanup;
 use App\Models\DatabaseCleanup;
-use App\Models\DatabaseCleanupConfig;
 use App\Models\Site;
 use App\Models\User;
 use App\Services\DatabaseCleanupService;

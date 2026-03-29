@@ -6,12 +6,12 @@
     // Extract positioning classes for the wrapper
     $wrapperClasses = $attributes->only(['class'])->get('class', '');
     $positioningClasses = collect(explode(' ', $wrapperClasses))
-        ->filter(fn($class) => str_starts_with($class, 'ml-') || str_starts_with($class, 'mr-') || str_starts_with($class, 'w-') || str_starts_with($class, 'flex-'))
+        ->filter(fn($class) => preg_match('/^(sm:|md:|lg:|xl:|2xl:)?(ml-|mr-|w-|flex-)/', $class))
         ->implode(' ');
 
     // Remove positioning classes from input attributes
     $inputClasses = collect(explode(' ', $wrapperClasses))
-        ->filter(fn($class) => !str_starts_with($class, 'ml-') && !str_starts_with($class, 'mr-') && !str_starts_with($class, 'w-') && !str_starts_with($class, 'flex-'))
+        ->filter(fn($class) => !preg_match('/^(sm:|md:|lg:|xl:|2xl:)?(ml-|mr-|w-|flex-)/', $class))
         ->implode(' ');
 @endphp
 

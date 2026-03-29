@@ -70,11 +70,11 @@
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                            <th class="pb-2 pr-4">Time</th>
-                            <th class="pb-2 pr-4">Event</th>
-                            <th class="pb-2 pr-4">User</th>
+                            <x-ui.sortable-th column="occurred_at" :sortBy="$sortBy" :sortDir="$sortDir">Time</x-ui.sortable-th>
+                            <x-ui.sortable-th column="event_type" :sortBy="$sortBy" :sortDir="$sortDir">Event</x-ui.sortable-th>
+                            <x-ui.sortable-th column="username" :sortBy="$sortBy" :sortDir="$sortDir">User</x-ui.sortable-th>
                             <th class="pb-2 pr-4">Action</th>
-                            <th class="pb-2 pr-4">IP</th>
+                            <x-ui.sortable-th column="ip_address" :sortBy="$sortBy" :sortDir="$sortDir">IP</x-ui.sortable-th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">

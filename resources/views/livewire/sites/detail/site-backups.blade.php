@@ -328,29 +328,65 @@
     @endif
 
     {{-- Backup History --}}
-    <x-ui.card>
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Backup History</h3>
+    <x-ui.card class="overflow-hidden !p-0"
+        x-data="{
+            selected: [],
+            get allSelected() {
+                return this.selected.length === {{ $backupHistory->count() }} && this.selected.length > 0;
+            },
+            toggleAll() {
+                if (this.allSelected) {
+                    this.selected = [];
+                } else {
+                    this.selected = [{{ $backupHistory->pluck('id')->implode(',') }}];
+                }
+            }
+        }"
+    >
+        <div class="flex items-center justify-between px-5 pt-4 pb-3">
+            <h3 class="text-base font-semibold text-gray-900">Backup History</h3>
+        </div>
+
+        {{-- Bulk action bar --}}
+        <div x-show="selected.length > 0" x-cloak class="flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
+            <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
+            <button
+                @click="if (confirm('Delete ' + selected.length + ' backup(s)? This cannot be undone.')) { $wire.bulkDelete(selected).then(() => selected = []) }"
+                class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+            >
+                <x-icons.x class="mr-1 h-3.5 w-3.5" />
+                Delete Selected
+            </button>
+        </div>
 
         @if($backupHistory->isEmpty())
-            <p class="text-sm text-gray-500">No backups yet. Create your first backup using the buttons above.</p>
+            <p class="text-sm text-gray-500 text-center py-8 px-5">No backups yet. Create your first backup using the buttons above.</p>
         @else
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                            <th class="w-10 px-3 py-2">
+                                <input type="checkbox" :checked="allSelected" @change="toggleAll()"
+                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                            </th>
+                            <x-ui.sortable-th column="created_at" :sortBy="$sortBy" :sortDir="$sortDir">Date</x-ui.sortable-th>
+                            <x-ui.sortable-th column="type" :sortBy="$sortBy" :sortDir="$sortDir">Type</x-ui.sortable-th>
+                            <x-ui.sortable-th column="file_size" :sortBy="$sortBy" :sortDir="$sortDir">Size</x-ui.sortable-th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Diff</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Storage</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <x-ui.sortable-th column="status" :sortBy="$sortBy" :sortDir="$sortDir">Status</x-ui.sortable-th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
                             <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($backupHistory as $backup)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $backup->id }}) && 'bg-purple-50/50'">
+                                <td class="px-3 py-3">
+                                    <input type="checkbox" value="{{ $backup->id }}" x-model.number="selected"
+                                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                </td>
                                 <td class="px-3 py-3 text-sm text-gray-900">
                                     {{ $backup->created_at->format('M d, Y H:i') }}
                                     <div class="text-xs text-gray-400">{{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}</div>

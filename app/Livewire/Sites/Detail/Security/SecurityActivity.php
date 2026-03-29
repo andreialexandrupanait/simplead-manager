@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Sites\Detail\Security;
 
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithSorting;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\SecurityActivityLog;
 use App\Models\Site;
@@ -15,7 +16,11 @@ use Livewire\WithPagination;
 
 class SecurityActivity extends Component
 {
-    use WithPagination, WithSiteAuthorization, WithTableFilters;
+    use WithPagination, WithSiteAuthorization, WithSorting, WithTableFilters;
+
+    protected string $defaultSortBy = 'occurred_at';
+
+    protected string $defaultSortDir = 'desc';
 
     public Site $site;
 
@@ -78,7 +83,10 @@ class SecurityActivity extends Component
         $query = SecurityActivityLog::where('site_id', $this->site->id)
             ->where('event_category', '!=', 'backup')
             ->where('occurred_at', '>=', now()->subDays($this->filterDays))
-            ->orderByDesc('occurred_at');
+            ->orderBy(
+                in_array($this->sortBy, ['occurred_at', 'event_type', 'username', 'ip_address']) ? $this->sortBy : 'occurred_at',
+                $this->sortDir
+            );
 
         if ($this->filterEventType) {
             $query->where('event_type', $this->filterEventType);

@@ -156,6 +156,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         // Data Retention
         Route::get('/data-retention', Settings\DataRetentionSettings::class)->name('settings.data-retention');
 
+        // WordPress
+        Route::get('/wordpress', Settings\WordPressSettings::class)->name('settings.wordpress');
+
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 

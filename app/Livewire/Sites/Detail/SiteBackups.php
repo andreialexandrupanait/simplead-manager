@@ -8,6 +8,7 @@ use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithSorting;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
@@ -21,7 +22,11 @@ use Livewire\WithPagination;
 
 class SiteBackups extends Component
 {
-    use WithPagination, WithSiteAuthorization;
+    use WithPagination, WithSiteAuthorization, WithSorting;
+
+    protected string $defaultSortBy = 'created_at';
+
+    protected string $defaultSortDir = 'desc';
 
     public Site $site;
 
@@ -159,7 +164,10 @@ class SiteBackups extends Component
                 '_previous_file_size'
             )
             ->select('backups.*')
-            ->orderByDesc('created_at')
+            ->orderBy(
+                in_array($this->sortBy, ['created_at', 'type', 'file_size', 'status']) ? $this->sortBy : 'created_at',
+                $this->sortDir
+            )
             ->paginate(15);
     }
 
@@ -364,6 +372,40 @@ class SiteBackups extends Component
 
         $backup->delete();
         session()->flash('backup-success', 'Backup deleted.');
+    }
+
+    public function bulkDelete(array $ids): void
+    {
+        $backups = $this->site->backups()
+            ->whereIn('id', $ids)
+            ->where('is_locked', false)
+            ->get();
+
+        $count = 0;
+        foreach ($backups as $backup) {
+            if ($backup->incrementals()->exists()) {
+                continue;
+            }
+
+            try {
+                if ($backup->storageDestination && $backup->file_path) {
+                    $driver = StorageFactory::make($backup->storageDestination);
+                    $driver->delete($backup->file_path);
+                    $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
+                }
+            } catch (\Exception) {
+                // Continue
+            }
+            $backup->delete();
+            $count++;
+        }
+
+        $skipped = count($ids) - $count;
+        $msg = "{$count} backup(s) deleted.";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} skipped (locked or has incrementals).";
+        }
+        session()->flash('backup-success', $msg);
     }
 
     public function updateNotes(int $backupId, string $notes): void

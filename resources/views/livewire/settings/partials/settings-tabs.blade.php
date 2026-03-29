@@ -1,5 +1,5 @@
-<div class="mb-6 border-b border-gray-200">
-    <nav class="-mb-px flex gap-6">
+<div class="sticky top-16 z-10 -mx-6 lg:-mx-8 px-6 lg:px-8 mb-6 border-b border-gray-200 bg-gray-50/95 backdrop-blur">
+    <nav class="-mb-px flex gap-6 overflow-x-auto scrollbar-hide">
         @php
             $tabs = [['route' => 'settings.profile', 'label' => __('Profile')]];
 
@@ -9,6 +9,7 @@
                     ['route' => 'settings.notifications', 'label' => __('Notifications')],
                     ['route' => 'settings.email', 'label' => __('Email')],
                     ['route' => 'settings.integrations', 'label' => __('Integrations')],
+                    ['route' => 'settings.wordpress', 'label' => __('WordPress')],
                     ['route' => 'settings.status-pages', 'label' => __('Status Pages')],
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
                     ['route' => 'settings.data-retention', 'label' => __('Data Retention')],

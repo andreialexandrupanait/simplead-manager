@@ -136,11 +136,11 @@
                             <input type="checkbox" :checked="allSelected" @change="toggleAll()"
                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
                         </th>
-                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Period</th>
+                        <x-ui.sortable-th column="created_at" :sortBy="$sortBy" :sortDir="$sortDir">Date</x-ui.sortable-th>
+                        <x-ui.sortable-th column="period_start" :sortBy="$sortBy" :sortDir="$sortDir">Period</x-ui.sortable-th>
                         <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Template</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                        <th class="px-5 py-3 text-left text-xs font-medium uppercase text-gray-500">Size</th>
+                        <x-ui.sortable-th column="status" :sortBy="$sortBy" :sortDir="$sortDir">Status</x-ui.sortable-th>
+                        <x-ui.sortable-th column="file_size" :sortBy="$sortBy" :sortDir="$sortDir">Size</x-ui.sortable-th>
                         <th class="px-5 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
                     </tr>
                 </thead>

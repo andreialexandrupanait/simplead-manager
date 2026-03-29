@@ -8,10 +8,10 @@ use App\Models\CloudflareConnection;
 use App\Models\SiteCloudflare;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 

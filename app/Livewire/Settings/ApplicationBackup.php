@@ -127,7 +127,7 @@ class ApplicationBackup extends Component
     #[Computed]
     public function totalStorageUsed(): string
     {
-        $total = AppBackup::where('status', 'completed')->sum('file_size');
+        $total = (int) (AppBackup::where('status', 'completed')->sum('file_size') ?? 0);
 
         return $this->formatBytes($total);
     }

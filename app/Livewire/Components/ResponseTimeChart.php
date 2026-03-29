@@ -71,7 +71,7 @@ class ResponseTimeChart extends Component
         /** @var \stdClass $stats */
         $stats = (clone $query)->selectRaw('AVG(response_time) as avg_rt, MIN(response_time) as min_rt, MAX(response_time) as max_rt, COUNT(*) as total')->first();
 
-        $avg = (int) round($stats->avg_rt ?? 0);
+        $avg = (int) round((float) ($stats->avg_rt ?? 0));
         $min = (int) ($stats->min_rt ?? 0);
         $max = (int) ($stats->max_rt ?? 0);
 

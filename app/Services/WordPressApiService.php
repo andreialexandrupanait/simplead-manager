@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Contracts\WordPressApiServiceInterface;
 use App\Models\Site;
 use App\Services\WordPress\Concerns\ManagesCron;
-use Illuminate\Http\Client\RequestException;
 use App\Services\WordPress\Concerns\ManagesDatabase;
 use App\Services\WordPress\Concerns\ManagesPlugins;
 use App\Services\WordPress\Concerns\ManagesSecurity;
@@ -15,6 +14,7 @@ use App\Services\WordPress\Concerns\ManagesSiteInfo;
 use App\Services\WordPress\Concerns\ManagesThemes;
 use App\Services\WordPress\Concerns\ManagesUsers;
 use App\Services\WordPress\WordPressHttpClient;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
