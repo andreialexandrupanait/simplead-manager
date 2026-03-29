@@ -382,6 +382,7 @@ class SiteBackups extends Component
             ->get();
 
         $count = 0;
+        /** @var \App\Models\Backup $backup */
         foreach ($backups as $backup) {
             if ($backup->incrementals()->exists()) {
                 continue;

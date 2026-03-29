@@ -9,5 +9,10 @@ parameters:
     ignoreErrors:
         # Livewire magic properties
         - '#Access to an undefined property App\\Livewire\\#'
+        # Nullsafe operator on properties that CAN be null at runtime
+        # (e.g. $currentSnapshot from DB, nullable relationships)
+        - identifier: nullsafe.neverNull
+        # property_exists() on $this always true (Livewire trait property checks)
+        - identifier: function.alreadyNarrowedType
     excludePaths:
         - app/Console/Commands/MigrateReportFiles.php
