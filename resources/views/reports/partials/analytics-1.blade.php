@@ -142,7 +142,7 @@
         <div>
             <h3 style="margin-top: 0;">{{ __('report.analytics_device_distribution', [], $lang) }}</h3>
             @php
-                $totalDeviceUsers = max(1, array_sum(array_column($a['devices'], 'users')));
+                $totalDeviceUsers = max(1, array_sum(array_column($a['devices'] ?? [], 'users')));
                 $deviceColors = ['primary', 'blue', 'green', 'amber'];
             @endphp
             <div style="display: flex; flex-direction: column; gap: 6px;">

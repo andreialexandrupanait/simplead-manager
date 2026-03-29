@@ -56,7 +56,7 @@ class WpUsersGatherer extends BaseReportSectionGatherer
             'never_logged_in' => $neverLoggedIn,
             'by_role' => $byRole,
             'user_list' => $users->map(fn ($u) => [
-                'username' => $u->username ?: ($u->display_name ?: (($u->email ? explode('@', $u->email)[0] : 'N/A'))),
+                'username' => $u->username ?: ($u->display_name ?: ($u->email ? explode('@', (string) $u->email)[0] : 'N/A')),
                 'email' => $u->email,
                 'role' => $u->role ? ucfirst($u->role) : 'N/A',
                 'last_login_at' => $u->last_login_at?->format('d/m/Y'),

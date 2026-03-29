@@ -85,7 +85,7 @@
             @if(isset($sc['overview']['daily_data']) && count($sc['overview']['daily_data']) > 0)
                 <h3>{{ __('report.search_top_dates', [], $lang) }}</h3>
                 @php
-                    $topDates = collect($sc['overview']['daily_data'])->sortByDesc('clicks')->take(5)->values();
+                    $topDates = collect($sc['overview']['daily_data'] ?? [])->sortByDesc('clicks')->take(5)->values();
                 @endphp
                 <table class="data-table">
                     <thead>

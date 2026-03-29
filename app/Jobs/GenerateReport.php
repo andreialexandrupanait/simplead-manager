@@ -96,7 +96,7 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 ->update(['report_id' => $report->id]);
 
             $fullPath = Storage::disk('local')->path($filePath);
-            $fileSize = file_exists($fullPath) ? filesize($fullPath) : 0;
+            $fileSize = file_exists($fullPath) ? (int) filesize($fullPath) : 0;
             $fileName = basename($filePath);
 
             $report->update([

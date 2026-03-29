@@ -33,9 +33,9 @@ class CloudflareGatherer extends BaseReportSectionGatherer
         $cur = $currentSnapshot;
         $prev = $previousSnapshot;
 
-        $requests = $cur->cloudflare_requests;
-        $bandwidth = $cur->cloudflare_bandwidth_bytes;
-        $cacheRatio = $cur->cloudflare_cache_hit_ratio;
+        $requests = $cur?->cloudflare_requests;
+        $bandwidth = $cur?->cloudflare_bandwidth_bytes;
+        $cacheRatio = $cur?->cloudflare_cache_hit_ratio;
 
         return [
             'zone_name' => $cf->zone_name,

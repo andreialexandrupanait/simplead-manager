@@ -10,7 +10,7 @@
         <td>
             <h3>{{ __('report.analytics_traffic_sources', [], $lang) }}</h3>
             @if(isset($a['traffic_sources']) && count($a['traffic_sources']) > 0)
-                @php $totalSourceUsers = max(1, array_sum(array_column($a['traffic_sources'], 'users'))); @endphp
+                @php $totalSourceUsers = max(1, array_sum(array_column($a['traffic_sources'] ?? [], 'users'))); @endphp
                 <table class="data-table">
                     <thead>
                         <tr>

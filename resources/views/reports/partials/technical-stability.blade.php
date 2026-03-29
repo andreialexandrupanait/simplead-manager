@@ -208,7 +208,7 @@
         {{-- Database categories breakdown --}}
         @if(!empty($db['categories']))
             @php
-                $activeCats = collect($db['categories'])->filter(fn($cat) => ($cat['deleted'] ?? 0) > 0);
+                $activeCats = collect($db['categories'] ?? [])->filter(fn($cat) => ($cat['deleted'] ?? 0) > 0);
             @endphp
             @if($activeCats->count() > 0)
                 <h3 style="margin-top: 12px;">{{ __('report.database_cleanup_title', [], $lang) }}</h3>

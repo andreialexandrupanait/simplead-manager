@@ -41,8 +41,8 @@ class PerformanceGatherer extends BaseReportSectionGatherer
         $data = [
             'mobile_score' => $mobileTest?->performance_score,
             'desktop_score' => $desktopTest?->performance_score,
-            'mobile_trend' => $this->calculateTrend($cur->performance_avg_mobile, $prev?->performance_avg_mobile),
-            'desktop_trend' => $this->calculateTrend($cur->performance_avg_desktop, $prev?->performance_avg_desktop),
+            'mobile_trend' => $this->calculateTrend($cur?->performance_avg_mobile, $prev?->performance_avg_mobile),
+            'desktop_trend' => $this->calculateTrend($cur?->performance_avg_desktop, $prev?->performance_avg_desktop),
         ];
 
         if ($mobileTest) {

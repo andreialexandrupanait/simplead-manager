@@ -64,7 +64,7 @@ class UptimeGatherer extends BaseReportSectionGatherer
 
         $cur = $currentSnapshot;
         $prev = $previousSnapshot;
-        $uptimePct = $cur->uptime_percentage ?? $monitor->uptime_30d;
+        $uptimePct = $cur?->uptime_percentage ?? $monitor->uptime_30d;
 
         $downtimeBars = [];
         foreach ($incidents->take(6) as $idx => $inc) {
@@ -81,10 +81,10 @@ class UptimeGatherer extends BaseReportSectionGatherer
         return [
             'available' => true,
             'uptime_percentage' => $uptimePct,
-            'uptime_trend' => $this->calculateTrend($cur->uptime_percentage, $prev?->uptime_percentage),
+            'uptime_trend' => $this->calculateTrend($cur?->uptime_percentage, $prev?->uptime_percentage),
             'avg_response_time' => $avgResponseTime ? round($avgResponseTime) : null,
             'response_time_trend' => $this->calculateTrendInverse(
-                $cur->uptime_avg_response_ms ?? ($avgResponseTime ? round($avgResponseTime) : null),
+                $cur?->uptime_avg_response_ms ?? ($avgResponseTime ? round($avgResponseTime) : null),
                 $prev?->uptime_avg_response_ms
             ),
             'incidents' => $incidents->map(fn ($i) => [
@@ -96,7 +96,7 @@ class UptimeGatherer extends BaseReportSectionGatherer
             ])->toArray(),
             'incidents_count' => $incidents->count(),
             'incidents_trend' => $this->calculateTrendInverse(
-                $cur->uptime_incidents_count ?? $incidents->count(),
+                $cur?->uptime_incidents_count ?? $incidents->count(),
                 $prev?->uptime_incidents_count
             ),
             'total_downtime_minutes' => $totalDowntimeMinutes,

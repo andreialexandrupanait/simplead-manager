@@ -35,7 +35,7 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
         }
 
         $overviewData = $overviewCache->data ?? [];
-        $performanceData = $caches->get('performance_over_time')->data ?? [];
+        $performanceData = $caches->get('performance_over_time')?->data ?? [];
 
         $cur = $currentSnapshot;
         $prev = $previousSnapshot;
@@ -64,16 +64,16 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
             'chart_x_labels' => $chartXLabels,
         ];
 
-        $mappedOverview['clicks_trend'] = $this->calculateTrend($cur->search_console_clicks, $prev?->search_console_clicks);
-        $mappedOverview['impressions_trend'] = $this->calculateTrend($cur->search_console_impressions, $prev?->search_console_impressions);
+        $mappedOverview['clicks_trend'] = $this->calculateTrend($cur?->search_console_clicks, $prev?->search_console_clicks);
+        $mappedOverview['impressions_trend'] = $this->calculateTrend($cur?->search_console_impressions, $prev?->search_console_impressions);
         $mappedOverview['ctr_trend'] = $this->calculateTrend(($overviewData['ctr'] ?? 0), null);
-        $mappedOverview['position_trend'] = $this->calculateTrendInverse($cur->search_console_avg_position, $prev?->search_console_avg_position);
+        $mappedOverview['position_trend'] = $this->calculateTrendInverse($cur?->search_console_avg_position, $prev?->search_console_avg_position);
 
-        $queries = collect($caches->get('queries')->data ?? [])->map(fn ($q) => array_merge($q, [
+        $queries = collect($caches->get('queries')?->data ?? [])->map(fn ($q) => array_merge($q, [
             'ctr' => ($q['ctr'] ?? 0) / 100,
         ]))->take(10)->toArray();
 
-        $pages = collect($caches->get('pages')->data ?? [])->map(fn ($p) => array_merge($p, [
+        $pages = collect($caches->get('pages')?->data ?? [])->map(fn ($p) => array_merge($p, [
             'ctr' => ($p['ctr'] ?? 0) / 100,
         ]))->take(10)->toArray();
 
@@ -81,8 +81,8 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
             'overview' => $mappedOverview,
             'queries' => $queries,
             'pages' => $pages,
-            'countries' => $caches->get('countries')->data ?? [],
-            'devices' => $caches->get('devices')->data ?? [],
+            'countries' => $caches->get('countries')?->data ?? [],
+            'devices' => $caches->get('devices')?->data ?? [],
             'dual_line_chart' => $dualLineChart,
             'dual_line_y_labels' => $dualLineYLabels,
             'dual_line_x_labels' => $chartXLabels,

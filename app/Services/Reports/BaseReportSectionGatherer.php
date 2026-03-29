@@ -28,8 +28,8 @@ abstract class BaseReportSectionGatherer implements ReportSectionGathererInterfa
             ];
         }
 
-        $change = $current - $previous;
-        $percentChange = ($change / abs($previous)) * 100;
+        $change = (float) $current - (float) $previous;
+        $percentChange = ($change / abs((float) $previous)) * 100;
 
         if (abs($percentChange) < 0.5) {
             return [

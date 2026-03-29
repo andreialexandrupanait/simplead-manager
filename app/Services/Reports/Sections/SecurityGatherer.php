@@ -63,7 +63,7 @@ class SecurityGatherer extends BaseReportSectionGatherer
 
         return [
             'score' => $latestScan->score,
-            'score_trend' => $this->calculateTrend($cur->security_avg_score, $prev?->security_avg_score),
+            'score_trend' => $this->calculateTrend($cur?->security_avg_score, $prev?->security_avg_score),
             'scanned_at' => $latestScan->scanned_at,
             'critical_count' => $latestScan->critical_count,
             'high_count' => $latestScan->high_count,

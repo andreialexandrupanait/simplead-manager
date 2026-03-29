@@ -47,14 +47,14 @@ class BackupsGatherer extends BaseReportSectionGatherer
         $donutChart = $chartService->generateDonutData($donutSegments, 120, 18);
 
         return [
-            'schedule_enabled' => (bool) $config->is_enabled,
-            'frequency' => $config->frequency ?? 'N/A',
-            'type' => $config->type ?? 'N/A',
+            'schedule_enabled' => (bool) ($config?->is_enabled ?? false),
+            'frequency' => $config?->frequency ?? 'N/A',
+            'type' => $config?->type ?? 'N/A',
             'count' => $successfulCount,
             'failed_count' => $failedCount,
             'total_size' => $this->formatBytes($totalSize),
-            'successful_trend' => $this->calculateTrend($cur->backups_successful ?? $successfulCount, $prev?->backups_successful),
-            'failed_trend' => $this->calculateTrendInverse($cur->backups_failed ?? $failedCount, $prev?->backups_failed),
+            'successful_trend' => $this->calculateTrend($cur?->backups_successful ?? $successfulCount, $prev?->backups_successful),
+            'failed_trend' => $this->calculateTrendInverse($cur?->backups_failed ?? $failedCount, $prev?->backups_failed),
             'donut_chart' => $donutChart,
             'backups' => $backups->map(fn ($b) => [
                 'type' => $b->type,
