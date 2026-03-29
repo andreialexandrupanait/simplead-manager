@@ -1,2 +1,205 @@
 parameters:
 	ignoreErrors:
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Backups\\BackupsOverview\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Backups\\BackupsOverview\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Backups/BackupsOverview.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Reports\\ReportsOverview\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Reports/ReportsOverview.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Reports\\ReportsOverview\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Reports/ReportsOverview.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Security\\SecurityDashboard\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Security/SecurityDashboard.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Security\\SecurityDashboard\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Security/SecurityDashboard.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Livewire/Settings/ApplicationBackup.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\Security\\SecurityActivity\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityActivity.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\Security\\SecurityActivity\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/Security/SecurityActivity.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$file_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storageDestination\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:incrementals\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\SiteBackups\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\SiteBackups\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteBackups.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\SiteReports\) and ''defaultSortBy'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Sites\\Detail\\SiteReports\) and ''defaultSortDir'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteReports.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>language" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportGeneratorService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_failed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/BackupsGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_successful" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/BackupsGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>frequency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/BackupsGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/BackupsGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/BackupsGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_successful" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>backups_total" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>performance_avg_desktop" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>performance_avg_mobile" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>updates_applied" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_incidents_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_percentage" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/OverviewGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>data" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: app/Services/Reports/Sections/SearchConsoleGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_avg_response_ms" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/UptimeGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_incidents_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/UptimeGatherer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>uptime_percentage" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reports/Sections/UptimeGatherer.php
