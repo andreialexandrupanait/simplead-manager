@@ -74,7 +74,7 @@ abstract class BaseReportSectionGatherer implements ReportSectionGathererInterfa
         $decimalSep = $language === 'ro' ? ',' : '.';
         $thousandsSep = $language === 'ro' ? '.' : ',';
 
-        return number_format($value, $decimals, $decimalSep, $thousandsSep);
+        return number_format((float) $value, $decimals, $decimalSep, $thousandsSep);
     }
 
     protected function formatBytes(int $bytes): string
