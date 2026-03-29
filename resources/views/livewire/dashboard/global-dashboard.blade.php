@@ -3,7 +3,7 @@
     <x-ui.flash-alert type="success" key="message" />
 
     {{-- Header --}}
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Dashboard" subtitle="Overview of all your sites and infrastructure" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
@@ -44,7 +44,7 @@
             $alertsLink = route('uptime.index');
         }
     @endphp
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {{-- Sites --}}
         <a href="#sites" class="block">
             <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
@@ -390,7 +390,7 @@
             <x-ui.search-input
                 wire:model.live.debounce.300ms="search"
                 placeholder="Search sites..."
-                class="ml-auto w-64"
+                class="w-full sm:ml-auto sm:w-64"
             />
         </div>
         @endif

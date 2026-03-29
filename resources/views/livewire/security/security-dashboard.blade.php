@@ -52,8 +52,8 @@
             }
         }"
     >
-        {{-- Bulk action bar --}}
-        <div x-show="selected.length > 0" x-cloak class="flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
+        {{-- Bulk action bar (desktop only — bulk selection is impractical on touch) --}}
+        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
             <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
             <select wire:model="bulkPresetId" class="rounded-lg border-gray-300 text-xs focus:border-purple-500 focus:ring-purple-500">
                 <option value="">Choose preset...</option>
@@ -76,7 +76,51 @@
                 icon="shield-check"
             />
         @else
-            <div class="overflow-x-auto">
+            {{-- Mobile cards --}}
+            <div class="md:hidden divide-y divide-gray-200">
+                @foreach($this->sites as $site)
+                    <div class="p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 min-w-0 hover:text-purple-600" wire:navigate>
+                                <x-site-favicon :site="$site" class="h-5 w-5 shrink-0" />
+                                <div class="min-w-0">
+                                    <p class="font-medium text-gray-900 truncate">{{ $site->name }}</p>
+                                    <p class="text-xs text-gray-500 truncate">{{ $site->domain }}</p>
+                                </div>
+                            </a>
+                            <div class="shrink-0 text-right">
+                                @if($site->security_hardening_score !== null)
+                                    @php
+                                        $color = \App\Models\SecurityScan::scoreColor($site->security_hardening_score);
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1 text-sm font-medium text-{{ $color }}-700">
+                                        <span class="h-2 w-2 rounded-full bg-{{ $color }}-500"></span>
+                                        {{ $site->security_hardening_score }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                {{ $site->enabled_settings_count }} Settings
+                            </span>
+                            @if($site->pending_commands_count > 0)
+                                <span class="inline-flex rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700">
+                                    {{ $site->pending_commands_count }} Pending
+                                </span>
+                            @endif
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-400">
+                            Last sync: {{ $site->last_security_sync ? \Carbon\Carbon::parse($site->last_security_sync)->diffForHumans() : '—' }}
+                        </p>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50">
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">

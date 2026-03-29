@@ -51,7 +51,82 @@
 
         {{-- Cron table --}}
         @if(count($this->filteredCrons) > 0)
-            <x-ui.card :padding="false">
+            {{-- Mobile cards --}}
+            <div class="md:hidden space-y-2">
+                @foreach($this->filteredCrons as $cron)
+                    <div class="rounded-lg border border-gray-200 p-3 {{ $cron['disabled'] ? 'bg-yellow-50/50' : '' }}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <span class="block truncate font-mono text-sm text-gray-900">{{ $cron['hook'] }}</span>
+                                @if(!empty($cron['args']))
+                                    <span class="text-xs text-gray-400">({{ count($cron['args']) }} arg{{ count($cron['args']) !== 1 ? 's' : '' }})</span>
+                                @endif
+                            </div>
+                            @if($cron['disabled'])
+                                <x-ui.badge variant="yellow">Disabled</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="green">Active</x-ui.badge>
+                            @endif
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <div class="flex items-center gap-1">
+                                <x-ui.badge :variant="($cron['schedule'] ?? 'once') === 'once' ? 'gray' : 'blue'">
+                                    {{ $cron['schedule_label'] ?? $cron['schedule'] ?? 'once' }}
+                                </x-ui.badge>
+                                @if($cron['interval'])
+                                    <span class="text-xs text-gray-400">({{ round($cron['interval'] / 3600, 1) }}h)</span>
+                                @endif
+                            </div>
+                            <span class="text-xs text-gray-500">
+                                Next:
+                                @if($cron['next_run'] <= time())
+                                    <span class="font-medium text-orange-600">Overdue</span>
+                                @else
+                                    <span class="text-gray-700">{{ $cron['next_run_human'] }}</span>
+                                @endif
+                                <span class="text-gray-400">({{ date('M d, H:i', $cron['next_run']) }})</span>
+                            </span>
+                        </div>
+                        <div class="mt-2 flex items-center gap-2">
+                            @if(!$cron['disabled'])
+                                <x-ui.button
+                                    size="xs"
+                                    variant="secondary"
+                                    wire:click="runCron('{{ $cron['hook'] }}', {{ json_encode($cron['args']) }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="runCron('{{ $cron['hook'] }}')"
+                                    title="Run now"
+                                >
+                                    <x-icons.play class="h-3.5 w-3.5" />
+                                </x-ui.button>
+                                <x-ui.button
+                                    size="xs"
+                                    variant="secondary"
+                                    wire:click="disableCron('{{ $cron['hook'] }}')"
+                                    wire:loading.attr="disabled"
+                                    wire:target="disableCron('{{ $cron['hook'] }}')"
+                                    title="Disable"
+                                >
+                                    <x-icons.pause class="h-3.5 w-3.5" />
+                                </x-ui.button>
+                            @else
+                                <x-ui.button
+                                    size="xs"
+                                    variant="secondary"
+                                    wire:click="confirmEnableCron('{{ $cron['hook'] }}')"
+                                    title="Enable"
+                                >
+                                    <x-icons.play class="h-3.5 w-3.5" />
+                                    <span class="ml-1">Enable</span>
+                                </x-ui.button>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <x-ui.card :padding="false" class="hidden md:block">
                 <div class="overflow-x-auto">
                     <x-ui.table>
                         <x-slot:head>

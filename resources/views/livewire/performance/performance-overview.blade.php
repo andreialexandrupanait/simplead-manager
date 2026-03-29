@@ -1,6 +1,6 @@
 <div class="min-w-0">
     {{-- Header with Add Button --}}
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Performance" subtitle="Monitor site performance and Core Web Vitals" />
         <x-ui.button wire:click="testAllSites" wire:loading.attr="disabled" wire:confirm="This will queue performance tests for all monitored sites. Continue?">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -54,11 +54,11 @@
     </div>
 
     {{-- Search --}}
-    <div class="mb-4 flex items-center">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search by site name or domain..."
-            class="ml-auto w-64"
+            class="w-full sm:ml-auto sm:w-64"
         />
     </div>
 
@@ -67,7 +67,67 @@
         @if($monitors->isEmpty())
             <p class="py-8 text-center text-sm text-gray-500">No monitored sites found.</p>
         @else
-            <div class="-mx-6 overflow-x-auto px-6">
+            {{-- Mobile cards --}}
+            <div class="md:hidden space-y-2">
+                @foreach($monitors as $index => $monitor)
+                    @php
+                        $ms = $monitor->latest_mobile_score;
+                        $msColor = $ms === null ? 'text-gray-400' : ($ms >= 90 ? 'text-green-600' : ($ms >= 50 ? 'text-yellow-600' : 'text-red-600'));
+                        $msBg = $ms === null ? '' : ($ms >= 90 ? 'bg-green-50' : ($ms >= 50 ? 'bg-yellow-50' : 'bg-red-50'));
+                        $ds = $monitor->latest_desktop_score;
+                        $dsColor = $ds === null ? 'text-gray-400' : ($ds >= 90 ? 'text-green-600' : ($ds >= 50 ? 'text-yellow-600' : 'text-red-600'));
+                        $dsBg = $ds === null ? '' : ($ds >= 90 ? 'bg-green-50' : ($ds >= 50 ? 'bg-yellow-50' : 'bg-red-50'));
+                        $lcp = $monitor->latestMobileTest?->lcp;
+                        $lcpColor = $lcp === null ? 'text-gray-400' : ($lcp <= 2.5 ? 'text-green-600' : ($lcp <= 4.0 ? 'text-yellow-600' : 'text-red-600'));
+                        $current = $monitor->latest_mobile_score;
+                        $previous = $monitor->previous_mobile_score;
+                        $trend = ($current !== null && $previous !== null) ? $current - $previous : null;
+                    @endphp
+                    <div class="rounded-lg border border-gray-200 p-3">
+                        {{-- Rank + site name --}}
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-gray-400 w-5 flex-shrink-0">#{{ $index + 1 }}</span>
+                            <div class="min-w-0">
+                                @if($monitor->site)
+                                    <a href="{{ route('sites.performance', $monitor->site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-800 truncate block">
+                                        {{ $monitor->site->name }}
+                                    </a>
+                                    <div class="text-xs text-gray-400 truncate">{{ $monitor->site->domain }}</div>
+                                @else
+                                    <span class="text-sm text-gray-400">Deleted site</span>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Scores row --}}
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <span>
+                                Mobile:
+                                <span class="font-bold {{ $msColor }}">{{ $ms ?? '—' }}</span>
+                            </span>
+                            <span>
+                                Desktop:
+                                <span class="font-bold {{ $dsColor }}">{{ $ds ?? '—' }}</span>
+                            </span>
+                            <span>
+                                LCP:
+                                <span class="font-medium {{ $lcpColor }}">{{ $lcp !== null ? round($lcp, 1) . ' s' : '—' }}</span>
+                            </span>
+                            @if($trend !== null)
+                                <span>
+                                    Trend:
+                                    <span class="font-medium {{ $trend > 0 ? 'text-green-600' : ($trend < 0 ? 'text-red-600' : 'text-gray-500') }}">
+                                        {{ $trend > 0 ? '+' : '' }}{{ $trend }}
+                                    </span>
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block -mx-6 overflow-x-auto px-6">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr>

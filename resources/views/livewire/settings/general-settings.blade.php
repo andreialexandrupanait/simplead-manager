@@ -65,7 +65,7 @@
                     <x-ui.input wire:model="form.appUrl" id="appUrl" type="url" placeholder="https://your-app.com" />
                 </x-ui.form-group>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-ui.form-group :label="__('Default Timezone')" for="defaultTimezone">
                         <x-ui.select wire:model="form.defaultTimezone" id="defaultTimezone">
                             @foreach(timezone_identifiers_list() as $tz)
@@ -90,7 +90,7 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Monitoring Defaults') }}</h3>
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-ui.form-group :label="__('Default Check Interval')" for="defaultInterval">
                         <x-ui.select wire:model="form.defaultInterval" id="defaultInterval">
                             <option value="60">1 {{ __('minute') }}</option>

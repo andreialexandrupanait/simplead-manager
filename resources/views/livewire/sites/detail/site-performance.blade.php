@@ -278,7 +278,31 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-3">Competitor Benchmarking</h3>
 
                 @if(!empty($this->competitorComparison))
-                    <div class="overflow-x-auto mb-4">
+                    {{-- Mobile cards --}}
+                    <div class="md:hidden space-y-2 mb-4">
+                        <div class="rounded-lg border border-purple-200 bg-purple-50 p-3">
+                            <div class="text-sm font-medium text-gray-900">{{ $this->site->name }} <span class="text-xs text-gray-500">(you)</span></div>
+                            <div class="mt-1.5 flex items-center gap-4">
+                                <span class="text-xs text-gray-500">Mobile: <span class="font-semibold text-gray-900">{{ $this->monitor->latest_mobile_score ?? '—' }}</span></span>
+                                <span class="text-xs text-gray-500">Desktop: <span class="font-semibold text-gray-900">{{ $this->monitor->latest_desktop_score ?? '—' }}</span></span>
+                            </div>
+                        </div>
+                        @foreach($this->competitorComparison as $i => $comp)
+                            <div class="rounded-lg border border-gray-200 p-3">
+                                <div class="flex items-start justify-between gap-2">
+                                    <span class="text-sm text-gray-700">{{ $comp['domain'] }}</span>
+                                    <button wire:click="removeCompetitor({{ $i }})" class="shrink-0 text-xs text-red-500 hover:text-red-700">Remove</button>
+                                </div>
+                                <div class="mt-1.5 flex items-center gap-4">
+                                    <span class="text-xs text-gray-500">Mobile: <span class="font-semibold {{ ($comp['mobile_score'] ?? 0) < ($this->monitor->latest_mobile_score ?? 0) ? 'text-green-600' : 'text-red-600' }}">{{ $comp['mobile_score'] ?? '—' }}</span></span>
+                                    <span class="text-xs text-gray-500">Desktop: <span class="font-semibold {{ ($comp['desktop_score'] ?? 0) < ($this->monitor->latest_desktop_score ?? 0) ? 'text-green-600' : 'text-red-600' }}">{{ $comp['desktop_score'] ?? '—' }}</span></span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Desktop table --}}
+                    <div class="hidden md:block overflow-x-auto mb-4">
                         <table class="min-w-full text-sm">
                             <thead>
                                 <tr class="border-b border-gray-200">
@@ -330,7 +354,51 @@
         @if($this->testHistory->count() > 0)
             <x-ui.card class="overflow-hidden">
                 <h3 class="mb-4 text-lg font-semibold text-gray-900">Test History</h3>
-                <div class="-mx-6 overflow-x-auto px-6">
+
+                {{-- Mobile cards --}}
+                <div class="md:hidden space-y-2">
+                    @foreach($this->testHistory as $test)
+                        @php
+                            $scoreColor = match($test->score_color) {
+                                'green' => 'text-green-600',
+                                'orange' => 'text-yellow-600',
+                                'red' => 'text-red-600',
+                                default => 'text-gray-400',
+                            };
+                            $statusVariant = match($test->status) {
+                                'completed' => 'green',
+                                'running' => 'yellow',
+                                'failed' => 'red',
+                                default => 'gray',
+                            };
+                        @endphp
+                        <div class="rounded-lg border border-gray-200 p-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm text-gray-900">{{ $test->tested_at?->format('M j, H:i') ?? '—' }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <x-ui.badge :variant="$test->device === 'mobile' ? 'purple' : 'blue'">{{ ucfirst($test->device) }}</x-ui.badge>
+                                    <x-ui.badge :variant="$statusVariant">{{ ucfirst($test->status) }}</x-ui.badge>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex items-center gap-3">
+                                @if($test->performance_score !== null)
+                                    <span class="text-2xl font-bold {{ $scoreColor }}">{{ $test->performance_score }}</span>
+                                @else
+                                    <span class="text-2xl font-bold text-gray-400">—</span>
+                                @endif
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-500">
+                                    <span>FCP: <span class="font-medium text-gray-700">{{ $test->formatMetric('fcp') }}</span></span>
+                                    <span>LCP: <span class="font-medium text-gray-700">{{ $test->formatMetric('lcp') }}</span></span>
+                                    <span>CLS: <span class="font-medium text-gray-700">{{ $test->formatMetric('cls') }}</span></span>
+                                    <span>TBT: <span class="font-medium text-gray-700">{{ $test->formatMetric('tbt') }}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop table --}}
+                <div class="-mx-6 hidden overflow-x-auto px-6 md:block">
                 <x-ui.table>
                     <x-slot:head>
                         <x-ui.th>Date</x-ui.th>

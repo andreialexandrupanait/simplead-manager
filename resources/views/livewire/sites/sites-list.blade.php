@@ -1,6 +1,6 @@
 <div>
     {{-- Header with Add Button --}}
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Sites" subtitle="Manage all your WordPress sites" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
@@ -20,7 +20,7 @@
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search sites..."
-            class="ml-auto w-64"
+            class="w-full sm:ml-auto sm:w-64"
         />
     </div>
 

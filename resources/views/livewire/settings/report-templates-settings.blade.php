@@ -245,7 +245,7 @@
             {{-- Branding --}}
             <div class="border-t border-gray-200 pt-5">
                 <h4 class="text-sm font-medium text-gray-900 mb-3">Branding</h4>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1">Company Name</label>
                         <x-ui.input type="text" wire:model="company_name" placeholder="Your Company" />

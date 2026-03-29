@@ -66,7 +66,34 @@
                 icon="activity"
             />
         @else
-            <div class="overflow-x-auto">
+            {{-- Mobile cards --}}
+            <div class="md:hidden space-y-2">
+                @foreach($logs as $log)
+                    <div class="rounded-lg border border-gray-200 p-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium
+                                {{ $log->event_type === 'failed_login' ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-700' }}">
+                                {{ str_replace('_', ' ', $log->event_type) }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ $log->occurred_at->format('M d, H:i') }}</span>
+                        </div>
+                        <p class="mt-1.5 text-sm text-gray-700">
+                            @if($log->object_type)
+                                {{ $log->object_type }}: {{ $log->object_name }}
+                            @else
+                                {{ $log->action ?? '—' }}
+                            @endif
+                        </p>
+                        <div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                            <span>User: <span class="text-gray-700">{{ $log->username ?? '—' }}</span></span>
+                            <span class="font-mono">{{ $log->ip_address ?? '—' }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">

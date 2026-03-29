@@ -3,7 +3,7 @@
     <x-ui.flash-alert type="success" key="message" />
 
     {{-- Header with Add Button --}}
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Uptime Monitoring" subtitle="Track site availability and response times" />
         <div class="flex items-center gap-3">
             @if($this->sitesWithoutMonitorCount > 0)
@@ -20,7 +20,7 @@
     </div>
 
     {{-- Stats cards --}}
-    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">Total</p>
             <p class="mt-1 text-2xl font-bold text-gray-900">{{ $this->counts['total'] }}</p>
@@ -53,7 +53,7 @@
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search monitors..."
-            class="ml-auto w-64"
+            class="w-full sm:ml-auto sm:w-64"
         />
     </div>
 

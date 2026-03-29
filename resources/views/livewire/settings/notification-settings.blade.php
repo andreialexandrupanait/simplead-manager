@@ -124,7 +124,7 @@
                 </div>
 
                 @if($quietHoursEnabled)
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Start Time</label>
                             <x-ui.input wire:model="quietHoursStart" type="time" class="mt-1" />

@@ -85,7 +85,29 @@
                 @if(empty($this->dnsRecords))
                     <p class="text-sm text-gray-500">No DNS records found.</p>
                 @else
-                    <div class="overflow-x-auto">
+                    {{-- Mobile cards --}}
+                    <div class="md:hidden space-y-2">
+                        @foreach($this->dnsRecords as $record)
+                            <div class="rounded-lg border border-gray-200 p-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <x-ui.badge variant="gray">{{ $record['type'] }}</x-ui.badge>
+                                        @if(in_array($record['type'], ['A', 'AAAA', 'CNAME']))
+                                            <span class="{{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
+                                                <svg class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <span class="text-xs text-gray-500">TTL: {{ $record['ttl'] == 1 ? 'Auto' : $record['ttl'] . 's' }}</span>
+                                </div>
+                                <div class="mt-1.5 font-mono text-xs text-gray-900">{{ $record['name'] }}</div>
+                                <div class="mt-0.5 font-mono text-xs text-gray-500 truncate">{{ $record['content'] }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Desktop table --}}
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead>
                                 <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">

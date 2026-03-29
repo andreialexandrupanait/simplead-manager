@@ -52,7 +52,7 @@
 
             {{-- S3 fields --}}
             @if($form->type === 's3')
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Access Key</label>
                         <x-ui.input wire:model="form.s3Key" placeholder="{{ $destinationId ? '(unchanged)' : 'AKIAIOSFODNN7EXAMPLE' }}" class="mt-1" />
@@ -64,7 +64,7 @@
                         @error('form.s3Secret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Bucket</label>
                         <x-ui.input wire:model="form.s3Bucket" placeholder="my-backup-bucket" class="mt-1" />

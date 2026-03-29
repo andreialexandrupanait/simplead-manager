@@ -164,7 +164,32 @@
             @if($this->incidents->isEmpty())
                 <p class="py-6 text-center text-sm text-gray-500">No incidents recorded.</p>
             @else
-                <div class="overflow-x-auto">
+                {{-- Mobile cards --}}
+                <div class="md:hidden space-y-2">
+                    @foreach($this->incidents as $incident)
+                        <div class="rounded-lg border border-gray-200 p-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <x-ui.badge :variant="$incident->status === 'ongoing' ? 'red' : 'green'">
+                                    {{ ucfirst($incident->status) }}
+                                </x-ui.badge>
+                                <span class="text-xs text-gray-500">{{ $incident->started_at->format('M d, H:i') }}</span>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-900">{{ $incident->cause ?? '—' }}</p>
+                            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                                <span class="text-xs text-gray-500">Duration: <span class="text-gray-700">{{ $incident->duration }}</span></span>
+                                @if($incident->notified_via)
+                                    <span class="text-xs text-gray-500">Notified:</span>
+                                    @foreach($incident->notified_via as $via)
+                                        <x-ui.badge variant="gray">{{ $via }}</x-ui.badge>
+                                    @endforeach
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop table --}}
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>

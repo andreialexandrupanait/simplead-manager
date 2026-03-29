@@ -27,7 +27,7 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {{-- Quick Actions --}}
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
@@ -348,7 +348,7 @@
         </div>
 
         {{-- Bulk action bar --}}
-        <div x-show="selected.length > 0" x-cloak class="flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
+        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
             <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
             <button
                 @click="if (confirm('Delete ' + selected.length + ' backup(s)? This cannot be undone.')) { $wire.bulkDelete(selected).then(() => selected = []) }"
@@ -362,7 +362,143 @@
         @if($backupHistory->isEmpty())
             <p class="text-sm text-gray-500 text-center py-8 px-5">No backups yet. Create your first backup using the buttons above.</p>
         @else
-            <div class="overflow-x-auto">
+            {{-- Mobile cards --}}
+            <div class="md:hidden divide-y divide-gray-100 px-4 py-2">
+                @foreach($backupHistory as $backup)
+                    <div class="py-3">
+                        <div class="rounded-lg border border-gray-200 p-3"
+                             x-data="{ editing: false, notes: @js($backup->notes ?? '') }">
+                            {{-- Top row: type + status badges --}}
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <span class="text-sm font-medium text-gray-900">{{ ucfirst($backup->type) }} Backup</span>
+                                    @if($backup->type === 'incremental' && $backup->files_changed_count !== null)
+                                        <span class="ml-1 text-xs text-gray-400">
+                                            ({{ $backup->files_changed_count }} changed{{ $backup->files_deleted_count ? ", {$backup->files_deleted_count} deleted" : '' }})
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
+                                    @if($backup->is_locked)
+                                        <x-ui.badge variant="purple">Locked</x-ui.badge>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- Date + trigger --}}
+                            <div class="mt-1 text-xs text-gray-500">
+                                {{ $backup->created_at->format('M d, Y H:i') }}
+                                <span class="mx-1 text-gray-300">&middot;</span>
+                                {{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}
+                            </div>
+
+                            {{-- Size + storage + optional diff --}}
+                            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                                <span>{{ $backup->file_size_formatted }}</span>
+                                @if($backup->storageDestination)
+                                    <span class="text-gray-300">&middot;</span>
+                                    <span>{{ $backup->storageDestination->name }}</span>
+                                @endif
+                                @if($backup->size_diff_formatted && $backup->size_diff !== 0)
+                                    <x-ui.badge :variant="$backup->size_diff >= 0 ? 'yellow' : 'green'">{{ $backup->size_diff_formatted }}</x-ui.badge>
+                                @endif
+                                @if($backup->type === 'incremental' && $backup->parentBackup)
+                                    <span class="text-gray-300">&middot;</span>
+                                    <span>Based on {{ $backup->parentBackup->created_at->format('M d') }}</span>
+                                @endif
+                            </div>
+
+                            {{-- Restore / error badges --}}
+                            @if($backup->status === \App\Enums\BackupStatus::Failed && $backup->error_message)
+                                <div class="mt-1">
+                                    <button @click="$dispatch('show-error-detail', { title: 'Backup Error', message: @js($backup->error_message) })"
+                                        class="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        View error
+                                    </button>
+                                </div>
+                            @endif
+                            @if($backup->restore_status === \App\Enums\BackupStatus::Failed)
+                                <div class="mt-1 flex items-center gap-1">
+                                    <x-ui.badge variant="red">Restore failed</x-ui.badge>
+                                    @if($backup->restore_error_message)
+                                        <button @click="$dispatch('show-error-detail', { title: 'Restore Error', message: @js($backup->restore_error_message) })"
+                                            class="text-red-500 hover:text-red-700">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </button>
+                                    @endif
+                                </div>
+                            @elseif($backup->last_restored_at)
+                                <div class="mt-1">
+                                    <x-ui.badge variant="blue" title="Restored {{ $backup->last_restored_at->diffForHumans() }}">Restored</x-ui.badge>
+                                </div>
+                            @endif
+
+                            {{-- Action buttons --}}
+                            <div class="mt-2.5 flex items-center gap-1">
+                                @if($backup->status === \App\Enums\BackupStatus::Completed)
+                                    <button wire:click="downloadBackup({{ $backup->id }})"
+                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-purple-600 hover:border-purple-300 transition"
+                                        title="Download">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        Download
+                                    </button>
+                                    <button wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })"
+                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-purple-600 hover:border-purple-300 transition"
+                                        title="Restore">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                        Restore
+                                    </button>
+                                    <button wire:click="toggleLock({{ $backup->id }})"
+                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-purple-600 hover:border-purple-300 transition"
+                                        title="{{ $backup->is_locked ? 'Unlock' : 'Lock' }}">
+                                        @if($backup->is_locked)
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            Unlock
+                                        @else
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                                            Lock
+                                        @endif
+                                    </button>
+                                @endif
+                                <button wire:click="deleteBackup({{ $backup->id }})"
+                                    wire:confirm="Are you sure you want to delete this backup? This cannot be undone."
+                                    class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:border-red-300 transition"
+                                    title="Delete">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    Delete
+                                </button>
+                            </div>
+
+                            {{-- Inline notes --}}
+                            <div class="mt-2 text-xs">
+                                <div x-show="!editing" @click="editing = true"
+                                    class="cursor-pointer text-gray-500 hover:text-gray-700"
+                                    :title="notes || 'Click to add notes'">
+                                    <span class="text-gray-400">Notes: </span>
+                                    <span x-show="notes" x-text="notes"></span>
+                                    <span x-show="!notes" class="text-gray-400 italic">Add note</span>
+                                </div>
+                                <div x-show="editing" x-cloak>
+                                    <input type="text" x-model="notes"
+                                        @keydown.enter="$wire.updateNotes({{ $backup->id }}, notes); editing = false"
+                                        @keydown.escape="editing = false"
+                                        @click.outside="$wire.updateNotes({{ $backup->id }}, notes); editing = false"
+                                        x-ref="notesInputMobile{{ $backup->id }}"
+                                        x-init="$watch('editing', v => { if(v) $nextTick(() => $refs['notesInputMobile{{ $backup->id }}'].focus()) })"
+                                        class="w-full rounded border-gray-300 px-2 py-1 text-xs focus:border-purple-500 focus:ring-purple-500"
+                                        placeholder="Add a note..."
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>

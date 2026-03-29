@@ -75,7 +75,57 @@
                     <div class="px-4 py-3 border-b">
                         <h3 class="text-base font-semibold text-gray-900">Tables</h3>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    {{-- Mobile cards --}}
+                    <div class="md:hidden divide-y divide-gray-100 px-4 py-2 space-y-0">
+                        @foreach($this->latestHealthCheck->tables_data as $table)
+                            @php
+                                $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
+                                $isMyisam = strtolower($table['engine'] ?? '') === 'myisam';
+                                $hasOverhead = ($table['overhead'] ?? 0) > 1048576;
+                            @endphp
+                            <div class="rounded-lg border border-gray-200 p-3 my-2 {{ $isMyisam ? 'bg-yellow-50' : '' }}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-sm text-gray-900 truncate">{{ $table['name'] ?? '—' }}</span>
+                                    <x-ui.badge :variant="$isMyisam ? 'yellow' : 'gray'">
+                                        {{ $table['engine'] ?? '—' }}
+                                    </x-ui.badge>
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                    <span>Rows: <span class="text-gray-700">{{ number_format($table['rows'] ?? 0) }}</span></span>
+                                    <span>Size:
+                                        <span class="text-gray-700">
+                                            @if($tableSize >= 1048576)
+                                                {{ round($tableSize / 1048576, 2) }} MB
+                                            @elseif($tableSize >= 1024)
+                                                {{ round($tableSize / 1024, 2) }} KB
+                                            @else
+                                                {{ $tableSize }} B
+                                            @endif
+                                        </span>
+                                    </span>
+                                    <span>Overhead:
+                                        @if(($table['overhead'] ?? 0) > 0)
+                                            <span class="{{ $hasOverhead ? 'text-red-600 font-medium' : 'text-gray-700' }}">
+                                                @if(($table['overhead'] ?? 0) >= 1048576)
+                                                    {{ round(($table['overhead'] ?? 0) / 1048576, 2) }} MB
+                                                @elseif(($table['overhead'] ?? 0) >= 1024)
+                                                    {{ round(($table['overhead'] ?? 0) / 1024, 2) }} KB
+                                                @else
+                                                    {{ $table['overhead'] ?? 0 }} B
+                                                @endif
+                                            </span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Desktop table --}}
+                    <div class="hidden md:block overflow-x-auto">
                         <x-ui.table>
                             <x-slot:head>
                                 <x-ui.th>Name</x-ui.th>
@@ -234,36 +284,63 @@
             <div class="px-4 py-3 border-b">
                 <h3 class="text-lg font-semibold text-gray-900">Cleanup History</h3>
             </div>
-            <x-ui.table>
-                <x-slot:head>
-                    <x-ui.th>Date</x-ui.th>
-                    <x-ui.th>Revisions</x-ui.th>
-                    <x-ui.th>Drafts</x-ui.th>
-                    <x-ui.th>Trash</x-ui.th>
-                    <x-ui.th>Spam</x-ui.th>
-                    <x-ui.th>Transients</x-ui.th>
-                    <x-ui.th>Meta</x-ui.th>
-                    <x-ui.th>Space Saved</x-ui.th>
-                    <x-ui.th>Status</x-ui.th>
-                </x-slot:head>
+
+            {{-- Mobile cards --}}
+            <div class="md:hidden px-4 py-2 space-y-2">
                 @foreach($this->cleanupHistory as $cleanup)
-                    <tr>
-                        <x-ui.td>{{ $cleanup->cleaned_at?->format('M d, Y H:i') ?? '—' }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->revisions_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->auto_drafts_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->trash_posts_deleted + $cleanup->trash_comments_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->spam_comments_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->transients_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->orphaned_meta_deleted }}</x-ui.td>
-                        <x-ui.td>{{ $cleanup->formatted_space_saved }}</x-ui.td>
-                        <x-ui.td>
+                    <div class="rounded-lg border border-gray-200 p-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm text-gray-900">{{ $cleanup->cleaned_at?->format('M d, Y H:i') ?? '—' }}</span>
                             <x-ui.badge :variant="$cleanup->status === 'completed' ? 'green' : 'red'">
                                 {{ ucfirst($cleanup->status) }}
                             </x-ui.badge>
-                        </x-ui.td>
-                    </tr>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                            <span>Revisions: <span class="text-gray-700">{{ $cleanup->revisions_deleted }}</span></span>
+                            <span>Drafts: <span class="text-gray-700">{{ $cleanup->auto_drafts_deleted }}</span></span>
+                            <span>Trash: <span class="text-gray-700">{{ $cleanup->trash_posts_deleted + $cleanup->trash_comments_deleted }}</span></span>
+                            <span>Spam: <span class="text-gray-700">{{ $cleanup->spam_comments_deleted }}</span></span>
+                            <span>Transients: <span class="text-gray-700">{{ $cleanup->transients_deleted }}</span></span>
+                            <span>Meta: <span class="text-gray-700">{{ $cleanup->orphaned_meta_deleted }}</span></span>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Space saved: <span class="text-gray-700">{{ $cleanup->formatted_space_saved }}</span></p>
+                    </div>
                 @endforeach
-            </x-ui.table>
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block">
+                <x-ui.table>
+                    <x-slot:head>
+                        <x-ui.th>Date</x-ui.th>
+                        <x-ui.th>Revisions</x-ui.th>
+                        <x-ui.th>Drafts</x-ui.th>
+                        <x-ui.th>Trash</x-ui.th>
+                        <x-ui.th>Spam</x-ui.th>
+                        <x-ui.th>Transients</x-ui.th>
+                        <x-ui.th>Meta</x-ui.th>
+                        <x-ui.th>Space Saved</x-ui.th>
+                        <x-ui.th>Status</x-ui.th>
+                    </x-slot:head>
+                    @foreach($this->cleanupHistory as $cleanup)
+                        <tr>
+                            <x-ui.td>{{ $cleanup->cleaned_at?->format('M d, Y H:i') ?? '—' }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->revisions_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->auto_drafts_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->trash_posts_deleted + $cleanup->trash_comments_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->spam_comments_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->transients_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->orphaned_meta_deleted }}</x-ui.td>
+                            <x-ui.td>{{ $cleanup->formatted_space_saved }}</x-ui.td>
+                            <x-ui.td>
+                                <x-ui.badge :variant="$cleanup->status === 'completed' ? 'green' : 'red'">
+                                    {{ ucfirst($cleanup->status) }}
+                                </x-ui.badge>
+                            </x-ui.td>
+                        </tr>
+                    @endforeach
+                </x-ui.table>
+            </div>
         </x-ui.card>
     @endif
 

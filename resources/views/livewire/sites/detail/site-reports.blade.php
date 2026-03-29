@@ -128,7 +128,74 @@
             </button>
         </div>
 
-        <div class="overflow-x-auto">
+        {{-- Mobile cards --}}
+        <div class="md:hidden divide-y divide-gray-200">
+            @foreach($reports as $report)
+                @php
+                    $statusVariant = match($report->status) {
+                        \App\Enums\ReportStatus::Completed => 'green',
+                        \App\Enums\ReportStatus::Generating => 'blue',
+                        \App\Enums\ReportStatus::Pending => 'yellow',
+                        default => 'red',
+                    };
+                @endphp
+                <div class="px-5 py-3 space-y-2" :class="selected.includes({{ $report->id }}) && 'bg-purple-50/50'">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" value="{{ $report->id }}" x-model.number="selected"
+                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{{ $report->created_at->format('M d, Y H:i') }}</div>
+                                <div class="text-xs text-gray-500">{{ $report->period_start->format('M d') }} — {{ $report->period_end->format('M d, Y') }}</div>
+                            </div>
+                        </div>
+                        <x-ui.badge :variant="$statusVariant">{{ $report->status->label() }}</x-ui.badge>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500">
+                        <span>{{ $report->reportTemplate?->name ?? '—' }}</span>
+                        <span>{{ $report->file_size ? $report->file_size_formatted : '—' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($report->status === \App\Enums\ReportStatus::Completed && $report->file_path)
+                            <a href="{{ route('reports.download', ['report' => $report, 'preview' => 1]) }}"
+                               target="_blank"
+                               class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                               title="Preview">
+                                <x-icons.search class="h-3.5 w-3.5" />
+                            </a>
+                            @if(($portalToken ?? null) && $report->data_snapshot)
+                                <a href="{{ route('client-portal.report', [$portalToken, $report]) }}"
+                                   target="_blank"
+                                   class="inline-flex items-center rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                                   title="View online">
+                                    <x-icons.globe class="h-3.5 w-3.5" />
+                                </a>
+                            @endif
+                            <a href="{{ route('reports.download', $report) }}"
+                               class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                               title="Download">
+                                <x-icons.hard-drive class="h-3.5 w-3.5" />
+                            </a>
+                            <button wire:click="openSendModal({{ $report->id }})"
+                                    class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+                                    title="Send via email">
+                                <x-icons.inbox class="h-3.5 w-3.5" />
+                            </button>
+                        @endif
+                        <button wire:click="deleteReport({{ $report->id }})"
+                                wire:confirm="Are you sure you want to delete this report?"
+                                wire:loading.attr="disabled"
+                                class="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                                title="Delete">
+                            <x-icons.x class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Desktop table --}}
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50">
                     <tr>

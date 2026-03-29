@@ -1,6 +1,6 @@
 <div>
     {{-- Header with Add Button --}}
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Clients" subtitle="Manage your clients and their sites" />
         <a href="{{ route('clients.create') }}">
             <x-ui.button>
@@ -27,13 +27,74 @@
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="Search clients..."
-            class="ml-auto w-64"
+            class="w-full sm:ml-auto sm:w-64"
         />
     </div>
 
     {{-- Clients Table --}}
     @if($clients->count())
         <x-ui.card class="overflow-hidden !p-0">
+            {{-- Mobile cards --}}
+            <div class="md:hidden divide-y divide-gray-200">
+                @foreach($clients as $client)
+                    @php
+                        $statusVariant = match($client->status) {
+                            'active' => 'green',
+                            'inactive' => 'yellow',
+                            'archived' => 'gray',
+                            default => 'gray',
+                        };
+                    @endphp
+                    <div class="p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <a href="{{ route('clients.show', $client) }}" class="flex items-center gap-3 min-w-0">
+                                <x-client-avatar :client="$client" size="sm" />
+                                <div class="min-w-0">
+                                    <p class="font-medium text-gray-900 truncate">{{ $client->name }}</p>
+                                    @if($client->email)
+                                        <p class="text-xs text-gray-500 truncate">{{ $client->email }}</p>
+                                    @endif
+                                </div>
+                            </a>
+                            <x-ui.dropdown align="right">
+                                <x-slot:trigger>
+                                    <button class="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 shrink-0">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                        </svg>
+                                    </button>
+                                </x-slot:trigger>
+
+                                <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</a>
+                                <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</a>
+                                <div class="my-1 border-t border-gray-100"></div>
+                                @if($client->status !== 'active')
+                                    <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Active</button>
+                                @endif
+                                @if($client->status !== 'inactive')
+                                    <button wire:click="changeStatus({{ $client->id }}, 'inactive')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Inactive</button>
+                                @endif
+                                @if($client->status !== 'archived')
+                                    <button wire:click="changeStatus({{ $client->id }}, 'archived')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Archive</button>
+                                @endif
+                                <div class="my-1 border-t border-gray-100"></div>
+                                <button wire:click="confirmDelete({{ $client->id }})" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+                            </x-ui.dropdown>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                            <x-ui.badge :variant="$statusVariant">{{ ucfirst($client->status) }}</x-ui.badge>
+                            <x-ui.badge variant="purple">{{ $client->sites_count }} {{ Str::plural('site', $client->sites_count) }}</x-ui.badge>
+                            @if($client->phone)
+                                <span class="text-xs text-gray-500">{{ $client->phone }}</span>
+                            @endif
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-400">Created: {{ $client->created_at->format('M j, Y') }}</p>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block">
             <x-ui.table>
                 <thead>
                     <tr class="bg-gray-50">
@@ -141,6 +202,7 @@
                     @endforeach
                 </tbody>
             </x-ui.table>
+            </div>{{-- end hidden md:block --}}
         </x-ui.card>
 
         <div class="mt-6">

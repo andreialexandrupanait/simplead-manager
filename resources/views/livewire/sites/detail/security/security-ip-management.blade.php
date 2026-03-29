@@ -67,7 +67,34 @@
                     icon="globe"
                 />
             @else
-                <div class="overflow-x-auto">
+                {{-- Mobile cards --}}
+                <div class="md:hidden space-y-2">
+                    @foreach($items as $item)
+                        <div class="rounded-lg border border-gray-200 p-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-mono text-sm text-gray-900">{{ $item->ip_address }}</span>
+                                <span class="text-xs {{ $item->site_id ? 'text-gray-500' : 'text-purple-600 font-medium' }}">
+                                    {{ $item->site_id ? 'Site' : 'Global' }}
+                                </span>
+                            </div>
+                            @if($item->reason)
+                                <p class="mt-1 text-sm text-gray-500">{{ $item->reason }}</p>
+                            @endif
+                            <div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                <span>Expires: <span class="text-gray-700">{{ $item->expires_at?->format('M d, Y') ?? 'Never' }}</span></span>
+                                <span>Added: <span class="text-gray-700">{{ $item->created_at->diffForHumans() }}</span></span>
+                            </div>
+                            <div class="mt-2">
+                                <button wire:click="removeIp({{ $item->id }})" wire:confirm="Remove this IP?" class="text-xs text-red-500 hover:text-red-700">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop table --}}
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
@@ -117,7 +144,32 @@
                     icon="shield-alert"
                 />
             @else
-                <div class="overflow-x-auto">
+                {{-- Mobile cards --}}
+                <div class="md:hidden space-y-2">
+                    @foreach($this->bannedIps as $ban)
+                        <div class="rounded-lg border border-gray-200 p-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-mono text-sm text-gray-900">{{ $ban->ip_address }}</span>
+                                <span class="text-xs font-medium text-gray-700">{{ $ban->blocked_attempts }} attempts</span>
+                            </div>
+                            @if($ban->reason)
+                                <p class="mt-1 text-sm text-gray-500">{{ $ban->reason }}</p>
+                            @endif
+                            <div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                <span>Banned: <span class="text-gray-700">{{ $ban->banned_at->diffForHumans() }}</span></span>
+                                <span>Expires: <span class="text-gray-700">{{ $ban->expires_at?->format('M d, Y H:i') ?? 'Never' }}</span></span>
+                            </div>
+                            <div class="mt-2">
+                                <button wire:click="unbanIp({{ $ban->id }})" wire:confirm="Unban this IP?" class="text-xs text-purple-600 hover:text-purple-800">
+                                    Unban
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Desktop table --}}
+                <div class="hidden md:block overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">

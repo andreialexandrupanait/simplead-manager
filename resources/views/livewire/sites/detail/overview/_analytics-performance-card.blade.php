@@ -46,7 +46,7 @@
                 @endphp
 
                 {{-- Metrics Row --}}
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     @foreach($metrics as $metric)
                         @php
                             $current = $overview[$metric['key']] ?? 0;

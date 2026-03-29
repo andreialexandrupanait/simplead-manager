@@ -232,22 +232,38 @@
                 @if(!empty($ut['incidents']))
                     <div class="mt-6">
                         <p class="sub-heading">Incidents</p>
-                        <x-ui.table>
-                            <x-slot:head>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cause</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                            </x-slot:head>
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden space-y-2">
                             @foreach($ut['incidents'] as $inc)
-                                <tr>
-                                    <td class="px-4 py-3"><x-ui.badge :variant="($inc['status'] ?? '') === 'resolved' ? 'green' : 'red'">{{ ucfirst($inc['status'] ?? 'unknown') }}</x-ui.badge></td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $inc['cause'] ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($inc['started_at']) ? \Carbon\Carbon::parse($inc['started_at'])->format('d M Y, H:i') : '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $inc['duration'] ?? '' }}</td>
-                                </tr>
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between">
+                                        <x-ui.badge :variant="($inc['status'] ?? '') === 'resolved' ? 'green' : 'red'">{{ ucfirst($inc['status'] ?? 'unknown') }}</x-ui.badge>
+                                        <span class="text-xs text-gray-400">{{ $inc['duration'] ?? '' }}</span>
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-700">{{ $inc['cause'] ?? '—' }}</p>
+                                    <p class="mt-1 text-xs text-gray-400">{{ isset($inc['started_at']) ? \Carbon\Carbon::parse($inc['started_at'])->format('d M Y, H:i') : '' }}</p>
+                                </div>
                             @endforeach
-                        </x-ui.table>
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block">
+                            <x-ui.table>
+                                <x-slot:head>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cause</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                                </x-slot:head>
+                                @foreach($ut['incidents'] as $inc)
+                                    <tr>
+                                        <td class="px-4 py-3"><x-ui.badge :variant="($inc['status'] ?? '') === 'resolved' ? 'green' : 'red'">{{ ucfirst($inc['status'] ?? 'unknown') }}</x-ui.badge></td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $inc['cause'] ?? '—' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ isset($inc['started_at']) ? \Carbon\Carbon::parse($inc['started_at'])->format('d M Y, H:i') : '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $inc['duration'] ?? '' }}</td>
+                                    </tr>
+                                @endforeach
+                            </x-ui.table>
+                        </div>
                     </div>
                 @endif
             </section>
@@ -279,27 +295,62 @@
                 @if(!empty($sec['active_issues']))
                     <div class="mt-6">
                         <p class="sub-heading">Active Issues</p>
-                        <x-ui.table>
-                            <x-slot:head>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recommendation</th>
-                            </x-slot:head>
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden space-y-2">
                             @foreach($sec['active_issues'] as $issue)
-                                <tr>
-                                    <td class="px-4 py-3">@php $sev = $issue['severity'] ?? 'medium'; @endphp<x-ui.badge :variant="match($sev) { 'critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', default => 'blue' }">{{ ucfirst($sev) }}</x-ui.badge></td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $issue['title'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $issue['recommendation'] ?? '' }}</td>
-                                </tr>
+                                @php $sev = $issue['severity'] ?? 'medium'; @endphp
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-gray-700">{{ $issue['title'] ?? '' }}</p>
+                                        <x-ui.badge :variant="match($sev) { 'critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', default => 'blue' }">{{ ucfirst($sev) }}</x-ui.badge>
+                                    </div>
+                                    @if(!empty($issue['recommendation']))
+                                        <p class="mt-1 text-xs text-gray-500">{{ $issue['recommendation'] }}</p>
+                                    @endif
+                                </div>
                             @endforeach
-                        </x-ui.table>
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block">
+                            <x-ui.table>
+                                <x-slot:head>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recommendation</th>
+                                </x-slot:head>
+                                @foreach($sec['active_issues'] as $issue)
+                                    <tr>
+                                        <td class="px-4 py-3">@php $sev = $issue['severity'] ?? 'medium'; @endphp<x-ui.badge :variant="match($sev) { 'critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', default => 'blue' }">{{ ucfirst($sev) }}</x-ui.badge></td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $issue['title'] ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $issue['recommendation'] ?? '' }}</td>
+                                    </tr>
+                                @endforeach
+                            </x-ui.table>
+                        </div>
                     </div>
                 @endif
 
                 @if(!empty($sec['vulnerabilities']))
                     <div class="mt-6">
                         <p class="sub-heading">Vulnerabilities</p>
-                        <div class="max-h-80 overflow-y-auto rounded-xl">
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden max-h-80 overflow-y-auto space-y-2">
+                            @foreach($sec['vulnerabilities'] as $vuln)
+                                @php $sev = $vuln['severity'] ?? 'medium'; @endphp
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-gray-700">{{ $vuln['title'] ?? '' }}</p>
+                                        <x-ui.badge :variant="match($sev) { 'critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', default => 'blue' }">{{ ucfirst($sev) }}</x-ui.badge>
+                                    </div>
+                                    <div class="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                        <span>{{ $vuln['software_slug'] ?? '' }} {{ $vuln['installed_version'] ?? '' }}</span>
+                                        <span>Fixed: {{ $vuln['fixed_in_version'] ?? 'N/A' }}</span>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block max-h-80 overflow-y-auto rounded-xl">
                             <x-ui.table>
                                 <x-slot:head>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
@@ -338,27 +389,46 @@
                     <div class="metric {{ ($upd['failed_count'] ?? 0) > 0 ? 'bg-red-50/50' : 'bg-green-50/50' }}"><div><p class="metric-value {{ ($upd['failed_count'] ?? 0) > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $upd['failed_count'] ?? 0 }}</p><p class="metric-label">Failed</p></div></div>
                 </div>
                 @if(!empty($upd['all_updates']))
-                    <div class="mt-6 max-h-96 overflow-y-auto rounded-xl">
-                        <x-ui.table>
-                            <x-slot:head>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">From</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">To</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            </x-slot:head>
+                    <div class="mt-6">
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden max-h-96 overflow-y-auto space-y-2">
                             @foreach($upd['all_updates'] as $u)
-                                <tr>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-700">{{ $u['name'] ?? '' }}</td>
-                                    <td class="px-4 py-3"><x-ui.badge variant="gray">{{ $u['type'] ?? '' }}</x-ui.badge></td>
-                                    <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['from_version'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['to_version'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($u['performed_at']) ? \Carbon\Carbon::parse($u['performed_at'])->format('d M Y') : '' }}</td>
-                                    <td class="px-4 py-3">@if($u['success'] ?? true)<x-ui.badge variant="green">OK</x-ui.badge>@else<x-ui.badge variant="red">Failed</x-ui.badge>@endif</td>
-                                </tr>
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-gray-700">{{ $u['name'] ?? '' }}</p>
+                                        @if($u['success'] ?? true)<x-ui.badge variant="green">OK</x-ui.badge>@else<x-ui.badge variant="red">Failed</x-ui.badge>@endif
+                                    </div>
+                                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                        <x-ui.badge variant="gray">{{ $u['type'] ?? '' }}</x-ui.badge>
+                                        <span class="font-mono">{{ $u['from_version'] ?? '' }} → {{ $u['to_version'] ?? '' }}</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-400">{{ isset($u['performed_at']) ? \Carbon\Carbon::parse($u['performed_at'])->format('d M Y') : '' }}</p>
+                                </div>
                             @endforeach
-                        </x-ui.table>
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block max-h-96 overflow-y-auto rounded-xl">
+                            <x-ui.table>
+                                <x-slot:head>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">From</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">To</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </x-slot:head>
+                                @foreach($upd['all_updates'] as $u)
+                                    <tr>
+                                        <td class="px-4 py-3 text-sm font-medium text-gray-700">{{ $u['name'] ?? '' }}</td>
+                                        <td class="px-4 py-3"><x-ui.badge variant="gray">{{ $u['type'] ?? '' }}</x-ui.badge></td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['from_version'] ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ $u['to_version'] ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ isset($u['performed_at']) ? \Carbon\Carbon::parse($u['performed_at'])->format('d M Y') : '' }}</td>
+                                        <td class="px-4 py-3">@if($u['success'] ?? true)<x-ui.badge variant="green">OK</x-ui.badge>@else<x-ui.badge variant="red">Failed</x-ui.badge>@endif</td>
+                                    </tr>
+                                @endforeach
+                            </x-ui.table>
+                        </div>
                     </div>
                 @endif
             </section>
@@ -393,25 +463,44 @@
                 </div>
 
                 @if(!empty($bk['backups']))
-                    <div class="mt-6 max-h-72 overflow-y-auto rounded-xl">
-                        <x-ui.table>
-                            <x-slot:head>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trigger</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            </x-slot:head>
+                    <div class="mt-6">
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden max-h-72 overflow-y-auto space-y-2">
                             @foreach($bk['backups'] as $b)
-                                <tr>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $b['type'] ?? '' }}</td>
-                                    <td class="px-4 py-3"><x-ui.badge :variant="($b['status'] ?? '') === 'completed' ? 'green' : 'red'">{{ ucfirst($b['status'] ?? '') }}</x-ui.badge></td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $b['file_size'] ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ $b['trigger'] ?? '' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-500">{{ isset($b['created_at']) ? \Carbon\Carbon::parse($b['created_at'])->format('d M Y, H:i') : '' }}</td>
-                                </tr>
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm font-medium text-gray-700">{{ $b['type'] ?? '' }}</span>
+                                        <x-ui.badge :variant="($b['status'] ?? '') === 'completed' ? 'green' : 'red'">{{ ucfirst($b['status'] ?? '') }}</x-ui.badge>
+                                    </div>
+                                    <div class="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                        <span>{{ $b['file_size'] ?? '—' }}</span>
+                                        <span>{{ $b['trigger'] ?? '' }}</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-400">{{ isset($b['created_at']) ? \Carbon\Carbon::parse($b['created_at'])->format('d M Y, H:i') : '' }}</p>
+                                </div>
                             @endforeach
-                        </x-ui.table>
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
+                            <x-ui.table>
+                                <x-slot:head>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trigger</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                </x-slot:head>
+                                @foreach($bk['backups'] as $b)
+                                    <tr>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $b['type'] ?? '' }}</td>
+                                        <td class="px-4 py-3"><x-ui.badge :variant="($b['status'] ?? '') === 'completed' ? 'green' : 'red'">{{ ucfirst($b['status'] ?? '') }}</x-ui.badge></td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $b['file_size'] ?? '—' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $b['trigger'] ?? '' }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ isset($b['created_at']) ? \Carbon\Carbon::parse($b['created_at'])->format('d M Y, H:i') : '' }}</td>
+                                    </tr>
+                                @endforeach
+                            </x-ui.table>
+                        </div>
                     </div>
                 @endif
             </section>
@@ -478,7 +567,17 @@
                 @if(!empty($an['top_pages']))
                     <div class="mt-6">
                         <p class="sub-heading">Top Pages</p>
-                        <div class="max-h-72 overflow-y-auto rounded-xl">
+                        {{-- Mobile list --}}
+                        <div class="md:hidden max-h-72 overflow-y-auto space-y-1">
+                            @foreach(array_slice($an['top_pages'], 0, 10) as $pg)
+                                <div class="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                                    <p class="text-sm text-gray-700 truncate mr-3">{{ $pg['page'] ?? $pg['path'] ?? '' }}</p>
+                                    <span class="shrink-0 text-sm font-medium text-gray-500">{{ number_format((int)($pg['pageviews'] ?? $pg['views'] ?? 0)) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
                             <x-ui.table>
                                 <x-slot:head>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
@@ -531,7 +630,20 @@
                     @if(!empty($sc['queries']))
                         <div>
                             <p class="sub-heading">Query Details</p>
-                            <div class="max-h-72 overflow-y-auto rounded-xl">
+                            {{-- Mobile list --}}
+                            <div class="md:hidden max-h-72 overflow-y-auto space-y-1">
+                                @foreach(array_slice($sc['queries'], 0, 10) as $q)
+                                    <div class="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                                        <p class="text-sm text-gray-700 truncate mr-2">{{ $q['query'] ?? '' }}</p>
+                                        <div class="shrink-0 flex items-center gap-2 text-xs text-gray-500">
+                                            <span>{{ $q['clicks'] ?? 0 }} clicks</span>
+                                            <span>#{{ number_format((float)($q['position'] ?? 0), 1) }}</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            {{-- Desktop table --}}
+                            <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
                                 <x-ui.table>
                                     <x-slot:head>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Query</th>
@@ -552,7 +664,17 @@
                     @if(!empty($sc['pages']))
                         <div>
                             <p class="sub-heading">Top Pages</p>
-                            <div class="max-h-72 overflow-y-auto rounded-xl">
+                            {{-- Mobile list --}}
+                            <div class="md:hidden max-h-72 overflow-y-auto space-y-1">
+                                @foreach(array_slice($sc['pages'], 0, 10) as $pg)
+                                    <div class="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                                        <p class="text-sm text-gray-700 truncate mr-2">{{ $pg['page'] ?? $pg['path'] ?? '' }}</p>
+                                        <span class="shrink-0 text-xs font-medium text-gray-500">{{ $pg['clicks'] ?? 0 }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                            {{-- Desktop table --}}
+                            <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
                                 <x-ui.table>
                                     <x-slot:head>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
@@ -580,7 +702,7 @@
                     <x-icons.zap class="h-5 w-5 text-yellow-600" />
                     <h2 class="text-lg font-bold text-gray-900">Performance</h2>
                 </div>
-                <div class="flex justify-center gap-16 mb-6 py-4">
+                <div class="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 mb-6 py-4">
                     <x-performance.score-gauge :score="isset($perf['mobile_score']) ? (int)$perf['mobile_score'] : null" label="Mobile" size="lg" />
                     <x-performance.score-gauge :score="isset($perf['desktop_score']) ? (int)$perf['desktop_score'] : null" label="Desktop" size="lg" />
                 </div>
@@ -589,7 +711,7 @@
                     @php $d = $perf[$device]; @endphp
                     <div class="mt-4">
                         <p class="sub-heading">{{ ucfirst($device) }} — Core Web Vitals</p>
-                        <div class="grid grid-cols-5 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                             @foreach(['fcp' => 'FCP', 'lcp' => 'LCP', 'cls' => 'CLS', 'tbt' => 'TBT', 'si' => 'SI'] as $key => $label)
                                 @php $clr = $d[$key.'_color'] ?? 'gray'; @endphp
                                 <div class="rounded-lg border p-3 text-center {{ match($clr) { 'green' => 'border-green-200 bg-green-50', 'red' => 'border-red-200 bg-red-50', default => 'border-yellow-200 bg-yellow-50' } }}">
@@ -617,7 +739,23 @@
                     </div>
                     @if(!empty($inv['plugins']))
                         <p class="sub-heading">Plugins ({{ count($inv['plugins']) }})</p>
-                        <div class="max-h-72 overflow-y-auto rounded-xl">
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden max-h-72 overflow-y-auto space-y-2">
+                            @foreach($inv['plugins'] as $p)
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-gray-700">{{ $p['name'] ?? '' }}</p>
+                                        <x-ui.badge :variant="($p['is_active'] ?? false) ? 'green' : 'gray'">{{ ($p['is_active'] ?? false) ? 'Active' : 'Inactive' }}</x-ui.badge>
+                                    </div>
+                                    <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                                        <span class="font-mono">v{{ $p['version'] ?? '' }}</span>
+                                        @if($p['has_update'] ?? false)<x-ui.badge variant="yellow">{{ $p['update_version'] ?? 'Available' }}</x-ui.badge>@endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
                             <x-ui.table>
                                 <x-slot:head>
                                     <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Plugin</th>
@@ -638,22 +776,40 @@
                     @endif
                     @if(!empty($inv['themes']))
                         <p class="sub-heading mt-5">Themes ({{ count($inv['themes']) }})</p>
-                        <x-ui.table>
-                            <x-slot:head>
-                                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Theme</th>
-                                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Version</th>
-                                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Update</th>
-                            </x-slot:head>
+                        {{-- Mobile cards --}}
+                        <div class="md:hidden space-y-2">
                             @foreach($inv['themes'] as $t)
-                                <tr>
-                                    <td class="px-4 py-2.5 text-sm font-medium text-gray-700">{{ $t['name'] ?? '' }}</td>
-                                    <td class="px-4 py-2.5 text-sm text-gray-500 font-mono">{{ $t['version'] ?? '' }}</td>
-                                    <td class="px-4 py-2.5"><x-ui.badge :variant="($t['is_active'] ?? false) ? 'green' : 'gray'">{{ ($t['is_active'] ?? false) ? 'Active' : 'Inactive' }}</x-ui.badge></td>
-                                    <td class="px-4 py-2.5">@if($t['has_update'] ?? false)<x-ui.badge variant="yellow">{{ $t['update_version'] ?? 'Available' }}</x-ui.badge>@else<span class="text-xs text-gray-400">—</span>@endif</td>
-                                </tr>
+                                <div class="rounded-lg border border-gray-200 p-3">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-gray-700">{{ $t['name'] ?? '' }}</p>
+                                        <x-ui.badge :variant="($t['is_active'] ?? false) ? 'green' : 'gray'">{{ ($t['is_active'] ?? false) ? 'Active' : 'Inactive' }}</x-ui.badge>
+                                    </div>
+                                    <div class="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                                        <span class="font-mono">v{{ $t['version'] ?? '' }}</span>
+                                        @if($t['has_update'] ?? false)<x-ui.badge variant="yellow">{{ $t['update_version'] ?? 'Available' }}</x-ui.badge>@endif
+                                    </div>
+                                </div>
                             @endforeach
-                        </x-ui.table>
+                        </div>
+                        {{-- Desktop table --}}
+                        <div class="hidden md:block">
+                            <x-ui.table>
+                                <x-slot:head>
+                                    <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Theme</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Version</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Update</th>
+                                </x-slot:head>
+                                @foreach($inv['themes'] as $t)
+                                    <tr>
+                                        <td class="px-4 py-2.5 text-sm font-medium text-gray-700">{{ $t['name'] ?? '' }}</td>
+                                        <td class="px-4 py-2.5 text-sm text-gray-500 font-mono">{{ $t['version'] ?? '' }}</td>
+                                        <td class="px-4 py-2.5"><x-ui.badge :variant="($t['is_active'] ?? false) ? 'green' : 'gray'">{{ ($t['is_active'] ?? false) ? 'Active' : 'Inactive' }}</x-ui.badge></td>
+                                        <td class="px-4 py-2.5">@if($t['has_update'] ?? false)<x-ui.badge variant="yellow">{{ $t['update_version'] ?? 'Available' }}</x-ui.badge>@else<span class="text-xs text-gray-400">—</span>@endif</td>
+                                    </tr>
+                                @endforeach
+                            </x-ui.table>
+                        </div>
                     @endif
                 </section>
                 @endif
@@ -721,7 +877,21 @@
                         <x-icons.users class="h-4 w-4 text-purple-500" />
                         <h2 class="text-base font-bold text-gray-900">WordPress Users</h2>
                     </div>
-                    <div class="max-h-72 overflow-y-auto rounded-xl">
+                    {{-- Mobile cards --}}
+                    <div class="md:hidden max-h-72 overflow-y-auto space-y-2">
+                        @foreach($wpu['user_list'] ?? [] as $user)
+                            <div class="rounded-lg border border-gray-200 p-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-sm font-medium text-gray-700">{{ $user['username'] ?? $user['display_name'] ?? '' }}</p>
+                                    <x-ui.badge variant="gray">{{ ucfirst($user['role'] ?? '') }}</x-ui.badge>
+                                </div>
+                                <p class="mt-0.5 text-xs text-gray-500">{{ $user['email'] ?? '' }}</p>
+                                <p class="mt-0.5 text-xs text-gray-400">Last login: {{ $user['last_login_at'] ?? 'Never' }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                    {{-- Desktop table --}}
+                    <div class="hidden md:block max-h-72 overflow-y-auto rounded-xl">
                         <x-ui.table>
                             <x-slot:head>
                                 <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Username</th>

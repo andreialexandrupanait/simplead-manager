@@ -43,7 +43,62 @@
                 icon="users"
             />
         @else
-            <div class="overflow-x-auto">
+            {{-- Mobile cards --}}
+            <div class="md:hidden space-y-2">
+                @foreach($users as $user)
+                    <div class="rounded-lg border border-gray-200 p-3">
+                        {{-- Top row: avatar + username + role badge --}}
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                @if($user->avatar_url)
+                                    <img src="{{ $user->avatar_url }}" alt="" class="h-8 w-8 rounded-full flex-shrink-0" />
+                                @else
+                                    <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-500">
+                                        {{ strtoupper(substr($user->username, 0, 1)) }}
+                                    </div>
+                                @endif
+                                <div class="min-w-0">
+                                    <div class="truncate font-medium text-gray-900 text-sm">{{ $user->username }}</div>
+                                    <div class="truncate text-xs text-gray-500">{{ $user->email }}</div>
+                                </div>
+                            </div>
+                            <span class="flex-shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-medium
+                                {{ $user->role === 'administrator' ? 'bg-red-50 text-red-700' : ($user->role === 'editor' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700') }}">
+                                {{ ucfirst($user->role) }}
+                            </span>
+                        </div>
+
+                        {{-- Bottom row: status + last login + actions --}}
+                        <div class="mt-2 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                @if($user->is_active)
+                                    <span class="inline-flex items-center gap-1 text-xs text-green-700">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> Active
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> Inactive
+                                    </span>
+                                @endif
+                                <span class="text-xs text-gray-400">Last login: {{ $user->last_login_at?->diffForHumans() ?? 'Never' }}</span>
+                            </div>
+                            @if($site->is_connected)
+                                <div class="flex items-center gap-1">
+                                    <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit user">
+                                        <x-icons.pencil class="h-4 w-4" />
+                                    </button>
+                                    <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete user">
+                                        <x-icons.trash class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Desktop table --}}
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">

@@ -5,7 +5,7 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Email Configuration') }}</h3>
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ __('Mailer') }}</label>
                         <x-ui.select wire:model.live="mailer" class="mt-1">
@@ -24,7 +24,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ __('SMTP Host') }}</label>
                         <x-ui.input wire:model="host" placeholder="smtp.example.com" class="mt-1" />
@@ -37,7 +37,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ __('Username') }}</label>
                         <x-ui.input wire:model="username" autocomplete="off" class="mt-1" />
@@ -58,7 +58,7 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Sender') }}</h3>
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">{{ __('From Address') }}</label>
                         <x-ui.input wire:model="fromAddress" type="email" placeholder="noreply@example.com" class="mt-1" />
