@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Contracts\WordPressApiServiceInterface;
 use App\Models\Site;
 use App\Services\WordPress\Concerns\ManagesCron;
+use Illuminate\Http\Client\RequestException;
 use App\Services\WordPress\Concerns\ManagesDatabase;
 use App\Services\WordPress\Concerns\ManagesPlugins;
 use App\Services\WordPress\Concerns\ManagesSecurity;
@@ -75,7 +76,7 @@ class WordPressApiService implements WordPressApiServiceInterface
             $data = $response->json();
 
             return $data['success'] ?? false ? $data : null;
-        } catch (\Throwable) {
+        } catch (RequestException|\RuntimeException) {
             return null;
         }
     }
@@ -244,7 +245,7 @@ class WordPressApiService implements WordPressApiServiceInterface
         // Cleanup session on WP
         try {
             $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
-        } catch (\Throwable) {
+        } catch (RequestException|\RuntimeException) {
             // Best effort
         }
     }
@@ -458,7 +459,7 @@ class WordPressApiService implements WordPressApiServiceInterface
         // Cleanup session on WP
         try {
             $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
-        } catch (\Throwable) {
+        } catch (RequestException|\RuntimeException) {
         }
 
         return $chunkFiles;
@@ -522,7 +523,7 @@ class WordPressApiService implements WordPressApiServiceInterface
         // Cleanup prepared file on WP
         try {
             $this->request('POST', '/backup/cleanup', ['token' => $token], [], 10);
-        } catch (\Throwable) {
+        } catch (RequestException|\RuntimeException) {
             // Best effort
         }
     }

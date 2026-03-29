@@ -146,7 +146,7 @@ class EmailDeliverabilityService
                     return [true, $value, $status, $issues];
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::warning("SPF check failed for {$domain}: {$e->getMessage()}");
         }
 
@@ -173,7 +173,7 @@ class EmailDeliverabilityService
                     return [true, $value, $policy, 'valid'];
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::warning("DMARC check failed for {$domain}: {$e->getMessage()}");
         }
 
@@ -193,7 +193,7 @@ class EmailDeliverabilityService
                         }
                     }
                 }
-            } catch (\Throwable) {
+            } catch (\Exception) {
                 continue;
             }
         }
@@ -207,7 +207,7 @@ class EmailDeliverabilityService
             $records = dns_get_record($domain, DNS_A);
 
             return collect($records)->pluck('ip')->filter()->values()->all();
-        } catch (\Throwable) {
+        } catch (\Exception) {
             return [];
         }
     }
@@ -228,7 +228,7 @@ class EmailDeliverabilityService
                 try {
                     $result = dns_get_record($lookup, DNS_A);
                     $isListed = ! empty($result);
-                } catch (\Throwable) {
+                } catch (\Exception) {
                     // Treat lookup failure as not listed
                 }
 
@@ -258,7 +258,7 @@ class EmailDeliverabilityService
                 'priority' => $r['pri'] ?? 0,
                 'host' => $r['target'] ?? '',
             ])->sortBy('priority')->values()->all();
-        } catch (\Throwable) {
+        } catch (\Exception) {
             return [];
         }
     }

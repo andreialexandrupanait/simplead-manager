@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\WordPressApiException;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Models\UpdateLog;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -61,7 +63,7 @@ class PluginManagerService
                     : $this->cleanErrorMessage($updateResult['error'] ?? 'Update failed'),
                 'version' => $updateResult['to_version'] ?? $updateVersion,
             ];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("{$type} update failed: {$name} on site {$site->name}", [
                 'type' => $type,
                 'slug' => $slug,
@@ -94,7 +96,7 @@ class PluginManagerService
             ActivityLogger::pluginActivated($site, $plugin->name);
 
             return ['success' => true, 'message' => "{$plugin->name} activated."];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Plugin activation failed: {$plugin->name} on site {$site->name}", [
                 'plugin' => $plugin->file,
                 'site_id' => $site->id,
@@ -125,7 +127,7 @@ class PluginManagerService
             ActivityLogger::pluginDeactivated($site, $plugin->name);
 
             return ['success' => true, 'message' => "{$plugin->name} deactivated."];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Plugin deactivation failed: {$plugin->name} on site {$site->name}", [
                 'plugin' => $plugin->file,
                 'site_id' => $site->id,
@@ -156,7 +158,7 @@ class PluginManagerService
             ActivityLogger::pluginDeleted($site, $plugin->name);
 
             return ['success' => true, 'message' => "{$plugin->name} deleted.", 'name' => $plugin->name];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Plugin delete failed: {$plugin->name} on site {$site->name}", [
                 'plugin' => $plugin->file,
                 'site_id' => $site->id,
@@ -187,7 +189,7 @@ class PluginManagerService
             ActivityLogger::themeActivated($site, $theme->name);
 
             return ['success' => true, 'message' => "{$theme->name} activated."];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Theme activation failed: {$theme->name} on site {$site->name}", [
                 'theme' => $theme->slug,
                 'site_id' => $site->id,
@@ -218,7 +220,7 @@ class PluginManagerService
             ActivityLogger::themeDeleted($site, $theme->name);
 
             return ['success' => true, 'message' => "{$theme->name} deleted.", 'name' => $theme->name];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Theme delete failed: {$theme->name} on site {$site->name}", [
                 'theme' => $theme->slug,
                 'site_id' => $site->id,
@@ -253,7 +255,7 @@ class PluginManagerService
         try {
             $result = $api->updatePlugins($plugins->pluck('file')->toArray());
             $apiResults = $result['results'] ?? [];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Bulk plugin update failed on site {$site->name}", [
                 'site_id' => $site->id,
                 'error' => $e->getMessage(),
@@ -329,7 +331,7 @@ class PluginManagerService
         try {
             $result = $api->updateThemes($themes->pluck('slug')->toArray());
             $apiResults = $result['results'] ?? [];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Bulk theme update failed on site {$site->name}", [
                 'site_id' => $site->id,
                 'error' => $e->getMessage(),
@@ -413,7 +415,7 @@ class PluginManagerService
             ActivityLogger::coreUpdated($site, $site->wp_version, $site->core_update_version);
 
             return ['success' => true, 'message' => 'WordPress core update initiated.'];
-        } catch (\Exception $e) {
+        } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Core update failed on site {$site->name}", [
                 'site_id' => $site->id,
                 'error' => $e->getMessage(),

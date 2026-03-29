@@ -6,6 +6,7 @@ namespace App\Services\Notifications;
 
 use App\Models\NotificationChannel;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EmailNotificationSender
 {
@@ -24,7 +25,7 @@ class EmailNotificationSender
             Mail::to($address)->queue($mailable);
 
             return ['success' => true, 'response_code' => null, 'error' => null];
-        } catch (\Exception $e) {
+        } catch (TransportExceptionInterface|\RuntimeException $e) {
             return ['success' => false, 'response_code' => null, 'error' => $e->getMessage()];
         }
     }

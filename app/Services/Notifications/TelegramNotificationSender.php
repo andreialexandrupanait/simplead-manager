@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\NotificationChannel;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 class TelegramNotificationSender
@@ -26,7 +28,7 @@ class TelegramNotificationSender
 
         try {
             $botToken = decrypt($botToken);
-        } catch (\Exception $e) {
+        } catch (DecryptException $e) {
             return ['success' => false, 'response_code' => null, 'error' => 'Failed to decrypt bot token'];
         }
 
@@ -61,7 +63,7 @@ class TelegramNotificationSender
                 'response_code' => $response->status(),
                 'error' => $response->successful() ? null : ($response->json('description') ?? $response->body()),
             ];
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             return ['success' => false, 'response_code' => null, 'error' => $e->getMessage()];
         }
     }

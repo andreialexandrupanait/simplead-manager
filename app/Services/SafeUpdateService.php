@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Jobs\CreateBackup;
 use App\Models\SafeUpdate;
 use App\Models\UpdateLog;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
 class SafeUpdateService
@@ -125,7 +126,7 @@ class SafeUpdateService
             $passed = ($result['status'] ?? 'unknown') === 'ok';
 
             return ['passed' => $passed, 'checks' => $checks];
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             return [
                 'passed' => false,
                 'checks' => [['name' => 'health_endpoint', 'status' => 'error', 'message' => $e->getMessage()]],

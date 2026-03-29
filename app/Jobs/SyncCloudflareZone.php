@@ -8,6 +8,7 @@ use App\Models\CloudflareConnection;
 use App\Models\SiteCloudflare;
 use App\Services\CloudflareService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -63,7 +64,7 @@ class SyncCloudflareZone implements ShouldBeUnique, ShouldQueue
             try {
                 $sslMode = $service->getSslMode($this->siteCloudflare->zone_id);
                 $this->siteCloudflare->update(['ssl_mode' => $sslMode]);
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 // Non-critical
             }
         } catch (\Exception $e) {

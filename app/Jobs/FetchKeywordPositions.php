@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\TrackedKeyword;
 use App\Services\GoogleSearchConsoleService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -79,7 +80,7 @@ class FetchKeywordPositions implements ShouldBeUnique, ShouldQueue
                         'ctr' => $row ? $row['ctr'] : 0,
                     ]
                 );
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 \Illuminate\Support\Facades\Log::warning("Failed to fetch position for keyword '{$keyword->keyword}': {$e->getMessage()}");
             }
         }

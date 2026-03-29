@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\SecurityRecommendation;
 use App\Models\Site;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
 class SecurityRecommendationService
@@ -56,7 +57,7 @@ class SecurityRecommendationService
             $total = SecurityRecommendation::where('site_id', $site->id)->count();
 
             return compact('passed', 'failed', 'total');
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             Log::warning("Security recommendation check failed for site {$site->id}: {$e->getMessage()}");
 
             return ['passed' => 0, 'failed' => 0, 'total' => 0, 'error' => $e->getMessage()];
@@ -95,7 +96,7 @@ class SecurityRecommendationService
             }
 
             return false;
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             Log::warning("Security fix failed for site {$site->id}, key {$key}: {$e->getMessage()}");
 
             return false;

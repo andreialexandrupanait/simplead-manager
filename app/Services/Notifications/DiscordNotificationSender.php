@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\NotificationChannel;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 class DiscordNotificationSender
@@ -50,7 +51,7 @@ class DiscordNotificationSender
                 'response_code' => $response->status(),
                 'error' => $response->successful() ? null : $response->body(),
             ];
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             return ['success' => false, 'response_code' => null, 'error' => $e->getMessage()];
         }
     }

@@ -10,6 +10,8 @@ use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CloudflareService;
 use App\Services\SettingsService;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Http\Client\RequestException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -45,7 +47,7 @@ class IntegrationsSettings extends Component
         if ($encryptedDropbox) {
             try {
                 $this->dropboxAppSecret = decrypt($encryptedDropbox);
-            } catch (\Exception $e) {
+            } catch (DecryptException $e) {
                 $this->dropboxAppSecret = '';
             }
         }
@@ -56,7 +58,7 @@ class IntegrationsSettings extends Component
         if ($encrypted) {
             try {
                 $this->googleClientSecret = decrypt($encrypted);
-            } catch (\Exception $e) {
+            } catch (DecryptException $e) {
                 $this->googleClientSecret = '';
             }
         }
@@ -130,7 +132,7 @@ class IntegrationsSettings extends Component
             ]);
 
             session()->flash('storage-success', "Connection test for {$destination->name} ".($passed ? 'passed.' : 'failed.'));
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             $destination->update([
                 'last_tested_at' => now(),
                 'last_test_passed' => false,
@@ -226,7 +228,7 @@ class IntegrationsSettings extends Component
             } else {
                 session()->flash('error', 'Cloudflare token validation failed. The connection was saved but may not work.');
             }
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             session()->flash('error', 'Failed to validate token: '.$e->getMessage());
         }
 
@@ -243,7 +245,7 @@ class IntegrationsSettings extends Component
             $valid = $service->validateToken();
 
             session()->flash('success', 'Cloudflare connection test '.($valid ? 'passed' : 'failed').'.');
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             session()->flash('error', 'Test failed: '.$e->getMessage());
         }
 

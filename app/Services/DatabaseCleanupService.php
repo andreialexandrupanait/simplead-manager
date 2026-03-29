@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\DatabaseCleanup;
 use App\Models\Site;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
 class DatabaseCleanupService
@@ -52,7 +53,7 @@ class DatabaseCleanupService
             );
 
             return $cleanup;
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             Log::warning("Database cleanup failed for site {$site->id}: {$e->getMessage()}");
 
             $cleanup = DatabaseCleanup::create([

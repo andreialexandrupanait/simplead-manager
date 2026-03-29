@@ -14,6 +14,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
@@ -171,7 +172,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 $this->site->siteUsers()
                     ->whereNotIn('wp_user_id', $existingWpUserIds)
                     ->delete();
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 // Users endpoint may not exist on older connector versions — skip silently
                 Log::info("User sync skipped for site {$this->site->id}: {$e->getMessage()}");
             }
@@ -197,21 +198,21 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             // Auto-check plugin conflicts after sync
             try {
                 PluginConflictService::checkSite($this->site);
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Run security checks
             try {
                 app(SecurityRecommendationService::class)->check($this->site);
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Pull security activity logs from WordPress
             try {
                 PullSecurityActivityLogs::dispatch($this->site);
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 Log::info("Security activity log pull skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
@@ -219,7 +220,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             try {
                 $dbStats = $api->getDbCleanupStats();
                 Cache::put("db-cleanup-stats-{$this->site->id}", $dbStats, now()->addHours(24));
-            } catch (\Exception $e) {
+            } catch (RequestException|\RuntimeException $e) {
                 Log::info("DB cleanup stats skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 

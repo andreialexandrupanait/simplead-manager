@@ -6,6 +6,7 @@ namespace App\Services\Notifications;
 
 use App\Models\NotificationChannel;
 use App\Models\Site;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 class WebhookNotificationSender
@@ -52,7 +53,7 @@ class WebhookNotificationSender
                 'response_code' => $response->status(),
                 'error' => $response->successful() ? null : $response->body(),
             ];
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             return ['success' => false, 'response_code' => null, 'error' => $e->getMessage()];
         }
     }

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Services\Notifications\NotificationService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -75,7 +76,7 @@ class PluginAbandonmentService
                 'wp_org_last_updated' => $lastUpdated,
                 'abandoned_checked_at' => now(),
             ]);
-        } catch (\Exception $e) {
+        } catch (RequestException|\RuntimeException $e) {
             Log::info("Abandonment check failed for plugin {$plugin->slug}: {$e->getMessage()}");
             $plugin->update([
                 'abandoned_checked_at' => now(),
