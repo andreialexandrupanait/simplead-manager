@@ -206,7 +206,7 @@ class SpamUserDetectionService
             }
 
             // Strip dots from local part to normalize
-            $normalized = str_replace('.', '', $parts[0]) . '@' . $parts[1];
+            $normalized = str_replace('.', '', $parts[0]).'@'.$parts[1];
             $groups[$normalized][] = $user->id;
         }
 

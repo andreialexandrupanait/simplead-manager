@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -37,6 +38,15 @@ class Client extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Client $client) {
+            if (! $client->portal_token) {
+                $client->portal_token = Str::random(64);
+            }
+        });
+    }
+
     protected $fillable = [
         'name',
         'email',
@@ -53,6 +63,10 @@ class Client extends Model
         'status',
         'portal_token',
         'portal_enabled',
+    ];
+
+    protected $attributes = [
+        'portal_enabled' => true,
     ];
 
     protected $casts = [
@@ -93,6 +107,11 @@ class Client extends Model
     public function getDisplayNameAttribute(): string
     {
         return $this->company ?: $this->name;
+    }
+
+    public function getLogoPathAttribute(): ?string
+    {
+        return $this->logo;
     }
 
     public function getInitialsAttribute(): string

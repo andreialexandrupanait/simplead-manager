@@ -38,7 +38,6 @@ class ReportManagementService
             'send_copy_to_admin' => $data['send_copy_to_admin'] ?? false,
             'email_subject' => $data['email_subject'] ?: null,
             'email_body' => $data['email_body'] ?: null,
-            'client_name' => $data['client_name'] ?: null,
         ];
 
         if ($scheduleId) {

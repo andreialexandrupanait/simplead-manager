@@ -21,6 +21,7 @@ use App\Models\PerformanceMonitor;
 use App\Models\Report;
 use App\Models\ReportRecommendation;
 use App\Models\ReportSchedule;
+use App\Models\ReportTemplate;
 use App\Models\RollbackPoint;
 use App\Models\SafeUpdate;
 use App\Models\SearchConsoleCache;
@@ -139,6 +140,11 @@ trait HasSiteRelationships
     public function searchConsoleCaches(): HasMany
     {
         return $this->hasMany(SearchConsoleCache::class);
+    }
+
+    public function reportTemplate(): BelongsTo
+    {
+        return $this->belongsTo(ReportTemplate::class);
     }
 
     public function reportSchedules(): HasMany

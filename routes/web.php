@@ -8,6 +8,7 @@ use App\Http\Controllers\DropboxAuthController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ReportDownloadController;
+use App\Http\Controllers\ReportViewController;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
@@ -42,6 +43,11 @@ Route::get('/restore-download/{token}', function (string $token) {
 Route::get('/reports/{report}/download/signed', ReportDownloadController::class)
     ->name('reports.download.signed')
     ->middleware(['signed', 'throttle:30,1']);
+
+// Permanent report view link (token-protected, no auth)
+Route::get('/r/{report}/{token}', ReportViewController::class)
+    ->name('reports.view.public')
+    ->middleware('throttle:60,1');
 
 // Plugin download via signed URL (for WP self-update — no auth required)
 Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)

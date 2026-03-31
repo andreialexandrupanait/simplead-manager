@@ -3,7 +3,11 @@
     <div class="mb-6">
         <div class="flex items-center gap-4">
             <div class="flex flex-1 items-center gap-4">
-                <x-client-avatar :client="$client" size="lg" />
+                @if($client->logo)
+                    <img src="{{ Storage::disk('public')->url($client->logo) }}" alt="{{ $client->name }}" class="h-14 w-14 rounded-full object-contain border">
+                @else
+                    <x-client-avatar :client="$client" size="lg" />
+                @endif
                 <div class="flex-1">
                     <div class="flex items-center gap-3">
                         <h1 class="text-2xl font-semibold text-gray-900">{{ $client->name }}</h1>
@@ -39,6 +43,14 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
+                    @if($client->portal_enabled && $client->portal_token)
+                        <a href="{{ route('client-portal.show', $client->portal_token) }}" target="_blank" rel="noopener">
+                            <x-ui.button variant="secondary">
+                                <svg class="mr-1.5 h-4 w-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                Open Portal
+                            </x-ui.button>
+                        </a>
+                    @endif
                     <a href="{{ route('clients.edit', $client) }}">
                         <x-ui.button variant="secondary">Edit</x-ui.button>
                     </a>

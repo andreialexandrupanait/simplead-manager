@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Settings;
 
 use App\Models\ReportTemplate;
+use App\Models\Site;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -35,6 +36,17 @@ class ReportTemplatesSettings extends Component
     public string $intro_text = '';
 
     public string $closing_text = '';
+
+    public string $language = 'ro';
+
+    // Assign sites modal
+    public bool $showAssignSitesModal = false;
+
+    public ?int $assignTemplateId = null;
+
+    public array $assignedSiteIds = [];
+
+    public string $siteSearch = '';
 
     /**
      * Maps section keys used in the $sections array to the section_options keys
@@ -141,6 +153,7 @@ class ReportTemplatesSettings extends Component
             'primary_color' => 'required|string|max:7',
             'intro_text' => 'nullable|string',
             'closing_text' => 'nullable|string',
+            'language' => 'required|string|in:ro,en',
         ];
     }
 
@@ -174,6 +187,7 @@ class ReportTemplatesSettings extends Component
         $this->primary_color = $template->primary_color ?? '#3b82f6';
         $this->intro_text = $template->intro_text ?? '';
         $this->closing_text = $template->closing_text ?? '';
+        $this->language = $template->language ?? 'ro';
         $this->expandedSections = [];
         $this->initializeSubOptionDefaults();
         $this->dispatch('open-modal-template-form');
@@ -194,6 +208,7 @@ class ReportTemplatesSettings extends Component
             'primary_color' => $this->primary_color,
             'intro_text' => $this->intro_text ?: null,
             'closing_text' => $this->closing_text ?: null,
+            'language' => $this->language,
         ];
 
         if ($this->editingTemplateId) {
@@ -222,8 +237,8 @@ class ReportTemplatesSettings extends Component
     {
         $template = ReportTemplate::findOrFail($id);
 
-        if ($template->schedules()->exists()) {
-            session()->flash('template-error', 'Cannot delete — this template is used by active schedules.');
+        if ($template->schedules()->exists() || $template->sites()->exists()) {
+            session()->flash('template-error', 'Cannot delete — this template is assigned to sites or schedules.');
 
             return;
         }
@@ -253,12 +268,53 @@ class ReportTemplatesSettings extends Component
         $this->primary_color = '#3b82f6';
         $this->intro_text = '';
         $this->closing_text = '';
+        $this->language = 'ro';
     }
 
     public function cancelForm(): void
     {
         $this->dispatch('close-modal-template-form');
         $this->resetForm();
+    }
+
+    // ─── Assign Sites Modal ──────────────────────────────────────────
+
+    public function openAssignSites(int $templateId): void
+    {
+        $this->assignTemplateId = $templateId;
+        $this->assignedSiteIds = Site::where('report_template_id', $templateId)->pluck('id')->toArray();
+        $this->siteSearch = '';
+        $this->showAssignSitesModal = true;
+    }
+
+    public function toggleSiteAssignment(int $siteId): void
+    {
+        if (in_array($siteId, $this->assignedSiteIds)) {
+            $this->assignedSiteIds = array_values(array_diff($this->assignedSiteIds, [$siteId]));
+        } else {
+            $this->assignedSiteIds[] = $siteId;
+        }
+    }
+
+    public function saveAssignedSites(): void
+    {
+        if (! $this->assignTemplateId) {
+            return;
+        }
+
+        // Unassign sites that were removed
+        Site::where('report_template_id', $this->assignTemplateId)
+            ->whereNotIn('id', $this->assignedSiteIds)
+            ->update(['report_template_id' => null]);
+
+        // Assign selected sites
+        if (! empty($this->assignedSiteIds)) {
+            Site::whereIn('id', $this->assignedSiteIds)
+                ->update(['report_template_id' => $this->assignTemplateId]);
+        }
+
+        $this->showAssignSitesModal = false;
+        session()->flash('template-success', count($this->assignedSiteIds).' site(s) assigned.');
     }
 
     /**
@@ -322,11 +378,24 @@ class ReportTemplatesSettings extends Component
 
     public function render()
     {
-        $templates = ReportTemplate::withCount('schedules')->orderBy('name')->simplePaginate(15);
+        $templates = ReportTemplate::withCount(['schedules', 'sites'])->orderBy('name')->simplePaginate(15);
+
+        $assignSites = [];
+        if ($this->showAssignSitesModal) {
+            $query = Site::select('id', 'name', 'url', 'report_template_id')->orderBy('name');
+            if ($this->siteSearch !== '') {
+                $query->where(function ($q) {
+                    $q->where('name', 'ilike', '%'.$this->siteSearch.'%')
+                        ->orWhere('url', 'ilike', '%'.$this->siteSearch.'%');
+                });
+            }
+            $assignSites = $query->get();
+        }
 
         return view('livewire.settings.report-templates-settings', [
             'templates' => $templates,
             'sectionSubOptions' => static::sectionSubOptions(),
+            'assignSites' => $assignSites,
         ])->layout('components.layouts.app', ['title' => 'Report Templates']);
     }
 }

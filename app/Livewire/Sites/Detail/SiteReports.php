@@ -68,8 +68,6 @@ class SiteReports extends Component
 
     public string $scheduleEmailBody = '';
 
-    public string $scheduleClientName = '';
-
     // Send modal
     public bool $showSendModal = false;
 
@@ -114,10 +112,15 @@ class SiteReports extends Component
         $this->site = $site;
         $this->initJobTracking();
 
-        $defaultTemplate = ReportTemplate::where('is_default', true)->first()
-            ?? ReportTemplate::first();
-        $this->selectedTemplateId = $defaultTemplate?->id;
-        $this->scheduleTemplateId = $defaultTemplate?->id;
+        $this->selectedTemplateId = $site->report_template_id
+            ?? ReportTemplate::where('is_default', true)->value('id')
+            ?? ReportTemplate::value('id');
+        $this->scheduleTemplateId = $this->selectedTemplateId;
+    }
+
+    public function updateSiteTemplate(): void
+    {
+        $this->site->update(['report_template_id' => $this->selectedTemplateId]);
     }
 
     // ─── Generate Report Modal Flow ─────────────────────────────────
@@ -714,7 +717,6 @@ class SiteReports extends Component
             $this->scheduleSendCopyToAdmin = $schedule->send_copy_to_admin;
             $this->scheduleEmailSubject = $schedule->email_subject ?? '';
             $this->scheduleEmailBody = $schedule->email_body ?? '';
-            $this->scheduleClientName = $schedule->client_name ?? '';
         } else {
             $this->editingScheduleId = null;
         }
@@ -744,7 +746,6 @@ class SiteReports extends Component
             'send_copy_to_admin' => $this->scheduleSendCopyToAdmin,
             'email_subject' => $this->scheduleEmailSubject,
             'email_body' => $this->scheduleEmailBody,
-            'client_name' => $this->scheduleClientName,
         ], $this->editingScheduleId);
 
         $this->showScheduleModal = false;

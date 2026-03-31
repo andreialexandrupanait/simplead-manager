@@ -27,7 +27,7 @@ class ReportGeneratedMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $subject = $this->schedule->email_subject
+        $subject = $this->schedule?->email_subject
             ?? "Raport {$this->site->name} — {$this->report->period_start->format('d.m.Y')} - {$this->report->period_end->format('d.m.Y')}";
 
         return new Envelope(subject: $subject);
@@ -35,12 +35,17 @@ class ReportGeneratedMail extends Mailable
 
     public function content(): Content
     {
+        $viewUrl = $this->report->view_token
+            ? route('reports.view.public', [$this->report, $this->report->view_token])
+            : null;
+
         return new Content(
             view: 'mail.report-generated',
             with: [
                 'report' => $this->report,
                 'site' => $this->site,
                 'schedule' => $this->schedule,
+                'viewUrl' => $viewUrl,
                 'downloadUrl' => URL::temporarySignedRoute(
                     'reports.download.signed',
                     now()->addDays(7),

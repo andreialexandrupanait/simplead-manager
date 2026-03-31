@@ -12,10 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $site_id
  * @property string $language
- * @property bool $show_security
- * @property bool $show_cloudflare
  * @property string|null $custom_notes
- * @property array|null $custom_recommendations
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -27,14 +24,7 @@ class SiteReportConfig extends Model
     protected $fillable = [
         'site_id',
         'language',
-        'show_security',
-        'show_cloudflare',
         'custom_notes',
-    ];
-
-    protected $casts = [
-        'show_security' => 'boolean',
-        'show_cloudflare' => 'boolean',
     ];
 
     public function site(): BelongsTo

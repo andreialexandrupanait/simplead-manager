@@ -25,6 +25,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GenerateReport implements ShouldBeUnique, ShouldQueue
 {
@@ -74,6 +75,7 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
             'period_end' => $this->periodEnd,
             'status' => 'generating',
             'trigger' => $this->trigger,
+            'view_token' => Str::random(32),
         ]);
 
         try {

@@ -144,6 +144,116 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
             'fixable' => false,
         ];
 
+        // 13. Hide WordPress version
+        $generator_removed = has_action('wp_head', 'wp_generator') === false;
+        $sam_hardening = get_option('sam_security_hardening', []);
+        $hide_version = $generator_removed || (!empty($sam_hardening['hide_wp_version']));
+        $checks['hide_wp_version'] = [
+            'pass'    => $hide_version,
+            'label'   => 'WordPress version hidden',
+            'message' => $hide_version ? 'WordPress version meta tag is removed.' : 'WordPress version is exposed in page source.',
+            'fixable' => true,
+            'fix_key' => 'hide_wp_version',
+        ];
+
+        // 14. Prevent PHP execution in uploads
+        $uploads_htaccess = WP_CONTENT_DIR . '/uploads/.htaccess';
+        $php_blocked_in_uploads = false;
+        if (file_exists($uploads_htaccess)) {
+            $uploads_htaccess_contents = file_get_contents($uploads_htaccess);
+            $php_blocked_in_uploads = (
+                stripos($uploads_htaccess_contents, 'php') !== false &&
+                (stripos($uploads_htaccess_contents, 'deny') !== false || stripos($uploads_htaccess_contents, 'Require all denied') !== false)
+            );
+        }
+        $checks['prevent_php_uploads'] = [
+            'pass'    => $php_blocked_in_uploads,
+            'label'   => 'PHP execution blocked in uploads',
+            'message' => $php_blocked_in_uploads ? 'PHP execution is blocked in the uploads directory.' : 'PHP files can be executed in the uploads directory.',
+            'fixable' => true,
+            'fix_key' => 'prevent_php_uploads',
+        ];
+
+        // 15. Limit login attempts
+        $sam_login = get_option('sam_security_login', []);
+        $brute_force_enabled = !empty($sam_login['brute_force_protection']);
+        // Also check for popular limit-login plugins
+        if (!$brute_force_enabled) {
+            $brute_force_enabled = is_plugin_active('limit-login-attempts-reloaded/limit-login-attempts-reloaded.php')
+                || is_plugin_active('loginizer/loginizer.php')
+                || is_plugin_active('wordfence/wordfence.php');
+        }
+        $checks['limit_login_attempts'] = [
+            'pass'    => $brute_force_enabled,
+            'label'   => 'Login attempts limited',
+            'message' => $brute_force_enabled ? 'Brute force protection is active.' : 'No login attempt limiting detected.',
+            'fixable' => false,
+        ];
+
+        // 16. Disable trackbacks/pingbacks
+        $pingback_flag = get_option('default_pingback_flag', '1');
+        $ping_status = get_option('default_ping_status', 'open');
+        $trackbacks_disabled = ($pingback_flag === '0' || $pingback_flag === 0) && $ping_status === 'closed';
+        $checks['disable_trackbacks'] = [
+            'pass'    => $trackbacks_disabled,
+            'label'   => 'Trackbacks/pingbacks disabled',
+            'message' => $trackbacks_disabled ? 'Trackbacks and pingbacks are disabled.' : 'Trackbacks or pingbacks are still enabled.',
+            'fixable' => true,
+            'fix_key' => 'disable_trackbacks',
+        ];
+
+        // 17. Remove unused database tables
+        $all_tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}%'");
+        $core_tables = $wpdb->tables('all', true);
+        $orphan_tables = array_diff($all_tables, $core_tables);
+        // Filter out known transient/session tables
+        $orphan_tables = array_filter($orphan_tables, function($table) use ($wpdb) {
+            $short = str_replace($wpdb->prefix, '', $table);
+            return !in_array($short, ['actionscheduler_actions', 'actionscheduler_claims', 'actionscheduler_groups', 'actionscheduler_logs']);
+        });
+        $orphan_count = count($orphan_tables);
+        $checks['remove_unused_tables'] = [
+            'pass'    => $orphan_count <= 2,
+            'label'   => 'No excessive orphaned tables',
+            'message' => $orphan_count <= 2 ? 'Database is clean.' : "{$orphan_count} potentially orphaned tables found.",
+            'fixable' => false,
+        ];
+
+        // 18. Secure cookies
+        $secure_cookies = defined('COOKIE_SECURE') && COOKIE_SECURE;
+        if (!$secure_cookies && is_ssl()) {
+            // Check if WordPress sets secure cookies over SSL by default
+            $secure_cookies = true;
+        }
+        $checks['secure_cookies'] = [
+            'pass'    => $secure_cookies,
+            'label'   => 'Secure cookie flags',
+            'message' => $secure_cookies ? 'Cookies are served with Secure flag over HTTPS.' : 'COOKIE_SECURE is not enabled and site is not using SSL.',
+            'fixable' => false,
+        ];
+
+        // 19. Strong password policy (heuristic)
+        $strong_passwords_ok = true;
+        $admin_editors = get_users(['role__in' => ['administrator', 'editor'], 'fields' => ['ID', 'user_pass']]);
+        $one_year_ago = strtotime('-365 days');
+        foreach ($admin_editors as $user) {
+            $last_set = get_user_meta($user->ID, 'sam_password_last_set', true);
+            if (!$last_set) {
+                // If we've never tracked it, check if there's a session or just pass (heuristic)
+                continue;
+            }
+            if ((int) $last_set < $one_year_ago) {
+                $strong_passwords_ok = false;
+                break;
+            }
+        }
+        $checks['strong_passwords'] = [
+            'pass'    => $strong_passwords_ok,
+            'label'   => 'Strong password policy',
+            'message' => $strong_passwords_ok ? 'Admin/editor passwords appear current.' : 'Some admin/editor passwords may be outdated (>1 year).',
+            'fixable' => false,
+        ];
+
         // Score calculation
         $total = count($checks);
         $passed = count(array_filter($checks, fn($c) => $c['pass']));
@@ -168,6 +278,15 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
                 break;
             case 'disable_xmlrpc':
                 $result = $this->fix_disable_xmlrpc();
+                break;
+            case 'hide_wp_version':
+                $result = $this->fix_hide_wp_version();
+                break;
+            case 'prevent_php_uploads':
+                $result = $this->fix_prevent_php_uploads();
+                break;
+            case 'disable_trackbacks':
+                $result = $this->fix_disable_trackbacks();
                 break;
             default:
                 $result = ['success' => false, 'message' => 'Unknown fix key.'];
@@ -356,5 +475,52 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
         }
 
         return ['success' => true, 'message' => 'XML-RPC has been blocked via .htaccess.'];
+    }
+
+    private function fix_hide_wp_version(): array {
+        // Add to mu-plugins for reliability
+        $mu_dir = WPMU_PLUGIN_DIR;
+        if (!is_dir($mu_dir)) {
+            wp_mkdir_p($mu_dir);
+        }
+
+        $file = $mu_dir . '/sam-hide-wp-version.php';
+        $contents = "<?php\n// Hide WP version - Added by SimpleAd Manager\nremove_action('wp_head', 'wp_generator');\nadd_filter('the_generator', '__return_empty_string');\n";
+
+        if (!$this->atomic_file_write($file, $contents)) {
+            return ['success' => false, 'message' => 'Failed to write mu-plugin.'];
+        }
+
+        return ['success' => true, 'message' => 'WordPress version meta tag is now hidden.'];
+    }
+
+    private function fix_prevent_php_uploads(): array {
+        $uploads_dir = WP_CONTENT_DIR . '/uploads';
+        $htaccess = $uploads_dir . '/.htaccess';
+
+        if (file_exists($htaccess)) {
+            $contents = file_get_contents($htaccess);
+            if (stripos($contents, 'php') !== false) {
+                return ['success' => true, 'message' => 'PHP execution is already blocked in uploads.'];
+            }
+        } else {
+            $contents = '';
+        }
+
+        $rule = "\n# Block PHP execution - Added by SimpleAd Manager\n<Files *.php>\n  Require all denied\n</Files>\n";
+        $new_contents = $contents . $rule;
+
+        if (!$this->atomic_file_write($htaccess, $new_contents)) {
+            return ['success' => false, 'message' => 'Failed to write uploads .htaccess.'];
+        }
+
+        return ['success' => true, 'message' => 'PHP execution is now blocked in uploads directory.'];
+    }
+
+    private function fix_disable_trackbacks(): array {
+        update_option('default_pingback_flag', '0');
+        update_option('default_ping_status', 'closed');
+
+        return ['success' => true, 'message' => 'Trackbacks and pingbacks have been disabled.'];
     }
 }

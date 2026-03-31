@@ -1,6 +1,15 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     {{-- Header actions --}}
-    <div class="mb-6 flex justify-end">
+    <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <label class="text-sm font-medium text-gray-700">Template</label>
+            <select wire:model.live="selectedTemplateId" wire:change="updateSiteTemplate"
+                    class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
+                @foreach($templates as $tpl)
+                    <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
+                @endforeach
+            </select>
+        </div>
         <div class="flex gap-3">
             <x-ui.button variant="secondary" wire:click="openScheduleModal">
                 <x-icons.settings class="h-4 w-4" />
@@ -620,13 +629,6 @@
                         <input type="checkbox" wire:model="scheduleSendCopyToAdmin" id="adminCopy"
                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                         <label for="adminCopy" class="text-sm text-gray-700">Send copy to admin email</label>
-                    </div>
-
-                    {{-- Client branding --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Client Name (optional)</label>
-                        <x-ui.input type="text" wire:model="scheduleClientName"
-                               placeholder="Client company name" />
                     </div>
 
                     {{-- Custom email --}}

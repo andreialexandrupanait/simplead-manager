@@ -68,11 +68,19 @@
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $template->primary_color }}; vertical-align: middle;"></span>
                                 {{ $template->primary_color }}
                             </span>
-                            <span>Used by {{ $template->schedules_count }} {{ Str::plural('schedule', $template->schedules_count) }}</span>
+                            <span>{{ $template->schedules_count }} {{ Str::plural('schedule', $template->schedules_count) }}</span>
+                            <span>{{ $template->sites_count }} {{ Str::plural('site', $template->sites_count) }} assigned</span>
+                            <span>{{ strtoupper($template->language) }}</span>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2 ml-4">
+                        <button wire:click="openAssignSites({{ $template->id }})"
+                                wire:loading.attr="disabled"
+                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                                title="Assign sites">
+                            Assign Sites
+                        </button>
                         @if(!$template->is_default)
                             <button wire:click="setDefault({{ $template->id }})"
                                     wire:loading.attr="disabled"
@@ -91,7 +99,7 @@
                                 class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
                             Duplicate
                         </button>
-                        @if($template->schedules_count === 0)
+                        @if($template->schedules_count === 0 && $template->sites_count === 0)
                             <button wire:click="deleteTemplate({{ $template->id }})"
                                     wire:confirm="Are you sure you want to delete this template?"
                                     wire:loading.attr="disabled"
@@ -242,6 +250,21 @@
                 </div>
             </div>
 
+            {{-- Language --}}
+            <div class="border-t border-gray-200 pt-5">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Language</h4>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2">
+                        <input type="radio" wire:model="language" value="ro" class="text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm">Romanian (RO)</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" wire:model="language" value="en" class="text-purple-600 focus:ring-purple-500">
+                        <span class="text-sm">English (EN)</span>
+                    </label>
+                </div>
+            </div>
+
             {{-- Branding --}}
             <div class="border-t border-gray-200 pt-5">
                 <h4 class="text-sm font-medium text-gray-900 mb-3">Branding</h4>
@@ -290,4 +313,57 @@
             </x-ui.button>
         </div>
     </x-ui.modal>
+
+    {{-- Assign Sites Modal --}}
+    @if($showAssignSitesModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" wire:click="$set('showAssignSitesModal', false)"></div>
+            <div class="relative w-full max-w-lg max-h-[80vh] overflow-hidden rounded-xl bg-white shadow-xl flex flex-col">
+                <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Assign Sites to Template</h3>
+                    <button wire:click="$set('showAssignSitesModal', false)" class="text-gray-400 hover:text-gray-600">
+                        <x-icons.x class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div class="px-6 pt-4 pb-2">
+                    <x-ui.input type="text" wire:model.live.debounce.300ms="siteSearch" placeholder="Search sites..." />
+                </div>
+
+                <div class="flex-1 overflow-y-auto px-6 py-2">
+                    @forelse($assignSites as $site)
+                        @php
+                            $isAssigned = in_array($site->id, $assignedSiteIds);
+                            $otherTemplate = $site->report_template_id && $site->report_template_id !== $assignTemplateId;
+                        @endphp
+                        <label class="flex items-center gap-3 rounded-lg px-2 py-2 cursor-pointer hover:bg-gray-50 transition">
+                            <input type="checkbox"
+                                   wire:click="toggleSiteAssignment({{ $site->id }})"
+                                   {{ $isAssigned ? 'checked' : '' }}
+                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-gray-900 truncate">{{ $site->name }}</div>
+                                <div class="text-xs text-gray-500 truncate">{{ $site->url }}</div>
+                            </div>
+                            @if($otherTemplate)
+                                <span class="text-amber-500 flex-shrink-0" title="Already assigned to another template">
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                </span>
+                            @endif
+                        </label>
+                    @empty
+                        <p class="text-sm text-gray-400 text-center py-4">No sites found.</p>
+                    @endforelse
+                </div>
+
+                <div class="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+                    <span class="text-sm text-gray-500">{{ count($assignedSiteIds) }} site(s) selected</span>
+                    <div class="flex gap-3">
+                        <x-ui.button variant="secondary" wire:click="$set('showAssignSitesModal', false)">Cancel</x-ui.button>
+                        <x-ui.button wire:click="saveAssignedSites">Save</x-ui.button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

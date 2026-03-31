@@ -49,7 +49,9 @@ class ReportGeneratorService
 
     public function generate(): string
     {
-        $this->language = $this->site->reportConfig?->language ?? 'ro';
+        $this->language = $this->site->reportConfig?->language
+            ?? $this->template->language
+            ?? 'ro';
 
         $currentSnapshot = $this->getSnapshot($this->site, $this->periodStart);
         $previousSnapshot = $this->getPreviousSnapshot($this->site, $this->periodStart);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $report->title }} — {{ $client->name }}</title>
+    <title>{{ $report->title }}{{ $client?->name ? ' — '.$client->name : '' }}</title>
     @vite(['resources/css/app.css', 'resources/js/report.js'])
     <style>
         html { scroll-behavior: smooth; }
@@ -69,14 +69,27 @@
     @endphp
 
     {{-- ── Fixed Header (72px) ─────────────────────────────────────────────── --}}
+    @php
+        $isPublicView = $isPublicView ?? false;
+        $clientLogo = $client?->logo_path ? Storage::url($client->logo_path) : null;
+    @endphp
     <header class="sticky top-0 z-20 h-[72px] border-b border-gray-200 bg-white/95 backdrop-blur flex items-center">
         <div class="mx-auto w-full max-w-6xl px-4 flex items-center justify-between">
-            <div class="min-w-0">
-                <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-purple-600 hover:text-purple-800 font-medium">&larr; Back to portal</a>
-                <h1 class="text-base font-bold text-gray-900 truncate">{{ $report->title }}</h1>
-                <p class="text-[11px] text-gray-500">{{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}</p>
+            <div class="flex items-center gap-3 min-w-0">
+                @if($clientLogo)
+                    <img src="{{ $clientLogo }}" alt="{{ $client->name }}" class="h-10 w-auto max-w-[120px] object-contain flex-shrink-0">
+                @elseif($client?->name)
+                    <span class="text-sm font-semibold text-gray-700 flex-shrink-0">{{ $client->name }}</span>
+                @endif
+                <div class="min-w-0">
+                    @if(!$isPublicView && $client?->portal_token)
+                        <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-purple-600 hover:text-purple-800 font-medium">&larr; Back to portal</a>
+                    @endif
+                    <h1 class="text-base font-bold text-gray-900 truncate">{{ $report->title }}</h1>
+                    <p class="text-[11px] text-gray-500">{{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}</p>
+                </div>
             </div>
-            @if($report->file_path)
+            @if($report->file_path && !$isPublicView && $client?->portal_token)
                 <a href="{{ route('client-portal.download', [$client->portal_token, $report]) }}"
                    class="no-print ml-4 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition flex-shrink-0">
                     Download PDF

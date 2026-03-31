@@ -60,7 +60,15 @@
 
             <div style="text-align: center;">
                 <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">The PDF report is attached to this email.</p>
-                <a href="{{ $downloadUrl }}" class="action-btn">Download Report</a>
+                @if($viewUrl)
+                    <a href="{{ $viewUrl }}" class="action-btn">View Report Online</a>
+                    <div style="margin-top: 12px;">
+                        <a href="{{ $downloadUrl }}" style="font-size: 13px; color: #8D5CF5; text-decoration: underline;">Download PDF</a>
+                        <span style="font-size: 11px; color: #9ca3af; margin-left: 4px;">(expires in 7 days)</span>
+                    </div>
+                @else
+                    <a href="{{ $downloadUrl }}" class="action-btn">Download Report</a>
+                @endif
             </div>
         </div>
 

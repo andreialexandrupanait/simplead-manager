@@ -22,8 +22,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $intro_text
  * @property string|null $closing_text
  * @property bool $is_default
+ * @property string $language
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Site> $sites
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportSchedule> $schedules
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Report> $reports
  */
@@ -44,6 +46,7 @@ class ReportTemplate extends Model
         'intro_text',
         'closing_text',
         'is_default',
+        'language',
     ];
 
     protected $casts = [
@@ -73,6 +76,11 @@ class ReportTemplate extends Model
     public function isSectionOptionEnabled(string $key, string $option): bool
     {
         return $this->section_options[$key][$option] ?? true;
+    }
+
+    public function sites(): HasMany
+    {
+        return $this->hasMany(Site::class);
     }
 
     public function schedules(): HasMany

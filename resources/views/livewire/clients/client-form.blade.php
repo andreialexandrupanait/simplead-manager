@@ -73,6 +73,33 @@
             </div>
         </x-ui.card>
 
+        {{-- Logo --}}
+        <x-ui.card>
+            <h2 class="mb-4 text-lg font-medium text-gray-900">Logo</h2>
+            <div class="flex items-start gap-6">
+                {{-- Preview --}}
+                <div class="flex-shrink-0">
+                    @if($logo)
+                        <img src="{{ $logo->temporaryUrl() }}" alt="Logo preview" class="h-20 w-20 rounded-lg border object-contain">
+                    @elseif($client?->logo && !$removeLogo)
+                        <img src="{{ Storage::disk('public')->url($client->logo) }}" alt="Client logo" class="h-20 w-20 rounded-lg border object-contain">
+                    @else
+                        <div class="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
+                            <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                    @endif
+                </div>
+                <div class="flex-1 space-y-2">
+                    <x-ui.form-group label="Upload logo" for="logo" error="logo" hint="PNG, JPG or SVG up to 2MB">
+                        <input wire:model="logo" id="logo" type="file" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-accent/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/20">
+                    </x-ui.form-group>
+                    @if(($client?->logo && !$removeLogo) || $logo)
+                        <button type="button" wire:click="removeLogo" class="text-sm text-red-600 hover:text-red-800">Remove logo</button>
+                    @endif
+                </div>
+            </div>
+        </x-ui.card>
+
         {{-- Actions --}}
         <div class="flex justify-end gap-3">
             <a href="{{ $client ? route('clients.show', $client) : route('clients.index') }}">

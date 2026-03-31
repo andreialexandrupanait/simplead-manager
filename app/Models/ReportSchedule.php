@@ -25,8 +25,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $send_copy_to_admin
  * @property string|null $email_subject
  * @property string|null $email_body
- * @property string|null $client_name
- * @property string|null $client_logo_path
  * @property \Illuminate\Support\Carbon|null $last_generated_at
  * @property \Illuminate\Support\Carbon|null $last_sent_at
  * @property \Illuminate\Support\Carbon|null $next_run_at
@@ -55,8 +53,6 @@ class ReportSchedule extends Model
         'send_copy_to_admin',
         'email_subject',
         'email_body',
-        'client_name',
-        'client_logo_path',
         'last_generated_at',
         'last_sent_at',
         'next_run_at',

@@ -8,7 +8,7 @@ trait ManagesUsers
 {
     public function getUsers(): array
     {
-        $response = $this->request('GET', '/users');
+        $response = $this->request('GET', '/users', [], [], 90);
         $response->throw();
 
         return $response->json();
@@ -39,6 +39,18 @@ trait ManagesUsers
             $data['reassign_to'] = $reassignTo;
         }
         $response = $this->request('POST', '/users/delete', $data);
+        $this->throwIfFailed($response);
+
+        return $response->json();
+    }
+
+    public function bulkDeleteUsers(array $wpUserIds, ?int $reassignTo = null): array
+    {
+        $data = ['user_ids' => $wpUserIds];
+        if ($reassignTo !== null) {
+            $data['reassign_to'] = $reassignTo;
+        }
+        $response = $this->request('POST', '/users/bulk-delete', $data);
         $this->throwIfFailed($response);
 
         return $response->json();

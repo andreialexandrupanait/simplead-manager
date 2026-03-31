@@ -52,6 +52,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $screenshot_path
  * @property int|null $maintenance_plan_id
  * @property bool $is_plan_customized
+ * @property int|null $report_template_id
  * @property array|null $backup_capabilities
  * @property \Illuminate\Support\Carbon|null $backup_capabilities_checked_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -74,6 +75,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\SearchConsoleConnection|null $searchConsoleConnection
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\AnalyticsCache> $analyticsCaches
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SearchConsoleCache> $searchConsoleCaches
+ * @property-read \App\Models\ReportTemplate|null $reportTemplate
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportSchedule> $reportSchedules
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Report> $reports
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ReportRecommendation> $reportRecommendations
@@ -147,6 +149,7 @@ class Site extends Model
         'screenshot_path',
         'maintenance_plan_id',
         'is_plan_customized',
+        'report_template_id',
         'backup_capabilities',
         'backup_capabilities_checked_at',
     ];

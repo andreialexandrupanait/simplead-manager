@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $sent_at
  * @property array|null $sent_to
  * @property array|null $data_snapshot
+ * @property string|null $view_token
  * @property \Illuminate\Support\Carbon|null $generated_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -60,6 +61,7 @@ class Report extends Model
         'sent_at',
         'sent_to',
         'data_snapshot',
+        'view_token',
         'generated_at',
     ];
 
