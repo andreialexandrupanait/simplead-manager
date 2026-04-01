@@ -1,4 +1,4 @@
-<div class="max-w-4xl">
+<div class="max-w-5xl">
     {{-- Header --}}
     <div class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">{{ $client ? 'Edit Client' : 'Add Client' }}</h1>

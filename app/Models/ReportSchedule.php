@@ -29,6 +29,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $last_sent_at
  * @property \Illuminate\Support\Carbon|null $next_run_at
  * @property \Illuminate\Support\Carbon|null $reminder_sent_at
+ * @property int $consecutive_failures
+ * @property string|null $last_failure_reason
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -57,6 +59,8 @@ class ReportSchedule extends Model
         'last_sent_at',
         'next_run_at',
         'reminder_sent_at',
+        'consecutive_failures',
+        'last_failure_reason',
     ];
 
     protected $casts = [
@@ -67,6 +71,7 @@ class ReportSchedule extends Model
         'last_sent_at' => 'datetime',
         'next_run_at' => 'datetime',
         'reminder_sent_at' => 'datetime',
+        'consecutive_failures' => 'integer',
     ];
 
     public function site(): BelongsTo
@@ -94,8 +99,20 @@ class ReportSchedule extends Model
             $next->setTime((int) $hour, (int) $minute);
         } else {
             $dayOfMonth = $this->day_of_month ?? 1;
-            $next = now($tz)->addMonth()->setDay(min($dayOfMonth, now($tz)->addMonth()->daysInMonth));
-            $next->setTime((int) $hour, (int) $minute);
+            $today = now($tz);
+
+            // Try current month first
+            $candidate = $today->copy()->setDay(min($dayOfMonth, $today->daysInMonth));
+            $candidate->setTime((int) $hour, (int) $minute);
+
+            if ($candidate->lte($today)) {
+                // Target day/time already passed this month — use next month
+                $nextMonth = $today->copy()->addMonthNoOverflow();
+                $next = $nextMonth->setDay(min($dayOfMonth, $nextMonth->daysInMonth));
+                $next->setTime((int) $hour, (int) $minute);
+            } else {
+                $next = $candidate;
+            }
         }
 
         return $next->utc();

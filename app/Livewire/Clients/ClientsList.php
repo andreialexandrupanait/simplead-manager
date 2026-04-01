@@ -59,6 +59,7 @@ class ClientsList extends Component
 
         $this->deletingId = null;
         $this->dispatch('close-modal-delete-client');
+        $this->resetPage();
     }
 
     public function changeStatus(int $id, string $status): void

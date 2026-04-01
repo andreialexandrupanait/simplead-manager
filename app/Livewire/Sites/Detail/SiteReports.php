@@ -793,6 +793,7 @@ class SiteReports extends Component
     {
         $count = app(ReportManagementService::class)->deleteReports($ids, $this->site);
         session()->flash('report-success', $count.' report(s) deleted.');
+        $this->resetPage();
     }
 
     public function bulkSend(array $ids, string $email): void
@@ -813,6 +814,7 @@ class SiteReports extends Component
     {
         app(ReportManagementService::class)->deleteReports([$reportId], $this->site);
         session()->flash('report-success', 'Report deleted.');
+        $this->resetPage();
     }
 
     protected function onJobFinished(string $jobName, array $data): void

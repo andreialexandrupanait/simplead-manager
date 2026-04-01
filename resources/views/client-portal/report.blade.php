@@ -66,6 +66,7 @@
     @php
         $s = $report->data_snapshot ?? [];
         $enabledSections = $s['_meta']['sections'] ?? array_keys($s);
+        $sOpts = $s['_meta']['section_options'] ?? [];
     @endphp
 
     {{-- ── Fixed Header (72px) ─────────────────────────────────────────────── --}}
@@ -155,7 +156,7 @@
 
                 {{-- Hero row — big numbers --}}
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-4">
-                    @if(isset($ov['uptime']))
+                    @if(isset($ov['uptime']) && ($sOpts['executive_snapshot']['show_uptime'] ?? true))
                         <div class="metric metric-hero bg-green-50/60">
                             <div class="metric-icon bg-green-100"><x-icons.activity class="h-4 w-4 text-green-600" /></div>
                             <div>
@@ -173,7 +174,7 @@
                             </div>
                         </div>
                     @endif
-                    @if(isset($ov['performance']))
+                    @if(isset($ov['performance']) && (($sOpts['executive_snapshot']['show_desktop_perf'] ?? true) || ($sOpts['executive_snapshot']['show_mobile_perf'] ?? true)))
                         <div class="metric metric-hero bg-purple-50/60">
                             <div class="metric-icon bg-purple-100"><x-icons.zap class="h-4 w-4 text-purple-600" /></div>
                             <div>
@@ -182,7 +183,7 @@
                             </div>
                         </div>
                     @endif
-                    @if(isset($ov['updates']))
+                    @if(isset($ov['updates']) && ($sOpts['executive_snapshot']['show_updates'] ?? true))
                         <div class="metric metric-hero bg-gray-50">
                             <div class="metric-icon bg-gray-100"><x-icons.refresh-cw class="h-4 w-4 text-gray-600" /></div>
                             <div>
@@ -195,17 +196,17 @@
 
                 {{-- Secondary row --}}
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    @if(isset($ov['backups']))
+                    @if(isset($ov['backups']) && ($sOpts['executive_snapshot']['show_backups'] ?? true))
                         <div class="metric bg-gray-50/50">
                             <div><p class="metric-value text-green-600" style="font-size:1.1rem">{{ $ov['backups']['successful'] ?? 0 }}</p><p class="metric-label">Backups OK</p></div>
                         </div>
                     @endif
-                    @if(isset($ov['analytics']))
+                    @if(isset($ov['analytics']) && ($sOpts['executive_snapshot']['show_users'] ?? true))
                         <div class="metric bg-gray-50/50">
                             <div><p class="metric-value" style="font-size:1.1rem">{{ number_format((int)($ov['analytics']['pageviews'] ?? 0)) }}</p><p class="metric-label">Pageviews</p></div>
                         </div>
                     @endif
-                    @if(isset($ov['search_console']))
+                    @if(isset($ov['search_console']) && ($sOpts['executive_snapshot']['show_impressions'] ?? true))
                         <div class="metric bg-gray-50/50">
                             <div><p class="metric-value" style="font-size:1.1rem">{{ number_format((int)($ov['search_console']['clicks'] ?? 0)) }}</p><p class="metric-label">Search Clicks</p></div>
                         </div>
@@ -242,7 +243,7 @@
                     </div>
                 @endif
 
-                @if(!empty($ut['incidents']))
+                @if(!empty($ut['incidents']) && ($sOpts['technical_stability']['show_incidents_table'] ?? true))
                     <div class="mt-6">
                         <p class="sub-heading">Incidents</p>
                         {{-- Mobile cards --}}
@@ -283,7 +284,7 @@
             @endif
 
             {{-- ═══ SECURITY ═══ --}}
-            @if(isset($on['security']) && isset($s['security']))
+            @if(isset($on['security']) && isset($s['security']) && ($sOpts['technical_stability']['show_security'] ?? true))
             @php $sec = $s['security']; @endphp
             <section id="security" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
@@ -401,7 +402,7 @@
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ $upd['core_count'] ?? 0 }}</p><p class="metric-label">Core</p></div></div>
                     <div class="metric {{ ($upd['failed_count'] ?? 0) > 0 ? 'bg-red-50/50' : 'bg-green-50/50' }}"><div><p class="metric-value {{ ($upd['failed_count'] ?? 0) > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $upd['failed_count'] ?? 0 }}</p><p class="metric-label">Failed</p></div></div>
                 </div>
-                @if(!empty($upd['all_updates']))
+                @if(!empty($upd['all_updates']) && ($sOpts['updates']['show_log_table'] ?? true))
                     <div class="mt-6">
                         {{-- Mobile cards --}}
                         <div class="md:hidden max-h-96 overflow-y-auto space-y-2">
@@ -456,7 +457,7 @@
                     <h2 class="text-lg font-bold text-gray-900">Backups</h2>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-6 items-start">
-                    @if($bkSuccess + $bkFailed > 0)
+                    @if($bkSuccess + $bkFailed > 0 && ($sOpts['backups']['show_chart'] ?? true))
                         <div class="flex-shrink-0" style="width: 180px;">
                             <x-charts.donut-chart
                                 :labels="['Successful', 'Failed']"
@@ -475,7 +476,7 @@
                     </div>
                 </div>
 
-                @if(!empty($bk['backups']))
+                @if(!empty($bk['backups']) && ($sOpts['backups']['show_history_table'] ?? true))
                     <div class="mt-6">
                         {{-- Mobile cards --}}
                         <div class="md:hidden max-h-72 overflow-y-auto space-y-2">
@@ -534,7 +535,7 @@
                     <div class="metric bg-yellow-50/50"><div><p class="metric-value">{{ number_format((float)($an['bounce_rate'] ?? 0), 1) }}%</p><p class="metric-label">Bounce Rate</p></div></div>
                 </div>
 
-                @if(!empty($an['daily_users']))
+                @if(!empty($an['daily_users']) && ($sOpts['analytics']['show_daily_chart'] ?? true))
                     <div class="mt-6">
                         <p class="sub-heading">Daily Users</p>
                         <div class="chart-wrap">
@@ -548,7 +549,7 @@
                 @endif
 
                 <div class="mt-6 grid gap-6 sm:grid-cols-2">
-                    @if(!empty($an['traffic_sources']))
+                    @if(!empty($an['traffic_sources']) && ($sOpts['analytics']['show_traffic_sources'] ?? true))
                         <div>
                             <p class="sub-heading">Traffic Sources</p>
                             <div class="chart-wrap">
@@ -562,7 +563,7 @@
                             </div>
                         </div>
                     @endif
-                    @if(!empty($an['devices']))
+                    @if(!empty($an['devices']) && ($sOpts['analytics']['show_devices'] ?? true))
                         <div>
                             <p class="sub-heading">Devices</p>
                             <div class="chart-wrap">
@@ -577,7 +578,7 @@
                     @endif
                 </div>
 
-                @if(!empty($an['top_pages']))
+                @if(!empty($an['top_pages']) && ($sOpts['analytics']['show_top_pages'] ?? true))
                     <div class="mt-6">
                         <p class="sub-heading">Top Pages</p>
                         {{-- Mobile list --}}
@@ -624,7 +625,7 @@
                     <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ number_format((float)($scOv['avg_position'] ?? 0), 1) }}</p><p class="metric-label">Avg Position</p></div></div>
                 </div>
 
-                @if(!empty($sc['queries']))
+                @if(!empty($sc['queries']) && ($sOpts['search_console']['show_performance_chart'] ?? true))
                     <div class="mt-6">
                         <p class="sub-heading">Top Queries by Clicks</p>
                         <div class="chart-wrap">
@@ -640,7 +641,7 @@
                 @endif
 
                 <div class="mt-6 grid gap-6 sm:grid-cols-2">
-                    @if(!empty($sc['queries']))
+                    @if(!empty($sc['queries']) && ($sOpts['search_console']['show_queries_table'] ?? true))
                         <div>
                             <p class="sub-heading">Query Details</p>
                             {{-- Mobile list --}}
@@ -716,11 +717,15 @@
                     <h2 class="text-lg font-bold text-gray-900">Performance</h2>
                 </div>
                 <div class="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 mb-6 py-4">
-                    <x-performance.score-gauge :score="isset($perf['mobile_score']) ? (int)$perf['mobile_score'] : null" label="Mobile" size="lg" />
-                    <x-performance.score-gauge :score="isset($perf['desktop_score']) ? (int)$perf['desktop_score'] : null" label="Desktop" size="lg" />
+                    @if($sOpts['performance']['show_mobile'] ?? true)
+                        <x-performance.score-gauge :score="isset($perf['mobile_score']) ? (int)$perf['mobile_score'] : null" label="Mobile" size="lg" />
+                    @endif
+                    @if($sOpts['performance']['show_desktop'] ?? true)
+                        <x-performance.score-gauge :score="isset($perf['desktop_score']) ? (int)$perf['desktop_score'] : null" label="Desktop" size="lg" />
+                    @endif
                 </div>
                 @foreach(['mobile', 'desktop'] as $device)
-                    @if(isset($perf[$device]))
+                    @if(isset($perf[$device]) && ($sOpts['performance']['show_' . $device] ?? true))
                     @php $d = $perf[$device]; @endphp
                     <div class="mt-4">
                         <p class="sub-heading">{{ ucfirst($device) }} — Core Web Vitals</p>
@@ -829,7 +834,7 @@
 
                 {{-- ═══ INFRASTRUCTURE ROW (Database + Cloudflare + Email) ═══ --}}
                 <div class="grid gap-4 sm:grid-cols-3">
-                    @if(isset($on['database_health']) && !empty($s['database_health']))
+                    @if(isset($on['database_health']) && !empty($s['database_health']) && ($sOpts['technical_stability']['show_database'] ?? true))
                     @php $dbh = $s['database_health']; @endphp
                     <section id="database" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
@@ -859,7 +864,7 @@
                     </section>
                     @endif
 
-                    @if(isset($on['infrastructure']) && !empty($s['email']))
+                    @if(isset($on['infrastructure']) && !empty($s['email']) && ($sOpts['infrastructure']['show_email'] ?? true))
                     @php $em = $s['email']; @endphp
                     <section id="email" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
@@ -957,14 +962,31 @@
 
             {{-- ═══ RECOMMENDATIONS (standalone, prominent) ═══ --}}
             @if(isset($on['overview']) && !empty($s['recommendations']))
-            @php $recs = $s['recommendations']; @endphp
+            @php
+                $recs = $s['recommendations'];
+                $recCatOpts = ['technical' => 'show_technical', 'performance' => 'show_performance', 'seo' => 'show_seo'];
+                $flatRecs = [];
+                if (isset($recs['items'])) {
+                    $flatRecs = $recs['items'];
+                } else {
+                    foreach ($recs as $cat => $catRecs) {
+                        if (is_array($catRecs) && !isset($catRecs['title'])) {
+                            if (!($sOpts['recommendations'][$recCatOpts[$cat] ?? ''] ?? true)) continue;
+                            foreach ($catRecs as $r) { $flatRecs[] = $r; }
+                        } elseif (is_array($catRecs) && isset($catRecs['title'])) {
+                            $flatRecs[] = $catRecs;
+                        }
+                    }
+                }
+            @endphp
+            @if(!empty($flatRecs))
             <section id="recommendations" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.check-circle class="h-5 w-5 text-green-600" />
                     <h2 class="text-lg font-bold text-gray-900">Recommended Actions</h2>
                 </div>
                 <div class="space-y-3">
-                    @foreach($recs['items'] ?? $recs as $rec)
+                    @foreach($flatRecs as $rec)
                         @if(is_array($rec) && isset($rec['title']))
                             @php $pri = $rec['priority'] ?? 'medium'; @endphp
                             <div class="rec-card flex items-start gap-3 rounded-lg p-4 border-l-4 {{ match($pri) {
@@ -986,6 +1008,7 @@
                     @endforeach
                 </div>
             </section>
+            @endif
             @endif
 
         </div>

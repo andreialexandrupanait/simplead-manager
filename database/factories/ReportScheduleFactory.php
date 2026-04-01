@@ -35,8 +35,6 @@ class ReportScheduleFactory extends Factory
             'send_copy_to_admin' => fake()->boolean(70),
             'email_subject' => fake()->optional()->sentence(4),
             'email_body' => fake()->optional()->paragraph(),
-            'client_name' => fake()->optional()->company(),
-            'client_logo_path' => null,
             'last_generated_at' => fake()->optional()->dateTimeBetween('-30 days', '-1 day'),
             'last_sent_at' => fake()->optional()->dateTimeBetween('-30 days', '-1 day'),
             'next_run_at' => fake()->dateTimeBetween('now', '+30 days'),

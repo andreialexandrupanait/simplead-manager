@@ -268,6 +268,7 @@ class GlobalDashboard extends Component
 
         $this->dispatch('notify', type: 'success', message: "Site \"{$siteName}\" has been deleted.");
         $this->dispatch('close-modal-delete-site');
+        $this->resetPage();
     }
 
     public function clearSelection(): void

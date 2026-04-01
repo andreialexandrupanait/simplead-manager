@@ -211,7 +211,7 @@ class SiteSearchConsole extends Component
 
     private function resolveGoogleConnection(): ?GoogleConnection
     {
-        $existing = $this->site->searchConsoleConnection->googleConnection;
+        $existing = $this->site->searchConsoleConnection?->googleConnection;
         if ($existing && $existing->is_active) {
             return $existing;
         }
@@ -238,9 +238,9 @@ class SiteSearchConsole extends Component
             $caches = $query->get()->keyBy('data_type');
 
             $cache = $caches->get('overview');
-            $overview = $cache->data;
-            $performanceOverTime = $caches->get('performance_over_time')->data ?? [];
-            $queries = $caches->get('queries')->data ?? [];
+            $overview = $cache?->data;
+            $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
+            $queries = $caches->get('queries')?->data ?? [];
         }
 
         $googleConnections = GoogleConnection::where('is_active', true)->get();

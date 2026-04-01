@@ -50,6 +50,7 @@ class ReportsOverview extends Component
             \Illuminate\Support\Facades\Storage::disk('local')->delete($report->file_path);
         }
         $report->delete();
+        $this->resetPage();
     }
 
     public function render()

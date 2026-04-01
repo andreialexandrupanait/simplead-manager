@@ -22,7 +22,7 @@ interface WordPressApiServiceInterface
 
     public function chunkedDownloadFilesAsChunks(string $saveTo, ?callable $onProgress = null): array;
 
-    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null): void;
+    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void;
 
     public function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void;
 

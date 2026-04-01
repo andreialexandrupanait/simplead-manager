@@ -383,6 +383,7 @@ class ApplicationBackup extends Component
             $service->deleteBackup($backup);
             unset($this->totalStorageUsed, $this->lastBackup, $this->completedBackupCount);
             $this->dispatch('notify', type: 'success', message: 'Backup deleted.');
+            $this->resetPage();
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: 'Delete failed: '.$e->getMessage());
         }

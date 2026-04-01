@@ -203,6 +203,7 @@ class SecurityUsers extends Component
             $this->dispatch('close-modal-delete-user');
             $this->dispatch('notify', type: 'success', message: "User {$this->deletingUsername} deleted.");
             $this->clearComputedCaches();
+            $this->resetPage();
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: $e->getMessage());
         }

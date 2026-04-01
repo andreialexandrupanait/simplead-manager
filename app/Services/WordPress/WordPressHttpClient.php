@@ -123,7 +123,7 @@ class WordPressHttpClient
 
             $headers = array_merge($this->buildAuthHeaders($method, $path, $body), $extraHeaders);
 
-            $request = Http::withHeaders($headers)->timeout($timeout);
+            $request = Http::withHeaders($headers)->timeout($timeout)->connectTimeout(30);
 
             if (strtoupper($method) === 'GET') {
                 $response = $request->get($url);

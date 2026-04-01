@@ -24,7 +24,9 @@ class WpUsersGatherer extends BaseReportSectionGatherer
         ReportChartService $chartService,
         string $language,
     ): array {
-        $users = SiteUser::where('site_id', $site->id)->get();
+        $users = SiteUser::where('site_id', $site->id)
+            ->whereIn('role', ['administrator', 'editor', 'author'])
+            ->get();
 
         if ($users->isEmpty()) {
             return [];

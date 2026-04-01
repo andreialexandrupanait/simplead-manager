@@ -174,9 +174,8 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 $pct = $this->type === 'full'
                     ? 10 + (int) (($downloaded / max($total, 1)) * 15)   // 10-25%
                     : 10 + (int) (($downloaded / max($total, 1)) * 30);  // 10-40%
-                $mb = round($downloaded / 1048576, 1);
-                $this->reportProgress('downloading_database', $pct, "Downloading database... {$mb} MB");
-            });
+                $this->reportProgress('downloading_database', $pct, "Downloading database... chunk {$downloaded}/{$total}");
+            }, fn () => $this->checkCancelled());
         } else {
             $api->streamDownload('backup/db', $dbPath);
         }

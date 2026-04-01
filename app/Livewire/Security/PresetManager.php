@@ -109,6 +109,7 @@ class PresetManager extends Component
         $preset->delete();
         unset($this->presets);
         session()->flash('preset-success', "Preset '{$preset->name}' deleted.");
+        $this->resetPage();
     }
 
     public function startApply(int $presetId): void

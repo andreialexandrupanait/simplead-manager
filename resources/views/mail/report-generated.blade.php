@@ -17,7 +17,7 @@
     <div class="container">
         <div class="card">
             <div class="header">
-                <h1 style="margin: 0 0 8px; font-size: 20px;">Maintenance Report</h1>
+                <h1 style="margin: 0 0 8px; font-size: 20px;">Raport de mentenanță</h1>
                 <span class="badge">{{ $site->name }}</span>
             </div>
 
@@ -27,7 +27,7 @@
                 </div>
             @else
                 <p style="font-size: 14px; color: #374151;">
-                    Your maintenance report for <strong>{{ $site->name }}</strong> is ready.
+                    Raportul de mentenanță pentru <strong>{{ $site->name }}</strong> este gata.
                 </p>
             @endif
 
@@ -38,20 +38,20 @@
                         <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $site->name }}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Period</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Perioadă</td>
                         <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">
-                            {{ $report->period_start->format('M d, Y') }} — {{ $report->period_end->format('M d, Y') }}
+                            {{ $report->period_start->format('d.m.Y') }} — {{ $report->period_end->format('d.m.Y') }}
                         </td>
                     </tr>
                     @if($report->reportTemplate)
                         <tr>
-                            <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Template</td>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Șablon</td>
                             <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $report->reportTemplate->name }}</td>
                         </tr>
                     @endif
                     @if($report->file_size)
                         <tr>
-                            <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">File Size</td>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Dimensiune</td>
                             <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $report->file_size_formatted }}</td>
                         </tr>
                     @endif
@@ -59,21 +59,18 @@
             </div>
 
             <div style="text-align: center;">
-                <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">The PDF report is attached to this email.</p>
+                <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Raportul PDF este atașat la acest email.</p>
+                <a href="{{ $downloadUrl }}" class="action-btn">Descarcă raportul</a>
                 @if($viewUrl)
-                    <a href="{{ $viewUrl }}" class="action-btn">View Report Online</a>
                     <div style="margin-top: 12px;">
-                        <a href="{{ $downloadUrl }}" style="font-size: 13px; color: #8D5CF5; text-decoration: underline;">Download PDF</a>
-                        <span style="font-size: 11px; color: #9ca3af; margin-left: 4px;">(expires in 7 days)</span>
+                        <a href="{{ $viewUrl }}" style="font-size: 13px; color: #8D5CF5; text-decoration: underline;">sau vezi online</a>
                     </div>
-                @else
-                    <a href="{{ $downloadUrl }}" class="action-btn">Download Report</a>
                 @endif
             </div>
         </div>
 
         <div class="footer">
-            <p>Sent by SimpleAd Manager</p>
+            <p>Trimis de SimpleAd Manager</p>
         </div>
     </div>
 </body>

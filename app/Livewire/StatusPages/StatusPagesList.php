@@ -42,5 +42,6 @@ class StatusPagesList extends Component
         $this->dispatch('close-modal-delete-status-page');
         $this->deletingId = null;
         session()->flash('success', 'Status page deleted.');
+        $this->resetPage();
     }
 }

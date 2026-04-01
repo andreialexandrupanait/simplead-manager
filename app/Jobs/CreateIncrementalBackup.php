@@ -131,9 +131,8 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $dbPath = $this->tempDir.'/database.sql.gz';
             $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) {
                 $pct = 20 + (int) (($downloaded / max($total, 1)) * 15);
-                $mb = round($downloaded / 1048576, 1);
-                $this->reportProgress('downloading_database', $pct, "Downloading database... {$mb} MB");
-            });
+                $this->reportProgress('downloading_database', $pct, "Downloading database... chunk {$downloaded}/{$total}");
+            }, fn () => $this->checkCancelled());
             $this->reportProgress('downloading_database', 35, 'Database downloaded');
 
             // Step 4: Download changed files (if any)

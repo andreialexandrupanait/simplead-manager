@@ -71,10 +71,22 @@
                             <span>{{ $template->schedules_count }} {{ Str::plural('schedule', $template->schedules_count) }}</span>
                             <span>{{ $template->sites_count }} {{ Str::plural('site', $template->sites_count) }} assigned</span>
                             <span>{{ strtoupper($template->language) }}</span>
+                            @if(($nextRunDates[$template->id] ?? null))
+                                <span class="inline-flex items-center gap-1 text-purple-600 font-medium">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    Next report: {{ $nextRunDates[$template->id]->timezone('Europe/Bucharest')->format('M d, Y H:i') }}
+                                </span>
+                            @endif
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2 ml-4">
+                        <button wire:click="openBulkScheduleModal({{ $template->id }})"
+                                wire:loading.attr="disabled"
+                                class="rounded-lg border border-purple-300 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition disabled:opacity-50"
+                                title="Create monthly schedules for all assigned sites">
+                            Schedule All
+                        </button>
                         <button wire:click="openAssignSites({{ $template->id }})"
                                 wire:loading.attr="disabled"
                                 class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
@@ -313,6 +325,62 @@
             </x-ui.button>
         </div>
     </x-ui.modal>
+
+    {{-- Bulk Schedule Modal --}}
+    @if($showBulkScheduleModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" wire:click="$set('showBulkScheduleModal', false)"></div>
+            <div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                <div class="mb-5 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Schedule All Sites</h3>
+                        <p class="mt-1 text-sm text-gray-500">Create monthly schedules (day 1) for all assigned sites without a schedule</p>
+                    </div>
+                    <button wire:click="$set('showBulkScheduleModal', false)" class="text-gray-400 hover:text-gray-600">
+                        <x-icons.x class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Send Time</label>
+                        <x-ui.input type="time" wire:model="bulkScheduleTime" />
+                        <p class="mt-1 text-xs text-gray-500">Europe/Bucharest timezone</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Report Period</label>
+                        <x-ui.select wire:model="bulkSchedulePeriod">
+                            <option value="last_month">Last calendar month</option>
+                            <option value="last_30_days">Last 30 days</option>
+                            <option value="last_7_days">Last 7 days</option>
+                        </x-ui.select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Emails</label>
+                        <x-ui.input type="text" wire:model="bulkScheduleRecipientEmails"
+                               placeholder="client@example.com, team@example.com" />
+                        <p class="mt-1 text-xs text-gray-500">Comma-separated. Leave empty if admin copy is sufficient.</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" wire:model="bulkScheduleSendCopyToAdmin" id="bulkAdminCopy"
+                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <label for="bulkAdminCopy" class="text-sm text-gray-700">Send copy to admin email</label>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <x-ui.button variant="secondary" wire:click="$set('showBulkScheduleModal', false)">Cancel</x-ui.button>
+                    <x-ui.button wire:click="saveBulkSchedule" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="saveBulkSchedule">Create Schedules</span>
+                        <span wire:loading wire:target="saveBulkSchedule">Creating...</span>
+                    </x-ui.button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Assign Sites Modal --}}
     @if($showAssignSitesModal)

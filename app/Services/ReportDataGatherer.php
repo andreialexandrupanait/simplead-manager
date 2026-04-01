@@ -134,6 +134,7 @@ class ReportDataGatherer
 
         $this->data['_meta'] = [
             'sections' => array_values(array_diff($this->template->sections ?? [], $this->excludedSections)),
+            'section_options' => $this->template->section_options ?? [],
         ];
 
         return $this->data;

@@ -1826,7 +1826,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     /**
      * Dump specific tables to a SQL file (for chunked prepare).
      */
-    private function php_database_dump_tables($wpdb, array $tables, string $output_file, bool $include_header, bool $include_footer): void {
+    private function php_database_dump_tables($wpdb, array $tables, string $output_file, bool $include_header, bool $include_footer, ?int $row_offset = null, ?int $row_limit = null, bool $emit_ddl = true): void {
         $fh = fopen($output_file, 'w');
         if (!$fh) {
             throw new \RuntimeException('Cannot open output file for database dump.');
@@ -1842,18 +1842,28 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         $batch_size = 50; // rows per INSERT statement
 
         foreach ($tables as $table) {
-            $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
-            if (!$create) continue;
-            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
-            fwrite($fh, $create[1] . ";\n\n");
+            if ($emit_ddl) {
+                $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+                if (!$create) continue;
+                fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+                fwrite($fh, $create[1] . ";\n\n");
+            }
 
-            $offset = 0;
+            $offset = ($row_offset !== null) ? $row_offset : 0;
             $batch = 500;
             $columns_sql = null;
             $pending_values = [];
+            $rows_dumped = 0;
 
             while (true) {
-                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$batch}", ARRAY_A);
+                $fetch = $batch;
+                if ($row_limit !== null) {
+                    $remaining = $row_limit - $rows_dumped;
+                    if ($remaining <= 0) break;
+                    $fetch = min($batch, $remaining);
+                }
+
+                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$fetch}", ARRAY_A);
                 if (empty($rows)) break;
 
                 foreach ($rows as $row) {
@@ -1869,14 +1879,19 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                     }, array_values($row));
 
                     $pending_values[] = '(' . implode(', ', $values) . ')';
+                    $rows_dumped++;
 
                     if (count($pending_values) >= $batch_size) {
                         fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
                         $pending_values = [];
                     }
+
+                    if ($row_limit !== null && $rows_dumped >= $row_limit) break;
                 }
 
-                $offset += $batch;
+                $offset += count($rows);
+
+                if ($row_limit !== null && $rows_dumped >= $row_limit) break;
             }
 
             // Flush remaining rows
@@ -1901,6 +1916,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         $tables = $chunk['tables'];
         $is_first = ($chunk_index === 0);
         $is_last = ($chunk_index === $total_chunks - 1);
+        $has_row_range = isset($chunk['row_range']);
 
         $tmp_sql = tempnam(sys_get_temp_dir(), 'sam_chunk_');
         if (!$tmp_sql) {
@@ -1908,10 +1924,29 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             throw new \RuntimeException("Cannot create temp file for DB chunk. Temp dir: " . sys_get_temp_dir() . ", free: " . ($disk_free !== false ? round($disk_free / 1048576) . 'MB' : 'unknown'));
         }
 
-        $this->php_database_dump_tables($wpdb, $tables, $tmp_sql, $is_first, $is_last);
+        if ($has_row_range) {
+            $range = $chunk['row_range'];
+            $this->php_database_dump_tables(
+                $wpdb, $tables, $tmp_sql, $is_first, $is_last,
+                (int) $range['offset'],
+                (int) $range['limit'],
+                (bool) $range['emit_ddl']
+            );
+        } else {
+            $this->php_database_dump_tables($wpdb, $tables, $tmp_sql, $is_first, $is_last);
+        }
 
         clearstatcache(true, $tmp_sql);
         $sql_size = file_exists($tmp_sql) ? filesize($tmp_sql) : 0;
+
+        // Row-range sub-chunks (non-first) may produce empty output when TABLE_ROWS overestimates.
+        // Create a minimal placeholder so the chunk file exists and gzip is valid.
+        if ($sql_size === 0 && $has_row_range && !$chunk['row_range']['emit_ddl']) {
+            file_put_contents($tmp_sql, "-- empty sub-chunk (row range past end of table)\n");
+            clearstatcache(true, $tmp_sql);
+            $sql_size = filesize($tmp_sql);
+        }
+
         if ($sql_size === 0) {
             @unlink($tmp_sql);
             $last_error = $wpdb->last_error ?: 'none';
@@ -2047,7 +2082,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         global $wpdb;
 
         $table_info = $wpdb->get_results(
-            "SELECT TABLE_NAME as table_name, COALESCE(DATA_LENGTH, 0) as data_length
+            "SELECT TABLE_NAME as table_name, COALESCE(DATA_LENGTH, 0) as data_length, COALESCE(TABLE_ROWS, 0) as table_rows
              FROM INFORMATION_SCHEMA.TABLES
              WHERE TABLE_SCHEMA = '" . $wpdb->_real_escape(DB_NAME) . "' AND TABLE_TYPE = 'BASE TABLE'
              ORDER BY DATA_LENGTH DESC",
@@ -2060,10 +2095,16 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             return [['index' => 0, 'tables' => $tables, 'estimated_size' => 0]];
         }
 
+        // Build a lookup for table_rows by table name
+        $table_rows_map = [];
+        foreach ($table_info as $info) {
+            $table_rows_map[$info['table_name']] = (int) $info['table_rows'];
+        }
+
         $chunks = [];
         $current_tables = [];
         $current_size = 0;
-        $max_chunk_size = 5 * 1024 * 1024; // 5MB data_length per chunk
+        $max_chunk_size = 2 * 1024 * 1024; // 2MB data_length per chunk
 
         foreach ($table_info as $info) {
             $table = $info['table_name'];
@@ -2096,11 +2137,45 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             $chunks[] = ['tables' => $tables, 'estimated_size' => 0];
         }
 
-        foreach ($chunks as $i => &$chunk) {
+        // Post-process: split single large tables into row-range sub-chunks
+        $rows_per_sub_chunk = 25000;
+        $split_min_size = 2 * 1024 * 1024; // 2MB
+        $split_min_rows = 50000;
+        $final_chunks = [];
+
+        foreach ($chunks as $chunk) {
+            if (count($chunk['tables']) === 1) {
+                $table = $chunk['tables'][0];
+                $rows = $table_rows_map[$table] ?? 0;
+
+                if ($chunk['estimated_size'] > $split_min_size && $rows > $split_min_rows) {
+                    // Split into row-range sub-chunks
+                    $num_sub_chunks = (int) ceil($rows / $rows_per_sub_chunk);
+                    $size_per_sub = (int) ceil($chunk['estimated_size'] / $num_sub_chunks);
+
+                    for ($i = 0; $i < $num_sub_chunks; $i++) {
+                        $final_chunks[] = [
+                            'tables' => [$table],
+                            'estimated_size' => $size_per_sub,
+                            'row_range' => [
+                                'offset' => $i * $rows_per_sub_chunk,
+                                'limit' => $rows_per_sub_chunk,
+                                'emit_ddl' => ($i === 0),
+                            ],
+                        ];
+                    }
+                    continue;
+                }
+            }
+
+            $final_chunks[] = $chunk;
+        }
+
+        foreach ($final_chunks as $i => &$chunk) {
             $chunk['index'] = $i;
         }
 
-        return $chunks;
+        return $final_chunks;
     }
 
     private function estimate_directory_size(string $dir_path): int {

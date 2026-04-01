@@ -372,6 +372,7 @@ class SiteBackups extends Component
 
         $backup->delete();
         session()->flash('backup-success', 'Backup deleted.');
+        $this->resetPage();
     }
 
     public function bulkDelete(array $ids): void
@@ -407,6 +408,7 @@ class SiteBackups extends Component
             $msg .= " {$skipped} skipped (locked or has incrementals).";
         }
         session()->flash('backup-success', $msg);
+        $this->resetPage();
     }
 
     public function updateNotes(int $backupId, string $notes): void

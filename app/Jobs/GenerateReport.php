@@ -37,6 +37,8 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 2;
 
+    public int $uniqueFor = 600;
+
     public array $backoff = [60, 120];
 
     public function __construct(
@@ -132,7 +134,18 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 ]);
             }
 
-            // Send emails
+            // Update schedule success timestamps (before email — PDF is the critical deliverable)
+            if ($this->schedule) {
+                $this->schedule->update([
+                    'last_generated_at' => now(),
+                    'consecutive_failures' => 0,
+                    'last_failure_reason' => null,
+                ]);
+            }
+
+            JobTracker::complete($this->trackerKey(), 'Report generated successfully');
+
+            // Send emails (best-effort — don't fail the report if email fails)
             $recipients = $this->recipientEmails ?? [];
             if ($this->schedule) {
                 $recipients = array_merge($recipients, $this->schedule->recipient_emails ?? []);
@@ -147,38 +160,54 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
             $recipients = array_unique(array_filter($recipients));
 
             if (count($recipients) > 0) {
-                foreach ($recipients as $email) {
-                    Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule));
+                try {
+                    foreach ($recipients as $email) {
+                        Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule));
+                    }
+
+                    $report->update([
+                        'was_sent' => true,
+                        'sent_at' => now(),
+                        'sent_to' => $recipients,
+                    ]);
+
+                    if ($this->schedule) {
+                        $this->schedule->update(['last_sent_at' => now()]);
+                    }
+
+                    ActivityLogger::reportSent($this->site, $report->title, $recipients);
+                } catch (\Throwable $e) {
+                    Log::warning("Report email failed for site {$this->site->id}, report #{$report->id}", [
+                        'exception' => get_class($e),
+                        'message' => Str::limit($e->getMessage(), 200),
+                        'recipients' => $recipients,
+                    ]);
                 }
-
-                $report->update([
-                    'was_sent' => true,
-                    'sent_at' => now(),
-                    'sent_to' => $recipients,
-                ]);
-
-                ActivityLogger::reportSent($this->site, $report->title, $recipients);
             }
-
-            // Update schedule timestamps
-            if ($this->schedule) {
-                $updateData = [
-                    'last_generated_at' => now(),
-                    'reminder_sent_at' => null,
-                ];
-                if (count($recipients) > 0) {
-                    $updateData['last_sent_at'] = now();
-                }
-                $updateData['next_run_at'] = $this->schedule->calculateNextRun();
-                $this->schedule->update($updateData);
-            }
-
-            JobTracker::complete($this->trackerKey(), 'Report generated successfully');
         } catch (\Throwable $e) {
             $report->update([
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
             ]);
+
+            // Track consecutive failures on the schedule
+            if ($this->schedule) {
+                $failures = ($this->schedule->consecutive_failures ?? 0) + 1;
+                $updateData = [
+                    'consecutive_failures' => $failures,
+                    'last_failure_reason' => Str::limit($e->getMessage(), 500),
+                ];
+
+                if ($failures >= 3) {
+                    $updateData['is_active'] = false;
+                    Log::warning("Report schedule #{$this->schedule->id} auto-deactivated after {$failures} consecutive failures", [
+                        'site_id' => $this->site->id,
+                        'last_error' => $e->getMessage(),
+                    ]);
+                }
+
+                $this->schedule->update($updateData);
+            }
 
             JobTracker::fail($this->trackerKey(), 'Report generation failed');
 
@@ -187,6 +216,14 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 'message' => $e->getMessage(),
                 'file' => $e->getFile().':'.$e->getLine(),
             ]);
+        } finally {
+            // ALWAYS advance next_run_at to prevent infinite retry loops
+            if ($this->schedule && $this->schedule->is_active) {
+                $this->schedule->update([
+                    'next_run_at' => $this->schedule->calculateNextRun(),
+                    'reminder_sent_at' => null,
+                ]);
+            }
         }
     }
 

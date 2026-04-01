@@ -115,7 +115,7 @@ class WordPressApiService implements WordPressApiServiceInterface
      * Tries chunked prepare first (multi-request, works within timeout limits),
      * falls back to sync prepare for older plugin versions.
      */
-    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null): void
+    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void
     {
         // Try chunked prepare+download (each chunk downloaded immediately, minimal WP /tmp usage)
         $chunkedInitAvailable = false;
@@ -131,7 +131,8 @@ class WordPressApiService implements WordPressApiServiceInterface
                         $init['type'] ?? $type,
                         (int) $init['total_chunks'],
                         $saveTo,
-                        $onProgress
+                        $onProgress,
+                        $onCheckCancelled,
                     );
 
                     return;
@@ -169,15 +170,15 @@ class WordPressApiService implements WordPressApiServiceInterface
      * Chunked prepare + download for DB.
      * Exec each chunk, download it immediately (concatenable .sql.gz), delete from WP.
      */
-    private function chunkedPrepareAndDownload(string $token, string $type, int $totalChunks, string $saveTo, ?callable $onProgress = null): void
+    private function chunkedPrepareAndDownload(string $token, string $type, int $totalChunks, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void
     {
-        $this->chunkedPrepareAndDownloadDb($token, $totalChunks, $saveTo, $onProgress);
+        $this->chunkedPrepareAndDownloadDb($token, $totalChunks, $saveTo, $onProgress, $onCheckCancelled);
     }
 
     /**
      * DB chunked: exec each chunk, download immediately, concatenate locally.
      */
-    private function chunkedPrepareAndDownloadDb(string $token, int $totalChunks, string $saveTo, ?callable $onProgress = null): void
+    private function chunkedPrepareAndDownloadDb(string $token, int $totalChunks, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void
     {
         $dir = dirname($saveTo);
         if (! is_dir($dir)) {
@@ -191,43 +192,68 @@ class WordPressApiService implements WordPressApiServiceInterface
             throw new \RuntimeException("Cannot open {$saveTo} for writing");
         }
 
+        $maxChunkAttempts = 2;
+        $lastProgressAt = 0.0;
+
         try {
             for ($i = 0; $i < $totalChunks; $i++) {
-                // 1. Execute chunk on WP (creates .sql.gz chunk)
-                $execResponse = $this->request('POST', '/backup/prepare-chunk-exec', [
-                    'token' => $token,
-                    'chunk_index' => $i,
-                ], [], 300);
-
-                if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
-                    $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
-                    throw new \RuntimeException("Chunk {$i} exec failed: {$error}");
+                // Check cancellation every 10 chunks
+                if ($onCheckCancelled && $i > 0 && $i % 10 === 0) {
+                    $onCheckCancelled();
                 }
 
-                $chunkSize = $execResponse->json()['chunk_size'] ?? 0;
-                Log::info("DB chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}");
+                for ($chunkAttempt = 0; $chunkAttempt < $maxChunkAttempts; $chunkAttempt++) {
+                    try {
+                        // 1. Execute chunk on WP (creates .sql.gz chunk)
+                        $execResponse = $this->request('POST', '/backup/prepare-chunk-exec', [
+                            'token' => $token,
+                            'chunk_index' => $i,
+                        ], [], 300);
 
-                // 2. Download chunk and delete from WP
-                $chunkTempFile = $saveTo.'.chunk_'.$i.'.tmp';
-                $this->streamDownloadTo('/backup/prepare-chunk-download', [
-                    'token' => $token,
-                    'chunk_index' => $i,
-                    'delete' => true,
-                ], $chunkTempFile);
+                        if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
+                            $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
+                            $body = substr((string) $execResponse->body(), 0, 1000);
+                            Log::warning("Chunk {$i} exec failed response", ['status' => $execResponse->status(), 'body' => $body]);
+                            throw new \RuntimeException("Chunk {$i} exec failed: {$error}");
+                        }
 
-                // 3. Append to final file (gzip concatenation is valid)
-                $cfh = fopen($chunkTempFile, 'rb');
-                if ($cfh) {
-                    stream_copy_to_stream($cfh, $fh);
-                    fclose($cfh);
+                        $chunkSize = $execResponse->json()['chunk_size'] ?? 0;
+                        Log::info("DB chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}");
+
+                        // 2. Download chunk and delete from WP
+                        $chunkTempFile = $saveTo.'.chunk_'.$i.'.tmp';
+                        $this->streamDownloadTo('/backup/prepare-chunk-download', [
+                            'token' => $token,
+                            'chunk_index' => $i,
+                            'delete' => true,
+                        ], $chunkTempFile);
+
+                        // 3. Append to final file (gzip concatenation is valid)
+                        $cfh = fopen($chunkTempFile, 'rb');
+                        if ($cfh) {
+                            stream_copy_to_stream($cfh, $fh);
+                            fclose($cfh);
+                        }
+                        @unlink($chunkTempFile);
+
+                        break; // chunk succeeded
+                    } catch (\Throwable $e) {
+                        if ($chunkAttempt + 1 >= $maxChunkAttempts) {
+                            throw $e;
+                        }
+                        Log::warning("DB chunk {$i}/{$totalChunks} attempt ".($chunkAttempt + 1)." failed: {$e->getMessage()}, retrying...");
+                        sleep(2);
+                    }
                 }
-                @unlink($chunkTempFile);
 
                 Log::info("DB chunk {$i}/{$totalChunks} downloaded and appended");
                 $this->resetThrottle();
 
-                if ($onProgress) {
+                // Throttle progress updates to every 5 seconds (or last chunk)
+                $now = microtime(true);
+                if ($onProgress && ($now - $lastProgressAt >= 5.0 || $i + 1 === $totalChunks)) {
                     $onProgress($i + 1, $totalChunks);
+                    $lastProgressAt = $now;
                 }
             }
         } finally {
