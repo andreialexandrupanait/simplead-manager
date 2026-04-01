@@ -31,13 +31,13 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 {
     use BackupJobTrait, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 1800;
+    public int $timeout = 2700;
 
     public int $tries = 2;
 
     public array $backoff = [120];
 
-    public int $uniqueFor = 1800;
+    public int $uniqueFor = 2700;
 
     protected ?Backup $backup = null;
 

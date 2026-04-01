@@ -188,12 +188,13 @@ if (defined('SAM_VERSION')) {
         // Restrict REST API to authenticated users (allow SimpleAd endpoints through)
         if (!empty($hardening['restrict_rest_api'])) {
             add_filter('rest_authentication_errors', function ($result) {
-                if (!empty($result)) {
-                    return $result;
-                }
-                // Allow SimpleAd endpoints through — they use HMAC auth
+                // Allow SimpleAd endpoints through first — they use HMAC auth
+                // Must check BEFORE $result so we override other plugins' restrictions (e.g. ASE)
                 $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
                 if (strpos($uri, '/wp-json/simplead/v1/') !== false) {
+                    return null;
+                }
+                if (!empty($result)) {
                     return $result;
                 }
                 if (!is_user_logged_in()) {

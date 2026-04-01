@@ -10,8 +10,6 @@
                 ['route' => 'sites.security.scanning', 'label' => __('Scanning'), 'active' => request()->routeIs('sites.security.scanning')],
                 ['route' => 'sites.security.activity', 'label' => __('Activity'), 'active' => request()->routeIs('sites.security.activity')],
                 ['route' => 'sites.security.users', 'label' => __('Users'), 'active' => request()->routeIs('sites.security.users')],
-                ['route' => 'sites.security.performance', 'label' => __('Performance'), 'active' => request()->routeIs('sites.security.performance')],
-                ['route' => 'sites.security.site-control', 'label' => __('Site Control'), 'active' => request()->routeIs('sites.security.site-control')],
             ];
         @endphp
 

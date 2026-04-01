@@ -44,8 +44,8 @@ class TweaksSiteControl extends Component
             ->getSettingsForCategory($this->site, 'site_control');
 
         foreach ($this->settingKeys as $key) {
-            $this->toggles[$key] = $settings->get($key)->is_enabled ?? false;
-            $this->settingStatuses[$key] = $settings->get($key)->status;
+            $this->toggles[$key] = $settings->get($key)?->is_enabled ?? false;
+            $this->settingStatuses[$key] = $settings->get($key)?->status;
         }
     }
 
@@ -73,7 +73,7 @@ class TweaksSiteControl extends Component
         $this->loadCurrentState();
 
         session()->flash('success', 'Site control settings saved. Changes will be applied shortly.');
-        $this->redirect(route('sites.security.site-control', $this->site), navigate: false);
+        $this->redirect(route('sites.tweaks.site-control', $this->site), navigate: false);
     }
 
     public function verifySettings(): void
@@ -84,7 +84,7 @@ class TweaksSiteControl extends Component
 
             if (! $response->successful()) {
                 session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
-                $this->redirect(route('sites.security.site-control', $this->site), navigate: false);
+                $this->redirect(route('sites.tweaks.site-control', $this->site), navigate: false);
 
                 return;
             }
@@ -129,7 +129,7 @@ class TweaksSiteControl extends Component
         }
 
         $this->loadCurrentState();
-        $this->redirect(route('sites.security.site-control', $this->site), navigate: false);
+        $this->redirect(route('sites.tweaks.site-control', $this->site), navigate: false);
     }
 
     public function render()

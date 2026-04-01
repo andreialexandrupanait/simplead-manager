@@ -1,0 +1,14 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "SimpleAd Manager",
+            "Group": "Servers",
+            "Host": "pgsql",
+            "Port": 5432,
+            "MaintenanceDB": "simplead_manager",
+            "Username": "simplead",
+            "SSLMode": "prefer",
+            "PassFile": "/pgadmin4/pgpassfile"
+        }
+    }
+}

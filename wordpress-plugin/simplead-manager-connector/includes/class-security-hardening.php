@@ -221,14 +221,15 @@ class SAM_Security_Hardening {
      * Allows our own SimpleAd endpoints through (they have their own auth).
      */
     public function restrict_rest_api($result) {
-        if (!empty($result)) {
-            return $result;
-        }
-
-        // Allow our own endpoints (use constant to match any configured namespace)
+        // Allow our own endpoints first (use constant to match any configured namespace)
+        // Must check BEFORE $result so we override other plugins' restrictions
         $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
         $namespace = defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1';
         if (strpos($request_uri, '/' . $namespace . '/') !== false) {
+            return null;
+        }
+
+        if (!empty($result)) {
             return $result;
         }
 

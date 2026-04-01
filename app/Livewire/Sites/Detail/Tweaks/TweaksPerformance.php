@@ -162,7 +162,7 @@ class TweaksPerformance extends Component
 
             if (! $response->successful()) {
                 session()->flash('verify-error', 'Could not reach site (HTTP '.$response->status().')');
-                $this->redirect(route('sites.security.performance', $this->site), navigate: false);
+                $this->redirect(route('sites.tweaks.performance', $this->site), navigate: false);
 
                 return;
             }
@@ -207,7 +207,7 @@ class TweaksPerformance extends Component
         }
 
         $this->loadCurrentState();
-        $this->redirect(route('sites.security.performance', $this->site), navigate: false);
+        $this->redirect(route('sites.tweaks.performance', $this->site), navigate: false);
     }
 
     public function save(): void
@@ -254,7 +254,7 @@ class TweaksPerformance extends Component
         $this->loadCurrentState();
 
         session()->flash('success', 'Performance settings saved. Changes will be applied shortly.');
-        $this->redirect(route('sites.security.performance', $this->site), navigate: false);
+        $this->redirect(route('sites.tweaks.performance', $this->site), navigate: false);
     }
 
     public function render()

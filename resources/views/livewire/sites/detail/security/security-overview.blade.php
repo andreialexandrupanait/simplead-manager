@@ -127,8 +127,8 @@
                 'captcha' => ['label' => 'CAPTCHA', 'icon' => 'shield-alert', 'route' => 'sites.security.captcha', 'source' => 'security'],
                 'ip_management' => ['label' => 'IP Management', 'icon' => 'globe', 'route' => 'sites.security.ip-management', 'source' => 'security'],
                 'activity_log' => ['label' => 'Activity Log', 'icon' => 'activity', 'route' => 'sites.security.activity', 'source' => 'security'],
-                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.security.performance', 'source' => 'tweaks'],
-                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.security.site-control', 'source' => 'tweaks'],
+                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.tweaks.performance', 'source' => 'tweaks'],
+                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.tweaks.site-control', 'source' => 'tweaks'],
             ];
         @endphp
 
@@ -174,9 +174,9 @@
         {{-- Coming Soon Cards --}}
         @php
             $comingSoonCategories = [
-                'admin_ux' => ['label' => 'Admin UX', 'icon' => 'layout', 'route' => 'sites.security.admin-ux'],
-                'content_media' => ['label' => 'Content & Media', 'icon' => 'image', 'route' => 'sites.security.content-media'],
-                'email' => ['label' => 'Email', 'icon' => 'mail', 'route' => 'sites.security.email'],
+                'admin_ux' => ['label' => 'Admin UX', 'icon' => 'layout', 'route' => 'sites.tweaks'],
+                'content_media' => ['label' => 'Content & Media', 'icon' => 'image', 'route' => 'sites.tweaks'],
+                'email' => ['label' => 'Email', 'icon' => 'mail', 'route' => 'sites.tweaks'],
             ];
         @endphp
 

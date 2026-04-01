@@ -41,8 +41,16 @@ class SAM_Rate_Limiter {
             return true; // Let auth handle missing key
         }
 
-        $key_hash = substr(md5($api_key), 0, 12);
+        // Exempt backup endpoints from rate limiting.
+        // These are already authenticated via HMAC, use session tokens, and are
+        // sequential operations — rate limiting them breaks large-site backups
+        // that need 2+ requests per chunk across 30-50+ chunks.
         $route = $request->get_route();
+        if (preg_match('#/backup(/|$)#', $route)) {
+            return true;
+        }
+
+        $key_hash = substr(md5($api_key), 0, 12);
 
         // Check general rate limit
         $general_key = 'sam_rl_' . $key_hash;

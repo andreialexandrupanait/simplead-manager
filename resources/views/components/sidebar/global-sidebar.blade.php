@@ -7,6 +7,13 @@
         {{ __('Dashboard') }}
     </x-sidebar.sidebar-item>
 
+    <x-sidebar.sidebar-item
+        :href="route('clients.index')"
+        icon="users"
+        :active="request()->routeIs('clients.*')"
+    >
+        {{ __('Clients') }}
+    </x-sidebar.sidebar-item>
 </div>
 
 <x-sidebar.sidebar-section :title="__('Monitoring')">
@@ -37,14 +44,6 @@
 
 <x-sidebar.sidebar-section :title="__('Management')">
     <x-sidebar.sidebar-item
-        :href="route('maintenance-plans')"
-        icon="layers"
-        :active="request()->routeIs('maintenance-plans')"
-    >
-        {{ __('Maintenance Plans') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
         :href="route('backups.index')"
         icon="hard-drive"
         :active="request()->routeIs('backups.*')"
@@ -53,19 +52,19 @@
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
-        :href="route('clients.index')"
-        icon="users"
-        :active="request()->routeIs('clients.*')"
-    >
-        {{ __('Clients') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
         :href="route('reports.index')"
         icon="file-text"
         :active="request()->routeIs('reports.*')"
     >
         {{ __('Reports') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('maintenance-plans')"
+        icon="layers"
+        :active="request()->routeIs('maintenance-plans')"
+    >
+        {{ __('Maintenance Plans') }}
     </x-sidebar.sidebar-item>
 
 </x-sidebar.sidebar-section>

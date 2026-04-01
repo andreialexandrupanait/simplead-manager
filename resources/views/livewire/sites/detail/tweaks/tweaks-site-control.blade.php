@@ -11,7 +11,7 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
+    @include('livewire.sites.detail.tweaks.partials.tweaks-tabs', ['site' => $site])
 
     <x-ui.flash-alert type="success" key="success" />
     <x-ui.flash-alert type="error" key="verify-error" />

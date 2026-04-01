@@ -9,6 +9,12 @@ return [
                 // New changes accumulate here until version bump
             ],
         ],
+        '2.9.12' => [
+            'date' => '2026-04-01',
+            'changes' => [
+                'Fix: Exempt backup endpoints from rate limiting (fixes stuck backups on large sites)',
+            ],
+        ],
         '2.9.10' => [
             'date' => '2026-03-22',
             'changes' => [

@@ -97,6 +97,129 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    Alpine.data('sortableList', () => ({
+        enabled: false,
+        _dragEl: null,
+        _placeholder: null,
+        _handleClicked: false,
+        _handlers: {},
+
+        init() {
+            this.$watch('enabled', (val) => {
+                this.$nextTick(() => {
+                    if (val) this._setup();
+                    else this._teardown();
+                });
+            });
+        },
+
+        _getWire() {
+            if (this.$wire) return this.$wire;
+            const wireEl = this.$el.closest('[wire\\:id]');
+            if (wireEl) return Livewire.find(wireEl.getAttribute('wire:id'));
+            return null;
+        },
+
+        _setup() {
+            const container = this.$refs.sortableContainer;
+            if (!container) return;
+
+            this._handlers = {
+                pointerdown: (e) => {
+                    this._handleClicked = !!e.target.closest('.drag-handle');
+                },
+
+                dragstart: (e) => {
+                    if (!this._handleClicked) { e.preventDefault(); return; }
+                    const row = e.target.closest('[data-site-id]');
+                    if (!row) { e.preventDefault(); return; }
+                    this._dragEl = row;
+                    row.style.opacity = '0.4';
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', '');
+
+                    this._placeholder = document.createElement('div');
+                    this._placeholder.style.cssText = 'height:3px;background:#3b82f6;border-radius:2px;margin:2px 16px;';
+                },
+
+                dragover: (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    const row = e.target.closest('[data-site-id]');
+                    if (!row || row === this._dragEl) return;
+
+                    const rect = row.getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+
+                    if (e.clientY < mid) {
+                        row.parentNode.insertBefore(this._placeholder, row);
+                    } else {
+                        row.parentNode.insertBefore(this._placeholder, row.nextSibling);
+                    }
+                },
+
+                dragend: () => {
+                    if (this._dragEl) {
+                        this._dragEl.style.opacity = '';
+                    }
+                    if (this._placeholder?.parentNode) {
+                        this._placeholder.remove();
+                    }
+                    this._dragEl = null;
+                    this._handleClicked = false;
+                },
+
+                drop: (e) => {
+                    e.preventDefault();
+                    if (!this._dragEl || !this._placeholder?.parentNode) return;
+                    this._placeholder.parentNode.insertBefore(this._dragEl, this._placeholder);
+                    this._placeholder.remove();
+                    this._dragEl.style.opacity = '';
+                    this._dragEl = null;
+                },
+            };
+
+            for (const [evt, fn] of Object.entries(this._handlers)) {
+                container.addEventListener(evt, fn);
+            }
+
+            container.querySelectorAll('[data-site-id]').forEach((row) => {
+                row.setAttribute('draggable', 'true');
+            });
+        },
+
+        _teardown() {
+            const container = this.$refs.sortableContainer;
+            if (!container) return;
+
+            for (const [evt, fn] of Object.entries(this._handlers)) {
+                container.removeEventListener(evt, fn);
+            }
+            this._handlers = {};
+
+            container.querySelectorAll('[data-site-id]').forEach((row) => {
+                row.removeAttribute('draggable');
+                row.style.opacity = '';
+            });
+
+            if (this._placeholder?.parentNode) this._placeholder.remove();
+            this._dragEl = null;
+        },
+
+        saveOrder() {
+            const container = this.$refs.sortableContainer;
+            if (!container) return;
+            const ids = [...container.querySelectorAll('[data-site-id]')]
+                .map(el => Number(el.dataset.siteId));
+            const wire = this._getWire();
+            if (wire) wire.saveReorder(ids);
+        },
+
+        destroy() {
+            this._teardown();
+        },
+    }));
+
     Alpine.data('hovercard', (opts = {}) => ({
         open: false,
         panelEl: null,

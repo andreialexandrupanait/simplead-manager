@@ -125,7 +125,7 @@ class BackupDispatcher
     protected function recoverStuckBackups(): void
     {
         $stuck = Backup::where('status', BackupStatus::InProgress)
-            ->where('started_at', '<', now()->subMinutes(35))
+            ->where('started_at', '<', now()->subMinutes(50))
             ->get();
 
         foreach ($stuck as $backup) {
@@ -134,7 +134,7 @@ class BackupDispatcher
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
                 'progress_message' => 'Backup timed out (stuck recovery)',
-                'error_message' => 'Backup was in progress for over 35 minutes and appears stuck. It may have been interrupted by a server restart.',
+                'error_message' => 'Backup was in progress for over 50 minutes and appears stuck. It may have been interrupted by a server restart.',
                 'completed_at' => now(),
                 'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
             ]);

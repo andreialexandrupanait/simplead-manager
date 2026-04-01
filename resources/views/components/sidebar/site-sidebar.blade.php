@@ -20,7 +20,7 @@
             this.$watch('sidebarOpen', (val) => { if (val) this.showTooltip = false; });
         }
     }">
-        <a href="{{ route('dashboard') }}"
+        <a href="{{ route('sites.index') }}"
            x-ref="trigger"
            @mouseenter="if (!sidebarOpen && window.innerWidth >= 1024) { showTooltip = true; $nextTick(() => reposition()); }"
            @mouseleave="showTooltip = false"
@@ -153,7 +153,7 @@
 
     </x-sidebar.sidebar-section>
 
-    <x-sidebar.sidebar-section title="Monitoring">
+    <x-sidebar.sidebar-section title="Monitoring & Security">
         <x-sidebar.sidebar-item
             :href="route('sites.uptime', $site)"
             icon="activity"
@@ -195,6 +195,14 @@
             :inactive="!$moduleService->isModuleActive($site, 'security')"
         >
             Security
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
+            :href="route('sites.tweaks', $site)"
+            icon="sliders"
+            :active="request()->routeIs('sites.tweaks*')"
+        >
+            Tweaks
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
