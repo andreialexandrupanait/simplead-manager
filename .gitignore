@@ -26,9 +26,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-# Claude Code — only ignore local/personal config
-.claude/settings.local.json
-.claude/memory/
+# Claude Code config (keep local, not in repo)
+.claude/
 docker/certbot/conf/accounts/
 docker/certbot/conf/archive/
 docker/certbot/conf/live/
