@@ -36,8 +36,7 @@
 - Cloudflare proxy: loopback requests from WP server get 403 — this is expected
 - Plugin push to WP: must use signed URL route (`download.connector-plugin.signed`)
 
-## Testing & Linting
-- Run tests: `docker compose exec app php artisan test`
+## Linting
 - Lint check: `./vendor/bin/pint --test`
 - Lint fix: `./vendor/bin/pint`
 - Static analysis: `./vendor/bin/phpstan analyse`
@@ -45,22 +44,17 @@
 ## Quick Commands (user shortcuts)
 When the user says any of these, execute immediately without asking:
 
-- **"deploy staging"** — Run: `./deploy-staging.sh` (build + deploy staging)
 - **"deploy"** or **"deploy prod"** — Run steps manually: npm ci + npm build + rm node_modules + docker compose -f docker-compose.prod.yml build app nginx, then horizon:terminate, artisan down, up -d app horizon scheduler, migrate --force, queue:restart, artisan up, up -d nginx
 - **"logs"** — Show last 50 error-level entries from today's production Laravel log
-- **"logs staging"** — Show last 50 error-level entries from staging Laravel log
-- **"status"** — Show `docker compose -f docker-compose.prod.yml ps` and `docker compose -f docker-compose.staging.yml ps`
-- **"restart staging"** — Run: `docker compose -f docker-compose.staging.yml restart app horizon scheduler`
+- **"status"** — Show `docker compose -f docker-compose.prod.yml ps`
 
 ### Deployment workflow
 1. Modify code locally
-2. `deploy staging` → verify on https://staging.simplead.ro
-3. Commit + push when satisfied
-4. `deploy` → production via https://manager.simplead.ro
+2. Commit + push when satisfied
+3. `deploy` → production via https://manager.simplead.ro
 
 ## Other Commands
 - Full deploy script: `./deploy.sh` (includes git pull — use for deploy after push)
-- Staging deploy script: `./deploy-staging.sh` (build from local code)
 - Live logs: `docker compose logs -f app`
 - Queue: managed by Horizon (`docker compose logs -f horizon`)
 - Build assets: `npm run build`
