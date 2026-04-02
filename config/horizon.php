@@ -238,7 +238,7 @@ return [
             'maxJobs' => 0,
             'memory' => 1024,
             'tries' => 2,
-            'timeout' => 1800,
+            'timeout' => 3600,
             'nice' => 0,
         ],
         'supervisor-notifications' => [

@@ -153,6 +153,7 @@ class WordPressHttpClient
         $success = false;
         $httpCode = 0;
         $error = '';
+        $curlErrno = 0;
 
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
             $this->throttle();
@@ -175,18 +176,35 @@ class WordPressHttpClient
                 CURLOPT_CONNECTTIMEOUT => 30,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_TCP_KEEPALIVE => 1,
+                CURLOPT_TCP_KEEPIDLE => 60,
+                CURLOPT_TCP_KEEPINTVL => 30,
+                CURLOPT_LOW_SPEED_LIMIT => 1,
+                CURLOPT_LOW_SPEED_TIME => 90,
             ]);
 
             $success = curl_exec($ch);
             $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErrno = curl_errno($ch);
             $error = curl_error($ch);
             curl_close($ch);
             fclose($fh);
 
+            // Retry on rate limit (429)
             if ($httpCode === 429 && $attempt < $maxRetries) {
                 $retryAfter = min(10 * pow(2, $attempt), 120);
                 Log::warning('Rate limited (429) on stream download, retry '.($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 $this->backoffThrottle();
+                @unlink($saveTo);
+                sleep($retryAfter);
+
+                continue;
+            }
+
+            // Retry on transient network/SSL errors
+            if (! $success && $this->isRetryableCurlError($curlErrno) && $attempt < $maxRetries) {
+                $retryAfter = (int) min(5 * pow(2, $attempt), 60);
+                Log::warning("Transient curl error ({$curlErrno}: {$error}) on stream download, retry ".($attempt + 1)."/{$maxRetries} after {$retryAfter}s");
                 @unlink($saveTo);
                 sleep($retryAfter);
 
@@ -212,6 +230,18 @@ class WordPressHttpClient
             @unlink($saveTo);
             throw new \RuntimeException("Stream download returned empty file (HTTP {$httpCode})");
         }
+    }
+
+    private function isRetryableCurlError(int $curlErrno): bool
+    {
+        return in_array($curlErrno, [
+            CURLE_COULDNT_CONNECT,      // 7
+            CURLE_OPERATION_TIMEDOUT,    // 28
+            CURLE_SSL_CONNECT_ERROR,     // 35
+            CURLE_GOT_NOTHING,           // 52
+            CURLE_SEND_ERROR,            // 55
+            CURLE_RECV_ERROR,            // 56 — SSL unexpected EOF
+        ], true);
     }
 
     // ── High-level request methods ──────────────────────────────────

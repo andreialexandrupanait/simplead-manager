@@ -192,7 +192,7 @@ class WordPressApiService implements WordPressApiServiceInterface
             throw new \RuntimeException("Cannot open {$saveTo} for writing");
         }
 
-        $maxChunkAttempts = 2;
+        $maxChunkAttempts = 3;
         $lastProgressAt = 0.0;
 
         try {
@@ -220,13 +220,13 @@ class WordPressApiService implements WordPressApiServiceInterface
                         $chunkSize = $execResponse->json()['chunk_size'] ?? 0;
                         Log::info("DB chunk {$i}/{$totalChunks} executed on WP, size: {$chunkSize}");
 
-                        // 2. Download chunk and delete from WP
+                        // 2. Download chunk and delete from WP (no curl-level retry — chunk retry re-execs)
                         $chunkTempFile = $saveTo.'.chunk_'.$i.'.tmp';
                         $this->streamDownloadTo('/backup/prepare-chunk-download', [
                             'token' => $token,
                             'chunk_index' => $i,
                             'delete' => true,
-                        ], $chunkTempFile);
+                        ], $chunkTempFile, 0);
 
                         // 3. Append to final file (gzip concatenation is valid)
                         $cfh = fopen($chunkTempFile, 'rb');
@@ -242,7 +242,7 @@ class WordPressApiService implements WordPressApiServiceInterface
                             throw $e;
                         }
                         Log::warning("DB chunk {$i}/{$totalChunks} attempt ".($chunkAttempt + 1)." failed: {$e->getMessage()}, retrying...");
-                        sleep(2);
+                        sleep(3);
                     }
                 }
 
@@ -366,7 +366,7 @@ class WordPressApiService implements WordPressApiServiceInterface
 
             for ($i = 0; $i < $totalChunks; $i++) {
                 $chunkTempFile = $saveTo.'.chunk_'.$i.'_files.zip';
-                $maxChunkAttempts = 2;
+                $maxChunkAttempts = 3;
                 $chunkSize = 0;
 
                 for ($chunkAttempt = 0; $chunkAttempt < $maxChunkAttempts; $chunkAttempt++) {
@@ -422,17 +422,20 @@ class WordPressApiService implements WordPressApiServiceInterface
                     }
 
                     try {
+                        // No curl-level retry — chunk retry re-execs if download fails
                         $this->streamDownloadTo('/backup/prepare-chunk-download', [
                             'token' => $token,
                             'chunk_index' => $i,
                             'delete' => true,
-                        ], $chunkTempFile);
+                        ], $chunkTempFile, 0);
                         break;
                     } catch (\RuntimeException $e) {
-                        if ($chunkAttempt + 1 < $maxChunkAttempts && str_contains($e->getMessage(), 'HTTP 404')) {
-                            Log::warning("Files chunk {$i} disappeared, re-executing...");
+                        $retryable = str_contains($e->getMessage(), 'HTTP 404')
+                            || str_contains($e->getMessage(), 'NOT_READY');
+                        if ($chunkAttempt + 1 < $maxChunkAttempts && $retryable) {
+                            Log::warning("Files chunk {$i} not available, re-executing: {$e->getMessage()}");
                             @unlink($chunkTempFile);
-                            sleep(2);
+                            sleep(3);
                             // Cancel pending async exec since we're retrying
                             if ($pendingExec !== null) {
                                 try {
