@@ -5,6 +5,64 @@ window.Chart = Chart;
 
 // Alpine.js comes with Livewire 3 — no manual import needed
 document.addEventListener('alpine:init', () => {
+    Alpine.data('slideshow', (initialSlides = []) => ({
+        slides: initialSlides,
+        current: 0,
+        playing: true,
+        _interval: null,
+
+        init() {
+            // Preload all slide images
+            this.slides.forEach(slide => {
+                if (slide.image) {
+                    const img = new Image();
+                    img.src = slide.image;
+                }
+            });
+            this._startTimer();
+        },
+
+        destroy() {
+            this._stopTimer();
+        },
+
+        _startTimer() {
+            this._stopTimer();
+            if (this.slides.length > 1) {
+                this._interval = setInterval(() => this.next(), 5500);
+            }
+        },
+
+        _stopTimer() {
+            if (this._interval) {
+                clearInterval(this._interval);
+                this._interval = null;
+            }
+        },
+
+        next() {
+            this.current = (this.current + 1) % this.slides.length;
+        },
+
+        prev() {
+            this.current = (this.current - 1 + this.slides.length) % this.slides.length;
+        },
+
+        togglePlay() {
+            this.playing = !this.playing;
+            if (this.playing) {
+                this._startTimer();
+            } else {
+                this._stopTimer();
+            }
+        },
+
+        goTo(index) {
+            this.current = index;
+            if (this.playing) this._startTimer();
+        },
+    }));
+
     Alpine.data('tooltip', () => ({
         show: false,
         panelEl: null,
@@ -99,6 +157,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('sortableList', () => ({
         enabled: false,
+        orderedIds: [],
         _dragEl: null,
         _placeholder: null,
         _handleClicked: false,
@@ -113,16 +172,19 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        _getWire() {
-            if (this.$wire) return this.$wire;
-            const wireEl = this.$el.closest('[wire\\:id]');
-            if (wireEl) return Livewire.find(wireEl.getAttribute('wire:id'));
-            return null;
+        _collectIds() {
+            const container = this.$refs.sortableContainer;
+            if (!container) return;
+            this.orderedIds = [...container.querySelectorAll('[data-site-id]')]
+                .map(el => Number(el.dataset.siteId));
         },
 
         _setup() {
             const container = this.$refs.sortableContainer;
             if (!container) return;
+
+            // Prevent Livewire morphdom from reverting drag-and-drop DOM changes
+            container.setAttribute('wire:ignore', '');
 
             this._handlers = {
                 pointerdown: (e) => {
@@ -176,6 +238,7 @@ document.addEventListener('alpine:init', () => {
                     this._placeholder.remove();
                     this._dragEl.style.opacity = '';
                     this._dragEl = null;
+                    this._collectIds();
                 },
             };
 
@@ -186,11 +249,15 @@ document.addEventListener('alpine:init', () => {
             container.querySelectorAll('[data-site-id]').forEach((row) => {
                 row.setAttribute('draggable', 'true');
             });
+
+            this._collectIds();
         },
 
         _teardown() {
             const container = this.$refs.sortableContainer;
             if (!container) return;
+
+            container.removeAttribute('wire:ignore');
 
             for (const [evt, fn] of Object.entries(this._handlers)) {
                 container.removeEventListener(evt, fn);
@@ -204,15 +271,7 @@ document.addEventListener('alpine:init', () => {
 
             if (this._placeholder?.parentNode) this._placeholder.remove();
             this._dragEl = null;
-        },
-
-        saveOrder() {
-            const container = this.$refs.sortableContainer;
-            if (!container) return;
-            const ids = [...container.querySelectorAll('[data-site-id]')]
-                .map(el => Number(el.dataset.siteId));
-            const wire = this._getWire();
-            if (wire) wire.saveReorder(ids);
+            this.orderedIds = [];
         },
 
         destroy() {

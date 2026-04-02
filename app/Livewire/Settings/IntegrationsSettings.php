@@ -32,6 +32,9 @@ class IntegrationsSettings extends Component
 
     public string $googleClientSecret = '';
 
+    // Unsplash
+    public string $unsplashAccessKey = '';
+
     // Cloudflare
     public string $cfApiToken = '';
 
@@ -51,6 +54,8 @@ class IntegrationsSettings extends Component
                 $this->dropboxAppSecret = '';
             }
         }
+
+        $this->unsplashAccessKey = $settings->get('unsplash_access_key') ?? '';
 
         $this->googleClientId = $settings->get('google_client_id') ?? '';
 
@@ -85,6 +90,24 @@ class IntegrationsSettings extends Component
         ]);
 
         session()->flash('success', 'Dropbox API credentials saved.');
+        $this->dispatch('close-modal-configure-dropbox');
+    }
+
+    public function saveUnsplashCredentials(): void
+    {
+        $this->validate([
+            'unsplashAccessKey' => 'required|string|min:10',
+        ]);
+
+        $settings = app(SettingsService::class);
+        $settings->set('unsplash_access_key', trim($this->unsplashAccessKey), 'unsplash');
+
+        config(['services.unsplash.access_key' => trim($this->unsplashAccessKey)]);
+
+        \Illuminate\Support\Facades\Cache::forget('unsplash_slide_images');
+
+        session()->flash('success', 'Unsplash API credentials saved.');
+        $this->dispatch('close-modal-configure-unsplash');
     }
 
     public function saveGoogleCredentials(): void
@@ -109,6 +132,7 @@ class IntegrationsSettings extends Component
         ]);
 
         session()->flash('success', 'Google API credentials saved.');
+        $this->dispatch('close-modal-configure-google');
     }
 
     #[Computed]

@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +18,7 @@ class SecurityHeaders
         // Generate a CSP nonce for this request
         $nonce = Str::random(32);
         app()->instance('csp-nonce', $nonce);
+        Vite::useCspNonce($nonce);
         if (method_exists(Livewire::class, 'setScriptNonce')) {
             Livewire::setScriptNonce($nonce);
         }

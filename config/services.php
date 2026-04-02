@@ -58,4 +58,8 @@ return [
         'url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
     ],
 
+    'unsplash' => [
+        'access_key' => env('UNSPLASH_ACCESS_KEY'),
+    ],
+
 ];

@@ -363,7 +363,12 @@
                 @if($this->reordering)
                     <button
                         type="button"
-                        onclick="window.dispatchEvent(new CustomEvent('save-sort-order'))"
+                        x-data
+                        @click="
+                            let c = document.getElementById('sortable-site-list');
+                            let ids = [...c.querySelectorAll('[data-site-id]')].map(el => Number(el.dataset.siteId));
+                            if (ids.length) $wire.saveReorder(ids);
+                        "
                         class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -400,7 +405,7 @@
                 <x-ui.empty-state title="No sites yet" description="Add your first site to get started." icon="globe" />
             </x-ui.card>
         @else
-            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)" x-on:save-sort-order.window="saveOrder()">
+            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)">
                 <div id="sortable-site-list" x-ref="sortableContainer">
                 @foreach($this->sites as $site)
                     <x-dashboard.site-row

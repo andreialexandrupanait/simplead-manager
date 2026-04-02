@@ -309,7 +309,6 @@ class GlobalDashboard extends Component
         unset($this->sites);
 
         $this->dispatch('notify', type: 'success', message: 'Sort order saved.');
-        $this->redirect(route('dashboard'), navigate: true);
     }
 
     public function render()

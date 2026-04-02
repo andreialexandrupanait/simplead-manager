@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Events\LongWaitDetected;
 
@@ -92,6 +93,10 @@ class AppServiceProvider extends ServiceProvider
                     config(['services.dropbox.app_secret' => $secret ? decrypt($secret) : null]);
                 }
 
+                if (empty(config('services.unsplash.access_key'))) {
+                    config(['services.unsplash.access_key' => $settings->get('unsplash_access_key')]);
+                }
+
                 if (empty(config('services.google.client_id'))) {
                     config(['services.google.client_id' => $settings->get('google_client_id')]);
                 }
@@ -136,6 +141,35 @@ class AppServiceProvider extends ServiceProvider
                 'exception' => $event->exception->getMessage(),
                 'failures_in_hour' => $failures,
             ]);
+        });
+
+        // Guest layout slideshow data (View::share because anonymous Blade components don't trigger View::composer)
+        View::composer('auth.*', function (\Illuminate\View\View $view) {
+            $unsplash = app(\App\Services\UnsplashService::class);
+            $settings = app(SettingsService::class);
+            $images = $unsplash->getSlideImages();
+
+            $slideContent = [
+                ['title' => 'Management centralizat', 'subtitle' => 'Gestioneaza toate site-urile WordPress dintr-un singur loc.'],
+                ['title' => 'Backup-uri automate', 'subtitle' => 'Protejeaza-ti datele cu backup-uri programate si restore instant.'],
+                ['title' => 'Securitate avansata', 'subtitle' => 'Monitorizare continua si protectie proactiva impotriva amenintarilor.'],
+                ['title' => 'Rapoarte detaliate', 'subtitle' => 'Analizeaza performanta si sanatatea site-urilor tale in timp real.'],
+            ];
+
+            $slides = [];
+            foreach ($slideContent as $i => $content) {
+                $slides[] = [
+                    'title' => $content['title'],
+                    'subtitle' => $content['subtitle'],
+                    'image' => $images[$i]['url'] ?? null,
+                    'alt' => $images[$i]['alt'] ?? $content['title'],
+                    'author' => $images[$i]['author'] ?? null,
+                    'author_url' => $images[$i]['author_url'] ?? null,
+                ];
+            }
+
+            View::share('slideshowSlides', $slides);
+            View::share('brandingAppName', $settings->get('app_name', 'SimpleAd Manager'));
         });
     }
 }

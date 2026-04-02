@@ -6,20 +6,176 @@
     <x-ui.flash-alert type="success" key="storage-success" />
     <x-ui.flash-alert type="error" key="storage-error" />
 
-    <div class="space-y-6">
-        {{-- Card 1: Storage Destinations --}}
+    @php
+        $googleConnected = $connections->isNotEmpty() && $googleClientId && $googleClientSecret;
+        $cloudflareConnected = $this->cloudflareConnections->isNotEmpty();
+        $dropboxConnected = $dropboxAppKey && $dropboxAppSecret;
+        $unsplashConnected = (bool) $unsplashAccessKey;
+    @endphp
+
+    {{-- Integration Cards Grid --}}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+        {{-- Google Card --}}
+        <x-ui.card class="{{ $googleConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-gray-200">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Google</h3>
+                        <p class="text-xs text-gray-500">Analytics & Search Console</p>
+                    </div>
+                </div>
+                @if($googleConnected)
+                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($connections->isNotEmpty())
+                    {{ $connections->count() }} {{ Str::plural('cont', $connections->count()) }} conectat{{ $connections->count() > 1 ? 'e' : '' }}
+                @else
+                    Niciun cont conectat
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-google')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Setari
+                </button>
+            </div>
+        </x-ui.card>
+
+        {{-- Cloudflare Card --}}
+        <x-ui.card class="{{ $cloudflareConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 shadow-sm ring-1 ring-orange-200">
+                        <svg class="h-5 w-5" fill="#F6821F" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Cloudflare</h3>
+                        <p class="text-xs text-gray-500">DNS, securitate, cache</p>
+                    </div>
+                </div>
+                @if($cloudflareConnected)
+                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($cloudflareConnected)
+                    {{ $this->cloudflareConnections->count() }} {{ Str::plural('conexiune', $this->cloudflareConnections->count()) }}
+                @else
+                    Nicio conexiune
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-cloudflare')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Setari
+                </button>
+            </div>
+        </x-ui.card>
+
+        {{-- Dropbox Card --}}
+        <x-ui.card class="{{ $dropboxConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
+                        <svg class="h-5 w-5" fill="#0061FE" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Dropbox</h3>
+                        <p class="text-xs text-gray-500">Stocare backup-uri</p>
+                    </div>
+                </div>
+                @if($dropboxConnected)
+                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($dropboxConnected)
+                    Credentiale API configurate
+                @else
+                    Credentiale API necesare
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-dropbox')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Setari
+                </button>
+            </div>
+        </x-ui.card>
+
+        {{-- Unsplash Card --}}
+        <x-ui.card class="{{ $unsplashConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 shadow-sm ring-1 ring-gray-200">
+                        <svg class="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Unsplash</h3>
+                        <p class="text-xs text-gray-500">Slideshow pagina login</p>
+                    </div>
+                </div>
+                @if($unsplashConnected)
+                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($unsplashConnected)
+                    Imagini de fundal active
+                @else
+                    Imagini de fundal dezactivate
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-unsplash')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Setari
+                </button>
+            </div>
+        </x-ui.card>
+
+    </div>
+
+    {{-- Storage Destinations (full-width section) --}}
+    <div class="mt-6">
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Storage Destinations</h3>
+                <h3 class="text-base font-semibold text-gray-900">Destinatii stocare</h3>
                 <button x-on:click="$dispatch('open-storage-form')"
                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg class="w-4 h-4" fill="#0061FE" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
-                    Add Storage
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Adauga
                 </button>
             </div>
 
             @if($this->destinations->isEmpty())
-                <p class="text-sm text-gray-500">No storage destinations configured. Add one to start creating backups.</p>
+                <p class="text-sm text-gray-500">Nicio destinatie de stocare configurata. Adauga una pentru a crea backup-uri.</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($this->destinations as $destination)
@@ -50,7 +206,7 @@
                                     <div class="text-xs text-gray-500">
                                         {{ ucfirst($destination->type) }}
                                         @if($destination->last_tested_at)
-                                            &middot; Last tested {{ $destination->last_tested_at->diffForHumans() }}
+                                            &middot; Testat {{ $destination->last_tested_at->diffForHumans() }}
                                             @if($destination->last_test_passed)
                                                 <span class="text-green-600">Passed</span>
                                             @else
@@ -109,7 +265,7 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                 </button>
                                 <button wire:click="deleteDestination({{ $destination->id }})"
-                                    wire:confirm="Are you sure you want to delete this storage destination?"
+                                    wire:confirm="Esti sigur ca vrei sa stergi aceasta destinatie de stocare?"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
                                     title="Delete">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -119,70 +275,30 @@
                     @endforeach
                 </div>
             @endif
-
-            {{-- Dropbox credentials --}}
-            <div class="border-t border-gray-200 mt-5 pt-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-sm font-medium text-gray-900">Dropbox API Credentials</h4>
-                    @if($dropboxAppKey && $dropboxAppSecret)
-                        <x-ui.badge variant="green">Configured</x-ui.badge>
-                    @else
-                        <x-ui.badge variant="red">Not Configured</x-ui.badge>
-                    @endif
-                </div>
-
-                <form wire:submit="saveDropboxCredentials" class="space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">App Key</label>
-                        <x-ui.input type="text" wire:model="dropboxAppKey" placeholder="Enter Dropbox App Key" />
-                        @error('dropboxAppKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">App Secret</label>
-                        <x-ui.input type="password" wire:model="dropboxAppSecret" placeholder="Enter Dropbox App Secret" />
-                        @error('dropboxAppSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="flex justify-end">
-                        <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                            Save Credentials
-                        </x-ui.button>
-                    </div>
-                </form>
-
-                <div x-data="{ showInstructions: false }" class="mt-4">
-                    <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                        How to get your Dropbox API credentials
-                    </button>
-                    <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
-                        <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                            <li>Go to the <a href="https://www.dropbox.com/developers/apps" target="_blank" class="font-medium underline hover:text-blue-900">Dropbox App Console</a></li>
-                            <li>Click <strong>Create app</strong> (or select an existing one)</li>
-                            <li>Choose <strong>Scoped access</strong> and <strong>Full Dropbox</strong> access type</li>
-                            <li>Under the <strong>Permissions</strong> tab, enable: <code class="bg-blue-100 px-1 rounded text-xs">account_info.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.metadata.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.write</code></li>
-                            <li>Under the <strong>Settings</strong> tab, add this <strong>Redirect URI</strong>: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('dropbox.callback') }}</code></li>
-                            <li>Copy the <strong>App key</strong> and <strong>App secret</strong> from the Settings tab and paste them below</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
         </x-ui.card>
+    </div>
 
-        <livewire:settings.components.storage-destination-form />
+    <livewire:settings.components.storage-destination-form />
 
-        {{-- Card 3: Google --}}
-        <x-ui.card wire:key="google-card">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Google</h3>
+    {{-- ===== Configuration Modals ===== --}}
+
+    {{-- Google Configuration Modal --}}
+    <x-ui.modal name="configure-google" maxWidth="xl">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Google — Setari</h2>
+
+        {{-- Connected accounts --}}
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-sm font-medium text-gray-900">Conturi conectate</h4>
                 <button wire:click="addAccount"
                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Add Google Account
+                    Adauga cont
                 </button>
             </div>
 
             @if($connections->isEmpty())
-                <p class="text-sm text-gray-500">No Google accounts connected. Add one to use Analytics and Search Console integrations.</p>
+                <p class="text-sm text-gray-500">Niciun cont Google conectat.</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($connections as $conn)
@@ -200,9 +316,9 @@
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">{{ $conn->email }}</div>
                                     <div class="text-xs text-gray-500">
-                                        Connected {{ $conn->created_at->format('M d, Y') }}
+                                        Conectat {{ $conn->created_at->format('d M Y') }}
                                         @if($conn->sites_using > 0)
-                                            &middot; Used by {{ $conn->sites_using }} {{ Str::plural('site', $conn->sites_using) }}
+                                            &middot; Folosit de {{ $conn->sites_using }} {{ Str::plural('site', $conn->sites_using) }}
                                         @endif
                                     </div>
                                     @if($conn->scopes)
@@ -216,74 +332,72 @@
                                     @endif
                                 </div>
                             </div>
-                            <button
-                                wire:click="confirmDisconnect({{ $conn->id }})"
-                                class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                title="Disconnect"
-                            >
+                            <button wire:click="confirmDisconnect({{ $conn->id }})"
+                                    class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                    title="Deconecteaza">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
                     @endforeach
                 </div>
             @endif
+        </div>
 
-            {{-- API Credentials --}}
-            <div class="border-t border-gray-200 mt-5 pt-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-sm font-medium text-gray-900">API Credentials</h4>
-                    @if($googleClientId && $googleClientSecret)
-                        <x-ui.badge variant="green">Configured</x-ui.badge>
-                    @else
-                        <x-ui.badge variant="red">Not Configured</x-ui.badge>
-                    @endif
-                </div>
-
-                <form wire:submit="saveGoogleCredentials" class="space-y-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                        <x-ui.input type="text" wire:model="googleClientId" placeholder="Enter Google Client ID" />
-                        @error('googleClientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                        <x-ui.input type="password" wire:model="googleClientSecret" placeholder="Enter Google Client Secret" />
-                        @error('googleClientSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="flex justify-end">
-                        <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                            Save Credentials
-                        </x-ui.button>
-                    </div>
-                </form>
-
-                <div x-data="{ showInstructions: false }" class="mt-4">
-                    <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                        How to get your Google API credentials
-                    </button>
-                    <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
-                        <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                            <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="font-medium underline hover:text-blue-900">Google Cloud Console &rarr; Credentials</a></li>
-                            <li>Create or select an <strong>OAuth 2.0 Client ID</strong> (type: Web application)</li>
-                            <li>Under <strong>Authorized redirect URIs</strong>, add: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('google.callback') }}</code></li>
-                            <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below</li>
-                        </ol>
-                        <p class="mt-2 text-xs text-blue-600">Make sure the <strong>Google Analytics API</strong> and <strong>Google Search Console API</strong> are enabled in your project.</p>
-                    </div>
-                </div>
-            </div>
-        </x-ui.card>
-
-        {{-- Card 4: Cloudflare --}}
-        <x-ui.card>
+        {{-- API Credentials --}}
+        <div class="border-t border-gray-200 pt-5">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Cloudflare</h3>
+                <h4 class="text-sm font-medium text-gray-900">Credentiale API</h4>
+                @if($googleClientId && $googleClientSecret)
+                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                @endif
             </div>
 
-            @if($this->cloudflareConnections->isEmpty())
-                <p class="text-sm text-gray-500">No Cloudflare connections configured. Add one to manage DNS and security.</p>
-            @else
+            <form wire:submit="saveGoogleCredentials" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                    <x-ui.input type="text" wire:model="googleClientId" placeholder="Enter Google Client ID" />
+                    @error('googleClientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                    <x-ui.input type="password" wire:model="googleClientSecret" placeholder="Enter Google Client Secret" />
+                    @error('googleClientSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <div class="flex justify-end">
+                    <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                        Salveaza
+                    </x-ui.button>
+                </div>
+            </form>
+
+            <div x-data="{ showInstructions: false }" class="mt-4">
+                <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    Cum obtii credentialele Google API
+                </button>
+                <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                    <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                        <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="font-medium underline hover:text-blue-900">Google Cloud Console &rarr; Credentials</a></li>
+                        <li>Create or select an <strong>OAuth 2.0 Client ID</strong> (type: Web application)</li>
+                        <li>Under <strong>Authorized redirect URIs</strong>, add: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('google.callback') }}</code></li>
+                        <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below</li>
+                    </ol>
+                    <p class="mt-2 text-xs text-blue-600">Make sure the <strong>Google Analytics API</strong> and <strong>Google Search Console API</strong> are enabled in your project.</p>
+                </div>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Cloudflare Configuration Modal --}}
+    <x-ui.modal name="configure-cloudflare" maxWidth="xl">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Cloudflare — Setari</h2>
+
+        {{-- Existing connections --}}
+        @if($this->cloudflareConnections->isNotEmpty())
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Conexiuni active</h4>
                 <div class="divide-y divide-gray-100">
                     @foreach($this->cloudflareConnections as $cfConn)
                         <div class="flex items-center justify-between py-3">
@@ -299,7 +413,7 @@
                                     <div class="text-xs text-gray-500">
                                         {{ $cfConn->siteCloudflare->count() }} {{ Str::plural('zone', $cfConn->siteCloudflare->count()) }} connected
                                         @if($cfConn->last_validated_at)
-                                            &middot; Tested {{ $cfConn->last_validated_at->diffForHumans() }}
+                                            &middot; Testat {{ $cfConn->last_validated_at->diffForHumans() }}
                                         @endif
                                     </div>
                                 </div>
@@ -319,77 +433,152 @@
                         </div>
                     @endforeach
                 </div>
-            @endif
+            </div>
+        @endif
 
-            {{-- Add connection --}}
-            <div class="border-t border-gray-200 mt-5 pt-5">
-                <h4 class="text-sm font-medium text-gray-900 mb-4">Add Connection</h4>
-                <div class="flex items-end gap-3">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
-                        <x-ui.input type="password" wire:model="cfApiToken" placeholder="Enter Cloudflare API token" />
-                    </div>
-                    <button wire:click="addCloudflareConnection" wire:loading.attr="disabled"
-                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
-                            style="background-color: #F6821F;">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
-                        Connect
-                    </button>
+        {{-- Add connection --}}
+        <div class="{{ $this->cloudflareConnections->isNotEmpty() ? 'border-t border-gray-200 pt-5' : '' }}">
+            <h4 class="text-sm font-medium text-gray-900 mb-4">Adauga conexiune</h4>
+            <div class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
+                    <x-ui.input type="password" wire:model="cfApiToken" placeholder="Enter Cloudflare API token" />
                 </div>
+                <button wire:click="addCloudflareConnection" wire:loading.attr="disabled"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
+                        style="background-color: #F6821F;">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
+                    Conecteaza
+                </button>
+            </div>
 
-                <div x-data="{ showInstructions: false }" class="mt-4">
-                    <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                        How to get your Cloudflare API token
-                    </button>
-                    <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
-                        <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                            <li>Log in to your <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" class="font-medium underline hover:text-blue-900">Cloudflare dashboard</a> and go to <strong>My Profile &rarr; API Tokens</strong></li>
-                            <li>Click <strong>Create Token</strong></li>
-                            <li>Use the <strong>"Edit zone DNS"</strong> template, or create a custom token with these permissions:
-                                <ul class="ml-5 mt-1 list-disc text-xs text-blue-700 space-y-0.5">
-                                    <li><strong>Zone &rarr; Zone &rarr; Read</strong> (list and view zones)</li>
-                                    <li><strong>Zone &rarr; DNS &rarr; Edit</strong> (manage DNS records)</li>
-                                    <li><strong>Zone &rarr; Zone Settings &rarr; Read</strong> (SSL, security level, WAF)</li>
-                                    <li><strong>Zone &rarr; Firewall Services &rarr; Edit</strong> (firewall rules, access rules)</li>
-                                    <li><strong>Zone &rarr; Cache Purge &rarr; Purge</strong> (cache management)</li>
-                                    <li><strong>Zone &rarr; Analytics &rarr; Read</strong> (zone analytics)</li>
-                                </ul>
-                            </li>
-                            <li>Under <strong>Zone Resources</strong>, select the zones you want to manage (or "All zones")</li>
-                            <li>Click <strong>Continue to summary</strong> &rarr; <strong>Create Token</strong></li>
-                            <li>Copy the token and paste it below</li>
-                        </ol>
-                        <p class="mt-2 text-xs text-blue-600">After connecting, go to any site's <strong>Cloudflare</strong> page to link it to a zone.</p>
-                    </div>
+            <div x-data="{ showInstructions: false }" class="mt-4">
+                <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    Cum obtii un Cloudflare API token
+                </button>
+                <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                    <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                        <li>Log in to your <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" class="font-medium underline hover:text-blue-900">Cloudflare dashboard</a> and go to <strong>My Profile &rarr; API Tokens</strong></li>
+                        <li>Click <strong>Create Token</strong></li>
+                        <li>Use the <strong>"Edit zone DNS"</strong> template, or create a custom token with these permissions:
+                            <ul class="ml-5 mt-1 list-disc text-xs text-blue-700 space-y-0.5">
+                                <li><strong>Zone &rarr; Zone &rarr; Read</strong> (list and view zones)</li>
+                                <li><strong>Zone &rarr; DNS &rarr; Edit</strong> (manage DNS records)</li>
+                                <li><strong>Zone &rarr; Zone Settings &rarr; Read</strong> (SSL, security level, WAF)</li>
+                                <li><strong>Zone &rarr; Firewall Services &rarr; Edit</strong> (firewall rules, access rules)</li>
+                                <li><strong>Zone &rarr; Cache Purge &rarr; Purge</strong> (cache management)</li>
+                                <li><strong>Zone &rarr; Analytics &rarr; Read</strong> (zone analytics)</li>
+                            </ul>
+                        </li>
+                        <li>Under <strong>Zone Resources</strong>, select the zones you want to manage (or "All zones")</li>
+                        <li>Click <strong>Continue to summary</strong> &rarr; <strong>Create Token</strong></li>
+                        <li>Copy the token and paste it above</li>
+                    </ol>
                 </div>
             </div>
-        </x-ui.card>
-    </div>
+        </div>
+    </x-ui.modal>
 
-    {{-- Disconnect confirmation modal --}}
+    {{-- Dropbox Configuration Modal --}}
+    <x-ui.modal name="configure-dropbox" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Dropbox — Credentiale API</h2>
+
+        <form wire:submit="saveDropboxCredentials" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">App Key</label>
+                <x-ui.input type="text" wire:model="dropboxAppKey" placeholder="Enter Dropbox App Key" />
+                @error('dropboxAppKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">App Secret</label>
+                <x-ui.input type="password" wire:model="dropboxAppSecret" placeholder="Enter Dropbox App Secret" />
+                @error('dropboxAppSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex justify-end">
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    Salveaza
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                Cum obtii credentialele Dropbox API
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>Go to the <a href="https://www.dropbox.com/developers/apps" target="_blank" class="font-medium underline hover:text-blue-900">Dropbox App Console</a></li>
+                    <li>Click <strong>Create app</strong> (or select an existing one)</li>
+                    <li>Choose <strong>Scoped access</strong> and <strong>Full Dropbox</strong> access type</li>
+                    <li>Under the <strong>Permissions</strong> tab, enable: <code class="bg-blue-100 px-1 rounded text-xs">account_info.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.metadata.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.read</code>, <code class="bg-blue-100 px-1 rounded text-xs">files.content.write</code></li>
+                    <li>Under the <strong>Settings</strong> tab, add this <strong>Redirect URI</strong>: <code class="bg-blue-100 px-1 rounded text-xs">{{ route('dropbox.callback') }}</code></li>
+                    <li>Copy the <strong>App key</strong> and <strong>App secret</strong> from the Settings tab and paste them above</li>
+                </ol>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Unsplash Configuration Modal --}}
+    <x-ui.modal name="configure-unsplash" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Unsplash — Setari</h2>
+
+        <p class="text-sm text-gray-500 mb-4">Ofera imagini de fundal pentru slideshow-ul paginii de login.</p>
+
+        <form wire:submit="saveUnsplashCredentials" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Access Key</label>
+                <x-ui.input type="text" wire:model="unsplashAccessKey" placeholder="Enter Unsplash Access Key" />
+                @error('unsplashAccessKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex justify-end">
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    Salveaza
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                Cum obtii credentialele Unsplash
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>Go to the <a href="https://unsplash.com/developers" target="_blank" class="font-medium underline hover:text-blue-900">Unsplash Developers</a> page and sign in</li>
+                    <li>Click <strong>Your apps</strong> &rarr; <strong>New Application</strong></li>
+                    <li>Accept the API guidelines and create the app</li>
+                    <li>Copy the <strong>Access Key</strong> from the app's page and paste it above</li>
+                </ol>
+                <p class="mt-2 text-xs text-blue-600">Free tier: max 50 requests/hour — sufficient for the login slideshow.</p>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Disconnect Google confirmation modal --}}
     <x-ui.modal name="disconnect-google">
-        <h2 class="text-lg font-semibold text-gray-900">Disconnect Google Account</h2>
+        <h2 class="text-lg font-semibold text-gray-900">Deconecteaza cont Google</h2>
         <p class="mt-2 text-sm text-gray-600">
-            Are you sure you want to disconnect this Google account? This will also remove all associated Analytics and Search Console connections for all sites using this account.
+            Esti sigur ca vrei sa deconectezi acest cont Google? Toate conexiunile Analytics si Search Console asociate vor fi eliminate.
         </p>
 
         <div class="mt-4 flex justify-end gap-2">
-            <x-ui.button variant="secondary" @click="$dispatch('close-modal-disconnect-google')">Cancel</x-ui.button>
-            <x-ui.button variant="danger" wire:click="disconnectAccount">Disconnect</x-ui.button>
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-disconnect-google')">Anuleaza</x-ui.button>
+            <x-ui.button variant="danger" wire:click="disconnectAccount">Deconecteaza</x-ui.button>
         </div>
     </x-ui.modal>
 
     {{-- Delete Cloudflare connection confirmation modal --}}
     <x-ui.modal name="delete-cloudflare">
-        <h2 class="text-lg font-semibold text-gray-900">Delete Cloudflare Connection</h2>
+        <h2 class="text-lg font-semibold text-gray-900">Sterge conexiune Cloudflare</h2>
         <p class="mt-2 text-sm text-gray-600">
-            Are you sure you want to delete this Cloudflare connection? All sites linked through this connection will be disconnected from Cloudflare.
+            Esti sigur ca vrei sa stergi aceasta conexiune Cloudflare? Toate site-urile legate de aceasta conexiune vor fi deconectate.
         </p>
 
         <div class="mt-4 flex justify-end gap-2">
-            <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">Cancel</x-ui.button>
-            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">Delete</x-ui.button>
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">Anuleaza</x-ui.button>
+            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">Sterge</x-ui.button>
         </div>
     </x-ui.modal>
 </div>
