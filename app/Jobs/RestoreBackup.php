@@ -6,11 +6,13 @@ namespace App\Jobs;
 
 use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
+use App\Helpers\FormatHelper;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\Storage\StorageFactory;
+use App\Services\JobTracker;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -65,6 +67,8 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 'restore_progress_message' => 'Downloading backup from storage...',
                 'restore_error_message' => null,
             ]);
+            JobTracker::start($this->uniqueId(), 'Starting restore...');
+            $this->logRestoreStep('Downloading backup from storage...');
 
             // Check if this is an incremental backup needing chain restore
             if ($this->backup->isIncremental()) {
@@ -78,6 +82,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 'exception' => get_class($e),
                 'code' => $e->getCode(),
             ]);
+
+            $this->logRestoreStep("FAILED: {$e->getMessage()}");
+            JobTracker::fail($this->uniqueId(), 'Restore failed: '.get_class($e));
 
             $this->backup->update([
                 'restore_status' => BackupStatus::Failed,
@@ -111,26 +118,32 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $driver = StorageFactory::make($destination);
         $driver->download($this->backup->file_path, $localPath);
 
+        $downloadSize = file_exists($localPath) ? FormatHelper::bytes((int) filesize($localPath)) : '0 B';
+        $this->logRestoreStep("Backup downloaded ({$downloadSize})");
         $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
 
         // Decrypt if encrypted
         if ($this->backup->is_encrypted) {
             $this->reportRestoreProgress('decrypting', 27, 'Decrypting backup...');
+            $this->logRestoreStep('Decrypting backup...');
             $localPath = \App\Services\Backup\BackupEncryptionService::decryptFile($localPath);
         }
 
         // Verify checksum
         if ($this->backup->checksum) {
             $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
+            $this->logRestoreStep('Verifying backup integrity (SHA256)...');
             $hash = hash_file('sha256', $localPath);
             if ($hash !== $this->backup->checksum) {
                 throw new \RuntimeException('Backup checksum verification failed. The file may be corrupted.');
             }
+            $this->logRestoreStep('Integrity verified');
             $this->reportRestoreProgress('verifying', 35, 'Backup integrity verified');
         }
 
         // Extract zip
         $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
+        $this->logRestoreStep('Extracting backup archive...');
         $zip = new ZipArchive;
         if ($zip->open($localPath) !== true) {
             throw new \RuntimeException('Failed to open backup archive.');
@@ -139,6 +152,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $zip->close();
         @unlink($localPath);
 
+        $this->logRestoreStep('Backup extracted');
         $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
 
         $api = app(WordPressApiServiceFactory::class)->make($site);
@@ -157,6 +171,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $chainLength = count($chain);
 
         $this->reportRestoreProgress('downloading', 10, "Restoring from chain of {$chainLength} backups...");
+        $this->logRestoreStep("Restoring from chain of {$chainLength} backups...");
 
         $mergedDir = $this->tempDir.'/merged';
         mkdir($mergedDir, 0755, true);
@@ -177,6 +192,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
             $this->reportRestoreProgress('downloading', $pct,
                 "Downloading backup {$stepNum}/{$chainLength}...");
+            $this->logRestoreStep("Downloading backup {$stepNum}/{$chainLength}...");
 
             // Download
             $localPath = $this->tempDir.'/chain_'.$i.'.zip';
@@ -248,6 +264,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             }
         }
 
+        $this->logRestoreStep('Merging incremental chain...');
         $this->reportRestoreProgress('merging', 65, 'Preparing merged files for restore...');
 
         // Create merged files.zip from the merged directory
@@ -275,6 +292,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             copy($latestDbPath, $finalDbPath);
         }
 
+        $this->logRestoreStep('Merged files ready');
         $this->reportRestoreProgress('restoring', 70, 'Sending restored data to WordPress...');
 
         /** @var Site $site */
@@ -365,10 +383,13 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             }
 
             $this->reportRestoreProgress('restoring_files', 55, 'Restoring files...');
+            $this->logRestoreStep('Restoring files to WordPress...');
             $this->sendRestoreData($api, 'files', $filesPath);
+            $this->logRestoreStep('Files restored');
             $this->reportRestoreProgress('restoring_files', 65, 'Files restored');
 
             $this->reportRestoreProgress('restoring_files', 67, 'Updating connector plugin...');
+            $this->logRestoreStep('Updating connector plugin...');
             $pluginUpdated = $this->ensurePluginUpToDate($api);
             if (! $pluginUpdated) {
                 Log::warning("Continuing restore without plugin update for backup {$this->backup->id}");
@@ -379,7 +400,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $dbPath = $baseDir.'/database.sql.gz';
         if ($this->restoreDatabase && file_exists($dbPath)) {
             $this->reportRestoreProgress('restoring_database', 70, 'Restoring database...');
+            $this->logRestoreStep('Restoring database...');
             $this->sendRestoreData($api, 'database', $dbPath);
+            $this->logRestoreStep('Database restored');
             $this->reportRestoreProgress('restoring_database', 85, 'Database restored');
         }
 
@@ -408,6 +431,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             'restore_progress_message' => Str::limit($message, 252),
         ]);
 
+        $this->logRestoreStep('Restore completed');
+        JobTracker::complete($this->uniqueId(), 'Restore complete');
+
         /** @var Site $backupSite */
         $backupSite = $this->backup->site;
         SyncWordPressSite::dispatch($backupSite);
@@ -432,6 +458,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         // 1. Clear caches (OPcache, object cache, transients)
         $this->reportRestoreProgress('verification', 88, 'Clearing caches...');
+        $this->logRestoreStep('Clearing caches...');
         try {
             $cacheResult = $api->clearCache();
             $results[] = 'cache cleared';
@@ -447,6 +474,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         // Must run BEFORE deactivate/reactivate so that when Elementor reactivates
         // and potentially regenerates CSS, the dynamic tags won't crash.
         $this->reportRestoreProgress('verification', 90, 'Fixing Elementor data...');
+        $this->logRestoreStep('Fixing Elementor data...');
         try {
             $elementorFix = $api->fixElementor();
             $fixDetails = $elementorFix['fixed'] ?? [];
@@ -463,6 +491,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         // After a restore, file timestamps change which causes Elementor to force
         // CSS regeneration. The deactivate/reactivate cycle forces clean initialization.
         $this->reportRestoreProgress('verification', 92, 'Reinitializing Elementor...');
+        $this->logRestoreStep('Reinitializing Elementor...');
         try {
             // Deactivate Elementor Pro first (it depends on Elementor)
             try {
@@ -508,6 +537,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         // 4. Run diagnostic
         $this->reportRestoreProgress('verification', 96, 'Running diagnostic...');
+        $this->logRestoreStep('Running diagnostic...');
         try {
             $diagnostic = $api->runDiagnostic();
 
@@ -690,6 +720,11 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         Log::error("All plugin update attempts failed for backup {$this->backup->id}: {$lastError}");
 
         return false;
+    }
+
+    protected function logRestoreStep(string $message): void
+    {
+        JobTracker::appendLog($this->uniqueId(), $message);
     }
 
     protected function reportRestoreProgress(string $stage, int $percent, string $message): void

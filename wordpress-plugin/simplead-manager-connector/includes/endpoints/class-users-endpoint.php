@@ -33,6 +33,12 @@ class SAM_Users_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'delete_user'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/users/bulk-delete', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'bulk_delete_users'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
 
     public function list_users(WP_REST_Request $request): WP_REST_Response {
@@ -52,6 +58,20 @@ class SAM_Users_Endpoint extends SAM_Endpoint_Base {
                 'registered'   => $user->user_registered,
                 'last_login'   => get_user_meta($user->ID, 'last_login', true) ?: null,
             ];
+        }
+
+        // Count orders per user (WooCommerce only)
+        if (function_exists('wc_get_orders')) {
+            foreach ($users as &$u) {
+                $orders = wc_get_orders([
+                    'customer_id' => $u['id'],
+                    'status'      => ['wc-completed', 'wc-processing', 'wc-on-hold'],
+                    'return'      => 'ids',
+                    'limit'       => -1,
+                ]);
+                $u['orders_count'] = count($orders);
+            }
+            unset($u);
         }
 
         return $this->success(['users' => $users]);
@@ -225,6 +245,73 @@ class SAM_Users_Endpoint extends SAM_Endpoint_Base {
             'deleted'  => true,
             'username' => $username,
             'message'  => 'User deleted successfully.',
+        ]);
+    }
+
+    public function bulk_delete_users(WP_REST_Request $request): WP_REST_Response {
+        $user_ids    = $request->get_param('user_ids');
+        $reassign_to = $request->get_param('reassign_to');
+
+        if (!is_array($user_ids) || empty($user_ids)) {
+            return $this->error('user_ids must be a non-empty array.', 400);
+        }
+
+        // Validate reassign target if provided
+        $reassign = null;
+        if ($reassign_to) {
+            $reassign = (int) $reassign_to;
+            if (!get_userdata($reassign)) {
+                return $this->error('Reassign target user not found.', 404);
+            }
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+
+        // Pre-fetch admin count to protect last admin
+        $admin_ids = get_users(['role' => 'administrator', 'fields' => 'ID']);
+        $admin_count = count($admin_ids);
+
+        $deleted = [];
+        $failed  = [];
+
+        foreach ($user_ids as $wp_user_id) {
+            $wp_user_id = (int) $wp_user_id;
+
+            $user = get_userdata($wp_user_id);
+            if (!$user) {
+                $failed[] = ['id' => $wp_user_id, 'reason' => 'User not found'];
+                continue;
+            }
+
+            // Prevent deleting the last administrator
+            if (in_array('administrator', $user->roles, true)) {
+                if ($admin_count <= 1) {
+                    $failed[] = ['id' => $wp_user_id, 'reason' => 'Cannot delete the last administrator'];
+                    continue;
+                }
+                $admin_count--;
+            }
+
+            if ($reassign && $reassign === $wp_user_id) {
+                $failed[] = ['id' => $wp_user_id, 'reason' => 'Cannot reassign content to the user being deleted'];
+                continue;
+            }
+
+            $username = $user->user_login;
+            $result = wp_delete_user($wp_user_id, $reassign);
+
+            if (!$result) {
+                $failed[] = ['id' => $wp_user_id, 'reason' => 'wp_delete_user failed'];
+                continue;
+            }
+
+            $deleted[] = ['id' => $wp_user_id, 'username' => $username];
+            SAM_Audit_Logger::log('user_deleted', 'user', $username, "Deleted user {$username} via SimpleAd Manager (bulk)");
+        }
+
+        return $this->success([
+            'deleted' => $deleted,
+            'failed'  => $failed,
         ]);
     }
 }

@@ -108,6 +108,8 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityActivityLog> $securityActivityLogs
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIpList> $securityIpLists
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityBannedIp> $securityBannedIps
+ * @property int|null $wp_admin_user_id
+ * @property-read \App\Models\SiteUser|null $wpAdminUser
  */
 class Site extends Model
 {
@@ -152,6 +154,7 @@ class Site extends Model
         'report_template_id',
         'backup_capabilities',
         'backup_capabilities_checked_at',
+        'wp_admin_user_id',
     ];
 
     protected $casts = [
@@ -174,6 +177,7 @@ class Site extends Model
         'is_plan_customized' => 'boolean',
         'backup_capabilities' => 'array',
         'backup_capabilities_checked_at' => 'datetime',
+        'wp_admin_user_id' => 'integer',
     ];
 
     protected static function booted(): void

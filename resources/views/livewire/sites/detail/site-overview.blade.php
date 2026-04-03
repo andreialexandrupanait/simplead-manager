@@ -5,11 +5,7 @@
     >
         <x-slot:actions>
             @if($site->is_connected)
-                <button wire:click="openWpAdmin"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
-                    <x-icons.globe class="h-4 w-4" />
-                    Open WP Admin
-                </button>
+                <x-ui.wp-admin-button :site="$site" />
                 <button wire:click="clearCache"
                         wire:confirm="Clear all caches on this site?"
                         wire:loading.attr="disabled"

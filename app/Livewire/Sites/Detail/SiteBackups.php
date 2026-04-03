@@ -13,6 +13,7 @@ use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
+use App\Services\JobTracker;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Livewire\Attributes\Computed;
@@ -78,6 +79,26 @@ class SiteBackups extends Component
         }
 
         return Backup::find($this->trackingRestoreBackupId);
+    }
+
+    #[Computed]
+    public function progressLog(): array
+    {
+        if (! $this->trackingBackupId) {
+            return [];
+        }
+
+        return JobTracker::getLog('backup-'.$this->site->id);
+    }
+
+    #[Computed]
+    public function restoreProgressLog(): array
+    {
+        if (! $this->trackingRestoreBackupId) {
+            return [];
+        }
+
+        return JobTracker::getLog('restore-'.$this->trackingRestoreBackupId);
     }
 
     #[Computed]
@@ -453,6 +474,7 @@ class SiteBackups extends Component
     {
         if ($this->trackingBackupId) {
             unset($this->activeBackup);
+            unset($this->progressLog);
 
             $ab = $this->activeBackup;
             if ($ab && in_array($ab->status->value ?? $ab->status, ['completed', 'failed'])) {
@@ -462,6 +484,7 @@ class SiteBackups extends Component
 
         if ($this->trackingRestoreBackupId) {
             unset($this->activeRestore);
+            unset($this->restoreProgressLog);
 
             $ar = $this->activeRestore;
             if ($ar && in_array($ar->restore_status, ['completed', 'failed'])) {
@@ -504,6 +527,7 @@ class SiteBackups extends Component
     {
         $this->trackingBackupId = null;
         unset($this->activeBackup);
+        unset($this->progressLog);
     }
 
     public function refreshRestoreProgress(): void
@@ -515,6 +539,7 @@ class SiteBackups extends Component
     {
         $this->trackingRestoreBackupId = null;
         unset($this->activeRestore);
+        unset($this->restoreProgressLog);
     }
 
     #[On('restore-dispatched')]

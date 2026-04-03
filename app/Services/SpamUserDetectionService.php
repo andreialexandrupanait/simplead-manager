@@ -104,6 +104,7 @@ class SpamUserDetectionService
                     'username' => $user->username,
                     'email' => $user->email,
                     'role' => $user->role,
+                    'orders_count' => $user->orders_count ?? 0,
                     'score' => $score,
                     'reasons' => $reasons,
                 ]);

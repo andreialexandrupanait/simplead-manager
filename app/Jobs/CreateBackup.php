@@ -16,6 +16,7 @@ use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
+use App\Helpers\FormatHelper;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -96,10 +97,12 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             $isEncrypted = false;
             if ($this->site->backupConfig?->encrypt_backups) {
                 $this->reportProgress('encrypting', 80, 'Encrypting backup...');
+                $this->logStep('Encrypting backup...');
                 $combinedPath = \App\Services\Backup\BackupEncryptionService::encryptFile($combinedPath);
                 $fileName .= '.enc';
                 $fileSize = filesize($combinedPath);
                 $isEncrypted = true;
+                $this->logStep('Encryption complete');
             }
 
             $remotePath = $this->upload($destination, $combinedPath, $fileName);
@@ -157,6 +160,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         }
 
         $this->reportProgress('initializing', 5, 'Initializing backup...');
+        $this->logStep("Initializing {$this->type} backup for {$this->site->domain}");
     }
 
     protected function downloadData(): array
@@ -167,19 +171,31 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $supportsChunked = $this->supportsChunkedDownload($api);
 
         $this->reportProgress('downloading_database', 10, 'Downloading database...');
+        $this->logStep("Downloading database from {$this->site->domain}...");
         $dbPath = $this->tempDir.'/database.sql.gz';
+        $dbStart = microtime(true);
+        $dbChunkCounter = 0;
 
         if ($supportsChunked) {
-            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) {
+            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) use (&$dbChunkCounter, $dbStart) {
+                $dbChunkCounter++;
                 $pct = $this->type === 'full'
                     ? 10 + (int) (($downloaded / max($total, 1)) * 15)   // 10-25%
                     : 10 + (int) (($downloaded / max($total, 1)) * 30);  // 10-40%
                 $this->reportProgress('downloading_database', $pct, "Downloading database... chunk {$downloaded}/{$total}");
+                if ($dbChunkCounter % 5 === 0 || $downloaded === $total) {
+                    $elapsed = microtime(true) - $dbStart;
+                    $speed = $elapsed > 0 ? FormatHelper::bytes((int) (($downloaded * 1024 * 512) / $elapsed)) : '0 B';
+                    $this->logStep("Database chunk {$downloaded}/{$total} ({$speed}/s)");
+                }
             }, fn () => $this->checkCancelled());
         } else {
             $api->streamDownload('backup/db', $dbPath);
         }
 
+        $dbDuration = round(microtime(true) - $dbStart, 1);
+        $dbSize = file_exists($dbPath) ? FormatHelper::bytes((int) filesize($dbPath)) : '0 B';
+        $this->logStep("Database downloaded ({$dbSize} in {$dbDuration}s)");
         $this->reportProgress('downloading_database', $this->type === 'full' ? 25 : 40, 'Database downloaded');
 
         $filesChunkPaths = [];
@@ -187,13 +203,16 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         if ($this->type === 'full') {
             $this->checkCancelled();
             $this->reportProgress('downloading_files', 30, 'Downloading files...');
+            $this->logStep("Downloading files from {$this->site->domain}...");
+            $filesChunkCounter = 0;
 
             if ($supportsChunked) {
                 // Download files as individual chunk zips (no merge step)
                 $filesDownloadStart = microtime(true);
                 [$filesChunkPaths, $this->filesSessionToken] = $api->chunkedDownloadFilesAsChunks(
                     $this->tempDir.'/files.zip',
-                    function (int $downloaded, int $total) use ($filesDownloadStart) {
+                    function (int $downloaded, int $total) use ($filesDownloadStart, &$filesChunkCounter) {
+                        $filesChunkCounter++;
                         $pct = 30 + (int) (($downloaded / max($total, 1)) * 25); // 30-55%
                         $elapsed = microtime(true) - $filesDownloadStart;
                         $eta = '';
@@ -205,13 +224,19 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                             $eta = $min > 0 ? " (~{$min}m {$sec}s remaining)" : " (~{$sec}s remaining)";
                         }
                         $this->reportProgress('downloading_files', $pct, "Downloading files... chunk {$downloaded}/{$total}{$eta}");
+                        if ($filesChunkCounter % 3 === 0 || $downloaded === $total) {
+                            $this->logStep("Files chunk {$downloaded}/{$total}{$eta}");
+                        }
                     }
                 );
+                $filesDuration = round(microtime(true) - $filesDownloadStart, 1);
+                $this->logStep("Files downloaded ({$filesChunkCounter} chunks in {$filesDuration}s)");
             } else {
                 // Legacy: single files.zip download
                 $filesPath = $this->tempDir.'/files.zip';
                 $api->streamDownload('backup/files', $filesPath);
                 $filesChunkPaths = [$filesPath]; // Treat as single chunk
+                $this->logStep('Files downloaded (legacy single download)');
             }
 
             $this->reportProgress('downloading_files', 55, 'Files downloaded');
@@ -304,6 +329,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $combinedPath = $this->tempDir.'/'.$fileName;
 
         $this->reportProgress('creating_archive', $this->type === 'full' ? 60 : 50, 'Creating backup archive...');
+        $this->logStep('Creating archive...');
 
         $zip = new ZipArchive;
         if ($zip->open($combinedPath, ZipArchive::CREATE) !== true) {
@@ -354,6 +380,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $this->reportProgress('creating_archive', 70, 'Archive created');
 
         $fileSize = filesize($combinedPath);
+        $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
         $checksum = hash_file('sha256', $combinedPath);
 
         // For file list precaching, pass the first chunk path (or null if DB-only)
@@ -365,10 +392,15 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
     protected function upload(StorageDestination $destination, string $combinedPath, string $fileName): string
     {
+        $uploadSize = FormatHelper::bytes((int) filesize($combinedPath));
         $this->reportProgress('uploading', 75, 'Uploading to storage...');
+        $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+        $uploadStart = microtime(true);
         $remotePath = $this->site->domain.'/'.$fileName;
         $driver = StorageFactory::make($destination);
         $driver->upload($combinedPath, $remotePath);
+        $uploadDuration = round(microtime(true) - $uploadStart, 1);
+        $this->logStep("Upload complete ({$uploadDuration}s)");
         $this->reportProgress('finalizing', 95, 'Finalizing...');
 
         return $remotePath;
@@ -425,6 +457,9 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Backup complete');
+
+        $duration = $this->backup->duration_seconds;
+        $this->logStep("Backup completed in {$duration}s");
 
         // Release unique lock immediately so new backups can start
         static::releaseUniqueLock($this->site->id);

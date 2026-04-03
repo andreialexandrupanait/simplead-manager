@@ -156,6 +156,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                                 'display_name' => $user['display_name'] ?? null,
                                 'role' => $user['roles'][0] ?? $user['role'] ?? null,
                                 'avatar_url' => $user['avatar_url'] ?? null,
+                                'orders_count' => $user['orders_count'] ?? 0,
                                 'posts_count' => $user['posts_count'] ?? 0,
                                 'registered_at' => $registered,
                                 'last_login_at' => $lastLogin,

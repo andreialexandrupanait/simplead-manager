@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $role
  * @property string|null $avatar_url
  * @property int $posts_count
+ * @property int $orders_count
  * @property \Illuminate\Support\Carbon|null $registered_at
  * @property \Illuminate\Support\Carbon|null $last_login_at
  * @property bool $is_active
@@ -42,6 +43,7 @@ class SiteUser extends Model
         'posts_count',
         'registered_at',
         'last_login_at',
+        'orders_count',
         'is_active',
         'synced_at',
     ];
@@ -49,6 +51,7 @@ class SiteUser extends Model
     protected $casts = [
         'wp_user_id' => 'integer',
         'posts_count' => 'integer',
+        'orders_count' => 'integer',
         'registered_at' => 'datetime',
         'last_login_at' => 'datetime',
         'is_active' => 'boolean',

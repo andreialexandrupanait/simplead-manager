@@ -97,6 +97,11 @@ trait HasSiteRelationships
         return $this->hasMany(SiteUser::class);
     }
 
+    public function wpAdminUser(): BelongsTo
+    {
+        return $this->belongsTo(SiteUser::class, 'wp_admin_user_id');
+    }
+
     public function updateLogs(): HasMany
     {
         return $this->hasMany(UpdateLog::class);

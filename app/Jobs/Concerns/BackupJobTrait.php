@@ -40,6 +40,7 @@ trait BackupJobTrait
     protected function handleFailure(\Exception $e): void
     {
         $label = $this->backupTypeLabel();
+        $this->logStep("FAILED: {$e->getMessage()}");
 
         Log::error("{$label} failed for site {$this->site->id} ({$this->site->domain})", [
             'backup_id' => $this->backupId,
@@ -81,6 +82,11 @@ trait BackupJobTrait
         if ($this->attempts() >= $this->tries) {
             static::releaseUniqueLock($this->site->id);
         }
+    }
+
+    protected function logStep(string $message): void
+    {
+        JobTracker::appendLog($this->uniqueId(), $message);
     }
 
     protected function reportProgress(string $stage, int $percent, string $message): void

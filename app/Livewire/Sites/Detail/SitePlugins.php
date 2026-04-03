@@ -8,19 +8,19 @@ use App\Jobs\CreateBackup;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithWpAdminLogin;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
-use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class SitePlugins extends Component
 {
-    use WithJobTracking, WithSiteAuthorization;
+    use WithJobTracking, WithSiteAuthorization, WithWpAdminLogin;
 
     public Site $site;
 
@@ -60,12 +60,10 @@ class SitePlugins extends Component
     public function mount(Site $site, bool $embedded = false): void
     {
         $this->authorizeSiteAccess($site);
+        $site->loadMissing('wpAdminUser');
         $this->site = $site;
         $this->embedded = $embedded;
         $this->initJobTracking();
-
-        // In embedded mode, show all plugins (no auto-filter)
-
     }
 
     #[Computed]
@@ -476,24 +474,6 @@ class SitePlugins extends Component
     }
 
     // ── Quick Actions ──
-
-    public function openWpAdmin(): void
-    {
-        try {
-            $api = app(WordPressApiServiceFactory::class)->make($this->site);
-            $result = $api->getLoginUrl();
-
-            if (! empty($result['login_url'])) {
-                $this->js("window.open('".addslashes($result['login_url'])."', '_blank')");
-
-                return;
-            }
-
-            session()->flash('update-error', 'Could not generate login URL. No URL returned.');
-        } catch (\Exception $e) {
-            session()->flash('update-error', 'Could not generate login URL: '.$e->getMessage());
-        }
-    }
 
     public function quickBackup(): void
     {

@@ -12,6 +12,7 @@ use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
+use App\Helpers\FormatHelper;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
@@ -93,8 +94,10 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
             // Step 1: Retrieve parent manifest
             $this->reportProgress('loading_manifest', 5, 'Loading previous manifest...');
+            $this->logStep('Loading manifest from parent backup...');
             $previousManifest = $manifestService->retrieve($parentBackup);
             $this->reportProgress('loading_manifest', 10, 'Manifest loaded: '.count($previousManifest).' files');
+            $this->logStep('Manifest loaded: '.count($previousManifest).' files');
 
             // Step 2: Send manifest to WP for diff
             $this->checkCancelled();
@@ -124,15 +127,26 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             ]);
 
             $this->reportProgress('comparing', 15, "Found {$changedCount} changed, {$newCount} new, {$deletedCount} deleted files");
+            $this->logStep("Comparing files: {$changedCount} changed, {$newCount} new, {$deletedCount} deleted");
 
             // Step 3: Download database (always full dump)
             $this->checkCancelled();
             $this->reportProgress('downloading_database', 20, 'Downloading database...');
+            $this->logStep("Downloading database from {$this->site->domain}...");
             $dbPath = $this->tempDir.'/database.sql.gz';
-            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) {
+            $dbStart = microtime(true);
+            $dbChunkCounter = 0;
+            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) use (&$dbChunkCounter, $dbStart) {
+                $dbChunkCounter++;
                 $pct = 20 + (int) (($downloaded / max($total, 1)) * 15);
                 $this->reportProgress('downloading_database', $pct, "Downloading database... chunk {$downloaded}/{$total}");
+                if ($dbChunkCounter % 5 === 0 || $downloaded === $total) {
+                    $this->logStep("Database chunk {$downloaded}/{$total}");
+                }
             }, fn () => $this->checkCancelled());
+            $dbDuration = round(microtime(true) - $dbStart, 1);
+            $dbSize = file_exists($dbPath) ? FormatHelper::bytes((int) filesize($dbPath)) : '0 B';
+            $this->logStep("Database downloaded ({$dbSize} in {$dbDuration}s)");
             $this->reportProgress('downloading_database', 35, 'Database downloaded');
 
             // Step 4: Download changed files (if any)
@@ -140,14 +154,17 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             if ($totalFileChunks > 0 && $filesToken) {
                 $this->checkCancelled();
                 $this->reportProgress('downloading_files', 40, 'Downloading changed files...');
+                $this->logStep("Downloading changed files ({$totalFileChunks} chunks)...");
 
                 $filesChunkPaths = $this->downloadIncrementalFiles($api, $filesToken, $totalFileChunks, $this->tempDir.'/files.zip');
+                $this->logStep("Changed files downloaded ({$totalFileChunks} chunks)");
                 $this->reportProgress('downloading_files', 60, 'Changed files downloaded');
             }
 
             // Step 5: Create archive
             $this->checkCancelled();
             $this->reportProgress('creating_archive', 65, 'Creating incremental archive...');
+            $this->logStep('Creating archive...');
 
             // Save deleted files list
             $deletedFilesPath = $this->tempDir.'/deleted-files.json';
@@ -156,12 +173,18 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive(
                 $dbPath, $filesChunkPaths, $deletedFilesPath
             );
+            $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
 
             // Step 6: Upload
+            $uploadSize = FormatHelper::bytes((int) $fileSize);
             $this->reportProgress('uploading', 75, 'Uploading to storage...');
+            $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+            $uploadStart = microtime(true);
             $remotePath = $this->site->domain.'/'.$fileName;
             $driver = StorageFactory::make($destination);
             $driver->upload($combinedPath, $remotePath);
+            $uploadDuration = round(microtime(true) - $uploadStart, 1);
+            $this->logStep("Upload complete ({$uploadDuration}s)");
             $this->reportProgress('finalizing', 90, 'Finalizing...');
 
             // Step 7: Generate new manifest
@@ -347,6 +370,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         }
 
         $this->reportProgress('initializing', 5, 'Initializing incremental backup...');
+        $this->logStep("Initializing incremental backup for {$this->site->domain}");
     }
 
     protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum): void
@@ -384,6 +408,9 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Incremental backup complete');
+
+        $duration = $this->backup->duration_seconds;
+        $this->logStep("Incremental backup completed in {$duration}s");
 
         // Release unique lock immediately so new backups can start
         static::releaseUniqueLock($this->site->id);

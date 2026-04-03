@@ -7,6 +7,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithWpAdminLogin;
 use App\Models\AnalyticsCache;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
@@ -19,7 +20,7 @@ use Livewire\Component;
 
 class SiteOverview extends Component
 {
-    use WithJobTracking, WithSiteAuthorization;
+    use WithJobTracking, WithSiteAuthorization, WithWpAdminLogin;
 
     public Site $site;
 
@@ -49,6 +50,7 @@ class SiteOverview extends Component
             'siteCloudflare',
             'searchConsoleConnection',
             'analyticsConnection',
+            'wpAdminUser',
         ]);
         $this->site = $site;
         $this->initJobTracking();
@@ -269,24 +271,6 @@ class SiteOverview extends Component
             $this->dispatch('notify', type: 'success', message: 'Cache cleared ('.count($cleared).' layer'.(count($cleared) !== 1 ? 's' : '').')');
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: 'Failed to clear cache: '.$e->getMessage());
-        }
-    }
-
-    public function openWpAdmin(): void
-    {
-        try {
-            $api = app(WordPressApiServiceFactory::class)->make($this->site);
-            $result = $api->getLoginUrl();
-
-            if (! empty($result['login_url'])) {
-                $this->js("window.open('".addslashes($result['login_url'])."', '_blank')");
-
-                return;
-            }
-
-            session()->flash('wp-admin-error', 'Could not generate login URL. No URL returned.');
-        } catch (\Exception $e) {
-            session()->flash('wp-admin-error', 'Could not generate login URL: '.$e->getMessage());
         }
     }
 

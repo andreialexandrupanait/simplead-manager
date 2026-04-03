@@ -9,6 +9,18 @@ return [
                 // New changes accumulate here until version bump
             ],
         ],
+        '2.9.14' => [
+            'date' => '2026-04-03',
+            'changes' => [
+                'Feature: Batch bulk-delete endpoint for spam user removal (single API call instead of per-user)',
+            ],
+        ],
+        '2.9.13' => [
+            'date' => '2026-04-03',
+            'changes' => [
+                'Feature: Sync WooCommerce order counts per user for spam detection',
+            ],
+        ],
         '2.9.12' => [
             'date' => '2026-04-01',
             'changes' => [

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Security;
 
+use App\Jobs\DeleteSpamUsersJob;
+use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
 use App\Models\Site;
 use App\Models\SiteUser;
 use App\Services\ActivityLogger;
+use App\Services\JobTracker;
+use App\Services\SpamUserDetectionService;
 use App\Services\WordPressApiServiceFactory;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -16,7 +20,7 @@ use Livewire\WithPagination;
 
 class SecurityUsers extends Component
 {
-    use WithPagination, WithSiteAuthorization, WithSorting;
+    use WithJobTracking, WithPagination, WithSiteAuthorization, WithSorting;
 
     public Site $site;
 
@@ -51,6 +55,9 @@ class SecurityUsers extends Component
 
     public ?int $reassignTo = null;
 
+    // Spam detection
+    public bool $showSpamResults = false;
+
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
@@ -58,6 +65,12 @@ class SecurityUsers extends Component
         if ($this->sortBy === 'name') {
             $this->sortBy = 'role';
         }
+        $this->initJobTracking();
+    }
+
+    protected function jobTrackingKeys(): array
+    {
+        return ['spam-delete' => 'spam-delete-'.$this->site->id];
     }
 
     public function updatedRoleFilter(): void
@@ -206,6 +219,83 @@ class SecurityUsers extends Component
             $this->resetPage();
         } catch (\Exception $e) {
             $this->dispatch('notify', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    // --- Spam Detection ---
+
+    private function spamCacheKey(): string
+    {
+        return "spam_scan_{$this->site->id}";
+    }
+
+    #[Computed]
+    public function spamResults(): array
+    {
+        return cache()->get($this->spamCacheKey(), []);
+    }
+
+    #[Computed]
+    public function progressLog(): array
+    {
+        $keys = $this->jobTrackingKeys();
+
+        return JobTracker::getLog($keys['spam-delete']);
+    }
+
+    public function scanForSpam(): void
+    {
+        try {
+            $service = app(SpamUserDetectionService::class);
+            $results = $service->detect($this->site->id);
+
+            cache()->put($this->spamCacheKey(), [
+                'flagged' => $results['flagged']->toArray(),
+                'summary' => $results['summary'],
+            ], 300);
+
+            $this->showSpamResults = true;
+        } catch (\Exception $e) {
+            $this->dispatch('notify', type: 'error', message: 'Spam scan failed: '.$e->getMessage());
+        }
+    }
+
+    public function dismissSpamResults(): void
+    {
+        $this->showSpamResults = false;
+        cache()->forget($this->spamCacheKey());
+    }
+
+    public function deleteSpamUsers(array $wpUserIds): void
+    {
+        if (empty($wpUserIds)) {
+            return;
+        }
+
+        // Find first admin to reassign content to
+        $adminWpId = SiteUser::where('site_id', $this->site->id)
+            ->where('role', 'administrator')
+            ->value('wp_user_id');
+
+        $this->dispatchTrackedJob(
+            'spam-delete',
+            new DeleteSpamUsersJob($this->site, $wpUserIds, $adminWpId),
+            'Preparing to delete spam users...'
+        );
+
+        $this->showSpamResults = false;
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        if ($jobName === 'spam-delete') {
+            $this->clearComputedCaches();
+            unset($this->progressLog);
+            $this->resetPage();
+            cache()->forget($this->spamCacheKey());
+
+            $type = $data['status'] === 'complete' ? 'success' : 'error';
+            $this->dispatch('notify', type: $type, message: $data['message']);
         }
     }
 

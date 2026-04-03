@@ -231,6 +231,31 @@
                     </div>
                     {{-- Error detail for failed backups --}}
                     <div x-show="status === 'failed'" x-cloak class="rounded-md bg-red-50 border border-red-200 p-2.5 text-xs text-red-700" x-text="message"></div>
+
+                    {{-- Activity Log --}}
+                    @if(count($this->progressLog) > 0)
+                        <div x-data="{ logOpen: status === 'pending' || status === 'in_progress' }">
+                            <button @click="logOpen = !logOpen" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
+                                <svg class="h-3 w-3 transition-transform" :class="logOpen && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                                <span x-text="logOpen ? 'Activity Log' : 'Show log ({{ count($this->progressLog) }} entries)'"></span>
+                            </button>
+                            <div x-show="logOpen" x-collapse>
+                                <div
+                                    class="mt-2 max-h-40 overflow-y-auto rounded-lg bg-gray-900 p-3 font-mono text-xs leading-relaxed"
+                                    x-ref="backupLogPanel"
+                                    x-effect="if (logOpen) { $nextTick(() => { $refs.backupLogPanel.scrollTop = $refs.backupLogPanel.scrollHeight }) }"
+                                >
+                                    @foreach($this->progressLog as $entry)
+                                        <div class="{{ str_starts_with($entry['message'] ?? '', 'FAILED:') ? 'text-red-400' : 'text-green-400' }}">
+                                            <span class="text-gray-500">[{{ $entry['time'] }}]</span> {{ $entry['message'] }}
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </x-ui.card>
         </div>
@@ -322,6 +347,31 @@
                         <span x-show="status === 'failed' && message" x-text="message" class="text-red-600"></span>
                         <span x-show="status !== 'failed' && message" x-text="message"></span>
                     </div>
+
+                    {{-- Activity Log --}}
+                    @if(count($this->restoreProgressLog) > 0)
+                        <div x-data="{ logOpen: status === 'pending' || status === 'in_progress' }">
+                            <button @click="logOpen = !logOpen" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
+                                <svg class="h-3 w-3 transition-transform" :class="logOpen && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                                <span x-text="logOpen ? 'Activity Log' : 'Show log ({{ count($this->restoreProgressLog) }} entries)'"></span>
+                            </button>
+                            <div x-show="logOpen" x-collapse>
+                                <div
+                                    class="mt-2 max-h-40 overflow-y-auto rounded-lg bg-gray-900 p-3 font-mono text-xs leading-relaxed"
+                                    x-ref="restoreLogPanel"
+                                    x-effect="if (logOpen) { $nextTick(() => { $refs.restoreLogPanel.scrollTop = $refs.restoreLogPanel.scrollHeight }) }"
+                                >
+                                    @foreach($this->restoreProgressLog as $entry)
+                                        <div class="{{ str_starts_with($entry['message'] ?? '', 'FAILED:') ? 'text-red-400' : 'text-green-400' }}">
+                                            <span class="text-gray-500">[{{ $entry['time'] }}]</span> {{ $entry['message'] }}
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </x-ui.card>
         </div>
