@@ -83,12 +83,15 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/tweaks', Sites\Detail\Tweaks\TweaksOverview::class)->name('sites.tweaks');
         Route::get('/tweaks/performance', Sites\Detail\Tweaks\TweaksPerformance::class)->name('sites.tweaks.performance');
         Route::get('/tweaks/site-control', Sites\Detail\Tweaks\TweaksSiteControl::class)->name('sites.tweaks.site-control');
+        Route::get('/tweaks/admin-ux', Sites\Detail\Tweaks\TweaksAdminUx::class)->name('sites.tweaks.admin-ux');
+        Route::get('/tweaks/content-media', Sites\Detail\Tweaks\TweaksContentMedia::class)->name('sites.tweaks.content-media');
+        Route::get('/tweaks/email', Sites\Detail\Tweaks\TweaksEmail::class)->name('sites.tweaks.email');
         // Backward-compat redirects from old security URLs
         Route::get('/security/performance', fn (Site $site) => redirect()->route('sites.tweaks.performance', $site));
         Route::get('/security/site-control', fn (Site $site) => redirect()->route('sites.tweaks.site-control', $site));
-        Route::get('/security/admin-ux', fn (Site $site) => redirect()->route('sites.tweaks', $site));
-        Route::get('/security/content-media', fn (Site $site) => redirect()->route('sites.tweaks', $site));
-        Route::get('/security/email', fn (Site $site) => redirect()->route('sites.tweaks', $site));
+        Route::get('/security/admin-ux', fn (Site $site) => redirect()->route('sites.tweaks.admin-ux', $site));
+        Route::get('/security/content-media', fn (Site $site) => redirect()->route('sites.tweaks.content-media', $site));
+        Route::get('/security/email', fn (Site $site) => redirect()->route('sites.tweaks.email', $site));
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');

@@ -79,6 +79,45 @@ class SAM_Performance_Tweaks {
             add_filter('gutenberg_use_widgets_block_editor', '__return_false');
             add_filter('use_widgets_block_editor', '__return_false');
         }
+
+        // Disable self-pingbacks
+        if (!empty($this->settings['disable_self_pingbacks'])) {
+            add_action('pre_ping', [$this, 'disable_self_pingbacks']);
+        }
+
+        // Disable REST API links in header
+        if (!empty($this->settings['disable_rest_api_links'])) {
+            remove_action('wp_head', 'rest_output_link_wp_head', 10);
+            remove_action('template_redirect', 'rest_output_link_header', 11);
+            remove_action('xmlrpc_rsd_apis', 'rest_output_rsd');
+        }
+
+        // Disable DNS prefetch
+        if (!empty($this->settings['disable_dns_prefetch'])) {
+            remove_action('wp_head', 'wp_resource_hints', 2);
+        }
+
+        // Disable XML sitemap
+        if (!empty($this->settings['disable_xml_sitemap'])) {
+            add_filter('wp_sitemaps_enabled', '__return_false');
+        }
+
+        // Disable Google Fonts
+        if (!empty($this->settings['disable_google_fonts'])) {
+            add_action('wp_enqueue_scripts', [$this, 'dequeue_google_fonts'], 99);
+        }
+
+        // Disable global styles (WP 5.9+)
+        if (!empty($this->settings['disable_global_styles'])) {
+            remove_action('wp_enqueue_scripts', 'wp_enqueue_global_styles');
+            remove_action('wp_body_open', 'wp_global_styles_render_svg_filters');
+            remove_action('wp_footer', 'wp_enqueue_global_styles', 1);
+        }
+
+        // WooCommerce optimization
+        if (!empty($this->settings['optimize_woocommerce'])) {
+            $this->enforce_woocommerce_optimization();
+        }
     }
 
     /**
@@ -261,6 +300,80 @@ class SAM_Performance_Tweaks {
     }
 
     /**
+     * Remove self-pingbacks from the list of URLs to ping.
+     */
+    public function disable_self_pingbacks(&$links): void {
+        $home = home_url();
+        foreach ($links as $key => $link) {
+            if (strpos($link, $home) === 0) {
+                unset($links[$key]);
+            }
+        }
+    }
+
+    /**
+     * Dequeue Google Fonts loaded by themes/plugins.
+     */
+    public function dequeue_google_fonts(): void {
+        global $wp_styles;
+        if (!isset($wp_styles->registered)) {
+            return;
+        }
+        foreach ($wp_styles->registered as $handle => $style) {
+            if (isset($style->src) && (
+                strpos($style->src, 'fonts.googleapis.com') !== false ||
+                strpos($style->src, 'fonts.gstatic.com') !== false
+            )) {
+                wp_dequeue_style($handle);
+                wp_deregister_style($handle);
+            }
+        }
+    }
+
+    /**
+     * WooCommerce optimization: disable cart fragments and scripts on non-WC pages.
+     */
+    private function enforce_woocommerce_optimization(): void {
+        $config = is_array($this->settings['optimize_woocommerce'])
+            ? $this->settings['optimize_woocommerce']
+            : [];
+
+        // Disable cart fragments AJAX on non-cart/checkout pages
+        if (!empty($config['disable_cart_fragments'])) {
+            add_action('wp_enqueue_scripts', function () {
+                if (!function_exists('is_cart') || !function_exists('is_checkout')) {
+                    return;
+                }
+                if (!is_cart() && !is_checkout()) {
+                    wp_dequeue_script('wc-cart-fragments');
+                }
+            }, 99);
+        }
+
+        // Dequeue WC scripts/styles on non-WC pages
+        if (!empty($config['disable_wc_scripts_non_wc'])) {
+            add_action('wp_enqueue_scripts', function () {
+                if (!function_exists('is_woocommerce') || !function_exists('is_cart') || !function_exists('is_checkout') || !function_exists('is_account_page')) {
+                    return;
+                }
+                if (is_woocommerce() || is_cart() || is_checkout() || is_account_page()) {
+                    return;
+                }
+                // Dequeue WC styles
+                wp_dequeue_style('woocommerce-general');
+                wp_dequeue_style('woocommerce-layout');
+                wp_dequeue_style('woocommerce-smallscreen');
+                wp_dequeue_style('wc-blocks-style');
+
+                // Dequeue WC scripts
+                wp_dequeue_script('wc-cart-fragments');
+                wp_dequeue_script('woocommerce');
+                wp_dequeue_script('wc-add-to-cart');
+            }, 99);
+        }
+    }
+
+    /**
      * Get the actual enforced state by checking real WordPress hooks/filters.
      */
     public static function get_verified_state(): array {
@@ -337,6 +450,41 @@ class SAM_Performance_Tweaks {
         $state['disable_block_widgets'] = [
             'configured' => !empty($settings['disable_block_widgets']),
             'active'     => has_filter('use_widgets_block_editor'),
+        ];
+
+        $state['disable_self_pingbacks'] = [
+            'configured' => !empty($settings['disable_self_pingbacks']),
+            'active'     => has_action('pre_ping'),
+        ];
+
+        $state['disable_rest_api_links'] = [
+            'configured' => !empty($settings['disable_rest_api_links']),
+            'active'     => !has_action('wp_head', 'rest_output_link_wp_head'),
+        ];
+
+        $state['disable_dns_prefetch'] = [
+            'configured' => !empty($settings['disable_dns_prefetch']),
+            'active'     => !has_action('wp_head', 'wp_resource_hints'),
+        ];
+
+        $state['disable_xml_sitemap'] = [
+            'configured' => !empty($settings['disable_xml_sitemap']),
+            'active'     => has_filter('wp_sitemaps_enabled'),
+        ];
+
+        $state['disable_google_fonts'] = [
+            'configured' => !empty($settings['disable_google_fonts']),
+            'active'     => !empty($settings['disable_google_fonts']),
+        ];
+
+        $state['disable_global_styles'] = [
+            'configured' => !empty($settings['disable_global_styles']),
+            'active'     => !has_action('wp_enqueue_scripts', 'wp_enqueue_global_styles'),
+        ];
+
+        $state['optimize_woocommerce'] = [
+            'configured' => !empty($settings['optimize_woocommerce']),
+            'active'     => !empty($settings['optimize_woocommerce']),
         ];
 
         return $state;

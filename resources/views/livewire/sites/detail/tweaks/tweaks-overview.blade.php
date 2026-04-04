@@ -85,43 +85,87 @@
             </div>
         </x-ui.card>
 
-        {{-- Coming Soon Cards --}}
+        @php
+            $auxSettings = $this->settingsByCategory['admin_ux'] ?? collect();
+            $auxEnabled = $auxSettings->where('is_enabled', true)->count();
+            $auxApplied = $auxSettings->where('is_enabled', true)->whereNotNull('applied_at')->whereNull('failed_at')->count();
+            $auxFailed = $auxSettings->whereNotNull('failed_at')->count();
+        @endphp
         <x-ui.card>
             <div class="flex items-start justify-between">
                 <div>
-                    <h3 class="text-base font-semibold text-gray-400">{{ __('Admin UX') }}</h3>
-                    <p class="mt-1 text-sm text-gray-400">{{ __('Customize the WordPress admin experience.') }}</p>
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Admin UX') }}</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ __('Customize the WordPress admin experience.') }}</p>
                 </div>
-                <x-icons.layout class="h-5 w-5 text-gray-300 shrink-0" />
+                <x-icons.layout class="h-5 w-5 text-purple-500 shrink-0" />
             </div>
-            <div class="mt-4">
-                <x-ui.badge variant="yellow">{{ __('Coming Soon') }}</x-ui.badge>
+            <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span>{{ $auxEnabled }} {{ __('enabled') }}</span>
+                <span class="text-green-600">{{ $auxApplied }} {{ __('applied') }}</span>
+                @if($auxFailed > 0)
+                    <span class="text-red-600">{{ $auxFailed }} {{ __('failed') }}</span>
+                @endif
+            </div>
+            <div class="mt-3 flex items-center justify-end">
+                <a href="{{ route('sites.tweaks.admin-ux', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                    {{ __('Configure') }} &rarr;
+                </a>
             </div>
         </x-ui.card>
 
+        @php
+            $cmSettings = $this->settingsByCategory['content_media'] ?? collect();
+            $cmEnabled = $cmSettings->where('is_enabled', true)->count();
+            $cmApplied = $cmSettings->where('is_enabled', true)->whereNotNull('applied_at')->whereNull('failed_at')->count();
+            $cmFailed = $cmSettings->whereNotNull('failed_at')->count();
+        @endphp
         <x-ui.card>
             <div class="flex items-start justify-between">
                 <div>
-                    <h3 class="text-base font-semibold text-gray-400">{{ __('Content & Media') }}</h3>
-                    <p class="mt-1 text-sm text-gray-400">{{ __('Media optimization and content management settings.') }}</p>
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Content & Media') }}</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ __('Content duplication, media management, and publishing tools.') }}</p>
                 </div>
-                <x-icons.image class="h-5 w-5 text-gray-300 shrink-0" />
+                <x-icons.image class="h-5 w-5 text-purple-500 shrink-0" />
             </div>
-            <div class="mt-4">
-                <x-ui.badge variant="yellow">{{ __('Coming Soon') }}</x-ui.badge>
+            <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span>{{ $cmEnabled }} {{ __('enabled') }}</span>
+                <span class="text-green-600">{{ $cmApplied }} {{ __('applied') }}</span>
+                @if($cmFailed > 0)
+                    <span class="text-red-600">{{ $cmFailed }} {{ __('failed') }}</span>
+                @endif
+            </div>
+            <div class="mt-3 flex items-center justify-end">
+                <a href="{{ route('sites.tweaks.content-media', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                    {{ __('Configure') }} &rarr;
+                </a>
             </div>
         </x-ui.card>
 
+        @php
+            $emailSettings = $this->settingsByCategory['email'] ?? collect();
+            $emailEnabled = $emailSettings->where('is_enabled', true)->count();
+            $emailApplied = $emailSettings->where('is_enabled', true)->whereNotNull('applied_at')->whereNull('failed_at')->count();
+            $emailFailed = $emailSettings->whereNotNull('failed_at')->count();
+        @endphp
         <x-ui.card>
             <div class="flex items-start justify-between">
                 <div>
-                    <h3 class="text-base font-semibold text-gray-400">{{ __('Email') }}</h3>
-                    <p class="mt-1 text-sm text-gray-400">{{ __('WordPress email configuration and delivery settings.') }}</p>
+                    <h3 class="text-base font-semibold text-gray-900">{{ __('Email') }}</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ __('Postmark SMTP, sender identity, and email logging.') }}</p>
                 </div>
-                <x-icons.mail class="h-5 w-5 text-gray-300 shrink-0" />
+                <x-icons.mail class="h-5 w-5 text-purple-500 shrink-0" />
             </div>
-            <div class="mt-4">
-                <x-ui.badge variant="yellow">{{ __('Coming Soon') }}</x-ui.badge>
+            <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span>{{ $emailEnabled }} {{ __('enabled') }}</span>
+                <span class="text-green-600">{{ $emailApplied }} {{ __('applied') }}</span>
+                @if($emailFailed > 0)
+                    <span class="text-red-600">{{ $emailFailed }} {{ __('failed') }}</span>
+                @endif
+            </div>
+            <div class="mt-3 flex items-center justify-end">
+                <a href="{{ route('sites.tweaks.email', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                    {{ __('Configure') }} &rarr;
+                </a>
             </div>
         </x-ui.card>
     </div>

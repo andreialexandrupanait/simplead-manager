@@ -118,6 +118,15 @@ class SAM_Site_Tweaks_Endpoint extends SAM_Endpoint_Base {
         if (class_exists('SAM_Site_Control')) {
             $state['site_control']['verified'] = SAM_Site_Control::get_verified_state();
         }
+        if (class_exists('SAM_Admin_UX_Tweaks')) {
+            $state['admin_ux']['verified'] = SAM_Admin_UX_Tweaks::get_verified_state();
+        }
+        if (class_exists('SAM_Content_Media_Tweaks')) {
+            $state['content_media']['verified'] = SAM_Content_Media_Tweaks::get_verified_state();
+        }
+        if (class_exists('SAM_Email_Tweaks')) {
+            $state['email']['verified'] = SAM_Email_Tweaks::get_verified_state();
+        }
 
         $state['timestamp'] = gmdate('c');
 

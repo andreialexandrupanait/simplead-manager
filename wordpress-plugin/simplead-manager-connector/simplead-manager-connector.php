@@ -33,6 +33,9 @@ require_once SAM_PLUGIN_DIR . 'includes/class-security-captcha.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-ip-manager.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-performance-tweaks.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-site-control.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-admin-ux-tweaks.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-content-media-tweaks.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-email-tweaks.php';
 
 // Autoloader for all other classes (loaded on demand)
 spl_autoload_register(function ($class) {
@@ -112,6 +115,9 @@ final class SimpleAd_Manager_Connector {
         // Site tweaks enforcement
         add_action('plugins_loaded', [$this, 'init_performance_tweaks'], 5);
         add_action('plugins_loaded', [$this, 'init_site_control'], 5);
+        add_action('plugins_loaded', [$this, 'init_admin_ux_tweaks'], 5);
+        add_action('plugins_loaded', [$this, 'init_content_media_tweaks'], 5);
+        add_action('plugins_loaded', [$this, 'init_email_tweaks'], 5);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('init', [$this, 'handle_login_token']);
@@ -207,6 +213,18 @@ final class SimpleAd_Manager_Connector {
 
     public function init_site_control(): void {
         new SAM_Site_Control();
+    }
+
+    public function init_admin_ux_tweaks(): void {
+        new SAM_Admin_UX_Tweaks();
+    }
+
+    public function init_content_media_tweaks(): void {
+        new SAM_Content_Media_Tweaks();
+    }
+
+    public function init_email_tweaks(): void {
+        new SAM_Email_Tweaks();
     }
 
     public function deactivate(): void {

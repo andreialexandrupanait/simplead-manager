@@ -40,6 +40,11 @@ class IntegrationsSettings extends Component
 
     public ?int $deletingCfId = null;
 
+    // Postmark
+    public string $postmarkServerToken = '';
+
+    public string $postmarkDefaultStream = 'outbound';
+
     public function mount(): void
     {
         $settings = app(SettingsService::class);
@@ -67,6 +72,17 @@ class IntegrationsSettings extends Component
                 $this->googleClientSecret = '';
             }
         }
+
+        // Postmark
+        $encryptedPostmark = $settings->get('postmark_server_token');
+        if ($encryptedPostmark) {
+            try {
+                $this->postmarkServerToken = decrypt($encryptedPostmark);
+            } catch (DecryptException $e) {
+                $this->postmarkServerToken = '';
+            }
+        }
+        $this->postmarkDefaultStream = $settings->get('postmark_default_stream') ?? 'outbound';
     }
 
     public function saveDropboxCredentials(): void
@@ -280,6 +296,39 @@ class IntegrationsSettings extends Component
     {
         $this->deletingCfId = $id;
         $this->dispatch('open-modal-delete-cloudflare');
+    }
+
+    // Postmark methods
+
+    public function savePostmarkCredentials(): void
+    {
+        $this->validate([
+            'postmarkServerToken' => 'required|string|min:10',
+            'postmarkDefaultStream' => 'required|in:outbound,broadcast',
+        ], [
+            'postmarkServerToken.required' => 'Server API Token is required.',
+        ]);
+
+        $settings = app(SettingsService::class);
+
+        $settings->set('postmark_server_token', encrypt(trim($this->postmarkServerToken)), 'postmark');
+        $settings->set('postmark_default_stream', $this->postmarkDefaultStream, 'postmark');
+
+        session()->flash('success', 'Postmark credentials saved.');
+        $this->dispatch('close-modal-configure-postmark');
+    }
+
+    public function clearPostmarkCredentials(): void
+    {
+        $settings = app(SettingsService::class);
+
+        $settings->set('postmark_server_token', '', 'postmark');
+        $settings->set('postmark_default_stream', 'outbound', 'postmark');
+
+        $this->postmarkServerToken = '';
+        $this->postmarkDefaultStream = 'outbound';
+
+        session()->flash('success', 'Postmark credentials removed.');
     }
 
     public function deleteCloudflareConnection(): void

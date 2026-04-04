@@ -25,6 +25,13 @@ class SiteTweaksSettingsService
             'disable_jquery_migrate',
             'disable_lazy_load',
             'disable_block_widgets',
+            'disable_self_pingbacks',
+            'disable_rest_api_links',
+            'disable_dns_prefetch',
+            'disable_xml_sitemap',
+            'disable_google_fonts',
+            'disable_global_styles',
+            'optimize_woocommerce',
         ],
         'site_control' => [
             'disable_all_updates',
@@ -41,7 +48,6 @@ class SiteTweaksSettingsService
             'disable_dashboard_widgets',
             'custom_admin_css',
             'custom_frontend_css',
-            'login_branding',
             'hide_admin_bar',
             'admin_menu_organizer',
             'custom_admin_footer',
@@ -60,7 +66,7 @@ class SiteTweaksSettingsService
         ],
         'email' => [
             'custom_email_from',
-            'smtp_config',
+            'postmark_config',
             'email_logging',
         ],
     ];

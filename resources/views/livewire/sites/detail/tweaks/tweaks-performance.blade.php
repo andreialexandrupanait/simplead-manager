@@ -160,6 +160,12 @@
                     'disable_shortlinks' => ['label' => __('Disable Shortlinks'), 'desc' => __('Remove WordPress shortlink tags from the header.')],
                     'disable_lazy_load' => ['label' => __('Disable Native Lazy Load'), 'desc' => __('Remove the native lazy loading attribute from images.')],
                     'disable_block_widgets' => ['label' => __('Disable Block Widgets'), 'desc' => __('Restore classic widgets instead of block-based widgets.')],
+                    'disable_self_pingbacks' => ['label' => __('Disable Self-Pingbacks'), 'desc' => __('Prevent WordPress from sending pingbacks to its own URLs.')],
+                    'disable_rest_api_links' => ['label' => __('Disable REST API Links'), 'desc' => __('Remove REST API link tags from the page header.')],
+                    'disable_dns_prefetch' => ['label' => __('Disable DNS Prefetch'), 'desc' => __('Remove dns-prefetch resource hints (s.w.org) from the header.')],
+                    'disable_xml_sitemap' => ['label' => __('Disable XML Sitemap'), 'desc' => __('Disable the built-in WordPress XML sitemap (use when a SEO plugin handles sitemaps).')],
+                    'disable_google_fonts' => ['label' => __('Disable Google Fonts'), 'desc' => __('Remove Google Fonts loading from themes and plugins for GDPR and performance.')],
+                    'disable_global_styles' => ['label' => __('Disable Global Styles'), 'desc' => __('Remove WordPress 5.9+ global styles and inline SVG filters.')],
                 ];
             @endphp
 
@@ -180,6 +186,39 @@
                     />
                 </div>
             @endforeach
+        </div>
+    </x-ui.card>
+
+    {{-- WooCommerce Optimization --}}
+    <x-ui.card class="mt-6">
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('WooCommerce Optimization') }}</h3>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-900">{{ __('Enable WooCommerce Optimization') }}</p>
+                    <p class="text-xs text-gray-500">{{ __('Reduce WooCommerce overhead on non-shop pages.') }}</p>
+                    @if($toggles['optimize_woocommerce'] ?? false)
+                        <x-security.setting-status :status="$settingStatuses['optimize_woocommerce'] ?? null" />
+                    @endif
+                </div>
+                <x-ui.toggle
+                    :enabled="$toggles['optimize_woocommerce'] ?? false"
+                    wire:click="toggleSetting('optimize_woocommerce')"
+                />
+            </div>
+
+            @if($toggles['optimize_woocommerce'] ?? false)
+                <div class="ml-4 space-y-2 border-l-2 border-purple-100 pl-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" wire:model.live="wooDisableCartFragments" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <span class="text-sm text-gray-700">{{ __('Disable cart fragments AJAX on non-cart/checkout pages') }}</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" wire:model.live="wooDisableScriptsNonWc" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <span class="text-sm text-gray-700">{{ __('Dequeue WooCommerce scripts/styles on non-WooCommerce pages') }}</span>
+                    </label>
+                </div>
+            @endif
         </div>
     </x-ui.card>
 

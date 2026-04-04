@@ -48,6 +48,11 @@ class TweaksPerformance extends Component
 
     public int $jpegQuality = 82;
 
+    // WooCommerce config
+    public bool $wooDisableCartFragments = true;
+
+    public bool $wooDisableScriptsNonWc = true;
+
     public array $settingStatuses = [];
 
     public bool $isDirty = false;
@@ -62,6 +67,12 @@ class TweaksPerformance extends Component
         'disable_jquery_migrate',
         'disable_lazy_load',
         'disable_block_widgets',
+        'disable_self_pingbacks',
+        'disable_rest_api_links',
+        'disable_dns_prefetch',
+        'disable_xml_sitemap',
+        'disable_google_fonts',
+        'disable_global_styles',
     ];
 
     public function mount(Site $site): void
@@ -119,6 +130,18 @@ class TweaksPerformance extends Component
             $this->toggles['image_upload_control'] = false;
         }
         $this->settingStatuses['image_upload_control'] = $image?->status;
+
+        // WooCommerce optimization
+        $woo = $settings->get('optimize_woocommerce');
+        if ($woo && $woo->is_enabled) {
+            $this->toggles['optimize_woocommerce'] = true;
+            $config = $woo->setting_value ?? [];
+            $this->wooDisableCartFragments = $config['disable_cart_fragments'] ?? true;
+            $this->wooDisableScriptsNonWc = $config['disable_wc_scripts_non_wc'] ?? true;
+        } else {
+            $this->toggles['optimize_woocommerce'] = false;
+        }
+        $this->settingStatuses['optimize_woocommerce'] = $woo?->status;
     }
 
     public function enableRecommended(): void
@@ -245,6 +268,15 @@ class TweaksPerformance extends Component
                 'max_width' => max(100, $this->imageMaxWidth),
                 'max_height' => max(100, $this->imageMaxHeight),
                 'jpeg_quality' => max(10, min(100, $this->jpegQuality)),
+            ],
+        ];
+
+        // WooCommerce optimization
+        $settings['optimize_woocommerce'] = [
+            'enabled' => $this->toggles['optimize_woocommerce'] ?? false,
+            'value' => [
+                'disable_cart_fragments' => $this->wooDisableCartFragments,
+                'disable_wc_scripts_non_wc' => $this->wooDisableScriptsNonWc,
             ],
         ];
 

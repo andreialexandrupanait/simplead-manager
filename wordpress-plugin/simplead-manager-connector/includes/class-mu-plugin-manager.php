@@ -480,6 +480,227 @@ if (defined('SAM_VERSION')) {
             });
         }
     }
+
+    // ─── Admin UX ──────────────────────────────────────────────────────
+    $admin_ux = get_option('sam_admin_ux_settings', []);
+
+    if (!empty($admin_ux)) {
+        // Hide admin notices
+        if (!empty($admin_ux['hide_admin_notices'])) {
+            add_action('admin_notices', function () { ob_start(); }, 0);
+            add_action('admin_notices', function () { ob_end_clean(); }, PHP_INT_MAX);
+            add_action('all_admin_notices', function () { ob_start(); }, 0);
+            add_action('all_admin_notices', function () { ob_end_clean(); }, PHP_INT_MAX);
+        }
+
+        // Clean admin bar
+        if (!empty($admin_ux['clean_admin_bar'])) {
+            $ab = is_array($admin_ux['clean_admin_bar']) ? $admin_ux['clean_admin_bar'] : [];
+            add_action('admin_bar_menu', function ($bar) use ($ab) {
+                if (!empty($ab['remove_wp_logo'])) $bar->remove_node('wp-logo');
+                if (!empty($ab['remove_comments'])) $bar->remove_node('comments');
+                if (!empty($ab['remove_new_content'])) $bar->remove_node('new-content');
+                if (!empty($ab['remove_customize'])) $bar->remove_node('customize');
+            }, 999);
+        }
+
+        // Hide admin bar on frontend
+        if (!empty($admin_ux['hide_admin_bar'])) {
+            $hab = is_array($admin_ux['hide_admin_bar']) ? $admin_ux['hide_admin_bar'] : [];
+            $hide_for = $hab['hide_for'] ?? 'non_admins';
+            add_filter('show_admin_bar', function ($show) use ($hide_for) {
+                if ($hide_for === 'all') return false;
+                if ($hide_for === 'non_admins' && !current_user_can('manage_options')) return false;
+                if ($hide_for === 'non_editors' && !current_user_can('edit_others_posts')) return false;
+                return $show;
+            });
+        }
+
+        // Custom frontend CSS
+        if (!empty($admin_ux['custom_frontend_css'])) {
+            $cfc = is_array($admin_ux['custom_frontend_css']) ? $admin_ux['custom_frontend_css'] : [];
+            $css = $cfc['css'] ?? '';
+            if ($css !== '') {
+                add_action('wp_head', function () use ($css) {
+                    echo '<style id="sam-frontend-css">' . wp_strip_all_tags($css) . '</style>';
+                });
+            }
+        }
+
+        // Custom admin CSS
+        if (!empty($admin_ux['custom_admin_css'])) {
+            $cac = is_array($admin_ux['custom_admin_css']) ? $admin_ux['custom_admin_css'] : [];
+            $css = $cac['css'] ?? '';
+            if ($css !== '') {
+                add_action('admin_head', function () use ($css) {
+                    echo '<style id="sam-admin-css">' . wp_strip_all_tags($css) . '</style>';
+                });
+            }
+        }
+
+        // Wider admin menu
+        if (!empty($admin_ux['wider_admin_menu'])) {
+            add_action('admin_head', function () {
+                echo '<style id="sam-wider-menu">@media screen and (min-width:783px){#adminmenuback,#adminmenuwrap,#adminmenu{width:200px}#wpcontent,#wpfooter{margin-left:200px}#adminmenu .wp-submenu{left:200px}}</style>';
+            });
+        }
+
+        // Custom admin footer
+        if (!empty($admin_ux['custom_admin_footer'])) {
+            $caf = is_array($admin_ux['custom_admin_footer']) ? $admin_ux['custom_admin_footer'] : [];
+            $text = $caf['text'] ?? '';
+            if ($text !== '') {
+                add_filter('admin_footer_text', function () use ($text) {
+                    return esc_html($text);
+                });
+            }
+        }
+
+        // Dashboard widgets
+        if (!empty($admin_ux['disable_dashboard_widgets'])) {
+            $dw = is_array($admin_ux['disable_dashboard_widgets']) ? $admin_ux['disable_dashboard_widgets'] : [];
+            add_action('wp_dashboard_setup', function () use ($dw) {
+                if (!empty($dw['remove_welcome'])) remove_action('welcome_panel', 'wp_welcome_panel');
+                if (!empty($dw['remove_quick_press'])) remove_meta_box('dashboard_quick_press', 'dashboard', 'side');
+                if (!empty($dw['remove_activity'])) remove_meta_box('dashboard_activity', 'dashboard', 'normal');
+                if (!empty($dw['remove_primary'])) remove_meta_box('dashboard_primary', 'dashboard', 'side');
+                if (!empty($dw['remove_events'])) remove_meta_box('dashboard_right_now', 'dashboard', 'normal');
+            }, 999);
+        }
+
+        // Admin menu organizer
+        if (!empty($admin_ux['admin_menu_organizer'])) {
+            $amo = is_array($admin_ux['admin_menu_organizer']) ? $admin_ux['admin_menu_organizer'] : [];
+            $hidden = $amo['hidden_items'] ?? [];
+            if (!empty($hidden)) {
+                add_action('admin_menu', function () use ($hidden) {
+                    if (current_user_can('manage_options')) return;
+                    foreach ($hidden as $slug) {
+                        remove_menu_page(sanitize_text_field($slug));
+                    }
+                }, 999);
+            }
+        }
+    }
+
+    // ─── Content & Media ───────────────────────────────────────────────
+    $cm = get_option('sam_content_media_settings', []);
+
+    if (!empty($cm)) {
+        // SVG upload support
+        if (!empty($cm['svg_upload'])) {
+            add_filter('upload_mimes', function ($mimes) {
+                $mimes['svg'] = 'image/svg+xml';
+                $mimes['svgz'] = 'image/svg+xml';
+                return $mimes;
+            });
+        }
+
+        // AVIF upload support
+        if (!empty($cm['avif_upload'])) {
+            add_filter('upload_mimes', function ($mimes) {
+                $mimes['avif'] = 'image/avif';
+                return $mimes;
+            });
+        }
+
+        // Open external links in new tab
+        if (!empty($cm['open_external_links_new_tab'])) {
+            add_filter('the_content', function ($content) {
+                if (empty($content)) return $content;
+                $host = wp_parse_url(home_url(), PHP_URL_HOST);
+                return preg_replace_callback('/<a\s([^>]*)>/i', function ($m) use ($host) {
+                    $attrs = $m[1];
+                    if (!preg_match('/href\s*=\s*["\']([^"\']*)["\']/', $attrs, $h)) return $m[0];
+                    $href = $h[1];
+                    if (empty($href) || $href[0] === '#' || $href[0] === '/') return $m[0];
+                    $lh = wp_parse_url($href, PHP_URL_HOST);
+                    if (!$lh || $lh === $host) return $m[0];
+                    if (preg_match('/target\s*=/i', $attrs)) return $m[0];
+                    return '<a ' . $attrs . ' target="_blank" rel="noopener noreferrer">';
+                }, $content);
+            });
+        }
+
+        // Auto-publish missed schedule
+        if (!empty($cm['auto_publish_missed_schedule'])) {
+            add_action('wp_loaded', function () {
+                if (get_transient('sam_missed_schedule_check')) return;
+                set_transient('sam_missed_schedule_check', 1, 5 * MINUTE_IN_SECONDS);
+                global $wpdb;
+                $now = current_time('mysql', false);
+                $posts = $wpdb->get_results($wpdb->prepare(
+                    "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'future' AND post_date <= %s LIMIT 20", $now
+                ));
+                if ($posts) {
+                    foreach ($posts as $p) wp_publish_post((int)$p->ID);
+                }
+            });
+        }
+
+        // Media visibility control
+        if (!empty($cm['media_visibility_control'])) {
+            add_filter('ajax_query_attachments_args', function ($query) {
+                if (!current_user_can('manage_options')) {
+                    $query['author'] = get_current_user_id();
+                }
+                return $query;
+            });
+        }
+    }
+
+    // ─── Email ─────────────────────────────────────────────────────────
+    $email = get_option('sam_email_settings', []);
+
+    if (!empty($email)) {
+        // Custom email from
+        if (!empty($email['custom_email_from'])) {
+            $ef = is_array($email['custom_email_from']) ? $email['custom_email_from'] : [];
+            if (!empty($ef['from_email'])) {
+                $fe = $ef['from_email'];
+                add_filter('wp_mail_from', function () use ($fe) { return sanitize_email($fe); });
+            }
+            if (!empty($ef['from_name'])) {
+                $fn = $ef['from_name'];
+                add_filter('wp_mail_from_name', function () use ($fn) { return sanitize_text_field($fn); });
+            }
+        }
+
+        // Postmark SMTP
+        if (!empty($email['postmark_config'])) {
+            $pm = is_array($email['postmark_config']) ? $email['postmark_config'] : [];
+            $token = $pm['server_token'] ?? '';
+            $stream = $pm['message_stream'] ?? 'outbound';
+            if ($token !== '') {
+                add_action('phpmailer_init', function ($phpmailer) use ($token, $stream) {
+                    $phpmailer->isSMTP();
+                    $phpmailer->Host = 'smtp.postmarkapp.com';
+                    $phpmailer->Port = 587;
+                    $phpmailer->SMTPSecure = 'tls';
+                    $phpmailer->SMTPAuth = true;
+                    $phpmailer->Username = $token;
+                    $phpmailer->Password = $token;
+                    $phpmailer->addCustomHeader('X-PM-Message-Stream', sanitize_text_field($stream));
+                });
+            }
+        }
+
+        // Email logging
+        if (!empty($email['email_logging'])) {
+            add_filter('wp_mail', function ($args) {
+                $entry = [
+                    'to' => is_array($args['to']) ? implode(', ', $args['to']) : $args['to'],
+                    'subject' => $args['subject'] ?? '',
+                    'timestamp' => current_time('mysql'),
+                    'status' => 'sending',
+                ];
+                $logs = get_option('sam_email_log', []);
+                array_unshift($logs, $entry);
+                update_option('sam_email_log', array_slice($logs, 0, 100), false);
+                return $args;
+            });
+        }
+    }
 })();
 MUPHP;
 
