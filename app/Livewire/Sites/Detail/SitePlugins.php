@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
-use App\Jobs\CreateBackup;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithPluginManagement;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithThemeManagement;
 use App\Livewire\Traits\WithWpAdminLogin;
 use App\Models\Site;
 use App\Models\SitePlugin;
@@ -20,7 +21,7 @@ use Livewire\Component;
 
 class SitePlugins extends Component
 {
-    use WithJobTracking, WithSiteAuthorization, WithWpAdminLogin;
+    use WithJobTracking, WithPluginManagement, WithSiteAuthorization, WithThemeManagement, WithWpAdminLogin;
 
     public Site $site;
 
@@ -32,21 +33,8 @@ class SitePlugins extends Component
 
     public string $search = '';
 
-    // Per-item update results
     public array $updateResults = [];
 
-    // Delete confirmation state
-    public ?int $confirmingDeleteId = null;
-
-    public ?string $confirmingDeleteName = null;
-
-    public ?int $confirmingDeleteThemeId = null;
-
-    public ?string $confirmingDeleteThemeName = null;
-
-    public array $confirmingDeleteThemeChildren = [];
-
-    // Detail modal
     public ?array $detailItem = null;
 
     protected function jobTrackingKeys(): array
@@ -219,58 +207,9 @@ class SitePlugins extends Component
         unset($this->plugins, $this->themes, $this->updateHistory);
     }
 
-    // ── Fix 1: Update methods with per-item results ──
-
-    public function updatePlugin(int $pluginId): void
+    public function clearResult(string $key): void
     {
-        $result = $this->updateSinglePlugin($pluginId);
-        $this->updateResults['plugin_'.$pluginId] = $result;
-    }
-
-    public function updateTheme(int $themeId): void
-    {
-        $result = $this->updateSingleTheme($themeId);
-        $this->updateResults['theme_'.$themeId] = $result;
-    }
-
-    public function updateSinglePlugin(int $pluginId): array
-    {
-        /** @var SitePlugin $plugin */
-        $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
-        $result = $this->performUpdate('plugin', $plugin->file, $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version);
-
-        if ($result['success']) {
-            $plugin->update([
-                'version' => $result['version'] ?? $plugin->update_version,
-                'has_update' => false,
-                'update_version' => null,
-            ]);
-            $this->site->decrement('pending_updates_count');
-        }
-
-        unset($this->plugins, $this->pluginCounts);
-
-        return $result;
-    }
-
-    public function updateSingleTheme(int $themeId): array
-    {
-        /** @var SiteTheme $theme */
-        $theme = $this->site->siteThemes()->findOrFail($themeId);
-        $result = $this->performUpdate('theme', $theme->slug, $theme->name, $theme->slug, $theme->version, $theme->update_version);
-
-        if ($result['success']) {
-            $theme->update([
-                'version' => $result['version'] ?? $theme->update_version,
-                'has_update' => false,
-                'update_version' => null,
-            ]);
-            $this->site->decrement('pending_updates_count');
-        }
-
-        unset($this->themes, $this->themeCounts);
-
-        return $result;
+        unset($this->updateResults[$key]);
     }
 
     private function performUpdate(string $type, string $identifier, string $name, string $slug, ?string $currentVersion, ?string $updateVersion): array
@@ -282,183 +221,6 @@ class SitePlugins extends Component
         }
 
         return $result;
-    }
-
-    public function getUpdatablePluginIds(): array
-    {
-        return $this->site->sitePlugins()->where('has_update', true)->pluck('id')->toArray();
-    }
-
-    public function getUpdatableThemeIds(): array
-    {
-        return $this->site->siteThemes()->where('has_update', true)->pluck('id')->toArray();
-    }
-
-    public function clearResult(string $key): void
-    {
-        unset($this->updateResults[$key]);
-    }
-
-    // ── Fix 2: Activate / Deactivate / Delete actions ──
-
-    public function activatePlugin(int $id): void
-    {
-        $result = app(PluginManagerService::class)->activatePlugin($this->site, $id);
-        $this->updateResults['plugin_'.$id] = $result + ['version' => null];
-        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
-        unset($this->plugins, $this->pluginCounts);
-    }
-
-    public function deactivatePlugin(int $id): void
-    {
-        $result = app(PluginManagerService::class)->deactivatePlugin($this->site, $id);
-        $this->updateResults['plugin_'.$id] = $result + ['version' => null];
-        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
-        unset($this->plugins, $this->pluginCounts);
-    }
-
-    public function confirmDeletePlugin(int $id): void
-    {
-        /** @var SitePlugin $plugin */
-        $plugin = $this->site->sitePlugins()->findOrFail($id);
-        $this->confirmingDeleteId = $id;
-        $this->confirmingDeleteName = $plugin->name;
-        $this->dispatch('open-modal-confirm-delete-plugin');
-    }
-
-    public function deletePlugin(): void
-    {
-        if (! $this->confirmingDeleteId) {
-            return;
-        }
-
-        $result = app(PluginManagerService::class)->deletePlugin($this->site, $this->confirmingDeleteId);
-
-        if ($result['success']) {
-            session()->flash('update-success', $result['message']);
-        } else {
-            session()->flash('update-error', $result['message']);
-        }
-
-        $this->confirmingDeleteId = null;
-        $this->confirmingDeleteName = null;
-        $this->dispatch('close-modal-confirm-delete-plugin');
-        unset($this->plugins, $this->pluginCounts);
-    }
-
-    public function activateTheme(int $id): void
-    {
-        $result = app(PluginManagerService::class)->activateTheme($this->site, $id);
-        $this->updateResults['theme_'.$id] = $result + ['version' => null];
-
-        if (! $result['success']) {
-            $this->dispatch('notify', type: 'error', message: $result['message']);
-        }
-
-        unset($this->themes, $this->themeCounts);
-    }
-
-    public function confirmDeleteTheme(int $id): void
-    {
-        /** @var SiteTheme $theme */
-        $theme = $this->site->siteThemes()->findOrFail($id);
-        $this->confirmingDeleteThemeId = $id;
-        $this->confirmingDeleteThemeName = $theme->name;
-
-        // Check if any child themes depend on this theme
-        $childThemes = $this->site->siteThemes()
-            ->where('parent_theme', $theme->slug)
-            ->pluck('name')
-            ->toArray();
-
-        $this->confirmingDeleteThemeChildren = $childThemes;
-        $this->dispatch('open-modal-confirm-delete-theme');
-    }
-
-    public function deleteThemeById(int $id): void
-    {
-        $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
-        $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
-        unset($this->themes, $this->themeCounts);
-    }
-
-    public function deleteTheme(): void
-    {
-        if (! $this->confirmingDeleteThemeId) {
-            return;
-        }
-
-        $result = app(PluginManagerService::class)->deleteTheme($this->site, $this->confirmingDeleteThemeId);
-
-        if ($result['success']) {
-            session()->flash('update-success', $result['message']);
-        } else {
-            session()->flash('update-error', $result['message']);
-        }
-
-        $this->confirmingDeleteThemeId = null;
-        $this->confirmingDeleteThemeName = null;
-        $this->confirmingDeleteThemeChildren = [];
-        $this->dispatch('close-modal-confirm-delete-theme');
-        unset($this->themes, $this->themeCounts);
-    }
-
-    // ── Bulk Actions ──
-
-    public function deletePluginDirect(int $id): array
-    {
-        $result = app(PluginManagerService::class)->deletePlugin($this->site, $id);
-
-        if (! $result['success']) {
-            $this->updateResults['plugin_'.$id] = ['success' => false, 'message' => $result['message'], 'version' => null];
-        }
-
-        unset($this->plugins, $this->pluginCounts);
-
-        return $result;
-    }
-
-    public function deleteThemeDirect(int $id): array
-    {
-        $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
-
-        if (! $result['success']) {
-            $this->updateResults['theme_'.$id] = ['success' => false, 'message' => $result['message'], 'version' => null];
-        }
-
-        unset($this->themes, $this->themeCounts);
-
-        return $result;
-    }
-
-    public function bulkUpdatePlugins(array $ids): array
-    {
-        $this->runPreUpdateBackup();
-        $result = app(PluginManagerService::class)->bulkUpdatePlugins($this->site, $ids);
-        $this->updateResults = array_merge($this->updateResults, $result['results']);
-        unset($this->plugins, $this->pluginCounts);
-
-        return ['success' => $result['success'], 'failed' => $result['failed']];
-    }
-
-    public function bulkUpdateThemes(array $ids): array
-    {
-        $this->runPreUpdateBackup();
-        $result = app(PluginManagerService::class)->bulkUpdateThemes($this->site, $ids);
-        $this->updateResults = array_merge($this->updateResults, $result['results']);
-        unset($this->themes, $this->themeCounts);
-
-        return ['success' => $result['success'], 'failed' => $result['failed']];
-    }
-
-    public function getFilteredPluginIds(): array
-    {
-        return $this->plugins->pluck('id')->toArray();
-    }
-
-    public function getFilteredThemeIds(): array
-    {
-        return $this->themes->pluck('id')->toArray();
     }
 
     public function syncNow(): void
@@ -473,22 +235,6 @@ class SitePlugins extends Component
         $this->dispatchTrackedJob('sync', new SyncWordPressSite($this->site), 'Syncing site data...');
     }
 
-    // ── Quick Actions ──
-
-    public function quickBackup(): void
-    {
-        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
-        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
-            session()->flash('update-error', 'Too many backup requests. Please wait before trying again.');
-
-            return;
-        }
-
-        $this->dispatchTrackedJob('backup', new CreateBackup($this->site, 'full', 'manual'), 'Creating backup...');
-    }
-
-    // ── Core Update ──
-
     public function updateCore(): void
     {
         $this->runPreUpdateBackup();
@@ -500,16 +246,6 @@ class SitePlugins extends Component
             session()->flash('update-error', $result['message']);
         }
     }
-
-    private function runPreUpdateBackup(): void
-    {
-        $config = $this->site->backupConfig;
-        if ($config?->backup_before_updates) {
-            CreateBackup::dispatch($this->site, 'database', 'pre_update', $config->storage_destination_id);
-        }
-    }
-
-    // ── Auto-Update Toggle ──
 
     public function toggleAutoUpdate(string $type, int $id): void
     {
@@ -526,73 +262,6 @@ class SitePlugins extends Component
         $this->dispatch('notify', type: 'success', message: ($item->auto_update ? 'Enabled' : 'Disabled')." auto-updates for {$item->name}.");
         unset($this->plugins, $this->themes);
     }
-
-    // ── License Management ──
-
-    public function updateLicense(int $pluginId, ?string $licenseKey, ?string $expiresAt, ?string $status): void
-    {
-        $this->authorizeSiteModification($this->site);
-
-        $plugin = SitePlugin::where('site_id', $this->site->id)->findOrFail($pluginId);
-        $plugin->update([
-            'license_key' => $licenseKey ?: null,
-            'license_expires_at' => $expiresAt ?: null,
-            'license_status' => $status ?: null,
-        ]);
-
-        unset($this->plugins);
-    }
-
-    // ── Rollback ──
-
-    public function rollbackPlugin(int $pluginId): void
-    {
-        $this->authorizeSiteModification($this->site);
-
-        $plugin = SitePlugin::where('site_id', $this->site->id)->findOrFail($pluginId);
-
-        // Find last update log to determine previous version
-        $lastUpdate = UpdateLog::where('site_id', $this->site->id)
-            ->where('type', 'plugin')
-            ->where('name', $plugin->slug)
-            ->where('success', true)
-            ->orderByDesc('performed_at')
-            ->first();
-
-        if (! $lastUpdate || ! $lastUpdate->from_version) {
-            session()->flash('plugin-error', 'No previous version found to rollback to.');
-
-            return;
-        }
-
-        try {
-            $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
-            $result = $api->rollback('plugin', $plugin->slug, $lastUpdate->from_version);
-
-            if (! empty($result['success'])) {
-                $plugin->update(['version' => $lastUpdate->from_version, 'has_update' => true]);
-
-                UpdateLog::create([
-                    'site_id' => $this->site->id,
-                    'type' => 'plugin',
-                    'name' => $plugin->slug,
-                    'from_version' => $plugin->version,
-                    'to_version' => $lastUpdate->from_version,
-                    'success' => true,
-                    'performed_at' => now(),
-                ]);
-
-                unset($this->plugins, $this->updateHistory);
-                session()->flash('plugin-success', "{$plugin->name} rolled back to {$lastUpdate->from_version}.");
-            } else {
-                session()->flash('plugin-error', 'Rollback failed: '.($result['error']['message'] ?? 'Unknown error'));
-            }
-        } catch (\Throwable $e) {
-            session()->flash('plugin-error', 'Rollback failed: '.$e->getMessage());
-        }
-    }
-
-    // ── Detail Modal ──
 
     public function showDetail(string $type, int $id): void
     {
@@ -631,6 +300,18 @@ class SitePlugins extends Component
         ];
 
         $this->dispatch('open-modal-plugin-detail');
+    }
+
+    public function quickBackup(): void
+    {
+        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
+            session()->flash('update-error', 'Too many backup requests. Please wait before trying again.');
+
+            return;
+        }
+
+        $this->dispatchTrackedJob('backup', new \App\Jobs\CreateBackup($this->site, 'full', 'manual'), 'Creating backup...');
     }
 
     protected function onJobFinished(string $jobName, array $data): void

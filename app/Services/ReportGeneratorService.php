@@ -57,21 +57,11 @@ class ReportGeneratorService
         $previousSnapshot = $this->getPreviousSnapshot($this->site, $this->periodStart);
 
         // Gather all section data
-        $gatherer = new ReportDataGatherer(
-            $this->site,
-            $this->template,
-            $this->periodStart,
-            $this->periodEnd,
-            $currentSnapshot,
-            $previousSnapshot,
-            $this->chartService,
-            $this->language,
-            $this->buildGatherers(),
-        );
+        $gatherer = $this->makeDataGatherer($currentSnapshot, $previousSnapshot);
         $this->data = $gatherer->gather($this->excludedSections);
 
         // Build branding array
-        $logoService = new ReportLogoService($this->site, $this->template);
+        $logoService = $this->makeLogoService();
         $branding = [
             'company_name' => $this->template->company_name ?? 'SimpleAd',
             'company_logo' => $logoService->resolveLogoPath($this->template->company_logo_path),
@@ -162,6 +152,28 @@ class ReportGeneratorService
     public function getData(): array
     {
         return $this->data;
+    }
+
+    protected function makeDataGatherer(
+        ?SiteMonthlySnapshot $currentSnapshot,
+        ?SiteMonthlySnapshot $previousSnapshot,
+    ): ReportDataGatherer {
+        return new ReportDataGatherer(
+            $this->site,
+            $this->template,
+            $this->periodStart,
+            $this->periodEnd,
+            $currentSnapshot,
+            $previousSnapshot,
+            $this->chartService,
+            $this->language,
+            $this->buildGatherers(),
+        );
+    }
+
+    protected function makeLogoService(): ReportLogoService
+    {
+        return new ReportLogoService($this->site, $this->template);
     }
 
     protected function buildGatherers(): array

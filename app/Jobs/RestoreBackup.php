@@ -11,6 +11,7 @@ use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\ManifestService;
+use App\Services\Backup\PostRestoreVerifier;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\JobTracker;
 use App\Services\WordPressApiServiceFactory;
@@ -407,7 +408,13 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         }
 
         // Post-restore verification
-        $verificationSummary = $this->runPostRestoreVerification($api);
+        $verifier = app(PostRestoreVerifier::class);
+        $verificationSummary = $verifier->verify(
+            $api,
+            $this->backup,
+            $this->pluginWasUpdated,
+            fn (string $stage, int $percent, string $message) => $this->reportRestoreProgress($stage, $percent, $message),
+        );
 
         $message = 'Restore completed successfully';
         if (! empty($this->selectedFiles)) {
@@ -437,135 +444,6 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         /** @var Site $backupSite */
         $backupSite = $this->backup->site;
         SyncWordPressSite::dispatch($backupSite);
-    }
-
-    /**
-     * Run post-restore verification: clear caches, fix Elementor, run diagnostics.
-     * Each step is best-effort — failures are logged but don't block the restore.
-     *
-     * Elementor fix uses deactivate → clean → reactivate cycle because after a restore,
-     * file timestamps change which causes Elementor to force CSS regeneration on next
-     * page load. The regeneration can crash on pages with complex dynamic tags.
-     * Deactivating first forces a clean initialization through the activation path.
-     */
-    protected function runPostRestoreVerification(WordPressApiServiceInterface $api): string
-    {
-        $results = [];
-
-        if (! $this->pluginWasUpdated) {
-            $results[] = 'plugin update failed';
-        }
-
-        // 1. Clear caches (OPcache, object cache, transients)
-        $this->reportRestoreProgress('verification', 88, 'Clearing caches...');
-        $this->logRestoreStep('Clearing caches...');
-        try {
-            $cacheResult = $api->clearCache();
-            $results[] = 'cache cleared';
-            Log::info("Post-restore: cache cleared for backup {$this->backup->id}", $cacheResult);
-        } catch (\Exception $e) {
-            $results[] = 'cache clear failed';
-            Log::warning("Post-restore: cache clear failed for backup {$this->backup->id}", [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        // 2. Fix Elementor data: repair null dynamic tag settings + sync versions
-        // Must run BEFORE deactivate/reactivate so that when Elementor reactivates
-        // and potentially regenerates CSS, the dynamic tags won't crash.
-        $this->reportRestoreProgress('verification', 90, 'Fixing Elementor data...');
-        $this->logRestoreStep('Fixing Elementor data...');
-        try {
-            $elementorFix = $api->fixElementor();
-            $fixDetails = $elementorFix['fixed'] ?? [];
-            $results[] = 'Elementor fixed ('.count($fixDetails).' steps)';
-            Log::info("Post-restore: Elementor fix for backup {$this->backup->id}", $fixDetails);
-        } catch (\Exception $e) {
-            $results[] = 'Elementor fix skipped';
-            Log::warning("Post-restore: Elementor fix failed for backup {$this->backup->id}", [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        // 3. Reinitialize Elementor: deactivate → clear caches → reactivate
-        // After a restore, file timestamps change which causes Elementor to force
-        // CSS regeneration. The deactivate/reactivate cycle forces clean initialization.
-        $this->reportRestoreProgress('verification', 92, 'Reinitializing Elementor...');
-        $this->logRestoreStep('Reinitializing Elementor...');
-        try {
-            // Deactivate Elementor Pro first (it depends on Elementor)
-            try {
-                $api->deactivatePlugin('elementor-pro/elementor-pro.php');
-            } catch (\Exception $e) {
-                // Pro might not be installed
-            }
-
-            try {
-                $api->deactivatePlugin('elementor/elementor.php');
-            } catch (\Exception $e) {
-                // Elementor might not be installed — skip entirely
-                $results[] = 'Elementor not installed';
-                throw $e;
-            }
-
-            Log::info("Post-restore: deactivated Elementor for backup {$this->backup->id}");
-
-            // Clear OPcache and object cache (but NOT Elementor CSS caches)
-            $this->reportRestoreProgress('verification', 93, 'Clearing runtime caches...');
-            $api->clearCache();
-
-            // Reactivate — clean initialization path
-            $this->reportRestoreProgress('verification', 94, 'Reactivating Elementor...');
-            $api->activatePlugin('elementor/elementor.php');
-            try {
-                $api->activatePlugin('elementor-pro/elementor-pro.php');
-            } catch (\Exception $e) {
-                // Pro might not be installed
-            }
-
-            $api->clearCache();
-            $results[] = 'Elementor reinitialized';
-            Log::info("Post-restore: Elementor reinitialized for backup {$this->backup->id}");
-        } catch (\Exception $e) {
-            if (! str_contains($e->getMessage(), 'not installed')) {
-                $results[] = 'Elementor reinit skipped';
-                Log::warning("Post-restore: Elementor reinit failed for backup {$this->backup->id}", [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        // 4. Run diagnostic
-        $this->reportRestoreProgress('verification', 96, 'Running diagnostic...');
-        $this->logRestoreStep('Running diagnostic...');
-        try {
-            $diagnostic = $api->runDiagnostic();
-
-            // Check loopback / site accessibility
-            $loopback = $diagnostic['loopback'] ?? null;
-            if ($loopback && isset($loopback['status'])) {
-                $results[] = "site check (HTTP {$loopback['status']})";
-            }
-
-            // Check for paused extensions
-            $paused = $diagnostic['paused_extensions'] ?? [];
-            if (! empty($paused)) {
-                $results[] = 'WARNING: paused extensions detected';
-                Log::warning("Post-restore: paused extensions for backup {$this->backup->id}", ['paused' => $paused]);
-            }
-
-            Log::info("Post-restore: diagnostic for backup {$this->backup->id}", [
-                'loopback_status' => $loopback['status'] ?? null,
-                'paused_extensions' => $paused,
-            ]);
-        } catch (\Exception $e) {
-            $results[] = 'diagnostic skipped';
-            Log::warning("Post-restore: diagnostic failed for backup {$this->backup->id}", [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return implode('; ', $results);
     }
 
     /**
