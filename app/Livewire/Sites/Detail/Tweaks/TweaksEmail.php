@@ -24,6 +24,14 @@ class TweaksEmail extends Component
 
     public bool $isDirty = false;
 
+    // Email log
+    public array $emailLog = [];
+
+    public bool $logLoaded = false;
+
+    // Test email
+    public string $testEmailTo = '';
+
     // Custom email from config
     public string $emailFromName = '';
 
@@ -163,6 +171,79 @@ class TweaksEmail extends Component
 
         session()->flash('success', __('Email settings saved. Changes will be applied shortly.'));
         $this->redirect(route('sites.tweaks.email', $this->site), navigate: false);
+    }
+
+    public function sendTestEmail(): void
+    {
+        if (empty($this->testEmailTo) || ! filter_var($this->testEmailTo, FILTER_VALIDATE_EMAIL)) {
+            session()->flash('test-error', __('Please enter a valid email address.'));
+
+            return;
+        }
+
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('POST', '/email-test', [
+                'to' => $this->testEmailTo,
+            ]);
+
+            if (! $response->successful()) {
+                session()->flash('test-error', 'Could not reach site (HTTP '.$response->status().')');
+
+                return;
+            }
+
+            $data = $response->json('data', []);
+
+            if ($data['sent'] ?? false) {
+                session()->flash('test-success', __('Test email sent to :email', ['email' => $this->testEmailTo]));
+                $this->fetchEmailLog();
+            } else {
+                $error = $data['error'] ?? 'Unknown error';
+                session()->flash('test-error', __('Failed to send: :error', ['error' => $error]));
+            }
+        } catch (\Exception $e) {
+            session()->flash('test-error', 'Error: '.$e->getMessage());
+        }
+    }
+
+    public function fetchEmailLog(): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('GET', '/email-log');
+
+            if ($response->successful()) {
+                $this->emailLog = $response->json('data.entries', []);
+                $this->logLoaded = true;
+            } else {
+                session()->flash('log-error', 'Could not fetch email log (HTTP '.$response->status().')');
+            }
+        } catch (\Exception $e) {
+            session()->flash('log-error', 'Error: '.$e->getMessage());
+        }
+    }
+
+    public function resendEmail(int $index): void
+    {
+        try {
+            $api = new \App\Services\WordPressApiService($this->site);
+            $response = $api->request('POST', '/email-resend', [
+                'index' => $index,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json('data', []);
+                if ($data['sent'] ?? false) {
+                    session()->flash('test-success', __('Email resent to :email', ['email' => $data['to'] ?? '']));
+                    $this->fetchEmailLog();
+                } else {
+                    session()->flash('test-error', __('Resend failed.'));
+                }
+            }
+        } catch (\Exception $e) {
+            session()->flash('test-error', 'Error: '.$e->getMessage());
+        }
     }
 
     public function verifySettings(): void

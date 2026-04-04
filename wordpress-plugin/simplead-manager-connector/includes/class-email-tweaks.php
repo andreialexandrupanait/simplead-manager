@@ -96,11 +96,20 @@ class SAM_Email_Tweaks {
     // ─── Email Logging ──────────────────────────────────────────────────
 
     private function enforce_email_logging(): void {
-        // Log email before sending
+        // Log email before sending — capture full details
         add_filter('wp_mail', function ($args) {
+            $to = is_array($args['to']) ? implode(', ', $args['to']) : $args['to'];
+            $headers = $args['headers'] ?? '';
+            if (is_array($headers)) {
+                $headers = implode("\n", $headers);
+            }
+            $body = $args['message'] ?? '';
+
             $log_entry = [
-                'to'        => is_array($args['to']) ? implode(', ', $args['to']) : $args['to'],
+                'to'        => $to,
                 'subject'   => $args['subject'] ?? '',
+                'body'      => mb_substr(wp_strip_all_tags($body), 0, 500),
+                'headers'   => mb_substr($headers, 0, 1000),
                 'timestamp' => current_time('mysql'),
                 'status'    => 'sending',
             ];
