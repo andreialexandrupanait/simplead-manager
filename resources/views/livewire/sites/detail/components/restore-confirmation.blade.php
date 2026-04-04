@@ -8,8 +8,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Restore Backup</h2>
-                    <p class="text-sm text-gray-500">This action will overwrite your current site data.</p>
+                    <h2 class="text-lg font-semibold text-gray-900">{{ __('Restore Backup') }}</h2>
+                    <p class="text-sm text-gray-500">{{ __('This action will overwrite your current site data.') }}</p>
                 </div>
             </div>
 
@@ -17,24 +17,24 @@
             <div class="rounded-lg bg-gray-50 p-4 mb-4">
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Date</span>
+                        <span class="text-gray-500">{{ __('Date') }}</span>
                         <span class="text-gray-900 font-medium">{{ $backup->created_at->format('M d, Y H:i') }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Type</span>
+                        <span class="text-gray-500">{{ __('Type') }}</span>
                         <span class="text-gray-900 font-medium">{{ ucfirst($backup->type) }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Size</span>
+                        <span class="text-gray-500">{{ __('Size') }}</span>
                         <span class="text-gray-900 font-medium">{{ $backup->file_size_formatted }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Storage</span>
+                        <span class="text-gray-500">{{ __('Storage') }}</span>
                         <span class="text-gray-900 font-medium">{{ $backup->storageDestination?->name ?? '—' }}</span>
                     </div>
                     @if($backup->wp_version)
                         <div class="flex justify-between">
-                            <span class="text-gray-500">WordPress Version</span>
+                            <span class="text-gray-500">{{ __('WordPress Version') }}</span>
                             <span class="text-gray-900 font-medium">{{ $backup->wp_version }}</span>
                         </div>
                     @endif
@@ -46,28 +46,28 @@
                 <button type="button"
                     wire:click="setRestoreMode('full')"
                     class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors {{ $restoreMode === 'full' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                    Full Restore
+                    {{ __('Full Restore') }}
                 </button>
                 <button type="button"
                     wire:click="setRestoreMode('selective')"
                     class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors {{ $restoreMode === 'selective' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                    Selective Restore
+                    {{ __('Selective Restore') }}
                 </button>
             </div>
 
             @if($restoreMode === 'full')
                 {{-- Full restore warnings --}}
                 <div class="rounded-lg border border-red-200 bg-red-50 p-4 mb-4">
-                    <h4 class="text-sm font-medium text-red-800 mb-2">This restore will:</h4>
+                    <h4 class="text-sm font-medium text-red-800 mb-2">{{ __('This restore will:') }}</h4>
                     <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
                         @if($backup->includes_database)
-                            <li>Overwrite the entire database with the backup version</li>
+                            <li>{{ __('Overwrite the entire database with the backup version') }}</li>
                         @endif
                         @if($backup->includes_files)
-                            <li>Replace wp-content files with the backup version</li>
+                            <li>{{ __('Replace wp-content files with the backup version') }}</li>
                         @endif
-                        <li>Potentially cause brief downtime during the restore process</li>
-                        <li>This action cannot be automatically undone</li>
+                        <li>{{ __('Potentially cause brief downtime during the restore process') }}</li>
+                        <li>{{ __('This action cannot be automatically undone') }}</li>
                     </ul>
                 </div>
             @else
@@ -76,8 +76,8 @@
                     <div class="flex items-center justify-center py-12 mb-4" wire:poll.500ms="loadFileList">
                         <div class="text-center">
                             <x-ui.spinner size="lg" class="text-purple-600 mx-auto" />
-                            <p class="mt-3 text-sm text-gray-500">Loading backup contents...</p>
-                            <p class="text-xs text-gray-400 mt-1">This may take a moment for large backups</p>
+                            <p class="mt-3 text-sm text-gray-500">{{ __('Loading backup contents...') }}</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ __('This may take a moment for large backups') }}</p>
                         </div>
                     </div>
                 @elseif($fileListError)
@@ -87,10 +87,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-red-800">Failed to load backup contents</p>
+                                <p class="text-sm font-medium text-red-800">{{ __('Failed to load backup contents') }}</p>
                                 <p class="text-sm text-red-700 mt-1 break-words">{{ $fileListError }}</p>
                                 <button wire:click="loadFileList" class="mt-2 text-sm font-medium text-red-600 hover:text-red-800 underline">
-                                    Try again
+                                    {{ __('Try again') }}
                                 </button>
                             </div>
                         </div>
@@ -103,8 +103,8 @@
                                 <input type="checkbox" wire:model.live="restoreDatabase"
                                     class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                                 <div>
-                                    <span class="text-sm font-medium text-gray-900">Restore Database</span>
-                                    <p class="text-xs text-gray-500">Overwrite the current database with the backup version</p>
+                                    <span class="text-sm font-medium text-gray-900">{{ __('Restore Database') }}</span>
+                                    <p class="text-xs text-gray-500">{{ __('Overwrite the current database with the backup version') }}</p>
                                 </div>
                             </label>
                         @endif
@@ -114,12 +114,12 @@
                             <div class="rounded-lg border border-gray-200 bg-white" x-data="fileTreeBrowser(@js($fileTree))">
                                 <div class="p-3 border-b border-gray-100">
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-medium text-gray-900">Restore Files</span>
+                                        <span class="text-sm font-medium text-gray-900">{{ __('Restore Files') }}</span>
                                         <div class="flex items-center gap-2 text-xs">
                                             <span class="text-gray-500" x-text="selectedCount + ' of {{ $totalFileCount }} files selected'"></span>
-                                            <button type="button" @click="selectAll()" class="text-purple-600 hover:text-purple-800 font-medium">Select All</button>
+                                            <button type="button" @click="selectAll()" class="text-purple-600 hover:text-purple-800 font-medium">{{ __('Select All') }}</button>
                                             <span class="text-gray-300">|</span>
-                                            <button type="button" @click="clearAll()" class="text-purple-600 hover:text-purple-800 font-medium">Clear</button>
+                                            <button type="button" @click="clearAll()" class="text-purple-600 hover:text-purple-800 font-medium">{{ __('Clear') }}</button>
                                         </div>
                                     </div>
 
@@ -128,7 +128,7 @@
                                         <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
-                                        <input type="text" x-model.debounce.200ms="search" placeholder="Search files..."
+                                        <input type="text" x-model.debounce.200ms="search" placeholder="{{ __('Search files...') }}"
                                             class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-purple-500 focus:border-purple-500">
                                     </div>
                                 </div>
@@ -138,13 +138,13 @@
                                     @if(count($fileTree) > 0)
                                         <x-backup.file-tree-node :nodes="$fileTree" />
                                     @else
-                                        <p class="text-sm text-gray-500 text-center py-4">No files found in this backup</p>
+                                        <p class="text-sm text-gray-500 text-center py-4">{{ __('No files found in this backup') }}</p>
                                     @endif
                                 </div>
 
                                 @if($fileListTruncated)
                                     <div class="px-3 py-2 border-t border-gray-100 bg-yellow-50">
-                                        <p class="text-xs text-yellow-700">File list truncated at 15,000 files. Some files may not be shown.</p>
+                                        <p class="text-xs text-yellow-700">{{ __('File list truncated at 15,000 files. Some files may not be shown.') }}</p>
                                     </div>
                                 @endif
                             </div>
@@ -153,7 +153,7 @@
                         {{-- Warning if nothing selected --}}
                         @if(!$hasDatabase && !$hasFiles)
                             <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                                <p class="text-sm text-yellow-700">This backup contains no restorable content.</p>
+                                <p class="text-sm text-yellow-700">{{ __('This backup contains no restorable content.') }}</p>
                             </div>
                         @endif
                     </div>
@@ -161,7 +161,7 @@
                     {{-- Selective restore warning --}}
                     <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 mb-4" x-data x-show="$wire.restoreMode === 'selective'">
                         <p class="text-sm text-yellow-700">
-                            <span class="font-medium">Note:</span> Selective restore will only restore the items you've selected. Other data will remain unchanged.
+                            <span class="font-medium">{{ __('Note:') }}</span> {{ __("Selective restore will only restore the items you've selected. Other data will remain unchanged.") }}
                         </p>
                     </div>
                 @endif
@@ -172,13 +172,13 @@
                 <input type="checkbox" wire:model.live="backupBeforeRestore"
                     class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     @if($preRestoreBackupId) disabled @endif>
-                <span class="text-sm text-gray-700">Create a safety backup before restoring</span>
+                <span class="text-sm text-gray-700">{{ __('Create a safety backup before restoring') }}</span>
             </label>
 
             {{-- Confirmation checkbox --}}
             <label class="flex items-center gap-2 mb-4">
                 <input type="checkbox" wire:model.live="confirmed" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                <span class="text-sm text-gray-700">I understand this will overwrite the current site data and cannot be undone.</span>
+                <span class="text-sm text-gray-700">{{ __('I understand this will overwrite the current site data and cannot be undone.') }}</span>
             </label>
 
             {{-- Pre-restore backup progress --}}
@@ -187,16 +187,16 @@
                     @if(in_array($preRestoreStatus, ['pending', 'in_progress']))
                         <div class="flex items-center gap-2">
                             <x-ui.spinner size="sm" class="text-purple-600" />
-                            <span class="text-sm text-purple-700">Creating safety backup before restore...</span>
+                            <span class="text-sm text-purple-700">{{ __('Creating safety backup before restore...') }}</span>
                         </div>
                     @elseif($preRestoreStatus === 'failed')
                         <div class="flex items-center gap-2">
                             <svg class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            <span class="text-sm text-red-700">Pre-restore backup failed.</span>
+                            <span class="text-sm text-red-700">{{ __('Pre-restore backup failed.') }}</span>
                             <button wire:click="restoreAnyway" class="ml-auto text-xs font-medium text-red-600 hover:text-red-800 underline">
-                                Restore Anyway
+                                {{ __('Restore Anyway') }}
                             </button>
                         </div>
                     @endif
@@ -206,7 +206,7 @@
             {{-- Actions --}}
             <div class="flex items-center justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-restore-confirmation')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button
                     type="button"
@@ -215,11 +215,11 @@
                     :disabled="!$confirmed || ($preRestoreBackupId && $preRestoreStatus && !in_array($preRestoreStatus, ['completed', 'failed']))"
                 >
                     @if($preRestoreBackupId && in_array($preRestoreStatus, ['pending', 'in_progress']))
-                        Waiting for backup...
+                        {{ __('Waiting for backup...') }}
                     @elseif($restoreMode === 'selective')
-                        Restore Selected
+                        {{ __('Restore Selected') }}
                     @else
-                        Restore Backup
+                        {{ __('Restore Backup') }}
                     @endif
                 </x-ui.button>
             </div>
