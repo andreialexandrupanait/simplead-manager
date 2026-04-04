@@ -3,6 +3,16 @@
         <h2 class="text-lg font-semibold text-gray-900">Backup Schedule</h2>
         <p class="mt-1 text-sm text-gray-500">Configure automated backups for this site.</p>
 
+        @if($errors->any())
+            <div class="mt-4 rounded-md bg-red-50 p-3">
+                <ul class="list-disc list-inside text-sm text-red-700">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="mt-6 space-y-4">
             {{-- Enable toggle --}}
             <label class="flex items-center gap-2">
