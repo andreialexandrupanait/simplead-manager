@@ -12,10 +12,11 @@ use App\Services\SecuritySettingsService;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class SecurityDashboard extends Component
 {
-    use WithSorting;
+    use WithPagination, WithSorting;
 
     protected string $defaultSortBy = 'security_hardening_score';
 
@@ -112,7 +113,7 @@ class SecurityDashboard extends Component
             $query->where('security_hardening_score', '>=', 80);
         }
 
-        return $query->get();
+        return $query->paginate(50);
     }
 
     public function updatedSearch(): void

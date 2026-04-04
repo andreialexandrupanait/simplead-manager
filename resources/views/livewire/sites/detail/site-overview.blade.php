@@ -1,4 +1,4 @@
-<div {!! $hasRunningJobs ? 'wire:poll.1s="checkJobProgress"' : '' !!}>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     <x-ui.page-header
         title="{{ __('Overview') }}"
         subtitle="{{ __('Site health, status, and key metrics') }}"

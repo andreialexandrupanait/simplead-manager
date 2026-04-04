@@ -199,6 +199,10 @@
                 </x-ui.card>
             @endforeach
         </div>
+
+        <div class="mt-4">
+            {{ $monitors->links() }}
+        </div>
     @endif
 
     {{-- Configure Monitor Modal --}}

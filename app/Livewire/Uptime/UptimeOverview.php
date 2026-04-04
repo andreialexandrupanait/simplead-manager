@@ -10,9 +10,11 @@ use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class UptimeOverview extends Component
 {
+    use WithPagination;
     public string $search = '';
 
     // Maintenance window modal
@@ -157,7 +159,7 @@ class UptimeOverview extends Component
             ->join('sites', 'uptime_monitors.site_id', '=', 'sites.id')
             ->orderBy('sites.sort_order', 'asc')
             ->select('uptime_monitors.*')
-            ->get();
+            ->paginate(50);
 
         return view('livewire.uptime.uptime-overview', compact('monitors'))
             ->layout('components.layouts.app', ['title' => 'Uptime']);

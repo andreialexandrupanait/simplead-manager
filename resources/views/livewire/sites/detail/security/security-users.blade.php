@@ -1,4 +1,4 @@
-<div {!! $hasRunningJobs ? 'wire:poll.1s="checkJobProgress"' : '' !!}>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     <x-ui.page-header title="{{ __('WordPress Users') }}" subtitle="{{ __('View and manage site user accounts') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])

@@ -41,7 +41,7 @@
         x-data="{
             selected: [],
             get allSelected() {
-                return this.selected.length === {{ $this->sites->count() }} && this.selected.length > 0;
+                return this.selected.length === {{ $this->sites->count() }} && this.selected.length > 0; {{-- current page count --}}
             },
             toggleAll() {
                 if (this.allSelected) {
@@ -185,5 +185,9 @@
                 </table>
             </div>
         @endif
+
+        <div class="px-5 py-3 border-t border-gray-200">
+            {{ $this->sites->links() }}
+        </div>
     </x-ui.card>
 </div>
