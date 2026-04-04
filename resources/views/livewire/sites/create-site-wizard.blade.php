@@ -2,7 +2,7 @@
     {{-- Step Indicator --}}
     <div class="mb-8">
         <div class="flex items-center justify-between">
-            @foreach([1 => 'Site URL', 2 => 'Client', 3 => 'Plan', 4 => 'Confirm'] as $num => $label)
+            @foreach([1 => __('Site URL'), 2 => __('Client'), 3 => __('Plan'), 4 => __('Confirm')] as $num => $label)
                 <div class="flex items-center {{ $num < 4 ? 'flex-1' : '' }}">
                     <button
                         wire:click="goToStep({{ $num }})"
@@ -28,17 +28,17 @@
     {{-- Step 1: Site URL --}}
     @if($step === 1)
         <x-ui.card>
-            <h2 class="text-lg font-semibold text-gray-900">Enter your site URL</h2>
-            <p class="mt-1 text-sm text-gray-500">We'll check that your site is reachable.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Enter your site URL') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __("We'll check that your site is reachable.") }}</p>
 
             <div class="mt-6 space-y-4">
                 <div>
-                    <label for="url" class="block text-sm font-medium text-gray-700">Site URL</label>
+                    <label for="url" class="block text-sm font-medium text-gray-700">{{ __('Site URL') }}</label>
                     <div class="mt-1 flex gap-2">
                         <x-ui.input wire:model.live.debounce.500ms="form.url" id="url" type="url" placeholder="https://example.com" class="flex-1" />
                         <x-ui.button variant="secondary" wire:click="checkConnectivity" wire:loading.attr="disabled" wire:target="checkConnectivity">
-                            <span wire:loading.remove wire:target="checkConnectivity">Check</span>
-                            <span wire:loading wire:target="checkConnectivity">Checking...</span>
+                            <span wire:loading.remove wire:target="checkConnectivity">{{ __('Check') }}</span>
+                            <span wire:loading wire:target="checkConnectivity">{{ __('Checking...') }}</span>
                         </x-ui.button>
                     </div>
                     @error('form.url') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
@@ -56,14 +56,14 @@
                     @endif
                 </div>
 
-                <x-ui.form-group label="Site Name" for="name" error="form.name" hint="Auto-filled from URL. You can change it.">
-                    <x-ui.input wire:model="form.name" id="name" placeholder="My Website" />
+                <x-ui.form-group label="{{ __('Site Name') }}" for="name" error="form.name" hint="{{ __('Auto-filled from URL. You can change it.') }}">
+                    <x-ui.input wire:model="form.name" id="name" placeholder="{{ __('My Website') }}" />
                 </x-ui.form-group>
             </div>
 
             <div class="mt-6 flex items-center justify-between">
-                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-gray-500 hover:text-gray-700" wire:navigate>Cancel</a>
-                <x-ui.button wire:click="nextStep">Next</x-ui.button>
+                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-gray-500 hover:text-gray-700" wire:navigate>{{ __('Cancel') }}</a>
+                <x-ui.button wire:click="nextStep">{{ __('Next') }}</x-ui.button>
             </div>
         </x-ui.card>
     @endif
@@ -71,8 +71,8 @@
     {{-- Step 2: Client --}}
     @if($step === 2)
         <x-ui.card>
-            <h2 class="text-lg font-semibold text-gray-900">Assign a client</h2>
-            <p class="mt-1 text-sm text-gray-500">Optionally assign this site to a client for organization.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Assign a client') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Optionally assign this site to a client for organization.') }}</p>
 
             <div class="mt-6 space-y-3">
                 {{-- No client option --}}
@@ -81,8 +81,8 @@
                     class="w-full rounded-lg border p-3 text-left transition
                         {{ $form->clientId === null ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
                 >
-                    <div class="text-sm font-medium text-gray-900">No client</div>
-                    <div class="mt-0.5 text-xs text-gray-500">Skip client assignment for now.</div>
+                    <div class="text-sm font-medium text-gray-900">{{ __('No client') }}</div>
+                    <div class="mt-0.5 text-xs text-gray-500">{{ __('Skip client assignment for now.') }}</div>
                 </button>
 
                 {{-- Existing clients --}}
@@ -105,21 +105,21 @@
                         wire:click="$set('creatingClient', true)"
                         class="w-full rounded-lg border border-dashed border-gray-300 p-3 text-center text-sm font-medium text-gray-500 hover:border-purple-300 hover:text-purple-600 transition"
                     >
-                        + Create new client
+                        + {{ __('Create new client') }}
                     </button>
                 @else
                     <div class="rounded-lg border border-purple-200 bg-purple-50/50 p-4">
-                        <h4 class="text-sm font-medium text-gray-900 mb-3">New Client</h4>
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">{{ __('New Client') }}</h4>
                         <div class="space-y-3">
                             <x-ui.form-group error="form.newClientName">
-                                <x-ui.input wire:model="form.newClientName" placeholder="Client name" />
+                                <x-ui.input wire:model="form.newClientName" placeholder="{{ __('Client name') }}" />
                             </x-ui.form-group>
                             <x-ui.form-group error="form.newClientEmail">
-                                <x-ui.input wire:model="form.newClientEmail" type="email" placeholder="Email (optional)" />
+                                <x-ui.input wire:model="form.newClientEmail" type="email" placeholder="{{ __('Email (optional)') }}" />
                             </x-ui.form-group>
                             <div class="flex gap-2">
-                                <x-ui.button size="sm" wire:click="createClient">Create</x-ui.button>
-                                <x-ui.button size="sm" variant="secondary" wire:click="$set('creatingClient', false)">Cancel</x-ui.button>
+                                <x-ui.button size="sm" wire:click="createClient">{{ __('Create') }}</x-ui.button>
+                                <x-ui.button size="sm" variant="secondary" wire:click="$set('creatingClient', false)">{{ __('Cancel') }}</x-ui.button>
                             </div>
                         </div>
                     </div>
@@ -127,8 +127,8 @@
             </div>
 
             <div class="mt-6 flex items-center justify-between">
-                <x-ui.button variant="secondary" wire:click="previousStep">Back</x-ui.button>
-                <x-ui.button wire:click="nextStep">Next</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="previousStep">{{ __('Back') }}</x-ui.button>
+                <x-ui.button wire:click="nextStep">{{ __('Next') }}</x-ui.button>
             </div>
         </x-ui.card>
     @endif
@@ -136,8 +136,8 @@
     {{-- Step 3: Plan --}}
     @if($step === 3)
         <x-ui.card>
-            <h2 class="text-lg font-semibold text-gray-900">Choose a maintenance plan</h2>
-            <p class="mt-1 text-sm text-gray-500">Plans determine which monitoring modules are enabled.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Choose a maintenance plan') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Plans determine which monitoring modules are enabled.') }}</p>
 
             <div class="mt-6 space-y-3">
                 @foreach($this->plans as $plan)
@@ -149,7 +149,7 @@
                         <div class="flex items-center justify-between">
                             <div class="text-sm font-semibold text-gray-900">{{ $plan->name }}</div>
                             @if($plan->is_default)
-                                <span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">Default</span>
+                                <span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{{ __('Default') }}</span>
                             @endif
                         </div>
                         @if($plan->description)
@@ -169,14 +169,14 @@
 
                 @if($this->plans->isEmpty())
                     <div class="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-500">
-                        No plans configured. The site will use default monitoring settings.
+                        {{ __('No plans configured. The site will use default monitoring settings.') }}
                     </div>
                 @endif
             </div>
 
             <div class="mt-6 flex items-center justify-between">
-                <x-ui.button variant="secondary" wire:click="previousStep">Back</x-ui.button>
-                <x-ui.button wire:click="nextStep">Next</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="previousStep">{{ __('Back') }}</x-ui.button>
+                <x-ui.button wire:click="nextStep">{{ __('Next') }}</x-ui.button>
             </div>
         </x-ui.card>
     @endif
@@ -184,37 +184,37 @@
     {{-- Step 4: Confirm --}}
     @if($step === 4)
         <x-ui.card>
-            <h2 class="text-lg font-semibold text-gray-900">Confirm & Create</h2>
-            <p class="mt-1 text-sm text-gray-500">Review the details before creating your site.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Confirm & Create') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Review the details before creating your site.') }}</p>
 
             <div class="mt-6 space-y-4">
                 {{-- Site details --}}
                 <div class="rounded-lg border border-gray-200 divide-y">
                     <div class="flex items-center justify-between px-4 py-3">
-                        <span class="text-sm text-gray-500">Site URL</span>
+                        <span class="text-sm text-gray-500">{{ __('Site URL') }}</span>
                         <span class="text-sm font-medium text-gray-900">{{ $form->url }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <span class="text-sm text-gray-500">Name</span>
+                        <span class="text-sm text-gray-500">{{ __('Name') }}</span>
                         <span class="text-sm font-medium text-gray-900">{{ $form->name }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <span class="text-sm text-gray-500">Client</span>
+                        <span class="text-sm text-gray-500">{{ __('Client') }}</span>
                         <span class="text-sm font-medium text-gray-900">
                             @if($form->clientId)
-                                {{ $this->clients->firstWhere('id', $form->clientId)?->name ?? 'Unknown' }}
+                                {{ $this->clients->firstWhere('id', $form->clientId)?->name ?? __('Unknown') }}
                             @else
-                                <span class="text-gray-400">None</span>
+                                <span class="text-gray-400">{{ __('None') }}</span>
                             @endif
                         </span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <span class="text-sm text-gray-500">Plan</span>
+                        <span class="text-sm text-gray-500">{{ __('Plan') }}</span>
                         <span class="text-sm font-medium text-gray-900">
                             @if($form->planId)
-                                {{ $this->plans->firstWhere('id', $form->planId)?->name ?? 'Unknown' }}
+                                {{ $this->plans->firstWhere('id', $form->planId)?->name ?? __('Unknown') }}
                             @else
-                                <span class="text-gray-400">Default</span>
+                                <span class="text-gray-400">{{ __('Default') }}</span>
                             @endif
                         </span>
                     </div>
@@ -222,10 +222,10 @@
             </div>
 
             <div class="mt-6 flex items-center justify-between">
-                <x-ui.button variant="secondary" wire:click="previousStep">Back</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="previousStep">{{ __('Back') }}</x-ui.button>
                 <x-ui.button wire:click="createSite" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="createSite">Create Site</span>
-                    <span wire:loading wire:target="createSite">Creating...</span>
+                    <span wire:loading.remove wire:target="createSite">{{ __('Create Site') }}</span>
+                    <span wire:loading wire:target="createSite">{{ __('Creating...') }}</span>
                 </x-ui.button>
             </div>
         </x-ui.card>

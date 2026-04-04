@@ -114,22 +114,22 @@
 >
     @if(!$embedded)
     {{-- Full page header with quick actions --}}
-    <x-ui.page-header title="Plugins & Themes" subtitle="Manage installed plugins and themes">
+    <x-ui.page-header title="{{ __('Plugins & Themes') }}" subtitle="{{ __('Manage installed plugins and themes') }}">
         <x-slot:actions>
             <x-ui.wp-admin-button :site="$site" />
             <x-ui.button variant="secondary" wire:click="quickBackup" wire:loading.attr="disabled" wire:target="quickBackup">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
                 </svg>
-                <span wire:loading.remove wire:target="quickBackup">Backup Now</span>
-                <span wire:loading wire:target="quickBackup">Starting...</span>
+                <span wire:loading.remove wire:target="quickBackup">{{ __('Backup Now') }}</span>
+                <span wire:loading wire:target="quickBackup">{{ __('Starting...') }}</span>
             </x-ui.button>
             <x-ui.button variant="secondary" wire:click="syncNow" wire:loading.attr="disabled">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
-                <span wire:loading.remove wire:target="syncNow">Sync Now</span>
-                <span wire:loading wire:target="syncNow">Syncing...</span>
+                <span wire:loading.remove wire:target="syncNow">{{ __('Sync Now') }}</span>
+                <span wire:loading wire:target="syncNow">{{ __('Syncing...') }}</span>
             </x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -153,8 +153,8 @@
     <x-ui.flash-alert type="error" key="update-error" />
 
     {{-- Job Progress --}}
-    <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
-    <x-ui.job-progress job-key="backup" :jobs="$trackedJobs" title="Creating backup..." />
+    <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="{{ __('Syncing site data...') }}" />
+    <x-ui.job-progress job-key="backup" :jobs="$trackedJobs" title="{{ __('Creating backup...') }}" />
     @endif
 
     @if(!$embedded)
@@ -253,7 +253,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                     </svg>
                 </div>
-                <h3 class="text-sm font-semibold text-gray-900">Plugins & Themes</h3>
+                <h3 class="text-sm font-semibold text-gray-900">{{ __('Plugins & Themes') }}</h3>
             </div>
             <div class="flex items-center gap-3">
                 {{-- Compact tab switcher --}}
@@ -281,7 +281,7 @@
                     </button>
                 </div>
                 <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:text-purple-700" wire:navigate>
-                    View All →
+                    {{ __('View All') }} →
                 </a>
             </div>
         </div>
@@ -298,16 +298,16 @@
                 <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
             </div>
             <span class="text-xs font-medium text-blue-700">
-                <span wire:loading wire:target="updateCore">Updating WordPress...</span>
-                <span wire:loading wire:target="updatePlugin">Updating plugin...</span>
-                <span wire:loading wire:target="updateTheme">Updating theme...</span>
-                <span wire:loading wire:target="activatePlugin">Activating plugin...</span>
-                <span wire:loading wire:target="deactivatePlugin">Deactivating plugin...</span>
-                <span wire:loading wire:target="activateTheme">Activating theme...</span>
-                <span wire:loading wire:target="toggleAutoUpdate">Toggling auto-update...</span>
-                <span wire:loading wire:target="syncNow">Syncing site data...</span>
-                <span wire:loading wire:target="deletePlugin">Deleting plugin...</span>
-                <span wire:loading wire:target="deleteTheme">Deleting theme...</span>
+                <span wire:loading wire:target="updateCore">{{ __('Updating WordPress...') }}</span>
+                <span wire:loading wire:target="updatePlugin">{{ __('Updating plugin...') }}</span>
+                <span wire:loading wire:target="updateTheme">{{ __('Updating theme...') }}</span>
+                <span wire:loading wire:target="activatePlugin">{{ __('Activating plugin...') }}</span>
+                <span wire:loading wire:target="deactivatePlugin">{{ __('Deactivating plugin...') }}</span>
+                <span wire:loading wire:target="activateTheme">{{ __('Activating theme...') }}</span>
+                <span wire:loading wire:target="toggleAutoUpdate">{{ __('Toggling auto-update...') }}</span>
+                <span wire:loading wire:target="syncNow">{{ __('Syncing site data...') }}</span>
+                <span wire:loading wire:target="deletePlugin">{{ __('Deleting plugin...') }}</span>
+                <span wire:loading wire:target="deleteTheme">{{ __('Deleting theme...') }}</span>
             </span>
         </div>
 
@@ -411,19 +411,19 @@
                 <div class="flex items-center gap-3">
                     <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
                     <select x-model="bulkAction" class="rounded-md border-gray-300 text-sm py-1 pl-2 pr-8 focus:border-purple-500 focus:ring-purple-500">
-                        <option value="">Bulk Actions</option>
-                        <option value="activate">Activate</option>
+                        <option value="">{{ __('Bulk Actions') }}</option>
+                        <option value="activate">{{ __('Activate') }}</option>
                         @if($tab === 'plugins')
-                            <option value="deactivate">Deactivate</option>
+                            <option value="deactivate">{{ __('Deactivate') }}</option>
                         @endif
-                        <option value="delete">Delete</option>
-                        <option value="update">Update</option>
+                        <option value="delete">{{ __('Delete') }}</option>
+                        <option value="update">{{ __('Update') }}</option>
                     </select>
                     <x-ui.button size="sm" x-on:click="applyBulkAction('{{ $tab }}')" x-bind:disabled="!bulkAction || bulkUpdating">
-                        Apply
+                        {{ __('Apply') }}
                     </x-ui.button>
                     <button @click="selected = []; bulkAction = ''" class="text-sm text-gray-500 hover:text-gray-700">
-                        Clear
+                        {{ __('Clear') }}
                     </button>
                 </div>
             </div>
@@ -440,15 +440,15 @@
                             <span class="text-sm text-gray-500">WordPress</span>
                             <span class="text-sm font-semibold text-gray-900">{{ $site->wp_version ?? '—' }}</span>
                             @if(!$site->core_update_version)
-                                <x-ui.badge variant="green">Up to date</x-ui.badge>
+                                <x-ui.badge variant="green">{{ __('Up to date') }}</x-ui.badge>
                             @endif
                         </div>
                         @if($site->core_update_version)
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-blue-600">{{ $site->wp_version }} &rarr; {{ $site->core_update_version }}</span>
                                 <x-ui.button size="sm" wire:click="updateCore" wire:loading.attr="disabled" wire:target="updateCore">
-                                    <span wire:loading.remove wire:target="updateCore">Update</span>
-                                    <span wire:loading wire:target="updateCore">Updating...</span>
+                                    <span wire:loading.remove wire:target="updateCore">{{ __('Update') }}</span>
+                                    <span wire:loading wire:target="updateCore">{{ __('Updating...') }}</span>
                                 </x-ui.button>
                             </div>
                         @endif
@@ -478,13 +478,13 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <h4 class="text-sm font-semibold text-blue-900">WordPress Core Update Available</h4>
+                                        <h4 class="text-sm font-semibold text-blue-900">{{ __('WordPress Core Update Available') }}</h4>
                                         <p class="text-xs text-blue-700">{{ $site->wp_version }} &rarr; {{ $site->core_update_version }}</p>
                                     </div>
                                 </div>
                                 <x-ui.button size="sm" wire:click="updateCore" wire:loading.attr="disabled" wire:target="updateCore">
-                                    <span wire:loading.remove wire:target="updateCore">Update to {{ $site->core_update_version }}</span>
-                                    <span wire:loading wire:target="updateCore">Updating...</span>
+                                    <span wire:loading.remove wire:target="updateCore">{{ __('Update to :version', ['version' => $site->core_update_version]) }}</span>
+                                    <span wire:loading wire:target="updateCore">{{ __('Updating...') }}</span>
                                 </x-ui.button>
                             </div>
                         </div>
@@ -496,39 +496,39 @@
                         <div class="rounded-lg border border-gray-200 p-4">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">WordPress Version</p>
+                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('WordPress Version') }}</p>
                                     <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->wp_version ?? '—' }}</p>
                                 </div>
                                 @if(!$site->core_update_version)
-                                    <x-ui.badge variant="green">Up to date</x-ui.badge>
+                                    <x-ui.badge variant="green">{{ __('Up to date') }}</x-ui.badge>
                                 @else
-                                    <x-ui.badge variant="blue">Update available</x-ui.badge>
+                                    <x-ui.badge variant="blue">{{ __('Update available') }}</x-ui.badge>
                                 @endif
                             </div>
                         </div>
 
                         {{-- PHP Version --}}
                         <div class="rounded-lg border border-gray-200 p-4">
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">PHP Version</p>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('PHP Version') }}</p>
                             <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->php_version ?? '—' }}</p>
                         </div>
 
                         {{-- Server Software --}}
                         <div class="rounded-lg border border-gray-200 p-4">
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Server Software</p>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Server Software') }}</p>
                             <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->server_software ?? '—' }}</p>
                         </div>
 
                         {{-- Multisite --}}
                         <div class="rounded-lg border border-gray-200 p-4">
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Multisite</p>
-                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->is_multisite ? 'Yes' : 'No' }}</p>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Multisite') }}</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-900">{{ $site->is_multisite ? __('Yes') : __('No') }}</p>
                         </div>
 
                         {{-- Database Size --}}
                         @if($site->db_size_mb)
                         <div class="rounded-lg border border-gray-200 p-4">
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Database Size</p>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Database Size') }}</p>
                             <p class="mt-1 text-lg font-semibold text-gray-900">{{ number_format($site->db_size_mb, 1) }} MB</p>
                         </div>
                         @endif
@@ -536,7 +536,7 @@
                         {{-- Uploads Size --}}
                         @if($site->uploads_size_mb)
                         <div class="rounded-lg border border-gray-200 p-4">
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Uploads Size</p>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Uploads Size') }}</p>
                             <p class="mt-1 text-lg font-semibold text-gray-900">{{ number_format($site->uploads_size_mb, 1) }} MB</p>
                         </div>
                         @endif
@@ -564,12 +564,12 @@
                                     {{ $plugin->name }}
                                 </button>
                                 <x-ui.badge :variant="$plugin->is_active ? 'green' : 'gray'">
-                                    {{ $plugin->is_active ? 'Active' : 'Inactive' }}
+                                    {{ $plugin->is_active ? __('Active') : __('Inactive') }}
                                 </x-ui.badge>
                                 <button
                                     wire:click="toggleAutoUpdate('plugin', {{ $plugin->id }})"
                                     class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $plugin->auto_update ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
-                                    title="{{ $plugin->auto_update ? 'Disable' : 'Enable' }} auto-updates"
+                                    title="{{ $plugin->auto_update ? __('Disable') : __('Enable') }} {{ __('auto-updates') }}"
                                 >
                                     {{ $plugin->auto_update ? 'Auto ✓' : 'Auto' }}
                                 </button>
@@ -619,7 +619,7 @@
                                     wire:target="deactivatePlugin({{ $plugin->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-50 transition"
                                 >
-                                    <span wire:loading.remove wire:target="deactivatePlugin({{ $plugin->id }})">Deactivate</span>
+                                    <span wire:loading.remove wire:target="deactivatePlugin({{ $plugin->id }})">{{ __('Deactivate') }}</span>
                                     <span wire:loading wire:target="deactivatePlugin({{ $plugin->id }})">...</span>
                                 </button>
                             @else
@@ -629,14 +629,14 @@
                                     wire:target="activatePlugin({{ $plugin->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 transition"
                                 >
-                                    <span wire:loading.remove wire:target="activatePlugin({{ $plugin->id }})">Activate</span>
+                                    <span wire:loading.remove wire:target="activatePlugin({{ $plugin->id }})">{{ __('Activate') }}</span>
                                     <span wire:loading wire:target="activatePlugin({{ $plugin->id }})">...</span>
                                 </button>
                                 <button
                                     wire:click="confirmDeletePlugin({{ $plugin->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                                 >
-                                    Delete
+                                    {{ __('Delete') }}
                                 </button>
                             @endif
 
@@ -644,17 +644,17 @@
                             @if($plugin->has_update)
                                 <span class="text-xs text-yellow-600">{{ $plugin->version }} &rarr; {{ $plugin->update_version }}</span>
                                 <x-ui.button size="sm" wire:click="updatePlugin({{ $plugin->id }})" wire:loading.attr="disabled" wire:target="updatePlugin({{ $plugin->id }})">
-                                    <span wire:loading.remove wire:target="updatePlugin({{ $plugin->id }})">Update</span>
-                                    <span wire:loading wire:target="updatePlugin({{ $plugin->id }})">Updating...</span>
+                                    <span wire:loading.remove wire:target="updatePlugin({{ $plugin->id }})">{{ __('Update') }}</span>
+                                    <span wire:loading wire:target="updatePlugin({{ $plugin->id }})">{{ __('Updating...') }}</span>
                                 </x-ui.button>
                             @else
-                                <span class="text-xs text-green-600">Up to date</span>
+                                <span class="text-xs text-green-600">{{ __('Up to date') }}</span>
                             @endif
                         </div>
                     </div>
                 @empty
                     <div class="p-8 text-center text-sm text-gray-500">
-                        No plugins found{{ $search ? ' matching "' . $search . '"' : '' }}.
+                        {{ __('No plugins found') }}{{ $search ? ' ' . __('matching') . ' "' . $search . '"' : '' }}.
                     </div>
                 @endforelse
             </div>
@@ -689,7 +689,7 @@
                                         {{ $theme->name }}
                                     </button>
                                     <x-ui.badge :variant="$theme->is_active ? 'green' : 'gray'">
-                                        {{ $theme->is_active ? 'Active' : 'Inactive' }}
+                                        {{ $theme->is_active ? __('Active') : __('Inactive') }}
                                     </x-ui.badge>
                                     @if($theme->is_child_theme)
                                         <x-ui.badge variant="purple">Child</x-ui.badge>
@@ -697,7 +697,7 @@
                                     <button
                                         wire:click="toggleAutoUpdate('theme', {{ $theme->id }})"
                                         class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $theme->auto_update ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
-                                        title="{{ $theme->auto_update ? 'Disable' : 'Enable' }} auto-updates"
+                                        title="{{ $theme->auto_update ? __('Disable') : __('Enable') }} {{ __('auto-updates') }}"
                                     >
                                         {{ $theme->auto_update ? 'Auto ✓' : 'Auto' }}
                                     </button>
@@ -751,7 +751,7 @@
                                     wire:target="activateTheme({{ $theme->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 transition"
                                 >
-                                    <span wire:loading.remove wire:target="activateTheme({{ $theme->id }})">Activate</span>
+                                    <span wire:loading.remove wire:target="activateTheme({{ $theme->id }})">{{ __('Activate') }}</span>
                                     <span wire:loading wire:target="activateTheme({{ $theme->id }})">...</span>
                                 </button>
                                 <button
@@ -761,8 +761,8 @@
                                     wire:target="deleteThemeById({{ $theme->id }})"
                                     class="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
                                 >
-                                    <span wire:loading.remove wire:target="deleteThemeById({{ $theme->id }})">Delete</span>
-                                    <span wire:loading wire:target="deleteThemeById({{ $theme->id }})">Deleting...</span>
+                                    <span wire:loading.remove wire:target="deleteThemeById({{ $theme->id }})">{{ __('Delete') }}</span>
+                                    <span wire:loading wire:target="deleteThemeById({{ $theme->id }})">{{ __('Deleting...') }}</span>
                                 </button>
                             @endif
 
@@ -770,17 +770,17 @@
                             @if($theme->has_update)
                                 <span class="text-xs text-yellow-600">{{ $theme->version }} &rarr; {{ $theme->update_version }}</span>
                                 <x-ui.button size="sm" wire:click="updateTheme({{ $theme->id }})" wire:loading.attr="disabled" wire:target="updateTheme({{ $theme->id }})">
-                                    <span wire:loading.remove wire:target="updateTheme({{ $theme->id }})">Update</span>
-                                    <span wire:loading wire:target="updateTheme({{ $theme->id }})">Updating...</span>
+                                    <span wire:loading.remove wire:target="updateTheme({{ $theme->id }})">{{ __('Update') }}</span>
+                                    <span wire:loading wire:target="updateTheme({{ $theme->id }})">{{ __('Updating...') }}</span>
                                 </x-ui.button>
                             @else
-                                <span class="text-xs text-green-600">Up to date</span>
+                                <span class="text-xs text-green-600">{{ __('Up to date') }}</span>
                             @endif
                         </div>
                     </div>
                 @empty
                     <div class="p-8 text-center text-sm text-gray-500">
-                        No themes found{{ $search ? ' matching "' . $search . '"' : '' }}.
+                        {{ __('No themes found') }}{{ $search ? ' ' . __('matching') . ' "' . $search . '"' : '' }}.
                     </div>
                 @endforelse
             </div>
@@ -820,7 +820,7 @@
                     </div>
                 @empty
                     <div class="p-8 text-center text-sm text-gray-500">
-                        No update history found{{ $search ? ' matching "' . $search . '"' : '' }}.
+                        {{ __('No update history found') }}{{ $search ? ' ' . __('matching') . ' "' . $search . '"' : '' }}.
                     </div>
                 @endforelse
             </div>
@@ -868,9 +868,9 @@
                     </div>
                 @empty
                     <div class="p-8 text-center text-sm text-gray-500">
-                        No users found{{ $search ? ' matching "' . $search . '"' : '' }}.
+                        {{ __('No users found') }}{{ $search ? ' ' . __('matching') . ' "' . $search . '"' : '' }}.
                         @if(!$search)
-                            <span class="block mt-1 text-gray-400">Sync the site to fetch user data.</span>
+                            <span class="block mt-1 text-gray-400">{{ __('Sync the site to fetch user data.') }}</span>
                         @endif
                     </div>
                 @endforelse
@@ -882,7 +882,7 @@
     {{-- Last synced --}}
     @if($site->last_synced_at)
         <p class="mt-3 text-xs text-gray-400 text-right">
-            Last synced {{ $site->last_synced_at->diffForHumans() }}
+            {{ __('Last synced') }} {{ $site->last_synced_at->diffForHumans() }}
         </p>
     @endif
     @endif
@@ -890,9 +890,9 @@
     {{-- Delete Plugin Confirmation Modal --}}
     <x-ui.modal name="confirm-delete-plugin" maxWidth="sm">
         <div class="p-2">
-            <h3 class="text-lg font-semibold text-gray-900">Delete Plugin</h3>
+            <h3 class="text-lg font-semibold text-gray-900">{{ __('Delete Plugin') }}</h3>
             <p class="mt-2 text-sm text-gray-600">
-                Are you sure you want to delete <strong>{{ $confirmingDeleteName ?? 'this plugin' }}</strong>? This action cannot be undone.
+                {{ __('Are you sure you want to delete') }} <strong>{{ $confirmingDeleteName ?? __('this plugin') }}</strong>? {{ __('This action cannot be undone.') }}
             </p>
             <div wire:loading.flex wire:target="deletePlugin"
                  class="mt-4 items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
@@ -903,15 +903,15 @@
                 <div class="h-1 w-16 shrink-0 rounded-full bg-blue-200 overflow-hidden">
                     <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
                 </div>
-                <span class="text-xs font-medium text-blue-700">Deleting plugin...</span>
+                <span class="text-xs font-medium text-blue-700">{{ __('Deleting plugin...') }}</span>
             </div>
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-delete-plugin')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button variant="danger" wire:click="deletePlugin" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="deletePlugin">Delete Plugin</span>
-                    <span wire:loading wire:target="deletePlugin">Deleting...</span>
+                    <span wire:loading.remove wire:target="deletePlugin">{{ __('Delete Plugin') }}</span>
+                    <span wire:loading wire:target="deletePlugin">{{ __('Deleting...') }}</span>
                 </x-ui.button>
             </div>
         </div>
@@ -920,19 +920,19 @@
     {{-- Delete Theme Confirmation Modal --}}
     <x-ui.modal name="confirm-delete-theme" maxWidth="sm">
         <div class="p-2">
-            <h3 class="text-lg font-semibold text-gray-900">Delete Theme</h3>
+            <h3 class="text-lg font-semibold text-gray-900">{{ __('Delete Theme') }}</h3>
             <p class="mt-2 text-sm text-gray-600">
-                Are you sure you want to delete <strong>{{ $confirmingDeleteThemeName ?? 'this theme' }}</strong>? This action cannot be undone.
+                {{ __('Are you sure you want to delete') }} <strong>{{ $confirmingDeleteThemeName ?? __('this theme') }}</strong>? {{ __('This action cannot be undone.') }}
             </p>
             @if(!empty($confirmingDeleteThemeChildren))
                 <div class="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                    <p class="text-sm font-medium text-yellow-800">Warning: Child themes depend on this theme</p>
+                    <p class="text-sm font-medium text-yellow-800">{{ __('Warning: Child themes depend on this theme') }}</p>
                     <ul class="mt-1 text-xs text-yellow-700 list-disc pl-4">
                         @foreach($confirmingDeleteThemeChildren as $childName)
                             <li>{{ $childName }}</li>
                         @endforeach
                     </ul>
-                    <p class="mt-1 text-xs text-yellow-600">Deleting this parent theme will break these child themes.</p>
+                    <p class="mt-1 text-xs text-yellow-600">{{ __('Deleting this parent theme will break these child themes.') }}</p>
                 </div>
             @endif
             <div wire:loading.flex wire:target="deleteTheme"
@@ -944,14 +944,14 @@
                 <div class="h-1 w-16 shrink-0 rounded-full bg-blue-200 overflow-hidden">
                     <div class="h-full rounded-full bg-blue-500 progress-indeterminate"></div>
                 </div>
-                <span class="text-xs font-medium text-blue-700">Deleting theme...</span>
+                <span class="text-xs font-medium text-blue-700">{{ __('Deleting theme...') }}</span>
             </div>
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-delete-theme')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button variant="danger" x-on:click="$wire.deleteTheme()">
-                    Delete Theme
+                    {{ __('Delete Theme') }}
                 </x-ui.button>
             </div>
         </div>
@@ -975,15 +975,15 @@
 
                 {{-- Info grid --}}
                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div><span class="text-gray-500">Author:</span> <span class="text-gray-900">{{ $detailItem['author'] ?? '—' }}</span></div>
-                    <div><span class="text-gray-500">Slug:</span> <span class="text-gray-900 font-mono text-xs">{{ $detailItem['slug'] }}</span></div>
-                    <div><span class="text-gray-500">Auto-Update:</span> <span class="{{ $detailItem['auto_update'] ? 'text-purple-700' : 'text-gray-900' }}">{{ $detailItem['auto_update'] ? 'Enabled' : 'Disabled' }}</span></div>
+                    <div><span class="text-gray-500">{{ __('Author') }}:</span> <span class="text-gray-900">{{ $detailItem['author'] ?? '—' }}</span></div>
+                    <div><span class="text-gray-500">{{ __('Slug') }}:</span> <span class="text-gray-900 font-mono text-xs">{{ $detailItem['slug'] }}</span></div>
+                    <div><span class="text-gray-500">{{ __('Auto-Update') }}:</span> <span class="{{ $detailItem['auto_update'] ? 'text-purple-700' : 'text-gray-900' }}">{{ $detailItem['auto_update'] ? __('Enabled') : __('Disabled') }}</span></div>
                     @if($detailItem['wp_org_last_updated'])
-                        <div><span class="text-gray-500">Last WP.org Update:</span> <span class="text-gray-900">{{ $detailItem['wp_org_last_updated'] }}</span></div>
+                        <div><span class="text-gray-500">{{ __('Last WP.org Update') }}:</span> <span class="text-gray-900">{{ $detailItem['wp_org_last_updated'] }}</span></div>
                     @endif
                     @if($detailItem['license_status'])
                         <div>
-                            <span class="text-gray-500">License:</span>
+                            <span class="text-gray-500">{{ __('License') }}:</span>
                             <span class="{{ $detailItem['license_status'] === 'active' ? 'text-green-600' : ($detailItem['license_status'] === 'expired' ? 'text-red-600' : 'text-yellow-600') }}">
                                 {{ ucfirst($detailItem['license_status']) }}
                             </span>
@@ -1004,9 +1004,9 @@
                     <div class="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
                         <p class="text-sm font-medium text-yellow-800">
                             @if($detailItem['is_closed'])
-                                This {{ $detailItem['type'] }} has been closed on WordPress.org{{ $detailItem['closed_reason'] ? ': ' . str_replace('_', ' ', $detailItem['closed_reason']) : '' }}
+                                {{ __('This :type has been closed on WordPress.org', ['type' => $detailItem['type']]) }}{{ $detailItem['closed_reason'] ? ': ' . str_replace('_', ' ', $detailItem['closed_reason']) : '' }}
                             @else
-                                This {{ $detailItem['type'] }} appears to be abandoned
+                                {{ __('This :type appears to be abandoned', ['type' => $detailItem['type']]) }}
                             @endif
                         </p>
                     </div>
@@ -1016,32 +1016,32 @@
                 @if($detailItem['can_rollback'] && $detailItem['rollback_version'] && $detailItem['type'] === 'plugin')
                     <div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-blue-800">Rollback available</p>
-                            <p class="text-xs text-blue-600">Revert to version {{ $detailItem['rollback_version'] }}</p>
+                            <p class="text-sm font-medium text-blue-800">{{ __('Rollback available') }}</p>
+                            <p class="text-xs text-blue-600">{{ __('Revert to version :version', ['version' => $detailItem['rollback_version']]) }}</p>
                         </div>
                         <button wire:click="rollbackPlugin({{ $detailItem['id'] ?? 0 }})"
                                 wire:confirm="Rollback {{ $detailItem['name'] }} to version {{ $detailItem['rollback_version'] }}?"
                                 wire:loading.attr="disabled"
                                 class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                            <span wire:loading.remove wire:target="rollbackPlugin">Rollback</span>
-                            <span wire:loading wire:target="rollbackPlugin">Rolling back...</span>
+                            <span wire:loading.remove wire:target="rollbackPlugin">{{ __('Rollback') }}</span>
+                            <span wire:loading wire:target="rollbackPlugin">{{ __('Rolling back...') }}</span>
                         </button>
                     </div>
                 @endif
 
                 {{-- Quick links --}}
                 <div class="mt-4 flex items-center gap-2 border-t pt-3">
-                    <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Plugins</a>
+                    <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>{{ __('Plugins') }}</a>
                     <span class="text-gray-300">|</span>
-                    <a href="{{ route('sites.security', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>Security</a>
+                    <a href="{{ route('sites.security', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>{{ __('Security') }}</a>
                     @if($detailItem['url'])
                         <span class="text-gray-300">|</span>
-                        <a href="{{ $detailItem['url'] }}" target="_blank" class="text-xs text-purple-600 hover:underline">Website</a>
+                        <a href="{{ $detailItem['url'] }}" target="_blank" class="text-xs text-purple-600 hover:underline">{{ __('Website') }}</a>
                     @endif
                 </div>
 
                 <div class="mt-4 flex justify-end">
-                    <x-ui.button variant="secondary" @click="$dispatch('close-modal-plugin-detail')">Close</x-ui.button>
+                    <x-ui.button variant="secondary" @click="$dispatch('close-modal-plugin-detail')">{{ __('Close') }}</x-ui.button>
                 </div>
             </div>
         @endif

@@ -1,16 +1,16 @@
 <div>
-    <x-ui.page-header title="Security Overview" subtitle="Monitor and manage your site's security posture" />
+    <x-ui.page-header title="{{ __('Security Overview') }}" subtitle="{{ __('Monitor and manage your site\'s security posture') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Module not active banner --}}
     @if(!$this->isModuleActive)
         <x-ui.module-activation-banner
-            title="Security monitoring is not active"
-            description="Enable automatic security scans and vulnerability monitoring for this site."
+            title="{{ __('Security monitoring is not active') }}"
+            description="{{ __('Enable automatic security scans and vulnerability monitoring for this site.') }}"
             icon="shield"
         >
-            <x-ui.button size="sm" wire:click="activateModule">Activate</x-ui.button>
+            <x-ui.button size="sm" wire:click="activateModule">{{ __('Activate') }}</x-ui.button>
         </x-ui.module-activation-banner>
     @endif
 
@@ -27,16 +27,16 @@
                     <div>
                         @if($this->securityScore !== null)
                             <p class="text-lg font-semibold text-gray-900">
-                                @if($this->securityScore >= 90) Excellent
-                                @elseif($this->securityScore >= 80) Good
-                                @elseif($this->securityScore >= 50) Needs Attention
-                                @else Critical
+                                @if($this->securityScore >= 90) {{ __('Excellent') }}
+                                @elseif($this->securityScore >= 80) {{ __('Good') }}
+                                @elseif($this->securityScore >= 50) {{ __('Needs Attention') }}
+                                @else {{ __('Critical') }}
                                 @endif
                             </p>
-                            <p class="mt-1 text-xs text-gray-500">Hardening score based on applied settings</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ __('Hardening score based on applied settings') }}</p>
                         @else
-                            <p class="text-lg font-semibold text-gray-500">Not Configured</p>
-                            <p class="text-sm text-gray-400">Configure hardening settings to get a security score.</p>
+                            <p class="text-lg font-semibold text-gray-500">{{ __('Not Configured') }}</p>
+                            <p class="text-sm text-gray-400">{{ __('Configure hardening settings to get a security score.') }}</p>
                         @endif
                     </div>
                 </div>
@@ -44,11 +44,11 @@
                 <div class="flex items-center gap-3 text-sm text-gray-500">
                     @if($this->pendingCommandsCount > 0)
                         <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-medium text-yellow-700">
-                            {{ $this->pendingCommandsCount }} pending
+                            {{ $this->pendingCommandsCount }} {{ __('pending') }}
                         </span>
                     @endif
                     @if($this->lastSyncAt)
-                        <span>Last sync: {{ \Carbon\Carbon::parse($this->lastSyncAt)->diffForHumans() }}</span>
+                        <span>{{ __('Last sync') }}: {{ \Carbon\Carbon::parse($this->lastSyncAt)->diffForHumans() }}</span>
                     @endif
                 </div>
             </div>
@@ -80,14 +80,14 @@
         }
 
         $categoryLabels = [
-            'hardening' => 'WordPress Hardening',
+            'hardening' => __('WordPress Hardening'),
             'htaccess' => '.htaccess Rules',
-            'login' => 'Login Protection',
+            'login' => __('Login Protection'),
             'captcha' => 'CAPTCHA',
-            'ip_management' => 'IP Management',
-            'activity_log' => 'Activity Log',
-            'performance' => 'Performance',
-            'site_control' => 'Site Control',
+            'ip_management' => __('IP Management'),
+            'activity_log' => __('Activity Log'),
+            'performance' => __('Performance'),
+            'site_control' => __('Site Control'),
         ];
     @endphp
 
@@ -97,16 +97,16 @@
                 <div class="flex items-start gap-3">
                     <x-icons.alert-triangle class="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Needs Attention</h3>
+                        <h3 class="text-sm font-semibold text-gray-900">{{ __('Needs Attention') }}</h3>
                         <div class="mt-2 space-y-1.5">
                             @foreach($attentionItems as $item)
                                 <div class="flex items-center gap-2 text-sm text-gray-600">
                                     <span>{{ $categoryLabels[$item['key']] ?? $item['key'] }}</span>
                                     @if($item['failed'] > 0)
-                                        <x-ui.badge variant="red">{{ $item['failed'] }} failed</x-ui.badge>
+                                        <x-ui.badge variant="red">{{ $item['failed'] }} {{ __('failed') }}</x-ui.badge>
                                     @endif
                                     @if($item['pending'] > 0)
-                                        <x-ui.badge variant="yellow">{{ $item['pending'] }} pending</x-ui.badge>
+                                        <x-ui.badge variant="yellow">{{ $item['pending'] }} {{ __('pending') }}</x-ui.badge>
                                     @endif
                                 </div>
                             @endforeach
@@ -121,14 +121,14 @@
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @php
             $allCategories = [
-                'hardening' => ['label' => 'WordPress Hardening', 'icon' => 'shield', 'route' => 'sites.security.hardening', 'source' => 'security'],
+                'hardening' => ['label' => __('WordPress Hardening'), 'icon' => 'shield', 'route' => 'sites.security.hardening', 'source' => 'security'],
                 'htaccess' => ['label' => '.htaccess Rules', 'icon' => 'lock', 'route' => 'sites.security.hardening', 'source' => 'security'],
-                'login' => ['label' => 'Login Protection', 'icon' => 'lock', 'route' => 'sites.security.login', 'source' => 'security'],
+                'login' => ['label' => __('Login Protection'), 'icon' => 'lock', 'route' => 'sites.security.login', 'source' => 'security'],
                 'captcha' => ['label' => 'CAPTCHA', 'icon' => 'shield-alert', 'route' => 'sites.security.captcha', 'source' => 'security'],
-                'ip_management' => ['label' => 'IP Management', 'icon' => 'globe', 'route' => 'sites.security.ip-management', 'source' => 'security'],
-                'activity_log' => ['label' => 'Activity Log', 'icon' => 'activity', 'route' => 'sites.security.activity', 'source' => 'security'],
-                'performance' => ['label' => 'Performance', 'icon' => 'zap', 'route' => 'sites.tweaks.performance', 'source' => 'tweaks'],
-                'site_control' => ['label' => 'Site Control', 'icon' => 'sliders', 'route' => 'sites.tweaks.site-control', 'source' => 'tweaks'],
+                'ip_management' => ['label' => __('IP Management'), 'icon' => 'globe', 'route' => 'sites.security.ip-management', 'source' => 'security'],
+                'activity_log' => ['label' => __('Activity Log'), 'icon' => 'activity', 'route' => 'sites.security.activity', 'source' => 'security'],
+                'performance' => ['label' => __('Performance'), 'icon' => 'zap', 'route' => 'sites.tweaks.performance', 'source' => 'tweaks'],
+                'site_control' => ['label' => __('Site Control'), 'icon' => 'sliders', 'route' => 'sites.tweaks.site-control', 'source' => 'tweaks'],
             ];
         @endphp
 
@@ -149,21 +149,21 @@
                             <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>
                             <p class="mt-1 text-xs text-gray-500">
                                 @if($totalCount === 0)
-                                    Not configured
+                                    {{ __('Not configured') }}
                                 @else
-                                    {{ $appliedCount }}/{{ $enabledCount }} applied
+                                    {{ $appliedCount }}/{{ $enabledCount }} {{ __('applied') }}
                                 @endif
                             </p>
                         </div>
                         <div>
                             @if($failedCount > 0)
-                                <x-ui.badge variant="red">Needs Attention</x-ui.badge>
+                                <x-ui.badge variant="red">{{ __('Needs Attention') }}</x-ui.badge>
                             @elseif($appliedCount > 0 && $appliedCount === $enabledCount)
-                                <x-ui.badge variant="green">Applied</x-ui.badge>
+                                <x-ui.badge variant="green">{{ __('Applied') }}</x-ui.badge>
                             @elseif($enabledCount > 0)
-                                <x-ui.badge variant="yellow">Pending</x-ui.badge>
+                                <x-ui.badge variant="yellow">{{ __('Pending') }}</x-ui.badge>
                             @else
-                                <x-ui.badge variant="gray">Not Configured</x-ui.badge>
+                                <x-ui.badge variant="gray">{{ __('Not Configured') }}</x-ui.badge>
                             @endif
                         </div>
                     </div>
@@ -174,9 +174,9 @@
         {{-- Coming Soon Cards --}}
         @php
             $comingSoonCategories = [
-                'admin_ux' => ['label' => 'Admin UX', 'icon' => 'layout', 'route' => 'sites.tweaks'],
-                'content_media' => ['label' => 'Content & Media', 'icon' => 'image', 'route' => 'sites.tweaks'],
-                'email' => ['label' => 'Email', 'icon' => 'mail', 'route' => 'sites.tweaks'],
+                'admin_ux' => ['label' => __('Admin UX'), 'icon' => 'layout', 'route' => 'sites.tweaks'],
+                'content_media' => ['label' => __('Content & Media'), 'icon' => 'image', 'route' => 'sites.tweaks'],
+                'email' => ['label' => __('Email'), 'icon' => 'mail', 'route' => 'sites.tweaks'],
             ];
         @endphp
 
@@ -186,9 +186,9 @@
                     <div class="flex items-start justify-between">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-400">{{ $catInfo['label'] }}</h4>
-                            <p class="mt-1 text-xs text-gray-400">Coming soon</p>
+                            <p class="mt-1 text-xs text-gray-400">{{ __('Coming soon') }}</p>
                         </div>
-                        <x-ui.badge variant="yellow">Soon</x-ui.badge>
+                        <x-ui.badge variant="yellow">{{ __('Soon') }}</x-ui.badge>
                     </div>
                 </x-ui.card>
             </a>

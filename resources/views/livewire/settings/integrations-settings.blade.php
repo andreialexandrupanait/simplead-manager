@@ -25,21 +25,21 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">Google</h3>
-                        <p class="text-xs text-gray-500">Analytics & Search Console</p>
+                        <p class="text-xs text-gray-500">{{ __('Analytics & Search Console') }}</p>
                     </div>
                 </div>
                 @if($googleConnected)
-                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
                 @else
-                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
                 @endif
             </div>
 
             <div class="mt-3 text-xs text-gray-500">
                 @if($connections->isNotEmpty())
-                    {{ $connections->count() }} {{ Str::plural('cont', $connections->count()) }} conectat{{ $connections->count() > 1 ? 'e' : '' }}
+                    {{ $connections->count() }} {{ Str::plural(__('account'), $connections->count()) }} {{ __('connected') }}
                 @else
-                    Niciun cont conectat
+                    {{ __('No accounts connected') }}
                 @endif
             </div>
 
@@ -47,7 +47,7 @@
                 <button @click="$dispatch('open-modal-configure-google')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Setari
+                    {{ __('Settings') }}
                 </button>
             </div>
         </x-ui.card>
@@ -61,21 +61,21 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">Cloudflare</h3>
-                        <p class="text-xs text-gray-500">DNS, securitate, cache</p>
+                        <p class="text-xs text-gray-500">{{ __('DNS, security, cache') }}</p>
                     </div>
                 </div>
                 @if($cloudflareConnected)
-                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
                 @else
-                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
                 @endif
             </div>
 
             <div class="mt-3 text-xs text-gray-500">
                 @if($cloudflareConnected)
-                    {{ $this->cloudflareConnections->count() }} {{ Str::plural('conexiune', $this->cloudflareConnections->count()) }}
+                    {{ $this->cloudflareConnections->count() }} {{ Str::plural(__('connection'), $this->cloudflareConnections->count()) }}
                 @else
-                    Nicio conexiune
+                    {{ __('No connections') }}
                 @endif
             </div>
 
@@ -83,7 +83,7 @@
                 <button @click="$dispatch('open-modal-configure-cloudflare')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Setari
+                    {{ __('Settings') }}
                 </button>
             </div>
         </x-ui.card>
@@ -97,21 +97,21 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">Dropbox</h3>
-                        <p class="text-xs text-gray-500">Stocare backup-uri</p>
+                        <p class="text-xs text-gray-500">{{ __('Backup storage') }}</p>
                     </div>
                 </div>
                 @if($dropboxConnected)
-                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
                 @else
-                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
                 @endif
             </div>
 
             <div class="mt-3 text-xs text-gray-500">
                 @if($dropboxConnected)
-                    Credentiale API configurate
+                    {{ __('API credentials configured') }}
                 @else
-                    Credentiale API necesare
+                    {{ __('API credentials required') }}
                 @endif
             </div>
 
@@ -119,7 +119,7 @@
                 <button @click="$dispatch('open-modal-configure-dropbox')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Setari
+                    {{ __('Settings') }}
                 </button>
             </div>
         </x-ui.card>
@@ -133,21 +133,21 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">Unsplash</h3>
-                        <p class="text-xs text-gray-500">Slideshow pagina login</p>
+                        <p class="text-xs text-gray-500">{{ __('Login page slideshow') }}</p>
                     </div>
                 </div>
                 @if($unsplashConnected)
-                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
                 @else
-                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
                 @endif
             </div>
 
             <div class="mt-3 text-xs text-gray-500">
                 @if($unsplashConnected)
-                    Imagini de fundal active
+                    {{ __('Background images active') }}
                 @else
-                    Imagini de fundal dezactivate
+                    {{ __('Background images disabled') }}
                 @endif
             </div>
 
@@ -155,7 +155,7 @@
                 <button @click="$dispatch('open-modal-configure-unsplash')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Setari
+                    {{ __('Settings') }}
                 </button>
             </div>
         </x-ui.card>
@@ -166,16 +166,16 @@
     <div class="mt-6">
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Destinatii stocare</h3>
+                <h3 class="text-base font-semibold text-gray-900">{{ __('Storage Destinations') }}</h3>
                 <button x-on:click="$dispatch('open-storage-form')"
                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Adauga
+                    {{ __('Add') }}
                 </button>
             </div>
 
             @if($this->destinations->isEmpty())
-                <p class="text-sm text-gray-500">Nicio destinatie de stocare configurata. Adauga una pentru a crea backup-uri.</p>
+                <p class="text-sm text-gray-500">{{ __('No storage destinations configured. Add one to enable backups.') }}</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($this->destinations as $destination)
@@ -200,21 +200,21 @@
                                     <div class="text-sm font-medium text-gray-900">
                                         {{ $destination->name }}
                                         @if($destination->is_default)
-                                            <x-ui.badge variant="purple" class="ml-1">Default</x-ui.badge>
+                                            <x-ui.badge variant="purple" class="ml-1">{{ __('Default') }}</x-ui.badge>
                                         @endif
                                     </div>
                                     <div class="text-xs text-gray-500">
                                         {{ ucfirst($destination->type) }}
                                         @if($destination->last_tested_at)
-                                            &middot; Testat {{ $destination->last_tested_at->diffForHumans() }}
+                                            &middot; {{ __('Tested') }} {{ $destination->last_tested_at->diffForHumans() }}
                                             @if($destination->last_test_passed)
-                                                <span class="text-green-600">Passed</span>
+                                                <span class="text-green-600">{{ __('Passed') }}</span>
                                             @else
-                                                <span class="text-red-600">Failed</span>
+                                                <span class="text-red-600">{{ __('Failed') }}</span>
                                             @endif
                                         @endif
                                         @if($destination->used_bytes > 0)
-                                            &middot; {{ $destination->used_formatted }} used
+                                            &middot; {{ $destination->used_formatted }} {{ __('used') }}
                                         @endif
                                     </div>
                                     @if($destination->type === 'dropbox')
@@ -222,19 +222,19 @@
                                             @if($destination->config['base_path'] ?? null)
                                                 <div class="flex items-center gap-1.5 text-xs text-gray-400">
                                                     <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                                                    <span class="truncate">Backups: {{ $destination->config['base_path'] }}</span>
+                                                    <span class="truncate">{{ __('Backups') }}: {{ $destination->config['base_path'] }}</span>
                                                 </div>
                                             @endif
                                             @if($destination->config['reports_path'] ?? null)
                                                 <div class="flex items-center gap-1.5 text-xs text-gray-400">
                                                     <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                    <span class="truncate">Reports: {{ $destination->config['reports_path'] }}</span>
+                                                    <span class="truncate">{{ __('Reports') }}: {{ $destination->config['reports_path'] }}</span>
                                                 </div>
                                             @endif
                                             @if($destination->config['app_backups_path'] ?? null)
                                                 <div class="flex items-center gap-1.5 text-xs text-gray-400">
                                                     <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
-                                                    <span class="truncate">App backups: {{ $destination->config['app_backups_path'] }}</span>
+                                                    <span class="truncate">{{ __('App backups') }}: {{ $destination->config['app_backups_path'] }}</span>
                                                 </div>
                                             @endif
                                         </div>
@@ -249,25 +249,25 @@
                             <div class="flex items-center gap-1">
                                 <button wire:click="testDestination({{ $destination->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                    title="Test Connection">
+                                    title="{{ __('Test Connection') }}">
                                     <x-icons.check-circle class="w-4 h-4" />
                                 </button>
                                 @if(!$destination->is_default)
                                     <button wire:click="setDefault({{ $destination->id }})"
                                         class="rounded p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50"
-                                        title="Set as Default">
+                                        title="{{ __('Set as Default') }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
                                     </button>
                                 @endif
                                 <button wire:click="$dispatch('open-storage-form', { destinationId: {{ $destination->id }} })"
                                     class="rounded p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                                    title="Edit">
+                                    title="{{ __('Edit') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                 </button>
                                 <button wire:click="deleteDestination({{ $destination->id }})"
-                                    wire:confirm="Esti sigur ca vrei sa stergi aceasta destinatie de stocare?"
+                                    wire:confirm="{{ __('Are you sure you want to delete this storage destination?') }}"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                    title="Delete">
+                                    title="{{ __('Delete') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </div>
@@ -284,21 +284,21 @@
 
     {{-- Google Configuration Modal --}}
     <x-ui.modal name="configure-google" maxWidth="xl">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Google — Setari</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Google &mdash; {{ __('Settings') }}</h2>
 
         {{-- Connected accounts --}}
         <div class="mb-6">
             <div class="flex items-center justify-between mb-3">
-                <h4 class="text-sm font-medium text-gray-900">Conturi conectate</h4>
+                <h4 class="text-sm font-medium text-gray-900">{{ __('Connected accounts') }}</h4>
                 <button wire:click="addAccount"
                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Adauga cont
+                    {{ __('Add account') }}
                 </button>
             </div>
 
             @if($connections->isEmpty())
-                <p class="text-sm text-gray-500">Niciun cont Google conectat.</p>
+                <p class="text-sm text-gray-500">{{ __('No Google accounts connected.') }}</p>
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($connections as $conn)
@@ -316,9 +316,9 @@
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">{{ $conn->email }}</div>
                                     <div class="text-xs text-gray-500">
-                                        Conectat {{ $conn->created_at->format('d M Y') }}
+                                        {{ __('Connected') }} {{ $conn->created_at->format('d M Y') }}
                                         @if($conn->sites_using > 0)
-                                            &middot; Folosit de {{ $conn->sites_using }} {{ Str::plural('site', $conn->sites_using) }}
+                                            &middot; {{ __('Used by') }} {{ $conn->sites_using }} {{ Str::plural(__('site'), $conn->sites_using) }}
                                         @endif
                                     </div>
                                     @if($conn->scopes)
@@ -334,7 +334,7 @@
                             </div>
                             <button wire:click="confirmDisconnect({{ $conn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                    title="Deconecteaza">
+                                    title="{{ __('Disconnect') }}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
@@ -346,28 +346,28 @@
         {{-- API Credentials --}}
         <div class="border-t border-gray-200 pt-5">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-medium text-gray-900">Credentiale API</h4>
+                <h4 class="text-sm font-medium text-gray-900">{{ __('API Credentials') }}</h4>
                 @if($googleClientId && $googleClientSecret)
-                    <x-ui.badge variant="green">Configurat</x-ui.badge>
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
                 @else
-                    <x-ui.badge variant="red">Neconfigurat</x-ui.badge>
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
                 @endif
             </div>
 
             <form wire:submit="saveGoogleCredentials" class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                    <x-ui.input type="text" wire:model="googleClientId" placeholder="Enter Google Client ID" />
+                    <x-ui.input type="text" wire:model="googleClientId" placeholder="{{ __('Enter Google Client ID') }}" />
                     @error('googleClientId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                    <x-ui.input type="password" wire:model="googleClientSecret" placeholder="Enter Google Client Secret" />
+                    <x-ui.input type="password" wire:model="googleClientSecret" placeholder="{{ __('Enter Google Client Secret') }}" />
                     @error('googleClientSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div class="flex justify-end">
                     <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                        Salveaza
+                        {{ __('Save') }}
                     </x-ui.button>
                 </div>
             </form>
@@ -375,7 +375,7 @@
             <div x-data="{ showInstructions: false }" class="mt-4">
                 <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
                     <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    Cum obtii credentialele Google API
+                    {{ __('How to obtain Google API credentials') }}
                 </button>
                 <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
                     <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
@@ -392,12 +392,12 @@
 
     {{-- Cloudflare Configuration Modal --}}
     <x-ui.modal name="configure-cloudflare" maxWidth="xl">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Cloudflare — Setari</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Cloudflare &mdash; {{ __('Settings') }}</h2>
 
         {{-- Existing connections --}}
         @if($this->cloudflareConnections->isNotEmpty())
             <div class="mb-6">
-                <h4 class="text-sm font-medium text-gray-900 mb-3">Conexiuni active</h4>
+                <h4 class="text-sm font-medium text-gray-900 mb-3">{{ __('Active connections') }}</h4>
                 <div class="divide-y divide-gray-100">
                     @foreach($this->cloudflareConnections as $cfConn)
                         <div class="flex items-center justify-between py-3">
@@ -407,13 +407,13 @@
                                 </div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">
-                                        {{ $cfConn->account_email ?: 'Connection #' . $cfConn->id }}
-                                        <x-ui.badge :variant="$cfConn->is_valid ? 'green' : 'red'" class="ml-1">{{ $cfConn->is_valid ? 'Valid' : 'Invalid' }}</x-ui.badge>
+                                        {{ $cfConn->account_email ?: __('Connection #') . $cfConn->id }}
+                                        <x-ui.badge :variant="$cfConn->is_valid ? 'green' : 'red'" class="ml-1">{{ $cfConn->is_valid ? __('Valid') : __('Invalid') }}</x-ui.badge>
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        {{ $cfConn->siteCloudflare->count() }} {{ Str::plural('zone', $cfConn->siteCloudflare->count()) }} connected
+                                        {{ $cfConn->siteCloudflare->count() }} {{ Str::plural(__('zone'), $cfConn->siteCloudflare->count()) }} {{ __('connected') }}
                                         @if($cfConn->last_validated_at)
-                                            &middot; Testat {{ $cfConn->last_validated_at->diffForHumans() }}
+                                            &middot; {{ __('Tested') }} {{ $cfConn->last_validated_at->diffForHumans() }}
                                         @endif
                                     </div>
                                 </div>
@@ -421,12 +421,12 @@
                             <div class="flex items-center gap-1">
                                 <button wire:click="testCloudflareConnection({{ $cfConn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                    title="Test Connection">
+                                    title="{{ __('Test Connection') }}">
                                     <x-icons.check-circle class="w-4 h-4" />
                                 </button>
                                 <button wire:click="confirmDeleteCloudflare({{ $cfConn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                    title="Delete">
+                                    title="{{ __('Delete') }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </div>
@@ -438,24 +438,24 @@
 
         {{-- Add connection --}}
         <div class="{{ $this->cloudflareConnections->isNotEmpty() ? 'border-t border-gray-200 pt-5' : '' }}">
-            <h4 class="text-sm font-medium text-gray-900 mb-4">Adauga conexiune</h4>
+            <h4 class="text-sm font-medium text-gray-900 mb-4">{{ __('Add connection') }}</h4>
             <div class="flex items-end gap-3">
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
-                    <x-ui.input type="password" wire:model="cfApiToken" placeholder="Enter Cloudflare API token" />
+                    <x-ui.input type="password" wire:model="cfApiToken" placeholder="{{ __('Enter Cloudflare API token') }}" />
                 </div>
                 <button wire:click="addCloudflareConnection" wire:loading.attr="disabled"
                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
                         style="background-color: #F6821F;">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
-                    Conecteaza
+                    {{ __('Connect') }}
                 </button>
             </div>
 
             <div x-data="{ showInstructions: false }" class="mt-4">
                 <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
                     <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    Cum obtii un Cloudflare API token
+                    {{ __('How to obtain a Cloudflare API token') }}
                 </button>
                 <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
                     <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
@@ -482,22 +482,22 @@
 
     {{-- Dropbox Configuration Modal --}}
     <x-ui.modal name="configure-dropbox" maxWidth="lg">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Dropbox — Credentiale API</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Dropbox &mdash; {{ __('API Credentials') }}</h2>
 
         <form wire:submit="saveDropboxCredentials" class="space-y-3">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">App Key</label>
-                <x-ui.input type="text" wire:model="dropboxAppKey" placeholder="Enter Dropbox App Key" />
+                <x-ui.input type="text" wire:model="dropboxAppKey" placeholder="{{ __('Enter Dropbox App Key') }}" />
                 @error('dropboxAppKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">App Secret</label>
-                <x-ui.input type="password" wire:model="dropboxAppSecret" placeholder="Enter Dropbox App Secret" />
+                <x-ui.input type="password" wire:model="dropboxAppSecret" placeholder="{{ __('Enter Dropbox App Secret') }}" />
                 @error('dropboxAppSecret') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div class="flex justify-end">
                 <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                    Salveaza
+                    {{ __('Save') }}
                 </x-ui.button>
             </div>
         </form>
@@ -505,7 +505,7 @@
         <div x-data="{ showInstructions: false }" class="mt-4">
             <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
                 <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                Cum obtii credentialele Dropbox API
+                {{ __('How to obtain Dropbox API credentials') }}
             </button>
             <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
                 <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
@@ -522,19 +522,19 @@
 
     {{-- Unsplash Configuration Modal --}}
     <x-ui.modal name="configure-unsplash" maxWidth="lg">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Unsplash — Setari</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Unsplash &mdash; {{ __('Settings') }}</h2>
 
-        <p class="text-sm text-gray-500 mb-4">Ofera imagini de fundal pentru slideshow-ul paginii de login.</p>
+        <p class="text-sm text-gray-500 mb-4">{{ __('Provides background images for the login page slideshow.') }}</p>
 
         <form wire:submit="saveUnsplashCredentials" class="space-y-3">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Access Key</label>
-                <x-ui.input type="text" wire:model="unsplashAccessKey" placeholder="Enter Unsplash Access Key" />
+                <x-ui.input type="text" wire:model="unsplashAccessKey" placeholder="{{ __('Enter Unsplash Access Key') }}" />
                 @error('unsplashAccessKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div class="flex justify-end">
                 <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                    Salveaza
+                    {{ __('Save') }}
                 </x-ui.button>
             </div>
         </form>
@@ -542,7 +542,7 @@
         <div x-data="{ showInstructions: false }" class="mt-4">
             <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
                 <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                Cum obtii credentialele Unsplash
+                {{ __('How to obtain Unsplash credentials') }}
             </button>
             <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
                 <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
@@ -558,27 +558,27 @@
 
     {{-- Disconnect Google confirmation modal --}}
     <x-ui.modal name="disconnect-google">
-        <h2 class="text-lg font-semibold text-gray-900">Deconecteaza cont Google</h2>
+        <h2 class="text-lg font-semibold text-gray-900">{{ __('Disconnect Google account') }}</h2>
         <p class="mt-2 text-sm text-gray-600">
-            Esti sigur ca vrei sa deconectezi acest cont Google? Toate conexiunile Analytics si Search Console asociate vor fi eliminate.
+            {{ __('Are you sure you want to disconnect this Google account? All associated Analytics and Search Console connections will be removed.') }}
         </p>
 
         <div class="mt-4 flex justify-end gap-2">
-            <x-ui.button variant="secondary" @click="$dispatch('close-modal-disconnect-google')">Anuleaza</x-ui.button>
-            <x-ui.button variant="danger" wire:click="disconnectAccount">Deconecteaza</x-ui.button>
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-disconnect-google')">{{ __('Cancel') }}</x-ui.button>
+            <x-ui.button variant="danger" wire:click="disconnectAccount">{{ __('Disconnect') }}</x-ui.button>
         </div>
     </x-ui.modal>
 
     {{-- Delete Cloudflare connection confirmation modal --}}
     <x-ui.modal name="delete-cloudflare">
-        <h2 class="text-lg font-semibold text-gray-900">Sterge conexiune Cloudflare</h2>
+        <h2 class="text-lg font-semibold text-gray-900">{{ __('Delete Cloudflare connection') }}</h2>
         <p class="mt-2 text-sm text-gray-600">
-            Esti sigur ca vrei sa stergi aceasta conexiune Cloudflare? Toate site-urile legate de aceasta conexiune vor fi deconectate.
+            {{ __('Are you sure you want to delete this Cloudflare connection? All sites linked to this connection will be disconnected.') }}
         </p>
 
         <div class="mt-4 flex justify-end gap-2">
-            <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">Anuleaza</x-ui.button>
-            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">Sterge</x-ui.button>
+            <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">{{ __('Cancel') }}</x-ui.button>
+            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">{{ __('Delete') }}</x-ui.button>
         </div>
     </x-ui.modal>
 </div>

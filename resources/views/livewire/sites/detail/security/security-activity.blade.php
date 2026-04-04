@@ -1,24 +1,24 @@
 <div>
-    <x-ui.page-header title="Activity Log" subtitle="Monitor login attempts and security events" />
+    <x-ui.page-header title="{{ __('Activity Log') }}" subtitle="{{ __('Monitor login attempts and security events') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
     {{-- Failed Login Stats --}}
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-ui.stat-card
-            label="Failed Logins"
+            label="{{ __('Failed Logins') }}"
             :value="$this->failedLoginStats['total']"
-            description="Last {{ $filterDays }} days"
+            description="{{ __('Last') }} {{ $filterDays }} {{ __('days') }}"
         />
         <x-ui.stat-card
-            label="Unique IPs"
+            label="{{ __('Unique IPs') }}"
             :value="$this->failedLoginStats['unique_ips']"
-            description="Distinct source IPs"
+            description="{{ __('Distinct source IPs') }}"
         />
         <x-ui.stat-card
-            label="Unique Usernames"
+            label="{{ __('Unique Usernames') }}"
             :value="$this->failedLoginStats['unique_usernames']"
-            description="Targeted accounts"
+            description="{{ __('Targeted accounts') }}"
         />
     </div>
 
@@ -26,9 +26,9 @@
     <x-ui.card class="mb-6">
         <div class="flex flex-wrap items-end gap-4">
             <div class="w-40">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Event Type</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Event Type') }}</label>
                 <x-ui.select wire:model.live="filterEventType" class="text-sm">
-                    <option value="">All Events</option>
+                    <option value="">{{ __('All Events') }}</option>
                     @foreach($this->eventTypes as $type)
                         <option value="{{ $type }}">{{ ucfirst(str_replace('_', ' ', $type)) }}</option>
                     @endforeach
@@ -36,22 +36,22 @@
             </div>
 
             <div class="w-40">
-                <label class="block text-xs font-medium text-gray-700 mb-1">IP Address</label>
-                <x-ui.input type="text" wire:model.live.debounce.300ms="filterIp" placeholder="Filter by IP" class="text-sm" />
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('IP Address') }}</label>
+                <x-ui.input type="text" wire:model.live.debounce.300ms="filterIp" placeholder="{{ __('Filter by IP') }}" class="text-sm" />
             </div>
 
             <div class="w-40">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Username</label>
-                <x-ui.input type="text" wire:model.live.debounce.300ms="filterUsername" placeholder="Filter by user" class="text-sm" />
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Username') }}</label>
+                <x-ui.input type="text" wire:model.live.debounce.300ms="filterUsername" placeholder="{{ __('Filter by user') }}" class="text-sm" />
             </div>
 
             <div class="w-32">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Period</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Period') }}</label>
                 <x-ui.select wire:model.live="filterDays" class="text-sm">
-                    <option value="1">24 hours</option>
-                    <option value="7">7 days</option>
-                    <option value="30">30 days</option>
-                    <option value="90">90 days</option>
+                    <option value="1">{{ __('24 hours') }}</option>
+                    <option value="7">{{ __('7 days') }}</option>
+                    <option value="30">{{ __('30 days') }}</option>
+                    <option value="90">{{ __('90 days') }}</option>
                 </x-ui.select>
             </div>
         </div>
@@ -61,8 +61,8 @@
     <x-ui.card>
         @if($logs->isEmpty())
             <x-ui.empty-state
-                title="No activity logs"
-                description="Activity logs will appear here once the WordPress agent starts reporting events."
+                title="{{ __('No activity logs') }}"
+                description="{{ __('Activity logs will appear here once the WordPress agent starts reporting events.') }}"
                 icon="activity"
             />
         @else
@@ -85,7 +85,7 @@
                             @endif
                         </p>
                         <div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-                            <span>User: <span class="text-gray-700">{{ $log->username ?? '—' }}</span></span>
+                            <span>{{ __('User') }}: <span class="text-gray-700">{{ $log->username ?? '—' }}</span></span>
                             <span class="font-mono">{{ $log->ip_address ?? '—' }}</span>
                         </div>
                     </div>
@@ -97,11 +97,11 @@
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                            <x-ui.sortable-th column="occurred_at" :sortBy="$sortBy" :sortDir="$sortDir">Time</x-ui.sortable-th>
-                            <x-ui.sortable-th column="event_type" :sortBy="$sortBy" :sortDir="$sortDir">Event</x-ui.sortable-th>
-                            <x-ui.sortable-th column="username" :sortBy="$sortBy" :sortDir="$sortDir">User</x-ui.sortable-th>
-                            <th class="pb-2 pr-4">Action</th>
-                            <x-ui.sortable-th column="ip_address" :sortBy="$sortBy" :sortDir="$sortDir">IP</x-ui.sortable-th>
+                            <x-ui.sortable-th column="occurred_at" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Time') }}</x-ui.sortable-th>
+                            <x-ui.sortable-th column="event_type" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Event') }}</x-ui.sortable-th>
+                            <x-ui.sortable-th column="username" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('User') }}</x-ui.sortable-th>
+                            <th class="pb-2 pr-4">{{ __('Action') }}</th>
+                            <x-ui.sortable-th column="ip_address" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('IP') }}</x-ui.sortable-th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">

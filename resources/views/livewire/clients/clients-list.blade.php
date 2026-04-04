@@ -1,11 +1,11 @@
 <div>
     {{-- Header with Add Button --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="Clients" subtitle="Manage your clients and their sites" />
+        <x-ui.page-header :title="__('Clients')" :subtitle="__('Manage your clients and their sites')" />
         <a href="{{ route('clients.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
-                Add Client
+                {{ __('Add Client') }}
             </x-ui.button>
         </a>
     </div>
@@ -14,7 +14,7 @@
     <div class="mb-6 flex flex-wrap items-center gap-3">
         {{-- Status Filter Pills --}}
         <div class="flex rounded-lg bg-gray-100 p-1">
-            @foreach(['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'archived' => 'Archived'] as $value => $label)
+            @foreach(['all' => __('All'), 'active' => __('Active'), 'inactive' => __('Inactive'), 'archived' => __('Archived')] as $value => $label)
                 <button wire:click="$set('statusFilter', '{{ $value }}')"
                         class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $statusFilter === $value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
                     {{ $label }}
@@ -26,7 +26,7 @@
         {{-- Search --}}
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
-            placeholder="Search clients..."
+            placeholder="{{ __('Search clients...') }}"
             class="w-full sm:ml-auto sm:w-64"
         />
     </div>
@@ -65,20 +65,20 @@
                                     </button>
                                 </x-slot:trigger>
 
-                                <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</a>
-                                <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</a>
+                                <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('View') }}</a>
+                                <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Edit') }}</a>
                                 <div class="my-1 border-t border-gray-100"></div>
                                 @if($client->status !== 'active')
-                                    <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Active</button>
+                                    <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Active') }}</button>
                                 @endif
                                 @if($client->status !== 'inactive')
-                                    <button wire:click="changeStatus({{ $client->id }}, 'inactive')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Inactive</button>
+                                    <button wire:click="changeStatus({{ $client->id }}, 'inactive')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Inactive') }}</button>
                                 @endif
                                 @if($client->status !== 'archived')
-                                    <button wire:click="changeStatus({{ $client->id }}, 'archived')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Archive</button>
+                                    <button wire:click="changeStatus({{ $client->id }}, 'archived')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Archive') }}</button>
                                 @endif
                                 <div class="my-1 border-t border-gray-100"></div>
-                                <button wire:click="confirmDelete({{ $client->id }})" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+                                <button wire:click="confirmDelete({{ $client->id }})" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">{{ __('Delete') }}</button>
                             </x-ui.dropdown>
                         </div>
                         <div class="mt-2 flex flex-wrap items-center gap-1.5">
@@ -88,7 +88,7 @@
                                 <span class="text-xs text-gray-500">{{ $client->phone }}</span>
                             @endif
                         </div>
-                        <p class="mt-1.5 text-xs text-gray-400">Created: {{ $client->created_at->format('M j, Y') }}</p>
+                        <p class="mt-1.5 text-xs text-gray-400">{{ __('Created') }}: {{ $client->created_at->format('M j, Y') }}</p>
                     </div>
                 @endforeach
             </div>
@@ -100,16 +100,16 @@
                     <tr class="bg-gray-50">
                         <x-ui.th class="cursor-pointer" wire:click="sort('name')">
                             <span class="flex items-center gap-1">
-                                Client
+                                {{ __('Client') }}
                                 @if($sortBy === 'name')
                                     <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>
-                        <x-ui.th>Phone</x-ui.th>
+                        <x-ui.th>{{ __('Phone') }}</x-ui.th>
                         <x-ui.th class="cursor-pointer" wire:click="sort('sites_count')">
                             <span class="flex items-center gap-1">
-                                Sites
+                                {{ __('Sites') }}
                                 @if($sortBy === 'sites_count')
                                     <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
@@ -117,7 +117,7 @@
                         </x-ui.th>
                         <x-ui.th class="cursor-pointer" wire:click="sort('status')">
                             <span class="flex items-center gap-1">
-                                Status
+                                {{ __('Status') }}
                                 @if($sortBy === 'status')
                                     <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
@@ -125,13 +125,13 @@
                         </x-ui.th>
                         <x-ui.th class="cursor-pointer" wire:click="sort('created_at')">
                             <span class="flex items-center gap-1">
-                                Created
+                                {{ __('Created') }}
                                 @if($sortBy === 'created_at')
                                     <svg class="h-4 w-4 {{ $sortDir === 'desc' ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 @endif
                             </span>
                         </x-ui.th>
-                        <x-ui.th class="text-right">Actions</x-ui.th>
+                        <x-ui.th class="text-right">{{ __('Actions') }}</x-ui.th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -182,20 +182,20 @@
                                         </button>
                                     </x-slot:trigger>
 
-                                    <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View</a>
-                                    <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Edit</a>
+                                    <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('View') }}</a>
+                                    <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Edit') }}</a>
                                     <div class="my-1 border-t border-gray-100"></div>
                                     @if($client->status !== 'active')
-                                        <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Active</button>
+                                        <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Active') }}</button>
                                     @endif
                                     @if($client->status !== 'inactive')
-                                        <button wire:click="changeStatus({{ $client->id }}, 'inactive')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Set Inactive</button>
+                                        <button wire:click="changeStatus({{ $client->id }}, 'inactive')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Inactive') }}</button>
                                     @endif
                                     @if($client->status !== 'archived')
-                                        <button wire:click="changeStatus({{ $client->id }}, 'archived')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Archive</button>
+                                        <button wire:click="changeStatus({{ $client->id }}, 'archived')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Archive') }}</button>
                                     @endif
                                     <div class="my-1 border-t border-gray-100"></div>
-                                    <button wire:click="confirmDelete({{ $client->id }})" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+                                    <button wire:click="confirmDelete({{ $client->id }})" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">{{ __('Delete') }}</button>
                                 </x-ui.dropdown>
                             </x-ui.td>
                         </tr>
@@ -210,15 +210,15 @@
         </div>
     @else
         <x-ui.empty-state
-            title="No clients found"
-            description="Add your first client to get started."
+            :title="__('No clients found')"
+            :description="__('Add your first client to get started.')"
             icon="users"
         >
             <x-slot:action>
                 <a href="{{ route('clients.create') }}">
                     <x-ui.button>
                         <x-icons.plus class="h-4 w-4" />
-                        Add Client
+                        {{ __('Add Client') }}
                     </x-ui.button>
                 </a>
             </x-slot:action>
@@ -233,11 +233,11 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
             </div>
-            <h3 class="mb-2 text-lg font-medium text-gray-900">Delete Client</h3>
-            <p class="mb-6 text-sm text-gray-500">Are you sure you want to delete this client? This action cannot be undone.</p>
+            <h3 class="mb-2 text-lg font-medium text-gray-900">{{ __('Delete Client') }}</h3>
+            <p class="mb-6 text-sm text-gray-500">{{ __('Are you sure you want to delete this client? This action cannot be undone.') }}</p>
             <div class="flex justify-center gap-3">
-                <x-ui.button variant="secondary" wire:click="cancelDelete">Cancel</x-ui.button>
-                <x-ui.button variant="danger" wire:click="delete">Delete</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="cancelDelete">{{ __('Cancel') }}</x-ui.button>
+                <x-ui.button variant="danger" wire:click="delete">{{ __('Delete') }}</x-ui.button>
             </div>
         </div>
     </x-ui.modal>

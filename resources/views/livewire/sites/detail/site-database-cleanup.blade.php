@@ -20,14 +20,14 @@
     {{-- Database Health Section --}}
     <div class="mb-8">
         <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">Database Health</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Database Health') }}</h2>
             <div class="flex items-center gap-3">
                 @if($this->latestHealthCheck?->checked_at)
                     <span class="text-xs text-gray-500">Last checked {{ $this->latestHealthCheck->checked_at->diffForHumans() }}</span>
                 @endif
                 <x-ui.button variant="secondary" wire:click="refreshHealth" wire:loading.attr="disabled">
                     <x-icons.refresh-cw class="mr-1.5 h-4 w-4" wire:loading.class="animate-spin" wire:target="refreshHealth" />
-                    Refresh Health
+                    {{ __('Refresh Health') }}
                 </x-ui.button>
             </div>
         </div>
@@ -48,7 +48,7 @@
                             <x-ui.badge :variant="$this->latestHealthCheck->status_color">
                                 {{ $this->latestHealthCheck->status_label }}
                             </x-ui.badge>
-                            <p class="text-xs text-gray-500 mt-1">Health Status</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ __('Health Status') }}</p>
                         </div>
                     </div>
                 </x-ui.card>
@@ -57,7 +57,7 @@
             {{-- Issues panel --}}
             @if(count($this->healthIssues) > 0)
                 <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                    <h4 class="text-sm font-semibold text-yellow-800 mb-2">Issues Found</h4>
+                    <h4 class="text-sm font-semibold text-yellow-800 mb-2">{{ __('Issues Found') }}</h4>
                     <ul class="space-y-1">
                         @foreach($this->healthIssues as $issue)
                             <li class="flex items-start gap-2 text-sm text-yellow-700">
@@ -73,7 +73,7 @@
             @if($this->latestHealthCheck->tables_data)
                 <x-ui.card :padding="false" class="mb-4">
                     <div class="px-4 py-3 border-b">
-                        <h3 class="text-base font-semibold text-gray-900">Tables</h3>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Tables') }}</h3>
                     </div>
 
                     {{-- Mobile cards --}}
@@ -92,8 +92,8 @@
                                     </x-ui.badge>
                                 </div>
                                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                                    <span>Rows: <span class="text-gray-700">{{ number_format($table['rows'] ?? 0) }}</span></span>
-                                    <span>Size:
+                                    <span>{{ __('Rows') }}: <span class="text-gray-700">{{ number_format($table['rows'] ?? 0) }}</span></span>
+                                    <span>{{ __('Size') }}:
                                         <span class="text-gray-700">
                                             @if($tableSize >= 1048576)
                                                 {{ round($tableSize / 1048576, 2) }} MB
@@ -104,7 +104,7 @@
                                             @endif
                                         </span>
                                     </span>
-                                    <span>Overhead:
+                                    <span>{{ __('Overhead') }}:
                                         @if(($table['overhead'] ?? 0) > 0)
                                             <span class="{{ $hasOverhead ? 'text-red-600 font-medium' : 'text-gray-700' }}">
                                                 @if(($table['overhead'] ?? 0) >= 1048576)
@@ -184,8 +184,8 @@
             <x-ui.card class="mb-4">
                 <div class="py-8 text-center">
                     <x-icons.database class="mx-auto h-12 w-12 text-gray-300" />
-                    <h3 class="mt-3 text-sm font-semibold text-gray-900">No health data</h3>
-                    <p class="mt-1 text-sm text-gray-500">Click Refresh Health to run a database health check.</p>
+                    <h3 class="mt-3 text-sm font-semibold text-gray-900">{{ __('No health data') }}</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ __('Click Refresh Health to run a database health check.') }}</p>
                 </div>
             </x-ui.card>
         @endif
@@ -196,11 +196,11 @@
 
     {{-- Database Cleanup Section --}}
     <div class="mb-6 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900">Database Cleanup</h2>
+        <h2 class="text-lg font-semibold text-gray-900">{{ __('Database Cleanup') }}</h2>
         <x-ui.button variant="secondary" wire:click="loadStats" wire:loading.attr="disabled">
             <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="loadStats" />
-            <span wire:loading.remove wire:target="loadStats">Preview Cleanup</span>
-            <span wire:loading wire:target="loadStats">Loading...</span>
+            <span wire:loading.remove wire:target="loadStats">{{ __('Preview Cleanup') }}</span>
+            <span wire:loading wire:target="loadStats">{{ __('Loading...') }}</span>
         </x-ui.button>
     </div>
 
@@ -210,61 +210,61 @@
             <svg class="h-5 w-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span class="text-sm text-blue-800">We recommend creating a backup before performing database cleanup.</span>
+            <span class="text-sm text-blue-800">{{ __('We recommend creating a backup before performing database cleanup.') }}</span>
         </div>
     </div>
 
     {{-- Stats cards --}}
     @if($stats)
         <x-ui.card class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Cleanup Preview</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Cleanup Preview') }}</h3>
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanRevisions" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Revisions</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Revisions') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['revisions'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanAutoDrafts" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Auto-Drafts</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Auto-Drafts') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['auto_drafts'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanTrashPosts" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Trash Posts</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Trash Posts') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['trash_posts'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanSpamComments" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Spam Comments</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Spam Comments') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['spam_comments'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanTrashComments" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Trash Comments</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Trash Comments') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['trash_comments'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanTransients" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Transients</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Transients') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['transients'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
                     <input type="checkbox" wire:model="cleanOrphanedMeta" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                     <div>
-                        <div class="text-sm font-medium text-gray-900">Orphaned Meta</div>
+                        <div class="text-sm font-medium text-gray-900">{{ __('Orphaned Meta') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['orphaned_meta'] ?? 0) }}</div>
                     </div>
                 </label>
@@ -272,7 +272,7 @@
 
             <div class="mt-4 flex justify-end">
                 <x-ui.button wire:click="confirmCleanup">
-                    Clean Now
+                    {{ __('Clean Now') }}
                 </x-ui.button>
             </div>
         </x-ui.card>
@@ -282,7 +282,7 @@
     @if($this->cleanupHistory->count() > 0)
         <x-ui.card :padding="false">
             <div class="px-4 py-3 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Cleanup History</h3>
+                <h3 class="text-lg font-semibold text-gray-900">{{ __('Cleanup History') }}</h3>
             </div>
 
             {{-- Mobile cards --}}
@@ -296,14 +296,14 @@
                             </x-ui.badge>
                         </div>
                         <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-                            <span>Revisions: <span class="text-gray-700">{{ $cleanup->revisions_deleted }}</span></span>
-                            <span>Drafts: <span class="text-gray-700">{{ $cleanup->auto_drafts_deleted }}</span></span>
-                            <span>Trash: <span class="text-gray-700">{{ $cleanup->trash_posts_deleted + $cleanup->trash_comments_deleted }}</span></span>
-                            <span>Spam: <span class="text-gray-700">{{ $cleanup->spam_comments_deleted }}</span></span>
-                            <span>Transients: <span class="text-gray-700">{{ $cleanup->transients_deleted }}</span></span>
-                            <span>Meta: <span class="text-gray-700">{{ $cleanup->orphaned_meta_deleted }}</span></span>
+                            <span>{{ __('Revisions') }}: <span class="text-gray-700">{{ $cleanup->revisions_deleted }}</span></span>
+                            <span>{{ __('Drafts') }}: <span class="text-gray-700">{{ $cleanup->auto_drafts_deleted }}</span></span>
+                            <span>{{ __('Trash') }}: <span class="text-gray-700">{{ $cleanup->trash_posts_deleted + $cleanup->trash_comments_deleted }}</span></span>
+                            <span>{{ __('Spam') }}: <span class="text-gray-700">{{ $cleanup->spam_comments_deleted }}</span></span>
+                            <span>{{ __('Transients') }}: <span class="text-gray-700">{{ $cleanup->transients_deleted }}</span></span>
+                            <span>{{ __('Meta') }}: <span class="text-gray-700">{{ $cleanup->orphaned_meta_deleted }}</span></span>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">Space saved: <span class="text-gray-700">{{ $cleanup->formatted_space_saved }}</span></p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Space saved') }}: <span class="text-gray-700">{{ $cleanup->formatted_space_saved }}</span></p>
                     </div>
                 @endforeach
             </div>

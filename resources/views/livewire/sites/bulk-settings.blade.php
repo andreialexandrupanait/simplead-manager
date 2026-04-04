@@ -1,12 +1,12 @@
 <div>
-    <x-ui.page-header title="Bulk Settings" subtitle="Apply settings to multiple sites at once" />
+    <x-ui.page-header title="{{ __('Bulk Settings') }}" subtitle="{{ __('Apply settings to multiple sites at once') }}" />
 
     <x-ui.flash-alert type="success" key="bulk-success" />
     <x-ui.flash-alert type="error" key="bulk-error" />
 
     {{-- Step Indicator --}}
     <div class="mb-6 flex items-center gap-2 text-sm">
-        @foreach([1 => 'Select Sites', 2 => 'Choose Operation', 3 => 'Configure & Apply'] as $num => $label)
+        @foreach([1 => __('Select Sites'), 2 => __('Choose Operation'), 3 => __('Configure & Apply')] as $num => $label)
             <div class="flex items-center gap-2">
                 <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium {{ $step >= $num ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500' }}">
                     {{ $num }}
@@ -23,17 +23,17 @@
     @if($step === 1)
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-semibold text-gray-900">Select Sites</h3>
+                <h3 class="text-base font-semibold text-gray-900">{{ __('Select Sites') }}</h3>
                 <div class="flex items-center gap-3">
                     <label class="flex items-center gap-2 text-xs text-gray-500">
                         <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                        Select All
+                        {{ __('Select All') }}
                     </label>
                 </div>
             </div>
 
             <div class="mb-4">
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search sites..." class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search sites...') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
             </div>
 
             <div class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
@@ -51,21 +51,21 @@
                             <p class="text-xs text-gray-400 truncate">{{ $site->domain }}</p>
                         </div>
                         <span class="shrink-0 text-xs {{ $site->is_connected ? 'text-green-600' : 'text-gray-400' }}">
-                            {{ $site->is_connected ? 'Connected' : 'Disconnected' }}
+                            {{ $site->is_connected ? __('Connected') : __('Disconnected') }}
                         </span>
                     </label>
                 @empty
-                    <p class="px-3 py-4 text-sm text-gray-400 text-center">No sites found.</p>
+                    <p class="px-3 py-4 text-sm text-gray-400 text-center">{{ __('No sites found.') }}</p>
                 @endforelse
             </div>
 
             @if(count($selectedSiteIds) > 0)
-                <p class="mt-2 text-sm text-gray-500">{{ count($selectedSiteIds) }} site(s) selected</p>
+                <p class="mt-2 text-sm text-gray-500">{{ count($selectedSiteIds) }} {{ __('site(s) selected') }}</p>
             @endif
 
             <div class="mt-4 flex justify-end">
                 <x-ui.button wire:click="goToStep(2)">
-                    Next
+                    {{ __('Next') }}
                 </x-ui.button>
             </div>
         </x-ui.card>
@@ -74,38 +74,38 @@
     {{-- Step 2: Choose Operation --}}
     @if($step === 2)
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">Choose Operation</h3>
-            <p class="text-sm text-gray-500 mb-4">What would you like to do with the {{ count($selectedSiteIds) }} selected site(s)?</p>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Choose Operation') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('What would you like to do with the') }} {{ count($selectedSiteIds) }} {{ __('selected site(s)?') }}</p>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'copy_from_site' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="copy_from_site" class="sr-only">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900">Copy from Site</p>
-                        <p class="mt-1 text-xs text-gray-500">Copy security, tweaks, or module settings from an existing site.</p>
+                        <p class="text-sm font-semibold text-gray-900">{{ __('Copy from Site') }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Copy security, tweaks, or module settings from an existing site.') }}</p>
                     </div>
                 </label>
 
                 <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'security_preset' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="security_preset" class="sr-only">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900">Security Preset</p>
-                        <p class="mt-1 text-xs text-gray-500">Apply a predefined security hardening preset.</p>
+                        <p class="text-sm font-semibold text-gray-900">{{ __('Security Preset') }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Apply a predefined security hardening preset.') }}</p>
                     </div>
                 </label>
 
                 <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'module_plan' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="module_plan" class="sr-only">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900">Maintenance Plan</p>
-                        <p class="mt-1 text-xs text-gray-500">Apply a maintenance plan (uptime, backups, etc.).</p>
+                        <p class="text-sm font-semibold text-gray-900">{{ __('Maintenance Plan') }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Apply a maintenance plan (uptime, backups, etc.).') }}</p>
                     </div>
                 </label>
             </div>
 
             <div class="mt-4 flex justify-between">
-                <x-ui.button variant="secondary" wire:click="goToStep(1)">Back</x-ui.button>
-                <x-ui.button wire:click="goToStep(3)">Next</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="goToStep(1)">{{ __('Back') }}</x-ui.button>
+                <x-ui.button wire:click="goToStep(3)">{{ __('Next') }}</x-ui.button>
             </div>
         </x-ui.card>
     @endif
@@ -115,20 +115,20 @@
         <x-ui.card>
             <h3 class="text-base font-semibold text-gray-900 mb-4">
                 @if($operation === 'copy_from_site')
-                    Copy from Site
+                    {{ __('Copy from Site') }}
                 @elseif($operation === 'security_preset')
-                    Apply Security Preset
+                    {{ __('Apply Security Preset') }}
                 @elseif($operation === 'module_plan')
-                    Apply Maintenance Plan
+                    {{ __('Apply Maintenance Plan') }}
                 @endif
             </h3>
 
             @if($operation === 'copy_from_site')
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Site</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Source Site') }}</label>
                         <x-ui.select wire:model="sourceSiteId">
-                            <option value="">-- Select source site --</option>
+                            <option value="">{{ __('-- Select source site --') }}</option>
                             @foreach($this->sourceSites as $site)
                                 <option value="{{ $site->id }}">{{ $site->name }} ({{ $site->domain }})</option>
                             @endforeach
@@ -136,64 +136,64 @@
                     </div>
 
                     <div>
-                        <p class="text-sm font-medium text-gray-700 mb-2">What to copy:</p>
+                        <p class="text-sm font-medium text-gray-700 mb-2">{{ __('What to copy:') }}</p>
                         <div class="space-y-2">
                             <label class="flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" wire:model="copySecuritySettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                Security Settings (hardening, .htaccess, login, captcha, IP management, activity log)
+                                {{ __('Security Settings (hardening, .htaccess, login, captcha, IP management, activity log)') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" wire:model="copyTweakSettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                Tweak Settings (performance, site control, admin UX, content/media, email)
+                                {{ __('Tweak Settings (performance, site control, admin UX, content/media, email)') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" wire:model="copyModuleConfig" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                Module Configuration (uptime, backup, performance, security monitors)
+                                {{ __('Module Configuration (uptime, backup, performance, security monitors)') }}
                             </label>
                         </div>
                     </div>
                 </div>
             @elseif($operation === 'security_preset')
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Security Preset</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Security Preset') }}</label>
                     <x-ui.select wire:model="securityPresetId">
-                        <option value="">-- Select preset --</option>
+                        <option value="">{{ __('-- Select preset --') }}</option>
                         @foreach($this->securityPresets as $preset)
                             <option value="{{ $preset->id }}">
-                                {{ $preset->name }}{{ $preset->is_default ? ' (Default)' : '' }}
+                                {{ $preset->name }}{{ $preset->is_default ? ' (' . __('Default') . ')' : '' }}
                             </option>
                         @endforeach
                     </x-ui.select>
                     @if($this->securityPresets->isEmpty())
-                        <p class="mt-2 text-xs text-gray-400">No security presets found. Create one in Security &gt; Presets.</p>
+                        <p class="mt-2 text-xs text-gray-400">{{ __('No security presets found. Create one in Security > Presets.') }}</p>
                     @endif
                 </div>
             @elseif($operation === 'module_plan')
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Maintenance Plan</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Maintenance Plan') }}</label>
                     <x-ui.select wire:model="modulePlanId">
-                        <option value="">-- Select plan --</option>
+                        <option value="">{{ __('-- Select plan --') }}</option>
                         @foreach($this->modulePlans as $plan)
                             <option value="{{ $plan->id }}">
-                                {{ $plan->name }}{{ $plan->is_default ? ' (Default)' : '' }}
+                                {{ $plan->name }}{{ $plan->is_default ? ' (' . __('Default') . ')' : '' }}
                             </option>
                         @endforeach
                     </x-ui.select>
                     @if($this->modulePlans->isEmpty())
-                        <p class="mt-2 text-xs text-gray-400">No maintenance plans found. Create one in Maintenance Plans.</p>
+                        <p class="mt-2 text-xs text-gray-400">{{ __('No maintenance plans found. Create one in Maintenance Plans.') }}</p>
                     @endif
                 </div>
             @endif
 
             <x-ui.alert variant="warning" class="mt-4">
-                This will apply settings to <strong>{{ count($selectedSiteIds) }}</strong> site(s). Existing settings will be overwritten. Changes will be pushed to each site.
+                {{ __('This will apply settings to') }} <strong>{{ count($selectedSiteIds) }}</strong> {{ __('site(s). Existing settings will be overwritten. Changes will be pushed to each site.') }}
             </x-ui.alert>
 
             <div class="mt-4 flex justify-between">
-                <x-ui.button variant="secondary" wire:click="goToStep(2)">Back</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="goToStep(2)">{{ __('Back') }}</x-ui.button>
                 <x-ui.button wire:click="apply" wire:loading.attr="disabled">
                     <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="apply" />
-                    Apply to {{ count($selectedSiteIds) }} Site(s)
+                    {{ __('Apply to') }} {{ count($selectedSiteIds) }} {{ __('Site(s)') }}
                 </x-ui.button>
             </div>
         </x-ui.card>

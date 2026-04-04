@@ -21,12 +21,12 @@
                     <div class="flex items-center gap-2">
                         <x-icons.alert-triangle class="h-5 w-5 text-red-500" />
                         <div>
-                            <p class="text-sm font-medium text-red-800">Google account needs to be reconnected</p>
-                            <p class="text-xs text-red-600">The access token for {{ $status['email'] ?? 'the connected account' }} has expired or been revoked.</p>
+                            <p class="text-sm font-medium text-red-800">{{ __('Google account needs to be reconnected') }}</p>
+                            <p class="text-xs text-red-600">{{ __('The access token for :account has expired or been revoked.', ['account' => $status['email'] ?? __('the connected account')]) }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <x-ui.button wire:click="reconnectGoogle" variant="primary" size="sm">Reconnect</x-ui.button>
+                        <x-ui.button wire:click="reconnectGoogle" variant="primary" size="sm">{{ __('Reconnect') }}</x-ui.button>
                     </div>
                 </div>
             </div>
@@ -34,16 +34,16 @@
             {{-- Connected info bar --}}
             <div class="mb-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
                 <div class="flex items-center gap-4 text-sm text-gray-600">
-                    <span>Property: <strong class="text-gray-900">{{ $status['property'] ?? '—' }}</strong></span>
-                    <span>Account: <strong class="text-gray-900">{{ $status['email'] ?? '—' }}</strong></span>
+                    <span>{{ __('Property') }}: <strong class="text-gray-900">{{ $status['property'] ?? '—' }}</strong></span>
+                    <span>{{ __('Account') }}: <strong class="text-gray-900">{{ $status['email'] ?? '—' }}</strong></span>
                     @if($status['last_sync'] ?? null)
-                        <span>Last sync: {{ $status['last_sync']->diffForHumans() }}</span>
+                        <span>{{ __('Last sync') }}: {{ $status['last_sync']->diffForHumans() }}</span>
                     @endif
                 </div>
                 <div class="flex items-center gap-2">
-                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Change Property</button>
+                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">{{ __('Change Property') }}</button>
                     <span class="text-gray-300">|</span>
-                    <button wire:click="disconnectAnalytics" wire:confirm="Disconnect Google Analytics? Cached data will be removed." class="text-xs font-medium text-gray-400 hover:text-red-600">Disconnect</button>
+                    <button wire:click="disconnectAnalytics" wire:confirm="{{ __('Disconnect Google Analytics? Cached data will be removed.') }}" class="text-xs font-medium text-gray-400 hover:text-red-600">{{ __('Disconnect') }}</button>
                 </div>
             </div>
 
@@ -78,7 +78,7 @@
                 {{-- Anomaly Alerts --}}
                 @if(!empty($ta['anomalies']))
                     <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                        <h4 class="text-sm font-semibold text-amber-800 mb-1">Traffic Anomalies Detected</h4>
+                        <h4 class="text-sm font-semibold text-amber-800 mb-1">{{ __('Traffic Anomalies Detected') }}</h4>
                         <div class="flex flex-wrap gap-2">
                             @foreach($ta['anomalies'] as $anomaly)
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $anomaly['direction'] === 'spike' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
@@ -230,7 +230,7 @@
                 }">
                     <x-ui.card>
                         <div class="mb-4 flex items-center justify-between">
-                            <h3 class="text-base font-semibold text-gray-900">Users Over Time</h3>
+                            <h3 class="text-base font-semibold text-gray-900">{{ __('Users Over Time') }}</h3>
                             <div class="flex gap-1">
                                 <button @click="aggregation = 'daily'; renderChart()" :class="aggregation === 'daily' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Daily</button>
                                 <button @click="aggregation = 'weekly'; renderChart()" :class="aggregation === 'weekly' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Weekly</button>
@@ -330,7 +330,7 @@
                 @elseif(count($googleConnections) === 1)
                     <p class="mb-3 text-sm text-gray-500">Connected as: {{ $googleConnections->first()->email }}</p>
                 @endif
-                <h3 class="text-base font-semibold text-gray-900 mb-3">Select GA4 Property</h3>
+                <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Select GA4 Property') }}</h3>
                 <div x-data="{
                     search: '',
                     get filtered() {
@@ -361,7 +361,7 @@
                                 </div>
                             </button>
                         </template>
-                        <p x-show="filtered.length === 0" class="text-sm text-gray-400 py-2">No properties match your search.</p>
+                        <p x-show="filtered.length === 0" class="text-sm text-gray-400 py-2">{{ __('No properties match your search.') }}</p>
                     </div>
                 </div>
             </x-ui.card>

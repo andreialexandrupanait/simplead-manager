@@ -1,11 +1,11 @@
 <div>
     {{-- Header with Add Button --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="Sites" subtitle="Manage all your WordPress sites" />
+        <x-ui.page-header title="{{ __('Sites') }}" subtitle="{{ __('Manage all your WordPress sites') }}" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
-                Add Site
+                {{ __('Add Site') }}
             </x-ui.button>
         </a>
     </div>
@@ -13,13 +13,13 @@
     {{-- Search & Filter Bar --}}
     <div class="mb-6 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs
-            :options="['all' => 'All', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical']"
+            :options="['all' => __('All'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')]"
             :selected="$filter"
             wire="filter"
         />
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
-            placeholder="Search sites..."
+            placeholder="{{ __('Search sites...') }}"
             class="w-full sm:ml-auto sm:w-64"
         />
     </div>
@@ -37,15 +37,15 @@
         </div>
     @else
         <x-ui.empty-state
-            title="No sites found"
-            description="Get started by adding your first WordPress site."
+            title="{{ __('No sites found') }}"
+            description="{{ __('Get started by adding your first WordPress site.') }}"
             icon="globe"
         >
             <x-slot:action>
                 <a href="{{ route('sites.create') }}">
                     <x-ui.button>
                         <x-icons.plus class="h-4 w-4" />
-                        Add Site
+                        {{ __('Add Site') }}
                     </x-ui.button>
                 </a>
             </x-slot:action>

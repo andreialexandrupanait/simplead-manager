@@ -1,5 +1,5 @@
 <div {!! $hasRunningJobs ? 'wire:poll.1s="checkJobProgress"' : '' !!}>
-    <x-ui.page-header title="WordPress Users" subtitle="View and manage site user accounts" />
+    <x-ui.page-header title="{{ __('WordPress Users') }}" subtitle="{{ __('View and manage site user accounts') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
@@ -7,9 +7,9 @@
     <div class="mb-4 flex items-center justify-between">
         <div class="text-sm text-gray-500">
             @if($this->lastSynced)
-                Last synced: {{ \Carbon\Carbon::parse($this->lastSynced)->diffForHumans() }}
+                {{ __('Last synced') }}: {{ \Carbon\Carbon::parse($this->lastSynced)->diffForHumans() }}
             @else
-                Not yet synced
+                {{ __('Not yet synced') }}
             @endif
         </div>
         @if($site->is_connected)
@@ -17,16 +17,16 @@
                 <x-ui.button size="sm" variant="secondary" wire:click="scanForSpam" class="whitespace-nowrap">
                     <span wire:loading.remove wire:target="scanForSpam" class="inline-flex items-center">
                         <x-icons.shield-alert class="mr-1 h-4 w-4" />
-                        Scan for Spam
+                        {{ __('Scan for Spam') }}
                     </span>
                     <span wire:loading wire:target="scanForSpam" class="inline-flex items-center">
                         <svg class="mr-1 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        Scanning...
+                        {{ __('Scanning...') }}
                     </span>
                 </x-ui.button>
                 <x-ui.button size="sm" wire:click="openCreateModal">
                     <x-icons.plus class="mr-1 h-4 w-4" />
-                    Create User
+                    {{ __('Create User') }}
                 </x-ui.button>
             </div>
         @endif
@@ -52,7 +52,7 @@
             <div class="flex items-center justify-between gap-2.5">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <x-ui.spinner size="sm" class="text-purple-600 shrink-0" />
-                    <span class="text-sm font-medium text-purple-700">Deleting spam users...</span>
+                    <span class="text-sm font-medium text-purple-700">{{ __('Deleting spam users...') }}</span>
                 </div>
                 <span class="text-lg font-bold text-purple-700 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
             </div>
@@ -60,11 +60,11 @@
             {{-- Stats counters --}}
             @if($totalCount > 0)
                 <div class="mt-2 flex items-center gap-3 text-xs">
-                    <span class="font-medium text-green-700">{{ $successCount }} deleted</span>
+                    <span class="font-medium text-green-700">{{ $successCount }} {{ __('deleted') }}</span>
                     @if($failCount > 0)
-                        <span class="font-medium text-red-600">{{ $failCount }} failed</span>
+                        <span class="font-medium text-red-600">{{ $failCount }} {{ __('failed') }}</span>
                     @endif
-                    <span class="text-purple-500">of {{ $successCount + $failCount }} processed</span>
+                    <span class="text-purple-500">{{ __('of') }} {{ $successCount + $failCount }} {{ __('processed') }}</span>
                 </div>
             @endif
 
@@ -120,7 +120,7 @@
                 <span class="text-sm font-medium text-green-700">
                     {{ $spamJob['message'] }}
                     @if($successCount > 0 || $failCount > 0)
-                        <span class="text-green-600 font-normal">&mdash; {{ $successCount }} deleted{{ $failCount > 0 ? ", {$failCount} failed" : '' }}</span>
+                        <span class="text-green-600 font-normal">&mdash; {{ $successCount }} {{ __('deleted') }}{{ $failCount > 0 ? ", {$failCount} " . __('failed') : '' }}</span>
                     @endif
                 </span>
             </div>
@@ -156,24 +156,24 @@
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
                         <x-icons.shield-alert class="h-4 w-4 text-amber-500" />
-                        Spam Scan Results
+                        {{ __('Spam Scan Results') }}
                     </h3>
-                    <button wire:click="dismissSpamResults" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Dismiss">
+                    <button wire:click="dismissSpamResults" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="{{ __('Dismiss') }}">
                         <x-icons.x class="h-4 w-4" />
                     </button>
                 </div>
 
                 <p class="text-sm text-gray-600 mb-3">
-                    Scanned {{ $summary['total_scanned'] ?? 0 }} users, found <strong>{{ $summary['flagged_count'] ?? 0 }}</strong> suspicious
+                    {{ __('Scanned') }} {{ $summary['total_scanned'] ?? 0 }} {{ __('users, found') }} <strong>{{ $summary['flagged_count'] ?? 0 }}</strong> {{ __('suspicious') }}
                     @if(($summary['highest_score'] ?? 0) > 0)
-                        (highest score: {{ $summary['highest_score'] }})
+                        ({{ __('highest score') }}: {{ $summary['highest_score'] }})
                     @endif
                 </p>
 
                 @if(empty($flagged))
                     <div class="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-2">
                         <x-icons.check-circle class="h-5 w-5 text-green-600 flex-shrink-0" />
-                        <span class="text-sm text-green-800">No suspicious users detected. Your site looks clean.</span>
+                        <span class="text-sm text-green-800">{{ __('No suspicious users detected. Your site looks clean.') }}</span>
                     </div>
                 @else
                     {{-- Bulk actions --}}
@@ -184,17 +184,17 @@
                                 x-on:change="selected = $event.target.checked ? {{ json_encode($allIds) }} : []"
                                 :checked="selected.length === {{ count($flagged) }} && selected.length > 0"
                             />
-                            Select All ({{ count($flagged) }})
+                            {{ __('Select All') }} ({{ count($flagged) }})
                         </label>
                         <button
                             x-show="selected.length > 0"
                             x-cloak
-                            x-on:click="if (confirm('Are you sure you want to delete ' + selected.length + ' user(s)? Their content will be reassigned to an admin.')) { $wire.deleteSpamUsers(selected) }"
+                            x-on:click="if (confirm('{{ __('Are you sure you want to delete') }} ' + selected.length + ' {{ __('user(s)? Their content will be reassigned to an admin.') }}')) { $wire.deleteSpamUsers(selected) }"
                             class="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-red-500 disabled:opacity-50"
                             {{ $hasRunningJobs ? 'disabled' : '' }}
                         >
                             <x-icons.trash class="mr-1 h-3.5 w-3.5" />
-                            Delete Selected (<span x-text="selected.length"></span>)
+                            {{ __('Delete Selected') }} (<span x-text="selected.length"></span>)
                         </button>
                     </div>
 
@@ -204,10 +204,10 @@
                             <thead>
                                 <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
                                     <th class="pb-2 pr-2 w-8"></th>
-                                    <th class="pb-2 pr-4">User</th>
-                                    <th class="pb-2 pr-4">Role</th>
-                                    <th class="pb-2 pr-4">Orders</th>
-                                    <th class="pb-2">Score</th>
+                                    <th class="pb-2 pr-4">{{ __('User') }}</th>
+                                    <th class="pb-2 pr-4">{{ __('Role') }}</th>
+                                    <th class="pb-2 pr-4">{{ __('Orders') }}</th>
+                                    <th class="pb-2">{{ __('Score') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -257,7 +257,7 @@
     <div class="mb-4 flex flex-wrap gap-2">
         <button wire:click="$set('roleFilter', '')"
             class="rounded-full px-3 py-1 text-xs font-medium {{ $roleFilter === '' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-            All ({{ array_sum($this->roleCounts) }})
+            {{ __('All') }} ({{ array_sum($this->roleCounts) }})
         </button>
         @foreach($this->roleCounts as $role => $count)
             <button wire:click="$set('roleFilter', '{{ $role }}')"
@@ -271,8 +271,8 @@
     <x-ui.card>
         @if($users->isEmpty())
             <x-ui.empty-state
-                title="No users found"
-                description="WordPress users will appear here after the site is synced."
+                title="{{ __('No users found') }}"
+                description="{{ __('WordPress users will appear here after the site is synced.') }}"
                 icon="users"
             />
         @else
@@ -306,22 +306,22 @@
                             <div class="flex items-center gap-3">
                                 @if($user->is_active)
                                     <span class="inline-flex items-center gap-1 text-xs text-green-700">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> Active
+                                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> {{ __('Active') }}
                                     </span>
                                 @else
                                     <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> Inactive
+                                        <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> {{ __('Inactive') }}
                                     </span>
                                 @endif
-                                <span class="text-xs {{ ($user->orders_count ?? 0) === 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">Orders: {{ $user->orders_count ?? 0 }}</span>
-                                <span class="text-xs text-gray-400">Last login: {{ $user->last_login_at?->diffForHumans() ?? 'Never' }}</span>
+                                <span class="text-xs {{ ($user->orders_count ?? 0) === 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">{{ __('Orders') }}: {{ $user->orders_count ?? 0 }}</span>
+                                <span class="text-xs text-gray-400">{{ __('Last login') }}: {{ $user->last_login_at?->diffForHumans() ?? __('Never') }}</span>
                             </div>
                             @if($site->is_connected)
                                 <div class="flex items-center gap-1">
-                                    <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit user">
+                                    <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="{{ __('Edit user') }}">
                                         <x-icons.pencil class="h-4 w-4" />
                                     </button>
-                                    <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete user">
+                                    <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="{{ __('Delete user') }}">
                                         <x-icons.trash class="h-4 w-4" />
                                     </button>
                                 </div>
@@ -336,14 +336,14 @@
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                            <th class="pb-2 pr-4">User</th>
-                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('role')">Role</th>
-                            <th class="pb-2 pr-4">Email</th>
-                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('last_login_at')">Last Login</th>
-                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('orders_count')">Orders</th>
-                            <th class="pb-2 pr-4">Status</th>
+                            <th class="pb-2 pr-4">{{ __('User') }}</th>
+                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('role')">{{ __('Role') }}</th>
+                            <th class="pb-2 pr-4">{{ __('Email') }}</th>
+                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('last_login_at')">{{ __('Last Login') }}</th>
+                            <th class="pb-2 pr-4 cursor-pointer" wire:click="sort('orders_count')">{{ __('Orders') }}</th>
+                            <th class="pb-2 pr-4">{{ __('Status') }}</th>
                             @if($site->is_connected)
-                                <th class="pb-2 pr-4 text-right">Actions</th>
+                                <th class="pb-2 pr-4 text-right">{{ __('Actions') }}</th>
                             @endif
                         </tr>
                     </thead>
@@ -370,7 +370,7 @@
                                 </td>
                                 <td class="py-2 pr-4 text-gray-500">{{ $user->email }}</td>
                                 <td class="py-2 pr-4 text-xs text-gray-500">
-                                    {{ $user->last_login_at?->diffForHumans() ?? 'Never' }}
+                                    {{ $user->last_login_at?->diffForHumans() ?? __('Never') }}
                                 </td>
                                 <td class="py-2 pr-4 text-xs {{ ($user->orders_count ?? 0) === 0 ? 'text-red-600 font-medium' : 'text-gray-500' }}">
                                     {{ $user->orders_count ?? 0 }}
@@ -378,21 +378,21 @@
                                 <td class="py-2 pr-4">
                                     @if($user->is_active)
                                         <span class="inline-flex items-center gap-1 text-xs text-green-700">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> Active
+                                            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> {{ __('Active') }}
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> Inactive
+                                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> {{ __('Inactive') }}
                                         </span>
                                     @endif
                                 </td>
                                 @if($site->is_connected)
                                     <td class="py-2 pr-4 text-right">
                                         <div class="flex items-center justify-end gap-1">
-                                            <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit user">
+                                            <button wire:click="openEditModal({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="{{ __('Edit user') }}">
                                                 <x-icons.pencil class="h-4 w-4" />
                                             </button>
-                                            <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete user">
+                                            <button wire:click="confirmDeleteUser({{ $user->id }})" class="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600" title="{{ __('Delete user') }}">
                                                 <x-icons.trash class="h-4 w-4" />
                                             </button>
                                         </div>
@@ -415,30 +415,30 @@
     {{-- Create User Modal --}}
     <x-ui.modal name="create-user" maxWidth="md">
         <form wire:submit="createUser">
-            <h2 class="text-lg font-semibold text-gray-900">Create User</h2>
-            <p class="mt-1 text-sm text-gray-500">Create a new WordPress user on {{ $site->name }}.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Create User') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Create a new WordPress user on') }} {{ $site->name }}.</p>
 
             <div class="mt-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Username') }}</label>
                     <x-ui.input wire:model="newUsername" type="text" class="mt-1" placeholder="username" required />
                     @error('newUsername') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
                     <x-ui.input wire:model="newEmail" type="email" class="mt-1" placeholder="user@example.com" required />
                     @error('newEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <x-ui.input wire:model="newPassword" type="password" class="mt-1" placeholder="Min 8 characters" required />
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Password') }}</label>
+                    <x-ui.input wire:model="newPassword" type="password" class="mt-1" placeholder="{{ __('Min 8 characters') }}" required />
                     @error('newPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Role') }}</label>
                     <x-ui.select wire:model="newRole" class="mt-1">
                         @foreach($this->availableRoles as $role)
                             <option value="{{ $role }}">{{ ucfirst($role) }}</option>
@@ -447,14 +447,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Display Name <span class="text-gray-400">(optional)</span></label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Display Name') }} <span class="text-gray-400">({{ __('optional') }})</span></label>
                     <x-ui.input wire:model="newDisplayName" type="text" class="mt-1" placeholder="John Doe" />
                 </div>
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-create-user')">Cancel</x-ui.button>
-                <x-ui.button type="submit">Create User</x-ui.button>
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-create-user')">{{ __('Cancel') }}</x-ui.button>
+                <x-ui.button type="submit">{{ __('Create User') }}</x-ui.button>
             </div>
         </form>
     </x-ui.modal>
@@ -462,24 +462,24 @@
     {{-- Edit User Modal --}}
     <x-ui.modal name="edit-user" maxWidth="md">
         <form wire:submit="updateUser">
-            <h2 class="text-lg font-semibold text-gray-900">Edit User</h2>
-            <p class="mt-1 text-sm text-gray-500">Update user details for <strong>{{ $editUsername }}</strong>.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Edit User') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Update user details for') }} <strong>{{ $editUsername }}</strong>.</p>
 
             <div class="mt-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Username') }}</label>
                     <x-ui.input type="text" :value="$editUsername" class="mt-1" disabled />
-                    <p class="mt-1 text-xs text-gray-400">Usernames cannot be changed in WordPress.</p>
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Usernames cannot be changed in WordPress.') }}</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
                     <x-ui.input wire:model="editEmail" type="email" class="mt-1" required />
                     @error('editEmail') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Role') }}</label>
                     <x-ui.select wire:model="editRole" class="mt-1">
                         @foreach($this->availableRoles as $role)
                             <option value="{{ $role }}">{{ ucfirst($role) }}</option>
@@ -489,14 +489,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Display Name</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Display Name') }}</label>
                     <x-ui.input wire:model="editDisplayName" type="text" class="mt-1" />
                 </div>
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-edit-user')">Cancel</x-ui.button>
-                <x-ui.button type="submit">Save Changes</x-ui.button>
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-edit-user')">{{ __('Cancel') }}</x-ui.button>
+                <x-ui.button type="submit">{{ __('Save Changes') }}</x-ui.button>
             </div>
         </form>
     </x-ui.modal>
@@ -509,19 +509,19 @@
                     <x-icons.trash class="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Delete User</h2>
-                    <p class="text-sm text-gray-500">This action cannot be undone.</p>
+                    <h2 class="text-lg font-semibold text-gray-900">{{ __('Delete User') }}</h2>
+                    <p class="text-sm text-gray-500">{{ __('This action cannot be undone.') }}</p>
                 </div>
             </div>
 
             <p class="text-sm text-gray-700">
-                Are you sure you want to delete <strong>{{ $deletingUsername }}</strong>? All content authored by this user will need to be reassigned or will be deleted.
+                {{ __('Are you sure you want to delete') }} <strong>{{ $deletingUsername }}</strong>? {{ __('All content authored by this user will need to be reassigned or will be deleted.') }}
             </p>
 
             <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700">Reassign content to <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-sm font-medium text-gray-700">{{ __('Reassign content to') }} <span class="text-gray-400">({{ __('optional') }})</span></label>
                 <x-ui.select wire:model="reassignTo" class="mt-1">
-                    <option value="">Don't reassign (delete content)</option>
+                    <option value="">{{ __("Don't reassign (delete content)") }}</option>
                     @foreach(\App\Models\SiteUser::where('site_id', $site->id)->where('wp_user_id', '!=', $deletingUserId)->orderBy('username')->get() as $otherUser)
                         <option value="{{ $otherUser->wp_user_id }}">{{ $otherUser->username }} ({{ ucfirst($otherUser->role) }})</option>
                     @endforeach
@@ -529,8 +529,8 @@
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-user')">Cancel</x-ui.button>
-                <x-ui.button type="button" variant="danger" wire:click="deleteUser">Delete User</x-ui.button>
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-user')">{{ __('Cancel') }}</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="deleteUser">{{ __('Delete User') }}</x-ui.button>
             </div>
         </div>
     </x-ui.modal>

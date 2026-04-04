@@ -1,5 +1,5 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
-    <x-ui.page-header title="Security Scanning" subtitle="Scan for vulnerabilities and core file integrity" />
+    <x-ui.page-header title="{{ __('Security Scanning') }}" subtitle="{{ __('Scan for vulnerabilities and core file integrity') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
@@ -7,8 +7,8 @@
     <x-ui.flash-alert type="error" key="error" />
 
     {{-- Job Progress --}}
-    <x-ui.job-progress job-key="scan" :jobs="$trackedJobs" title="Running security scan..." />
-    <x-ui.job-progress job-key="integrity" :jobs="$trackedJobs" title="Checking core file integrity..." />
+    <x-ui.job-progress job-key="scan" :jobs="$trackedJobs" title="{{ __('Running security scan...') }}" />
+    <x-ui.job-progress job-key="integrity" :jobs="$trackedJobs" title="{{ __('Checking core file integrity...') }}" />
 
     {{-- Security Score Header --}}
     <div class="mb-6">
@@ -21,11 +21,11 @@
                         @if($this->latestScan)
                             <p class="text-lg font-semibold text-gray-900">{{ $this->latestScan->score_label }}</p>
                             <p class="mt-1 text-xs text-gray-500">
-                                Last scanned: {{ $this->latestScan->scanned_at->diffForHumans() }}
+                                {{ __('Last scanned') }}: {{ $this->latestScan->scanned_at->diffForHumans() }}
                             </p>
                         @else
-                            <p class="text-lg font-semibold text-gray-500">No Scan Yet</p>
-                            <p class="text-sm text-gray-400">Run a security scan to get your score.</p>
+                            <p class="text-lg font-semibold text-gray-500">{{ __('No Scan Yet') }}</p>
+                            <p class="text-sm text-gray-400">{{ __('Run a security scan to get your score.') }}</p>
                         @endif
                     </div>
                 </div>
@@ -33,7 +33,7 @@
                 <div>
                     <x-ui.button variant="primary" size="sm" wire:click="scanNow" wire:loading.attr="disabled">
                         <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="scanNow" />
-                        Scan Now
+                        {{ __('Scan Now') }}
                     </x-ui.button>
                 </div>
             </div>
@@ -42,7 +42,7 @@
 
     {{-- Security Checks --}}
     <x-ui.card>
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Security Checks</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Security Checks') }}</h3>
         <div class="space-y-3">
             {{-- 1. WordPress Version --}}
             @php
@@ -56,18 +56,18 @@
                         <x-icons.x-circle class="h-5 w-5 text-red-500 shrink-0" />
                     @endif
                     <div>
-                        <p class="text-sm font-medium text-gray-900">WordPress Version</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('WordPress Version') }}</p>
                         <p class="text-xs text-gray-500">
                             @if($wpUpToDate)
-                                Running latest version ({{ $this->site->wp_version }})
+                                {{ __('Running latest version') }} ({{ $this->site->wp_version }})
                             @else
-                                Update available: {{ $this->site->wp_version }} &rarr; {{ $this->site->core_update_version }}
+                                {{ __('Update available') }}: {{ $this->site->wp_version }} &rarr; {{ $this->site->core_update_version }}
                             @endif
                         </p>
                     </div>
                 </div>
                 @if(!$wpUpToDate)
-                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>Update</a>
+                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>{{ __('Update') }}</a>
                 @endif
             </div>
 
@@ -83,18 +83,18 @@
                         <x-icons.x-circle class="h-5 w-5 text-red-500 shrink-0" />
                     @endif
                     <div>
-                        <p class="text-sm font-medium text-gray-900">Plugin Vulnerabilities</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Plugin Vulnerabilities') }}</p>
                         <p class="text-xs text-gray-500">
                             @if($vulnCount === 0)
-                                No known vulnerabilities detected
+                                {{ __('No known vulnerabilities detected') }}
                             @else
-                                {{ $vulnCount }} vulnerable {{ Str::plural('plugin', $vulnCount) }} found
+                                {{ $vulnCount }} {{ __('vulnerable') }} {{ Str::plural(__('plugin'), $vulnCount) }} {{ __('found') }}
                             @endif
                         </p>
                     </div>
                 </div>
                 @if($vulnCount > 0)
-                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>View</a>
+                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>{{ __('View') }}</a>
                 @endif
             </div>
 
@@ -113,21 +113,21 @@
                         <x-icons.x-circle class="h-5 w-5 text-red-500 shrink-0" />
                     @endif
                     <div>
-                        <p class="text-sm font-medium text-gray-900">Core File Integrity</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Core File Integrity') }}</p>
                         <p class="text-xs text-gray-500">
                             @if(!$coreCheck)
-                                Not yet checked
+                                {{ __('Not yet checked') }}
                             @elseif($coreOk)
-                                All core files intact
+                                {{ __('All core files intact') }}
                             @else
-                                {{ $coreCheck->modified_files_count }} modified {{ Str::plural('file', $coreCheck->modified_files_count) }} detected
+                                {{ $coreCheck->modified_files_count }} {{ __('modified') }} {{ Str::plural(__('file'), $coreCheck->modified_files_count) }} {{ __('detected') }}
                             @endif
                         </p>
                     </div>
                 </div>
                 <x-ui.button variant="secondary" size="sm" wire:click="checkCoreIntegrityNow" wire:loading.attr="disabled" wire:target="checkCoreIntegrityNow">
-                    <span wire:loading.remove wire:target="checkCoreIntegrityNow">Check</span>
-                    <span wire:loading wire:target="checkCoreIntegrityNow">Checking...</span>
+                    <span wire:loading.remove wire:target="checkCoreIntegrityNow">{{ __('Check') }}</span>
+                    <span wire:loading wire:target="checkCoreIntegrityNow">{{ __('Checking...') }}</span>
                 </x-ui.button>
             </div>
 
@@ -143,12 +143,12 @@
                         <x-icons.x-circle class="h-5 w-5 text-yellow-500 shrink-0" />
                     @endif
                     <div>
-                        <p class="text-sm font-medium text-gray-900">Debug Mode</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Debug Mode') }}</p>
                         <p class="text-xs text-gray-500">
                             @if($debugOff)
-                                WP_DEBUG is disabled
+                                {{ __('WP_DEBUG is disabled') }}
                             @else
-                                WP_DEBUG is enabled (should be off in production)
+                                {{ __('WP_DEBUG is enabled (should be off in production)') }}
                             @endif
                         </p>
                     </div>
@@ -162,7 +162,7 @@
     @if($this->activeIssues->count() > 0)
         <div class="mt-6">
             <x-ui.card>
-                <h3 class="text-base font-semibold text-gray-900 mb-4">Active Issues ({{ $this->activeIssues->count() }})</h3>
+                <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Active Issues') }} ({{ $this->activeIssues->count() }})</h3>
                 <div class="space-y-3">
                     @foreach($this->activeIssues as $issue)
                         <div class="flex items-start justify-between gap-4 rounded-lg border border-gray-100 p-3">
@@ -179,10 +179,10 @@
                             </div>
                             <div class="flex shrink-0 gap-1">
                                 <x-ui.button variant="secondary" size="sm" wire:click="resolveIssue({{ $issue->id }})" wire:loading.attr="disabled">
-                                    Fix
+                                    {{ __('Fix') }}
                                 </x-ui.button>
                                 <x-ui.button variant="secondary" size="sm" wire:click="ignoreIssue({{ $issue->id }})" wire:loading.attr="disabled">
-                                    Ignore
+                                    {{ __('Ignore') }}
                                 </x-ui.button>
                             </div>
                         </div>

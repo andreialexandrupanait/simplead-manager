@@ -2,7 +2,7 @@
     {{-- Header actions --}}
     <div class="mb-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <label class="text-sm font-medium text-gray-700">Template</label>
+            <label class="text-sm font-medium text-gray-700">{{ __('Template') }}</label>
             <select wire:model.live="selectedTemplateId" wire:change="updateSiteTemplate"
                     class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
                 @foreach($templates as $tpl)
@@ -13,10 +13,10 @@
         <div class="flex gap-3">
             <x-ui.button variant="secondary" wire:click="openScheduleModal">
                 <x-icons.settings class="h-4 w-4" />
-                Schedule
+                {{ __('Schedule') }}
             </x-ui.button>
             <x-ui.button wire:click="openGenerateModal">
-                Generate Report
+                {{ __('Generate Report') }}
             </x-ui.button>
         </div>
     </div>
@@ -46,7 +46,7 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="font-medium text-gray-900">Scheduled Reports</span>
+                            <span class="font-medium text-gray-900">{{ __('Scheduled Reports') }}</span>
                             <x-ui.badge :variant="$schedule->is_active ? 'green' : 'gray'">{{ $schedule->is_active ? 'Active' : 'Paused' }}</x-ui.badge>
                         </div>
                         <p class="text-sm text-gray-500">
@@ -65,17 +65,17 @@
                     </div>
                 </div>
                 <button wire:click="openScheduleModal" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                    Configure
+                    {{ __('Configure') }}
                 </button>
             </div>
         </div>
     @else
         <div class="mb-6 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center">
             <x-icons.refresh-cw class="mx-auto h-8 w-8 text-gray-400" />
-            <p class="mt-2 text-sm font-medium text-gray-900">No scheduled reports</p>
-            <p class="mt-1 text-sm text-gray-500">Set up automatic report generation and delivery</p>
+            <p class="mt-2 text-sm font-medium text-gray-900">{{ __('No scheduled reports') }}</p>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Set up automatic report generation and delivery') }}</p>
             <button wire:click="openScheduleModal" class="mt-3 text-sm font-medium text-purple-600 hover:text-purple-700">
-                Set Up Schedule
+                {{ __('Set Up Schedule') }}
             </button>
         </div>
     @endif
@@ -92,7 +92,7 @@
         resetSelection() { this.selected = []; this.showBulkSend = false; this.bulkEmail = ''; },
     }" class="rounded-xl border border-gray-200 bg-white">
         <div class="border-b border-gray-200 px-5 py-4">
-            <h2 class="font-medium text-gray-900">Report History</h2>
+            <h2 class="font-medium text-gray-900">{{ __('Report History') }}</h2>
         </div>
 
         {{-- Bulk action bar --}}
@@ -129,11 +129,11 @@
             <a :href="'{{ route('reports.bulk-download', $site) }}?ids=' + selected.join(',')"
                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
                 <x-icons.hard-drive class="h-3.5 w-3.5" />
-                Download ZIP
+                {{ __('Download ZIP') }}
             </a>
 
             <button @click="resetSelection()" class="ml-auto text-xs text-gray-500 hover:text-gray-700">
-                Clear selection
+                {{ __('Clear selection') }}
             </button>
         </div>
 
@@ -309,12 +309,12 @@
                 {{-- Header --}}
                 <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 rounded-t-xl">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900">Generate Report</h3>
+                        <h3 class="text-lg font-semibold text-gray-900">{{ __('Generate Report') }}</h3>
                         <p class="text-sm text-gray-500">
                             @if($generateStep === 1)
-                                Step 1 of 2 — Review section data
+                                {{ __('Step 1 of 2 — Review section data') }}
                             @else
-                                Step 2 of 2 — Review recommendations
+                                {{ __('Step 2 of 2 — Review recommendations') }}
                             @endif
                         </p>
                     </div>
@@ -328,12 +328,12 @@
                     <div class="flex items-center gap-2">
                         <div class="flex items-center gap-1.5">
                             <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 1 ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600' }}">1</div>
-                            <span class="text-sm {{ $generateStep === 1 ? 'font-medium text-gray-900' : 'text-gray-500' }}">Data Preview</span>
+                            <span class="text-sm {{ $generateStep === 1 ? 'font-medium text-gray-900' : 'text-gray-500' }}">{{ __('Data Preview') }}</span>
                         </div>
                         <div class="h-px flex-1 bg-gray-200"></div>
                         <div class="flex items-center gap-1.5">
                             <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 2 ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500' }}">2</div>
-                            <span class="text-sm {{ $generateStep === 2 ? 'font-medium text-gray-900' : 'text-gray-500' }}">Recommendations</span>
+                            <span class="text-sm {{ $generateStep === 2 ? 'font-medium text-gray-900' : 'text-gray-500' }}">{{ __('Recommendations') }}</span>
                         </div>
                     </div>
                 </div>
@@ -391,7 +391,7 @@
                             </div>
                         @else
                             <div class="text-center py-8 text-gray-400">
-                                <p class="text-sm">No sections configured in the selected template.</p>
+                                <p class="text-sm">{{ __('No sections configured in the selected template.') }}</p>
                             </div>
                         @endif
 
@@ -445,8 +445,8 @@
                             </div>
                         @else
                             <div class="text-center py-8 text-gray-400">
-                                <p class="text-sm">No recommendations for this report.</p>
-                                <p class="text-xs mt-1">Add a custom one below or generate will proceed without recommendations.</p>
+                                <p class="text-sm">{{ __('No recommendations for this report.') }}</p>
+                                <p class="text-xs mt-1">{{ __('Add a custom one below or generate will proceed without recommendations.') }}</p>
                             </div>
                         @endif
 
@@ -456,38 +456,38 @@
                                     class="flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 mb-3">
                                 <svg x-show="!showForm" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                 <svg x-show="showForm" x-cloak class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                                Add Custom Recommendation
+                                {{ __('Add Custom Recommendation') }}
                             </button>
 
                             <div x-show="showForm" x-cloak class="rounded-lg border border-dashed border-gray-300 p-4">
                                 <div class="space-y-3">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                        <x-ui.input type="text" wire:model="newRecTitle" placeholder="Recommendation title" />
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title') }}</label>
+                                        <x-ui.input type="text" wire:model="newRecTitle" placeholder="{{ __('Recommendation title') }}" />
                                         @error('newRecTitle') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                     </div>
                                     <div class="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Priority') }}</label>
                                             <x-ui.select wire:model="newRecPriority">
-                                                <option value="high">High</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="low">Low</option>
+                                                <option value="high">{{ __('High') }}</option>
+                                                <option value="medium">{{ __('Medium') }}</option>
+                                                <option value="low">{{ __('Low') }}</option>
                                             </x-ui.select>
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Category') }}</label>
                                             <x-ui.select wire:model="newRecCategory">
-                                                <option value="technical">Technical</option>
-                                                <option value="performance">Performance</option>
+                                                <option value="technical">{{ __('Technical') }}</option>
+                                                <option value="performance">{{ __('Performance') }}</option>
                                                 <option value="seo">SEO</option>
                                             </x-ui.select>
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Description') }}</label>
                                         <textarea wire:model="newRecDescription" rows="2"
-                                                  placeholder="Detailed recommendation description"
+                                                  placeholder="{{ __('Detailed recommendation description') }}"
                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
                                         @error('newRecDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                     </div>
@@ -505,21 +505,21 @@
                     <div>
                         @if($generateStep === 2)
                             <button wire:click="backToPreview" class="text-sm font-medium text-gray-600 hover:text-gray-800">
-                                &larr; Back to Data Preview
+                                &larr; {{ __('Back to Data Preview') }}
                             </button>
                         @endif
                     </div>
                     <div class="flex items-center gap-3">
                         <x-ui.button variant="secondary" wire:click="$set('showGenerateModal', false)">
-                            Cancel
+                            {{ __('Cancel') }}
                         </x-ui.button>
                         @if($generateStep === 1)
                             <x-ui.button wire:click="proceedToRecommendations">
-                                Next: Recommendations &rarr;
+                                {{ __('Next: Recommendations') }} &rarr;
                             </x-ui.button>
                         @else
                             <x-ui.button wire:click="confirmGenerate">
-                                Generate Report
+                                {{ __('Generate Report') }}
                             </x-ui.button>
                         @endif
                     </div>
@@ -534,7 +534,7 @@
             <div class="absolute inset-0 bg-black/50" wire:click="$set('showScheduleModal', false)"></div>
             <div class="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
                 <div class="mb-5 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Report Schedule</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Report Schedule') }}</h3>
                     <button wire:click="$set('showScheduleModal', false)" class="text-gray-400 hover:text-gray-600">
                         <x-icons.x class="h-5 w-5" />
                     </button>
@@ -543,7 +543,7 @@
                 <div class="space-y-4">
                     {{-- Active toggle --}}
                     <div class="flex items-center justify-between rounded-lg border border-gray-200 p-3">
-                        <span class="text-sm font-medium text-gray-700">Enable automatic reports</span>
+                        <span class="text-sm font-medium text-gray-700">{{ __('Enable automatic reports') }}</span>
                         <button wire:click="$toggle('scheduleActive')"
                                 class="relative inline-flex h-6 w-11 items-center rounded-full transition {{ $scheduleActive ? 'bg-purple-600' : 'bg-gray-200' }}">
                             <span class="inline-block h-4 w-4 rounded-full bg-white transition {{ $scheduleActive ? 'translate-x-6' : 'translate-x-1' }}"></span>
@@ -552,7 +552,7 @@
 
                     {{-- Template --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Report Template</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Report Template') }}</label>
                         <x-ui.select wire:model="scheduleTemplateId">
                             @foreach($templates as $tpl)
                                 <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
@@ -562,15 +562,15 @@
 
                     {{-- Frequency --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Frequency') }}</label>
                         <div class="flex gap-4">
                             <label class="flex items-center gap-2">
                                 <input type="radio" wire:model.live="scheduleFrequency" value="weekly" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Weekly</span>
+                                <span class="text-sm">{{ __('Weekly') }}</span>
                             </label>
                             <label class="flex items-center gap-2">
                                 <input type="radio" wire:model.live="scheduleFrequency" value="monthly" class="text-purple-600 focus:ring-purple-500">
-                                <span class="text-sm">Monthly</span>
+                                <span class="text-sm">{{ __('Monthly') }}</span>
                             </label>
                         </div>
                     </div>
@@ -579,20 +579,20 @@
                     <div class="grid grid-cols-2 gap-3">
                         @if($scheduleFrequency === 'weekly')
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Day of Week') }}</label>
                                 <x-ui.select wire:model="scheduleDayOfWeek">
-                                    <option value="0">Sunday</option>
-                                    <option value="1">Monday</option>
-                                    <option value="2">Tuesday</option>
-                                    <option value="3">Wednesday</option>
-                                    <option value="4">Thursday</option>
-                                    <option value="5">Friday</option>
-                                    <option value="6">Saturday</option>
+                                    <option value="0">{{ __('Sunday') }}</option>
+                                    <option value="1">{{ __('Monday') }}</option>
+                                    <option value="2">{{ __('Tuesday') }}</option>
+                                    <option value="3">{{ __('Wednesday') }}</option>
+                                    <option value="4">{{ __('Thursday') }}</option>
+                                    <option value="5">{{ __('Friday') }}</option>
+                                    <option value="6">{{ __('Saturday') }}</option>
                                 </x-ui.select>
                             </div>
                         @else
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Day of Month') }}</label>
                                 <x-ui.select wire:model="scheduleDayOfMonth">
                                     @for($i = 1; $i <= 28; $i++)
                                         <option value="{{ $i }}">{{ $i }}</option>
@@ -601,46 +601,46 @@
                             </div>
                         @endif
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Time') }}</label>
                             <x-ui.input type="time" wire:model="scheduleTime" />
                         </div>
                     </div>
 
                     {{-- Period --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Report Period</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Report Period') }}</label>
                         <x-ui.select wire:model="schedulePeriod">
-                            <option value="last_7_days">Last 7 days</option>
-                            <option value="last_30_days">Last 30 days</option>
-                            <option value="last_month">Last calendar month</option>
+                            <option value="last_7_days">{{ __('Last 7 days') }}</option>
+                            <option value="last_30_days">{{ __('Last 30 days') }}</option>
+                            <option value="last_month">{{ __('Last calendar month') }}</option>
                         </x-ui.select>
                     </div>
 
                     {{-- Recipients --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Recipients') }}</label>
                         <x-ui.input type="text" wire:model="scheduleRecipientEmails"
                                placeholder="client@example.com, team@example.com" />
-                        <p class="mt-1 text-xs text-gray-500">Comma-separated email addresses</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Comma-separated email addresses') }}</p>
                     </div>
 
                     {{-- Admin copy --}}
                     <div class="flex items-center gap-2">
                         <input type="checkbox" wire:model="scheduleSendCopyToAdmin" id="adminCopy"
                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                        <label for="adminCopy" class="text-sm text-gray-700">Send copy to admin email</label>
+                        <label for="adminCopy" class="text-sm text-gray-700">{{ __('Send copy to admin email') }}</label>
                     </div>
 
                     {{-- Custom email --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Subject (optional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Email Subject (optional)') }}</label>
                         <x-ui.input type="text" wire:model="scheduleEmailSubject"
-                               placeholder="Leave empty for default" />
+                               placeholder="{{ __('Leave empty for default') }}" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Body (optional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Email Body (optional)') }}</label>
                         <textarea wire:model="scheduleEmailBody" rows="3"
-                                  placeholder="Custom message in the email body"
+                                  placeholder="{{ __('Custom message in the email body') }}"
                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
                     </div>
                 </div>
@@ -649,18 +649,18 @@
                     <div>
                         @if($editingScheduleId)
                             <button wire:click="deleteSchedule"
-                                    wire:confirm="Are you sure you want to delete this schedule?"
+                                    wire:confirm="{{ __('Are you sure you want to delete this schedule?') }}"
                                     class="text-sm text-red-600 hover:text-red-700">
-                                Delete Schedule
+                                {{ __('Delete Schedule') }}
                             </button>
                         @endif
                     </div>
                     <div class="flex gap-3">
                         <x-ui.button variant="secondary" wire:click="$set('showScheduleModal', false)">
-                            Cancel
+                            {{ __('Cancel') }}
                         </x-ui.button>
                         <x-ui.button wire:click="saveSchedule">
-                            Save Schedule
+                            {{ __('Save Schedule') }}
                         </x-ui.button>
                     </div>
                 </div>
@@ -674,12 +674,12 @@
             <div class="absolute inset-0 bg-black/50" wire:click="$set('showSendModal', false)"></div>
             <div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
                 <div class="mb-5">
-                    <h3 class="text-lg font-semibold text-gray-900">Send Report</h3>
-                    <p class="mt-1 text-sm text-gray-500">Send the report PDF to an email address</p>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Send Report') }}</h3>
+                    <p class="mt-1 text-sm text-gray-500">{{ __('Send the report PDF to an email address') }}</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Email Address') }}</label>
                     <x-ui.input type="email" wire:model="sendToEmail"
                            placeholder="recipient@example.com" />
                     @error('sendToEmail') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -687,10 +687,10 @@
 
                 <div class="mt-6 flex justify-end gap-3">
                     <x-ui.button variant="secondary" wire:click="$set('showSendModal', false)">
-                        Cancel
+                        {{ __('Cancel') }}
                     </x-ui.button>
                     <x-ui.button wire:click="sendReport">
-                        Send
+                        {{ __('Send') }}
                     </x-ui.button>
                 </div>
             </div>

@@ -1,14 +1,14 @@
 <div class="min-w-0" @if($isRunning) wire:poll.2s="checkTestProgress" @endif>
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
-        <x-ui.page-header title="Performance" subtitle="Monitor Core Web Vitals and PageSpeed scores" />
+        <x-ui.page-header title="{{ __('Performance') }}" subtitle="{{ __('Monitor Core Web Vitals and PageSpeed scores') }}" />
         <div class="flex items-center gap-3">
             @if($this->monitor)
                 <x-ui.button variant="secondary" wire:click="openBudgetModal">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                     </svg>
-                    Budgets
+                    {{ __('Budgets') }}
                 </x-ui.button>
             @endif
             <x-ui.button variant="secondary" wire:click="openSettings">
@@ -16,7 +16,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                Settings
+                {{ __('Settings') }}
             </x-ui.button>
             <x-ui.button wire:click="runTest" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="runTest">
@@ -25,7 +25,7 @@
                     </svg>
                 </span>
                 <x-ui.spinner size="sm" wire:loading wire:target="runTest" />
-                Run Test
+                {{ __('Run Test') }}
             </x-ui.button>
         </div>
     </div>
@@ -90,13 +90,13 @@
                             </template>
                             <h3 class="text-sm font-semibold text-gray-900">
                                 <span x-show="running">
-                                    Analyzing
-                                    <span x-show="count > 0 && device === 'mobile'">Mobile</span>
-                                    <span x-show="count > 0 && device === 'desktop'">Desktop</span>
-                                    Performance&hellip;
+                                    {{ __('Analyzing') }}
+                                    <span x-show="count > 0 && device === 'mobile'">{{ __('Mobile') }}</span>
+                                    <span x-show="count > 0 && device === 'desktop'">{{ __('Desktop') }}</span>
+                                    {{ __('Performance') }}&hellip;
                                 </span>
-                                <span x-show="!running && !failed">Tests Complete</span>
-                                <span x-show="!running && failed">Test Failed</span>
+                                <span x-show="!running && !failed">{{ __('Tests Complete') }}</span>
+                                <span x-show="!running && failed">{{ __('Test Failed') }}</span>
                             </h3>
                         </div>
                         <div class="flex items-center gap-3 text-xs text-gray-500">
@@ -104,7 +104,7 @@
                                 <span x-show="count === 1">1 test running</span>
                                 <span x-show="count === 2">2 tests running</span>
                             </span>
-                            <span x-show="running && count === 0">Queued</span>
+                            <span x-show="running && count === 0">{{ __('Queued') }}</span>
                             <button x-show="!running" @click="dismissed = true" class="text-gray-400 hover:text-gray-600">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -128,8 +128,8 @@
 
                     {{-- Footer --}}
                     <div class="flex items-center justify-between text-xs text-gray-500">
-                        <span x-show="running">PageSpeed Insights analysis in progress</span>
-                        <span x-show="!running && !failed">Results updated</span>
+                        <span x-show="running">{{ __('PageSpeed Insights analysis in progress') }}</span>
+                        <span x-show="!running && !failed">{{ __('Results updated') }}</span>
                         <span x-show="!running && failed" x-text="errorMessage" class="text-red-600"></span>
                     </div>
                 </div>
@@ -193,7 +193,7 @@
         {{-- Field Data (CrUX) --}}
         @if($this->hasFieldData)
             <x-ui.card class="mb-6">
-                <h3 class="mb-4 text-lg font-semibold text-gray-900">Field Data (CrUX)</h3>
+                <h3 class="mb-4 text-lg font-semibold text-gray-900">{{ __('Field Data (CrUX)') }}</h3>
                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                     @php $fieldTest = $this->latestMobileTest; @endphp
                     @foreach([
@@ -248,7 +248,7 @@
         {{-- Score History Chart --}}
         <x-ui.card class="mb-6">
             <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Score History</h3>
+                <h3 class="text-lg font-semibold text-gray-900">{{ __('Score History') }}</h3>
                 <div class="flex rounded-lg border border-gray-200 bg-gray-50">
                     @foreach(['7d' => '7d', '30d' => '30d', '90d' => '90d', '180d' => '180d'] as $key => $label)
                         <button wire:click="setHistoryRange('{{ $key }}')"
@@ -267,7 +267,7 @@
                 />
             @else
                 <div class="py-12 text-center text-sm text-gray-500">
-                    Not enough data yet. Run more tests to see score history.
+                    {{ __('Not enough data yet. Run more tests to see score history.') }}
                 </div>
             @endif
         </x-ui.card>
@@ -275,7 +275,7 @@
         {{-- Competitor Benchmarking --}}
         @if($this->monitor)
             <x-ui.card class="mb-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Competitor Benchmarking</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ __('Competitor Benchmarking') }}</h3>
 
                 @if(!empty($this->competitorComparison))
                     {{-- Mobile cards --}}
@@ -344,7 +344,7 @@
                             <x-ui.input type="url" wire:model="newCompetitorUrl" placeholder="https://competitor.com" />
                             @error('newCompetitorUrl') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
-                        <x-ui.button wire:click="addCompetitor" size="sm">Add Competitor</x-ui.button>
+                        <x-ui.button wire:click="addCompetitor" size="sm">{{ __('Add Competitor') }}</x-ui.button>
                     </div>
                 @endif
             </x-ui.card>
@@ -353,7 +353,7 @@
         {{-- Test History Table --}}
         @if($this->testHistory->count() > 0)
             <x-ui.card class="overflow-hidden">
-                <h3 class="mb-4 text-lg font-semibold text-gray-900">Test History</h3>
+                <h3 class="mb-4 text-lg font-semibold text-gray-900">{{ __('Test History') }}</h3>
 
                 {{-- Mobile cards --}}
                 <div class="md:hidden space-y-2">
@@ -460,8 +460,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
-                <h3 class="mt-4 text-sm font-semibold text-gray-900">No performance data yet</h3>
-                <p class="mt-1 text-sm text-gray-500">Run your first performance test to see PageSpeed Insights results.</p>
+                <h3 class="mt-4 text-sm font-semibold text-gray-900">{{ __('No performance data yet') }}</h3>
+                <p class="mt-1 text-sm text-gray-500">{{ __('Run your first performance test to see PageSpeed Insights results.') }}</p>
                 <div class="mt-6">
                     <button wire:click="runTest"
                             wire:loading.attr="disabled"
@@ -470,7 +470,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                         <x-ui.spinner size="sm" wire:loading wire:target="runTest" />
-                        Run First Test
+                        {{ __('Run First Test') }}
                     </button>
                 </div>
             </div>
@@ -480,49 +480,49 @@
     {{-- Settings Modal --}}
     <x-ui.modal name="performance-settings" maxWidth="md">
         <form wire:submit="updateSettings">
-            <h2 class="text-lg font-semibold text-gray-900">Performance Settings</h2>
-            <p class="mt-1 text-sm text-gray-500">Configure test frequency and alerts.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Performance Settings') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Configure test frequency and alerts.') }}</p>
 
             <div class="mt-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Test Frequency</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Test Frequency') }}</label>
                     <x-ui.select wire:model="settingsFrequency" class="mt-1">
-                        <option value="manual">Manual only</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
+                        <option value="manual">{{ __('Manual only') }}</option>
+                        <option value="daily">{{ __('Daily') }}</option>
+                        <option value="weekly">{{ __('Weekly') }}</option>
                     </x-ui.select>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Test Time</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Test Time') }}</label>
                     <x-ui.input wire:model="settingsTestTime" type="time" class="mt-1" />
                 </div>
 
                 @if($settingsFrequency === 'weekly')
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Day of Week</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Day of Week') }}</label>
                         <x-ui.select wire:model="settingsDayOfWeek" class="mt-1">
-                            <option value="0">Sunday</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
+                            <option value="0">{{ __('Sunday') }}</option>
+                            <option value="1">{{ __('Monday') }}</option>
+                            <option value="2">{{ __('Tuesday') }}</option>
+                            <option value="3">{{ __('Wednesday') }}</option>
+                            <option value="4">{{ __('Thursday') }}</option>
+                            <option value="5">{{ __('Friday') }}</option>
+                            <option value="6">{{ __('Saturday') }}</option>
                         </x-ui.select>
                     </div>
                 @endif
 
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-gray-700">Alert on score drop</label>
+                    <label class="text-sm font-medium text-gray-700">{{ __('Alert on score drop') }}</label>
                     <x-ui.toggle wire:model="settingsAlertOnDrop" :enabled="$settingsAlertOnDrop" />
                 </div>
 
                 @if($settingsAlertOnDrop)
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Score drop threshold</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Score drop threshold') }}</label>
                         <x-ui.input wire:model="settingsThreshold" type="number" min="1" max="100" class="mt-1" />
-                        <p class="mt-1 text-xs text-gray-500">Alert when score drops by this many points or more.</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Alert when score drops by this many points or more.') }}</p>
                     </div>
                 @endif
             </div>
@@ -531,11 +531,11 @@
                 <button type="button"
                         @click="$dispatch('close-modal-performance-settings')"
                         class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-                    Cancel
+                    {{ __('Cancel') }}
                 </button>
                 <button type="submit"
                         class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700">
-                    Save Settings
+                    {{ __('Save Settings') }}
                 </button>
             </div>
         </form>
@@ -544,50 +544,50 @@
     {{-- Budget Edit Modal --}}
     <x-ui.modal name="edit-budgets" maxWidth="md">
         <form wire:submit="saveBudgets">
-            <h2 class="text-lg font-semibold text-gray-900">Edit Performance Budgets</h2>
-            <p class="mt-1 text-sm text-gray-500">Set thresholds for key metrics. Leave empty to skip.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Edit Performance Budgets') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Set thresholds for key metrics. Leave empty to skip.') }}</p>
 
             <div class="mt-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Performance Score (min)</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Performance Score (min)') }}</label>
                     <x-ui.input wire:model="budgetForm.performance_score" type="number" min="0" max="100" placeholder="e.g. 80" class="mt-1" />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">LCP (max, seconds)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('LCP (max, seconds)') }}</label>
                         <x-ui.input wire:model="budgetForm.lcp" type="number" step="0.1" min="0" placeholder="e.g. 2.5" class="mt-1" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">FCP (max, seconds)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('FCP (max, seconds)') }}</label>
                         <x-ui.input wire:model="budgetForm.fcp" type="number" step="0.1" min="0" placeholder="e.g. 1.8" class="mt-1" />
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">CLS (max)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('CLS (max)') }}</label>
                         <x-ui.input wire:model="budgetForm.cls" type="number" step="0.001" min="0" placeholder="e.g. 0.1" class="mt-1" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">TBT (max, ms)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('TBT (max, ms)') }}</label>
                         <x-ui.input wire:model="budgetForm.tbt" type="number" min="0" placeholder="e.g. 200" class="mt-1" />
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Speed Index (max, seconds)</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Speed Index (max, seconds)') }}</label>
                     <x-ui.input wire:model="budgetForm.si" type="number" step="0.1" min="0" placeholder="e.g. 3.4" class="mt-1" />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Total Page Size (max, bytes)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Total Page Size (max, bytes)') }}</label>
                         <x-ui.input wire:model="budgetForm.total_size_bytes" type="number" min="0" placeholder="e.g. 2000000" class="mt-1" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">JS Size (max, bytes)</label>
+                        <label class="block text-sm font-medium text-gray-700">{{ __('JS Size (max, bytes)') }}</label>
                         <x-ui.input wire:model="budgetForm.js_size" type="number" min="0" placeholder="e.g. 500000" class="mt-1" />
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Image Size (max, bytes)</label>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Image Size (max, bytes)') }}</label>
                     <x-ui.input wire:model="budgetForm.image_size" type="number" min="0" placeholder="e.g. 1000000" class="mt-1" />
                 </div>
             </div>
@@ -600,7 +600,7 @@
                 </button>
                 <button type="submit"
                         class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700">
-                    Save Budgets
+                    {{ __('Save Budgets') }}
                 </button>
             </div>
         </form>

@@ -10,7 +10,7 @@
                         <label class="block text-sm font-medium text-gray-700">{{ __('Mailer') }}</label>
                         <x-ui.select wire:model.live="mailer" class="mt-1">
                             <option value="smtp">SMTP</option>
-                            <option value="log">Log (no emails sent)</option>
+                            <option value="log">{{ __('Log (no emails sent)') }}</option>
                         </x-ui.select>
                     </div>
                     <div>

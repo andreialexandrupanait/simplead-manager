@@ -55,7 +55,7 @@
                                             {{ $stat['label'] }}:
                                             <span class="text-gray-600">~{{ number_format($stat['total_estimate']) }}</span>
                                             @if($stat['oldest'])
-                                                <span class="text-gray-400">&middot; oldest {{ $this->formatOldest($stat['oldest']) }}</span>
+                                                <span class="text-gray-400">&middot; {{ __('oldest') }} {{ $this->formatOldest($stat['oldest']) }}</span>
                                             @endif
                                         </span>
                                     @endforeach
@@ -107,7 +107,7 @@
                             </span>
                         @endif
                         <span>
-                            {{ __('Trigger') }}: <span class="font-medium capitalize">{{ $this->lastRunResult['trigger'] ?? 'scheduled' }}</span>
+                            {{ __('Trigger') }}: <span class="font-medium capitalize">{{ $this->lastRunResult['trigger'] ?? __('scheduled') }}</span>
                         </span>
                         <span>
                             {{ __('Duration') }}: <span class="font-medium">{{ $this->lastRunResult['duration_seconds'] ?? 0 }}s</span>

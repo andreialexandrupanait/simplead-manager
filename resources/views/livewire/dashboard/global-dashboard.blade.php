@@ -4,11 +4,11 @@
 
     {{-- Header --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="Dashboard" subtitle="Overview of all your sites and infrastructure" />
+        <x-ui.page-header :title="__('Dashboard')" :subtitle="__('Overview of all your sites and infrastructure')" />
         <a href="{{ route('sites.create') }}">
             <x-ui.button>
                 <x-icons.plus class="h-4 w-4" />
-                Add Site
+                {{ __('Add Site') }}
             </x-ui.button>
         </a>
     </div>
@@ -54,9 +54,9 @@
                     </div>
                     <div class="min-w-0">
                         <div class="text-base font-semibold text-gray-900">{{ $stats['total_sites'] }}</div>
-                        <div class="text-xs text-gray-500">Sites</div>
+                        <div class="text-xs text-gray-500">{{ __('Sites') }}</div>
                         <div class="mt-0.5 text-xs font-medium {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $stats['sites_down'] === 0 ? 'all operational' : $stats['sites_down'] . ' down' }}
+                            {{ $stats['sites_down'] === 0 ? __('all operational') : $stats['sites_down'] . ' ' . __('down') }}
                         </div>
                     </div>
                 </div>
@@ -72,8 +72,8 @@
                     </div>
                     <div class="min-w-0">
                         <div class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
-                        <div class="text-xs text-gray-500">Uptime</div>
-                        <div class="mt-0.5 text-xs text-gray-400">last 30 days</div>
+                        <div class="text-xs text-gray-500">{{ __('Uptime') }}</div>
+                        <div class="mt-0.5 text-xs text-gray-400">{{ __('last 30 days') }}</div>
                     </div>
                 </div>
             </x-ui.card>
@@ -88,9 +88,9 @@
                     </div>
                     <div class="min-w-0">
                         <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
-                        <div class="text-xs text-gray-500">Backup Storage</div>
+                        <div class="text-xs text-gray-500">{{ __('Backup Storage') }}</div>
                         <div class="mt-0.5 text-xs text-gray-400">
-                            {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' failed (24h)' : 'all healthy' }}
+                            {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' ' . __('failed (24h)') : __('all healthy') }}
                         </div>
                     </div>
                 </div>
@@ -106,8 +106,8 @@
                     </div>
                     <div class="min-w-0">
                         <div class="text-base font-semibold text-blue-600">{{ $stats['backups_today'] }}</div>
-                        <div class="text-xs text-gray-500">Backups Today</div>
-                        <div class="mt-0.5 text-xs text-gray-400">completed</div>
+                        <div class="text-xs text-gray-500">{{ __('Backups Today') }}</div>
+                        <div class="mt-0.5 text-xs text-gray-400">{{ __('completed') }}</div>
                     </div>
                 </div>
             </x-ui.card>
@@ -126,15 +126,15 @@
                     </div>
                     <div class="min-w-0">
                         <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
-                        <div class="text-xs text-gray-500">Alerts</div>
+                        <div class="text-xs text-gray-500">{{ __('Alerts') }}</div>
                         <div class="mt-0.5 text-xs {{ $stats['total_alerts'] > 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
                             @if($stats['total_alerts'] === 0)
-                                all clear
+                                {{ __('all clear') }}
                             @else
                                 @php
                                     $parts = [];
-                                    if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' down';
-                                    if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' backup';
+                                    if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' ' . __('down');
+                                    if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' ' . __('backup');
                                 @endphp
                                 {{ implode(', ', $parts) }}
                             @endif
@@ -148,7 +148,7 @@
     {{-- Section 2: Sites List View --}}
     <div id="sites" class="mt-6">
         <div class="mb-3">
-            <h2 class="text-lg font-semibold text-gray-900">Sites</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Sites') }}</h2>
         </div>
 
         @if(count($selectedSites) > 0)
@@ -161,7 +161,7 @@
                         @checked(count(array_intersect($selectedSites, $this->sites->pluck('id')->toArray())) === $this->sites->count())
                         class="h-4 w-4 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
                     <span class="text-sm font-medium text-purple-700">
-                        {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }} selected
+                        {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }} {{ __('selected') }}
                     </span>
                 </div>
 
@@ -171,7 +171,7 @@
                         <x-ui.dropdown align="left" width="48">
                             <x-slot:trigger>
                                 <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
-                                    Set Status
+                                    {{ __('Set Status') }}
                                     <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                 </button>
                             </x-slot:trigger>
@@ -182,7 +182,7 @@
                                 </button>
                             @endforeach
                             <div class="my-1 border-t border-gray-100"></div>
-                            <button wire:click="bulkClearStatus" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">Clear Status</button>
+                            <button wire:click="bulkClearStatus" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">{{ __('Clear Status') }}</button>
                         </x-ui.dropdown>
                     @endif
 
@@ -191,7 +191,7 @@
                         <x-slot:trigger>
                             <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                Move to Client
+                                {{ __('Move to Client') }}
                                 <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                         </x-slot:trigger>
@@ -205,29 +205,29 @@
                     {{-- Sync --}}
                     <x-ui.button variant="secondary" size="sm" wire:click="bulkSync">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        Sync
+                        {{ __('Sync') }}
                     </x-ui.button>
 
                     {{-- Backup --}}
                     <x-ui.button variant="secondary" size="sm" wire:click="bulkBackup">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
-                        Backup
+                        {{ __('Backup') }}
                     </x-ui.button>
 
                     {{-- Check Uptime --}}
                     <x-ui.button variant="secondary" size="sm" wire:click="bulkCheckUptime">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Check Uptime
+                        {{ __('Check Uptime') }}
                     </x-ui.button>
 
                     {{-- Delete (danger) --}}
                     <x-ui.button variant="danger" size="sm" wire:click="confirmBulkDelete">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Delete
+                        {{ __('Delete') }}
                     </x-ui.button>
 
                     {{-- Deselect all --}}
-                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-purple-400 transition hover:bg-purple-100 hover:text-purple-600" title="Clear selection">
+                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-purple-400 transition hover:bg-purple-100 hover:text-purple-600" title="{{ __('Clear selection') }}">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -238,10 +238,10 @@
             {{-- Client Pill --}}
                 @php
                     $clientActive = $this->clientFilter !== null;
-                    $clientLabel = 'Client';
+                    $clientLabel = __('Client');
                     if ($clientActive) {
                         $selectedClient = $this->clients->firstWhere('id', $this->clientFilter);
-                        $clientLabel = $selectedClient ? $selectedClient->name : 'Client';
+                        $clientLabel = $selectedClient ? $selectedClient->name : __('Client');
                     }
                 @endphp
                 <x-ui.dropdown align="left" width="56">
@@ -254,7 +254,7 @@
                     </x-slot:trigger>
 
                     <button wire:click="setClientFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$clientActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
-                        All Clients
+                        {{ __('All Clients') }}
                         @if(!$clientActive)
                             <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         @endif
@@ -272,8 +272,8 @@
                 {{-- Health Pill --}}
                 @php
                     $healthActive = $this->filter !== 'all';
-                    $healthLabels = ['all' => 'Health', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'];
-                    $healthLabel = $healthLabels[$this->filter] ?? 'Health';
+                    $healthLabels = ['all' => __('Health'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')];
+                    $healthLabel = $healthLabels[$this->filter] ?? __('Health');
                 @endphp
                 <x-ui.dropdown align="left" width="48">
                     <x-slot:trigger>
@@ -284,7 +284,7 @@
                         </button>
                     </x-slot:trigger>
 
-                    @foreach(['all' => 'All Health', 'healthy' => 'Healthy', 'warning' => 'Warning', 'critical' => 'Critical'] as $value => $label)
+                    @foreach(['all' => __('All Health'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')] as $value => $label)
                         <button wire:click="setFilter('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->filter === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ $label }}
                             @if($this->filter === $value)
@@ -298,10 +298,10 @@
                 @if($this->siteStatuses->isNotEmpty())
                     @php
                         $statusActive = $this->statusFilter !== null;
-                        $statusLabel = 'Status';
+                        $statusLabel = __('Status');
                         if ($statusActive) {
                             $selectedStatus = $this->siteStatuses->firstWhere('id', $this->statusFilter);
-                            $statusLabel = $selectedStatus ? $selectedStatus->name : 'Status';
+                            $statusLabel = $selectedStatus ? $selectedStatus->name : __('Status');
                         }
                     @endphp
                     <x-ui.dropdown align="left" width="56">
@@ -314,7 +314,7 @@
                         </x-slot:trigger>
 
                         <button wire:click="setStatusFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$statusActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
-                            All Statuses
+                            {{ __('All Statuses') }}
                             @if(!$statusActive)
                                 <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             @endif
@@ -336,8 +336,8 @@
                 {{-- Sort Pill --}}
                 @php
                     $sortActive = $this->sort !== 'manual';
-                    $sortLabels = ['manual' => 'Manual', 'health-asc' => 'Health ↑', 'health-desc' => 'Health ↓', 'name-asc' => 'Name A-Z', 'name-desc' => 'Name Z-A'];
-                    $sortLabel = $sortLabels[$this->sort] ?? 'Sort';
+                    $sortLabels = ['manual' => __('Manual'), 'health-asc' => __('Health') . ' ↑', 'health-desc' => __('Health') . ' ↓', 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A')];
+                    $sortLabel = $sortLabels[$this->sort] ?? __('Sort');
                     $isManualSort = $this->sort === 'manual';
                 @endphp
                 <x-ui.dropdown align="left" width="48">
@@ -349,7 +349,7 @@
                         </button>
                     </x-slot:trigger>
 
-                    @foreach(['manual' => 'Manual', 'name-asc' => 'Name A-Z', 'name-desc' => 'Name Z-A', 'health-asc' => 'Health ↑', 'health-desc' => 'Health ↓'] as $value => $label)
+                    @foreach(['manual' => __('Manual'), 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A'), 'health-asc' => __('Health') . ' ↑', 'health-desc' => __('Health') . ' ↓'] as $value => $label)
                         <button wire:click="setSort('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->sort === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ $label }}
                             @if($this->sort === $value)
@@ -372,14 +372,14 @@
                         class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Save Order
+                        {{ __('Save Order') }}
                     </button>
                     <button
                         type="button"
                         wire:click="cancelReordering"
                         class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
-                        Cancel
+                        {{ __('Cancel') }}
                     </button>
                 @else
                     <button
@@ -388,13 +388,13 @@
                         class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                     >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
-                        Reorder
+                        {{ __('Reorder') }}
                     </button>
                 @endif
 
             <x-ui.search-input
                 wire:model.live.debounce.300ms="search"
-                placeholder="Search sites..."
+                placeholder="{{ __('Search sites...') }}"
                 class="w-full sm:ml-auto sm:w-64"
             />
         </div>
@@ -402,7 +402,7 @@
 
         @if($this->sites->isEmpty())
             <x-ui.card>
-                <x-ui.empty-state title="No sites yet" description="Add your first site to get started." icon="globe" />
+                <x-ui.empty-state :title="__('No sites yet')" :description="__('Add your first site to get started.')" icon="globe" />
             </x-ui.card>
         @else
             <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)">
@@ -428,21 +428,21 @@
     {{-- Rename Site Modal --}}
     <x-ui.modal name="rename-site" maxWidth="sm">
         <form wire:submit="renameSite">
-            <h2 class="text-lg font-semibold text-gray-900">Rename Site</h2>
-            <p class="mt-1 text-sm text-gray-500">Enter a new name for this site.</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Rename Site') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Enter a new name for this site.') }}</p>
 
             <div class="mt-4">
-                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">Site Name</label>
+                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">{{ __('Site Name') }}</label>
                 <x-ui.input wire:model="renamingSiteName" id="renamingSiteName" class="mt-1" />
                 @error('renamingSiteName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-rename-site')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button type="submit">
-                    Save
+                    {{ __('Save') }}
                 </x-ui.button>
             </div>
         </form>
@@ -451,17 +451,17 @@
     {{-- Delete Site Modal --}}
     <x-ui.modal name="delete-site" maxWidth="sm">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">Delete Site</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Delete Site') }}</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Are you sure you want to delete <span class="font-medium text-gray-900">{{ $deletingSiteName }}</span>? This action cannot be undone.
+                {{ __('Are you sure you want to delete') }} <span class="font-medium text-gray-900">{{ $deletingSiteName }}</span>? {{ __('This action cannot be undone.') }}
             </p>
 
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-site')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button type="button" variant="danger" wire:click="deleteSite">
-                    Delete Site
+                    {{ __('Delete Site') }}
                 </x-ui.button>
             </div>
         </div>
@@ -470,9 +470,9 @@
     {{-- Bulk Delete Modal --}}
     <x-ui.modal name="bulk-delete" maxWidth="sm">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">Delete {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Delete') }} {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Are you sure you want to delete these sites? This action cannot be undone.
+                {{ __('Are you sure you want to delete these sites? This action cannot be undone.') }}
             </p>
             @if(count($selectedSites) > 0)
                 <ul class="mt-3 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
@@ -482,8 +482,8 @@
                 </ul>
             @endif
             <div class="mt-6 flex items-center justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-bulk-delete')">Cancel</x-ui.button>
-                <x-ui.button type="button" variant="danger" wire:click="bulkDelete">Delete {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</x-ui.button>
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-bulk-delete')">{{ __('Cancel') }}</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="bulkDelete">{{ __('Delete') }} {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }}</x-ui.button>
             </div>
         </div>
     </x-ui.modal>

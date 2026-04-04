@@ -1,16 +1,16 @@
 <div>
-    <x-ui.page-header title="Hardening" subtitle="Harden WordPress core settings and server configuration">
+    <x-ui.page-header title="{{ __('Hardening') }}" subtitle="{{ __('Harden WordPress core settings and server configuration') }}">
         <x-slot:actions>
             <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
-                Copy to Sites
+                {{ __('Copy to Sites') }}
             </x-ui.button>
             <x-ui.button variant="ghost" size="sm" wire:click="verifySettings" wire:loading.attr="disabled" wire:target="verifySettings">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="verifySettings" />
-                Verify
+                {{ __('Verify') }}
             </x-ui.button>
             @unless($this->allRecommendedEnabled)
                 <x-ui.button variant="secondary" size="sm" wire:click="enableRecommended">
-                    Enable Recommended
+                    {{ __('Enable Recommended') }}
                 </x-ui.button>
             @endunless
         </x-slot:actions>
@@ -24,23 +24,23 @@
 
     @if($this->site->is_multisite)
         <x-ui.alert variant="warning" class="mb-6">
-            This site is a WordPress Multisite. Some hardening settings may affect all sites in the network.
+            {{ __('This site is a WordPress Multisite. Some hardening settings may affect all sites in the network.') }}
         </x-ui.alert>
     @endif
 
     {{-- WordPress Hardening --}}
     <x-ui.card class="mb-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-4">WordPress Hardening</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('WordPress Hardening') }}</h3>
         <div class="space-y-3">
             @php
                 $wpSettings = [
-                    'disable_theme_editor' => ['label' => 'Disable Theme/Plugin Editor', 'desc' => 'Prevents editing PHP files from the WordPress admin dashboard.'],
-                    'disable_user_enumeration' => ['label' => 'Disable User Enumeration', 'desc' => 'Blocks ?author=N and REST API user listing attacks.'],
-                    'hide_wp_version' => ['label' => 'Hide WordPress Version', 'desc' => 'Removes the WordPress version from page source and feeds.'],
-                    'restrict_xmlrpc' => ['label' => 'Restrict XML-RPC', 'desc' => 'Disables XML-RPC to prevent brute force and DDoS amplification attacks.'],
-                    'security_headers' => ['label' => 'Security Headers', 'desc' => 'Adds X-Content-Type-Options, X-Frame-Options, and Referrer-Policy headers.'],
-                    'block_application_passwords' => ['label' => 'Block Application Passwords', 'desc' => 'Disables the WordPress Application Passwords feature.'],
-                    'restrict_rest_api' => ['label' => 'Restrict REST API', 'desc' => 'Limits REST API access to authenticated users only.'],
+                    'disable_theme_editor' => ['label' => __('Disable Theme/Plugin Editor'), 'desc' => __('Prevents editing PHP files from the WordPress admin dashboard.')],
+                    'disable_user_enumeration' => ['label' => __('Disable User Enumeration'), 'desc' => __('Blocks ?author=N and REST API user listing attacks.')],
+                    'hide_wp_version' => ['label' => __('Hide WordPress Version'), 'desc' => __('Removes the WordPress version from page source and feeds.')],
+                    'restrict_xmlrpc' => ['label' => __('Restrict XML-RPC'), 'desc' => __('Disables XML-RPC to prevent brute force and DDoS amplification attacks.')],
+                    'security_headers' => ['label' => __('Security Headers'), 'desc' => __('Adds X-Content-Type-Options, X-Frame-Options, and Referrer-Policy headers.')],
+                    'block_application_passwords' => ['label' => __('Block Application Passwords'), 'desc' => __('Disables the WordPress Application Passwords feature.')],
+                    'restrict_rest_api' => ['label' => __('Restrict REST API'), 'desc' => __('Limits REST API access to authenticated users only.')],
                 ];
             @endphp
 
@@ -70,11 +70,11 @@
         <div class="space-y-3">
             @php
                 $htaccessSettings = [
-                    'block_default_files' => ['label' => 'Block Default Files', 'desc' => 'Prevents access to wp-config.php, install.php, and other sensitive files.'],
-                    'block_readme_access' => ['label' => 'Block Readme Access', 'desc' => 'Blocks access to readme.html and license.txt files.'],
-                    'block_debug_log' => ['label' => 'Block Debug Log', 'desc' => 'Prevents direct access to debug.log file.'],
-                    'disable_directory_listing' => ['label' => 'Disable Directory Listing', 'desc' => 'Prevents directory browsing when no index file exists.'],
-                    'firewall_enabled' => ['label' => 'Basic Firewall', 'desc' => 'Enables server-level request filtering for common attack patterns.'],
+                    'block_default_files' => ['label' => __('Block Default Files'), 'desc' => __('Prevents access to wp-config.php, install.php, and other sensitive files.')],
+                    'block_readme_access' => ['label' => __('Block Readme Access'), 'desc' => __('Blocks access to readme.html and license.txt files.')],
+                    'block_debug_log' => ['label' => __('Block Debug Log'), 'desc' => __('Prevents direct access to debug.log file.')],
+                    'disable_directory_listing' => ['label' => __('Disable Directory Listing'), 'desc' => __('Prevents directory browsing when no index file exists.')],
+                    'firewall_enabled' => ['label' => __('Basic Firewall'), 'desc' => __('Enables server-level request filtering for common attack patterns.')],
                 ];
             @endphp
 
@@ -101,10 +101,10 @@
     {{-- Sticky Save Bar --}}
     @if($isDirty)
         <div class="sticky bottom-0 mt-6 -mx-6 -mb-6 rounded-b-lg border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between shadow-lg">
-            <p class="text-sm text-gray-500">You have unsaved changes</p>
+            <p class="text-sm text-gray-500">{{ __('You have unsaved changes') }}</p>
             <x-ui.button wire:click="save" wire:loading.attr="disabled">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="save" />
-                Save Changes
+                {{ __('Save Changes') }}
             </x-ui.button>
         </div>
     @endif
