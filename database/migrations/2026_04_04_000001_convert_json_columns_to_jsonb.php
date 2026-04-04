@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Disable transaction wrapping — PgBouncer in transaction mode
+     * conflicts with DDL + introspection within the same transaction.
+     */
+    public $withinTransaction = false;
+
     /**
      * Columns that should be jsonb but were created as json.
      * Format: 'table_name' => ['column1', 'column2', ...]
@@ -49,17 +54,24 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Use DO block to safely convert each column, skipping missing tables/columns
         foreach ($this->columnsToConvert as $table => $columns) {
-            if (! Schema::hasTable($table)) {
-                continue;
-            }
-
             foreach ($columns as $column) {
-                if (! Schema::hasColumn($table, $column)) {
-                    continue;
-                }
-
-                DB::statement("ALTER TABLE \"{$table}\" ALTER COLUMN \"{$column}\" TYPE jsonb USING \"{$column}\"::jsonb");
+                DB::statement("
+                    DO \$\$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = '{$table}'
+                              AND column_name = '{$column}'
+                              AND data_type = 'json'
+                        ) THEN
+                            ALTER TABLE \"{$table}\" ALTER COLUMN \"{$column}\" TYPE jsonb USING \"{$column}\"::jsonb;
+                        END IF;
+                    END
+                    \$\$;
+                ");
             }
         }
     }
@@ -67,16 +79,22 @@ return new class extends Migration
     public function down(): void
     {
         foreach ($this->columnsToConvert as $table => $columns) {
-            if (! Schema::hasTable($table)) {
-                continue;
-            }
-
             foreach ($columns as $column) {
-                if (! Schema::hasColumn($table, $column)) {
-                    continue;
-                }
-
-                DB::statement("ALTER TABLE \"{$table}\" ALTER COLUMN \"{$column}\" TYPE json USING \"{$column}\"::json");
+                DB::statement("
+                    DO \$\$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = '{$table}'
+                              AND column_name = '{$column}'
+                              AND data_type = 'jsonb'
+                        ) THEN
+                            ALTER TABLE \"{$table}\" ALTER COLUMN \"{$column}\" TYPE json USING \"{$column}\"::json;
+                        END IF;
+                    END
+                    \$\$;
+                ");
             }
         }
     }
