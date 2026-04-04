@@ -7,6 +7,8 @@ services:
       target: app
     image: simplead-app:latest
     container_name: simplead-app
+    entrypoint: ["/var/www/html/docker/php/entrypoint.sh"]
+    command: ["php-fpm"]
     env_file:
       - .env
     restart: unless-stopped
@@ -30,9 +32,11 @@ services:
     read_only: true
     # Writable tmpfs mounts for paths that FPM / Laravel need at runtime.
     # storage/ is a named volume so it is NOT read-only.
+    # bootstrap/cache is tmpfs so artisan optimize can write cached config/routes/views.
     tmpfs:
       - /tmp:size=64M,mode=1777
       - /var/run:size=8M
+      - /var/www/html/bootstrap/cache:size=16M,uid=1000,gid=1000
     deploy:
       resources:
         limits:
@@ -48,15 +52,17 @@ services:
       # Use storage volume for temp files instead of tmpfs (backup downloads can be >1GB)
       TMPDIR: /var/www/html/storage/app/temp
     restart: unless-stopped
-    command: php artisan horizon
+    entrypoint: ["/var/www/html/docker/php/entrypoint.sh"]
+    command: ["php", "artisan", "horizon"]
     healthcheck:
       test: ["CMD-SHELL", "php artisan horizon:status | grep -q running"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
-    # Give Horizon workers time to finish in-flight jobs before SIGKILL
-    stop_grace_period: 30s
+    # Give Horizon workers time to finish in-flight jobs before SIGKILL.
+    # Must exceed longest job timeout (backups: 2700s = 45min).
+    stop_grace_period: 300s
     volumes:
       - app-storage:/var/www/html/storage
     networks:
@@ -72,6 +78,7 @@ services:
     tmpfs:
       - /tmp:size=512M,mode=1777
       - /var/run:size=8M
+      - /var/www/html/bootstrap/cache:size=16M,uid=1000,gid=1000
     deploy:
       resources:
         limits:
@@ -84,7 +91,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-    command: php artisan schedule:work
+    entrypoint: ["/var/www/html/docker/php/entrypoint.sh"]
+    command: ["php", "artisan", "schedule:work"]
     healthcheck:
       test: ["CMD-SHELL", "php -r 'echo 1;'"]
       interval: 60s
@@ -106,6 +114,7 @@ services:
     tmpfs:
       - /tmp:size=64M,mode=1777
       - /var/run:size=8M
+      - /var/www/html/bootstrap/cache:size=16M,uid=1000,gid=1000
     deploy:
       resources:
         limits:
@@ -275,7 +284,7 @@ services:
     restart: unless-stopped
     command: >
       sh -c '
-      ARGS="--maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec";
+      ARGS="--maxmemory 256mb --maxmemory-policy volatile-lru --appendonly yes --appendfsync everysec";
       if [ -n "$$REDIS_PASSWORD" ]; then ARGS="--requirepass $$REDIS_PASSWORD $$ARGS"; fi;
       exec redis-server $$ARGS
       '
