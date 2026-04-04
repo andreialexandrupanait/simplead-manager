@@ -1,11 +1,11 @@
 <div>
     <x-ui.page-header
-        title="Settings"
-        subtitle="Configure monitoring modules and maintenance plan for this site"
+        title="{{ __('Settings') }}"
+        subtitle="{{ __('Configure monitoring modules and maintenance plan for this site') }}"
     >
         <x-slot:actions>
             <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
-                Copy to Sites
+                {{ __('Copy to Sites') }}
             </x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -13,37 +13,37 @@
     <div class="mt-6 space-y-6">
         {{-- Plan Section --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">Maintenance Plan</h3>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Maintenance Plan') }}</h3>
 
             <div class="flex items-end gap-3">
                 <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Applied Plan</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Applied Plan') }}</label>
                     <x-ui.select wire:model="selectedPlanId">
-                        <option value="">— No plan —</option>
+                        <option value="">{{ __('— No plan —') }}</option>
                         @foreach($this->plans as $plan)
                             <option value="{{ $plan->id }}">
-                                {{ $plan->name }}{{ $plan->is_default ? ' (Default)' : '' }}
+                                {{ $plan->name }}{{ $plan->is_default ? ' (' . __('Default') . ')' : '' }}
                             </option>
                         @endforeach
                     </x-ui.select>
                 </div>
                 <x-ui.button wire:click="applyPlan" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="applyPlan">Apply Plan</span>
-                    <span wire:loading wire:target="applyPlan">Applying...</span>
+                    <span wire:loading.remove wire:target="applyPlan">{{ __('Apply Plan') }}</span>
+                    <span wire:loading wire:target="applyPlan">{{ __('Applying...') }}</span>
                 </x-ui.button>
             </div>
 
             @if($site->maintenance_plan_id && $site->is_plan_customized)
                 <p class="mt-2 text-xs text-amber-600">
-                    This site's configuration has been customized from the original plan.
+                    {{ __("This site's configuration has been customized from the original plan.") }}
                 </p>
             @endif
         </x-ui.card>
 
         {{-- Module Configuration --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">Module Configuration</h3>
-            <p class="text-sm text-gray-500 mb-4">Toggle modules on or off. Some modules require an external connection to be configured first.</p>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Module Configuration') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('Toggle modules on or off. Some modules require an external connection to be configured first.') }}</p>
 
             <div class="divide-y divide-gray-100">
                 @foreach($this->moduleConfig as $key => $mod)
@@ -55,9 +55,9 @@
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-gray-900">{{ $this->moduleLabels[$key] ?? $key }}</p>
                                 @if($mod['requires_connection'] && !$mod['is_connected'])
-                                    <p class="text-xs text-amber-600">Enabled but not connected</p>
+                                    <p class="text-xs text-amber-600">{{ __('Enabled but not connected') }}</p>
                                 @elseif(!$mod['exists'])
-                                    <p class="text-xs text-gray-400">Not configured</p>
+                                    <p class="text-xs text-gray-400">{{ __('Not configured') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -90,7 +90,7 @@
                                     <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {{ $mod['enabled'] ? 'translate-x-4' : 'translate-x-0' }}"></span>
                                 </button>
                             @else
-                                <span class="text-xs text-gray-400">Requires setup</span>
+                                <span class="text-xs text-gray-400">{{ __('Requires setup') }}</span>
                             @endif
                         </div>
                     </div>

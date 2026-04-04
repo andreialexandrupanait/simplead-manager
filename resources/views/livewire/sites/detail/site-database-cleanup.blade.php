@@ -2,11 +2,11 @@
     {{-- Module not active banner --}}
     @if(!$this->isModuleActive)
         <x-ui.module-activation-banner
-            title="Database cleanup module is not active"
-            description="Enable automatic database cleanup scheduling for this site."
+            title="{{ __('Database cleanup module is not active') }}"
+            description="{{ __('Enable automatic database cleanup scheduling for this site.') }}"
             icon="database"
         >
-            <x-ui.button size="sm" wire:click="activateModule">Activate</x-ui.button>
+            <x-ui.button size="sm" wire:click="activateModule">{{ __('Activate') }}</x-ui.button>
         </x-ui.module-activation-banner>
     @endif
 
@@ -23,7 +23,7 @@
             <h2 class="text-lg font-semibold text-gray-900">{{ __('Database Health') }}</h2>
             <div class="flex items-center gap-3">
                 @if($this->latestHealthCheck?->checked_at)
-                    <span class="text-xs text-gray-500">Last checked {{ $this->latestHealthCheck->checked_at->diffForHumans() }}</span>
+                    <span class="text-xs text-gray-500">{{ __('Last checked') }} {{ $this->latestHealthCheck->checked_at->diffForHumans() }}</span>
                 @endif
                 <x-ui.button variant="secondary" wire:click="refreshHealth" wire:loading.attr="disabled">
                     <x-icons.refresh-cw class="mr-1.5 h-4 w-4" wire:loading.class="animate-spin" wire:target="refreshHealth" />
@@ -128,11 +128,11 @@
                     <div class="hidden md:block overflow-x-auto">
                         <x-ui.table>
                             <x-slot:head>
-                                <x-ui.th>Name</x-ui.th>
-                                <x-ui.th>Engine</x-ui.th>
-                                <x-ui.th>Rows</x-ui.th>
-                                <x-ui.th>Size</x-ui.th>
-                                <x-ui.th>Overhead</x-ui.th>
+                                <x-ui.th>{{ __('Name') }}</x-ui.th>
+                                <x-ui.th>{{ __('Engine') }}</x-ui.th>
+                                <x-ui.th>{{ __('Rows') }}</x-ui.th>
+                                <x-ui.th>{{ __('Size') }}</x-ui.th>
+                                <x-ui.th>{{ __('Overhead') }}</x-ui.th>
                             </x-slot:head>
                             @foreach($this->latestHealthCheck->tables_data as $table)
                                 @php
@@ -312,15 +312,15 @@
             <div class="hidden md:block">
                 <x-ui.table>
                     <x-slot:head>
-                        <x-ui.th>Date</x-ui.th>
-                        <x-ui.th>Revisions</x-ui.th>
-                        <x-ui.th>Drafts</x-ui.th>
-                        <x-ui.th>Trash</x-ui.th>
-                        <x-ui.th>Spam</x-ui.th>
-                        <x-ui.th>Transients</x-ui.th>
-                        <x-ui.th>Meta</x-ui.th>
-                        <x-ui.th>Space Saved</x-ui.th>
-                        <x-ui.th>Status</x-ui.th>
+                        <x-ui.th>{{ __('Date') }}</x-ui.th>
+                        <x-ui.th>{{ __('Revisions') }}</x-ui.th>
+                        <x-ui.th>{{ __('Drafts') }}</x-ui.th>
+                        <x-ui.th>{{ __('Trash') }}</x-ui.th>
+                        <x-ui.th>{{ __('Spam') }}</x-ui.th>
+                        <x-ui.th>{{ __('Transients') }}</x-ui.th>
+                        <x-ui.th>{{ __('Meta') }}</x-ui.th>
+                        <x-ui.th>{{ __('Space Saved') }}</x-ui.th>
+                        <x-ui.th>{{ __('Status') }}</x-ui.th>
                     </x-slot:head>
                     @foreach($this->cleanupHistory as $cleanup)
                         <tr>
@@ -347,20 +347,20 @@
     {{-- Confirmation Modal --}}
     <x-ui.modal name="confirm-cleanup" maxWidth="sm">
         <div class="p-2">
-            <h3 class="text-lg font-semibold text-gray-900">Confirm Database Cleanup</h3>
+            <h3 class="text-lg font-semibold text-gray-900">{{ __('Confirm Database Cleanup') }}</h3>
             <p class="mt-2 text-sm text-gray-600">
-                This will permanently delete the selected items from the WordPress database. This action cannot be undone.
+                {{ __('This will permanently delete the selected items from the WordPress database. This action cannot be undone.') }}
             </p>
             <div class="mt-2 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">
-                Make sure you have a recent backup before proceeding.
+                {{ __('Make sure you have a recent backup before proceeding.') }}
             </div>
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal-confirm-cleanup')">
-                    Cancel
+                    {{ __('Cancel') }}
                 </x-ui.button>
                 <x-ui.button variant="danger" wire:click="runCleanup" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="runCleanup">Proceed with Cleanup</span>
-                    <span wire:loading wire:target="runCleanup">Cleaning...</span>
+                    <span wire:loading.remove wire:target="runCleanup">{{ __('Proceed with Cleanup') }}</span>
+                    <span wire:loading wire:target="runCleanup">{{ __('Cleaning...') }}</span>
                 </x-ui.button>
             </div>
         </div>

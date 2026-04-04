@@ -4,21 +4,21 @@
 
     @if(!$this->siteCloudflare)
         {{-- Not connected --}}
-        <x-ui.page-header title="Cloudflare" subtitle="Connect this site to a Cloudflare zone to manage DNS, cache, and analytics" />
+        <x-ui.page-header title="Cloudflare" subtitle="{{ __('Connect this site to a Cloudflare zone to manage DNS, cache, and analytics') }}" />
 
         <x-ui.card>
             @if($this->connections->isEmpty())
                 <x-ui.empty-state
-                    title="No Cloudflare connections"
-                    description="Add a Cloudflare API token in Settings > Integrations first."
+                    title="{{ __('No Cloudflare connections') }}"
+                    description="{{ __('Add a Cloudflare API token in Settings > Integrations first.') }}"
                     icon="cloud"
                 />
             @else
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cloudflare Connection</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Cloudflare Connection') }}</label>
                         <x-ui.select wire:model.live="selectedConnectionId">
-                            <option value="">Select a connection...</option>
+                            <option value="">{{ __('Select a connection...') }}</option>
                             @foreach($this->connections as $conn)
                                 <option value="{{ $conn->id }}">{{ $conn->account_email ?: 'Connection #' . $conn->id }}</option>
                             @endforeach
@@ -27,9 +27,9 @@
 
                     @if($selectedConnectionId)
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Zone</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Zone') }}</label>
                             <x-ui.select wire:model="selectedZoneId">
-                                <option value="">Select a zone...</option>
+                                <option value="">{{ __('Select a zone...') }}</option>
                                 @foreach($this->availableZones as $zone)
                                     <option value="{{ $zone['id'] }}">{{ $zone['name'] }} ({{ $zone['status'] }})</option>
                                 @endforeach
@@ -38,7 +38,7 @@
 
                         <div class="flex justify-end">
                             <x-ui.button wire:click="connectToZone" wire:loading.attr="disabled">
-                                Connect Zone
+                                {{ __('Connect Zone') }}
                             </x-ui.button>
                         </div>
                     @endif
@@ -51,25 +51,25 @@
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">{{ $this->siteCloudflare->zone_name }}</h2>
                 <p class="text-sm text-gray-500">
-                    Plan: {{ $this->siteCloudflare->plan_label ?? 'N/A' }}
-                    &middot; Status: {{ ucfirst($this->siteCloudflare->status) }}
+                    {{ __('Plan:') }} {{ $this->siteCloudflare->plan_label ?? 'N/A' }}
+                    &middot; {{ __('Status:') }} {{ ucfirst($this->siteCloudflare->status) }}
                     @if($this->siteCloudflare->ssl_mode)
                         &middot; SSL: {{ strtoupper(str_replace('_', ' ', $this->siteCloudflare->ssl_mode)) }}
                     @endif
                     @if($this->siteCloudflare->is_paused)
-                        &middot; <span class="text-yellow-600">Paused</span>
+                        &middot; <span class="text-yellow-600">{{ __('Paused') }}</span>
                     @endif
                 </p>
             </div>
-            <x-ui.button variant="secondary" wire:click="disconnectZone" wire:confirm="Are you sure you want to disconnect this Cloudflare zone?">
-                Disconnect
+            <x-ui.button variant="secondary" wire:click="disconnectZone" wire:confirm="{{ __('Are you sure you want to disconnect this Cloudflare zone?') }}">
+                {{ __('Disconnect') }}
             </x-ui.button>
         </div>
 
         {{-- Tabs --}}
         <div class="mb-6 border-b border-gray-200">
             <nav class="-mb-px flex gap-6">
-                @foreach(['overview' => 'Overview', 'cache' => 'Cache', 'analytics' => 'Analytics'] as $key => $label)
+                @foreach(['overview' => __('Overview'), 'cache' => __('Cache'), 'analytics' => __('Analytics')] as $key => $label)
                     <button wire:click="$set('tab', '{{ $key }}')"
                         class="whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition {{ $tab === $key ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                         {{ $label }}
@@ -81,9 +81,9 @@
         {{-- Overview Tab --}}
         @if($tab === 'overview')
             <x-ui.card>
-                <h3 class="text-sm font-semibold text-gray-900 mb-4">DNS Records</h3>
+                <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('DNS Records') }}</h3>
                 @if(empty($this->dnsRecords))
-                    <p class="text-sm text-gray-500">No DNS records found.</p>
+                    <p class="text-sm text-gray-500">{{ __('No DNS records found.') }}</p>
                 @else
                     {{-- Mobile cards --}}
                     <div class="md:hidden space-y-2">
@@ -98,7 +98,7 @@
                                             </span>
                                         @endif
                                     </div>
-                                    <span class="text-xs text-gray-500">TTL: {{ $record['ttl'] == 1 ? 'Auto' : $record['ttl'] . 's' }}</span>
+                                    <span class="text-xs text-gray-500">TTL: {{ $record['ttl'] == 1 ? __('Auto') : $record['ttl'] . 's' }}</span>
                                 </div>
                                 <div class="mt-1.5 font-mono text-xs text-gray-900">{{ $record['name'] }}</div>
                                 <div class="mt-0.5 font-mono text-xs text-gray-500 truncate">{{ $record['content'] }}</div>
@@ -111,11 +111,11 @@
                         <table class="min-w-full text-sm">
                             <thead>
                                 <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                                    <th class="pb-2 pr-4">Type</th>
-                                    <th class="pb-2 pr-4">Name</th>
-                                    <th class="pb-2 pr-4">Content</th>
+                                    <th class="pb-2 pr-4">{{ __('Type') }}</th>
+                                    <th class="pb-2 pr-4">{{ __('Name') }}</th>
+                                    <th class="pb-2 pr-4">{{ __('Content') }}</th>
                                     <th class="pb-2 pr-4">TTL</th>
-                                    <th class="pb-2 pr-4">Proxy</th>
+                                    <th class="pb-2 pr-4">{{ __('Proxy') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
@@ -126,7 +126,7 @@
                                         </td>
                                         <td class="py-2 pr-4 font-mono text-xs">{{ $record['name'] }}</td>
                                         <td class="py-2 pr-4 font-mono text-xs max-w-xs truncate">{{ $record['content'] }}</td>
-                                        <td class="py-2 pr-4 text-xs text-gray-500">{{ $record['ttl'] == 1 ? 'Auto' : $record['ttl'] . 's' }}</td>
+                                        <td class="py-2 pr-4 text-xs text-gray-500">{{ $record['ttl'] == 1 ? __('Auto') : $record['ttl'] . 's' }}</td>
                                         <td class="py-2 pr-4">
                                             @if(in_array($record['type'], ['A', 'AAAA', 'CNAME']))
                                                 <span class="text-xs {{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
@@ -139,7 +139,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="mt-3 text-xs text-gray-400">Manage DNS records in the Cloudflare dashboard.</p>
+                    <p class="mt-3 text-xs text-gray-400">{{ __('Manage DNS records in the Cloudflare dashboard.') }}</p>
                 @endif
             </x-ui.card>
         @endif
@@ -148,31 +148,31 @@
         @if($tab === 'cache')
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Purge Everything</h3>
-                    <p class="text-sm text-gray-500 mb-4">Remove all cached files from Cloudflare's edge servers. This may temporarily slow down your site.</p>
-                    <x-ui.button variant="danger" wire:click="purgeEverything" wire:confirm="Purge all cached files? This cannot be undone." wire:loading.attr="disabled">
-                        <span wire:loading.remove wire:target="purgeEverything">Purge Everything</span>
-                        <span wire:loading wire:target="purgeEverything">Purging...</span>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Purge Everything') }}</h3>
+                    <p class="text-sm text-gray-500 mb-4">{{ __("Remove all cached files from Cloudflare's edge servers. This may temporarily slow down your site.") }}</p>
+                    <x-ui.button variant="danger" wire:click="purgeEverything" wire:confirm="{{ __('Purge all cached files? This cannot be undone.') }}" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="purgeEverything">{{ __('Purge Everything') }}</span>
+                        <span wire:loading wire:target="purgeEverything">{{ __('Purging...') }}</span>
                     </x-ui.button>
                 </x-ui.card>
 
                 <x-ui.card>
-                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Purge by URL</h3>
-                    <p class="text-sm text-gray-500 mb-2">Enter one URL per line to purge specific pages.</p>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Purge by URL') }}</h3>
+                    <p class="text-sm text-gray-500 mb-2">{{ __('Enter one URL per line to purge specific pages.') }}</p>
                     <textarea wire:model="purgeUrls" rows="4" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="https://example.com/page-1&#10;https://example.com/page-2"></textarea>
                     <div class="mt-3 flex justify-end">
                         <x-ui.button wire:click="purgeByUrls" size="sm" wire:loading.attr="disabled">
-                            <span wire:loading.remove wire:target="purgeByUrls">Purge URLs</span>
-                            <span wire:loading wire:target="purgeByUrls">Purging...</span>
+                            <span wire:loading.remove wire:target="purgeByUrls">{{ __('Purge URLs') }}</span>
+                            <span wire:loading wire:target="purgeByUrls">{{ __('Purging...') }}</span>
                         </x-ui.button>
                     </div>
                 </x-ui.card>
             </div>
 
             <x-ui.card class="mt-6">
-                <h3 class="text-sm font-semibold text-gray-900 mb-4">Purge History</h3>
+                <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Purge History') }}</h3>
                 @if($this->cachePurges->isEmpty())
-                    <p class="text-sm text-gray-500">No cache purges recorded.</p>
+                    <p class="text-sm text-gray-500">{{ __('No cache purges recorded.') }}</p>
                 @else
                     <div class="divide-y divide-gray-100">
                         @foreach($this->cachePurges as $purge)
@@ -183,7 +183,7 @@
                                         <span class="text-xs text-gray-500 ml-1">({{ count($purge->targets) }} {{ Str::plural('item', count($purge->targets)) }})</span>
                                     @endif
                                     <div class="text-xs text-gray-500">
-                                        By {{ $purge->purgedBy?->name ?? 'System' }}
+                                        {{ __('By') }} {{ $purge->purgedBy?->name ?? __('System') }}
                                     </div>
                                 </div>
                                 <span class="text-xs text-gray-500">{{ $purge->purged_at?->diffForHumans() }}</span>
@@ -197,13 +197,13 @@
         {{-- Analytics Tab --}}
         @if($tab === 'analytics')
             <div class="mb-6 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-900">Zone Analytics</h3>
+                <h3 class="text-sm font-semibold text-gray-900">{{ __('Zone Analytics') }}</h3>
                 <x-ui.select wire:model.live="analyticsPeriod">
-                    <option value="-30">Last 30 minutes</option>
-                    <option value="-360">Last 6 hours</option>
-                    <option value="-1440">Last 24 hours</option>
-                    <option value="-10080">Last 7 days</option>
-                    <option value="-43200">Last 30 days</option>
+                    <option value="-30">{{ __('Last 30 minutes') }}</option>
+                    <option value="-360">{{ __('Last 6 hours') }}</option>
+                    <option value="-1440">{{ __('Last 24 hours') }}</option>
+                    <option value="-10080">{{ __('Last 7 days') }}</option>
+                    <option value="-43200">{{ __('Last 30 days') }}</option>
                 </x-ui.select>
             </div>
 
@@ -235,8 +235,8 @@
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($totalReqs) }}</p>
-                        <p class="text-xs text-gray-500">Total Requests</p>
-                        <p class="text-xs text-green-600 mt-1">{{ number_format($cachedReqs) }} cached ({{ $cachePercent }}%)</p>
+                        <p class="text-xs text-gray-500">{{ __('Total Requests') }}</p>
+                        <p class="text-xs text-green-600 mt-1">{{ number_format($cachedReqs) }} {{ __('cached') }} ({{ $cachePercent }}%)</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
@@ -250,8 +250,8 @@
                             $cachedBwFormatted = $cachedBw > 1073741824 ? round($cachedBw / 1073741824, 2) . ' GB' : round($cachedBw / 1048576, 2) . ' MB';
                         @endphp
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ $bwFormatted }}</p>
-                        <p class="text-xs text-gray-500">Bandwidth</p>
-                        <p class="text-xs text-green-600 mt-1">{{ $cachedBwFormatted }} saved ({{ $bwCachePercent }}%)</p>
+                        <p class="text-xs text-gray-500">{{ __('Bandwidth') }}</p>
+                        <p class="text-xs text-green-600 mt-1">{{ $cachedBwFormatted }} {{ __('saved') }} ({{ $bwCachePercent }}%)</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
@@ -261,7 +261,7 @@
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
-                        <p class="text-xs text-gray-500">Threats Blocked</p>
+                        <p class="text-xs text-gray-500">{{ __('Threats Blocked') }}</p>
                     </x-ui.card>
 
                     <x-ui.card class="!p-4">
@@ -271,9 +271,9 @@
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($uniques['all'] ?? $pageviews['all'] ?? 0) }}</p>
-                        <p class="text-xs text-gray-500">Unique Visitors</p>
+                        <p class="text-xs text-gray-500">{{ __('Unique Visitors') }}</p>
                         @if(!empty($pageviews['all']))
-                            <p class="text-xs text-gray-400 mt-1">{{ number_format($pageviews['all']) }} page views</p>
+                            <p class="text-xs text-gray-400 mt-1">{{ number_format($pageviews['all']) }} {{ __('page views') }}</p>
                         @endif
                     </x-ui.card>
                 </div>
@@ -281,7 +281,7 @@
                 {{-- Requests Over Time Chart --}}
                 @if(!empty($timeseries))
                     <x-ui.card class="mb-6">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Requests Over Time</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Requests Over Time') }}</h3>
                         <div x-data="{
                             timeseries: @js(collect($timeseries)->map(fn($t) => [
                                 'since' => $t['since'] ?? '',
@@ -313,11 +313,11 @@
                                                 <div class="font-medium" x-text="formatTime(point.since)"></div>
                                                 <div class="mt-1 flex items-center gap-1.5">
                                                     <span class="h-2 w-2 rounded-full bg-purple-400"></span>
-                                                    <span>Total: <span x-text="formatNum(point.requests)"></span></span>
+                                                    <span>{{ __('Total:') }} <span x-text="formatNum(point.requests)"></span></span>
                                                 </div>
                                                 <div class="flex items-center gap-1.5">
                                                     <span class="h-2 w-2 rounded-full bg-green-400"></span>
-                                                    <span>Cached: <span x-text="formatNum(point.cached)"></span></span>
+                                                    <span>{{ __('Cached:') }} <span x-text="formatNum(point.cached)"></span></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -335,11 +335,11 @@
                             <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
                                 <div class="flex items-center gap-1.5">
                                     <span class="h-2.5 w-2.5 rounded-sm bg-purple-500"></span>
-                                    Cached
+                                    {{ __('Cached') }}
                                 </div>
                                 <div class="flex items-center gap-1.5">
                                     <span class="h-2.5 w-2.5 rounded-sm bg-purple-200"></span>
-                                    Uncached
+                                    {{ __('Uncached') }}
                                 </div>
                             </div>
                         </div>
@@ -349,7 +349,7 @@
                 {{-- Cached vs Uncached Breakdown --}}
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
                     <x-ui.card>
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Request Cache Ratio</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Request Cache Ratio') }}</h3>
                         <div x-data="{ cached: {{ $cachedReqs }}, uncached: {{ $uncachedReqs }}, total: {{ $totalReqs }} }">
                             {{-- Donut-style bar --}}
                             <div class="relative h-4 w-full overflow-hidden rounded-full bg-gray-100">
@@ -360,21 +360,21 @@
                             <div class="mt-3 flex items-center justify-between text-sm">
                                 <div class="flex items-center gap-2">
                                     <span class="h-3 w-3 rounded-full bg-green-500"></span>
-                                    <span class="text-gray-600">Cached</span>
+                                    <span class="text-gray-600">{{ __('Cached') }}</span>
                                     <span class="font-medium text-gray-900">{{ number_format($cachedReqs) }}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="h-3 w-3 rounded-full bg-gray-300"></span>
-                                    <span class="text-gray-600">Uncached</span>
+                                    <span class="text-gray-600">{{ __('Uncached') }}</span>
                                     <span class="font-medium text-gray-900">{{ number_format($uncachedReqs) }}</span>
                                 </div>
                             </div>
-                            <p class="mt-2 text-center text-lg font-bold text-green-600">{{ $cachePercent }}% <span class="text-xs font-normal text-gray-500">cache hit rate</span></p>
+                            <p class="mt-2 text-center text-lg font-bold text-green-600">{{ $cachePercent }}% <span class="text-xs font-normal text-gray-500">{{ __('cache hit rate') }}</span></p>
                         </div>
                     </x-ui.card>
 
                     <x-ui.card>
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Bandwidth Cache Ratio</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Bandwidth Cache Ratio') }}</h3>
                         <div>
                             <div class="relative h-4 w-full overflow-hidden rounded-full bg-gray-100">
                                 @if($totalBw > 0)
@@ -384,17 +384,17 @@
                             <div class="mt-3 flex items-center justify-between text-sm">
                                 <div class="flex items-center gap-2">
                                     <span class="h-3 w-3 rounded-full bg-blue-500"></span>
-                                    <span class="text-gray-600">Cached</span>
+                                    <span class="text-gray-600">{{ __('Cached') }}</span>
                                     <span class="font-medium text-gray-900">{{ $cachedBwFormatted }}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="h-3 w-3 rounded-full bg-gray-300"></span>
-                                    <span class="text-gray-600">Uncached</span>
+                                    <span class="text-gray-600">{{ __('Uncached') }}</span>
                                     @php $uncachedBwFormatted = $uncachedBw > 1073741824 ? round($uncachedBw / 1073741824, 2) . ' GB' : round($uncachedBw / 1048576, 2) . ' MB'; @endphp
                                     <span class="font-medium text-gray-900">{{ $uncachedBwFormatted }}</span>
                                 </div>
                             </div>
-                            <p class="mt-2 text-center text-lg font-bold text-blue-600">{{ $bwCachePercent }}% <span class="text-xs font-normal text-gray-500">bandwidth saved</span></p>
+                            <p class="mt-2 text-center text-lg font-bold text-blue-600">{{ $bwCachePercent }}% <span class="text-xs font-normal text-gray-500">{{ __('bandwidth saved') }}</span></p>
                         </div>
                     </x-ui.card>
                 </div>
@@ -402,7 +402,7 @@
                 {{-- Country breakdown --}}
                 @if(!empty($requests['country'] ?? []))
                     <x-ui.card>
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">Top 10 Countries by Requests</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Top 10 Countries by Requests') }}</h3>
                         @php
                             $countries = collect($requests['country'])->sortByDesc(fn ($v) => $v)->take(10);
                             $maxCount = $countries->first() ?: 1;
@@ -433,7 +433,7 @@
                 {{-- Content Type & Status Codes (from timeseries) --}}
                 @if(!empty($totals['requests']['http_status'] ?? []))
                     <x-ui.card class="mt-6">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-4">HTTP Status Codes</h3>
+                        <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('HTTP Status Codes') }}</h3>
                         @php
                             $httpStatuses = collect($totals['requests']['http_status'])->sortByDesc(fn ($v) => $v)->take(10);
                             $maxStatus = $httpStatuses->first() ?: 1;
@@ -463,8 +463,8 @@
             @else
                 <x-ui.card>
                     <x-ui.empty-state
-                        title="No analytics data"
-                        description="Analytics data is not available for this period."
+                        title="{{ __('No analytics data') }}"
+                        description="{{ __('Analytics data is not available for this period.') }}"
                         icon="bar-chart-2"
                     />
                 </x-ui.card>

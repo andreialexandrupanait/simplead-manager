@@ -1,12 +1,12 @@
 <div>
-    <x-ui.page-header title="Site Control" subtitle="Control updates, features, and site behavior">
+    <x-ui.page-header title="{{ __('Site Control') }}" subtitle="{{ __('Control updates, features, and site behavior') }}">
         <x-slot:actions>
             <x-ui.button variant="ghost" size="sm" x-on:click="$dispatch('open-modal-copy-settings')">
-                Copy to Sites
+                {{ __('Copy to Sites') }}
             </x-ui.button>
             <x-ui.button variant="ghost" size="sm" wire:click="verifySettings" wire:loading.attr="disabled" wire:target="verifySettings">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="verifySettings" />
-                Verify
+                {{ __('Verify') }}
             </x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -18,13 +18,13 @@
 
     {{-- Updates Control --}}
     <x-ui.card class="mb-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Updates & Maintenance</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Updates & Maintenance') }}</h3>
         <div class="space-y-3">
             <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-900">Disable All Auto-Updates</p>
-                        <p class="text-xs text-gray-500">Prevent WordPress from automatically updating core, plugins, and themes.</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Disable All Auto-Updates') }}</p>
+                        <p class="text-xs text-gray-500">{{ __('Prevent WordPress from automatically updating core, plugins, and themes.') }}</p>
                         @if($toggles['disable_all_updates'] ?? false)
                             <x-security.setting-status :status="$settingStatuses['disable_all_updates'] ?? null" />
                         @endif
@@ -38,7 +38,7 @@
 
             @if($toggles['disable_all_updates'] ?? false)
                 <x-ui.alert variant="warning" class="ml-4">
-                    Auto-updates are disabled. Make sure to manage updates manually through the Plugins & Updates page.
+                    {{ __('Auto-updates are disabled. Make sure to manage updates manually through the Plugins & Updates page.') }}
                 </x-ui.alert>
             @endif
         </div>
@@ -46,13 +46,13 @@
 
     {{-- Content & Interaction --}}
     <x-ui.card class="mb-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Content & Interaction</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Content & Interaction') }}</h3>
         <div class="space-y-3">
             @php
                 $contentSettings = [
-                    'disable_comments' => ['label' => 'Disable Comments', 'desc' => 'Remove all comment functionality sitewide: forms, admin menu, and meta boxes.'],
-                    'disable_feeds' => ['label' => 'Disable RSS Feeds', 'desc' => 'Disable all RSS/Atom feed endpoints and remove feed links from the header.'],
-                    'disable_embeds' => ['label' => 'Disable Embeds', 'desc' => 'Remove WordPress oEmbed functionality, discovery links, and embed scripts.'],
+                    'disable_comments' => ['label' => __('Disable Comments'), 'desc' => __('Remove all comment functionality sitewide: forms, admin menu, and meta boxes.')],
+                    'disable_feeds' => ['label' => __('Disable RSS Feeds'), 'desc' => __('Disable all RSS/Atom feed endpoints and remove feed links from the header.')],
+                    'disable_embeds' => ['label' => __('Disable Embeds'), 'desc' => __('Remove WordPress oEmbed functionality, discovery links, and embed scripts.')],
                 ];
             @endphp
 
@@ -78,13 +78,13 @@
 
     {{-- Editor & Archives --}}
     <x-ui.card class="mb-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Editor & Archives</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Editor & Archives') }}</h3>
         <div class="space-y-3">
             <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-900">Disable Gutenberg Block Editor</p>
-                        <p class="text-xs text-gray-500">Revert to the Classic Editor for all post types and remove block styles.</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Disable Gutenberg Block Editor') }}</p>
+                        <p class="text-xs text-gray-500">{{ __('Revert to the Classic Editor for all post types and remove block styles.') }}</p>
                         @if($toggles['disable_gutenberg'] ?? false)
                             <x-security.setting-status :status="$settingStatuses['disable_gutenberg'] ?? null" />
                         @endif
@@ -99,8 +99,8 @@
             <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-900">Disable Author Archives</p>
-                        <p class="text-xs text-gray-500">Return 404 for author archive pages to prevent username discovery.</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Disable Author Archives') }}</p>
+                        <p class="text-xs text-gray-500">{{ __('Return 404 for author archive pages to prevent username discovery.') }}</p>
                         @if($toggles['disable_author_archives'] ?? false)
                             <x-security.setting-status :status="$settingStatuses['disable_author_archives'] ?? null" />
                         @endif
@@ -116,13 +116,13 @@
 
     {{-- Redirects --}}
     <x-ui.card>
-        <h3 class="text-base font-semibold text-gray-900 mb-4">Redirects</h3>
+        <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Redirects') }}</h3>
         <div class="space-y-3">
             <div class="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="min-w-0">
-                        <p class="text-sm font-medium text-gray-900">Redirect 404 to Homepage</p>
-                        <p class="text-xs text-gray-500">Automatically redirect all 404 (Not Found) pages to the homepage with a 301 redirect.</p>
+                        <p class="text-sm font-medium text-gray-900">{{ __('Redirect 404 to Homepage') }}</p>
+                        <p class="text-xs text-gray-500">{{ __('Automatically redirect all 404 (Not Found) pages to the homepage with a 301 redirect.') }}</p>
                         @if($toggles['redirect_404'] ?? false)
                             <x-security.setting-status :status="$settingStatuses['redirect_404'] ?? null" />
                         @endif
@@ -139,10 +139,10 @@
     {{-- Sticky Save Bar --}}
     @if($isDirty)
         <div class="sticky bottom-0 mt-6 -mx-6 -mb-6 rounded-b-lg border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between shadow-lg">
-            <p class="text-sm text-gray-500">You have unsaved changes</p>
+            <p class="text-sm text-gray-500">{{ __('You have unsaved changes') }}</p>
             <x-ui.button wire:click="save" wire:loading.attr="disabled">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="save" />
-                Save Changes
+                {{ __('Save Changes') }}
             </x-ui.button>
         </div>
     @endif

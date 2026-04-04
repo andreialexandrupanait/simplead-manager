@@ -4,39 +4,39 @@
         <div class="flex items-center gap-2">
             @if($this->monitor)
                 @if($this->monitor->status === 'paused')
-                    <x-ui.button variant="secondary" wire:click="resumeMonitor">Resume</x-ui.button>
+                    <x-ui.button variant="secondary" wire:click="resumeMonitor">{{ __('Resume') }}</x-ui.button>
                 @else
-                    <x-ui.button variant="secondary" wire:click="pauseMonitor">Pause</x-ui.button>
+                    <x-ui.button variant="secondary" wire:click="pauseMonitor">{{ __('Pause') }}</x-ui.button>
                 @endif
-                <x-ui.button variant="secondary" wire:click="testNow">Test Now</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="testNow">{{ __('Test Now') }}</x-ui.button>
                 <x-ui.button wire:click="$dispatch('open-configure-monitor', { monitorId: {{ $this->monitor->id }} })">
                     <x-icons.settings class="mr-1.5 h-4 w-4" />
-                    Configure
+                    {{ __('Configure') }}
                 </x-ui.button>
             @else
                 <x-ui.button wire:click="$dispatch('open-configure-monitor', { siteId: {{ $site->id }} })">
                     <x-icons.plus class="mr-1.5 h-4 w-4" />
-                    Enable Monitoring
+                    {{ __('Enable Monitoring') }}
                 </x-ui.button>
             @endif
         </div>
     </div>
 
     {{-- Job Progress --}}
-    <x-ui.job-progress job-key="uptime" :jobs="$trackedJobs" title="Checking uptime..." />
+    <x-ui.job-progress job-key="uptime" :jobs="$trackedJobs" title="{{ __('Checking uptime...') }}" />
 
     @if(!$this->monitor)
         {{-- Empty state: no monitor configured --}}
         <x-ui.card>
             <x-ui.empty-state
-                title="Uptime monitoring not configured"
-                description="Enable monitoring to start tracking this site's availability."
+                title="{{ __('Uptime monitoring not configured') }}"
+                description="{{ __('Enable monitoring to start tracking this site\'s availability.') }}"
                 icon="activity"
             >
                 <x-slot:action>
                     <x-ui.button wire:click="$dispatch('open-configure-monitor', { siteId: {{ $site->id }} })">
                         <x-icons.plus class="mr-1.5 h-4 w-4" />
-                        Enable Monitoring
+                        {{ __('Enable Monitoring') }}
                     </x-ui.button>
                 </x-slot:action>
             </x-ui.empty-state>
@@ -49,7 +49,7 @@
         <div class="mb-6 grid grid-cols-2 gap-4">
             {{-- Current Status --}}
             <x-ui.card>
-                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">Status</h4>
+                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Status') }}</h4>
                 <div class="mt-2 flex items-center gap-2">
                     @php
                         $stateColor = match($monitor->current_state) {
@@ -59,32 +59,32 @@
                             default => 'bg-gray-400',
                         };
                         $stateLabel = match($monitor->current_state) {
-                            \App\Enums\MonitorState::Up => 'Online',
-                            \App\Enums\MonitorState::Down => 'Down',
-                            \App\Enums\MonitorState::Degraded => 'Degraded',
-                            default => 'Unknown',
+                            \App\Enums\MonitorState::Up => __('Online'),
+                            \App\Enums\MonitorState::Down => __('Down'),
+                            \App\Enums\MonitorState::Degraded => __('Degraded'),
+                            default => __('Unknown'),
                         };
                     @endphp
                     <span class="h-3 w-3 rounded-full {{ $stateColor }}"></span>
                     <span class="text-lg font-bold text-gray-900">{{ $stateLabel }}</span>
                 </div>
                 @if($monitor->status === \App\Enums\MonitorStatus::Paused)
-                    <p class="mt-1 text-xs text-yellow-600">Monitoring paused</p>
+                    <p class="mt-1 text-xs text-yellow-600">{{ __('Monitoring paused') }}</p>
                 @endif
             </x-ui.card>
 
             {{-- Last Check --}}
             <x-ui.card>
-                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">Last Check</h4>
+                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Last Check') }}</h4>
                 <div class="mt-2 text-lg font-bold text-gray-900">
                     {{ $monitor->last_response_time ? $monitor->last_response_time . 'ms' : '—' }}
                 </div>
-                <p class="mt-1 text-xs text-gray-400">{{ $monitor->last_checked_at?->diffForHumans() ?? 'Never' }}</p>
+                <p class="mt-1 text-xs text-gray-400">{{ $monitor->last_checked_at?->diffForHumans() ?? __('Never') }}</p>
             </x-ui.card>
         </div>
 
         <x-ui.card>
-            <p class="py-4 text-center text-sm text-gray-500">Monitoring is active. More data will appear as checks accumulate.</p>
+            <p class="py-4 text-center text-sm text-gray-500">{{ __('Monitoring is active. More data will appear as checks accumulate.') }}</p>
         </x-ui.card>
     @else
         {{-- Full dashboard: monitor with history --}}
@@ -94,7 +94,7 @@
         <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
             {{-- Current Status --}}
             <x-ui.card>
-                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">Status</h4>
+                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Status') }}</h4>
                 <div class="mt-2 flex items-center gap-2">
                     @php
                         $stateColor = match($monitor->current_state) {
@@ -104,50 +104,50 @@
                             default => 'bg-gray-400',
                         };
                         $stateLabel = match($monitor->current_state) {
-                            \App\Enums\MonitorState::Up => 'Online',
-                            \App\Enums\MonitorState::Down => 'Down',
-                            \App\Enums\MonitorState::Degraded => 'Degraded',
-                            default => 'Unknown',
+                            \App\Enums\MonitorState::Up => __('Online'),
+                            \App\Enums\MonitorState::Down => __('Down'),
+                            \App\Enums\MonitorState::Degraded => __('Degraded'),
+                            default => __('Unknown'),
                         };
                     @endphp
                     <span class="h-3 w-3 rounded-full {{ $stateColor }}"></span>
                     <span class="text-lg font-bold text-gray-900">{{ $stateLabel }}</span>
                 </div>
                 @if($monitor->status === \App\Enums\MonitorStatus::Paused)
-                    <p class="mt-1 text-xs text-yellow-600">Monitoring paused</p>
+                    <p class="mt-1 text-xs text-yellow-600">{{ __('Monitoring paused') }}</p>
                 @endif
             </x-ui.card>
 
             {{-- Last Check --}}
             <x-ui.card>
-                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">Last Check</h4>
+                <h4 class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Last Check') }}</h4>
                 <div class="mt-2 text-lg font-bold text-gray-900">
                     {{ $monitor->last_response_time ? $monitor->last_response_time . 'ms' : '—' }}
                 </div>
-                <p class="mt-1 text-xs text-gray-400">{{ $monitor->last_checked_at?->diffForHumans() ?? 'Never' }}</p>
+                <p class="mt-1 text-xs text-gray-400">{{ $monitor->last_checked_at?->diffForHumans() ?? __('Never') }}</p>
             </x-ui.card>
 
             {{-- 24h --}}
-            <livewire:components.uptime-stats-card label="24 Hours" :monitor="$monitor" period="24h" :key="'stats-24h-'.$monitor->id" />
+            <livewire:components.uptime-stats-card label="{{ __('24 Hours') }}" :monitor="$monitor" period="24h" :key="'stats-24h-'.$monitor->id" />
 
             {{-- 7d --}}
-            <livewire:components.uptime-stats-card label="7 Days" :monitor="$monitor" period="7d" :key="'stats-7d-'.$monitor->id" />
+            <livewire:components.uptime-stats-card label="{{ __('7 Days') }}" :monitor="$monitor" period="7d" :key="'stats-7d-'.$monitor->id" />
 
             {{-- 30d --}}
-            <livewire:components.uptime-stats-card label="30 Days" :monitor="$monitor" period="30d" :key="'stats-30d-'.$monitor->id" />
+            <livewire:components.uptime-stats-card label="{{ __('30 Days') }}" :monitor="$monitor" period="30d" :key="'stats-30d-'.$monitor->id" />
 
             {{-- 365d --}}
-            <livewire:components.uptime-stats-card label="1 Year" :monitor="$monitor" period="365d" :key="'stats-365d-'.$monitor->id" />
+            <livewire:components.uptime-stats-card label="{{ __('1 Year') }}" :monitor="$monitor" period="365d" :key="'stats-365d-'.$monitor->id" />
         </div>
 
         {{-- Uptime bar --}}
         <div class="mb-6">
             <x-ui.card>
-                <h3 class="mb-3 text-sm font-medium text-gray-900">Last 24 Hours</h3>
+                <h3 class="mb-3 text-sm font-medium text-gray-900">{{ __('Last 24 Hours') }}</h3>
                 <livewire:components.uptime-bar :monitor="$monitor" :key="'bar-'.$monitor->id" />
                 <div class="mt-2 flex justify-between text-xs text-gray-400">
-                    <span>24h ago</span>
-                    <span>Now</span>
+                    <span>{{ __('24h ago') }}</span>
+                    <span>{{ __('Now') }}</span>
                 </div>
             </x-ui.card>
         </div>
@@ -159,10 +159,10 @@
 
         {{-- Incidents table --}}
         <x-ui.card>
-            <h3 class="mb-4 text-sm font-medium text-gray-900">Recent Incidents</h3>
+            <h3 class="mb-4 text-sm font-medium text-gray-900">{{ __('Recent Incidents') }}</h3>
 
             @if($this->incidents->isEmpty())
-                <p class="py-6 text-center text-sm text-gray-500">No incidents recorded.</p>
+                <p class="py-6 text-center text-sm text-gray-500">{{ __('No incidents recorded.') }}</p>
             @else
                 {{-- Mobile cards --}}
                 <div class="md:hidden space-y-2">
@@ -176,9 +176,9 @@
                             </div>
                             <p class="mt-2 text-sm text-gray-900">{{ $incident->cause ?? '—' }}</p>
                             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                                <span class="text-xs text-gray-500">Duration: <span class="text-gray-700">{{ $incident->duration }}</span></span>
+                                <span class="text-xs text-gray-500">{{ __('Duration:') }} <span class="text-gray-700">{{ $incident->duration }}</span></span>
                                 @if($incident->notified_via)
-                                    <span class="text-xs text-gray-500">Notified:</span>
+                                    <span class="text-xs text-gray-500">{{ __('Notified:') }}</span>
                                     @foreach($incident->notified_via as $via)
                                         <x-ui.badge variant="gray">{{ $via }}</x-ui.badge>
                                     @endforeach
@@ -193,11 +193,11 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <x-ui.th>Status</x-ui.th>
-                                <x-ui.th>Cause</x-ui.th>
-                                <x-ui.th>Started</x-ui.th>
-                                <x-ui.th>Duration</x-ui.th>
-                                <x-ui.th>Notified Via</x-ui.th>
+                                <x-ui.th>{{ __('Status') }}</x-ui.th>
+                                <x-ui.th>{{ __('Cause') }}</x-ui.th>
+                                <x-ui.th>{{ __('Started') }}</x-ui.th>
+                                <x-ui.th>{{ __('Duration') }}</x-ui.th>
+                                <x-ui.th>{{ __('Notified Via') }}</x-ui.th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
