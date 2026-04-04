@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\RunPerformanceTest;
+use App\Livewire\Traits\WithPerformanceBudgets;
+use App\Livewire\Traits\WithPerformanceCompetitors;
+use App\Livewire\Traits\WithPerformanceSettings;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformancePage;
@@ -18,29 +21,16 @@ use Livewire\Component;
 
 class SitePerformance extends Component
 {
-    use WithSiteAuthorization;
+    use WithPerformanceBudgets, WithPerformanceCompetitors, WithPerformanceSettings, WithSiteAuthorization;
 
     public Site $site;
 
     public string $historyRange = '30d';
 
-    public bool $showSettings = false;
-
     public bool $isRunning = false;
 
     #[Locked]
     public ?int $trackingTestId = null;
-
-    // Settings form
-    public string $settingsFrequency = 'daily';
-
-    public string $settingsTestTime = '04:00';
-
-    public ?int $settingsDayOfWeek = null;
-
-    public bool $settingsAlertOnDrop = true;
-
-    public int $settingsThreshold = 10;
 
     // Multi-page
     public ?int $selectedPageId = null;
@@ -50,12 +40,6 @@ class SitePerformance extends Component
     public string $newPageUrl = '';
 
     public bool $showAddPage = false;
-
-    // Budgets
-    public array $budgetForm = [];
-
-    // Competitors
-    public string $newCompetitorUrl = '';
 
     // Chart options
     public bool $showRollingAverage = true;
@@ -150,60 +134,6 @@ class SitePerformance extends Component
         }
 
         return $query->latest('tested_at')->first();
-    }
-
-    #[Computed]
-    public function budgetViolations(): array
-    {
-        $budgets = $this->monitor->budgets;
-        if (empty($budgets)) {
-            return [];
-        }
-
-        $test = $this->activeTest;
-        if (! $test) {
-            return [];
-        }
-
-        $labels = [
-            'performance_score' => 'Performance Score',
-            'lcp' => 'Largest Contentful Paint',
-            'cls' => 'Cumulative Layout Shift',
-            'tbt' => 'Total Blocking Time',
-            'fcp' => 'First Contentful Paint',
-            'si' => 'Speed Index',
-            'total_size_bytes' => 'Total Page Size',
-            'js_size' => 'JavaScript Size',
-            'image_size' => 'Image Size',
-        ];
-
-        $minBudgets = ['performance_score'];
-        $violations = [];
-
-        foreach ($budgets as $key => $budget) {
-            if ($budget === null || $budget === '') {
-                continue;
-            }
-
-            $actual = $test->$key;
-            if ($actual === null) {
-                continue;
-            }
-
-            $budgetValue = (float) $budget;
-            $isMin = in_array($key, $minBudgets);
-            $exceeded = $isMin ? $actual < $budgetValue : $actual > $budgetValue;
-
-            $violations[] = [
-                'key' => $key,
-                'label' => $labels[$key] ?? $key,
-                'actual' => $actual,
-                'budget' => $budgetValue,
-                'exceeded' => $exceeded,
-            ];
-        }
-
-        return $violations;
     }
 
     #[Computed]
@@ -514,43 +444,6 @@ class SitePerformance extends Component
         unset($this->pages);
     }
 
-    public function openBudgetModal(): void
-    {
-        $budgets = $this->monitor->budgets ?? [];
-        $this->budgetForm = [
-            'performance_score' => $budgets['performance_score'] ?? '',
-            'lcp' => $budgets['lcp'] ?? '',
-            'cls' => $budgets['cls'] ?? '',
-            'tbt' => $budgets['tbt'] ?? '',
-            'fcp' => $budgets['fcp'] ?? '',
-            'si' => $budgets['si'] ?? '',
-            'total_size_bytes' => $budgets['total_size_bytes'] ?? '',
-            'js_size' => $budgets['js_size'] ?? '',
-            'image_size' => $budgets['image_size'] ?? '',
-        ];
-        $this->dispatch('open-modal-edit-budgets');
-    }
-
-    public function saveBudgets(): void
-    {
-        if (! $this->monitor) {
-            return;
-        }
-
-        $budgets = [];
-        foreach ($this->budgetForm as $key => $value) {
-            if ($value !== '' && $value !== null) {
-                $budgets[$key] = is_numeric($value) ? (float) $value : $value;
-            }
-        }
-
-        $this->monitor->update(['budgets' => ! empty($budgets) ? $budgets : null]);
-        unset($this->monitor);
-        unset($this->budgetViolations);
-        $this->dispatch('close-modal-edit-budgets');
-        session()->flash('message', 'Performance budgets updated.');
-    }
-
     public function runTest(): void
     {
         $rateLimitKey = "performance-test:{$this->site->id}:".auth()->id();
@@ -595,121 +488,6 @@ class SitePerformance extends Component
 
         $this->monitor->update(['is_active' => ! $this->monitor->is_active]);
         unset($this->monitor);
-    }
-
-    // ── Competitors ──
-
-    public function addCompetitor(): void
-    {
-        $this->validate(['newCompetitorUrl' => 'required|url|max:255']);
-
-        if (! $this->monitor) {
-            return;
-        }
-
-        $urls = $this->monitor->competitor_urls ?? [];
-        if (count($urls) >= 5) {
-            $this->addError('newCompetitorUrl', 'Maximum 5 competitors allowed.');
-
-            return;
-        }
-
-        $urls[] = $this->newCompetitorUrl;
-        $this->monitor->update(['competitor_urls' => array_values(array_unique($urls))]);
-        $this->newCompetitorUrl = '';
-        unset($this->monitor);
-    }
-
-    public function removeCompetitor(int $index): void
-    {
-        if (! $this->monitor) {
-            return;
-        }
-
-        $urls = $this->monitor->competitor_urls ?? [];
-        unset($urls[$index]);
-        $this->monitor->update(['competitor_urls' => array_values($urls)]);
-        unset($this->monitor);
-    }
-
-    #[Computed]
-    public function competitorComparison(): array
-    {
-        if (! $this->monitor || empty($this->monitor->competitor_urls)) {
-            return [];
-        }
-
-        $results = [];
-        foreach ($this->monitor->competitor_urls as $url) {
-            $latestMobile = \App\Models\PerformanceTest::where('performance_monitor_id', $this->monitor->id)
-                ->where('is_competitor', true)
-                ->where('competitor_url', $url)
-                ->where('device', 'mobile')
-                ->where('status', 'completed')
-                ->orderByDesc('tested_at')
-                ->first();
-
-            $latestDesktop = \App\Models\PerformanceTest::where('performance_monitor_id', $this->monitor->id)
-                ->where('is_competitor', true)
-                ->where('competitor_url', $url)
-                ->where('device', 'desktop')
-                ->where('status', 'completed')
-                ->orderByDesc('tested_at')
-                ->first();
-
-            $results[] = [
-                'url' => $url,
-                'domain' => parse_url($url, PHP_URL_HOST),
-                'mobile_score' => $latestMobile?->performance_score,
-                'desktop_score' => $latestDesktop?->performance_score,
-                'tested_at' => $latestMobile->tested_at ?? $latestDesktop?->tested_at,
-            ];
-        }
-
-        return $results;
-    }
-
-    public function openSettings(): void
-    {
-        $this->loadSettings();
-        $this->dispatch('open-modal-performance-settings');
-    }
-
-    public function updateSettings(): void
-    {
-        if (! $this->monitor) {
-            return;
-        }
-
-        $this->validate([
-            'settingsFrequency' => 'required|in:daily,weekly,monthly',
-            'settingsTestTime' => 'required|date_format:H:i',
-            'settingsThreshold' => 'required|integer|min:1|max:100',
-        ]);
-
-        $this->monitor->update([
-            'frequency' => $this->settingsFrequency,
-            'test_time' => $this->settingsTestTime,
-            'day_of_week' => $this->settingsFrequency === 'weekly' ? $this->settingsDayOfWeek : null,
-            'alert_on_score_drop' => $this->settingsAlertOnDrop,
-            'score_drop_threshold' => $this->settingsThreshold,
-        ]);
-
-        unset($this->monitor);
-        $this->dispatch('close-modal-performance-settings');
-        session()->flash('message', 'Performance settings updated.');
-    }
-
-    private function loadSettings(): void
-    {
-        $monitor = $this->site->performanceMonitor;
-        if ($monitor) {
-            $this->settingsFrequency = $monitor->frequency;
-            $this->settingsTestTime = $monitor->test_time;
-            $this->settingsDayOfWeek = $monitor->day_of_week;
-            $this->settingsAlertOnDrop = $monitor->alert_on_score_drop;
-            $this->settingsThreshold = $monitor->score_drop_threshold;
-        }
     }
 
     private function computeRollingAverage(array $scores, int $window): array
