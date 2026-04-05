@@ -496,7 +496,16 @@
                 </div>
             @endif
 
-            <div class="mt-6 flex items-center justify-end gap-3">
+            @if($pendingTableAction && $pendingTableAction !== 'delete')
+                <label class="mt-4 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox"
+                           wire:model="{{ $pendingTableAction === 'optimize' ? 'skipConfirmOptimize' : 'skipConfirmConvert' }}"
+                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <span class="text-sm text-gray-600">{{ __('Don\'t ask again for this action') }}</span>
+                </label>
+            @endif
+
+            <div class="mt-4 flex items-center justify-end gap-3">
                 <x-ui.button variant="secondary" wire:click="cancelTableAction">
                     {{ __('Cancel') }}
                 </x-ui.button>

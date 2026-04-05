@@ -45,6 +45,10 @@ class SiteDatabaseCleanup extends Component
 
     public ?string $pendingTableName = null;
 
+    public bool $skipConfirmOptimize = false;
+
+    public bool $skipConfirmConvert = false;
+
     protected function jobTrackingKeys(): array
     {
         return ['health' => 'db-health-'.$this->site->id];
@@ -154,6 +158,20 @@ class SiteDatabaseCleanup extends Component
 
     public function confirmTableAction(string $action, string $tableName): void
     {
+        $skipConfirm = match ($action) {
+            'optimize' => $this->skipConfirmOptimize,
+            'convert_engine' => $this->skipConfirmConvert,
+            default => false,
+        };
+
+        if ($skipConfirm) {
+            $this->pendingTableAction = $action;
+            $this->pendingTableName = $tableName;
+            $this->executeTableAction();
+
+            return;
+        }
+
         $this->pendingTableAction = $action;
         $this->pendingTableName = $tableName;
         $this->dispatch('open-modal-confirm-table-action');
