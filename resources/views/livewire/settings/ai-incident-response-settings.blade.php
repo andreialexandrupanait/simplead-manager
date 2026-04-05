@@ -9,9 +9,14 @@
         {{-- Master Switch + Status --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">{{ __('AI Incident Response') }}</h3>
-                    <p class="mt-1 text-sm text-gray-500">{{ __('Automatically diagnose and fix problems on your WordPress sites using playbooks and AI.') }}</p>
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
+                        <x-icons.zap class="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('AI Incident Response') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Automatically diagnose and fix problems on your WordPress sites.') }}</p>
+                    </div>
                 </div>
                 @if($enabled && $apiKey)
                     <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>
@@ -42,8 +47,18 @@
 
         {{-- AI Configuration --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Claude AI Configuration') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Configure the Claude API connection for Tier 2 AI-powered diagnosis. Without an API key, only playbooks (Tier 1) will be used.') }}</p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 shadow-sm ring-1 ring-violet-200">
+                        <x-icons.puzzle class="h-5 w-5 text-violet-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Claude AI Configuration') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Configure the Claude API connection for Tier 2 AI-powered diagnosis.') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="{{ $apiKey ? 'green' : 'yellow' }}">{{ $apiKey ? __('Connected') : __('No API key') }}</x-ui.badge>
+            </div>
 
             <div class="space-y-4">
                 <x-ui.form-group :label="__('Anthropic API Key')" for="apiKey" error="apiKey">
@@ -67,9 +82,20 @@
             </div>
         </x-ui.card>
 
-        {{-- Behavior --}}
+        {{-- Response Behavior --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Response Behavior') }}</h3>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
+                        <x-icons.sliders class="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Response Behavior') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Playbook and AI routing configuration') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="blue">{{ $playbookFirst ? __('Playbooks → AI') : __('AI Direct') }}</x-ui.badge>
+            </div>
 
             <div class="space-y-4">
                 <x-ui.form-group :label="__('Try Playbooks First')" for="playbookFirst" error="playbookFirst">
@@ -92,8 +118,17 @@
 
         {{-- Safety Guardrails --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Safety Guardrails') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Limits to prevent the system from making things worse. A backup is always created before destructive actions.') }}</p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 shadow-sm ring-1 ring-amber-200">
+                        <x-icons.shield class="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Safety Guardrails') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Limits to prevent the system from making things worse.') }}</p>
+                    </div>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <x-ui.form-group :label="__('Max Actions Per Incident')" for="maxActionsPerIncident" error="maxActionsPerIncident">

@@ -5,7 +5,22 @@
         {{-- Profile Section --}}
         <form wire:submit="saveProfile">
             <x-ui.card>
-                <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Profile Information') }}</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-600 overflow-hidden">
+                            @if(Auth::user()->avatar_path)
+                                <img src="{{ Storage::url(Auth::user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                            @else
+                                {{ Auth::user()->initials }}
+                            @endif
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900">{{ __('Profile Information') }}</h3>
+                            <p class="mt-0.5 text-sm text-gray-500">{{ __('Your personal details and preferences') }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-4">
                     {{-- Avatar --}}
                     <div>
@@ -61,7 +76,18 @@
         {{-- Password Section --}}
         <form wire:submit="changePassword">
             <x-ui.card>
-                <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Change Password') }}</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 shadow-sm ring-1 ring-gray-200">
+                            <x-icons.shield class="h-5 w-5 text-gray-600" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900">{{ __('Change Password') }}</h3>
+                            <p class="mt-0.5 text-sm text-gray-500">{{ __('Update your account password') }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-4">
                     <x-ui.form-group :label="__('Current Password')" for="currentPassword" error="currentPassword">
                         <x-ui.input wire:model="currentPassword" id="currentPassword" type="password" />
@@ -87,13 +113,22 @@
 
         {{-- Two-Factor Authentication --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-2">{{ __('Two-Factor Authentication') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Add an additional layer of security to your account using a TOTP authenticator app.') }}</p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg {{ Auth::user()->two_factor_enabled ? 'bg-green-50 ring-1 ring-green-200' : 'bg-gray-100 ring-1 ring-gray-200' }} shadow-sm">
+                        <x-icons.shield-check class="h-5 w-5 {{ Auth::user()->two_factor_enabled ? 'text-green-600' : 'text-gray-600' }}" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Two-Factor Authentication') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Add an additional layer of security using a TOTP authenticator app.') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="{{ Auth::user()->two_factor_enabled ? 'green' : 'gray' }}">{{ Auth::user()->two_factor_enabled ? __('Enabled') : __('Not enabled') }}</x-ui.badge>
+            </div>
 
             @if(!Auth::user()->two_factor_enabled && !$showingQrCode)
                 {{-- Not enabled — show enable button --}}
                 <div class="flex items-center gap-3">
-                    <x-ui.badge variant="gray">{{ __('Not enabled') }}</x-ui.badge>
                     <x-ui.button wire:click="enableTwoFactor" variant="secondary" wire:loading.attr="disabled">
                         <span wire:loading.remove wire:target="enableTwoFactor">{{ __('Enable 2FA') }}</span>
                         <span wire:loading wire:target="enableTwoFactor">{{ __('Setting up...') }}</span>
@@ -117,10 +152,6 @@
             @else
                 {{-- Enabled — show status + actions --}}
                 <div class="space-y-4">
-                    <div class="flex items-center gap-3">
-                        <x-ui.badge variant="green">{{ __('Enabled') }}</x-ui.badge>
-                    </div>
-
                     @if($showingRecoveryCodes && !empty($recoveryCodes))
                         <div>
                             <p class="text-sm font-medium text-gray-700 mb-2">{{ __('Recovery Codes') }}</p>
@@ -142,33 +173,20 @@
             @endif
         </x-ui.card>
 
-        {{-- Data Export (GDPR) --}}
-        <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-2">{{ __('Download My Data') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Export a copy of all your personal data including profile, sites, report metadata, and activity logs.') }}</p>
-            <x-ui.button variant="secondary" wire:click="exportData" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="exportData">{{ __('Download My Data') }}</span>
-                <span wire:loading wire:target="exportData">{{ __('Preparing export...') }}</span>
-            </x-ui.button>
-        </x-ui.card>
-
-        {{-- Danger Zone --}}
-        <x-ui.card class="border-red-200 ring-red-100">
-            <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Delete Account') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete your account and all associated data. This action cannot be undone.') }}</p>
-            <x-ui.form-group :label="__('Confirm your password')" for="deleteAccountPassword" error="deleteAccountPassword" class="max-w-sm mb-4">
-                <x-ui.input type="password" wire:model="deleteAccountPassword" id="deleteAccountPassword" placeholder="{{ __('Enter your password to confirm') }}" />
-            </x-ui.form-group>
-            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="deleteAccount">{{ __('Delete Account') }}</span>
-                <span wire:loading wire:target="deleteAccount">{{ __('Deleting...') }}</span>
-            </x-ui.button>
-        </x-ui.card>
-
         {{-- API Tokens Section --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('API Tokens') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Create personal access tokens to authenticate with the API.') }}</p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 shadow-sm ring-1 ring-amber-200">
+                        <x-icons.zap class="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('API Tokens') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Create personal access tokens to authenticate with the API.') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="{{ $this->apiTokens->isNotEmpty() ? 'blue' : 'gray' }}">{{ $this->apiTokens->count() }} {{ Str::plural(__('token'), $this->apiTokens->count()) }}</x-ui.badge>
+            </div>
 
             @if($newTokenPlainText)
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
@@ -214,6 +232,50 @@
                     @endforeach
                 </div>
             @endif
+        </x-ui.card>
+
+        {{-- Data Export (GDPR) --}}
+        <x-ui.card>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
+                        <x-icons.hard-drive class="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Download My Data') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Export a copy of all your personal data including profile, sites, report metadata, and activity logs.') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <x-ui.button variant="secondary" wire:click="exportData" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="exportData">{{ __('Download My Data') }}</span>
+                <span wire:loading wire:target="exportData">{{ __('Preparing export...') }}</span>
+            </x-ui.button>
+        </x-ui.card>
+
+        {{-- Danger Zone --}}
+        <x-ui.card class="border-red-200 ring-red-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 shadow-sm ring-1 ring-red-200">
+                        <x-icons.trash class="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-red-600">{{ __('Delete Account') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Permanently delete your account and all associated data. This action cannot be undone.') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="red">{{ __('Irreversible') }}</x-ui.badge>
+            </div>
+
+            <x-ui.form-group :label="__('Confirm your password')" for="deleteAccountPassword" error="deleteAccountPassword" class="max-w-sm mb-4">
+                <x-ui.input type="password" wire:model="deleteAccountPassword" id="deleteAccountPassword" placeholder="{{ __('Enter your password to confirm') }}" />
+            </x-ui.form-group>
+            <x-ui.button variant="danger" wire:click="deleteAccount" wire:confirm="{{ __('Are you sure you want to delete your account? This cannot be undone.') }}" wire:loading.attr="disabled">
+                <span wire:loading.remove wire:target="deleteAccount">{{ __('Delete Account') }}</span>
+                <span wire:loading wire:target="deleteAccount">{{ __('Deleting...') }}</span>
+            </x-ui.button>
         </x-ui.card>
     </div>
 </div>

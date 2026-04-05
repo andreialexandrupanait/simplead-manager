@@ -60,7 +60,7 @@ $COMPOSE exec app php artisan down 2>/dev/null || true
 # ── Step 6: Recreate containers with new image ───────────────────────────────
 
 log "Recreating containers with new image..."
-$COMPOSE up -d app horizon scheduler
+$COMPOSE up -d --force-recreate --remove-orphans app horizon scheduler
 
 log "Waiting for app container to be healthy..."
 TIMEOUT=90
@@ -96,7 +96,7 @@ $COMPOSE exec app php artisan up
 # ── Step 11: Recreate Nginx with new image ─────────────────────────────────
 
 log "Recreating Nginx with new image..."
-$COMPOSE up -d nginx
+$COMPOSE up -d --force-recreate nginx
 
 # ── Verify ────────────────────────────────────────────────────────────────────
 

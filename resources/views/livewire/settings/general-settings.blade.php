@@ -2,9 +2,21 @@
     @include('livewire.settings.partials.settings-tabs')
 
     <form wire:submit="save" class="space-y-6">
-        {{-- Application Settings --}}
+        {{-- Branding --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Application') }}</h3>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
+                        <x-icons.image class="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Branding') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Application name, URL, and branding assets') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="purple">{{ $form->appName ?: 'SimpleAd' }}</x-ui.badge>
+            </div>
+
             <div class="space-y-4">
                 <x-ui.form-group :label="__('Application Name')" for="appName" error="form.appName">
                     <x-ui.input wire:model="form.appName" id="appName" />
@@ -46,7 +58,7 @@
                                 @elseif($logoPath)
                                     <img src="{{ Storage::url($logoPath) }}" alt="Logo" class="h-full w-full object-contain">
                                 @else
-                                    <span class="text-xs text-gray-400">—</span>
+                                    <span class="text-xs text-gray-400">&mdash;</span>
                                 @endif
                             </div>
                             <div class="min-w-0 flex-1">
@@ -64,31 +76,71 @@
                 <x-ui.form-group :label="__('Application URL')" for="appUrl" error="form.appUrl">
                     <x-ui.input wire:model="form.appUrl" id="appUrl" type="url" placeholder="https://your-app.com" />
                 </x-ui.form-group>
+            </div>
+        </x-ui.card>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <x-ui.form-group :label="__('Default Timezone')" for="defaultTimezone">
-                        <x-ui.select wire:model="form.defaultTimezone" id="defaultTimezone">
-                            @foreach(timezone_identifiers_list() as $tz)
-                                <option value="{{ $tz }}">{{ $tz }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.form-group>
-                    <x-ui.form-group :label="__('Date Format')" for="dateFormat">
-                        <x-ui.select wire:model="form.dateFormat" id="dateFormat">
-                            <option value="M d, Y">{{ now()->format('M d, Y') }} (M d, Y)</option>
-                            <option value="d/m/Y">{{ now()->format('d/m/Y') }} (d/m/Y)</option>
-                            <option value="d.m.Y">{{ now()->format('d.m.Y') }} (d.m.Y)</option>
-                            <option value="m/d/Y">{{ now()->format('m/d/Y') }} (m/d/Y)</option>
-                            <option value="Y-m-d">{{ now()->format('Y-m-d') }} (Y-m-d)</option>
-                        </x-ui.select>
-                    </x-ui.form-group>
+        {{-- Regional --}}
+        <x-ui.card>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
+                        <x-icons.globe class="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Regional') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Timezone and date format preferences') }}</p>
+                    </div>
                 </div>
+                <x-ui.badge variant="blue">{{ now()->setTimezone($form->defaultTimezone)->format($form->dateFormat) }}</x-ui.badge>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <x-ui.form-group :label="__('Default Timezone')" for="defaultTimezone">
+                    <x-ui.select wire:model="form.defaultTimezone" id="defaultTimezone">
+                        @foreach(timezone_identifiers_list() as $tz)
+                            <option value="{{ $tz }}">{{ $tz }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.form-group>
+                <x-ui.form-group :label="__('Date Format')" for="dateFormat">
+                    <x-ui.select wire:model="form.dateFormat" id="dateFormat">
+                        <option value="M d, Y">{{ now()->format('M d, Y') }} (M d, Y)</option>
+                        <option value="d/m/Y">{{ now()->format('d/m/Y') }} (d/m/Y)</option>
+                        <option value="d.m.Y">{{ now()->format('d.m.Y') }} (d.m.Y)</option>
+                        <option value="m/d/Y">{{ now()->format('m/d/Y') }} (m/d/Y)</option>
+                        <option value="Y-m-d">{{ now()->format('Y-m-d') }} (Y-m-d)</option>
+                    </x-ui.select>
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 
         {{-- Monitoring Defaults --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Monitoring Defaults') }}</h3>
+            @php
+                $intervalLabel = match((int) $form->defaultInterval) {
+                    60 => '1 ' . __('minute'),
+                    120 => '2 ' . __('minutes'),
+                    300 => '5 ' . __('minutes'),
+                    600 => '10 ' . __('minutes'),
+                    900 => '15 ' . __('minutes'),
+                    1800 => '30 ' . __('minutes'),
+                    3600 => '1 ' . __('hour'),
+                    default => $form->defaultInterval . 's',
+                };
+            @endphp
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 shadow-sm ring-1 ring-green-200">
+                        <x-icons.activity class="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Monitoring Defaults') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Default check intervals and alert thresholds for new sites') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="green">{{ $intervalLabel }}</x-ui.badge>
+            </div>
+
             <div class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-ui.form-group :label="__('Default Check Interval')" for="defaultInterval">
@@ -115,7 +167,19 @@
 
         {{-- Security --}}
         <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Security') }}</h3>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50 shadow-sm ring-1 ring-yellow-200">
+                        <x-icons.shield class="h-5 w-5 text-yellow-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Security') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Authentication policy') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="{{ $mfaRequired ? 'green' : 'gray' }}">{{ $mfaRequired ? __('Enforced') : __('Optional') }}</x-ui.badge>
+            </div>
+
             <label class="flex items-center gap-2">
                 <input type="checkbox" wire:model="mfaRequired" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                 <span class="text-sm text-gray-700">{{ __('Require two-factor authentication for all users') }}</span>
@@ -135,9 +199,14 @@
     <div class="mt-8">
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">{{ __('Site Statuses') }}</h3>
-                    <p class="text-sm text-gray-500">{{ __('Group sites by custom statuses like "Maintenance" or "Miscellaneous".') }}</p>
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 shadow-sm ring-1 ring-orange-200">
+                        <x-icons.layers class="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Site Statuses') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Group sites by custom statuses like "Maintenance" or "Miscellaneous".') }}</p>
+                    </div>
                 </div>
                 <x-ui.button size="sm" wire:click="openStatusForm">
                     {{ __('Add Status') }}
@@ -211,8 +280,19 @@
     {{-- Danger Zone --}}
     <div class="mt-8">
         <x-ui.card class="border-red-200 ring-red-100">
-            <h3 class="text-base font-semibold text-red-600 mb-2">{{ __('Danger Zone') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('Permanently delete all monitoring check and incident data. This action cannot be undone.') }}</p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 shadow-sm ring-1 ring-red-200">
+                        <x-icons.alert-triangle class="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-red-600">{{ __('Danger Zone') }}</h3>
+                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Permanently delete all monitoring check and incident data.') }}</p>
+                    </div>
+                </div>
+                <x-ui.badge variant="red">{{ __('Destructive') }}</x-ui.badge>
+            </div>
+
             <x-ui.button variant="danger" wire:click="purgeMonitoringData" wire:confirm="{{ __('Are you sure? This will delete ALL monitoring data and cannot be undone.') }}" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="purgeMonitoringData">{{ __('Purge Monitoring Data') }}</span>
                 <span wire:loading wire:target="purgeMonitoringData">{{ __('Purging...') }}</span>
