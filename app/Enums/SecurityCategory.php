@@ -16,7 +16,6 @@ enum SecurityCategory: string
     case SiteControl = 'site_control';
     case AdminUx = 'admin_ux';
     case ContentMedia = 'content_media';
-    case Email = 'email';
 
     public function label(): string
     {
@@ -31,7 +30,6 @@ enum SecurityCategory: string
             self::SiteControl => 'Site Control',
             self::AdminUx => 'Admin UX',
             self::ContentMedia => 'Content & Media',
-            self::Email => 'Email / SMTP',
         };
     }
 
@@ -42,7 +40,6 @@ enum SecurityCategory: string
             self::SiteControl,
             self::AdminUx,
             self::ContentMedia,
-            self::Email,
         ]);
     }
 }

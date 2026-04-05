@@ -7,7 +7,6 @@
                 ['route' => 'sites.tweaks.site-control', 'routeIs' => 'sites.tweaks.site-control', 'label' => __('Site Control')],
                 ['route' => 'sites.tweaks.admin-ux', 'routeIs' => 'sites.tweaks.admin-ux', 'label' => __('Admin UX')],
                 ['route' => 'sites.tweaks.content-media', 'routeIs' => 'sites.tweaks.content-media', 'label' => __('Content & Media')],
-                ['route' => 'sites.tweaks.email', 'routeIs' => 'sites.tweaks.email', 'label' => __('Email')],
             ];
         @endphp
 

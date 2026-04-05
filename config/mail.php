@@ -53,14 +53,6 @@ return [
             'transport' => 'ses',
         ],
 
-        'postmark' => [
-            'transport' => 'postmark',
-            // 'message_stream_id' => env('POSTMARK_MESSAGE_STREAM_ID'),
-            // 'client' => [
-            //     'timeout' => 5,
-            // ],
-        ],
-
         'resend' => [
             'transport' => 'resend',
         ],
@@ -91,7 +83,6 @@ return [
             'transport' => 'roundrobin',
             'mailers' => [
                 'ses',
-                'postmark',
             ],
         ],
 

@@ -36,7 +36,7 @@ class DiscordNotificationSender
         ], $fields);
 
         try {
-            $response = Http::timeout(10)->post($webhookUrl, [
+            $response = Http::timeout(5)->post($webhookUrl, [
                 'embeds' => [[
                     'title' => $title,
                     'description' => $message,

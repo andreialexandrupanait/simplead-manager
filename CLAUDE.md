@@ -44,7 +44,7 @@
 ## Quick Commands (user shortcuts)
 When the user says any of these, execute immediately without asking:
 
-- **"deploy"** or **"deploy prod"** — Run steps manually: npm ci + npm build + rm node_modules + docker compose -f docker-compose.prod.yml build app nginx, then horizon:terminate, artisan down, up -d app horizon scheduler, migrate --force, queue:restart, artisan up, up -d nginx
+- **"deploy"** or **"deploy prod"** — Run steps manually: npm ci + npm build + rm node_modules + docker compose -f docker-compose.prod.yml build app nginx, then horizon:terminate, artisan down, `stop app horizon scheduler`, `rm -f app horizon scheduler`, `up -d app horizon scheduler`, migrate --force, queue:restart, artisan up, up -d nginx
 - **"logs"** — Show last 50 error-level entries from today's production Laravel log
 - **"status"** — Show `docker compose -f docker-compose.prod.yml ps`
 

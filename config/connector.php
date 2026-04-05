@@ -9,6 +9,13 @@ return [
                 // New changes accumulate here until version bump
             ],
         ],
+        '2.9.15' => [
+            'date' => '2026-04-05',
+            'changes' => [
+                'Removed email tweaks (replaced by dedicated Postmark integration)',
+                'Added content duplication, custom post ordering, and 7 other content & media tweaks',
+            ],
+        ],
         '2.9.14' => [
             'date' => '2026-04-03',
             'changes' => [

@@ -86,8 +86,6 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DatabaseCleanup> $databaseCleanups
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DatabaseHealthCheck> $databaseHealthChecks
  * @property-read \App\Models\DatabaseHealthCheck|null $latestDatabaseHealthCheck
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\EmailHealthCheck> $emailHealthChecks
- * @property-read \App\Models\EmailHealthCheck|null $latestEmailHealthCheck
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityScan> $securityScans
  * @property-read \App\Models\SecurityScan|null $latestSecurityScan
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIssue> $securityIssues

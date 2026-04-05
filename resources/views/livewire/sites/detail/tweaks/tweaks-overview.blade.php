@@ -141,32 +141,5 @@
             </div>
         </x-ui.card>
 
-        @php
-            $emailSettings = $this->settingsByCategory['email'] ?? collect();
-            $emailEnabled = $emailSettings->where('is_enabled', true)->count();
-            $emailApplied = $emailSettings->where('is_enabled', true)->whereNotNull('applied_at')->whereNull('failed_at')->count();
-            $emailFailed = $emailSettings->whereNotNull('failed_at')->count();
-        @endphp
-        <x-ui.card>
-            <div class="flex items-start justify-between">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">{{ __('Email') }}</h3>
-                    <p class="mt-1 text-sm text-gray-500">{{ __('Postmark SMTP, sender identity, and email logging.') }}</p>
-                </div>
-                <x-icons.mail class="h-5 w-5 text-purple-500 shrink-0" />
-            </div>
-            <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
-                <span>{{ $emailEnabled }} {{ __('enabled') }}</span>
-                <span class="text-green-600">{{ $emailApplied }} {{ __('applied') }}</span>
-                @if($emailFailed > 0)
-                    <span class="text-red-600">{{ $emailFailed }} {{ __('failed') }}</span>
-                @endif
-            </div>
-            <div class="mt-3 flex items-center justify-end">
-                <a href="{{ route('sites.tweaks.email', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
-                    {{ __('Configure') }} &rarr;
-                </a>
-            </div>
-        </x-ui.card>
     </div>
 </div>

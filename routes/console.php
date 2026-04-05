@@ -2,6 +2,7 @@
 
 use App\Dispatchers\BackupDispatcher;
 use App\Dispatchers\DataSyncDispatcher;
+use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
 use Illuminate\Support\Facades\Schedule;
@@ -35,6 +36,13 @@ Schedule::call(new BackupDispatcher)
 Schedule::call(new ReportDispatcher)
     ->everyFiveMinutes()
     ->name('report-dispatcher')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Incident Response: proactive security/vulnerability detection
+Schedule::call(new IncidentResponseDispatcher)
+    ->everyFiveMinutes()
+    ->name('incident-response-dispatcher')
     ->withoutOverlapping()
     ->onOneServer();
 

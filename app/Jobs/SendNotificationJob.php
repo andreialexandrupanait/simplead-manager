@@ -26,7 +26,7 @@ class SendNotificationJob implements ShouldQueue
 
     public int $timeout = 30;
 
-    public array $backoff = [30, 60, 120];
+    public array $backoff = [5, 15, 60];
 
     public function __construct(
         public NotificationChannel $channel,

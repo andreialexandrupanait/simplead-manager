@@ -11,7 +11,6 @@
         $cloudflareConnected = $this->cloudflareConnections->isNotEmpty();
         $dropboxConnected = $dropboxAppKey && $dropboxAppSecret;
         $unsplashConnected = (bool) $unsplashAccessKey;
-        $postmarkConnected = (bool) $postmarkServerToken;
     @endphp
 
     {{-- Integration Cards Grid --}}
@@ -154,42 +153,6 @@
 
             <div class="mt-4 border-t border-gray-100 pt-4">
                 <button @click="$dispatch('open-modal-configure-unsplash')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Postmark Card --}}
-        <x-ui.card class="{{ $postmarkConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50 shadow-sm ring-1 ring-yellow-200">
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none"><path d="M3 8l9 6 9-6" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2" stroke="#F59E0B" stroke-width="2"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Postmark</h3>
-                        <p class="text-xs text-gray-500">{{ __('Email delivery') }}</p>
-                    </div>
-                </div>
-                @if($postmarkConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($postmarkConnected)
-                    {{ __('Stream:') }} {{ $postmarkDefaultStream }}
-                @else
-                    {{ __('Server token required') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-postmark')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     {{ __('Settings') }}
@@ -589,62 +552,6 @@
                     <li>Copy the <strong>Access Key</strong> from the app's page and paste it above</li>
                 </ol>
                 <p class="mt-2 text-xs text-blue-600">Free tier: max 50 requests/hour — sufficient for the login slideshow.</p>
-            </div>
-        </div>
-    </x-ui.modal>
-
-    {{-- Postmark Configuration Modal --}}
-    <x-ui.modal name="configure-postmark" maxWidth="lg">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Postmark &mdash; {{ __('Email Delivery') }}</h2>
-
-        <p class="text-sm text-gray-500 mb-4">{{ __('Configure Postmark as the SMTP provider for WordPress sites. The token stored here is used as default for all sites with Postmark enabled in Email tweaks.') }}</p>
-
-        <form wire:submit="savePostmarkCredentials" class="space-y-3">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Server API Token') }}</label>
-                <x-ui.input type="password" wire:model="postmarkServerToken" placeholder="{{ __('Enter Postmark Server Token') }}" />
-                @error('postmarkServerToken') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Default Message Stream') }}</label>
-                <select wire:model="postmarkDefaultStream" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                    <option value="outbound">{{ __('Transactional (outbound)') }}</option>
-                    <option value="broadcast">{{ __('Broadcast') }}</option>
-                </select>
-            </div>
-            <div class="flex items-center justify-between">
-                @if($postmarkConnected)
-                    <button type="button" wire:click="clearPostmarkCredentials" class="text-sm text-red-600 hover:text-red-700">
-                        {{ __('Remove credentials') }}
-                    </button>
-                @else
-                    <span></span>
-                @endif
-                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
-                    {{ __('Save') }}
-                </x-ui.button>
-            </div>
-        </form>
-
-        <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
-            <p class="text-xs text-amber-800">
-                {{ __('SMTP: smtp.postmarkapp.com:587 (TLS). To use Postmark on a WordPress site, enable it in the site\'s Tweaks → Email tab. The "From" email must match a verified Sender Signature in Postmark.') }}
-            </p>
-        </div>
-
-        <div x-data="{ showInstructions: false }" class="mt-4">
-            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                {{ __('How to obtain Postmark credentials') }}
-            </button>
-            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
-                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                    <li>{{ __('Sign in to') }} <a href="https://account.postmarkapp.com" target="_blank" class="font-medium underline hover:text-blue-900">Postmark</a></li>
-                    <li>{{ __('Select your Server (or create one)') }}</li>
-                    <li>{{ __('Go to') }} <strong>{{ __('API Tokens') }}</strong> {{ __('tab') }}</li>
-                    <li>{{ __('Copy the') }} <strong>{{ __('Server API Token') }}</strong> {{ __('and paste it above') }}</li>
-                    <li>{{ __('Make sure you have a verified') }} <strong>{{ __('Sender Signature') }}</strong> {{ __('matching your "From" email') }}</li>
-                </ol>
             </div>
         </div>
     </x-ui.modal>

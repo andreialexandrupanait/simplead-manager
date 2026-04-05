@@ -74,7 +74,6 @@ class RetentionPolicyService
             'max' => 365,
             'tables' => [
                 ['table' => 'database_health_checks', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Database health checks', 'condition' => null],
-                ['table' => 'email_health_checks', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Email health checks', 'condition' => null],
                 ['table' => 'database_cleanups', 'column' => 'cleaned_at', 'col_type' => 'timestamp', 'label' => 'Database cleanups', 'condition' => null],
                 ['table' => 'cloudflare_cache_purges', 'column' => 'purged_at', 'col_type' => 'timestamp', 'label' => 'Cloudflare cache purges', 'condition' => null],
                 ['table' => 'update_logs', 'column' => 'performed_at', 'col_type' => 'timestamp', 'label' => 'Update logs', 'condition' => null],

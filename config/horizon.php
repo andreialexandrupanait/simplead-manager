@@ -105,6 +105,7 @@ return [
         'redis:performance' => 120,
         'redis:reports' => 120,
         'redis:security' => 60,
+        'redis:incident-response' => 120,
     ],
 
     /*
@@ -245,7 +246,7 @@ return [
             'connection' => 'redis',
             'queue' => ['notifications'],
             'balance' => 'simple',
-            'maxProcesses' => 1,
+            'maxProcesses' => 2,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 64,
@@ -266,6 +267,18 @@ return [
             'timeout' => 600,
             'nice' => 0,
         ],
+        'supervisor-incident-response' => [
+            'connection' => 'redis',
+            'queue' => ['incident-response'],
+            'balance' => 'simple',
+            'maxProcesses' => 2,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 512,
+            'tries' => 1,
+            'timeout' => 900,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -282,12 +295,15 @@ return [
                 'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 3),
             ],
             'supervisor-notifications' => [
-                'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 2),
+                'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 3),
             ],
             'supervisor-general' => [
                 'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 3),
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
+            ],
+            'supervisor-incident-response' => [
+                'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 2),
             ],
         ],
 
@@ -307,6 +323,9 @@ return [
             'supervisor-general' => [
                 'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 1),
             ],
+            'supervisor-incident-response' => [
+                'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 1),
+            ],
         ],
 
         'local' => [
@@ -324,6 +343,9 @@ return [
             ],
             'supervisor-general' => [
                 'maxProcesses' => 2,
+            ],
+            'supervisor-incident-response' => [
+                'maxProcesses' => 1,
             ],
         ],
     ],

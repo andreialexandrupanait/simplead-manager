@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.9.14
+ * Version: 2.9.15
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.9.14');
+define('SAM_VERSION', '2.9.15');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -35,7 +35,6 @@ require_once SAM_PLUGIN_DIR . 'includes/class-performance-tweaks.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-site-control.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-admin-ux-tweaks.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-content-media-tweaks.php';
-require_once SAM_PLUGIN_DIR . 'includes/class-email-tweaks.php';
 
 // Autoloader for all other classes (loaded on demand)
 spl_autoload_register(function ($class) {
@@ -117,7 +116,6 @@ final class SimpleAd_Manager_Connector {
         add_action('plugins_loaded', [$this, 'init_site_control'], 5);
         add_action('plugins_loaded', [$this, 'init_admin_ux_tweaks'], 5);
         add_action('plugins_loaded', [$this, 'init_content_media_tweaks'], 5);
-        add_action('plugins_loaded', [$this, 'init_email_tweaks'], 5);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('init', [$this, 'handle_login_token']);
@@ -223,10 +221,6 @@ final class SimpleAd_Manager_Connector {
         new SAM_Content_Media_Tweaks();
     }
 
-    public function init_email_tweaks(): void {
-        new SAM_Email_Tweaks();
-    }
-
     public function deactivate(): void {
         // Remove scheduled events
         $timestamp = wp_next_scheduled('sam_cleanup_backup_temp');
@@ -269,6 +263,7 @@ final class SimpleAd_Manager_Connector {
         delete_option('sam_admin_ux_settings');
         delete_option('sam_content_media_settings');
         delete_option('sam_email_settings');
+        delete_option('sam_email_log');
 
         // Remove the MU-plugin on full uninstall
         SAM_MU_Plugin_Manager::uninstall();

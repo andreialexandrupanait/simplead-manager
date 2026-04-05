@@ -36,7 +36,7 @@ class SlackNotificationSender
         ], $fields);
 
         try {
-            $response = Http::timeout(10)->post($webhookUrl, [
+            $response = Http::timeout(5)->post($webhookUrl, [
                 'attachments' => [[
                     'color' => $color,
                     'title' => $title,

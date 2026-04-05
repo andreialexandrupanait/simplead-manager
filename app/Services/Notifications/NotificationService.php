@@ -17,7 +17,7 @@ class NotificationService
     /**
      * Deduplication window in seconds. Same event+site won't be re-sent within this window.
      */
-    private const DEDUP_WINDOW = 1800; // 30 minutes
+    private const DEDUP_WINDOW = 300; // 5 minutes
 
     /**
      * Redis key for the notification buffer used by ProcessNotificationBatch.
@@ -70,14 +70,14 @@ class NotificationService
                 continue;
             }
 
-            // Critical notifications bypass the buffer
-            if ($severity === 'critical') {
+            // Only buffer info-level notifications; everything else dispatches immediately
+            if ($severity === 'info') {
+                static::buffer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
+            } else {
                 SendNotificationJob::dispatch(
                     $channel, $site, $event, $title, $message,
                     $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
                 );
-            } else {
-                static::buffer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
             }
         }
     }
@@ -113,14 +113,14 @@ class NotificationService
                 continue;
             }
 
-            // Critical & app-wide notifications bypass the buffer
-            if ($severity === 'critical') {
+            // Only buffer info-level notifications; everything else dispatches immediately
+            if ($severity === 'info') {
+                static::buffer($channel, null, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
+            } else {
                 SendNotificationJob::dispatch(
                     $channel, null, $event, $title, $message,
                     $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
                 );
-            } else {
-                static::buffer($channel, null, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
             }
         }
     }

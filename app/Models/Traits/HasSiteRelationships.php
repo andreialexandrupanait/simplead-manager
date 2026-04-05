@@ -15,7 +15,7 @@ use App\Models\CoreFileCheck;
 use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
-use App\Models\EmailHealthCheck;
+use App\Models\IncidentResponse;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
@@ -202,16 +202,6 @@ trait HasSiteRelationships
         return $this->hasOne(DatabaseHealthCheck::class)->latestOfMany('checked_at');
     }
 
-    public function emailHealthChecks(): HasMany
-    {
-        return $this->hasMany(EmailHealthCheck::class);
-    }
-
-    public function latestEmailHealthCheck(): HasOne
-    {
-        return $this->hasOne(EmailHealthCheck::class)->latestOfMany('checked_at');
-    }
-
     public function securityScans(): HasMany
     {
         return $this->hasMany(SecurityScan::class);
@@ -313,5 +303,10 @@ trait HasSiteRelationships
     public function securityBannedIps(): HasMany
     {
         return $this->hasMany(SecurityBannedIp::class);
+    }
+
+    public function incidentResponses(): HasMany
+    {
+        return $this->hasMany(IncidentResponse::class);
     }
 }

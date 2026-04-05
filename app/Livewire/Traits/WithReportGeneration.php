@@ -441,21 +441,6 @@ trait WithReportGeneration
     {
         $metrics = [];
 
-        $email = $this->site->latestEmailHealthCheck;
-        if ($email) {
-            $parts = [];
-            if ($email->spf_exists) {
-                $parts[] = 'SPF';
-            }
-            if ($email->dkim_exists) {
-                $parts[] = 'DKIM';
-            }
-            if ($email->dmarc_exists) {
-                $parts[] = 'DMARC';
-            }
-            $metrics[] = ['label' => 'Email', 'value' => $parts ? implode('+', $parts) : 'None'];
-        }
-
         if (empty($metrics)) {
             return [
                 'label' => __('report.section_label_infrastructure'),

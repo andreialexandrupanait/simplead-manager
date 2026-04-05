@@ -64,11 +64,6 @@ class SiteTweaksSettingsService
             'auto_publish_missed_schedule',
             'content_order',
         ],
-        'email' => [
-            'custom_email_from',
-            'postmark_config',
-            'email_logging',
-        ],
     ];
 
     /**
@@ -79,7 +74,6 @@ class SiteTweaksSettingsService
         'site_control',
         'admin_ux',
         'content_media',
-        'email',
     ];
 
     public function getSettingsForSite(Site $site): Collection

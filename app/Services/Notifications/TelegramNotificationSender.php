@@ -51,7 +51,7 @@ class TelegramNotificationSender
         }
 
         try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+            $response = Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
                 'chat_id' => $chatId,
                 'text' => $text,
                 'parse_mode' => 'Markdown',

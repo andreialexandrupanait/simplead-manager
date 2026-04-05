@@ -649,58 +649,6 @@ if (defined('SAM_VERSION')) {
         }
     }
 
-    // ─── Email ─────────────────────────────────────────────────────────
-    $email = get_option('sam_email_settings', []);
-
-    if (!empty($email)) {
-        // Custom email from
-        if (!empty($email['custom_email_from'])) {
-            $ef = is_array($email['custom_email_from']) ? $email['custom_email_from'] : [];
-            if (!empty($ef['from_email'])) {
-                $fe = $ef['from_email'];
-                add_filter('wp_mail_from', function () use ($fe) { return sanitize_email($fe); });
-            }
-            if (!empty($ef['from_name'])) {
-                $fn = $ef['from_name'];
-                add_filter('wp_mail_from_name', function () use ($fn) { return sanitize_text_field($fn); });
-            }
-        }
-
-        // Postmark SMTP
-        if (!empty($email['postmark_config'])) {
-            $pm = is_array($email['postmark_config']) ? $email['postmark_config'] : [];
-            $token = $pm['server_token'] ?? '';
-            $stream = $pm['message_stream'] ?? 'outbound';
-            if ($token !== '') {
-                add_action('phpmailer_init', function ($phpmailer) use ($token, $stream) {
-                    $phpmailer->isSMTP();
-                    $phpmailer->Host = 'smtp.postmarkapp.com';
-                    $phpmailer->Port = 587;
-                    $phpmailer->SMTPSecure = 'tls';
-                    $phpmailer->SMTPAuth = true;
-                    $phpmailer->Username = $token;
-                    $phpmailer->Password = $token;
-                    $phpmailer->addCustomHeader('X-PM-Message-Stream', sanitize_text_field($stream));
-                });
-            }
-        }
-
-        // Email logging
-        if (!empty($email['email_logging'])) {
-            add_filter('wp_mail', function ($args) {
-                $entry = [
-                    'to' => is_array($args['to']) ? implode(', ', $args['to']) : $args['to'],
-                    'subject' => $args['subject'] ?? '',
-                    'timestamp' => current_time('mysql'),
-                    'status' => 'sending',
-                ];
-                $logs = get_option('sam_email_log', []);
-                array_unshift($logs, $entry);
-                update_option('sam_email_log', array_slice($logs, 0, 100), false);
-                return $args;
-            });
-        }
-    }
 })();
 MUPHP;
 
