@@ -41,6 +41,10 @@ class SiteDatabaseCleanup extends Component
 
     public bool $showConfirmation = false;
 
+    public ?string $pendingTableAction = null;
+
+    public ?string $pendingTableName = null;
+
     protected function jobTrackingKeys(): array
     {
         return ['health' => 'db-health-'.$this->site->id];
@@ -146,6 +150,45 @@ class SiteDatabaseCleanup extends Component
         $this->dispatch('close-modal-confirm-cleanup');
         $this->stats = null;
         unset($this->cleanupHistory);
+    }
+
+    public function confirmTableAction(string $action, string $tableName): void
+    {
+        $this->pendingTableAction = $action;
+        $this->pendingTableName = $tableName;
+        $this->dispatch('open-modal-confirm-table-action');
+    }
+
+    public function executeTableAction(): void
+    {
+        if (! $this->pendingTableAction || ! $this->pendingTableName) {
+            return;
+        }
+
+        $result = match ($this->pendingTableAction) {
+            'optimize' => $this->cleanupService->optimizeTable($this->site, $this->pendingTableName),
+            'convert_engine' => $this->cleanupService->convertTableEngine($this->site, $this->pendingTableName),
+            'delete' => $this->cleanupService->deleteTable($this->site, $this->pendingTableName),
+            default => ['success' => false, 'message' => 'Unknown action.'],
+        };
+
+        if ($result['success']) {
+            session()->flash('db-success', $result['message']);
+        } else {
+            session()->flash('db-error', $result['message']);
+        }
+
+        $this->pendingTableAction = null;
+        $this->pendingTableName = null;
+        $this->dispatch('close-modal-confirm-table-action');
+        $this->refreshHealth();
+    }
+
+    public function cancelTableAction(): void
+    {
+        $this->pendingTableAction = null;
+        $this->pendingTableName = null;
+        $this->dispatch('close-modal-confirm-table-action');
     }
 
     public function render()

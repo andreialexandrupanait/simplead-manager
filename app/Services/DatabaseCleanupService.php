@@ -22,6 +22,87 @@ class DatabaseCleanupService
         return $api->getDbCleanupStats();
     }
 
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function optimizeTable(Site $site, string $tableName): array
+    {
+        try {
+            $api = $this->apiFactory->make($site);
+            $api->optimizeTable($tableName);
+
+            ActivityLogger::log(
+                type: 'database',
+                severity: 'info',
+                title: "Table optimized on {$site->name}",
+                description: "Optimized table: {$tableName}",
+                site: $site,
+                icon: 'database',
+                url: route('sites.database', $site),
+            );
+
+            return ['success' => true, 'message' => "Table '{$tableName}' optimized successfully."];
+        } catch (RequestException|\RuntimeException $e) {
+            Log::warning("Table optimize failed for {$tableName} on site {$site->id}: {$e->getMessage()}");
+
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function convertTableEngine(Site $site, string $tableName): array
+    {
+        try {
+            $api = $this->apiFactory->make($site);
+            $api->convertTableEngine($tableName);
+
+            ActivityLogger::log(
+                type: 'database',
+                severity: 'info',
+                title: "Table engine converted on {$site->name}",
+                description: "Converted '{$tableName}' to InnoDB.",
+                site: $site,
+                icon: 'database',
+                url: route('sites.database', $site),
+            );
+
+            return ['success' => true, 'message' => "Table '{$tableName}' converted to InnoDB."];
+        } catch (RequestException|\RuntimeException $e) {
+            Log::warning("Table engine conversion failed for {$tableName} on site {$site->id}: {$e->getMessage()}");
+
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function deleteTable(Site $site, string $tableName): array
+    {
+        try {
+            $api = $this->apiFactory->make($site);
+            $api->deleteTable($tableName);
+
+            ActivityLogger::log(
+                type: 'database',
+                severity: 'warning',
+                title: "Table deleted on {$site->name}",
+                description: "Deleted table: {$tableName}",
+                site: $site,
+                icon: 'database',
+                url: route('sites.database', $site),
+            );
+
+            return ['success' => true, 'message' => "Table '{$tableName}' deleted."];
+        } catch (RequestException|\RuntimeException $e) {
+            Log::warning("Table delete failed for {$tableName} on site {$site->id}: {$e->getMessage()}");
+
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     public function run(Site $site, array $options): DatabaseCleanup
     {
         try {

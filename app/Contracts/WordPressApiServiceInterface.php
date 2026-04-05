@@ -82,6 +82,12 @@ interface WordPressApiServiceInterface
 
     public function getDatabaseHealth(): array;
 
+    public function optimizeTable(string $tableName): array;
+
+    public function convertTableEngine(string $tableName): array;
+
+    public function deleteTable(string $tableName): array;
+
     // Site info
     public function getInfo(): array;
 

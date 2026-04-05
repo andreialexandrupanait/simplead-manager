@@ -16,6 +16,8 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
         'posts', 'postmeta', 'comments', 'commentmeta',
         'terms', 'termmeta', 'term_taxonomy', 'term_relationships',
         'options', 'users', 'usermeta', 'links',
+        // Multisite tables
+        'blogs', 'blog_versions', 'registration_log', 'signups', 'site', 'sitemeta',
     ];
 
     public function register_routes(): void {
@@ -36,6 +38,24 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'cleanup_run'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/db-table-optimize', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'table_optimize'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/db-table-convert-engine', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'table_convert_engine'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/db-table-delete', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'table_delete'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
 
     /**
@@ -45,6 +65,15 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
         global $wpdb;
         $tables = $wpdb->get_col("SHOW TABLES");
         return in_array($table, $tables, true);
+    }
+
+    /**
+     * Check if a table is a WordPress core table.
+     */
+    private function is_core_table(string $table): bool {
+        global $wpdb;
+        $unprefixed = str_replace($wpdb->prefix, '', $table);
+        return in_array($unprefixed, self::WP_CORE_TABLES, true);
     }
 
     public function database_health(WP_REST_Request $request): WP_REST_Response {
@@ -69,11 +98,13 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
             $tables[] = [
                 'name'       => $row['Name'],
                 'engine'     => $row['Engine'] ?? 'unknown',
+                'collation'  => $row['Collation'] ?? 'unknown',
                 'rows'       => $rows,
                 'data_size'  => $data_size,
                 'index_size' => $index_size,
                 'overhead'   => $overhead,
                 'total_size' => $table_size,
+                'is_core'    => $this->is_core_table($row['Name']),
             ];
         }
 
@@ -233,5 +264,82 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
             'cleaned' => $cleaned,
             'total'   => $total,
         ]);
+    }
+
+    /**
+     * Optimize a single table.
+     */
+    public function table_optimize(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $params = $request->get_json_params();
+        $table = sanitize_text_field($params['table'] ?? '');
+
+        if (empty($table) || !$this->validate_table_name($table)) {
+            return $this->error('INVALID_TABLE', 'Table does not exist.', 400);
+        }
+
+        $wpdb->query("OPTIMIZE TABLE `" . esc_sql($table) . "`");
+
+        SAM_Audit_Logger::log('table_optimized', 'database', $table, "Optimized table via SimpleAd Manager");
+
+        return $this->success(['table' => $table, 'optimized' => true]);
+    }
+
+    /**
+     * Convert a table's storage engine to InnoDB.
+     */
+    public function table_convert_engine(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $params = $request->get_json_params();
+        $table = sanitize_text_field($params['table'] ?? '');
+
+        if (empty($table) || !$this->validate_table_name($table)) {
+            return $this->error('INVALID_TABLE', 'Table does not exist.', 400);
+        }
+
+        // Check current engine
+        $status = $wpdb->get_row($wpdb->prepare(
+            "SHOW TABLE STATUS WHERE Name = %s", $table
+        ), ARRAY_A);
+
+        if (!$status) {
+            return $this->error('TABLE_STATUS_FAILED', 'Could not read table status.', 500);
+        }
+
+        if (strtolower($status['Engine'] ?? '') === 'innodb') {
+            return $this->error('ALREADY_INNODB', 'Table is already using InnoDB engine.', 400);
+        }
+
+        $wpdb->query("ALTER TABLE `" . esc_sql($table) . "` ENGINE=InnoDB");
+
+        SAM_Audit_Logger::log('table_engine_converted', 'database', $table, "Converted to InnoDB via SimpleAd Manager");
+
+        return $this->success(['table' => $table, 'engine' => 'InnoDB']);
+    }
+
+    /**
+     * Delete a non-core table.
+     */
+    public function table_delete(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $params = $request->get_json_params();
+        $table = sanitize_text_field($params['table'] ?? '');
+
+        if (empty($table) || !$this->validate_table_name($table)) {
+            return $this->error('INVALID_TABLE', 'Table does not exist.', 400);
+        }
+
+        if ($this->is_core_table($table)) {
+            return $this->error('CORE_TABLE', 'Cannot delete WordPress core tables.', 403);
+        }
+
+        $wpdb->query("DROP TABLE `" . esc_sql($table) . "`");
+
+        SAM_Audit_Logger::log('table_deleted', 'database', $table, "Deleted table via SimpleAd Manager");
+
+        return $this->success(['table' => $table, 'deleted' => true]);
     }
 }

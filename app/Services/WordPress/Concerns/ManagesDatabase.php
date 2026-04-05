@@ -29,4 +29,34 @@ trait ManagesDatabase
 
         return $response->json();
     }
+
+    public function optimizeTable(string $tableName): array
+    {
+        $response = $this->request('POST', '/db-table-optimize', [
+            'table' => $tableName,
+        ]);
+        $response->throw();
+
+        return $response->json();
+    }
+
+    public function convertTableEngine(string $tableName): array
+    {
+        $response = $this->request('POST', '/db-table-convert-engine', [
+            'table' => $tableName,
+        ], timeout: 120);
+        $response->throw();
+
+        return $response->json();
+    }
+
+    public function deleteTable(string $tableName): array
+    {
+        $response = $this->request('POST', '/db-table-delete', [
+            'table' => $tableName,
+        ]);
+        $response->throw();
+
+        return $response->json();
+    }
 }

@@ -72,8 +72,20 @@
             {{-- Tables list --}}
             @if($this->latestHealthCheck->tables_data)
                 <x-ui.card :padding="false" class="mb-4">
-                    <div class="px-4 py-3 border-b">
+                    <div class="px-4 py-3 border-b flex items-center justify-between">
                         <h3 class="text-base font-semibold text-gray-900">{{ __('Tables') }}</h3>
+                        <div class="flex items-center gap-2">
+                            @php
+                                $myisamTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => strtolower($t['engine'] ?? '') === 'myisam');
+                                $overheadTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => ($t['overhead'] ?? 0) > 0);
+                            @endphp
+                            @if($overheadTables->isNotEmpty())
+                                <span class="text-xs text-gray-500">{{ $overheadTables->count() }} {{ __('with overhead') }}</span>
+                            @endif
+                            @if($myisamTables->isNotEmpty())
+                                <span class="text-xs text-yellow-600 font-medium">{{ $myisamTables->count() }} MyISAM</span>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- Mobile cards --}}
@@ -120,6 +132,28 @@
                                         @endif
                                     </span>
                                 </div>
+                                @if(($table['overhead'] ?? 0) > 0 || $isMyisam || !($table['is_core'] ?? true))
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @if(($table['overhead'] ?? 0) > 0)
+                                            <button wire:click="confirmTableAction('optimize', '{{ $table['name'] }}')"
+                                                    class="rounded px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition">
+                                                {{ __('Optimize') }}
+                                            </button>
+                                        @endif
+                                        @if($isMyisam)
+                                            <button wire:click="confirmTableAction('convert_engine', '{{ $table['name'] }}')"
+                                                    class="rounded px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition">
+                                                {{ __('Convert to InnoDB') }}
+                                            </button>
+                                        @endif
+                                        @if(!($table['is_core'] ?? true))
+                                            <button wire:click="confirmTableAction('delete', '{{ $table['name'] }}')"
+                                                    class="rounded px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 transition">
+                                                {{ __('Delete') }}
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -133,6 +167,7 @@
                                 <x-ui.th>{{ __('Rows') }}</x-ui.th>
                                 <x-ui.th>{{ __('Size') }}</x-ui.th>
                                 <x-ui.th>{{ __('Overhead') }}</x-ui.th>
+                                <x-ui.th class="text-right">{{ __('Actions') }}</x-ui.th>
                             </x-slot:head>
                             @foreach($this->latestHealthCheck->tables_data as $table)
                                 @php
@@ -172,6 +207,41 @@
                                             </span>
                                         @else
                                             <span class="text-gray-400">—</span>
+                                        @endif
+                                    </x-ui.td>
+                                    <x-ui.td class="text-right">
+                                        @if(($table['overhead'] ?? 0) > 0 || $isMyisam || !($table['is_core'] ?? true))
+                                            <x-ui.dropdown align="right" width="48">
+                                                <x-slot:trigger>
+                                                    <button class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                                        </svg>
+                                                    </button>
+                                                </x-slot:trigger>
+
+                                                @if(($table['overhead'] ?? 0) > 0)
+                                                    <button wire:click="confirmTableAction('optimize', '{{ $table['name'] }}')"
+                                                            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                                        {{ __('Optimize Table') }}
+                                                    </button>
+                                                @endif
+
+                                                @if($isMyisam)
+                                                    <button wire:click="confirmTableAction('convert_engine', '{{ $table['name'] }}')"
+                                                            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                                        {{ __('Convert to InnoDB') }}
+                                                    </button>
+                                                @endif
+
+                                                @if(!($table['is_core'] ?? true))
+                                                    <div class="my-1 border-t border-gray-100"></div>
+                                                    <button wire:click="confirmTableAction('delete', '{{ $table['name'] }}')"
+                                                            class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                                                        {{ __('Delete Table') }}
+                                                    </button>
+                                                @endif
+                                            </x-ui.dropdown>
                                         @endif
                                     </x-ui.td>
                                 </tr>
@@ -361,6 +431,66 @@
                 <x-ui.button variant="danger" wire:click="runCleanup" wire:loading.attr="disabled">
                     <span wire:loading.remove wire:target="runCleanup">{{ __('Proceed with Cleanup') }}</span>
                     <span wire:loading wire:target="runCleanup">{{ __('Cleaning...') }}</span>
+                </x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Table Action Confirmation Modal --}}
+    <x-ui.modal name="confirm-table-action" maxWidth="sm">
+        <div class="p-2">
+            <h3 class="text-lg font-semibold text-gray-900">
+                @if($pendingTableAction === 'delete')
+                    {{ __('Delete Table') }}
+                @elseif($pendingTableAction === 'convert_engine')
+                    {{ __('Convert Table Engine') }}
+                @else
+                    {{ __('Optimize Table') }}
+                @endif
+            </h3>
+            <p class="mt-2 text-sm text-gray-600">
+                @if($pendingTableAction === 'delete')
+                    {{ __('Are you sure you want to permanently delete the table') }}
+                    <strong class="font-mono">{{ $pendingTableName }}</strong>?
+                    {{ __('This action cannot be undone.') }}
+                @elseif($pendingTableAction === 'convert_engine')
+                    {{ __('Convert') }} <strong class="font-mono">{{ $pendingTableName }}</strong>
+                    {{ __('from MyISAM to InnoDB? This may take a moment for large tables.') }}
+                @else
+                    {{ __('Optimize') }} <strong class="font-mono">{{ $pendingTableName }}</strong>?
+                    {{ __('This will reclaim unused space and defragment the table.') }}
+                @endif
+            </p>
+
+            @if($pendingTableAction === 'delete')
+                <div class="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    {{ __('Warning: This will permanently remove the table and all its data. Make sure you have a backup.') }}
+                </div>
+            @elseif($pendingTableAction === 'convert_engine')
+                <div class="mt-2 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">
+                    {{ __('The table will be briefly locked during conversion. This is safe for most sites.') }}
+                </div>
+            @endif
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button variant="secondary" wire:click="cancelTableAction">
+                    {{ __('Cancel') }}
+                </x-ui.button>
+                <x-ui.button
+                    :variant="$pendingTableAction === 'delete' ? 'danger' : 'primary'"
+                    wire:click="executeTableAction"
+                    wire:loading.attr="disabled"
+                >
+                    <span wire:loading.remove wire:target="executeTableAction">
+                        @if($pendingTableAction === 'delete')
+                            {{ __('Delete Table') }}
+                        @elseif($pendingTableAction === 'convert_engine')
+                            {{ __('Convert to InnoDB') }}
+                        @else
+                            {{ __('Optimize') }}
+                        @endif
+                    </span>
+                    <span wire:loading wire:target="executeTableAction">{{ __('Processing...') }}</span>
                 </x-ui.button>
             </div>
         </div>
