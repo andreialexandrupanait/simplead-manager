@@ -59,6 +59,15 @@ $COMPOSE exec app php artisan down 2>/dev/null || true
 
 # ── Step 6: Recreate containers with new image ───────────────────────────────
 
+log "Cleaning up stale containers..."
+for svc in app horizon scheduler nginx; do
+    docker rm -f "simplead-$svc" 2>/dev/null || true
+done
+# Also remove any prefixed orphan containers (e.g. abc123_simplead-horizon)
+docker ps -a --filter "status=created" --filter "status=exited" --format '{{.Names}}' \
+    | grep -E 'simplead-(app|horizon|scheduler|nginx)' \
+    | xargs -r docker rm -f 2>/dev/null || true
+
 log "Recreating containers with new image..."
 $COMPOSE up -d --force-recreate --remove-orphans app horizon scheduler
 

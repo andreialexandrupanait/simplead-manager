@@ -76,6 +76,106 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
         return in_array($unprefixed, self::WP_CORE_TABLES, true);
     }
 
+    /**
+     * Detect which plugin owns a non-core table.
+     *
+     * Returns: ['name' => string, 'slug' => string, 'status' => 'active'|'inactive'|'not-installed'] or null.
+     */
+    private function detect_table_plugin(string $table): ?array {
+        global $wpdb;
+
+        if ($this->is_core_table($table)) {
+            return null;
+        }
+
+        $unprefixed = str_replace($wpdb->prefix, '', $table);
+
+        // Known plugin table patterns (prefix => [slug, name])
+        $known = [
+            'woocommerce'          => ['woocommerce/woocommerce.php', 'WooCommerce'],
+            'wc_'                  => ['woocommerce/woocommerce.php', 'WooCommerce'],
+            'actionscheduler'      => ['woocommerce/woocommerce.php', 'WooCommerce'],
+            'yoast'                => ['wordpress-seo/wp-seo.php', 'Yoast SEO'],
+            'aioseo'               => ['all-in-one-seo-pack/all_in_one_seo_pack.php', 'All in One SEO'],
+            'rank_math'            => ['seo-by-rank-math/rank-math.php', 'Rank Math'],
+            'rankmath'             => ['seo-by-rank-math/rank-math.php', 'Rank Math'],
+            'elementor'            => ['elementor/elementor.php', 'Elementor'],
+            'wpforms'              => ['wpforms-lite/wpforms.php', 'WPForms'],
+            'gf_'                  => ['gravityforms/gravityforms.php', 'Gravity Forms'],
+            'frm_'                 => ['formidable/formidable.php', 'Formidable Forms'],
+            'cf7'                  => ['contact-form-7/wp-contact-form-7.php', 'Contact Form 7'],
+            'redirection'          => ['redirection/redirection.php', 'Redirection'],
+            'jetpack'              => ['jetpack/jetpack.php', 'Jetpack'],
+            'bp_'                  => ['buddypress/bp-loader.php', 'BuddyPress'],
+            'bbp_'                 => ['bbpress/bbpress.php', 'bbPress'],
+            'icl_'                 => ['sitepress-multilingual-cms/sitepress.php', 'WPML'],
+            'mailchimp'            => ['mailchimp-for-wp/mailchimp-for-wp.php', 'MC4WP'],
+            'newsletter'           => ['developer_newsletter/developer_newsletter.php', 'Developer Newsletter'],
+            'statistics'           => ['developer_statistics/developer_statistics.php', 'Developer Statistics'],
+            'wfhits'               => ['wordfence/wordfence.php', 'Wordfence'],
+            'wflogins'             => ['wordfence/wordfence.php', 'Wordfence'],
+            'wfknownfilelist'      => ['wordfence/wordfence.php', 'Wordfence'],
+            'wffilechanges'        => ['wordfence/wordfence.php', 'Wordfence'],
+            'wfblockediplog'       => ['wordfence/wordfence.php', 'Wordfence'],
+            'itsec'                => ['developer_ithemes_security/developer_ithemes_security.php', 'iThemes Security'],
+            'litespeed'            => ['litespeed-cache/litespeed-cache.php', 'LiteSpeed Cache'],
+            'ewwwio'               => ['ewww-image-optimizer/ewww-image-optimizer.php', 'EWWW Image Optimizer'],
+            'smush'                => ['developer_smush/developer_smush.php', 'Smush'],
+            'duplicator'           => ['duplicator/duplicator.php', 'Duplicator'],
+            'nf3_'                 => ['ninja-forms/ninja-forms.php', 'Ninja Forms'],
+            'slim_stats'           => ['developer_slim_stats/developer_slim_stats.php', 'Slimstat Analytics'],
+            'matomo'               => ['matomo/matomo.php', 'Matomo Analytics'],
+            'e_'                   => ['developer_events_manager/developer_events_manager.php', 'Events Manager'],
+            'as3cf'                => ['amazon-s3-and-cloudfront/wordpress-s3.php', 'WP Offload Media'],
+            'sam_'                 => ['simplead-manager-connector/simplead-manager-connector.php', 'SAD Mentenanta'],
+        ];
+
+        // Load installed plugins (cached for this request)
+        static $plugins_cache = null;
+        if ($plugins_cache === null) {
+            if (!function_exists('get_plugins')) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            }
+            $all_plugins = get_plugins();
+            $active = get_option('active_plugins', []);
+            $plugins_cache = [];
+            foreach ($all_plugins as $file => $data) {
+                $plugins_cache[$file] = [
+                    'name' => $data['Name'] ?? dirname($file),
+                    'active' => in_array($file, $active, true),
+                ];
+            }
+        }
+
+        // Tier 1: Check known patterns
+        foreach ($known as $prefix => $info) {
+            if (strpos($unprefixed, $prefix) === 0 || strpos($unprefixed, $prefix) !== false) {
+                $status = 'not-installed';
+                if (isset($plugins_cache[$info[0]])) {
+                    $status = $plugins_cache[$info[0]]['active'] ? 'active' : 'inactive';
+                }
+                return ['name' => $info[1], 'slug' => $info[0], 'status' => $status];
+            }
+        }
+
+        // Tier 2: Match against installed plugin folder names
+        foreach ($plugins_cache as $file => $data) {
+            $folder = dirname($file);
+            if ($folder === '.') continue;
+            // Normalize: my-plugin → my_plugin for matching
+            $folder_normalized = str_replace('-', '_', $folder);
+            if (strpos($unprefixed, $folder_normalized) === 0) {
+                return [
+                    'name' => $data['name'],
+                    'slug' => $file,
+                    'status' => $data['active'] ? 'active' : 'inactive',
+                ];
+            }
+        }
+
+        return null;
+    }
+
     public function database_health(WP_REST_Request $request): WP_REST_Response {
         global $wpdb;
 
@@ -105,6 +205,7 @@ class SAM_Database_Endpoint extends SAM_Endpoint_Base {
                 'overhead'   => $overhead,
                 'total_size' => $table_size,
                 'is_core'    => $this->is_core_table($row['Name']),
+                'plugin'     => $this->detect_table_plugin($row['Name']),
             ];
         }
 

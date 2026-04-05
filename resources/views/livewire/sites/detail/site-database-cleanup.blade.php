@@ -78,7 +78,11 @@
                             @php
                                 $myisamTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => strtolower($t['engine'] ?? '') === 'myisam');
                                 $overheadTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => ($t['overhead'] ?? 0) > 0);
+                                $orphanedTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => ($t['plugin']['status'] ?? null) === 'not-installed');
                             @endphp
+                            @if($orphanedTables->isNotEmpty())
+                                <span class="text-xs text-red-600 font-medium">{{ $orphanedTables->count() }} {{ __('orphaned') }}</span>
+                            @endif
                             @if($overheadTables->isNotEmpty())
                                 <span class="text-xs text-gray-500">{{ $overheadTables->count() }} {{ __('with overhead') }}</span>
                             @endif
@@ -95,10 +99,25 @@
                                 $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
                                 $isMyisam = strtolower($table['engine'] ?? '') === 'myisam';
                                 $hasOverhead = ($table['overhead'] ?? 0) > 1048576;
+                                $plugin = $table['plugin'] ?? null;
                             @endphp
-                            <div class="rounded-lg border border-gray-200 p-3 my-2 {{ $isMyisam ? 'bg-yellow-50' : '' }}">
+                            <div class="rounded-lg border border-gray-200 p-3 my-2 {{ $isMyisam ? 'bg-yellow-50' : ($plugin && $plugin['status'] === 'not-installed' ? 'bg-red-50/50' : '') }}">
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="font-mono text-sm text-gray-900 truncate">{{ $table['name'] ?? '—' }}</span>
+                                    <div class="min-w-0">
+                                        <span class="font-mono text-sm text-gray-900 truncate block">{{ $table['name'] ?? '—' }}</span>
+                                        @if($plugin)
+                                            <span class="text-xs {{ $plugin['status'] === 'not-installed' ? 'text-red-600' : ($plugin['status'] === 'inactive' ? 'text-yellow-600' : 'text-gray-500') }}">
+                                                {{ $plugin['name'] }}
+                                                @if($plugin['status'] === 'not-installed')
+                                                    ({{ __('not installed') }})
+                                                @elseif($plugin['status'] === 'inactive')
+                                                    ({{ __('inactive') }})
+                                                @endif
+                                            </span>
+                                        @elseif($table['is_core'] ?? false)
+                                            <span class="text-xs text-gray-400">{{ __('WordPress core') }}</span>
+                                        @endif
+                                    </div>
                                     <x-ui.badge :variant="$isMyisam ? 'yellow' : 'gray'">
                                         {{ $table['engine'] ?? '—' }}
                                     </x-ui.badge>
@@ -174,10 +193,25 @@
                                     $tableSize = ($table['data_size'] ?? 0) + ($table['index_size'] ?? 0);
                                     $isMyisam = strtolower($table['engine'] ?? '') === 'myisam';
                                     $hasOverhead = ($table['overhead'] ?? 0) > 1048576;
+                                    $plugin = $table['plugin'] ?? null;
                                 @endphp
-                                <tr class="{{ $isMyisam ? 'bg-yellow-50' : '' }}">
+                                <tr class="{{ $isMyisam ? 'bg-yellow-50' : ($plugin && $plugin['status'] === 'not-installed' ? 'bg-red-50/50' : '') }}">
                                     <x-ui.td>
-                                        <span class="text-sm font-mono text-gray-900">{{ $table['name'] ?? '—' }}</span>
+                                        <div>
+                                            <span class="text-sm font-mono text-gray-900">{{ $table['name'] ?? '—' }}</span>
+                                            @if($plugin)
+                                                <span class="ml-2 text-xs {{ $plugin['status'] === 'not-installed' ? 'text-red-600 font-medium' : ($plugin['status'] === 'inactive' ? 'text-yellow-600' : 'text-gray-400') }}">
+                                                    {{ $plugin['name'] }}
+                                                    @if($plugin['status'] === 'not-installed')
+                                                        ({{ __('not installed') }})
+                                                    @elseif($plugin['status'] === 'inactive')
+                                                        ({{ __('inactive') }})
+                                                    @endif
+                                                </span>
+                                            @elseif($table['is_core'] ?? false)
+                                                <span class="ml-2 text-xs text-gray-400">{{ __('core') }}</span>
+                                            @endif
+                                        </div>
                                     </x-ui.td>
                                     <x-ui.td>
                                         <x-ui.badge :variant="$isMyisam ? 'yellow' : 'gray'">
@@ -210,39 +244,29 @@
                                         @endif
                                     </x-ui.td>
                                     <x-ui.td class="text-right">
-                                        @if(($table['overhead'] ?? 0) > 0 || $isMyisam || !($table['is_core'] ?? true))
-                                            <x-ui.dropdown align="right" width="48">
-                                                <x-slot:trigger>
-                                                    <button class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
-                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                                                        </svg>
-                                                    </button>
-                                                </x-slot:trigger>
-
-                                                @if(($table['overhead'] ?? 0) > 0)
-                                                    <button wire:click="confirmTableAction('optimize', '{{ $table['name'] }}')"
-                                                            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                                        {{ __('Optimize Table') }}
-                                                    </button>
-                                                @endif
-
-                                                @if($isMyisam)
-                                                    <button wire:click="confirmTableAction('convert_engine', '{{ $table['name'] }}')"
-                                                            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                                        {{ __('Convert to InnoDB') }}
-                                                    </button>
-                                                @endif
-
-                                                @if(!($table['is_core'] ?? true))
-                                                    <div class="my-1 border-t border-gray-100"></div>
-                                                    <button wire:click="confirmTableAction('delete', '{{ $table['name'] }}')"
-                                                            class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                                                        {{ __('Delete Table') }}
-                                                    </button>
-                                                @endif
-                                            </x-ui.dropdown>
-                                        @endif
+                                        <div class="flex items-center justify-end gap-1.5">
+                                            @if(($table['overhead'] ?? 0) > 0)
+                                                <button wire:click="confirmTableAction('optimize', '{{ $table['name'] }}')"
+                                                        class="rounded px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                                                        title="{{ __('Optimize Table') }}">
+                                                    {{ __('Optimize') }}
+                                                </button>
+                                            @endif
+                                            @if($isMyisam)
+                                                <button wire:click="confirmTableAction('convert_engine', '{{ $table['name'] }}')"
+                                                        class="rounded px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition"
+                                                        title="{{ __('Convert to InnoDB') }}">
+                                                    {{ __('InnoDB') }}
+                                                </button>
+                                            @endif
+                                            @if(!($table['is_core'] ?? true))
+                                                <button wire:click="confirmTableAction('delete', '{{ $table['name'] }}')"
+                                                        class="rounded px-2 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 transition"
+                                                        title="{{ __('Delete Table') }}">
+                                                    {{ __('Delete') }}
+                                                </button>
+                                            @endif
+                                        </div>
                                     </x-ui.td>
                                 </tr>
                             @endforeach

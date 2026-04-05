@@ -7,6 +7,7 @@ return [
         'unreleased' => [
             'changes' => [
                 'Feature: Per-table management — optimize individual tables, convert MyISAM to InnoDB, delete non-core tables',
+                'Feature: Plugin ownership detection — shows which plugin created each table and its status (active/inactive/not installed)',
                 'Enhanced database health response with collation and core table detection',
                 'Added multisite tables to core table protection list',
             ],
