@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full {{ auth()->user()?->theme === 'dark' ? 'dark' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,9 +13,13 @@
     @if($brandingFavicon)
         <link rel="icon" type="image/png" href="{{ Storage::url($brandingFavicon) }}">
     @endif
-    {{-- Pre-Alpine sidebar state to prevent flash --}}
+    {{-- Pre-Alpine: dark mode + sidebar state to prevent flash --}}
     <script nonce="{{ csp_nonce() }}">
         (function() {
+            // Dark mode
+            var theme = localStorage.getItem('theme') || '{{ auth()->user()?->theme ?? 'light' }}';
+            if (theme === 'dark') document.documentElement.classList.add('dark');
+
             document.documentElement.classList.add('no-transitions');
             var open = localStorage.getItem('sidebarOpen') !== 'false';
             var w = open ? '16rem' : '4rem';
@@ -31,22 +35,64 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="h-full bg-gray-50">
+<body class="h-full bg-gray-50 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
 
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-purple-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
         Skip to content
     </a>
 
+    {{-- Keyboard shortcuts modal --}}
+    <div x-data="{ showShortcuts: false }"
+         @keydown.window="
+            if ($event.key === '?' && !$event.target.matches('input, textarea, select')) { $event.preventDefault(); showShortcuts = !showShortcuts; }
+            if ($event.key === '/' && !$event.target.matches('input, textarea, select')) { $event.preventDefault(); document.querySelector('[data-search-input]')?.focus(); }
+            if ($event.key === 'Escape') { showShortcuts = false; }
+         "
+    >
+        <template x-if="showShortcuts">
+            <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50" @click.self="showShortcuts = false">
+                <div class="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl" @keydown.escape="showShortcuts = false">
+                    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{{ __('Keyboard Shortcuts') }}</h2>
+                    <div class="space-y-2">
+                        @foreach([
+                            ['/', 'Focus search'],
+                            ['?', 'Show this help'],
+                            ['Esc', 'Close modal/drawer'],
+                        ] as [$key, $desc])
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 dark:text-gray-300">{{ $desc }}</span>
+                                <kbd class="rounded bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-mono text-gray-700 dark:text-gray-300">{{ $key }}</kbd>
+                            </div>
+                        @endforeach
+                    </div>
+                    <button @click="showShortcuts = false" class="mt-4 w-full rounded-lg bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">{{ __('Close') }}</button>
+                </div>
+            </div>
+        </template>
+    </div>
+
     <div class="flex h-full"
          x-data="{
             sidebarOpen: localStorage.getItem('sidebarOpen') !== 'false',
             mobileSidebarOpen: false,
+            darkMode: localStorage.getItem('theme') === 'dark' || {{ auth()->user()?->theme === 'dark' ? 'true' : 'false' }},
             init() {
                 var el = document.getElementById('sidebar-init');
                 if (el) el.remove();
                 this.$nextTick(() => {
                     document.documentElement.classList.remove('no-transitions');
                 });
+            },
+            toggleDarkMode() {
+                this.darkMode = !this.darkMode;
+                localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+                document.documentElement.classList.toggle('dark', this.darkMode);
+                // Save to server
+                fetch('/api/user/theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ theme: this.darkMode ? 'dark' : 'light' })
+                }).catch(() => {});
             },
             toggleSidebar() {
                 this.sidebarOpen = !this.sidebarOpen;
@@ -206,7 +252,7 @@
             <x-header.page-header :title="$title ?? 'SimpleAd Manager'" :site-context="$siteContext ?? null" />
 
             {{-- Page content --}}
-            <main id="main-content" class="flex-1 p-6 lg:p-8">
+            <main id="main-content" class="flex-1 p-6 lg:p-8 dark:bg-gray-900">
                 <div class="mx-auto {{ $maxWidth ?? 'max-w-7xl' }}">
                     {{ $slot }}
                 </div>

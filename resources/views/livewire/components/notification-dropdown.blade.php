@@ -48,10 +48,10 @@
          x-transition:leave-end="opacity-0 scale-95"
          x-cloak
          @if($sidebarMode)
-             class="fixed left-64 bottom-16 w-96 rounded-xl bg-white shadow-lg ring-1 ring-gray-950/5 z-50"
+             class="fixed left-64 bottom-16 w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-950/5 dark:ring-gray-700 z-50"
              :class="sidebarOpen ? 'lg:left-64' : 'lg:left-16'"
          @else
-             class="absolute right-0 mt-6 w-[calc(100vw-2rem)] sm:w-96 rounded-xl bg-white shadow-lg ring-1 ring-gray-950/5 z-50"
+             class="absolute right-0 mt-6 w-[calc(100vw-2rem)] sm:w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-950/5 dark:ring-gray-700 z-50"
          @endif
     >
         {{-- Header --}}
@@ -124,14 +124,57 @@
                     </button>
                 </div>
             @empty
-                <div class="px-4 py-8 text-center">
-                    <svg class="mx-auto h-8 w-8 text-gray-300" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="mt-2 text-sm font-medium text-gray-500">All clear</p>
-                    <p class="text-xs text-gray-400">No issues detected</p>
-                </div>
+                @if($this->notifications->isEmpty())
+                    <div class="px-4 py-8 text-center">
+                        <svg class="mx-auto h-8 w-8 text-gray-300" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="mt-2 text-sm font-medium text-gray-500">All clear</p>
+                        <p class="text-xs text-gray-400">No notifications</p>
+                    </div>
+                @endif
             @endforelse
+
+            {{-- In-app notifications --}}
+            @if($this->notifications->isNotEmpty())
+                <div class="border-t border-gray-100 px-4 py-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-gray-500 uppercase">Recent</span>
+                        @if($this->unreadCount > 0)
+                            <button wire:click="markAllNotificationsRead" class="text-xs text-gray-400 hover:text-gray-600">Mark all read</button>
+                        @endif
+                    </div>
+                </div>
+                @foreach($this->notifications as $notif)
+                    <div class="flex items-start gap-3 border-b border-gray-50 px-4 py-2.5 {{ !$notif->isRead() ? 'bg-purple-50/30' : '' }}" wire:key="notif-{{ $notif->id }}">
+                        <div class="mt-0.5 shrink-0">
+                            <span @class([
+                                'h-2 w-2 rounded-full inline-block',
+                                'bg-red-500' => $notif->type === 'critical' || $notif->type === 'warning',
+                                'bg-blue-500' => $notif->type === 'info',
+                                'bg-gray-400' => !in_array($notif->type, ['critical', 'warning', 'info']),
+                            ])></span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-gray-900 truncate {{ !$notif->isRead() ? 'font-semibold' : '' }}">{{ $notif->title }}</p>
+                            @if($notif->message)
+                                <p class="text-xs text-gray-500 line-clamp-2">{{ $notif->message }}</p>
+                            @endif
+                            <span class="text-xs text-gray-400">{{ $notif->created_at->diffForHumans() }}</span>
+                        </div>
+                        <div class="flex shrink-0 gap-1">
+                            @if(!$notif->isRead())
+                                <button wire:click="markAsRead({{ $notif->id }})" class="rounded p-1 text-gray-400 hover:text-green-600 hover:bg-green-50" title="Mark read">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                </button>
+                            @endif
+                            <button wire:click="deleteNotification({{ $notif->id }})" class="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete">
+                                <x-icons.x class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
+            @endif
         </div>
     </div>
 </div>

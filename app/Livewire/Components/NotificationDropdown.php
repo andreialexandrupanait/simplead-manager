@@ -6,6 +6,7 @@ namespace App\Livewire\Components;
 
 use App\Jobs\CreateBackup;
 use App\Models\Backup;
+use App\Models\InAppNotification;
 use App\Models\Site;
 use App\Services\DashboardService;
 use Illuminate\Support\Facades\Auth;
@@ -33,9 +34,42 @@ class NotificationDropdown extends Component
     }
 
     #[Computed]
+    public function notifications()
+    {
+        return InAppNotification::forUser(Auth::id())
+            ->latest()
+            ->limit(20)
+            ->get();
+    }
+
+    #[Computed]
+    public function unreadCount(): int
+    {
+        return InAppNotification::forUser(Auth::id())->unread()->count();
+    }
+
+    #[Computed]
     public function count(): int
     {
-        return count($this->alerts);
+        return count($this->alerts) + $this->unreadCount;
+    }
+
+    public function markAsRead(int $id): void
+    {
+        InAppNotification::where('user_id', Auth::id())->where('id', $id)->update(['read_at' => now()]);
+        unset($this->notifications, $this->unreadCount, $this->count);
+    }
+
+    public function markAllNotificationsRead(): void
+    {
+        InAppNotification::forUser(Auth::id())->unread()->update(['read_at' => now()]);
+        unset($this->notifications, $this->unreadCount, $this->count);
+    }
+
+    public function deleteNotification(int $id): void
+    {
+        InAppNotification::where('user_id', Auth::id())->where('id', $id)->delete();
+        unset($this->notifications, $this->unreadCount, $this->count);
     }
 
     public function dismissAlert(string $key): void

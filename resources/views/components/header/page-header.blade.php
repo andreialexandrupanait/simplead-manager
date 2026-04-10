@@ -108,7 +108,7 @@
     }
 @endphp
 
-<header class="sticky top-0 z-30 border-b bg-white shadow-sm">
+<header class="sticky top-0 z-30 border-b bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm">
     <div class="flex h-16 items-center px-6">
         {{-- Mobile menu toggle --}}
         <button @click="mobileSidebarOpen = true" aria-label="{{ __('Open menu') }}" class="mr-3 lg:hidden text-gray-500">
@@ -146,7 +146,18 @@
         </div>
 
         {{-- Right side actions --}}
-        <div class="flex items-center gap-3 ml-4">
+        <div class="flex items-center gap-2 ml-4">
+            {{-- Keyboard shortcuts hint --}}
+            <button @click="$dispatch('keydown', { key: '?' })" title="{{ __('Keyboard shortcuts (?)') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition hidden sm:block">
+                <x-icons.command class="h-4 w-4" />
+            </button>
+
+            {{-- Dark mode toggle --}}
+            <button @click="toggleDarkMode()" title="{{ __('Toggle dark mode') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                <x-icons.sun x-show="darkMode" x-cloak class="h-4 w-4" />
+                <x-icons.moon x-show="!darkMode" class="h-4 w-4" />
+            </button>
+
             {{-- Notifications --}}
             <livewire:components.notification-dropdown />
         </div>

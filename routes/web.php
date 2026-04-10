@@ -154,6 +154,13 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
 
+    // User preferences API
+    Route::post('/api/user/theme', function () {
+        auth()->user()->update(['theme' => request('theme') === 'dark' ? 'dark' : 'light']);
+
+        return response()->json(['ok' => true]);
+    })->name('api.user.theme');
+
     // Clients
     Route::prefix('clients')->group(function () {
         Route::get('/', Clients\ClientsList::class)->name('clients.index');

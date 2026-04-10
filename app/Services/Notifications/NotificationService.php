@@ -80,6 +80,19 @@ class NotificationService
                 );
             }
         }
+
+        // Create in-app notification for the site owner
+        try {
+            \App\Models\InAppNotification::create([
+                'user_id' => $site->user_id,
+                'type' => $severity,
+                'title' => $title,
+                'message' => $message,
+                'data' => ['event' => $event, 'site_id' => $site->id, 'site_name' => $site->name, 'fields' => $fields],
+            ]);
+        } catch (\Throwable) {
+            // Don't fail the notification if in-app creation fails
+        }
     }
 
     public static function notifyAppEvent(

@@ -53,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'timezone',
         'date_format',
         'language',
+        'theme',
         'two_factor_enabled',
         'two_factor_secret',
         'two_factor_recovery_codes',
