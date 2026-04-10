@@ -88,6 +88,10 @@ interface WordPressApiServiceInterface
 
     public function deleteTable(string $tableName): array;
 
+    public function getAutoloadAudit(): array;
+
+    public function getConfigHealth(): array;
+
     // Site info
     public function getInfo(): array;
 

@@ -17,8 +17,8 @@
                 @foreach(\App\Livewire\Seo\CrawlerResults::ANALYSIS_TABS as $key => $label)
                     <button wire:click="setAnalysisTab('{{ $key }}')" @class([
                         'flex w-full items-center rounded-md px-2.5 py-1.5 text-sm transition',
-                        'bg-purple-50 font-medium text-purple-700' => $analysisTab === $key && $analysisTab !== 'overview',
-                        'text-gray-600 hover:bg-gray-50 hover:text-gray-900' => $analysisTab !== $key || $analysisTab === 'overview',
+                        'bg-purple-50 font-medium text-purple-700' => $analysisTab === $key,
+                        'text-gray-600 hover:bg-gray-50 hover:text-gray-900' => $analysisTab !== $key,
                     ])>{{ $label }}</button>
                 @endforeach
             </div>
@@ -94,7 +94,100 @@
         </div>
 
         {{-- ════════ ANALYSIS VIEWS ════════ --}}
-        @if($analysisTab === 'issues')
+        @if($analysisTab === 'overview' && $dataTab === 'internal')
+            {{-- OVERVIEW DASHBOARD --}}
+            @php $os = $this->overviewStats; @endphp
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {{-- Status codes --}}
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Status Code Distribution') }}</h3>
+                    <div class="grid grid-cols-4 gap-3">
+                        @foreach([
+                            ['2xx', $this->summary['status_2xx'] ?? 0, 'green'],
+                            ['3xx', $this->summary['status_3xx'] ?? 0, 'blue'],
+                            ['4xx', $this->summary['status_4xx'] ?? 0, 'orange'],
+                            ['5xx', $this->summary['status_5xx'] ?? 0, 'red'],
+                        ] as [$code, $count, $color])
+                            <div class="rounded-lg border border-{{ $color }}-200 bg-{{ $color }}-50 p-3 text-center">
+                                <div class="text-xl font-bold text-{{ $color }}-700">{{ $count }}</div>
+                                <div class="text-xs text-{{ $color }}-600">{{ $code }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+
+                {{-- Content stats --}}
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Content Statistics') }}</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-lg bg-gray-50 p-3 text-center">
+                            <div class="text-lg font-bold text-gray-900">{{ $this->summary['avg_word_count'] ?? 0 }}</div>
+                            <div class="text-xs text-gray-500">{{ __('Avg Words') }}</div>
+                        </div>
+                        <div class="rounded-lg bg-gray-50 p-3 text-center">
+                            <div class="text-lg font-bold text-gray-900">{{ $this->summary['avg_response_time'] ?? 0 }}ms</div>
+                            <div class="text-xs text-gray-500">{{ __('Avg Response') }}</div>
+                        </div>
+                    </div>
+                </x-ui.card>
+
+                {{-- Quick issue counts --}}
+                <x-ui.card class="lg:col-span-2">
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('SEO Quick Check') }}</h3>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                        @foreach([
+                            ['No Title', $os['no_title'], 'page_titles'],
+                            ['No Meta Desc', $os['no_desc'], 'meta_desc'],
+                            ['No H1', $os['no_h1'], 'h1'],
+                            ['Multiple H1', $os['multi_h1'], 'h1'],
+                            ['Thin Content', $os['thin_content'], 'content'],
+                            ['Slow (>2s)', $os['slow_pages'], 'response_codes'],
+                        ] as [$label, $count, $tab])
+                            <button wire:click="setDataTab('{{ $tab }}')" class="rounded-lg border p-3 text-center transition hover:bg-gray-50 {{ $count > 0 ? 'border-orange-200 bg-orange-50' : 'border-gray-200' }}">
+                                <div class="text-lg font-bold {{ $count > 0 ? 'text-orange-600' : 'text-green-600' }}">{{ $count }}</div>
+                                <div class="text-xs text-gray-600">{{ $label }}</div>
+                            </button>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+
+                {{-- Top issues from summary --}}
+                <x-ui.card class="lg:col-span-2">
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Issue Summary') }}</h3>
+                    <div class="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3 lg:grid-cols-5">
+                        @foreach([
+                            ['Broken Links', $this->summary['broken_links'] ?? 0, 'critical'],
+                            ['Duplicate Titles', $this->summary['duplicate_titles'] ?? 0, 'high'],
+                            ['Duplicate Descs', $this->summary['duplicate_descriptions'] ?? 0, 'medium'],
+                            ['Orphan Pages', $this->summary['orphan_pages'] ?? 0, 'medium'],
+                            ['Noindex', $this->summary['noindex_pages'] ?? 0, 'info'],
+                        ] as [$label, $count, $sev])
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">{{ $label }}</span>
+                                <span @class([
+                                    'rounded-full px-2 py-0.5 text-xs font-semibold',
+                                    'bg-red-100 text-red-700' => $count > 0 && in_array($sev, ['critical', 'high']),
+                                    'bg-yellow-100 text-yellow-700' => $count > 0 && $sev === 'medium',
+                                    'bg-gray-100 text-gray-600' => $count === 0 || $sev === 'info',
+                                ])>{{ $count }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+
+                {{-- Sitemap status --}}
+                <x-ui.card class="lg:col-span-2">
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Sitemap') }}</h3>
+                    @if(($this->summary['sitemap_count'] ?? 0) > 0)
+                        <p class="text-sm text-green-600 font-medium">{{ $this->summary['sitemap_count'] }} {{ __('URLs found in sitemap.xml') }}</p>
+                        <button wire:click="setDataTab('sitemaps')" class="mt-2 text-sm text-purple-600 hover:text-purple-800 font-medium">{{ __('View sitemap comparison') }} &rarr;</button>
+                    @else
+                        <p class="text-sm text-orange-600">{{ __('No sitemap.xml found. Consider adding one to help search engines discover your pages.') }}</p>
+                    @endif
+                </x-ui.card>
+            </div>
+
+        @elseif($analysisTab === 'issues')
             @php $grouped = $this->issuesGrouped; @endphp
             @if(empty($grouped))
                 <x-ui.card><x-ui.empty-state title="{{ __('No issues found') }}" description="{{ __('No SEO issues detected.') }}" icon="check-circle" /></x-ui.card>
@@ -216,6 +309,74 @@
                     @endforelse
                 </div>
             </x-ui.card>
+
+        @elseif($dataTab === 'sitemaps' && $analysisTab === 'overview')
+            {{-- ════════ SITEMAPS COMPARISON ════════ --}}
+            @php $sm = $this->sitemapComparison; @endphp
+            @if(!$sm['found'])
+                <x-ui.card>
+                    <x-ui.empty-state
+                        title="{{ __('No sitemap found') }}"
+                        description="{{ __('No sitemap.xml was found during this crawl. Add a sitemap to help search engines discover all your pages.') }}"
+                        icon="globe"
+                    />
+                    <div class="mt-4 rounded-lg bg-blue-50 p-4">
+                        <div class="flex items-start gap-2">
+                            <span class="mt-0.5 shrink-0 text-blue-500">&#x1f527;</span>
+                            <div class="text-sm text-blue-800">
+                                <strong>{{ __('How to fix') }}:</strong> {{ __('Install Yoast SEO or RankMath plugin — both generate a sitemap.xml automatically. Then submit it in Google Search Console under Sitemaps.') }}
+                            </div>
+                        </div>
+                    </div>
+                </x-ui.card>
+            @else
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-4">
+                    <x-ui.stat-card label="{{ __('In Sitemap & Crawled') }}" :value="$sm['in_both_count']" />
+                    <x-ui.stat-card label="{{ __('In Sitemap Only') }}" :value="$sm['only_sitemap_count']" />
+                    <x-ui.stat-card label="{{ __('Crawled Only') }}" :value="$sm['only_crawl_count']" />
+                </div>
+
+                @if($sm['only_sitemap_count'] > 0)
+                    <x-ui.card class="mb-4">
+                        <h3 class="mb-2 text-sm font-semibold text-orange-700">{{ __('In Sitemap but NOT Crawled') }} ({{ $sm['only_sitemap_count'] }})</h3>
+                        <p class="mb-3 text-xs text-gray-500">{{ __('These URLs are in your sitemap but were not discovered during the crawl. They may be orphan pages or have broken internal linking.') }}</p>
+                        <div class="rounded-lg bg-blue-50 p-3 mb-3">
+                            <p class="text-xs text-blue-800"><strong>Fix:</strong> {{ __('Ensure these pages are linked from other pages on your site. If they are no longer needed, remove them from the sitemap.') }}</p>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto space-y-1">
+                            @foreach($sm['only_sitemap'] as $url)
+                                <a href="{{ $url }}" target="_blank" class="block truncate text-sm text-purple-600 hover:text-purple-800">{{ $url }}</a>
+                            @endforeach
+                        </div>
+                    </x-ui.card>
+                @endif
+
+                @if($sm['only_crawl_count'] > 0)
+                    <x-ui.card class="mb-4">
+                        <h3 class="mb-2 text-sm font-semibold text-yellow-700">{{ __('Crawled but NOT in Sitemap') }} ({{ $sm['only_crawl_count'] }})</h3>
+                        <p class="mb-3 text-xs text-gray-500">{{ __('These pages were found by crawling but are not listed in your sitemap. Consider adding them if they should be indexed.') }}</p>
+                        <div class="rounded-lg bg-blue-50 p-3 mb-3">
+                            <p class="text-xs text-blue-800"><strong>Fix:</strong> {{ __('Add these URLs to your sitemap if they are important pages. In Yoast/RankMath, they are usually added automatically unless excluded.') }}</p>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto space-y-1">
+                            @foreach($sm['only_crawl'] as $url)
+                                <div class="truncate text-sm text-gray-700">{{ $url }}</div>
+                            @endforeach
+                        </div>
+                    </x-ui.card>
+                @endif
+
+                @if($sm['in_both_count'] > 0)
+                    <x-ui.card>
+                        <h3 class="mb-2 text-sm font-semibold text-green-700">{{ __('In Both Sitemap & Crawl') }} ({{ $sm['in_both_count'] }})</h3>
+                        <div class="max-h-40 overflow-y-auto space-y-1">
+                            @foreach($sm['in_both'] as $url)
+                                <div class="truncate text-sm text-gray-500">{{ $url }}</div>
+                            @endforeach
+                        </div>
+                    </x-ui.card>
+                @endif
+            @endif
 
         @else
             {{-- ════════ DATA TABLE (full-width) ════════ --}}

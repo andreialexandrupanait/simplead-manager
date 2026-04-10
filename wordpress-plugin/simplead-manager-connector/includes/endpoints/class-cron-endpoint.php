@@ -82,6 +82,7 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
                         'schedule_label'=> $schedules[$schedule_name]['display'] ?? $schedule_name,
                         'interval'      => $interval,
                         'disabled'      => in_array($hook, $disabled, true),
+                        'plugin'        => $this->detect_cron_plugin($hook),
                     ];
                 }
             }
@@ -171,6 +172,75 @@ class SAM_Cron_Endpoint extends SAM_Endpoint_Base {
             'unscheduled'  => $unscheduled,
             'message'      => "Cron hook '{$hook}' has been disabled.",
         ]);
+    }
+
+    /**
+     * Detect which plugin registered a cron hook.
+     *
+     * @return array{name: string, status: string}|null
+     */
+    private function detect_cron_plugin(string $hook): ?array {
+        // WordPress core cron hooks
+        $wp_core_hooks = [
+            'wp_update_plugins', 'wp_update_themes', 'wp_version_check',
+            'wp_scheduled_delete', 'wp_scheduled_auto_draft_delete',
+            'delete_expired_transients', 'wp_privacy_delete_old_export_files',
+            'wp_site_health_scheduled_check', 'recovery_mode_clean_expired_keys',
+            'wp_https_detection', 'wp_update_comment_type_batch',
+        ];
+
+        if (in_array($hook, $wp_core_hooks, true)) {
+            return ['name' => 'WordPress Core', 'status' => 'active'];
+        }
+
+        // Known plugin hook prefixes
+        $known = [
+            'woocommerce'      => ['woocommerce/woocommerce.php', 'WooCommerce'],
+            'wc_'              => ['woocommerce/woocommerce.php', 'WooCommerce'],
+            'yoast'            => ['wordpress-seo/wp-seo.php', 'Yoast SEO'],
+            'wpseo'            => ['wordpress-seo/wp-seo.php', 'Yoast SEO'],
+            'aioseo'           => ['all-in-one-seo-pack/all_in_one_seo_pack.php', 'All in One SEO'],
+            'rank_math'        => ['seo-by-rank-math/rank-math.php', 'Rank Math'],
+            'elementor'        => ['elementor/elementor.php', 'Elementor'],
+            'jetpack'          => ['jetpack/jetpack.php', 'Jetpack'],
+            'wordfence'        => ['wordfence/wordfence.php', 'Wordfence'],
+            'litespeed'        => ['litespeed-cache/litespeed-cache.php', 'LiteSpeed Cache'],
+            'updraft'          => ['updraftplus/updraftplus.php', 'UpdraftPlus'],
+            'duplicator'       => ['duplicator/duplicator.php', 'Duplicator'],
+            'mailchimp'        => ['mailchimp-for-wp/mailchimp-for-wp.php', 'MC4WP'],
+            'wpforms'          => ['wpforms-lite/wpforms.php', 'WPForms'],
+            'gravityforms'     => ['gravityforms/gravityforms.php', 'Gravity Forms'],
+            'gf_'              => ['gravityforms/gravityforms.php', 'Gravity Forms'],
+            'nf_'              => ['ninja-forms/ninja-forms.php', 'Ninja Forms'],
+            'action_scheduler' => ['woocommerce/woocommerce.php', 'Action Scheduler'],
+            'as_'              => ['woocommerce/woocommerce.php', 'Action Scheduler'],
+            'ewwwio'           => ['ewww-image-optimizer/ewww-image-optimizer.php', 'EWWW Image Optimizer'],
+            'smush'            => ['developer_smush/developer_smush.php', 'Smush'],
+            'bp_'              => ['buddypress/bp-loader.php', 'BuddyPress'],
+            'bbp_'             => ['bbpress/bbpress.php', 'bbPress'],
+            'icl_'             => ['sitepress-multilingual-cms/sitepress.php', 'WPML'],
+            'wpml_'            => ['sitepress-multilingual-cms/sitepress.php', 'WPML'],
+            'sam_'             => ['simplead-manager-connector/simplead-manager-connector.php', 'SAM Connector'],
+            'redirection'      => ['redirection/redirection.php', 'Redirection'],
+        ];
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $active_plugins = get_option('active_plugins', []);
+
+        foreach ($known as $prefix => $info) {
+            if (strpos($hook, $prefix) === 0 || strpos($hook, $prefix) !== false) {
+                $status = 'not-installed';
+                $all_plugins = get_plugins();
+                if (isset($all_plugins[$info[0]])) {
+                    $status = in_array($info[0], $active_plugins, true) ? 'active' : 'inactive';
+                }
+                return ['name' => $info[1], 'status' => $status];
+            }
+        }
+
+        return null;
     }
 
     public function enable_cron(WP_REST_Request $request): WP_REST_Response {

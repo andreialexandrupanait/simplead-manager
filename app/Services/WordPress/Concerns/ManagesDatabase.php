@@ -59,4 +59,20 @@ trait ManagesDatabase
 
         return $response->json();
     }
+
+    public function getAutoloadAudit(): array
+    {
+        $response = $this->request('GET', '/autoload-audit');
+        $response->throw();
+
+        return $response->json();
+    }
+
+    public function getConfigHealth(): array
+    {
+        $response = $this->request('GET', '/config-health');
+        $response->throw();
+
+        return $response->json();
+    }
 }

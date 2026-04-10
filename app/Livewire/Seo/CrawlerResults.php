@@ -81,6 +81,7 @@ class CrawlerResults extends Component
             'javascript' => $this->queryScripts(),
             'css' => $this->queryStylesheets(),
             'links' => $this->queryLinks(),
+            'sitemaps' => [], // handled by sitemapComparison computed property
             default => $this->queryPages(),
         };
     }
@@ -174,7 +175,6 @@ class CrawlerResults extends Component
             'hreflang' => $query->where('content_type', 'ilike', '%text/html%')->whereRaw("jsonb_array_length(COALESCE(hreflang, '[]'::jsonb)) > 0"),
             'structured_data' => $query->where('content_type', 'ilike', '%text/html%')->whereRaw("jsonb_array_length(COALESCE(structured_data_types, '[]'::jsonb)) > 0"),
             'security' => null,
-            'sitemaps' => $query->where('depth', 0), // placeholder — show homepage for now
             default => null,
         };
 
@@ -316,7 +316,59 @@ class CrawlerResults extends Component
             ->where(fn ($q) => $q->whereNull('meta_robots')->orWhere('meta_robots', 'not ilike', '%noindex%'))
             ->count();
 
-        return ['total' => $total, 'indexable' => $indexable];
+        // Quick issue counts for overview
+        $q2 = $this->siteCrawl->pages()->where('content_type', 'ilike', '%text/html%')->whereBetween('status_code', [200, 299]);
+        $noTitle = (clone $q2)->where(fn ($q) => $q->whereNull('title')->orWhere('title', ''))->count();
+        $noDesc = (clone $q2)->where(fn ($q) => $q->whereNull('meta_description')->orWhere('meta_description', ''))->count();
+        $noH1 = (clone $q2)->where('h1_count', 0)->count();
+        $multiH1 = (clone $q2)->where('h1_count', '>', 1)->count();
+        $thinContent = (clone $q2)->where('word_count', '<', 300)->count();
+        $slowPages = (clone $query)->where('response_time_ms', '>', 2000)->count();
+
+        return [
+            'total' => $total,
+            'indexable' => $indexable,
+            'no_title' => $noTitle,
+            'no_desc' => $noDesc,
+            'no_h1' => $noH1,
+            'multi_h1' => $multiH1,
+            'thin_content' => $thinContent,
+            'slow_pages' => $slowPages,
+        ];
+    }
+
+    #[Computed]
+    public function sitemapComparison(): array
+    {
+        $sitemapUrls = $this->siteCrawl->summary['sitemap_urls'] ?? [];
+        if (empty($sitemapUrls)) {
+            return ['found' => false, 'in_both' => [], 'only_sitemap' => [], 'only_crawl' => []];
+        }
+
+        $crawledUrls = $this->siteCrawl->pages()->pluck('url')->all();
+
+        // Normalize for comparison
+        $normalizeUrl = fn (string $url) => rtrim(strtolower($url), '/');
+        $sitemapNorm = array_map($normalizeUrl, $sitemapUrls);
+        $crawledNorm = array_map($normalizeUrl, $crawledUrls);
+
+        $sitemapSet = array_flip($sitemapNorm);
+        $crawledSet = array_flip($crawledNorm);
+
+        $inBoth = array_values(array_intersect($sitemapNorm, $crawledNorm));
+        $onlySitemap = array_values(array_diff($sitemapNorm, $crawledNorm));
+        $onlyCrawl = array_values(array_diff($crawledNorm, $sitemapNorm));
+
+        return [
+            'found' => true,
+            'sitemap_count' => count($sitemapUrls),
+            'in_both' => array_slice($inBoth, 0, 200),
+            'in_both_count' => count($inBoth),
+            'only_sitemap' => array_slice($onlySitemap, 0, 200),
+            'only_sitemap_count' => count($onlySitemap),
+            'only_crawl' => array_slice($onlyCrawl, 0, 200),
+            'only_crawl_count' => count($onlyCrawl),
+        ];
     }
 
     #[Computed]

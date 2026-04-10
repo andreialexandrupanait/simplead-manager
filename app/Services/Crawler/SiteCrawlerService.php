@@ -70,6 +70,9 @@ class SiteCrawlerService
             $disallowRules = $this->parseRobotsTxt($siteUrl);
         }
 
+        // Fetch sitemap URLs before crawling
+        $sitemapUrls = $this->fetchSitemapUrls($siteUrl);
+
         // BFS queue: [url => depth]
         /** @var array<string, int> $queue */
         $queue = [$siteUrl => 0];
@@ -81,7 +84,7 @@ class SiteCrawlerService
         $pagesFound = 1;
 
         if ($trackerKey) {
-            JobTracker::progress($trackerKey, 0, 'Starting crawl of '.$siteUrl);
+            JobTracker::progress($trackerKey, 0, 'Starting crawl of '.$siteUrl.' ('.count($sitemapUrls).' sitemap URLs found)');
         }
 
         try {
@@ -260,6 +263,10 @@ class SiteCrawlerService
             $analyzer = new CrawlAnalyzer;
             $summary = $analyzer->analyze($crawl);
 
+            // Add sitemap data to summary
+            $summary['sitemap_urls'] = $sitemapUrls;
+            $summary['sitemap_count'] = count($sitemapUrls);
+
             $crawl->update([
                 'status' => SiteCrawl::STATUS_COMPLETED,
                 'completed_at' => now(),
@@ -360,6 +367,105 @@ class SiteCrawlerService
     // -------------------------------------------------------------------------
     // Robots.txt
     // -------------------------------------------------------------------------
+
+    /**
+     * Fetch and parse sitemap.xml, returning all <loc> URLs.
+     *
+     * @return string[]
+     */
+    private function fetchSitemapUrls(string $siteUrl): array
+    {
+        $urls = [];
+        $sitemapUrls = [
+            rtrim($siteUrl, '/').'/sitemap.xml',
+            rtrim($siteUrl, '/').'/sitemap_index.xml',
+        ];
+
+        foreach ($sitemapUrls as $sitemapUrl) {
+            try {
+                $response = Http::withOptions(['verify' => false])
+                    ->withUserAgent(self::DEFAULT_USER_AGENT)
+                    ->timeout(15)
+                    ->get($sitemapUrl);
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $body = $response->body();
+                if (! str_contains($body, '<urlset') && ! str_contains($body, '<sitemapindex')) {
+                    continue;
+                }
+
+                $xml = @simplexml_load_string($body);
+                if ($xml === false) {
+                    continue;
+                }
+
+                // Handle sitemap index (contains links to sub-sitemaps)
+                if ($xml->getName() === 'sitemapindex') {
+                    foreach ($xml->sitemap as $sitemap) {
+                        $subUrl = (string) ($sitemap->loc ?? '');
+                        if ($subUrl) {
+                            $subUrls = $this->fetchSingleSitemap($subUrl);
+                            $urls = array_merge($urls, $subUrls);
+                        }
+                    }
+                } else {
+                    // Regular sitemap
+                    foreach ($xml->url as $entry) {
+                        $loc = (string) ($entry->loc ?? '');
+                        if ($loc) {
+                            $urls[] = $loc;
+                        }
+                    }
+                }
+
+                if (! empty($urls)) {
+                    break; // Found a working sitemap
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    /**
+     * @return string[]
+     */
+    private function fetchSingleSitemap(string $url): array
+    {
+        $urls = [];
+
+        try {
+            $response = Http::withOptions(['verify' => false])
+                ->withUserAgent(self::DEFAULT_USER_AGENT)
+                ->timeout(15)
+                ->get($url);
+
+            if (! $response->successful()) {
+                return $urls;
+            }
+
+            $xml = @simplexml_load_string($response->body());
+            if ($xml === false) {
+                return $urls;
+            }
+
+            foreach ($xml->url as $entry) {
+                $loc = (string) ($entry->loc ?? '');
+                if ($loc) {
+                    $urls[] = $loc;
+                }
+            }
+        } catch (\Throwable) {
+            // Skip broken sub-sitemaps
+        }
+
+        return $urls;
+    }
 
     /**
      * Fetch and parse robots.txt, returning Disallow paths for User-agent: *.

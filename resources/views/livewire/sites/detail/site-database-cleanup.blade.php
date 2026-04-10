@@ -288,6 +288,224 @@
     {{-- Divider --}}
     <div class="mb-8 border-t border-gray-200"></div>
 
+    {{-- Config Health Section --}}
+    <div class="mb-8">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">{{ __('Config Health') }}</h2>
+            <x-ui.button variant="secondary" wire:click="loadConfigHealth" wire:loading.attr="disabled">
+                <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="loadConfigHealth" />
+                <span wire:loading.remove wire:target="loadConfigHealth">{{ __('Run Check') }}</span>
+                <span wire:loading wire:target="loadConfigHealth">{{ __('Checking...') }}</span>
+            </x-ui.button>
+        </div>
+
+        @if($configHealth)
+            @php
+                $checks = $configHealth['checks'] ?? [];
+                $config = $configHealth['config'] ?? [];
+                $criticalCount = collect($checks)->where('status', 'critical')->count();
+                $warningCount = collect($checks)->where('status', 'warning')->count();
+            @endphp
+
+            {{-- Config overview cards --}}
+            <div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <x-ui.stat-card label="PHP Version" :value="$config['php_version'] ?? '—'" icon="code" color="blue" />
+                <x-ui.stat-card label="WP Version" :value="$config['wp_version'] ?? '—'" icon="globe" color="purple" />
+                <x-ui.stat-card label="PHP Memory" :value="$config['php_memory_limit'] ?? '—'" icon="cpu" color="green" />
+                <x-ui.stat-card label="WP Memory" :value="$config['wp_memory_limit'] ?? '—'" icon="layers" color="orange" />
+            </div>
+
+            {{-- Config checks --}}
+            <x-ui.card class="mb-4">
+                @if($criticalCount > 0 || $warningCount > 0)
+                    <div class="mb-3 flex items-center gap-3">
+                        @if($criticalCount > 0)
+                            <span class="inline-flex items-center gap-1 text-sm font-medium text-red-700">
+                                <x-icons.alert-triangle class="h-4 w-4" />
+                                {{ $criticalCount }} {{ __('critical') }}
+                            </span>
+                        @endif
+                        @if($warningCount > 0)
+                            <span class="inline-flex items-center gap-1 text-sm font-medium text-yellow-700">
+                                <x-icons.alert-triangle class="h-4 w-4" />
+                                {{ $warningCount }} {{ __('warnings') }}
+                            </span>
+                        @endif
+                    </div>
+                @endif
+
+                <div class="space-y-2">
+                    @foreach($checks as $check)
+                        <div class="flex items-start gap-3 rounded-lg border p-3
+                            {{ $check['status'] === 'critical' ? 'border-red-200 bg-red-50' : ($check['status'] === 'warning' ? 'border-yellow-200 bg-yellow-50' : ($check['status'] === 'ok' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50')) }}">
+                            @if($check['status'] === 'critical')
+                                <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-red-600" />
+                            @elseif($check['status'] === 'warning')
+                                <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-yellow-600" />
+                            @elseif($check['status'] === 'ok')
+                                <x-icons.check-circle class="h-5 w-5 shrink-0 text-green-600" />
+                            @else
+                                <x-icons.info class="h-5 w-5 shrink-0 text-blue-600" />
+                            @endif
+                            <div>
+                                <p class="text-sm font-medium {{ $check['status'] === 'critical' ? 'text-red-800' : ($check['status'] === 'warning' ? 'text-yellow-800' : ($check['status'] === 'ok' ? 'text-green-800' : 'text-gray-800')) }}">
+                                    {{ $check['label'] }}
+                                </p>
+                                <p class="text-xs {{ $check['status'] === 'critical' ? 'text-red-600' : ($check['status'] === 'warning' ? 'text-yellow-600' : ($check['status'] === 'ok' ? 'text-green-600' : 'text-gray-500')) }}">
+                                    {{ $check['detail'] }}
+                                </p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+        @endif
+    </div>
+
+    {{-- Divider --}}
+    <div class="mb-8 border-t border-gray-200"></div>
+
+    {{-- Autoload Audit Section --}}
+    <div class="mb-8">
+        <div class="mb-4 flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">{{ __('Autoload Audit') }}</h2>
+                <p class="mt-0.5 text-sm text-gray-500">{{ __('Autoloaded options are loaded on every page request. Large values slow down your site.') }}</p>
+            </div>
+            <x-ui.button variant="secondary" wire:click="loadAutoloadAudit" wire:loading.attr="disabled">
+                <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="loadAutoloadAudit" />
+                <span wire:loading.remove wire:target="loadAutoloadAudit">{{ __('Run Audit') }}</span>
+                <span wire:loading wire:target="loadAutoloadAudit">{{ __('Loading...') }}</span>
+            </x-ui.button>
+        </div>
+
+        @if($autoloadAudit)
+            @php
+                $totalSize = $autoloadAudit['total_size'] ?? 0;
+                $totalCount = $autoloadAudit['total_count'] ?? 0;
+                $isLarge = $totalSize > 1048576; // > 1 MB
+            @endphp
+
+            <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui.stat-card label="Total Autoload Size" icon="database" :color="$isLarge ? 'red' : 'green'">
+                    <x-slot:value>
+                        @if($totalSize >= 1048576)
+                            {{ round($totalSize / 1048576, 2) }} MB
+                        @elseif($totalSize >= 1024)
+                            {{ round($totalSize / 1024, 2) }} KB
+                        @else
+                            {{ $totalSize }} B
+                        @endif
+                    </x-slot:value>
+                </x-ui.stat-card>
+                <x-ui.stat-card label="Autoloaded Options" :value="number_format($totalCount)" icon="layers" color="blue" />
+                <x-ui.card class="!p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg {{ $isLarge ? 'bg-red-50' : 'bg-green-50' }}">
+                            <x-icons.check-circle class="h-5 w-5 {{ $isLarge ? 'text-red-600' : 'text-green-600' }}" />
+                        </div>
+                        <div>
+                            <x-ui.badge :variant="$isLarge ? 'red' : 'green'">
+                                {{ $isLarge ? __('Needs Attention') : __('Healthy') }}
+                            </x-ui.badge>
+                            <p class="text-xs text-gray-500 mt-1">{{ __('Recommended: < 1 MB') }}</p>
+                        </div>
+                    </div>
+                </x-ui.card>
+            </div>
+
+            @if(!empty($autoloadAudit['top_options']))
+                <x-ui.card :padding="false">
+                    <div class="px-4 py-3 border-b">
+                        <h3 class="text-base font-semibold text-gray-900">{{ __('Largest Autoloaded Options') }}</h3>
+                    </div>
+
+                    {{-- Mobile cards --}}
+                    <div class="md:hidden divide-y divide-gray-100 px-4 py-2">
+                        @foreach($autoloadAudit['top_options'] as $option)
+                            @php $optSize = $option['size'] ?? 0; @endphp
+                            <div class="py-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-sm text-gray-900 truncate">{{ $option['name'] }}</span>
+                                    <span class="text-sm font-medium {{ $optSize > 102400 ? 'text-red-600' : ($optSize > 10240 ? 'text-yellow-600' : 'text-gray-600') }}">
+                                        @if($optSize >= 1048576)
+                                            {{ round($optSize / 1048576, 2) }} MB
+                                        @elseif($optSize >= 1024)
+                                            {{ round($optSize / 1024, 1) }} KB
+                                        @else
+                                            {{ $optSize }} B
+                                        @endif
+                                    </span>
+                                </div>
+                                @if($option['plugin'])
+                                    <span class="text-xs text-gray-400">{{ $option['plugin'] }}</span>
+                                @endif
+                                {{-- Size bar --}}
+                                <div class="mt-1.5 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                                    <div class="h-full rounded-full {{ $optSize > 102400 ? 'bg-red-500' : ($optSize > 10240 ? 'bg-yellow-500' : 'bg-blue-500') }}"
+                                         style="width: {{ min(100, ($optSize / max($autoloadAudit['top_options'][0]['size'] ?? 1, 1)) * 100) }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Desktop table --}}
+                    <div class="hidden md:block overflow-x-auto">
+                        <x-ui.table>
+                            <x-slot:head>
+                                <x-ui.th>{{ __('Option Name') }}</x-ui.th>
+                                <x-ui.th>{{ __('Plugin') }}</x-ui.th>
+                                <x-ui.th>{{ __('Size') }}</x-ui.th>
+                                <x-ui.th>{{ __('% of Total') }}</x-ui.th>
+                            </x-slot:head>
+                            @foreach($autoloadAudit['top_options'] as $option)
+                                @php
+                                    $optSize = $option['size'] ?? 0;
+                                    $pct = $totalSize > 0 ? round(($optSize / $totalSize) * 100, 1) : 0;
+                                @endphp
+                                <tr>
+                                    <x-ui.td>
+                                        <span class="font-mono text-sm text-gray-900">{{ $option['name'] }}</span>
+                                    </x-ui.td>
+                                    <x-ui.td>
+                                        @if($option['plugin'])
+                                            <span class="text-xs text-gray-500">{{ $option['plugin'] }}</span>
+                                        @else
+                                            <span class="text-xs text-gray-400">—</span>
+                                        @endif
+                                    </x-ui.td>
+                                    <x-ui.td>
+                                        <span class="{{ $optSize > 102400 ? 'text-red-600 font-medium' : ($optSize > 10240 ? 'text-yellow-600' : 'text-gray-700') }}">
+                                            @if($optSize >= 1048576)
+                                                {{ round($optSize / 1048576, 2) }} MB
+                                            @elseif($optSize >= 1024)
+                                                {{ round($optSize / 1024, 1) }} KB
+                                            @else
+                                                {{ $optSize }} B
+                                            @endif
+                                        </span>
+                                    </x-ui.td>
+                                    <x-ui.td>
+                                        <div class="flex items-center gap-2">
+                                            <div class="h-1.5 w-20 rounded-full bg-gray-100 overflow-hidden">
+                                                <div class="h-full rounded-full {{ $optSize > 102400 ? 'bg-red-500' : ($optSize > 10240 ? 'bg-yellow-500' : 'bg-blue-500') }}"
+                                                     style="width: {{ min(100, $pct) }}%"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500">{{ $pct }}%</span>
+                                        </div>
+                                    </x-ui.td>
+                                </tr>
+                            @endforeach
+                        </x-ui.table>
+                    </div>
+                </x-ui.card>
+            @endif
+        @endif
+    </div>
+
+    {{-- Divider --}}
+    <div class="mb-8 border-t border-gray-200"></div>
+
     {{-- Database Cleanup Section --}}
     <div class="mb-6 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-gray-900">{{ __('Database Cleanup') }}</h2>

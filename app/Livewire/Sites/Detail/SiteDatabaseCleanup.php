@@ -10,6 +10,8 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\DatabaseCleanupService;
 use App\Services\ModuleConfigService;
+use App\Services\WordPressApiServiceFactory;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -38,6 +40,20 @@ class SiteDatabaseCleanup extends Component
     public bool $cleanTransients = true;
 
     public bool $cleanOrphanedMeta = true;
+
+    public bool $cleanActionScheduler = true;
+
+    public bool $cleanWcSessions = true;
+
+    public bool $cleanWcWebhooks = true;
+
+    public ?array $autoloadAudit = null;
+
+    public bool $autoloadLoading = false;
+
+    public ?array $configHealth = null;
+
+    public bool $configLoading = false;
 
     public bool $showConfirmation = false;
 
@@ -140,6 +156,9 @@ class SiteDatabaseCleanup extends Component
             'trash_comments' => $this->cleanTrashComments,
             'transients' => $this->cleanTransients,
             'orphaned_meta' => $this->cleanOrphanedMeta,
+            'action_scheduler_completed' => $this->cleanActionScheduler,
+            'wc_expired_sessions' => $this->cleanWcSessions,
+            'wc_expired_webhooks' => $this->cleanWcWebhooks,
         ];
 
         $cleanup = $this->cleanupService->run($this->site, $options);
@@ -154,6 +173,38 @@ class SiteDatabaseCleanup extends Component
         $this->dispatch('close-modal-confirm-cleanup');
         $this->stats = null;
         unset($this->cleanupHistory);
+    }
+
+    public function loadAutoloadAudit(): void
+    {
+        $this->autoloadLoading = true;
+
+        try {
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
+            $this->autoloadAudit = $api->getAutoloadAudit();
+        } catch (\Exception $e) {
+            Log::warning("Autoload audit failed for site {$this->site->id}: {$e->getMessage()}");
+            session()->flash('db-error', "Failed to load autoload audit: {$e->getMessage()}");
+            $this->autoloadAudit = null;
+        }
+
+        $this->autoloadLoading = false;
+    }
+
+    public function loadConfigHealth(): void
+    {
+        $this->configLoading = true;
+
+        try {
+            $api = app(WordPressApiServiceFactory::class)->make($this->site);
+            $this->configHealth = $api->getConfigHealth();
+        } catch (\Exception $e) {
+            Log::warning("Config health failed for site {$this->site->id}: {$e->getMessage()}");
+            session()->flash('db-error', "Failed to load config health: {$e->getMessage()}");
+            $this->configHealth = null;
+        }
+
+        $this->configLoading = false;
     }
 
     public function confirmTableAction(string $action, string $tableName): void
