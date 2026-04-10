@@ -341,7 +341,7 @@ class SiteCrawlerService
                         }
                     }
 
-                    $currentUrl = rtrim($location, '/');
+                    $currentUrl = $location;
                     $hops++;
 
                     continue;
