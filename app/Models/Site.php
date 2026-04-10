@@ -153,6 +153,7 @@ class Site extends Model
         'backup_capabilities',
         'backup_capabilities_checked_at',
         'wp_admin_user_id',
+        'ai_context',
     ];
 
     protected $casts = [

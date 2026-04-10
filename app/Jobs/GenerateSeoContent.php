@@ -28,6 +28,7 @@ class GenerateSeoContent implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public SeoContent $seoContent,
+        public ?string $corrections = null,
     ) {}
 
     public function uniqueId(): string
@@ -41,8 +42,15 @@ class GenerateSeoContent implements ShouldBeUnique, ShouldQueue
         JobTracker::start($trackerKey, 'Starting article generation...');
 
         try {
-            app(SeoContentAiService::class)->generateArticle($this->seoContent, $trackerKey);
-            JobTracker::complete($trackerKey, 'Article generated successfully.');
+            $service = app(SeoContentAiService::class);
+
+            if ($this->corrections) {
+                $service->refineArticle($this->seoContent, $this->corrections, $trackerKey);
+                JobTracker::complete($trackerKey, 'Corrections applied successfully.');
+            } else {
+                $service->generateArticle($this->seoContent, $trackerKey);
+                JobTracker::complete($trackerKey, 'Article generated successfully.');
+            }
         } catch (\Throwable $e) {
             $this->seoContent->update(['status' => SeoContentStatus::Failed]);
             JobTracker::fail($trackerKey, 'Generation failed: '.$e->getMessage());

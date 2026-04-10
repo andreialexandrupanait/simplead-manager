@@ -19,12 +19,15 @@
             <x-ui.card>
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-gray-900">{{ __('Article Brief') }}</h3>
-                    <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
-                        <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
-                        {{ __('Generate with AI') }}
-                    </x-ui.button>
+                    @if(!empty($this->configuredProviders))
+                        <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
+                            <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
+                            {{ __('Generate with AI') }}
+                        </x-ui.button>
+                    @endif
                 </div>
                 <div class="space-y-4">
+                    {{-- Topic (main input) --}}
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Topic / Target Keyword') }} *</label>
                         <input type="text" wire:model="targetKeyword" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., marketing digital pentru afaceri mici') }}" />
@@ -41,8 +44,8 @@
                             <input type="text" wire:model="targetAudience" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., antreprenori') }}" />
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Title') }} <span class="text-xs text-gray-400">({{ __('optional') }})</span></label>
-                            <input type="text" wire:model="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Leave empty to auto-generate') }}" />
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Title') }} <span class="text-xs text-gray-400">({{ __('auto-generated if empty') }})</span></label>
+                            <input type="text" wire:model="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Leave empty for AI title') }}" />
                         </div>
                     </div>
 
@@ -51,7 +54,7 @@
                         <div>
                             <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('AI Provider') }}</label>
                             @if(empty($this->configuredProviders))
-                                <p class="text-xs text-red-600 mt-1">{{ __('No AI providers configured.') }} <a href="{{ route('settings.integrations') }}" class="underline">{{ __('Settings') }}</a></p>
+                                <p class="text-xs text-red-600 mt-1">{{ __('No AI providers configured.') }} <a href="{{ route('settings.integrations') }}" class="underline">{{ __('Configure in Settings') }}</a></p>
                             @else
                                 <select wire:model.live="aiProvider" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
                                     @foreach($this->configuredProviders as $key => $provider)
@@ -108,7 +111,7 @@
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Site') }}</label>
-                            <select wire:model="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                            <select wire:model.live="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
                                 <option value="">{{ __('No site') }}</option>
                                 @foreach($this->sites as $site)
                                     <option value="{{ $site->id }}">{{ $site->name }}</option>
@@ -117,12 +120,43 @@
                         </div>
                     </div>
 
+                    {{-- Context & Instructions --}}
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Additional Instructions') }}</label>
-                        <textarea wire:model="brief" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Any specific instructions for the AI...') }}"></textarea>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Context & Instructions') }}</label>
+                        <textarea wire:model="brief" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Paste context from your Claude conversations, specific details, instructions...') }}"></textarea>
+                        <p class="mt-1 text-xs text-gray-400">{{ __('Add any relevant context: brand info, key points, competitor links, style preferences, notes from conversations.') }}</p>
                     </div>
                 </div>
             </x-ui.card>
+
+            {{-- Site AI Context (collapsible, shown when site selected) --}}
+            @if($siteId)
+                <x-ui.card x-data="{ open: false }">
+                    <button @click="open = !open" type="button" class="flex w-full items-center justify-between text-sm">
+                        <h3 class="font-semibold text-gray-900">{{ __('Site Brand Context') }}</h3>
+                        <div class="flex items-center gap-2">
+                            @if($siteAiContext)
+                                <span class="text-xs text-green-600">{{ __('Configured') }}</span>
+                            @else
+                                <span class="text-xs text-gray-400">{{ __('Not set') }}</span>
+                            @endif
+                            <svg class="h-4 w-4 text-gray-400 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                    </button>
+                    <div x-show="open" x-collapse x-cloak class="mt-3 space-y-3">
+                        <p class="text-xs text-gray-500">{{ __('Persistent context about this site/brand. Automatically included in every article generation for this site.') }}</p>
+                        <textarea wire:model="siteAiContext" rows="4" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __("e.g., SimpleAd este o agentie de marketing digital din Hunedoara. Oferim servicii de web design, SEO, social media. Tonul comunicarii: profesional dar prietenos. Publicul: IMM-uri si antreprenori romani.") }}"></textarea>
+                        <div class="flex items-center justify-between">
+                            <button type="button" wire:click="autoDetectSiteContext" wire:loading.attr="disabled" wire:target="autoDetectSiteContext"
+                                    class="text-sm text-purple-600 hover:text-purple-800 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="autoDetectSiteContext">{{ __('Auto-detect from site') }}</span>
+                                <span wire:loading wire:target="autoDetectSiteContext">{{ __('Analyzing site...') }}</span>
+                            </button>
+                            <x-ui.button variant="secondary" size="sm" wire:click="saveSiteContext">{{ __('Save Site Context') }}</x-ui.button>
+                        </div>
+                    </div>
+                </x-ui.card>
+            @endif
 
             {{-- Job progress --}}
             @if($this->hasRunningJobs)
@@ -135,11 +169,17 @@
             @if($content)
                 <x-ui.card>
                     <div class="mb-3 flex items-center justify-between">
-                        <h3 class="text-sm font-semibold text-gray-900">{{ __('Generated Article') }}</h3>
+                        <h3 class="text-sm font-semibold text-gray-900">
+                            @if($editing)
+                                {{ __('Editing Article') }}
+                            @else
+                                {{ __('Generated Article') }}
+                            @endif
+                        </h3>
                         <div class="flex items-center gap-2">
                             @if(!$editing)
                                 <x-ui.button variant="secondary" size="sm" wire:click="toggleEditing">
-                                    {{ __('Edit') }}
+                                    {{ __('Edit HTML') }}
                                 </x-ui.button>
                                 <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
                                     <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
@@ -171,11 +211,28 @@
                     @if($editing)
                         <textarea wire:model.blur="content" rows="25" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
                     @else
-                        <div class="prose prose-sm max-w-none text-gray-800">
+                        <div class="prose prose-sm max-w-none prose-headings:text-gray-900 prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-base prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700 prose-blockquote:border-purple-300 prose-blockquote:text-gray-600 prose-a:text-purple-600">
                             {!! $content !!}
                         </div>
                     @endif
                 </x-ui.card>
+
+                {{-- Corrections / Refinements --}}
+                @if(!$editing && $seoContent)
+                    <x-ui.card>
+                        <h3 class="mb-2 text-sm font-semibold text-gray-900">{{ __('Corrections & Refinements') }}</h3>
+                        <p class="mb-3 text-xs text-gray-500">{{ __('Describe what you want changed. The AI will apply your corrections while preserving the rest of the article.') }}</p>
+                        <textarea wire:model="corrections" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __("e.g., Change the tone to be more formal. Add a section about pricing. Remove the second paragraph. Make the conclusion shorter.") }}"></textarea>
+                        @if($corrections)
+                            <div class="mt-3 flex justify-end">
+                                <x-ui.button variant="primary" size="sm" wire:click="applyCorrections" wire:loading.attr="disabled" wire:target="applyCorrections">
+                                    <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="applyCorrections" />
+                                    {{ __('Apply Corrections') }}
+                                </x-ui.button>
+                            </div>
+                        @endif
+                    </x-ui.card>
+                @endif
 
                 {{-- Publish --}}
                 @if($seoContent && $siteId && !$editing)
@@ -251,7 +308,7 @@
                 </x-ui.card>
             @endif
 
-            {{-- Status --}}
+            {{-- Info --}}
             @if($seoContent)
                 <x-ui.card>
                     <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Info') }}</h3>

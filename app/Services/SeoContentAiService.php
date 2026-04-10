@@ -132,6 +132,71 @@ class SeoContentAiService
         return $content;
     }
 
+    public function refineArticle(SeoContent $content, string $corrections, ?string $trackerKey = null): SeoContent
+    {
+        $content->update(['status' => SeoContentStatus::Generating]);
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 20, 'Applying corrections...');
+        }
+
+        $provider = $content->ai_provider ?? 'anthropic';
+        $model = $content->ai_model ?? $this->getDefaultModel($provider);
+
+        $system = $this->buildSystemPrompt($content);
+
+        $userMessage = "Am un articol existent care trebuie corectat/îmbunătățit.\n\n";
+        $userMessage .= "## Articolul curent\n{$content->content}\n\n";
+        $userMessage .= "## Corecții solicitate\n{$corrections}\n\n";
+        $userMessage .= "Aplică corecțiile cerute și returnează articolul complet actualizat. Păstrează structura și stilul, dar aplică modificările solicitate.\n";
+        $userMessage .= "La final, adaugă din nou:\n---TITLE---\nTitlul actualizat\n---META---\nMeta description actualizată";
+
+        $result = $this->callProvider($provider, $model, $system, $userMessage, $this->getMaxTokens($content));
+
+        if (! $result) {
+            $content->update(['status' => SeoContentStatus::Review]);
+
+            return $content;
+        }
+
+        $parsed = $this->parseAiResponse($result);
+        $seoData = $this->calculateSeoScore($content, $parsed['content'], $parsed['meta_description']);
+
+        $updateData = [
+            'content' => $parsed['content'],
+            'meta_description' => $parsed['meta_description'] ?: $content->meta_description,
+            'status' => SeoContentStatus::Review,
+            'word_count' => $seoData['word_count'],
+            'keyword_density' => $seoData['keyword_density'],
+            'seo_score' => $seoData['score'],
+            'seo_score_data' => $seoData,
+        ];
+
+        if (! empty($parsed['title'])) {
+            $updateData['title'] = $parsed['title'];
+            $updateData['slug'] = Str::slug($parsed['title']);
+        }
+
+        $content->update($updateData);
+
+        $content->revisions()->create([
+            'content' => $parsed['content'],
+            'meta_description' => $parsed['meta_description'],
+            'source' => 'ai',
+            'generation_params' => [
+                'provider' => $provider,
+                'model' => $model,
+                'corrections' => $corrections,
+            ],
+        ]);
+
+        if ($trackerKey) {
+            JobTracker::progress($trackerKey, 95, 'Corrections applied.');
+        }
+
+        return $content;
+    }
+
     /**
      * Calculate on-page SEO score for given content.
      *
@@ -227,7 +292,7 @@ class SeoContentAiService
         ];
     }
 
-    private function callProvider(string $provider, string $model, string $system, string $userMessage, int $maxTokens): ?string
+    public function callProvider(string $provider, string $model, string $system, string $userMessage, int $maxTokens): ?string
     {
         return match ($provider) {
             'openai' => $this->callOpenAi($model, $system, $userMessage, $maxTokens),
@@ -270,30 +335,50 @@ class SeoContentAiService
 
     private function buildSystemPrompt(SeoContent $content): string
     {
-        $language = 'Romanian';
         $tone = $content->tone ?? 'professional';
-        $persona = $content->persona ?? 'noi';
+        $persona = match ($content->persona ?? 'noi') {
+            'eu' => 'persoana I singular (eu/am/meu)',
+            'neutru' => 'impersonal, neutru (se recomandă, este important)',
+            default => 'persoana I plural (noi/am/nostru)',
+        };
 
         return <<<PROMPT
-        You are an expert SEO copywriter writing in {$language}. You produce high-quality content
-        optimized for search engines while remaining natural and engaging for human readers.
+        Ești un copywriter SEO expert care scrie **în limba română**, nativ și natural.
+        Produci conturi de calitate superioară, bine documentate, optimizate pentru motoarele de căutare dar plăcute și captivante pentru cititori reali.
 
-        Rules:
-        - Write in {$language}
-        - Tone: {$tone}
-        - Narrative perspective: {$persona}
-        - Use the target keyword naturally throughout the text
-        - Include secondary keywords where they fit naturally
-        - Structure with H2 and H3 headings using HTML tags
-        - Use bold (<strong>) for important terms
-        - Use bullet or numbered lists where appropriate
-        - Include a compelling introduction and conclusion
-        - Output valid HTML (no <html>, <body> or <head> tags — just the article body)
-        - At the very end, output on separate lines:
+        ## Reguli de scriere
+
+        **Limbă și ton:**
+        - Scrie EXCLUSIV în limba română cu diacritice corecte (ă, â, î, ș, ț)
+        - Tonul: {$tone}
+        - Perspectiva narativă: {$persona}
+        - Scrie natural, ca un expert român care explică — NU ca un text tradus din engleză
+        - Evită formulările robotice, clișeele goale și umpluturile de cuvinte
+        - Fiecare propoziție trebuie să aducă valoare reală cititorului
+
+        **Structura articolului:**
+        - Începe cu o introducere captivantă (2-3 paragrafe) care prezintă problema și de ce contează
+        - Folosește **<h2>** pentru secțiunile principale (4-7 secțiuni)
+        - Folosește **<h3>** pentru subsecțiuni unde e nevoie
+        - Paragrafe scurte (2-4 propoziții maxim) — texte scanabile
+        - Include **liste** (<ul> sau <ol>) pentru enumerări, pași sau beneficii
+        - Adaugă **<blockquote>** pentru citate, statistici sau idei cheie
+        - Încheie cu o **concluzie** care rezumă ideile principale și include un call-to-action
+
+        **SEO on-page:**
+        - Include keyword-ul principal natural în: primul paragraf, cel puțin 2 heading-uri H2, concluzie
+        - Keyword density: 1-2% (nu forța keyword-ul — mai bine variații naturale)
+        - Folosește <strong> pentru termenii importanți și keyword-uri (nu exagera, max 5-8 pe articol)
+        - Include keyword-urile secundare distribuite natural prin text
+
+        **Format output:**
+        - Output DOAR HTML valid pentru body (fără <html>, <body>, <head>, <article>)
+        - Începe direct cu primul paragraf sau heading
+        - La final, pe linii separate, adaugă:
           ---TITLE---
-          The article title (compelling, SEO-friendly, max 80 chars)
+          Titlul articolului (captivant, include keyword-ul, max 70 caractere)
           ---META---
-          The meta description (max 160 chars)
+          Meta description (convingătoare, include keyword-ul, 120-155 caractere)
         PROMPT;
     }
 
@@ -305,23 +390,31 @@ class SeoContentAiService
         $audience = $content->target_audience ?? 'general audience';
         $brief = $content->brief ?? '';
 
-        $message = "Write an SEO-optimized article about: **{$keyword}**\n\n";
-        $message .= "Target length: approximately {$wordCount} words.\n";
+        // Include site brand context if available
+        $siteContext = $content->site?->ai_context;
+        if ($siteContext) {
+            $message = "## Context despre brand/companie\n{$siteContext}\n\n";
+        } else {
+            $message = '';
+        }
+
+        $message .= "Scrie un articol SEO-optimizat despre: **{$keyword}**\n\n";
+        $message .= "Lungime țintă: aproximativ {$wordCount} cuvinte.\n";
 
         if ($secondary) {
-            $message .= "Secondary keywords to include: {$secondary}\n";
+            $message .= "Keyword-uri secundare de inclus: {$secondary}\n";
         }
 
         if ($audience) {
-            $message .= "Target audience: {$audience}\n";
+            $message .= "Public țintă: {$audience}\n";
         }
 
         if ($brief) {
-            $message .= "\nAdditional instructions:\n{$brief}\n";
+            $message .= "\n## Context și instrucțiuni suplimentare\n{$brief}\n";
         }
 
         if (! empty($content->sections)) {
-            $message .= "\nDesired sections/headings:\n";
+            $message .= "\nSecțiuni/heading-uri dorite:\n";
             foreach ($content->sections as $section) {
                 $message .= "- {$section}\n";
             }

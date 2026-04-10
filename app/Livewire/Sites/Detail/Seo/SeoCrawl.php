@@ -89,11 +89,17 @@ class SeoCrawl extends Component
     {
         $crawl = $this->latestCrawl;
 
-        if ($crawl && $crawl->status === SiteCrawl::STATUS_RUNNING) {
+        if ($crawl && in_array($crawl->status, [SiteCrawl::STATUS_RUNNING, SiteCrawl::STATUS_PENDING])) {
             $crawl->update([
                 'status' => SiteCrawl::STATUS_CANCELLED,
                 'completed_at' => now(),
             ]);
+
+            // Release the unique job lock so new crawls can start
+            $lockKey = $crawl->site_id
+                ? 'site-crawl-'.$crawl->site_id
+                : 'standalone-crawl-'.$crawl->id;
+            \Illuminate\Support\Facades\Cache::forget('laravel_unique_job:'.\App\Jobs\RunSiteCrawl::class.':'.$lockKey);
 
             unset($this->latestCrawl, $this->recentCrawls, $this->isRunning);
         }

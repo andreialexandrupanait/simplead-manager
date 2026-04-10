@@ -18,9 +18,11 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 7200; // 2 hours — large crawls need time
+    public int $timeout = 7200;
 
     public int $tries = 1;
+
+    public int $uniqueFor = 7200; // Lock auto-expires after 2h (prevents stuck locks)
 
     public function __construct(
         public SiteCrawl $crawl,

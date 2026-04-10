@@ -11,6 +11,8 @@ use App\Livewire\Traits\WithJobTracking;
 use App\Models\SeoContent;
 use App\Models\Site;
 use App\Services\SeoContentAiService;
+use App\Services\WordPressApiService;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -49,6 +51,10 @@ class ContentEditor extends Component
 
     public bool $editing = false;
 
+    public string $corrections = '';
+
+    public string $siteAiContext = '';
+
     protected function jobTrackingKeys(): array
     {
         return ['generate' => $this->seoContent ? 'seo-content-'.$this->seoContent->id : ''];
@@ -71,6 +77,12 @@ class ContentEditor extends Component
             $this->targetWordCount = $seoContent->target_word_count ?? 1000;
             $this->aiProvider = $seoContent->ai_provider ?? '';
             $this->aiModel = $seoContent->ai_model ?? '';
+        }
+
+        // Load site AI context
+        if ($this->siteId) {
+            $site = Site::find($this->siteId);
+            $this->siteAiContext = $site?->ai_context ?? '';
         }
 
         // Set default provider if none selected
@@ -185,6 +197,7 @@ class ContentEditor extends Component
             $this->title = $this->seoContent->title ?? $this->title;
             $this->content = $this->seoContent->content ?? '';
             $this->metaDescription = $this->seoContent->meta_description ?? '';
+            $this->corrections = '';
         }
         unset($this->seoScore, $this->revisions);
     }
@@ -192,6 +205,137 @@ class ContentEditor extends Component
     public function toggleEditing(): void
     {
         $this->editing = ! $this->editing;
+    }
+
+    public function applyCorrections(): void
+    {
+        if (! $this->seoContent || ! $this->corrections) {
+            return;
+        }
+
+        $this->saveDraft();
+        $this->dispatchTrackedJob('generate', new GenerateSeoContent($this->seoContent, $this->corrections), 'Applying corrections...');
+    }
+
+    public function updatedSiteId(): void
+    {
+        // Load site AI context when site changes
+        if ($this->siteId) {
+            $site = Site::find($this->siteId);
+            $this->siteAiContext = $site?->ai_context ?? '';
+        } else {
+            $this->siteAiContext = '';
+        }
+    }
+
+    public function saveSiteContext(): void
+    {
+        if (! $this->siteId) {
+            return;
+        }
+
+        Site::where('id', $this->siteId)->update(['ai_context' => $this->siteAiContext]);
+        session()->flash('success', __('Site AI context saved.'));
+    }
+
+    public function autoDetectSiteContext(): void
+    {
+        if (! $this->siteId) {
+            return;
+        }
+
+        $site = Site::find($this->siteId);
+        if (! $site) {
+            return;
+        }
+
+        $gathered = [];
+
+        // 1. Fetch WP site info via connector API
+        if ($site->is_connected) {
+            try {
+                $api = new WordPressApiService($site);
+                $info = $api->getInfo();
+                $gathered[] = "Site title: ".($info['site_title'] ?? $site->name);
+                $gathered[] = "URL: ".($info['home_url'] ?? $site->url);
+                $gathered[] = "Language: ".($info['language'] ?? 'ro_RO');
+
+                // Fetch categories
+                $categories = $api->getPostCategories();
+                if (! empty($categories)) {
+                    $catNames = array_column($categories, 'name');
+                    $gathered[] = "Blog categories: ".implode(', ', array_slice($catNames, 0, 15));
+                }
+            } catch (\Throwable $e) {
+                $gathered[] = "Site: {$site->name} ({$site->url})";
+            }
+        } else {
+            $gathered[] = "Site: {$site->name} ({$site->url})";
+        }
+
+        // 2. Scrape homepage for text content
+        try {
+            $response = Http::timeout(15)->get($site->url);
+            if ($response->successful()) {
+                $html = $response->body();
+
+                // Extract meta description
+                if (preg_match('/<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']/i', $html, $m)) {
+                    $gathered[] = "Site meta description: ".$m[1];
+                }
+
+                // Extract OG description
+                if (preg_match('/<meta\s+property=["\']og:description["\']\s+content=["\'](.*?)["\']/i', $html, $m)) {
+                    $gathered[] = "OG description: ".$m[1];
+                }
+
+                // Extract visible text (strip scripts, styles, tags)
+                $clean = preg_replace('/<script[^>]*>.*?<\/script>/si', '', $html);
+                $clean = preg_replace('/<style[^>]*>.*?<\/style>/si', '', $clean);
+                $clean = preg_replace('/<nav[^>]*>.*?<\/nav>/si', '', $clean);
+                $clean = preg_replace('/<footer[^>]*>.*?<\/footer>/si', '', $clean);
+                $text = trim(preg_replace('/\s+/', ' ', strip_tags($clean)));
+                $text = mb_substr($text, 0, 2000);
+                $gathered[] = "Homepage text excerpt: {$text}";
+            }
+        } catch (\Throwable) {
+            // skip
+        }
+
+        if (empty($gathered)) {
+            session()->flash('error', __('Could not gather site information.'));
+
+            return;
+        }
+
+        // 3. Use AI to generate brand context summary
+        $configured = SeoContentAiService::configuredProviders();
+        $provider = $this->aiProvider ?: array_key_first($configured) ?? '';
+        if (! $provider) {
+            // No AI available, just dump raw info
+            $this->siteAiContext = implode("\n", $gathered);
+            session()->flash('success', __('Site info gathered. Review and save.'));
+
+            return;
+        }
+
+        $model = $this->aiModel ?: ($this->getDefaultModelForProvider($provider));
+        $service = app(SeoContentAiService::class);
+
+        // Use reflection to call the provider directly
+        $system = "Ești un analist de brand. Pe baza informațiilor de mai jos despre un website, generează un rezumat concis (max 300 cuvinte) în limba română care descrie:\n- Ce face compania/site-ul\n- Ce produse/servicii oferă\n- Care e publicul țintă\n- Ce ton de comunicare folosesc\n- Orice detalii relevante pentru un copywriter care va scrie articole pentru acest site\n\nScrie DOAR rezumatul, fără introducere sau explicații.";
+
+        $userMsg = implode("\n", $gathered);
+
+        $result = $service->callProvider($provider, $model, $system, $userMsg, 1024);
+
+        if ($result) {
+            $this->siteAiContext = trim($result);
+            session()->flash('success', __('Site context auto-generated. Review and save.'));
+        } else {
+            $this->siteAiContext = implode("\n", $gathered);
+            session()->flash('success', __('AI unavailable. Raw site info gathered — edit as needed.'));
+        }
     }
 
     public function publishToWordPress(): void
