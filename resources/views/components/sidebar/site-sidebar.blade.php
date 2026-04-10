@@ -117,7 +117,7 @@
         </x-sidebar.sidebar-item>
     </div>
 
-    <x-sidebar.sidebar-section title="Management">
+    <x-sidebar.sidebar-section title="Core">
         <x-sidebar.sidebar-item
             :href="route('sites.plugins', $site)"
             icon="puzzle"
@@ -150,10 +150,9 @@
         >
             Cron Jobs
         </x-sidebar.sidebar-item>
-
     </x-sidebar.sidebar-section>
 
-    <x-sidebar.sidebar-section title="Monitoring & Security">
+    <x-sidebar.sidebar-section title="Monitoring">
         <x-sidebar.sidebar-item
             :href="route('sites.uptime', $site)"
             icon="activity"
@@ -169,7 +168,9 @@
         >
             Performance
         </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
 
+    <x-sidebar.sidebar-section title="Analytics & SEO">
         <x-sidebar.sidebar-item
             :href="route('sites.analytics', $site)"
             icon="bar-chart-2"
@@ -196,7 +197,9 @@
         >
             SEO
         </x-sidebar.sidebar-item>
+    </x-sidebar.sidebar-section>
 
+    <x-sidebar.sidebar-section title="Security">
         <x-sidebar.sidebar-item
             :href="route('sites.security', $site)"
             icon="shield-check"
