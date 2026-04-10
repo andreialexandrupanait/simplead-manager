@@ -30,7 +30,8 @@ class PageParser
         $xpath = new DOMXPath($dom);
 
         $title = $this->extractTitle($xpath);
-        $metaDescription = $this->extractMetaContent($xpath, 'description');
+        $metaDescription = $this->extractMetaContent($xpath, 'description')
+            ?? $this->extractMetaProperty($xpath, 'og:description'); // fallback to OG
         $canonicalUrl = $this->extractCanonical($xpath);
         $metaRobots = $this->extractMetaContent($xpath, 'robots');
 
@@ -214,7 +215,8 @@ class PageParser
     private function extractImages(DOMXPath $xpath, string $pageUrl): array
     {
         $images = [];
-        $nodes = $xpath->query('//img[@src]');
+        // Query all img tags (with src, data-src, or srcset)
+        $nodes = $xpath->query('//img');
 
         if ($nodes === false) {
             return $images;
@@ -222,7 +224,20 @@ class PageParser
 
         foreach ($nodes as $node) {
             /** @var \DOMElement $node */
+            // Try src first, then data-src (lazy loading), then data-lazy-src
             $src = trim($node->getAttribute('src'));
+            if ($src === '' || str_starts_with($src, 'data:')) {
+                $src = trim($node->getAttribute('data-src'));
+            }
+            if ($src === '' || str_starts_with($src, 'data:')) {
+                $src = trim($node->getAttribute('data-lazy-src'));
+            }
+            // Try first entry from srcset if still empty
+            if ($src === '' && $node->getAttribute('srcset')) {
+                $srcset = explode(',', $node->getAttribute('srcset'));
+                $firstEntry = trim($srcset[0] ?? '');
+                $src = explode(' ', $firstEntry)[0] ?? '';
+            }
             if ($src === '' || str_starts_with($src, 'data:')) {
                 continue;
             }
@@ -379,8 +394,11 @@ class PageParser
     }
 
     /**
-     * Flesch-Kincaid Reading Ease score.
-     * Returns null if the text is too short to be meaningful.
+     * Readability score based on average sentence length and word complexity.
+     * Uses a simplified formula that works across languages (not English-only Flesch-Kincaid).
+     *
+     * Score 0-100: higher = easier to read.
+     * Based on: avg sentence length (shorter = easier) and avg word length (shorter = easier).
      */
     private function computeReadability(string $text, int $wordCount): ?float
     {
@@ -388,35 +406,31 @@ class PageParser
             return null;
         }
 
-        // Count sentences (split on . ! ?)
-        $sentences = preg_split('/[.!?]+/', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $sentenceCount = count($sentences);
+        // Count sentences (split on . ! ? and Romanian-specific endings)
+        $sentences = preg_split('/[.!?]+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $sentenceCount = max(1, count($sentences));
 
-        if ($sentenceCount === 0) {
-            return null;
-        }
+        $avgSentenceLength = $wordCount / $sentenceCount;
 
-        // Count syllables across all words
-        $words = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $totalSyllables = 0;
-
+        // Average word length (works for any language)
+        $words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $totalChars = 0;
         foreach ($words as $word) {
-            $totalSyllables += $this->countSyllables($word);
+            $totalChars += mb_strlen(preg_replace('/[^\p{L}]/u', '', $word) ?? '');
         }
+        $avgWordLength = $wordCount > 0 ? $totalChars / $wordCount : 0;
 
-        if ($wordCount === 0) {
-            return null;
-        }
+        // Score: penalize long sentences and long words
+        // Base 100, -1 per word over 15 avg sentence length, -5 per char over 5 avg word length
+        $score = 100
+            - max(0, ($avgSentenceLength - 15) * 1.5)
+            - max(0, ($avgWordLength - 5) * 8);
 
-        $score = 206.835
-            - (1.015 * ($wordCount / $sentenceCount))
-            - (84.6 * ($totalSyllables / $wordCount));
-
-        return round($score, 2);
+        return round(max(0, min(100, $score)), 1);
     }
 
     /**
-     * Simple vowel-group syllable counter.
+     * Simple vowel-group syllable counter (used for English fallback).
      */
     private function countSyllables(string $word): int
     {

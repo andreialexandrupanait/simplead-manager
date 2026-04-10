@@ -101,6 +101,9 @@ class SiteCrawlerService
                 $depth = $queue[$url];
                 unset($queue[$url]);
 
+                // Normalize URL before visited check (strip fragment, trailing slash)
+                $url = $this->normalizeUrlForCrawl($url);
+
                 // Skip if already visited
                 if (isset($visited[$url])) {
                     continue;
@@ -163,19 +166,26 @@ class SiteCrawlerService
 
                 $isHtml = str_contains(strtolower($contentType), 'text/html');
 
+                // Use the final URL after redirects for storage and parsing
+                $resolvedUrl = $finalUrl ?: $url;
+
+                // Mark final URL as visited too (prevent re-crawl after redirect)
+                if ($resolvedUrl !== $url) {
+                    $visited[$this->normalizeUrlForCrawl($resolvedUrl)] = true;
+                }
+
                 $seoData = [];
-                $newInternalUrls = [];
 
                 if ($isHtml && $statusCode >= 200 && $statusCode < 300) {
-                    $seoData = $pageParser->parse($finalUrl ?: $url, $response->body(), $siteHost);
+                    $seoData = $pageParser->parse($resolvedUrl, $response->body(), $siteHost);
 
                     // Enqueue discovered internal links (within depth limit)
                     if ($depth < $maxDepth) {
                         foreach ($seoData['internal_links'] ?? [] as $link) {
                             $linkUrl = $link['url'] ?? '';
-                            if ($linkUrl !== '' && ! isset($visited[$linkUrl]) && ! isset($queue[$linkUrl])) {
-                                $queue[$linkUrl] = $depth + 1;
-                                $newInternalUrls[] = $linkUrl;
+                            $normalizedLinkUrl = $this->normalizeUrlForCrawl($linkUrl);
+                            if ($normalizedLinkUrl !== '' && ! isset($visited[$normalizedLinkUrl]) && ! isset($queue[$normalizedLinkUrl])) {
+                                $queue[$normalizedLinkUrl] = $depth + 1;
                                 $pagesFound++;
                             }
                         }
@@ -184,7 +194,7 @@ class SiteCrawlerService
 
                 CrawledPage::create(array_merge([
                     'site_crawl_id' => $crawl->id,
-                    'url' => $url,
+                    'url' => $resolvedUrl,
                     'status_code' => $statusCode,
                     'content_type' => $contentType ? mb_substr($contentType, 0, 255) : null,
                     'response_time_ms' => $responseTimeMs,
@@ -195,6 +205,7 @@ class SiteCrawlerService
                     'redirect_status_code' => $redirectStatusCode,
                     'title' => null,
                     'title_length' => 0,
+                    'meta_description' => null,
                     'meta_desc_length' => 0,
                     'canonical_self_ref' => false,
                     'h1_tags' => [],
@@ -207,8 +218,13 @@ class SiteCrawlerService
                     'internal_links_count' => 0,
                     'external_links' => [],
                     'external_links_count' => 0,
+                    'images' => [],
                     'images_count' => 0,
                     'images_without_alt' => 0,
+                    'scripts' => [],
+                    'stylesheets' => [],
+                    'is_https' => str_starts_with($resolvedUrl, 'https://'),
+                    'has_mixed_content' => false,
                     'structured_data_types' => [],
                     'hreflang' => [],
                     'issues' => [],
@@ -433,6 +449,33 @@ class SiteCrawlerService
         $normalise = static fn (string $h): string => preg_replace('/^www\./', '', strtolower($h)) ?? strtolower($h);
 
         return $normalise($linkHost) === $normalise($siteHost);
+    }
+
+    /**
+     * Normalize URL for crawl queue: strip fragment, normalize trailing slash, lowercase host.
+     */
+    private function normalizeUrlForCrawl(string $url): string
+    {
+        // Strip fragment
+        $url = preg_replace('/#.*$/', '', $url) ?? $url;
+
+        // Parse and rebuild with lowercase host
+        $parsed = parse_url($url);
+        if (! $parsed || ! isset($parsed['host'])) {
+            return rtrim($url, '/');
+        }
+
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = strtolower($parsed['host']);
+        $path = $parsed['path'] ?? '/';
+        $query = isset($parsed['query']) ? '?'.$parsed['query'] : '';
+
+        // Normalize trailing slash on path (keep / for root, strip for others)
+        if ($path !== '/') {
+            $path = rtrim($path, '/');
+        }
+
+        return $scheme.'://'.$host.$path.$query;
     }
 
     /**

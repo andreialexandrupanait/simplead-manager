@@ -18,7 +18,7 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 1800;
+    public int $timeout = 7200; // 2 hours — large crawls need time
 
     public int $tries = 1;
 
