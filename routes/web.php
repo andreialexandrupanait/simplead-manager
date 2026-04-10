@@ -136,15 +136,19 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // SEO — global views
     Route::prefix('/seo')->group(function () {
         Route::get('/', Seo\SeoDashboard::class)->name('seo.index');
-        Route::get('/crawler', Seo\CrawlerIndex::class)->name('seo.crawler.index');
-        Route::get('/crawler/create', Seo\CrawlerCreate::class)->name('seo.crawler.create');
-        Route::get('/crawler/{siteCrawl}', Seo\CrawlerResults::class)->name('seo.crawler.show');
-        Route::get('/crawler/{siteCrawl}/compare/{compareTo}', Seo\CrawlerComparison::class)->name('seo.crawler.compare');
         Route::get('/content', Seo\ContentIndex::class)->name('seo.content.index');
         Route::get('/content/create', Seo\ContentEditor::class)->name('seo.content.create');
         Route::get('/content/{seoContent}/edit', Seo\ContentEditor::class)->name('seo.content.edit');
         Route::get('/keywords', Seo\KeywordResearch::class)->name('seo.keywords.index');
         Route::get('/calendar', Seo\ContentCalendar::class)->name('seo.calendar');
+    });
+
+    // Crawler — separate module
+    Route::prefix('/crawler')->group(function () {
+        Route::get('/', Seo\CrawlerIndex::class)->name('crawler.index');
+        Route::get('/create', Seo\CrawlerCreate::class)->name('crawler.create');
+        Route::get('/{siteCrawl}', Seo\CrawlerResults::class)->name('crawler.show');
+        Route::get('/{siteCrawl}/compare/{compareTo}', Seo\CrawlerComparison::class)->name('crawler.compare');
     });
 
     // Uptime — global view

@@ -1,6 +1,6 @@
 <div>
     <x-ui.page-header title="{{ __('SEO Crawler') }}" subtitle="{{ __('All crawl sessions across sites') }}">
-        <a href="{{ route('seo.crawler.create') }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
+        <a href="{{ route('crawler.create') }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
             <x-dynamic-component component="icons.plus" class="h-4 w-4" />
             {{ __('New Crawl') }}
         </a>
@@ -92,7 +92,7 @@
                                     {{ $crawl->created_at->format('M d, H:i') }}
                                 </td>
                                 <td class="px-4 py-2.5 text-right space-x-2">
-                                    <a href="{{ route('seo.crawler.show', $crawl) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">{{ __('View') }}</a>
+                                    <a href="{{ route('crawler.show', $crawl) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800">{{ __('View') }}</a>
                                     @if(!$crawl->isRunning())
                                         <button wire:click="deleteCrawl({{ $crawl->id }})" wire:confirm="{{ __('Delete this crawl?') }}" class="text-xs font-medium text-red-600 hover:text-red-800">{{ __('Delete') }}</button>
                                     @endif

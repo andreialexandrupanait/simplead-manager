@@ -41,7 +41,7 @@ class SeoCrawlResults extends Component
             : $site->latestSiteCrawl;
 
         if ($crawl) {
-            $this->redirect(route('seo.crawler.show', $crawl), navigate: true);
+            $this->redirect(route('crawler.show', $crawl), navigate: true);
 
             return;
         }

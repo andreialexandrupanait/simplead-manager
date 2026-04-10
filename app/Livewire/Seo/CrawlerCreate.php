@@ -126,7 +126,7 @@ class CrawlerCreate extends Component
     {
         $crawlId = $this->crawlId;
         if ($crawlId) {
-            $this->redirect(route('seo.crawler.show', $crawlId), navigate: true);
+            $this->redirect(route('crawler.show', $crawlId), navigate: true);
         }
     }
 

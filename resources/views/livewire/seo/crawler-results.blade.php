@@ -3,7 +3,7 @@
     <nav class="hidden w-52 shrink-0 lg:block">
         <div class="sticky top-4 space-y-5">
             <div>
-                <a href="{{ route('seo.crawler.index') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+                <a href="{{ route('crawler.index') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
                     <x-dynamic-component component="icons.arrow-left" class="h-3 w-3" /> {{ __('All Crawls') }}
                 </a>
                 <h2 class="text-sm font-semibold text-gray-900 truncate" title="{{ $crawlLabel }}">{{ \Illuminate\Support\Str::limit($crawlLabel, 25) }}</h2>

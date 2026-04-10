@@ -1,6 +1,6 @@
 <div>
     <x-ui.page-header title="{{ __('Crawl Comparison') }}" subtitle="{{ $siteCrawl->site?->name ?? '' }}">
-        <a href="{{ route('seo.crawler.show', $siteCrawl) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+        <a href="{{ route('crawler.show', $siteCrawl) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
             {{ __('Back to Results') }}
         </a>
     </x-ui.page-header>

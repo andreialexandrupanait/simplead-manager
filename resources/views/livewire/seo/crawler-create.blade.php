@@ -59,7 +59,7 @@
             </div>
 
             <div class="flex items-center justify-end gap-3">
-                <a href="{{ route('seo.crawler.index') }}" wire:navigate class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
+                <a href="{{ route('crawler.index') }}" wire:navigate class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
                 <x-ui.button variant="primary" wire:click="startCrawl" wire:loading.attr="disabled" wire:target="startCrawl">
                     <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="startCrawl" />
                     {{ __('Start Crawl') }}

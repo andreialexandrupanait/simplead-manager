@@ -52,14 +52,6 @@
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
-        :href="route('seo.crawler.index')"
-        icon="globe"
-        :active="request()->routeIs('seo.crawler.*')"
-    >
-        {{ __('Crawler') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
         :href="route('seo.content.index')"
         icon="file-text"
         :active="request()->routeIs('seo.content.*')"
@@ -81,6 +73,24 @@
         :active="request()->routeIs('seo.calendar')"
     >
         {{ __('Calendar') }}
+    </x-sidebar.sidebar-item>
+</x-sidebar.sidebar-section>
+
+<x-sidebar.sidebar-section :title="__('Crawler')">
+    <x-sidebar.sidebar-item
+        :href="route('crawler.index')"
+        icon="globe"
+        :active="request()->routeIs('crawler.index') || request()->routeIs('crawler.show') || request()->routeIs('crawler.compare')"
+    >
+        {{ __('All Crawls') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('crawler.create')"
+        icon="plus"
+        :active="request()->routeIs('crawler.create')"
+    >
+        {{ __('New Crawl') }}
     </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
