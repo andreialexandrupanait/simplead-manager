@@ -8,13 +8,12 @@ use App\Models\SiteCrawl;
 use App\Services\Crawler\SiteCrawlerService;
 use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
+class RunSiteCrawl implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -22,26 +21,15 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
-    public int $uniqueFor = 7200; // Lock auto-expires after 2h (prevents stuck locks)
-
     public function __construct(
         public SiteCrawl $crawl,
     ) {
         $this->onQueue('default');
     }
 
-    public function uniqueId(): string
-    {
-        if ($this->crawl->site_id) {
-            return 'site-crawl-'.$this->crawl->site_id;
-        }
-
-        return 'standalone-crawl-'.$this->crawl->id;
-    }
-
     public function handle(): void
     {
-        $trackerKey = $this->uniqueId();
+        $trackerKey = 'crawl-'.$this->crawl->id;
 
         JobTracker::start($trackerKey, 'Initialising site crawl...');
 
@@ -61,7 +49,7 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
         ]);
 
         JobTracker::fail(
-            $this->uniqueId(),
+            'crawl-'.$this->crawl->id,
             'Site crawl failed: '.($exception?->getMessage() ?? 'Unknown error'),
         );
     }

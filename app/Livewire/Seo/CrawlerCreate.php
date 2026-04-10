@@ -36,9 +36,7 @@ class CrawlerCreate extends Component
 
     protected function jobTrackingKeys(): array
     {
-        $key = $this->siteId ? 'site-crawl-'.$this->siteId : ($this->crawlId ? 'standalone-crawl-'.$this->crawlId : '');
-
-        return ['crawl' => $key];
+        return ['crawl' => $this->crawlId ? 'crawl-'.$this->crawlId : ''];
     }
 
     #[Computed]
@@ -87,6 +85,19 @@ class CrawlerCreate extends Component
         $this->validate();
 
         $site = $this->siteId ? Site::find($this->siteId) : null;
+
+        // Check if there's already a running crawl for this site
+        if ($site) {
+            $running = SiteCrawl::where('site_id', $site->id)
+                ->whereIn('status', [SiteCrawl::STATUS_PENDING, SiteCrawl::STATUS_RUNNING])
+                ->exists();
+
+            if ($running) {
+                $this->dispatch('notify', type: 'error', message: __('A crawl is already running for this site.'));
+
+                return;
+            }
+        }
 
         $startUrl = rtrim(trim($this->urlInput), '/');
 

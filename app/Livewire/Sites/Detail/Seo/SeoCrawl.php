@@ -95,12 +95,6 @@ class SeoCrawl extends Component
                 'completed_at' => now(),
             ]);
 
-            // Release the unique job lock so new crawls can start
-            $lockKey = $crawl->site_id
-                ? 'site-crawl-'.$crawl->site_id
-                : 'standalone-crawl-'.$crawl->id;
-            \Illuminate\Support\Facades\Cache::forget('laravel_unique_job:'.\App\Jobs\RunSiteCrawl::class.':'.$lockKey);
-
             unset($this->latestCrawl, $this->recentCrawls, $this->isRunning);
         }
     }
