@@ -6,7 +6,7 @@ namespace App\Livewire\Seo;
 
 use App\Models\CrawledPage;
 use App\Models\SiteCrawl;
-use Illuminate\Database\Eloquent\Builder;
+use App\Services\Crawler\CrawlComparisonService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -17,23 +17,28 @@ class CrawlerResults extends Component
 
     public SiteCrawl $siteCrawl;
 
-    // Bottom tab bar: data view
     public string $dataTab = 'internal';
 
-    // Right panel: analysis view
     public string $analysisTab = 'overview';
 
-    // Table state
     public string $search = '';
 
     public string $sortBy = 'url';
 
     public string $sortDir = 'asc';
 
-    // Page detail
     public ?int $selectedPageId = null;
 
-    /** Data tab definitions: key => [label, icon_hint] */
+    // Issues filtering
+    public string $issuesSeverityFilter = '';
+
+    public string $issuesSearch = '';
+
+    // Edit mode for drawer
+    public string $editTitle = '';
+
+    public string $editMetaDescription = '';
+
     public const DATA_TABS = [
         'internal' => 'Internal',
         'external' => 'External',
@@ -48,6 +53,8 @@ class CrawlerResults extends Component
         'canonicals' => 'Canonicals',
         'directives' => 'Directives',
         'hreflang' => 'Hreflang',
+        'social_media' => 'Social Media',
+        'redirects' => 'Redirects',
         'javascript' => 'JavaScript',
         'css' => 'CSS',
         'links' => 'Links',
@@ -63,13 +70,34 @@ class CrawlerResults extends Component
         'segments' => 'Segments',
     ];
 
+    public const COLUMN_LABELS = [
+        'url' => 'URL', 'page_url' => 'Page', 'source' => 'Source',
+        'status_code' => 'Status', 'title' => 'Title', 'title_length' => 'Title Len',
+        'meta_description' => 'Meta Description', 'meta_desc_length' => 'Desc Len',
+        'h1_tags' => 'H1', 'h1_count' => 'H1 Count', 'h2_count' => 'H2', 'h3_count' => 'H3',
+        'word_count' => 'Words', 'readability_score' => 'Readability',
+        'canonical_url' => 'Canonical', 'canonical_self_ref' => 'Self Ref',
+        'meta_robots' => 'Meta Robots', 'x_robots_tag' => 'X-Robots',
+        'hreflang' => 'Hreflang', 'structured_data_types' => 'Schema Types',
+        'response_time_ms' => 'Time (ms)', 'content_type' => 'Content Type',
+        'content_length' => 'Size', 'internal_links_count' => 'Inlinks',
+        'external_links_count' => 'Outlinks', 'images_count' => 'Images',
+        'images_without_alt' => 'No Alt', 'depth' => 'Depth',
+        'redirect_url' => 'Redirect To', 'redirect_status_code' => 'Redir Code',
+        'is_https' => 'HTTPS', 'has_mixed_content' => 'Mixed Content',
+        'anchor' => 'Anchor', 'type' => 'Type', 'nofollow' => 'Nofollow',
+        'alt' => 'Alt Text', 'width' => 'W', 'height' => 'H', 'media' => 'Media',
+        'og_title' => 'OG Title', 'og_description' => 'OG Desc', 'og_image' => 'OG Image',
+        'content_quality' => 'Quality',
+    ];
+
     public function mount(SiteCrawl $siteCrawl): void
     {
         $this->siteCrawl = $siteCrawl;
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // DATA TAB QUERIES — each tab returns paginated or collected data
+    // DATA TAB QUERIES
     // ═══════════════════════════════════════════════════════════════════
 
     #[Computed]
@@ -81,7 +109,9 @@ class CrawlerResults extends Component
             'javascript' => $this->queryScripts(),
             'css' => $this->queryStylesheets(),
             'links' => $this->queryLinks(),
-            'sitemaps' => [], // handled by sitemapComparison computed property
+            'sitemaps' => [],
+            'social_media' => $this->queryPages(),
+            'redirects' => $this->queryPages(),
             default => $this->queryPages(),
         };
     }
@@ -103,6 +133,8 @@ class CrawlerResults extends Component
             'hreflang' => ['url', 'hreflang', 'status_code'],
             'structured_data' => ['url', 'structured_data_types', 'status_code'],
             'security' => ['url', 'is_https', 'has_mixed_content', 'status_code'],
+            'social_media' => ['url', 'og_title', 'og_description', 'og_image', 'status_code'],
+            'redirects' => ['url', 'status_code', 'redirect_url', 'redirect_status_code'],
             'javascript' => ['page_url', 'url', 'type'],
             'css' => ['page_url', 'url', 'media'],
             'links' => ['source', 'url', 'anchor', 'type', 'nofollow'],
@@ -112,56 +144,10 @@ class CrawlerResults extends Component
         };
     }
 
-    /** Column display labels */
-    public const COLUMN_LABELS = [
-        'url' => 'URL',
-        'page_url' => 'Page',
-        'source' => 'Source',
-        'status_code' => 'Status',
-        'title' => 'Title',
-        'title_length' => 'Title Len',
-        'meta_description' => 'Meta Description',
-        'meta_desc_length' => 'Desc Len',
-        'h1_tags' => 'H1',
-        'h1_count' => 'H1 Count',
-        'h2_count' => 'H2',
-        'h3_count' => 'H3',
-        'word_count' => 'Words',
-        'readability_score' => 'Readability',
-        'canonical_url' => 'Canonical',
-        'canonical_self_ref' => 'Self Ref',
-        'meta_robots' => 'Meta Robots',
-        'x_robots_tag' => 'X-Robots',
-        'hreflang' => 'Hreflang',
-        'structured_data_types' => 'Schema Types',
-        'response_time_ms' => 'Time (ms)',
-        'content_type' => 'Content Type',
-        'content_length' => 'Size',
-        'internal_links_count' => 'Inlinks',
-        'external_links_count' => 'Outlinks',
-        'images_count' => 'Images',
-        'images_without_alt' => 'No Alt',
-        'depth' => 'Depth',
-        'redirect_url' => 'Redirect To',
-        'redirect_status_code' => 'Redir Code',
-        'is_https' => 'HTTPS',
-        'has_mixed_content' => 'Mixed Content',
-        'anchor' => 'Anchor',
-        'type' => 'Type',
-        'nofollow' => 'Nofollow',
-        'alt' => 'Alt Text',
-        'width' => 'W',
-        'height' => 'H',
-        'media' => 'Media',
-        'og_title' => 'OG Title',
-        'og_description' => 'OG Desc',
-    ];
-
     private function queryPages()
     {
         $query = $this->siteCrawl->pages();
 
-        // Apply tab-specific filters
         match ($this->dataTab) {
             'internal' => $query->where('content_type', 'ilike', '%text/html%'),
             'response_codes' => null,
@@ -174,6 +160,8 @@ class CrawlerResults extends Component
             'directives' => $query->where('content_type', 'ilike', '%text/html%'),
             'hreflang' => $query->where('content_type', 'ilike', '%text/html%')->whereRaw("jsonb_array_length(COALESCE(hreflang, '[]'::jsonb)) > 0"),
             'structured_data' => $query->where('content_type', 'ilike', '%text/html%')->whereRaw("jsonb_array_length(COALESCE(structured_data_types, '[]'::jsonb)) > 0"),
+            'social_media' => $query->where('content_type', 'ilike', '%text/html%'),
+            'redirects' => $query->whereBetween('status_code', [300, 399]),
             'security' => null,
             default => null,
         };
@@ -182,8 +170,8 @@ class CrawlerResults extends Component
             $query->where('url', 'ilike', "%{$this->search}%");
         }
 
-        $sort = in_array($this->sortBy, ['url', 'status_code', 'title', 'title_length', 'meta_desc_length', 'h1_count', 'h2_count', 'word_count', 'response_time_ms', 'depth', 'readability_score', 'content_length', 'internal_links_count', 'external_links_count', 'images_count'])
-            ? $this->sortBy : 'url';
+        $sortable = ['url', 'status_code', 'title', 'title_length', 'meta_desc_length', 'h1_count', 'h2_count', 'word_count', 'response_time_ms', 'depth', 'readability_score', 'content_length', 'internal_links_count', 'external_links_count', 'images_count'];
+        $sort = in_array($this->sortBy, $sortable) ? $this->sortBy : 'url';
 
         return $query->orderBy($sort, $this->sortDir)->paginate(100);
     }
@@ -191,20 +179,13 @@ class CrawlerResults extends Component
     private function queryExternal(): array
     {
         $pages = $this->siteCrawl->pages()
-            ->whereNotNull('external_links')
             ->whereRaw("jsonb_array_length(COALESCE(external_links, '[]'::jsonb)) > 0")
-            ->limit(200)
-            ->get(['url', 'external_links']);
+            ->limit(200)->get(['url', 'external_links']);
 
         $links = [];
         foreach ($pages as $page) {
             foreach ($page->external_links ?? [] as $link) {
-                $links[] = [
-                    'source' => $page->url,
-                    'url' => $link['url'] ?? '',
-                    'anchor' => $link['anchor'] ?? '',
-                    'nofollow' => $link['nofollow'] ?? false,
-                ];
+                $links[] = ['source' => $page->url, 'url' => $link['url'] ?? '', 'anchor' => $link['anchor'] ?? '', 'nofollow' => $link['nofollow'] ?? false];
             }
         }
 
@@ -213,21 +194,11 @@ class CrawlerResults extends Component
 
     private function queryImages(): array
     {
-        $pages = $this->siteCrawl->pages()
-            ->where('images_count', '>', 0)
-            ->limit(200)
-            ->get(['url', 'images']);
-
+        $pages = $this->siteCrawl->pages()->where('images_count', '>', 0)->limit(200)->get(['url', 'images']);
         $images = [];
         foreach ($pages as $page) {
             foreach ($page->images ?? [] as $img) {
-                $images[] = [
-                    'page_url' => $page->url,
-                    'url' => $img['url'] ?? '',
-                    'alt' => $img['alt'] ?? '',
-                    'width' => $img['width'] ?? null,
-                    'height' => $img['height'] ?? null,
-                ];
+                $images[] = ['page_url' => $page->url, 'url' => $img['url'] ?? '', 'alt' => $img['alt'] ?? '', 'width' => $img['width'] ?? null, 'height' => $img['height'] ?? null];
             }
         }
 
@@ -236,19 +207,11 @@ class CrawlerResults extends Component
 
     private function queryScripts(): array
     {
-        $pages = $this->siteCrawl->pages()
-            ->whereRaw("jsonb_array_length(COALESCE(scripts, '[]'::jsonb)) > 0")
-            ->limit(200)
-            ->get(['url', 'scripts']);
-
+        $pages = $this->siteCrawl->pages()->whereRaw("jsonb_array_length(COALESCE(scripts, '[]'::jsonb)) > 0")->limit(200)->get(['url', 'scripts']);
         $scripts = [];
         foreach ($pages as $page) {
             foreach ($page->scripts ?? [] as $s) {
-                $scripts[] = [
-                    'page_url' => $page->url,
-                    'url' => $s['url'] ?? '',
-                    'type' => $s['type'] ?? 'text/javascript',
-                ];
+                $scripts[] = ['page_url' => $page->url, 'url' => $s['url'] ?? '', 'type' => $s['type'] ?? 'text/javascript'];
             }
         }
 
@@ -257,19 +220,11 @@ class CrawlerResults extends Component
 
     private function queryStylesheets(): array
     {
-        $pages = $this->siteCrawl->pages()
-            ->whereRaw("jsonb_array_length(COALESCE(stylesheets, '[]'::jsonb)) > 0")
-            ->limit(200)
-            ->get(['url', 'stylesheets']);
-
+        $pages = $this->siteCrawl->pages()->whereRaw("jsonb_array_length(COALESCE(stylesheets, '[]'::jsonb)) > 0")->limit(200)->get(['url', 'stylesheets']);
         $sheets = [];
         foreach ($pages as $page) {
             foreach ($page->stylesheets ?? [] as $s) {
-                $sheets[] = [
-                    'page_url' => $page->url,
-                    'url' => $s['url'] ?? '',
-                    'media' => $s['media'] ?? 'all',
-                ];
+                $sheets[] = ['page_url' => $page->url, 'url' => $s['url'] ?? '', 'media' => $s['media'] ?? 'all'];
             }
         }
 
@@ -278,10 +233,7 @@ class CrawlerResults extends Component
 
     private function queryLinks(): array
     {
-        $pages = $this->siteCrawl->pages()
-            ->limit(150)
-            ->get(['url', 'internal_links', 'external_links']);
-
+        $pages = $this->siteCrawl->pages()->limit(150)->get(['url', 'internal_links', 'external_links']);
         $links = [];
         foreach ($pages as $page) {
             foreach ($page->internal_links ?? [] as $link) {
@@ -306,6 +258,22 @@ class CrawlerResults extends Component
     }
 
     #[Computed]
+    public function seoScore(): int
+    {
+        $s = $this->summary;
+        $score = 100;
+        $score -= min(30, ($s['broken_links'] ?? 0) * 5);
+        $score -= min(20, ($s['missing_titles'] ?? 0) * 3);
+        $score -= min(15, ($s['missing_descriptions'] ?? 0) * 2);
+        $score -= min(10, ($s['missing_h1'] ?? 0) * 2);
+        $score -= min(10, ($s['duplicate_titles'] ?? 0) * 2);
+        $score -= min(10, ($s['thin_content'] ?? 0));
+        $score -= min(5, ($s['orphan_pages'] ?? 0));
+
+        return max(0, $score);
+    }
+
+    #[Computed]
     public function overviewStats(): array
     {
         $query = $this->siteCrawl->pages();
@@ -316,25 +284,49 @@ class CrawlerResults extends Component
             ->where(fn ($q) => $q->whereNull('meta_robots')->orWhere('meta_robots', 'not ilike', '%noindex%'))
             ->count();
 
-        // Quick issue counts for overview
         $q2 = $this->siteCrawl->pages()->where('content_type', 'ilike', '%text/html%')->whereBetween('status_code', [200, 299]);
-        $noTitle = (clone $q2)->where(fn ($q) => $q->whereNull('title')->orWhere('title', ''))->count();
-        $noDesc = (clone $q2)->where(fn ($q) => $q->whereNull('meta_description')->orWhere('meta_description', ''))->count();
-        $noH1 = (clone $q2)->where('h1_count', 0)->count();
-        $multiH1 = (clone $q2)->where('h1_count', '>', 1)->count();
-        $thinContent = (clone $q2)->where('word_count', '<', 300)->count();
-        $slowPages = (clone $query)->where('response_time_ms', '>', 2000)->count();
 
         return [
             'total' => $total,
             'indexable' => $indexable,
-            'no_title' => $noTitle,
-            'no_desc' => $noDesc,
-            'no_h1' => $noH1,
-            'multi_h1' => $multiH1,
-            'thin_content' => $thinContent,
-            'slow_pages' => $slowPages,
+            'no_title' => (clone $q2)->where(fn ($q) => $q->whereNull('title')->orWhere('title', ''))->count(),
+            'no_desc' => (clone $q2)->where(fn ($q) => $q->whereNull('meta_description')->orWhere('meta_description', ''))->count(),
+            'no_h1' => (clone $q2)->where('h1_count', 0)->count(),
+            'multi_h1' => (clone $q2)->where('h1_count', '>', 1)->count(),
+            'thin_content' => (clone $q2)->where('word_count', '<', 300)->count(),
+            'slow_pages' => (clone $query)->where('response_time_ms', '>', 2000)->count(),
         ];
+    }
+
+    #[Computed]
+    public function homepageSerpPreview(): array
+    {
+        $homepage = $this->siteCrawl->pages()->where('depth', 0)->first();
+        if (! $homepage) {
+            return [];
+        }
+
+        return [
+            'url' => $homepage->url,
+            'title' => $homepage->title ?? 'No title',
+            'description' => $homepage->meta_description ?? 'No meta description set for this page.',
+        ];
+    }
+
+    #[Computed]
+    public function crawlComparison(): ?array
+    {
+        $previousCrawl = SiteCrawl::where('site_id', $this->siteCrawl->site_id)
+            ->where('id', '<', $this->siteCrawl->id)
+            ->where('status', SiteCrawl::STATUS_COMPLETED)
+            ->latest()
+            ->first();
+
+        if (! $previousCrawl) {
+            return null;
+        }
+
+        return app(CrawlComparisonService::class)->compare($previousCrawl, $this->siteCrawl);
     }
 
     #[Computed]
@@ -346,28 +338,19 @@ class CrawlerResults extends Component
         }
 
         $crawledUrls = $this->siteCrawl->pages()->pluck('url')->all();
-
-        // Normalize for comparison
         $normalizeUrl = fn (string $url) => rtrim(strtolower($url), '/');
         $sitemapNorm = array_map($normalizeUrl, $sitemapUrls);
         $crawledNorm = array_map($normalizeUrl, $crawledUrls);
-
-        $sitemapSet = array_flip($sitemapNorm);
-        $crawledSet = array_flip($crawledNorm);
 
         $inBoth = array_values(array_intersect($sitemapNorm, $crawledNorm));
         $onlySitemap = array_values(array_diff($sitemapNorm, $crawledNorm));
         $onlyCrawl = array_values(array_diff($crawledNorm, $sitemapNorm));
 
         return [
-            'found' => true,
-            'sitemap_count' => count($sitemapUrls),
-            'in_both' => array_slice($inBoth, 0, 200),
-            'in_both_count' => count($inBoth),
-            'only_sitemap' => array_slice($onlySitemap, 0, 200),
-            'only_sitemap_count' => count($onlySitemap),
-            'only_crawl' => array_slice($onlyCrawl, 0, 200),
-            'only_crawl_count' => count($onlyCrawl),
+            'found' => true, 'sitemap_count' => count($sitemapUrls),
+            'in_both' => array_slice($inBoth, 0, 200), 'in_both_count' => count($inBoth),
+            'only_sitemap' => array_slice($onlySitemap, 0, 200), 'only_sitemap_count' => count($onlySitemap),
+            'only_crawl' => array_slice($onlyCrawl, 0, 200), 'only_crawl_count' => count($onlyCrawl),
         ];
     }
 
@@ -383,10 +366,19 @@ class CrawlerResults extends Component
             foreach ($page->issues ?? [] as $issue) {
                 $severity = $issue['severity'] ?? 'info';
                 $type = $issue['type'] ?? 'unknown';
+
+                // Apply severity filter
+                if ($this->issuesSeverityFilter && $severity !== $this->issuesSeverityFilter) {
+                    continue;
+                }
+
+                // Apply search filter
+                if ($this->issuesSearch && ! str_contains(strtolower($page->url), strtolower($this->issuesSearch))) {
+                    continue;
+                }
+
                 $grouped[$severity][$type][] = [
-                    'url' => $page->url,
-                    'message' => $issue['message'] ?? '',
-                    'recommendation' => $issue['recommendation'] ?? null,
+                    'url' => $page->url, 'message' => $issue['message'] ?? '', 'recommendation' => $issue['recommendation'] ?? null,
                 ];
             }
         }
@@ -438,58 +430,56 @@ class CrawlerResults extends Component
         if ($total === 0) {
             return 0;
         }
-
         $offset = (int) floor($total * $p / 100);
 
-        return (int) ($this->siteCrawl->pages()
-            ->orderBy('response_time_ms')
-            ->offset(min($offset, $total - 1))
-            ->limit(1)
-            ->value('response_time_ms') ?? 0);
+        return (int) ($this->siteCrawl->pages()->orderBy('response_time_ms')->offset(min($offset, $total - 1))->limit(1)->value('response_time_ms') ?? 0);
     }
 
     #[Computed]
     public function segments(): array
     {
-        $patterns = [
-            'Homepage' => '^[^/]*://[^/]+/?$',
-            '/blog/*' => '/blog/',
-            '/product/*' => '/product/',
-            '/category/*' => '/categor',
-            '/tag/*' => '/tag/',
-            '/page/*' => '/page/',
-        ];
+        $pages = $this->siteCrawl->pages()->get(['url', 'word_count', 'status_code', 'response_time_ms']);
+        $segments = [];
 
-        $result = [];
-        foreach ($patterns as $label => $pattern) {
-            $count = $this->siteCrawl->pages()
-                ->where('url', 'similar to', '%'.$pattern.'%')
-                ->count();
-            if ($count > 0) {
-                $result[$label] = $count;
+        foreach ($pages as $page) {
+            $path = parse_url($page->url, PHP_URL_PATH) ?? '/';
+            $parts = array_filter(explode('/', trim($path, '/')));
+            $segment = '/' . ($parts[0] ?? '');
+            if ($segment === '/') {
+                $segment = 'Homepage';
             }
+
+            if (! isset($segments[$segment])) {
+                $segments[$segment] = ['count' => 0, 'errors' => 0, 'total_words' => 0, 'total_time' => 0];
+            }
+            $segments[$segment]['count']++;
+            if ($page->status_code >= 400 || $page->status_code === 0) {
+                $segments[$segment]['errors']++;
+            }
+            $segments[$segment]['total_words'] += $page->word_count ?? 0;
+            $segments[$segment]['total_time'] += $page->response_time_ms ?? 0;
         }
 
-        // Catch uncategorized
-        $total = $this->siteCrawl->pages()->count();
-        $categorized = array_sum($result);
-        if ($total > $categorized) {
-            $result['Other'] = $total - $categorized;
+        // Calculate averages and sort by count
+        foreach ($segments as &$seg) {
+            $seg['avg_words'] = $seg['count'] > 0 ? round($seg['total_words'] / $seg['count']) : 0;
+            $seg['avg_time'] = $seg['count'] > 0 ? round($seg['total_time'] / $seg['count']) : 0;
         }
+        unset($seg);
 
-        return $result;
+        uasort($segments, fn ($a, $b) => $b['count'] - $a['count']);
+
+        return array_slice($segments, 0, 20, true);
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // PAGE DETAIL
+    // PAGE DETAIL + TEMPLATE SUGGESTIONS
     // ═══════════════════════════════════════════════════════════════════
 
     #[Computed]
     public function selectedPage(): ?CrawledPage
     {
-        return $this->selectedPageId
-            ? $this->siteCrawl->pages()->find($this->selectedPageId)
-            : null;
+        return $this->selectedPageId ? $this->siteCrawl->pages()->find($this->selectedPageId) : null;
     }
 
     #[Computed]
@@ -501,9 +491,101 @@ class CrawlerResults extends Component
 
         return $this->siteCrawl->pages()
             ->whereRaw("internal_links::text ILIKE ?", ["%{$this->selectedPage->url}%"])
-            ->limit(50)
-            ->pluck('url')
-            ->all();
+            ->limit(50)->pluck('url')->all();
+    }
+
+    #[Computed]
+    public function templateSuggestions(): array
+    {
+        $page = $this->selectedPage;
+        if (! $page) {
+            return [];
+        }
+
+        $suggestions = [];
+        $siteName = $this->siteCrawl->site?->name ?? parse_url($page->url, PHP_URL_HOST) ?? '';
+
+        // Title suggestion from H1 or URL
+        if (! $page->title || mb_strlen($page->title) < 10) {
+            $h1 = $page->h1_tags[0] ?? null;
+            $urlPath = parse_url($page->url, PHP_URL_PATH) ?? '';
+            $pathWords = ucwords(str_replace(['-', '_', '/'], ' ', trim($urlPath, '/')));
+
+            if ($h1) {
+                $suggestions['title'] = mb_substr("{$h1} | {$siteName}", 0, 60);
+            } elseif ($pathWords) {
+                $suggestions['title'] = mb_substr("{$pathWords} | {$siteName}", 0, 60);
+            }
+        }
+
+        // Meta description suggestion from first sentence of content
+        if (! $page->meta_description || mb_strlen($page->meta_description) < 20) {
+            // Use OG description as base if available
+            if ($page->og_description) {
+                $suggestions['meta_description'] = mb_substr($page->og_description, 0, 160);
+            }
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * Calculate content quality score for a page (0-100).
+     */
+    public static function contentQualityScore(CrawledPage $page): int
+    {
+        $score = 0;
+
+        // Word count (max 25pts)
+        if ($page->word_count >= 1000) {
+            $score += 25;
+        } elseif ($page->word_count >= 500) {
+            $score += 20;
+        } elseif ($page->word_count >= 300) {
+            $score += 10;
+        }
+
+        // Title (max 20pts)
+        if ($page->title && $page->title_length >= 30 && $page->title_length <= 60) {
+            $score += 20;
+        } elseif ($page->title) {
+            $score += 10;
+        }
+
+        // Meta description (max 15pts)
+        if ($page->meta_description && $page->meta_desc_length >= 80 && $page->meta_desc_length <= 160) {
+            $score += 15;
+        } elseif ($page->meta_description) {
+            $score += 7;
+        }
+
+        // H1 (max 10pts)
+        if ($page->h1_count === 1) {
+            $score += 10;
+        }
+
+        // H2 headings (max 10pts)
+        if ($page->h2_count >= 2) {
+            $score += 10;
+        } elseif ($page->h2_count >= 1) {
+            $score += 5;
+        }
+
+        // Images with alt (max 10pts)
+        if ($page->images_count > 0 && $page->images_without_alt === 0) {
+            $score += 10;
+        } elseif ($page->images_count > 0) {
+            $score += 5;
+        }
+
+        // Internal links (max 10pts)
+        if ($page->internal_links_count >= 3) {
+            $score += 10;
+        } elseif ($page->internal_links_count >= 1) {
+            $score += 5;
+        }
+
+        return min(100, $score);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -513,16 +595,16 @@ class CrawlerResults extends Component
     public function setDataTab(string $tab): void
     {
         $this->dataTab = $tab;
-        $this->analysisTab = 'overview'; // reset to table view
+        $this->analysisTab = 'overview';
         $this->resetPage();
         $this->selectedPageId = null;
-        unset($this->tableData, $this->tableColumns, $this->selectedPage, $this->selectedPageInlinks);
+        unset($this->tableData, $this->tableColumns, $this->selectedPage, $this->selectedPageInlinks, $this->templateSuggestions);
     }
 
     public function setAnalysisTab(string $tab): void
     {
         $this->analysisTab = $tab;
-        // Keep dataTab as-is — analysis views are independent
+        unset($this->issuesGrouped);
     }
 
     public function setSort(string $col): void
@@ -543,10 +625,33 @@ class CrawlerResults extends Component
         unset($this->tableData);
     }
 
+    public function updatedIssuesSeverityFilter(): void
+    {
+        unset($this->issuesGrouped);
+    }
+
+    public function updatedIssuesSearch(): void
+    {
+        unset($this->issuesGrouped);
+    }
+
     public function selectPage(?int $id): void
     {
         $this->selectedPageId = $this->selectedPageId === $id ? null : $id;
-        unset($this->selectedPage, $this->selectedPageInlinks);
+        $this->editTitle = '';
+        $this->editMetaDescription = '';
+        unset($this->selectedPage, $this->selectedPageInlinks, $this->templateSuggestions);
+    }
+
+    public function applyTemplateSuggestion(string $field): void
+    {
+        $suggestions = $this->templateSuggestions;
+        if ($field === 'title' && isset($suggestions['title'])) {
+            $this->editTitle = $suggestions['title'];
+        }
+        if ($field === 'meta_description' && isset($suggestions['meta_description'])) {
+            $this->editMetaDescription = $suggestions['meta_description'];
+        }
     }
 
     public function exportCsv()
@@ -556,7 +661,7 @@ class CrawlerResults extends Component
 
         return response()->streamDownload(function () use ($pages) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['URL', 'Status', 'Title', 'Title Length', 'Meta Description', 'Meta Desc Length', 'H1 Count', 'H2 Count', 'Word Count', 'Canonical', 'Meta Robots', 'Response Time (ms)', 'Content Length', 'Internal Links', 'External Links', 'Images', 'Depth']);
+            fputcsv($handle, ['URL', 'Status', 'Title', 'Title Length', 'Meta Description', 'Meta Desc Length', 'H1 Count', 'H2 Count', 'Word Count', 'Canonical', 'Meta Robots', 'Response Time (ms)', 'Content Length', 'Internal Links', 'External Links', 'Images', 'Depth', 'OG Title', 'OG Description', 'Quality Score']);
 
             foreach ($pages as $page) {
                 fputcsv($handle, [
@@ -565,7 +670,32 @@ class CrawlerResults extends Component
                     $page->h2_count, $page->word_count, $page->canonical_url, $page->meta_robots,
                     $page->response_time_ms, $page->content_length, $page->internal_links_count,
                     $page->external_links_count, $page->images_count, $page->depth,
+                    $page->og_title, $page->og_description, self::contentQualityScore($page),
                 ]);
+            }
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    public function exportIssuesCsv()
+    {
+        $pages = $this->siteCrawl->pages()
+            ->whereRaw("jsonb_array_length(COALESCE(issues, '[]'::jsonb)) > 0")
+            ->orderBy('url')->get(['url', 'issues']);
+
+        $filename = 'crawl-'.$this->siteCrawl->id.'-issues-'.now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($pages) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['URL', 'Severity', 'Issue Type', 'Message', 'Recommendation']);
+
+            foreach ($pages as $page) {
+                foreach ($page->issues ?? [] as $issue) {
+                    fputcsv($handle, [
+                        $page->url, $issue['severity'] ?? '', $issue['type'] ?? '',
+                        $issue['message'] ?? '', $issue['recommendation'] ?? '',
+                    ]);
+                }
             }
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv']);
