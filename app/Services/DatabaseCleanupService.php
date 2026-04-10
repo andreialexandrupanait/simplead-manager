@@ -18,8 +18,27 @@ class DatabaseCleanupService
     public function getStats(Site $site): array
     {
         $api = $this->apiFactory->make($site);
+        $response = $api->getDbCleanupStats();
 
-        return $api->getDbCleanupStats();
+        $stats = $response['stats'] ?? $response;
+
+        // Aggregate orphaned meta into a single key for the UI
+        if (isset($stats['orphaned_postmeta'])) {
+            $stats['orphaned_meta'] = ($stats['orphaned_postmeta'] ?? 0)
+                + ($stats['orphaned_commentmeta'] ?? 0)
+                + ($stats['orphaned_usermeta'] ?? 0)
+                + ($stats['orphaned_termmeta'] ?? 0);
+        }
+
+        // Normalize key names for the UI
+        if (isset($stats['expired_transients']) && ! isset($stats['transients'])) {
+            $stats['transients'] = $stats['expired_transients'];
+        }
+        if (isset($stats['trashed_posts']) && ! isset($stats['trash_posts'])) {
+            $stats['trash_posts'] = $stats['trashed_posts'];
+        }
+
+        return $stats;
     }
 
     /**
@@ -107,18 +126,26 @@ class DatabaseCleanupService
     {
         try {
             $api = $this->apiFactory->make($site);
-            $result = $api->runDbCleanup($options);
+            $response = $api->runDbCleanup($options);
+
+            // Extract cleaned counts from connector response
+            $cleaned = $response['cleaned'] ?? $response;
+
+            $orphanedMeta = ($cleaned['orphaned_postmeta'] ?? 0)
+                + ($cleaned['orphaned_commentmeta'] ?? 0)
+                + ($cleaned['orphaned_usermeta'] ?? 0)
+                + ($cleaned['orphaned_termmeta'] ?? 0);
 
             $cleanup = DatabaseCleanup::create([
                 'site_id' => $site->id,
-                'revisions_deleted' => $result['revisions_deleted'] ?? 0,
-                'auto_drafts_deleted' => $result['auto_drafts_deleted'] ?? 0,
-                'trash_posts_deleted' => $result['trash_posts_deleted'] ?? 0,
-                'spam_comments_deleted' => $result['spam_comments_deleted'] ?? 0,
-                'trash_comments_deleted' => $result['trash_comments_deleted'] ?? 0,
-                'transients_deleted' => $result['transients_deleted'] ?? 0,
-                'orphaned_meta_deleted' => $result['orphaned_meta_deleted'] ?? 0,
-                'space_saved' => $result['space_saved'] ?? 0,
+                'revisions_deleted' => $cleaned['revisions'] ?? 0,
+                'auto_drafts_deleted' => $cleaned['auto_drafts'] ?? 0,
+                'trash_posts_deleted' => $cleaned['trashed_posts'] ?? 0,
+                'spam_comments_deleted' => $cleaned['spam_comments'] ?? 0,
+                'trash_comments_deleted' => $cleaned['trashed_comments'] ?? 0,
+                'transients_deleted' => $cleaned['expired_transients'] ?? 0,
+                'orphaned_meta_deleted' => $orphanedMeta,
+                'space_saved' => $cleaned['space_saved'] ?? 0,
                 'status' => 'completed',
                 'cleaned_at' => now(),
             ]);

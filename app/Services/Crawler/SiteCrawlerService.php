@@ -170,12 +170,10 @@ class SiteCrawlerService
                 $isHtml = str_contains(strtolower($contentType), 'text/html');
 
                 // Use the final URL after redirects for storage and parsing
-                $resolvedUrl = $finalUrl ?: $url;
+                $resolvedUrl = $this->normalizeUrlForCrawl($finalUrl ?: $url);
 
                 // Mark final URL as visited too (prevent re-crawl after redirect)
-                if ($resolvedUrl !== $url) {
-                    $visited[$this->normalizeUrlForCrawl($resolvedUrl)] = true;
-                }
+                $visited[$resolvedUrl] = true;
 
                 $seoData = [];
 

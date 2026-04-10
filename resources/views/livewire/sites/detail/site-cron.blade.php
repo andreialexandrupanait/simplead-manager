@@ -28,41 +28,77 @@
         </div>
 
         {{-- Stats --}}
-        <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        @php
+            $allCrons = $cronData['crons'] ?? [];
+            $staleCrons = array_filter($allCrons, fn($c) => ($c['plugin']['status'] ?? null) === 'not-installed');
+            $staleCount = count($staleCrons);
+        @endphp
+        <div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <x-ui.stat-card
                 label="{{ __('Total Hooks') }}"
-                :value="count($cronData['crons'] ?? [])"
+                :value="count($allCrons)"
                 icon="clock"
                 color="purple"
             />
             <x-ui.stat-card
                 label="{{ __('Disabled') }}"
-                :value="count(array_filter($cronData['crons'] ?? [], fn($c) => $c['disabled']))"
+                :value="count(array_filter($allCrons, fn($c) => $c['disabled']))"
                 icon="pause-circle"
                 color="yellow"
             />
             <x-ui.stat-card
                 label="{{ __('One-time') }}"
-                :value="count(array_filter($cronData['crons'] ?? [], fn($c) => ($c['schedule'] ?? 'once') === 'once'))"
+                :value="count(array_filter($allCrons, fn($c) => ($c['schedule'] ?? 'once') === 'once'))"
                 icon="zap"
                 color="blue"
             />
+            <x-ui.stat-card
+                label="{{ __('Stale / Orphaned') }}"
+                :value="$staleCount"
+                icon="alert-triangle"
+                :color="$staleCount > 0 ? 'red' : 'green'"
+            />
         </div>
+
+        @if($staleCount > 0)
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                <div class="flex items-start gap-2">
+                    <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
+                    <div>
+                        <h4 class="text-sm font-semibold text-red-800">{{ __('Stale cron hooks detected') }}</h4>
+                        <p class="mt-1 text-sm text-red-700">
+                            {{ trans_choice(':count cron hook belongs to a plugin that is no longer installed.|:count cron hooks belong to plugins that are no longer installed.', $staleCount) }}
+                            {{ __('Consider disabling them to prevent errors and improve performance.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         {{-- Cron table --}}
         @if(count($this->filteredCrons) > 0)
             {{-- Mobile cards --}}
             <div class="md:hidden space-y-2">
                 @foreach($this->filteredCrons as $cron)
-                    <div class="rounded-lg border border-gray-200 p-3 {{ $cron['disabled'] ? 'bg-yellow-50/50' : '' }}">
+                    @php $isStale = ($cron['plugin']['status'] ?? null) === 'not-installed'; @endphp
+                    <div class="rounded-lg border p-3 {{ $isStale ? 'border-red-200 bg-red-50/50' : ($cron['disabled'] ? 'border-yellow-200 bg-yellow-50/50' : 'border-gray-200') }}">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <span class="block truncate font-mono text-sm text-gray-900">{{ $cron['hook'] }}</span>
-                                @if(!empty($cron['args']))
+                                @if($cron['plugin'] ?? null)
+                                    <span class="text-xs {{ $isStale ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+                                        {{ $cron['plugin']['name'] }}
+                                        @if($isStale)
+                                            ({{ __('not installed') }})
+                                        @endif
+                                    </span>
+                                @elseif(!empty($cron['args']))
                                     <span class="text-xs text-gray-400">({{ count($cron['args']) }} arg{{ count($cron['args']) !== 1 ? 's' : '' }})</span>
                                 @endif
                             </div>
-                            @if($cron['disabled'])
+                            @if($isStale)
+                                <x-ui.badge variant="red">{{ __('Stale') }}</x-ui.badge>
+                            @elseif($cron['disabled'])
                                 <x-ui.badge variant="yellow">{{ __('Disabled') }}</x-ui.badge>
                             @else
                                 <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>
@@ -131,19 +167,35 @@
                     <x-ui.table>
                         <x-slot:head>
                             <x-ui.th>{{ __('Hook') }}</x-ui.th>
+                            <x-ui.th>{{ __('Plugin') }}</x-ui.th>
                             <x-ui.th>{{ __('Schedule') }}</x-ui.th>
                             <x-ui.th>{{ __('Next Run') }}</x-ui.th>
                             <x-ui.th>{{ __('Status') }}</x-ui.th>
                             <x-ui.th class="text-right">{{ __('Actions') }}</x-ui.th>
                         </x-slot:head>
                         @foreach($this->filteredCrons as $cron)
-                            <tr class="{{ $cron['disabled'] ? 'bg-yellow-50/50' : '' }}">
+                            @php $isStale = ($cron['plugin']['status'] ?? null) === 'not-installed'; @endphp
+                            <tr class="{{ $isStale ? 'bg-red-50/50' : ($cron['disabled'] ? 'bg-yellow-50/50' : '') }}">
                                 <x-ui.td>
                                     <span class="text-sm font-mono text-gray-900">{{ $cron['hook'] }}</span>
                                     @if(!empty($cron['args']))
                                         <span class="ml-1 text-xs text-gray-400" title="{{ json_encode($cron['args']) }}">
                                             ({{ count($cron['args']) }} arg{{ count($cron['args']) !== 1 ? 's' : '' }})
                                         </span>
+                                    @endif
+                                </x-ui.td>
+                                <x-ui.td>
+                                    @if($cron['plugin'] ?? null)
+                                        <span class="text-xs {{ $isStale ? 'text-red-600 font-medium' : ($cron['plugin']['status'] === 'inactive' ? 'text-yellow-600' : 'text-gray-500') }}">
+                                            {{ $cron['plugin']['name'] }}
+                                            @if($isStale)
+                                                <span class="block text-[10px]">({{ __('not installed') }})</span>
+                                            @elseif($cron['plugin']['status'] === 'inactive')
+                                                <span class="block text-[10px]">({{ __('inactive') }})</span>
+                                            @endif
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
                                     @endif
                                 </x-ui.td>
                                 <x-ui.td>
@@ -169,7 +221,9 @@
                                     </span>
                                 </x-ui.td>
                                 <x-ui.td>
-                                    @if($cron['disabled'])
+                                    @if($isStale)
+                                        <x-ui.badge variant="red">{{ __('Stale') }}</x-ui.badge>
+                                    @elseif($cron['disabled'])
                                         <x-ui.badge variant="yellow">{{ __('Disabled') }}</x-ui.badge>
                                     @else
                                         <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>

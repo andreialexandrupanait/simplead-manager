@@ -234,11 +234,14 @@ class IncidentActionExecutor
         $cleanup = $this->dbCleanupService->run($site, [
             'revisions' => true,
             'auto_drafts' => true,
-            'trash_posts' => true,
+            'trashed_posts' => true,
             'spam_comments' => true,
-            'trash_comments' => true,
-            'transients' => true,
-            'orphaned_meta' => true,
+            'trashed_comments' => true,
+            'expired_transients' => true,
+            'orphaned_postmeta' => true,
+            'orphaned_commentmeta' => true,
+            'orphaned_usermeta' => true,
+            'orphaned_termmeta' => true,
         ]);
 
         return [

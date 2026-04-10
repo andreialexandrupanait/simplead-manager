@@ -69,6 +69,29 @@
                 </div>
             @endif
 
+            {{-- Abandoned tables banner --}}
+            @php
+                $orphanedTables = collect($this->latestHealthCheck->tables_data)->filter(fn($t) => ($t['plugin']['status'] ?? null) === 'not-installed');
+            @endphp
+            @if($orphanedTables->isNotEmpty())
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                    <div class="flex items-start gap-2">
+                        <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
+                        <div>
+                            <h4 class="text-sm font-semibold text-red-800">{{ trans_choice(':count abandoned table detected|:count abandoned tables detected', $orphanedTables->count()) }}</h4>
+                            <p class="mt-1 text-sm text-red-700">
+                                {{ __('These tables belong to plugins that are no longer installed. They can be safely deleted to free up space.') }}
+                            </p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach($orphanedTables->pluck('plugin.name')->unique() as $pluginName)
+                                    <span class="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700">{{ $pluginName }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             {{-- Tables list --}}
             @if($this->latestHealthCheck->tables_data)
                 <x-ui.card :padding="false" class="mb-4">
@@ -580,6 +603,49 @@
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['orphaned_meta'] ?? 0) }}</div>
                     </div>
                 </label>
+
+                {{-- WooCommerce / Action Scheduler (only show if stats exist) --}}
+                @if(isset($stats['action_scheduler_completed']))
+                    <label class="flex items-start gap-3 rounded-lg border border-orange-200 p-3 hover:bg-orange-50 cursor-pointer">
+                        <input type="checkbox" wire:model="cleanActionScheduler" class="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ __('Action Scheduler') }}
+                                <span class="text-xs text-orange-600 font-normal">WC</span>
+                            </div>
+                            <div class="text-lg font-bold text-gray-700">{{ number_format($stats['action_scheduler_completed']) }}</div>
+                            <div class="text-xs text-gray-500">{{ __('completed > 30 days') }}</div>
+                        </div>
+                    </label>
+                @endif
+
+                @if(isset($stats['wc_expired_sessions']))
+                    <label class="flex items-start gap-3 rounded-lg border border-orange-200 p-3 hover:bg-orange-50 cursor-pointer">
+                        <input type="checkbox" wire:model="cleanWcSessions" class="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ __('WC Sessions') }}
+                                <span class="text-xs text-orange-600 font-normal">WC</span>
+                            </div>
+                            <div class="text-lg font-bold text-gray-700">{{ number_format($stats['wc_expired_sessions']) }}</div>
+                            <div class="text-xs text-gray-500">{{ __('expired sessions') }}</div>
+                        </div>
+                    </label>
+                @endif
+
+                @if(isset($stats['wc_expired_webhooks']))
+                    <label class="flex items-start gap-3 rounded-lg border border-orange-200 p-3 hover:bg-orange-50 cursor-pointer">
+                        <input type="checkbox" wire:model="cleanWcWebhooks" class="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ __('WC Webhooks') }}
+                                <span class="text-xs text-orange-600 font-normal">WC</span>
+                            </div>
+                            <div class="text-lg font-bold text-gray-700">{{ number_format($stats['wc_expired_webhooks']) }}</div>
+                            <div class="text-xs text-gray-500">{{ __('disabled webhooks') }}</div>
+                        </div>
+                    </label>
+                @endif
             </div>
 
             <div class="mt-4 flex justify-end">
