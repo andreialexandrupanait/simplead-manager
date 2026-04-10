@@ -16,7 +16,6 @@ class CrawlerCreate extends Component
 {
     use WithJobTracking;
 
-    #[Validate('required|exists:sites,id')]
     public ?int $siteId = null;
 
     #[Validate('integer|min:10|max:2000')]
@@ -30,11 +29,16 @@ class CrawlerCreate extends Component
 
     public bool $respectRobots = true;
 
+    #[Validate('required|url|max:2048')]
     public string $urlInput = '';
+
+    private ?int $crawlId = null;
 
     protected function jobTrackingKeys(): array
     {
-        return ['crawl' => $this->siteId ? 'site-crawl-'.$this->siteId : ''];
+        $key = $this->siteId ? 'site-crawl-'.$this->siteId : ($this->crawlId ? 'standalone-crawl-'.$this->crawlId : '');
+
+        return ['crawl' => $key];
     }
 
     #[Computed]
@@ -73,6 +77,8 @@ class CrawlerCreate extends Component
         $detected = $this->detectedSite;
         if ($detected) {
             $this->siteId = $detected->id;
+        } else {
+            $this->siteId = null;
         }
     }
 
@@ -80,11 +86,13 @@ class CrawlerCreate extends Component
     {
         $this->validate();
 
-        $site = Site::findOrFail($this->siteId);
-        $this->authorize('update', $site);
+        $site = $this->siteId ? Site::find($this->siteId) : null;
+
+        $startUrl = rtrim(trim($this->urlInput), '/');
 
         $crawl = SiteCrawl::create([
-            'site_id' => $site->id,
+            'site_id' => $site?->id,
+            'start_url' => $startUrl,
             'status' => SiteCrawl::STATUS_PENDING,
             'config' => [
                 'max_pages' => $this->maxPages,
@@ -94,19 +102,20 @@ class CrawlerCreate extends Component
             ],
         ]);
 
-        $this->dispatchTrackedJob('crawl', new RunSiteCrawl($site, $crawl), 'Starting crawl...');
+        $this->crawlId = $crawl->id;
 
-        session()->flash('success', __('Crawl started.'));
+        $trackerKey = $site ? 'site-crawl-'.$site->id : 'standalone-crawl-'.$crawl->id;
+
+        dispatch(new RunSiteCrawl($crawl));
+
+        $this->dispatch('notify', type: 'success', message: __('Crawl started.'));
     }
 
     public function onJobFinished(string $jobName, array $data): void
     {
-        $site = $this->siteId ? Site::find($this->siteId) : null;
-        if ($site) {
-            $latestCrawl = $site->latestSiteCrawl;
-            if ($latestCrawl) {
-                $this->redirect(route('seo.crawler.show', $latestCrawl), navigate: true);
-            }
+        $crawlId = $this->crawlId;
+        if ($crawlId) {
+            $this->redirect(route('seo.crawler.show', $crawlId), navigate: true);
         }
     }
 

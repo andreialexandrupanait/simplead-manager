@@ -199,7 +199,7 @@ Schedule::call(function () {
             'config' => ['max_pages' => 500, 'rate_limit_ms' => 1000, 'max_depth' => 50, 'respect_robots_txt' => true],
         ]);
 
-        dispatch(new \App\Jobs\RunSiteCrawl($monitor->site, $crawl));
+        dispatch(new \App\Jobs\RunSiteCrawl($crawl));
 
         $monitor->update([
             'last_crawl_at' => now(),

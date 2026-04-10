@@ -294,6 +294,110 @@ class CrawlAnalyzer
                 ];
             }
 
+            // 16. Missing OG tags entirely
+            if (($page->og_title === null || $page->og_title === '') && ($page->og_description === null || $page->og_description === '')) {
+                $issues[] = [
+                    'type' => 'missing_og_tags',
+                    'severity' => 'low',
+                    'message' => 'Page has no Open Graph tags (og:title, og:description).',
+                ];
+            }
+
+            // 17. H1 same as title
+            if ($page->title && $page->h1_count === 1) {
+                $h1Text = trim($page->h1_tags[0] ?? '');
+                if ($h1Text !== '' && mb_strtolower($h1Text) === mb_strtolower($page->title)) {
+                    $issues[] = [
+                        'type' => 'h1_same_as_title',
+                        'severity' => 'low',
+                        'message' => 'H1 is identical to the title tag. Consider differentiating them.',
+                    ];
+                }
+            }
+
+            // 18. Heading hierarchy broken (H1 → H3 without H2)
+            if ($page->h1_count > 0 && $page->h3_count > 0 && $page->h2_count === 0) {
+                $issues[] = [
+                    'type' => 'heading_hierarchy_broken',
+                    'severity' => 'low',
+                    'message' => 'Page skips H2 headings — has H1 and H3 but no H2.',
+                ];
+            }
+
+            // 19. Missing canonical self-reference
+            if (! $page->canonical_self_ref && $page->canonical_url === null) {
+                $issues[] = [
+                    'type' => 'missing_canonical_self_ref',
+                    'severity' => 'low',
+                    'message' => 'Page has no canonical tag. A self-referencing canonical is recommended.',
+                ];
+            }
+
+            // 20. Images missing dimensions (from images jsonb)
+            $imgsMissingDims = 0;
+            foreach ($page->images ?? [] as $img) {
+                if (empty($img['width']) && empty($img['height'])) {
+                    $imgsMissingDims++;
+                }
+            }
+            if ($imgsMissingDims > 0) {
+                $issues[] = [
+                    'type' => 'images_missing_dimensions',
+                    'severity' => 'low',
+                    'message' => "{$imgsMissingDims} image(s) missing width/height attributes (causes layout shift).",
+                ];
+            }
+
+            // 21. Weak anchor text in internal links pointing to this page
+            $weakAnchors = ['click here', 'aici', 'mai mult', 'read more', 'learn more', 'citeste', 'citește'];
+            foreach ($page->internal_links ?? [] as $link) {
+                $anchor = mb_strtolower(trim($link['anchor'] ?? ''));
+                if ($anchor !== '' && in_array($anchor, $weakAnchors, true)) {
+                    $issues[] = [
+                        'type' => 'weak_anchor_text',
+                        'severity' => 'info',
+                        'message' => "Internal link with generic anchor text: \"{$link['anchor']}\".",
+                    ];
+
+                    break; // one per page is enough
+                }
+            }
+
+            // 22. UTM parameters in internal links
+            $hasUtm = false;
+            foreach ($page->internal_links ?? [] as $link) {
+                if (str_contains($link['url'] ?? '', 'utm_')) {
+                    $hasUtm = true;
+
+                    break;
+                }
+            }
+            if ($hasUtm) {
+                $issues[] = [
+                    'type' => 'utm_in_internal_links',
+                    'severity' => 'info',
+                    'message' => 'Page contains internal links with UTM tracking parameters.',
+                ];
+            }
+
+            // 23. Slow page (>2s response time)
+            if ($page->response_time_ms !== null && $page->response_time_ms > 2000) {
+                $issues[] = [
+                    'type' => 'slow_response',
+                    'severity' => 'medium',
+                    'message' => "Page response time is {$page->response_time_ms}ms (>2000ms).",
+                ];
+            }
+
+            // 24. Deep page (depth > 5)
+            if ($page->depth > 5) {
+                $issues[] = [
+                    'type' => 'deep_page',
+                    'severity' => 'low',
+                    'message' => "Page is at depth {$page->depth}. Pages beyond depth 5 are harder for search engines to discover.",
+                ];
+            }
+
             $issuesMap[$page->id] = array_merge($page->issues ?? [], $issues);
         }
 

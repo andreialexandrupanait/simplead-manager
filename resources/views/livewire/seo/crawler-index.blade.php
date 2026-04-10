@@ -54,7 +54,14 @@
                         @foreach($this->crawls as $crawl)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-4 py-2.5 font-medium text-gray-900">
-                                    {{ $crawl->site?->name ?? '—' }}
+                                    @if($crawl->site)
+                                        {{ $crawl->site->name }}
+                                    @elseif($crawl->start_url)
+                                        <span class="text-gray-500">{{ \Illuminate\Support\Str::limit($crawl->start_url, 40) }}</span>
+                                        <span class="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">{{ __('standalone') }}</span>
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="px-4 py-2.5 text-center">
                                     <span @class([

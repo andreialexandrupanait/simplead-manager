@@ -30,7 +30,7 @@ class SiteCrawlerService
 
     private const PROGRESS_REPORT_INTERVAL = 10;
 
-    public function crawl(Site $site, SiteCrawl $crawl, ?string $trackerKey = null): void
+    public function crawl(SiteCrawl $crawl, ?string $trackerKey = null): void
     {
         $config = $crawl->config ?? [];
 
@@ -51,7 +51,18 @@ class SiteCrawlerService
             'pages_found' => 0,
         ]);
 
-        $siteUrl = rtrim($site->url, '/');
+        // Determine start URL: from start_url field, or from associated site
+        $site = $crawl->site;
+        $siteUrl = $crawl->start_url
+            ? rtrim($crawl->start_url, '/')
+            : ($site ? rtrim($site->url, '/') : null);
+
+        if (! $siteUrl) {
+            $crawl->update(['status' => SiteCrawl::STATUS_FAILED, 'completed_at' => now()]);
+
+            return;
+        }
+
         $siteHost = (string) parse_url($siteUrl, PHP_URL_HOST);
 
         $disallowRules = [];
@@ -246,7 +257,7 @@ class SiteCrawlerService
         } catch (\Throwable $e) {
             Log::error("Crawl {$crawl->id} failed: ".$e->getMessage(), [
                 'exception' => $e,
-                'site_id' => $site->id,
+                'site_id' => $site?->id,
             ]);
 
             $crawl->update([

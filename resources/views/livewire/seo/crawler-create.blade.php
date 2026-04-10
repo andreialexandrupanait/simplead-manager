@@ -1,39 +1,38 @@
 <div>
-    <x-ui.page-header title="{{ __('New Crawl') }}" subtitle="{{ __('Configure and start a site crawl') }}" />
-
-    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.page-header title="{{ __('New Crawl') }}" subtitle="{{ __('Enter any URL to start crawling') }}" />
 
     <div class="mx-auto max-w-2xl">
         <x-ui.card>
-            {{-- URL Input for auto-detect --}}
+            {{-- URL Input --}}
             <div class="mb-4">
-                <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Quick URL lookup') }}</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('URL to crawl') }} *</label>
                 <input
                     type="url"
                     wire:model.live.debounce.500ms="urlInput"
                     placeholder="https://example.com"
                     class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
                 />
+                @error('urlInput') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+
                 @if($this->detectedSite)
                     <p class="mt-1.5 flex items-center gap-1.5 text-sm text-green-600">
                         <x-dynamic-component component="icons.check-circle" class="h-4 w-4" />
-                        {{ __('Site found:') }} <strong>{{ $this->detectedSite->name }}</strong>
+                        {{ __('Known site:') }} <strong>{{ $this->detectedSite->name }}</strong> — {{ __('results will be linked to this site') }}
                     </p>
-                @elseif($urlInput)
-                    <p class="mt-1.5 text-sm text-gray-500">{{ __('No matching site found. Select one below.') }}</p>
+                @elseif($urlInput && strlen($urlInput) > 10)
+                    <p class="mt-1.5 text-sm text-gray-500">{{ __('Standalone crawl — not linked to any site.') }}</p>
                 @endif
             </div>
 
-            {{-- Site selector --}}
+            {{-- Optional site override --}}
             <div class="mb-4">
-                <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Site') }} *</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Link to site') }} <span class="text-gray-400">({{ __('optional') }})</span></label>
                 <select wire:model="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
-                    <option value="">{{ __('Select a site...') }}</option>
+                    <option value="">{{ __('None — standalone crawl') }}</option>
                     @foreach($this->sites as $site)
                         <option value="{{ $site->id }}">{{ $site->name }} — {{ $site->url }}</option>
                     @endforeach
                 </select>
-                @error('siteId') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
 
             {{-- Config --}}
@@ -58,13 +57,6 @@
                     {{ __('Respect robots.txt') }}
                 </label>
             </div>
-
-            {{-- Job progress --}}
-            @if($this->hasRunningJobs)
-                <div wire:poll.3s="checkJobProgress" class="mb-4">
-                    <x-ui.job-progress job-key="crawl" :jobs="$trackedJobs" title="{{ __('Crawling...') }}" />
-                </div>
-            @endif
 
             <div class="flex items-center justify-end gap-3">
                 <a href="{{ route('seo.crawler.index') }}" wire:navigate class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>

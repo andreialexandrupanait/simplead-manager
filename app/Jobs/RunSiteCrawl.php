@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Models\Site;
 use App\Models\SiteCrawl;
 use App\Services\Crawler\SiteCrawlerService;
 use App\Services\JobTracker;
@@ -24,7 +23,6 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
     public int $tries = 1;
 
     public function __construct(
-        public Site $site,
         public SiteCrawl $crawl,
     ) {
         $this->onQueue('default');
@@ -32,7 +30,11 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'site-crawl-'.$this->site->id;
+        if ($this->crawl->site_id) {
+            return 'site-crawl-'.$this->crawl->site_id;
+        }
+
+        return 'standalone-crawl-'.$this->crawl->id;
     }
 
     public function handle(): void
@@ -41,7 +43,7 @@ class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
 
         JobTracker::start($trackerKey, 'Initialising site crawl...');
 
-        (new SiteCrawlerService)->crawl($this->site, $this->crawl, $trackerKey);
+        (new SiteCrawlerService)->crawl($this->crawl, $trackerKey);
 
         JobTracker::complete(
             $trackerKey,

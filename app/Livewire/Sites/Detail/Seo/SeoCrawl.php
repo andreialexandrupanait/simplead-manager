@@ -78,7 +78,7 @@ class SeoCrawl extends Component
 
         $this->dispatchTrackedJob(
             'crawl',
-            new RunSiteCrawl($this->site, $crawl),
+            new RunSiteCrawl($crawl),
             'Starting site crawl...'
         );
 

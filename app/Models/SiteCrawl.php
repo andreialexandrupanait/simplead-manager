@@ -43,6 +43,7 @@ class SiteCrawl extends Model
 
     protected $fillable = [
         'site_id',
+        'start_url',
         'status',
         'pages_found',
         'pages_crawled',
