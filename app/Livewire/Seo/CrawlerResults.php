@@ -643,6 +643,33 @@ class CrawlerResults extends Component
         unset($this->selectedPage, $this->selectedPageInlinks, $this->templateSuggestions);
     }
 
+    public function pushSeoMetaToSite(): void
+    {
+        $page = $this->selectedPage;
+        if (! $page || ! $this->siteCrawl->site_id) {
+            $this->dispatch('notify', type: 'error', message: __('No site linked to this crawl.'));
+
+            return;
+        }
+
+        $title = $this->editTitle ?: null;
+        $desc = $this->editMetaDescription ?: null;
+
+        if (! $title && ! $desc) {
+            $this->dispatch('notify', type: 'error', message: __('Enter a title or description to push.'));
+
+            return;
+        }
+
+        try {
+            $api = new \App\Services\WordPressApiService($this->siteCrawl->site);
+            $result = $api->updateSeoMeta($page->url, $title, $desc);
+            $this->dispatch('notify', type: 'success', message: __('SEO meta updated on site.'));
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: __('Failed to push: ').$e->getMessage());
+        }
+    }
+
     public function applyTemplateSuggestion(string $field): void
     {
         $suggestions = $this->templateSuggestions;

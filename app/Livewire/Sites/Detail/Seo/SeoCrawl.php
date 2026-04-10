@@ -25,6 +25,11 @@ class SeoCrawl extends Component
 
     public int $maxDepth = 50;
 
+    // Scheduling
+    public bool $crawlEnabled = false;
+
+    public int $crawlIntervalDays = 7;
+
     protected function jobTrackingKeys(): array
     {
         return [
@@ -37,6 +42,13 @@ class SeoCrawl extends Component
         $this->authorizeSiteAccess($site);
         $this->site = $site;
         $this->initJobTracking();
+
+        // Load scheduling config
+        $monitor = $site->seoMonitor;
+        if ($monitor) {
+            $this->crawlEnabled = (bool) $monitor->crawl_enabled;
+            $this->crawlIntervalDays = $monitor->crawl_interval_days ?? 7;
+        }
     }
 
     #[Computed]
@@ -97,6 +109,22 @@ class SeoCrawl extends Component
 
             unset($this->latestCrawl, $this->recentCrawls, $this->isRunning);
         }
+    }
+
+    public function saveSchedule(): void
+    {
+        $monitor = $this->site->seoMonitor;
+        if (! $monitor) {
+            $monitor = $this->site->seoMonitor()->create(['is_active' => true]);
+        }
+
+        $monitor->update([
+            'crawl_enabled' => $this->crawlEnabled,
+            'crawl_interval_days' => $this->crawlIntervalDays,
+            'next_crawl_at' => $this->crawlEnabled ? now()->addDays($this->crawlIntervalDays) : null,
+        ]);
+
+        session()->flash('success', __('Crawl schedule saved.'));
     }
 
     protected function onJobFinished(string $jobName, array $data): void

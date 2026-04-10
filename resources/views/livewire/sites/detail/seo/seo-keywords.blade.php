@@ -185,4 +185,40 @@
             </x-ui.empty-state>
         </x-ui.card>
     @endif
+
+    {{-- Keyword Cannibalization --}}
+    @if(!empty($this->cannibalization))
+        <x-ui.card class="mt-6">
+            <h3 class="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">
+                <span class="h-3 w-3 rounded-full bg-orange-500"></span>
+                {{ __('Keyword Cannibalization') }}
+                <span class="font-normal text-sm text-gray-400">({{ count($this->cannibalization) }} {{ __('keywords') }})</span>
+            </h3>
+            <p class="mb-4 text-sm text-gray-500">{{ __('These keywords appear in the title or H1 of multiple pages, which may confuse search engines about which page to rank.') }}</p>
+
+            <div class="space-y-3" x-data="{ open: null }">
+                @foreach($this->cannibalization as $kw => $data)
+                    <div class="rounded-lg border border-orange-200">
+                        <button @click="open = open === '{{ $kw }}' ? null : '{{ $kw }}'" class="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-orange-50 transition">
+                            <span class="font-medium text-gray-900">"{{ $kw }}"</span>
+                            <span class="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">{{ count($data['pages']) }} {{ __('pages') }}</span>
+                        </button>
+                        <div x-show="open === '{{ $kw }}'" x-cloak class="border-t border-orange-100">
+                            <div class="bg-blue-50 border-b border-blue-100 px-4 py-2">
+                                <p class="text-xs text-blue-800"><strong>{{ __('Fix') }}:</strong> {{ __('Choose ONE primary page for this keyword. On other pages, either target a different keyword or add a canonical pointing to the primary page.') }}</p>
+                            </div>
+                            <div class="px-4 py-3 space-y-1.5">
+                                @foreach($data['pages'] as $pg)
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">{{ $pg['where'] }}</span>
+                                        <a href="{{ $pg['url'] }}" target="_blank" class="truncate text-purple-600 hover:text-purple-800">{{ $pg['url'] }}</a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.card>
+    @endif
 </div>

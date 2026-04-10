@@ -35,6 +35,84 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'analyze'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/update-meta', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'update_meta'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+    }
+
+    /**
+     * Update SEO meta (title, description) for a specific page/post by URL.
+     */
+    public function update_meta(WP_REST_Request $request): WP_REST_Response {
+        $url   = esc_url_raw($request->get_param('url') ?? '');
+        $title = sanitize_text_field($request->get_param('meta_title') ?? '');
+        $desc  = sanitize_text_field($request->get_param('meta_description') ?? '');
+
+        if (empty($url)) {
+            return $this->error('missing_url', 'URL is required.', 400);
+        }
+
+        // Find the post by URL
+        $post_id = url_to_postid($url);
+        if (!$post_id) {
+            // Try with trailing slash
+            $post_id = url_to_postid(trailingslashit($url));
+        }
+        if (!$post_id) {
+            // Try homepage
+            if (rtrim($url, '/') === rtrim(home_url(), '/')) {
+                $post_id = get_option('page_on_front');
+            }
+        }
+
+        if (!$post_id) {
+            return $this->error('post_not_found', 'No post/page found for this URL.', 404);
+        }
+
+        $updated = [];
+
+        // Update via Yoast SEO
+        if (defined('WPSEO_VERSION')) {
+            if ($title) {
+                update_post_meta($post_id, '_yoast_wpseo_title', $title);
+                $updated['title'] = 'yoast';
+            }
+            if ($desc) {
+                update_post_meta($post_id, '_yoast_wpseo_metadesc', $desc);
+                $updated['description'] = 'yoast';
+            }
+        }
+        // Update via RankMath
+        elseif (defined('RANK_MATH_VERSION')) {
+            if ($title) {
+                update_post_meta($post_id, 'rank_math_title', $title);
+                $updated['title'] = 'rankmath';
+            }
+            if ($desc) {
+                update_post_meta($post_id, 'rank_math_description', $desc);
+                $updated['description'] = 'rankmath';
+            }
+        }
+        // Fallback: update WordPress native title + custom meta
+        else {
+            if ($title) {
+                wp_update_post(['ID' => $post_id, 'post_title' => $title]);
+                $updated['title'] = 'wordpress';
+            }
+            if ($desc) {
+                update_post_meta($post_id, '_sam_meta_description', $desc);
+                $updated['description'] = 'custom';
+            }
+        }
+
+        return $this->success([
+            'post_id' => $post_id,
+            'updated' => $updated,
+            'permalink' => get_permalink($post_id),
+        ]);
     }
 
     public function analyze(WP_REST_Request $request): WP_REST_Response {

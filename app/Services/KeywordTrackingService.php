@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\CrawledPage;
 use App\Models\KeywordPosition;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
+use App\Models\SiteCrawl;
 use App\Models\TrackedKeyword;
 use Illuminate\Support\Collection;
 
@@ -144,5 +146,74 @@ class KeywordTrackingService
         }
 
         return $added;
+    }
+
+    /**
+     * Detect keyword cannibalization — multiple pages ranking/optimized for the same keyword.
+     *
+     * Checks crawled page titles and H1 tags for tracked keyword occurrences.
+     *
+     * @return array<string, array{keyword: string, pages: list<array{url: string, where: string}>}>
+     */
+    public function detectCannibalization(Site $site): array
+    {
+        $keywords = TrackedKeyword::where('site_id', $site->id)->pluck('keyword')->all();
+        if (empty($keywords)) {
+            return [];
+        }
+
+        $latestCrawl = SiteCrawl::where('site_id', $site->id)
+            ->where('status', SiteCrawl::STATUS_COMPLETED)
+            ->latest()
+            ->first();
+
+        if (! $latestCrawl) {
+            return [];
+        }
+
+        $pages = $latestCrawl->pages()
+            ->where('content_type', 'ilike', '%text/html%')
+            ->whereBetween('status_code', [200, 299])
+            ->get(['url', 'title', 'h1_tags']);
+
+        $cannibalized = [];
+
+        foreach ($keywords as $keyword) {
+            $kwLower = mb_strtolower($keyword);
+            $matchingPages = [];
+
+            foreach ($pages as $page) {
+                $matches = [];
+
+                if ($page->title && str_contains(mb_strtolower($page->title), $kwLower)) {
+                    $matches[] = 'title';
+                }
+
+                foreach ($page->h1_tags ?? [] as $h1) {
+                    if (str_contains(mb_strtolower($h1), $kwLower)) {
+                        $matches[] = 'H1';
+
+                        break;
+                    }
+                }
+
+                if (! empty($matches)) {
+                    $matchingPages[] = [
+                        'url' => $page->url,
+                        'where' => implode(', ', $matches),
+                    ];
+                }
+            }
+
+            // Cannibalization = 2+ pages targeting same keyword
+            if (count($matchingPages) >= 2) {
+                $cannibalized[$keyword] = [
+                    'keyword' => $keyword,
+                    'pages' => $matchingPages,
+                ];
+            }
+        }
+
+        return $cannibalized;
     }
 }

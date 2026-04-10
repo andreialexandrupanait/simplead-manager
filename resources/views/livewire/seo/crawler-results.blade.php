@@ -488,33 +488,44 @@
                     <div class="py-4">
                         <div class="flex items-center justify-between mb-1">
                             <label class="text-xs font-medium uppercase tracking-wider text-gray-400">Title ({{ $sp->title_length }} chars)</label>
-                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sp->title ?? '') }}')" class="text-xs text-gray-400 hover:text-gray-600">Copy</button>
+                            <button onclick="navigator.clipboard.writeText({{ json_encode($sp->title ?? '') }})" class="text-xs text-gray-400 hover:text-gray-600">Copy</button>
                         </div>
-                        <p class="text-sm text-gray-900">{{ $sp->title ?? '—' }}</p>
-                        @if(isset($suggestions['title']))
-                            <div class="mt-2 rounded bg-green-50 border border-green-200 p-2">
-                                <div class="text-xs text-green-700 font-medium mb-1">Suggested title:</div>
-                                <div class="text-sm text-green-900">{{ $suggestions['title'] }}</div>
-                                <button onclick="navigator.clipboard.writeText('{{ addslashes($suggestions['title']) }}')" class="mt-1 text-xs text-green-600 hover:text-green-800">Copy suggestion</button>
-                            </div>
-                        @endif
+                        <p class="text-sm text-gray-900 mb-2">{{ $sp->title ?? '—' }}</p>
+                        <input type="text" wire:model="editTitle" placeholder="{{ __('New title...') }}" maxlength="70" class="w-full rounded border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" />
+                        <div class="mt-1 flex items-center justify-between text-xs text-gray-400">
+                            <span>{{ mb_strlen($editTitle) }}/60 chars</span>
+                            @if(isset($suggestions['title']))
+                                <button wire:click="applyTemplateSuggestion('title')" class="text-green-600 hover:text-green-800">Use suggestion: {{ \Illuminate\Support\Str::limit($suggestions['title'], 30) }}</button>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- Meta Description with edit --}}
                     <div class="py-4">
                         <div class="flex items-center justify-between mb-1">
                             <label class="text-xs font-medium uppercase tracking-wider text-gray-400">Meta Description ({{ $sp->meta_desc_length }} chars)</label>
-                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sp->meta_description ?? '') }}')" class="text-xs text-gray-400 hover:text-gray-600">Copy</button>
+                            <button onclick="navigator.clipboard.writeText({{ json_encode($sp->meta_description ?? '') }})" class="text-xs text-gray-400 hover:text-gray-600">Copy</button>
                         </div>
-                        <p class="text-sm text-gray-700">{{ $sp->meta_description ?? '—' }}</p>
-                        @if(isset($suggestions['meta_description']))
-                            <div class="mt-2 rounded bg-green-50 border border-green-200 p-2">
-                                <div class="text-xs text-green-700 font-medium mb-1">Suggested meta description:</div>
-                                <div class="text-sm text-green-900">{{ $suggestions['meta_description'] }}</div>
-                                <button onclick="navigator.clipboard.writeText('{{ addslashes($suggestions['meta_description']) }}')" class="mt-1 text-xs text-green-600 hover:text-green-800">Copy suggestion</button>
-                            </div>
-                        @endif
+                        <p class="text-sm text-gray-700 mb-2">{{ $sp->meta_description ?? '—' }}</p>
+                        <textarea wire:model="editMetaDescription" placeholder="{{ __('New meta description...') }}" maxlength="160" rows="2" class="w-full rounded border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                        <div class="mt-1 flex items-center justify-between text-xs text-gray-400">
+                            <span>{{ mb_strlen($editMetaDescription) }}/160 chars</span>
+                            @if(isset($suggestions['meta_description']))
+                                <button wire:click="applyTemplateSuggestion('meta_description')" class="text-green-600 hover:text-green-800">Use suggestion</button>
+                            @endif
+                        </div>
                     </div>
+
+                    {{-- Push to WP --}}
+                    @if($siteCrawl->site_id && ($editTitle || $editMetaDescription))
+                        <div class="py-3 border-t border-gray-200">
+                            <button wire:click="pushSeoMetaToSite" wire:loading.attr="disabled" class="w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
+                                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="pushSeoMetaToSite" />
+                                {{ __('Push to WordPress') }}
+                            </button>
+                            <p class="mt-1 text-xs text-gray-400 text-center">{{ __('Updates via Yoast SEO / RankMath') }}</p>
+                        </div>
+                    @endif
 
                     {{-- Headings --}}
                     <div class="py-4">

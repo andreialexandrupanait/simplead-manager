@@ -152,6 +152,12 @@ class SeoKeywords extends Component
         );
     }
 
+    #[Computed]
+    public function cannibalization(): array
+    {
+        return app(KeywordTrackingService::class)->detectCannibalization($this->site);
+    }
+
     protected function onJobFinished(string $jobName, array $data): void
     {
         unset($this->keywords, $this->chartData);

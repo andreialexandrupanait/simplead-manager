@@ -8,6 +8,7 @@ use App\Models\CrawledPage;
 use App\Models\Site;
 use App\Models\SiteCrawl;
 use App\Services\JobTracker;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -275,6 +276,26 @@ class SiteCrawlerService
                 'errors_count' => ($summary['status_4xx'] ?? 0) + ($summary['status_5xx'] ?? 0),
                 'summary' => $summary,
             ]);
+
+            // Send notification if site is linked
+            if ($site) {
+                $issueCount = $summary['pages_with_issues'] ?? 0;
+                $errorCount = ($summary['status_4xx'] ?? 0) + ($summary['status_5xx'] ?? 0);
+                $severity = $errorCount > 0 ? 'warning' : 'info';
+
+                NotificationService::notifySiteEvent(
+                    site: $site,
+                    event: 'crawl_completed',
+                    title: 'SEO Crawl Completed',
+                    message: "Crawled {$pagesCrawled} pages — {$issueCount} pages with issues, {$errorCount} errors.",
+                    fields: [
+                        'Pages Crawled' => $pagesCrawled,
+                        'Issues' => $issueCount,
+                        'Errors' => $errorCount,
+                    ],
+                    severity: $severity,
+                );
+            }
         } catch (\Throwable $e) {
             Log::error("Crawl {$crawl->id} failed: ".$e->getMessage(), [
                 'exception' => $e,

@@ -6,8 +6,10 @@ namespace App\Services\Reports\Sections;
 
 use App\Models\KeywordPosition;
 use App\Models\SeoAudit;
+use App\Models\SeoContent;
 use App\Models\SeoIssue;
 use App\Models\Site;
+use App\Models\SiteCrawl;
 use App\Models\SiteMonthlySnapshot;
 use App\Models\TrackedKeyword;
 use App\Services\ReportChartService;
@@ -76,6 +78,8 @@ class SeoGatherer extends BaseReportSectionGatherer
             'technical' => $technical,
             'previous_score' => $previousScore !== null ? (int) $previousScore : null,
             'score_diff' => $scoreTrend,
+            'crawl' => $this->gatherCrawlData($site, $periodStart, $periodEnd),
+            'content_published' => $this->gatherContentPublished($site, $periodStart, $periodEnd),
         ];
     }
 
@@ -141,6 +145,43 @@ class SeoGatherer extends BaseReportSectionGatherer
         return $version !== null && $version !== ''
             ? "{$name} v{$version}"
             : $name;
+    }
+
+    private function gatherCrawlData(Site $site, Carbon $periodStart, Carbon $periodEnd): ?array
+    {
+        $crawl = SiteCrawl::where('site_id', $site->id)
+            ->where('status', SiteCrawl::STATUS_COMPLETED)
+            ->whereBetween('completed_at', [$periodStart, $periodEnd])
+            ->orderByDesc('completed_at')
+            ->first();
+
+        if (! $crawl) {
+            return null;
+        }
+
+        return [
+            'pages_crawled' => $crawl->pages_crawled,
+            'errors' => $crawl->errors_count,
+            'pages_with_issues' => $crawl->pages_with_issues,
+            'date' => $crawl->completed_at?->format('M d, Y'),
+            'broken_links' => $crawl->summary['broken_links'] ?? 0,
+            'missing_titles' => $crawl->summary['missing_titles'] ?? 0,
+            'duplicate_titles' => $crawl->summary['duplicate_titles'] ?? 0,
+        ];
+    }
+
+    private function gatherContentPublished(Site $site, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $articles = SeoContent::where('site_id', $site->id)
+            ->where('status', 'published')
+            ->whereBetween('published_at', [$periodStart, $periodEnd])
+            ->get(['title', 'target_keyword', 'published_at']);
+
+        return $articles->map(fn (SeoContent $c) => [
+            'title' => $c->title,
+            'keyword' => $c->target_keyword,
+            'published' => $c->published_at?->format('M d'),
+        ])->toArray();
     }
 
     private function extractTechnical(SeoAudit $audit): array

@@ -419,6 +419,18 @@ class CrawlAnalyzer
                 ];
             }
 
+            // 25. Structured data validation
+            if (! empty($page->structured_data_types)) {
+                $sdIssues = $this->validateStructuredData($page);
+                $issues = array_merge($issues, $sdIssues);
+            }
+
+            // 26. Hreflang validation
+            if (! empty($page->hreflang)) {
+                $hlIssues = $this->validateHreflang($page, $urlStatusMap);
+                $issues = array_merge($issues, $hlIssues);
+            }
+
             $issuesMap[$page->id] = array_merge($page->issues ?? [], $issues);
         }
 
@@ -537,6 +549,104 @@ class CrawlAnalyzer
         }
 
         return $ids;
+    }
+
+    /**
+     * Validate structured data on a page — check required fields per schema type.
+     *
+     * @return list<array{type: string, severity: string, message: string, recommendation: string}>
+     */
+    private function validateStructuredData(CrawledPage $page): array
+    {
+        $issues = [];
+        $requiredFields = [
+            'Article' => ['headline', 'author', 'datePublished'],
+            'NewsArticle' => ['headline', 'author', 'datePublished'],
+            'BlogPosting' => ['headline', 'author', 'datePublished'],
+            'Product' => ['name', 'image'],
+            'LocalBusiness' => ['name', 'address'],
+            'Organization' => ['name', 'url'],
+            'Person' => ['name'],
+            'BreadcrumbList' => ['itemListElement'],
+            'FAQPage' => ['mainEntity'],
+            'HowTo' => ['name', 'step'],
+            'Recipe' => ['name', 'recipeIngredient'],
+            'Event' => ['name', 'startDate', 'location'],
+            'Review' => ['itemReviewed', 'reviewRating'],
+        ];
+
+        foreach ($page->structured_data_types ?? [] as $schemaType) {
+            if (isset($requiredFields[$schemaType])) {
+                $missing = implode(', ', $requiredFields[$schemaType]);
+                $issues[] = [
+                    'type' => 'structured_data_incomplete',
+                    'severity' => 'medium',
+                    'message' => "{$schemaType} schema detected — verify required fields: {$missing}.",
+                    'recommendation' => "Validate your {$schemaType} schema at Google's Rich Results Test (search.google.com/test/rich-results). Ensure these fields are present: {$missing}. Missing fields prevent rich snippets from appearing in search results.",
+                ];
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Validate hreflang tags on a page.
+     *
+     * @param  array<string, int|null>  $urlStatusMap
+     * @return list<array{type: string, severity: string, message: string, recommendation: string}>
+     */
+    private function validateHreflang(CrawledPage $page, array $urlStatusMap): array
+    {
+        $issues = [];
+        $validLangPattern = '/^[a-z]{2}(-[A-Za-z]{2,})?$|^x-default$/';
+        $hasSelfRef = false;
+        $pageUrlNorm = rtrim($page->url, '/');
+
+        foreach ($page->hreflang ?? [] as $entry) {
+            $lang = $entry['lang'] ?? '';
+            $url = $entry['url'] ?? '';
+
+            // Check language code validity
+            if ($lang && ! preg_match($validLangPattern, $lang)) {
+                $issues[] = [
+                    'type' => 'hreflang_invalid_lang',
+                    'severity' => 'medium',
+                    'message' => "Invalid hreflang language code: \"{$lang}\". Expected ISO 639-1 format (e.g., en, en-US, x-default).",
+                    'recommendation' => 'Use valid ISO 639-1 language codes: "en" for English, "ro" for Romanian, "en-US" for region-specific, or "x-default" for the fallback version.',
+                ];
+
+                break; // One per page
+            }
+
+            // Check if target URL is accessible
+            $urlNorm = rtrim($url, '/');
+            $targetStatus = $urlStatusMap[$urlNorm] ?? $urlStatusMap[$url] ?? null;
+            if ($targetStatus !== null && ($targetStatus < 200 || $targetStatus >= 300)) {
+                $issues[] = [
+                    'type' => 'hreflang_broken_target',
+                    'severity' => 'high',
+                    'message' => "Hreflang target URL returns status {$targetStatus}: {$url}",
+                    'recommendation' => 'Update the hreflang tag to point to a working URL (status 200). Broken hreflang targets confuse search engines about language versions.',
+                ];
+            }
+
+            // Check self-reference
+            if ($urlNorm === $pageUrlNorm) {
+                $hasSelfRef = true;
+            }
+        }
+
+        if (! $hasSelfRef && count($page->hreflang ?? []) > 0) {
+            $issues[] = [
+                'type' => 'hreflang_missing_self',
+                'severity' => 'medium',
+                'message' => 'Page has hreflang tags but no self-referencing hreflang entry.',
+                'recommendation' => 'Add a hreflang tag pointing to this page\'s own URL. Every page with hreflang should include itself in the set of language alternatives.',
+            ];
+        }
+
+        return $issues;
     }
 
     /**

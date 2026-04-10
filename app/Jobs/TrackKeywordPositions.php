@@ -8,6 +8,7 @@ use App\Models\KeywordPosition;
 use App\Models\Site;
 use App\Services\ActivityLogger;
 use App\Services\GoogleSearchConsoleService;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -95,13 +96,53 @@ class TrackKeywordPositions implements ShouldBeUnique, ShouldQueue
             $updatedCount++;
         }
 
+        // Check for significant position changes and notify
+        $significantChanges = [];
+        foreach ($keywords as $trackedKeyword) {
+            $positions = $trackedKeyword->positions()->orderByDesc('date')->limit(2)->pluck('position', 'date')->all();
+            $values = array_values($positions);
+            if (count($values) >= 2) {
+                $current = $values[0];
+                $previous = $values[1];
+                $diff = $previous - $current; // positive = improved
+
+                if (abs($diff) >= 5) {
+                    $significantChanges[] = [
+                        'keyword' => $trackedKeyword->keyword,
+                        'from' => $previous,
+                        'to' => $current,
+                        'diff' => $diff,
+                    ];
+                }
+
+                // Notify top 3 / top 10 milestones
+                if ($current <= 3 && $previous > 3) {
+                    NotificationService::notifySiteEvent(
+                        site: $this->site,
+                        event: 'keyword_top3',
+                        title: 'Keyword entered Top 3',
+                        message: "\"{$trackedKeyword->keyword}\" reached position {$current} (was {$previous}).",
+                        severity: 'info',
+                    );
+                } elseif ($current <= 10 && $previous > 10) {
+                    NotificationService::notifySiteEvent(
+                        site: $this->site,
+                        event: 'keyword_top10',
+                        title: 'Keyword entered Top 10',
+                        message: "\"{$trackedKeyword->keyword}\" reached position {$current} (was {$previous}).",
+                        severity: 'info',
+                    );
+                }
+            }
+        }
+
         ActivityLogger::log(
             type: 'seo',
             severity: 'info',
             title: "Keyword positions updated for {$this->site->name}",
             description: "Tracked {$updatedCount} keyword(s) via Search Console",
             site: $this->site,
-            metadata: ['keyword_count' => $updatedCount, 'property' => $propertyUrl],
+            metadata: ['keyword_count' => $updatedCount, 'property' => $propertyUrl, 'significant_changes' => count($significantChanges)],
             icon: 'magnifying-glass',
         );
     }

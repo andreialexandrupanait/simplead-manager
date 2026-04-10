@@ -345,4 +345,35 @@
             </x-ui.card>
         </div>
     @endif
+
+    {{-- Crawl Scheduling --}}
+    <div class="mt-6">
+        <x-ui.card>
+            <h3 class="mb-4 text-base font-semibold text-gray-900">{{ __('Scheduled Crawls') }}</h3>
+            <div class="flex flex-wrap items-center gap-4">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" wire:model="crawlEnabled" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                    {{ __('Enable automatic crawling') }}
+                </label>
+
+                @if($crawlEnabled)
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-600">{{ __('Every') }}</span>
+                        <select wire:model="crawlIntervalDays" class="rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                            <option value="1">{{ __('Day') }}</option>
+                            <option value="7">{{ __('Week') }}</option>
+                            <option value="14">{{ __('2 Weeks') }}</option>
+                            <option value="30">{{ __('Month') }}</option>
+                        </select>
+                    </div>
+                @endif
+
+                <x-ui.button variant="secondary" size="sm" wire:click="saveSchedule">{{ __('Save Schedule') }}</x-ui.button>
+            </div>
+
+            @if($crawlEnabled && $site->seoMonitor?->next_crawl_at)
+                <p class="mt-2 text-xs text-gray-500">{{ __('Next crawl:') }} {{ $site->seoMonitor->next_crawl_at->format('M d, Y H:i') }}</p>
+            @endif
+        </x-ui.card>
+    </div>
 </div>

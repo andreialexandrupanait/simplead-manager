@@ -13,4 +13,16 @@ trait ManagesSeo
 
         return $response->json();
     }
+
+    public function updateSeoMeta(string $url, ?string $metaTitle = null, ?string $metaDescription = null): array
+    {
+        $response = $this->request('POST', '/seo/update-meta', array_filter([
+            'url' => $url,
+            'meta_title' => $metaTitle,
+            'meta_description' => $metaDescription,
+        ]), [], 30);
+        $response->throw();
+
+        return $response->json();
+    }
 }
