@@ -89,7 +89,7 @@ class CrawlerResults extends Component
     public function tableColumns(): array
     {
         return match ($this->dataTab) {
-            'internal' => ['url', 'status_code', 'title', 'meta_description', 'h1_count', 'word_count', 'internal_links_count', 'external_links_count', 'response_time_ms', 'depth'],
+            'internal' => ['url', 'status_code', 'title', 'word_count', 'internal_links_count', 'response_time_ms', 'depth'],
             'response_codes' => ['url', 'status_code', 'content_type', 'redirect_url', 'redirect_status_code', 'response_time_ms'],
             'page_titles' => ['url', 'title', 'title_length', 'h1_count', 'status_code'],
             'meta_desc' => ['url', 'meta_description', 'meta_desc_length', 'status_code'],

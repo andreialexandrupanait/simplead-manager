@@ -1,4 +1,4 @@
-<div class="flex gap-6">
+<div class="flex gap-6 overflow-hidden">
     {{-- Left sidebar navigation --}}
     <nav class="hidden w-52 shrink-0 lg:block">
         <div class="sticky top-4 space-y-5">
@@ -68,8 +68,8 @@
         </div>
     </nav>
 
-    {{-- Main content (full-width) --}}
-    <div class="min-w-0 flex-1">
+    {{-- Main content (full-width, no page-level scroll) --}}
+    <div class="min-w-0 flex-1 overflow-hidden">
         {{-- Stat cards --}}
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <x-ui.stat-card label="{{ __('Total URLs') }}" :value="$this->overviewStats['total']" />
@@ -211,13 +211,21 @@
 
             <x-ui.card class="!p-0 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <table class="w-full table-fixed divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
                             <tr>
                                 @foreach($columns as $col)
-                                    <th @if(!$isArray) wire:click="setSort('{{ $col }}')" @endif @class([
-                                        'whitespace-nowrap px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500',
+                                    @php
+                                    $colWidth = match($col) {
+                                        'url', 'page_url', 'source', 'canonical_url', 'redirect_url' => 'w-[35%]',
+                                        'title', 'meta_description', 'h1_tags', 'anchor', 'alt' => 'w-[20%]',
+                                        default => '',
+                                    };
+                                @endphp
+                                <th @if(!$isArray) wire:click="setSort('{{ $col }}')" @endif @class([
+                                        'truncate px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500',
                                         'cursor-pointer hover:text-gray-700' => !$isArray,
+                                        $colWidth,
                                     ])>
                                         {{ $labels[$col] ?? ucfirst(str_replace('_', ' ', $col)) }}
                                         @if(!$isArray && $sortBy === $col) <span class="text-purple-600">{{ $sortDir === 'asc' ? '↑' : '↓' }}</span> @endif
@@ -230,14 +238,14 @@
                             @forelse($rows as $row)
                                 <tr @if(!$isArray) wire:click="selectPage({{ $row->id }})" @endif class="hover:bg-gray-50 {{ !$isArray ? 'cursor-pointer' : '' }} {{ !$isArray && $selectedPageId === ($row->id ?? null) ? 'bg-purple-50' : '' }}">
                                     @foreach($columns as $col)
-                                        <td class="whitespace-nowrap px-4 py-2.5">
+                                        <td class="truncate px-4 py-2.5">
                                             @php $val = is_array($row) ? ($row[$col] ?? '') : ($row->{$col} ?? ''); @endphp
                                             @if($col === 'status_code' && is_numeric($val))
                                                 <span @class(['inline-flex rounded-full px-2 py-0.5 text-xs font-semibold', 'bg-green-100 text-green-800' => $val >= 200 && $val < 300, 'bg-blue-100 text-blue-800' => $val >= 300 && $val < 400, 'bg-red-100 text-red-800' => $val >= 400 || $val === 0])>{{ $val ?: 'ERR' }}</span>
                                             @elseif(in_array($col, ['url', 'page_url', 'source', 'canonical_url', 'redirect_url']))
-                                                <span class="text-gray-900 max-w-sm truncate block" title="{{ $val }}">{{ \Illuminate\Support\Str::limit((string) $val, 70) }}</span>
+                                                <span class="text-gray-900 max-w-sm truncate block" title="{{ $val }}">{{ \Illuminate\Support\Str::limit((string) $val, 50) }}</span>
                                             @elseif(in_array($col, ['title', 'meta_description', 'anchor', 'alt']))
-                                                <span class="text-gray-600 max-w-sm truncate block">{{ \Illuminate\Support\Str::limit(is_string($val) ? $val : '', 60) }}</span>
+                                                <span class="text-gray-600 max-w-sm truncate block">{{ \Illuminate\Support\Str::limit(is_string($val) ? $val : '', 40) }}</span>
                                             @elseif($col === 'h1_tags' && is_array($val))
                                                 <span class="text-gray-600 max-w-xs truncate block">{{ \Illuminate\Support\Str::limit(implode(' | ', $val), 50) }}</span>
                                             @elseif(($col === 'hreflang' || $col === 'structured_data_types') && is_array($val))
