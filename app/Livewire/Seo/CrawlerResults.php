@@ -39,7 +39,7 @@ class CrawlerResults extends Component
     #[Computed]
     public function pages()
     {
-        $query = $this->siteCrawl->crawledPages();
+        $query = $this->siteCrawl->pages();
 
         if ($this->statusFilter === '2xx') {
             $query->whereBetween('status_code', [200, 299]);
@@ -70,7 +70,7 @@ class CrawlerResults extends Component
             return [];
         }
 
-        $pages = $this->siteCrawl->crawledPages()
+        $pages = $this->siteCrawl->pages()
             ->whereNotNull('internal_links')
             ->limit(100)
             ->get(['url', 'internal_links', 'external_links', 'status_code']);
@@ -95,7 +95,7 @@ class CrawlerResults extends Component
             return [];
         }
 
-        return $this->siteCrawl->crawledPages()
+        return $this->siteCrawl->pages()
             ->where('images_count', '>', 0)
             ->get(['url', 'images_count', 'images_without_alt'])
             ->map(fn ($p) => [
@@ -150,7 +150,7 @@ class CrawlerResults extends Component
 
     public function exportCsv()
     {
-        $pages = $this->siteCrawl->crawledPages()->orderBy('url')->get();
+        $pages = $this->siteCrawl->pages()->orderBy('url')->get();
         $filename = 'crawl-'.$this->siteCrawl->id.'-'.now()->format('Y-m-d').'.csv';
 
         return response()->streamDownload(function () use ($pages) {

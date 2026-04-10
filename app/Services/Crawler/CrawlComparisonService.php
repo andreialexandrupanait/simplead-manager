@@ -15,8 +15,8 @@ class CrawlComparisonService
      */
     public function compare(SiteCrawl $older, SiteCrawl $newer): array
     {
-        $olderPages = $older->crawledPages()->pluck('url')->all();
-        $newerPages = $newer->crawledPages()->pluck('url')->all();
+        $olderPages = $older->pages()->pluck('url')->all();
+        $newerPages = $newer->pages()->pluck('url')->all();
 
         $olderSet = array_flip($olderPages);
         $newerSet = array_flip($newerPages);
@@ -25,10 +25,10 @@ class CrawlComparisonService
         $disappearedPages = array_values(array_diff($olderPages, $newerPages));
 
         // Compare issues
-        $olderIssueCount = $older->crawledPages()
+        $olderIssueCount = $older->pages()
             ->whereRaw("jsonb_array_length(COALESCE(issues, '[]'::jsonb)) > 0")
             ->count();
-        $newerIssueCount = $newer->crawledPages()
+        $newerIssueCount = $newer->pages()
             ->whereRaw("jsonb_array_length(COALESCE(issues, '[]'::jsonb)) > 0")
             ->count();
 
@@ -37,12 +37,12 @@ class CrawlComparisonService
         $commonUrls = array_intersect($olderPages, $newerPages);
 
         if (count($commonUrls) > 0 && count($commonUrls) <= 1000) {
-            $olderStatuses = $older->crawledPages()
+            $olderStatuses = $older->pages()
                 ->whereIn('url', $commonUrls)
                 ->pluck('status_code', 'url')
                 ->all();
 
-            $newerStatuses = $newer->crawledPages()
+            $newerStatuses = $newer->pages()
                 ->whereIn('url', $commonUrls)
                 ->pluck('status_code', 'url')
                 ->all();
