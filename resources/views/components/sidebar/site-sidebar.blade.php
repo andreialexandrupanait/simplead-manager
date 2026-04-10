@@ -189,6 +189,15 @@
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
+            :href="route('sites.seo', $site)"
+            icon="target"
+            :active="request()->routeIs('sites.seo*')"
+            :inactive="!$moduleService->isModuleActive($site, 'seo')"
+        >
+            SEO
+        </x-sidebar.sidebar-item>
+
+        <x-sidebar.sidebar-item
             :href="route('sites.security', $site)"
             icon="shield-check"
             :active="request()->routeIs('sites.security*')"

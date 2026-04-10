@@ -176,3 +176,51 @@ Schedule::command('security:maintenance recalculate-scores')
     ->dailyAt('06:00')
     ->name('security-score-recalculation')
     ->onOneServer();
+
+// ==========================================================================
+// SEO Module
+// ==========================================================================
+
+// Scheduled crawls — check hourly for sites with crawl_enabled
+Schedule::call(function () {
+    $monitors = \App\Models\SeoMonitor::where('crawl_enabled', true)
+        ->where('next_crawl_at', '<=', now())
+        ->with('site')
+        ->get();
+
+    foreach ($monitors as $monitor) {
+        if (! $monitor->site) {
+            continue;
+        }
+
+        $crawl = \App\Models\SiteCrawl::create([
+            'site_id' => $monitor->site->id,
+            'status' => \App\Models\SiteCrawl::STATUS_PENDING,
+            'config' => ['max_pages' => 500, 'rate_limit_ms' => 1000, 'max_depth' => 50, 'respect_robots_txt' => true],
+        ]);
+
+        dispatch(new \App\Jobs\RunSiteCrawl($monitor->site, $crawl));
+
+        $monitor->update([
+            'last_crawl_at' => now(),
+            'next_crawl_at' => now()->addDays($monitor->crawl_interval_days),
+        ]);
+    }
+})->hourly()
+    ->name('seo-scheduled-crawls')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Publish scheduled SEO content
+Schedule::call(function () {
+    $contents = \App\Models\SeoContent::where('status', 'scheduled')
+        ->where('scheduled_at', '<=', now())
+        ->get();
+
+    foreach ($contents as $content) {
+        dispatch(new \App\Jobs\PublishSeoContent($content));
+    }
+})->everyMinute()
+    ->name('seo-publish-scheduled')
+    ->withoutOverlapping()
+    ->onOneServer();

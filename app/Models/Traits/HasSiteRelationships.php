@@ -36,7 +36,12 @@ use App\Models\SecurityPreset;
 use App\Models\SecurityRecommendation;
 use App\Models\SecurityScan;
 use App\Models\SecuritySetting;
+use App\Models\SeoAudit;
+use App\Models\SeoContent;
+use App\Models\SeoIssue;
+use App\Models\SeoMonitor;
 use App\Models\SiteCloudflare;
+use App\Models\SiteCrawl;
 use App\Models\SiteHealthState;
 use App\Models\SiteMonthlySnapshot;
 use App\Models\SitePlugin;
@@ -250,6 +255,41 @@ trait HasSiteRelationships
     public function securityMonitor(): HasOne
     {
         return $this->hasOne(SecurityMonitor::class);
+    }
+
+    public function seoMonitor(): HasOne
+    {
+        return $this->hasOne(SeoMonitor::class);
+    }
+
+    public function seoAudits(): HasMany
+    {
+        return $this->hasMany(SeoAudit::class);
+    }
+
+    public function latestSeoAudit(): HasOne
+    {
+        return $this->hasOne(SeoAudit::class)->latestOfMany('scanned_at');
+    }
+
+    public function seoIssues(): HasMany
+    {
+        return $this->hasMany(SeoIssue::class);
+    }
+
+    public function seoContents(): HasMany
+    {
+        return $this->hasMany(SeoContent::class);
+    }
+
+    public function siteCrawls(): HasMany
+    {
+        return $this->hasMany(SiteCrawl::class);
+    }
+
+    public function latestSiteCrawl(): HasOne
+    {
+        return $this->hasOne(SiteCrawl::class)->latestOfMany();
     }
 
     public function databaseCleanupConfig(): HasOne

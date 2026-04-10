@@ -1,4 +1,7 @@
 <div class="max-w-5xl">
+    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="error" />
+
     {{-- Header --}}
     <div class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">{{ $client ? __('Edit Client') : __('Add Client') }}</h1>
@@ -32,11 +35,30 @@
                     <x-ui.input wire:model="form.company" id="company" type="text" class="w-full" />
                 </x-ui.form-group>
                 <x-ui.form-group :label="__('VAT Number') . ' (CUI)'" for="vat_number" error="form.vat_number" :hint="__('Romanian CUI, optionally prefixed with RO')">
-                    <x-ui.input wire:model="form.vat_number" id="vat_number" type="text" class="w-full" placeholder="RO12345678" />
+                    <div class="flex gap-2">
+                        <x-ui.input wire:model="form.vat_number" id="vat_number" type="text" class="w-full" placeholder="RO12345678" />
+                        <button type="button" wire:click="lookupCui" wire:loading.attr="disabled" wire:target="lookupCui"
+                                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                title="{{ __('Fetch company data from ANAF') }}">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span wire:loading.remove wire:target="lookupCui">{{ __('ANAF') }}</span>
+                            <span wire:loading wire:target="lookupCui">...</span>
+                        </button>
+                    </div>
                 </x-ui.form-group>
                 <x-ui.form-group :label="__('Registration Number') . ' (Nr. Reg. Com.)'" for="registration_number" error="form.registration_number" :hint="__('Format: J{county}/{number}/{year}')">
                     <x-ui.input wire:model="form.registration_number" id="registration_number" type="text" class="w-full" placeholder="J40/12345/2024" />
                 </x-ui.form-group>
+                @if($form->vat_payer || $form->company_status)
+                    <div class="sm:col-span-2 flex flex-wrap items-center gap-2">
+                        @if($form->vat_payer)
+                            <x-ui.badge variant="green">{{ __('VAT Payer') }}</x-ui.badge>
+                        @endif
+                        @if($form->company_status)
+                            <x-ui.badge variant="{{ str_contains(strtoupper($form->company_status), 'RADIAT') ? 'red' : 'blue' }}">{{ $form->company_status }}</x-ui.badge>
+                        @endif
+                    </div>
+                @endif
             </div>
         </x-ui.card>
 
@@ -49,6 +71,12 @@
                 </x-ui.form-group>
                 <x-ui.form-group :label="__('City')" for="city" error="form.city">
                     <x-ui.input wire:model="form.city" id="city" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group :label="__('County')" for="county" error="form.county">
+                    <x-ui.input wire:model="form.county" id="county" type="text" class="w-full" />
+                </x-ui.form-group>
+                <x-ui.form-group :label="__('Postal Code')" for="postal_code" error="form.postal_code">
+                    <x-ui.input wire:model="form.postal_code" id="postal_code" type="text" class="w-full" />
                 </x-ui.form-group>
                 <x-ui.form-group :label="__('Country')" for="country" error="form.country">
                     <x-ui.input wire:model="form.country" id="country" type="text" class="w-full" />

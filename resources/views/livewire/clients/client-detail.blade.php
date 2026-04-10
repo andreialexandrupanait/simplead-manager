@@ -84,12 +84,25 @@
                         <dd class="text-sm font-medium text-gray-900">{{ $client->registration_number }}</dd>
                     </div>
                 @endif
-                @if($client->address || $client->city || $client->country)
+                @if($client->vat_payer || $client->company_status)
+                    <div class="flex justify-between">
+                        <dt class="text-sm text-gray-500">{{ __('Status') }}</dt>
+                        <dd class="flex items-center gap-2">
+                            @if($client->vat_payer)
+                                <x-ui.badge variant="green">{{ __('VAT Payer') }}</x-ui.badge>
+                            @endif
+                            @if($client->company_status)
+                                <x-ui.badge variant="{{ str_contains(strtoupper($client->company_status), 'RADIAT') ? 'red' : 'blue' }}">{{ $client->company_status }}</x-ui.badge>
+                            @endif
+                        </dd>
+                    </div>
+                @endif
+                @if($client->address || $client->city || $client->county || $client->country)
                     <div class="flex justify-between">
                         <dt class="text-sm text-gray-500">{{ __('Address') }}</dt>
                         <dd class="text-right text-sm font-medium text-gray-900">
                             @if($client->address){{ $client->address }}<br>@endif
-                            {{ collect([$client->city, $client->country])->filter()->implode(', ') }}
+                            {{ collect([$client->city, $client->county, $client->postal_code, $client->country])->filter()->implode(', ') }}
                         </dd>
                     </div>
                 @endif

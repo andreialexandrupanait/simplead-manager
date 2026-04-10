@@ -17,17 +17,18 @@ class SiteStatusHelper
     {
         $updates = $site->pending_updates_count ?? 0;
 
-        // Compute the 5 health-bar dimensions
+        // Compute the 6 health-bar dimensions
         $uptime = static::uptime($site);
         $performance = static::performance($site);
         $backup = static::backup($site);
         $plugins = static::plugins($site, $updates);
         $wpVersion = static::wpVersion($site);
+        $seo = static::seo($site);
 
         // Calculate health score from dimension colors
         $possible = 0;
         $earned = 0;
-        foreach ([$uptime, $performance, $backup, $plugins, $wpVersion] as $dim) {
+        foreach ([$uptime, $performance, $backup, $plugins, $wpVersion, $seo] as $dim) {
             if ($dim['color'] === 'text-gray-300') {
                 continue;
             }
@@ -49,6 +50,7 @@ class SiteStatusHelper
             'wpConn' => static::wpConnection($site),
             'backup' => $backup,
             'wpVersion' => $wpVersion,
+            'seo' => $seo,
             'reports' => static::reports($site),
             'searchConsole' => static::searchConsole($site),
             'updates' => $updates,
@@ -196,6 +198,22 @@ class SiteStatusHelper
         $count = $site->report_schedules_count ?? 0;
         $color = $count > 0 ? 'text-green-500' : 'text-gray-300';
         $tip = $count > 0 ? $count.' report schedule'.($count > 1 ? 's' : '') : 'Reports';
+
+        return compact('color', 'tip');
+    }
+
+    protected static function seo(Site $site): array
+    {
+        $color = 'text-gray-300';
+        $tip = 'SEO: Not audited';
+
+        /** @var \App\Models\SeoAudit|null $audit */
+        $audit = $site->latestSeoAudit;
+        if ($audit) {
+            $score = $audit->score;
+            $color = $score >= 80 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
+            $tip = "SEO: {$score}/100";
+        }
 
         return compact('color', 'tip');
     }

@@ -9,6 +9,7 @@ use App\Models\GoogleConnection;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CloudflareService;
+use App\Services\OpenApiService;
 use App\Services\SettingsService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\RequestException;
@@ -35,6 +36,9 @@ class IntegrationsSettings extends Component
     // Unsplash
     public string $unsplashAccessKey = '';
 
+    // OpenAPI.ro
+    public string $openApiKey = '';
+
     // Cloudflare
     public string $cfApiToken = '';
 
@@ -56,6 +60,15 @@ class IntegrationsSettings extends Component
         }
 
         $this->unsplashAccessKey = $settings->get('unsplash_access_key') ?? '';
+
+        $encryptedOpenApi = $settings->get('openapi_key');
+        if ($encryptedOpenApi) {
+            try {
+                $this->openApiKey = decrypt($encryptedOpenApi);
+            } catch (DecryptException $e) {
+                $this->openApiKey = '';
+            }
+        }
 
         $this->googleClientId = $settings->get('google_client_id') ?? '';
 
@@ -109,6 +122,34 @@ class IntegrationsSettings extends Component
 
         session()->flash('success', 'Unsplash API credentials saved.');
         $this->dispatch('close-modal-configure-unsplash');
+    }
+
+    public function saveOpenApiCredentials(): void
+    {
+        $this->validate([
+            'openApiKey' => 'required|string|min:10',
+        ]);
+
+        $settings = app(SettingsService::class);
+        $settings->set('openapi_key', encrypt(trim($this->openApiKey)), 'openapi');
+
+        session()->flash('success', __('OpenAPI.ro API key saved.'));
+        $this->dispatch('close-modal-configure-openapi');
+    }
+
+    public function testOpenApiConnection(): void
+    {
+        try {
+            $success = app(OpenApiService::class)->testConnection();
+
+            if ($success) {
+                session()->flash('success', __('OpenAPI.ro connection successful!'));
+            } else {
+                session()->flash('error', __('OpenAPI.ro connection test failed.'));
+            }
+        } catch (\RuntimeException $e) {
+            session()->flash('error', $e->getMessage());
+        }
     }
 
     public function saveGoogleCredentials(): void

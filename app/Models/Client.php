@@ -23,6 +23,10 @@ use Illuminate\Support\Str;
  * @property string|null $country
  * @property string|null $vat_number
  * @property string|null $registration_number
+ * @property bool $vat_payer
+ * @property string|null $company_status
+ * @property string|null $county
+ * @property string|null $postal_code
  * @property string|null $logo
  * @property string|null $notes
  * @property string $status
@@ -58,6 +62,10 @@ class Client extends Model
         'country',
         'vat_number',
         'registration_number',
+        'vat_payer',
+        'company_status',
+        'county',
+        'postal_code',
         'logo',
         'notes',
         'status',
@@ -72,6 +80,7 @@ class Client extends Model
     protected $casts = [
         'deleted_at' => 'datetime',
         'portal_enabled' => 'boolean',
+        'vat_payer' => 'boolean',
     ];
 
     public function sites(): HasMany

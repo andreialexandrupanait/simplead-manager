@@ -51,6 +51,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
         $this->aggregateAnalytics();
         $this->aggregateSearchConsole();
         $this->aggregateIncidents($start, $end);
+        $this->aggregateSeo($start, $end);
 
         Log::info("Monthly snapshot aggregation complete for {$this->year}-{$this->month}");
     }
@@ -224,6 +225,26 @@ class AggregateMonthlySnapshots implements ShouldQueue
         foreach ($rows as $row) {
             $this->upsert($row->site_id, [
                 'uptime_incidents_count' => $row->incident_count,
+            ]);
+        }
+    }
+
+    private function aggregateSeo(Carbon $start, Carbon $end): void
+    {
+        $rows = DB::select('
+            SELECT
+                site_id,
+                (ARRAY_AGG(score ORDER BY scanned_at DESC))[1] as latest_score,
+                (ARRAY_AGG(critical_count + high_count + medium_count + low_count ORDER BY scanned_at DESC))[1] as latest_issues
+            FROM seo_audits
+            WHERE scanned_at BETWEEN ? AND ?
+            GROUP BY site_id
+        ', [$start, $end]);
+
+        foreach ($rows as $row) {
+            $this->upsert($row->site_id, [
+                'seo_score' => $row->latest_score,
+                'seo_issues_count' => $row->latest_issues,
             ]);
         }
     }

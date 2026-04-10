@@ -34,9 +34,20 @@ class ClientFormData extends Form
     #[Validate('nullable|string|max:100')]
     public string $country = '';
 
+    #[Validate('nullable|string|max:100')]
+    public string $county = '';
+
+    #[Validate('nullable|string|max:20')]
+    public string $postal_code = '';
+
     public string $vat_number = '';
 
     public string $registration_number = '';
+
+    public bool $vat_payer = false;
+
+    #[Validate('nullable|string|max:255')]
+    public string $company_status = '';
 
     #[Validate('nullable|string|max:5000')]
     public string $notes = '';
@@ -62,8 +73,12 @@ class ClientFormData extends Form
         $this->address = $client->address ?? '';
         $this->city = $client->city ?? '';
         $this->country = $client->country ?? '';
+        $this->county = $client->county ?? '';
+        $this->postal_code = $client->postal_code ?? '';
         $this->vat_number = $client->vat_number ?? '';
         $this->registration_number = $client->registration_number ?? '';
+        $this->vat_payer = $client->vat_payer ?? false;
+        $this->company_status = $client->company_status ?? '';
         $this->notes = $client->notes ?? '';
         $this->status = $client->status ?? 'active';
     }

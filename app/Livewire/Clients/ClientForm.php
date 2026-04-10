@@ -6,6 +6,7 @@ namespace App\Livewire\Clients;
 
 use App\Livewire\Forms\ClientFormData;
 use App\Models\Client;
+use App\Services\OpenApiService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -46,6 +47,57 @@ class ClientForm extends Component
     {
         $this->removeLogo = true;
         $this->logo = null;
+    }
+
+    public function lookupCui(): void
+    {
+        $cui = trim($this->form->vat_number);
+
+        if (empty($cui)) {
+            session()->flash('error', __('Please enter a CUI first.'));
+
+            return;
+        }
+
+        try {
+            $data = app(OpenApiService::class)->lookupCui($cui);
+
+            if (! $data) {
+                session()->flash('error', __('Company not found for CUI: :cui', ['cui' => $cui]));
+
+                return;
+            }
+
+            if ($data['company']) {
+                $this->form->company = $data['company'];
+            }
+            if ($data['address']) {
+                $this->form->address = $data['address'];
+            }
+            if ($data['county']) {
+                $this->form->county = $data['county'];
+            }
+            if ($data['country']) {
+                $this->form->country = $data['country'];
+            }
+            if ($data['postal_code']) {
+                $this->form->postal_code = $data['postal_code'];
+            }
+            if ($data['registration_number']) {
+                $this->form->registration_number = $data['registration_number'];
+            }
+            if ($data['phone']) {
+                $this->form->phone = $data['phone'];
+            }
+            $this->form->vat_payer = $data['vat_payer'];
+            if ($data['company_status']) {
+                $this->form->company_status = $data['company_status'];
+            }
+
+            session()->flash('success', __('Company data loaded: :name', ['name' => $data['company']]));
+        } catch (\RuntimeException $e) {
+            session()->flash('error', $e->getMessage());
+        }
     }
 
     public function save(): void

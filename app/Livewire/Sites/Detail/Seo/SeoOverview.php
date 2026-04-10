@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Sites\Detail\Seo;
+
+use App\Jobs\RunSeoAudit;
+use App\Livewire\Traits\WithJobTracking;
+use App\Livewire\Traits\WithSiteAuthorization;
+use App\Models\SeoAudit;
+use App\Models\Site;
+use App\Services\ModuleConfigService;
+use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
+
+class SeoOverview extends Component
+{
+    use WithJobTracking, WithSiteAuthorization;
+
+    public Site $site;
+
+    protected function jobTrackingKeys(): array
+    {
+        return [
+            'audit' => 'seo-audit-'.$this->site->id,
+        ];
+    }
+
+    public function mount(Site $site): void
+    {
+        $this->authorizeSiteAccess($site);
+        $this->site = $site;
+        $this->initJobTracking();
+    }
+
+    #[Computed]
+    public function isModuleActive(): bool
+    {
+        return app(ModuleConfigService::class)->isModuleActive($this->site, 'seo');
+    }
+
+    #[Computed]
+    public function latestAudit(): ?SeoAudit
+    {
+        return $this->site->latestSeoAudit;
+    }
+
+    #[Computed]
+    public function recentAudits(): Collection
+    {
+        return $this->site->seoAudits()
+            ->orderByDesc('scanned_at')
+            ->limit(10)
+            ->get();
+    }
+
+    #[Computed]
+    public function keywordsCount(): int
+    {
+        return $this->site->trackedKeywords()->count();
+    }
+
+    #[Computed]
+    public function activeIssuesCount(): int
+    {
+        return $this->site->seoIssues()->whereNull('resolved_at')->count();
+    }
+
+    public function activateModule(): void
+    {
+        app(ModuleConfigService::class)->toggleModule($this->site, 'seo', true);
+        $this->site->refresh();
+        $this->site->load('seoMonitor');
+        unset($this->isModuleActive);
+    }
+
+    public function runAudit(): void
+    {
+        $this->dispatchTrackedJob('audit', new RunSeoAudit($this->site), 'Starting SEO audit...');
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->latestAudit, $this->recentAudits, $this->activeIssuesCount);
+    }
+
+    public function render()
+    {
+        return view('livewire.sites.detail.seo.seo-overview')
+            ->layout('components.layouts.app', [
+                'siteContext' => $this->site,
+                'title' => $this->site->name.' — SEO',
+            ]);
+    }
+}

@@ -11,10 +11,47 @@
         $cloudflareConnected = $this->cloudflareConnections->isNotEmpty();
         $dropboxConnected = $dropboxAppKey && $dropboxAppSecret;
         $unsplashConnected = (bool) $unsplashAccessKey;
+        $openApiConnected = (bool) $openApiKey;
     @endphp
 
     {{-- Integration Cards Grid --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+        {{-- OpenAPI.ro Card --}}
+        <x-ui.card class="{{ $openApiConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 shadow-sm ring-1 ring-indigo-200">
+                        <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">OpenAPI.ro</h3>
+                        <p class="text-xs text-gray-500">{{ __('Romanian company lookup (ANAF)') }}</p>
+                    </div>
+                </div>
+                @if($openApiConnected)
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($openApiConnected)
+                    {{ __('Auto-fill client data by CUI') }}
+                @else
+                    {{ __('API key required for CUI lookup') }}
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-openapi')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {{ __('Settings') }}
+                </button>
+            </div>
+        </x-ui.card>
 
         {{-- Google Card --}}
         <x-ui.card class="{{ $googleConnected ? 'ring-2 ring-blue-500' : '' }}">
@@ -552,6 +589,47 @@
                     <li>Copy the <strong>Access Key</strong> from the app's page and paste it above</li>
                 </ol>
                 <p class="mt-2 text-xs text-blue-600">Free tier: max 50 requests/hour — sufficient for the login slideshow.</p>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- OpenAPI.ro Configuration Modal --}}
+    <x-ui.modal name="configure-openapi" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">OpenAPI.ro &mdash; {{ __('Settings') }}</h2>
+
+        <p class="text-sm text-gray-500 mb-4">{{ __('Enables automatic company data lookup by CUI (Romanian tax ID) when creating or editing clients.') }}</p>
+
+        <form wire:submit="saveOpenApiCredentials" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <x-ui.input type="password" wire:model="openApiKey" placeholder="{{ __('Enter OpenAPI.ro API Key') }}" />
+                @error('openApiKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="button" wire:click="testOpenApiConnection" wire:loading.attr="disabled" wire:target="testOpenApiConnection"
+                        class="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="testOpenApiConnection">{{ __('Test Connection') }}</span>
+                    <span wire:loading wire:target="testOpenApiConnection">{{ __('Testing...') }}</span>
+                </button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    {{ __('Save') }}
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                {{ __('How to obtain OpenAPI.ro credentials') }}
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>{{ __('Go to') }} <a href="https://openapi.ro/ro/users/sign_up" target="_blank" class="font-medium underline hover:text-blue-900">openapi.ro</a> {{ __('and create a free account') }}</li>
+                    <li>{{ __('Confirm your email address') }}</li>
+                    <li>{{ __('Generate an API key from your dashboard') }}</li>
+                    <li>{{ __('Paste the API key above and click Save') }}</li>
+                </ol>
+                <p class="mt-2 text-xs text-blue-600">{{ __('Free tier: 100 requests/month — sufficient for manual client lookups.') }}</p>
             </div>
         </div>
     </x-ui.modal>

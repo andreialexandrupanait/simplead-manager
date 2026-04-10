@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Jobs;
+
+use App\Models\Site;
+use App\Models\SiteCrawl;
+use App\Services\Crawler\SiteCrawlerService;
+use App\Services\JobTracker;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class RunSiteCrawl implements ShouldBeUnique, ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $timeout = 1800;
+
+    public int $tries = 1;
+
+    public function __construct(
+        public Site $site,
+        public SiteCrawl $crawl,
+    ) {
+        $this->onQueue('default');
+    }
+
+    public function uniqueId(): string
+    {
+        return 'site-crawl-'.$this->site->id;
+    }
+
+    public function handle(): void
+    {
+        $trackerKey = $this->uniqueId();
+
+        JobTracker::start($trackerKey, 'Initialising site crawl...');
+
+        (new SiteCrawlerService)->crawl($this->site, $this->crawl, $trackerKey);
+
+        JobTracker::complete(
+            $trackerKey,
+            "Crawl complete — {$this->crawl->fresh()?->pages_crawled} pages crawled."
+        );
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        $this->crawl->update([
+            'status' => SiteCrawl::STATUS_FAILED,
+            'completed_at' => now(),
+        ]);
+
+        JobTracker::fail(
+            $this->uniqueId(),
+            'Site crawl failed: '.($exception?->getMessage() ?? 'Unknown error'),
+        );
+    }
+}

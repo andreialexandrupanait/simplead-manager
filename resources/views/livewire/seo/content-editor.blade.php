@@ -1,0 +1,221 @@
+<div>
+    <x-ui.page-header
+        title="{{ $seoContent ? __('Edit Article') : __('New Article') }}"
+        subtitle="{{ __('AI-powered SEO content generator') }}"
+    >
+        <a href="{{ route('seo.content.index') }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            {{ __('Back to Articles') }}
+        </a>
+    </x-ui.page-header>
+
+    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="error" />
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {{-- Left: Brief + Content (2/3) --}}
+        <div class="lg:col-span-2 space-y-6">
+            {{-- Brief --}}
+            <x-ui.card>
+                <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ __('Article Brief') }}</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Title') }} *</label>
+                            <input type="text" wire:model="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Article title...') }}" />
+                            @error('title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Site') }}</label>
+                            <select wire:model="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <option value="">{{ __('No site (standalone)') }}</option>
+                                @foreach($this->sites as $site)
+                                    <option value="{{ $site->id }}">{{ $site->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Target Keyword') }}</label>
+                            <input type="text" wire:model="targetKeyword" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Main keyword...') }}" />
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Secondary Keywords') }}</label>
+                            <input type="text" wire:model="secondaryKeywords" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('keyword1, keyword2, ...') }}" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Tone') }}</label>
+                            <select wire:model="tone" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <option value="professional">{{ __('Professional') }}</option>
+                                <option value="casual">{{ __('Casual') }}</option>
+                                <option value="authoritative">{{ __('Authoritative') }}</option>
+                                <option value="friendly">{{ __('Friendly') }}</option>
+                                <option value="educational">{{ __('Educational') }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Persona') }}</label>
+                            <select wire:model="persona" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <option value="noi">{{ __('We (noi)') }}</option>
+                                <option value="eu">{{ __('I (eu)') }}</option>
+                                <option value="neutru">{{ __('Neutral') }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Word Count') }}</label>
+                            <select wire:model="targetWordCount" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <option value="500">500</option>
+                                <option value="800">800</option>
+                                <option value="1000">1000</option>
+                                <option value="1500">1500</option>
+                                <option value="2000">2000</option>
+                                <option value="3000">3000</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Target Audience') }}</label>
+                            <input type="text" wire:model="targetAudience" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., entrepreneurs') }}" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Additional Instructions') }}</label>
+                        <textarea wire:model="brief" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Any specific instructions for the AI...') }}"></textarea>
+                    </div>
+                </div>
+            </x-ui.card>
+
+            {{-- Job progress --}}
+            @if($this->hasRunningJobs)
+                <div wire:poll.3s="checkJobProgress">
+                    <x-ui.job-progress job-key="generate" :jobs="$trackedJobs" title="{{ __('Generating article...') }}" />
+                </div>
+            @endif
+
+            {{-- Content editor --}}
+            <x-ui.card>
+                <div class="mb-3 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-900">{{ __('Content') }}</h3>
+                    <div class="flex items-center gap-2">
+                        <x-ui.button variant="secondary" size="sm" wire:click="saveDraft" wire:loading.attr="disabled">
+                            {{ __('Save Draft') }}
+                        </x-ui.button>
+                        <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
+                            <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
+                            {{ __('Generate with AI') }}
+                        </x-ui.button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Meta Description') }}</label>
+                    <textarea wire:model.blur="metaDescription" rows="2" maxlength="160" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Meta description (max 160 characters)...') }}"></textarea>
+                    <p class="mt-1 text-xs text-gray-400">{{ mb_strlen($metaDescription) }}/160</p>
+                </div>
+
+                <div class="mt-4">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Article Content (HTML)') }}</label>
+                    <textarea wire:model.blur="content" rows="20" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Article content will appear here after generation...') }}"></textarea>
+                </div>
+            </x-ui.card>
+
+            {{-- Actions --}}
+            @if($seoContent && $siteId)
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Publish') }}</h3>
+                    <div class="flex items-center gap-3">
+                        <x-ui.button variant="primary" wire:click="publishToWordPress" wire:loading.attr="disabled">
+                            {{ __('Publish to WordPress') }}
+                        </x-ui.button>
+                        <span class="text-xs text-gray-500">{{ __('Creates a draft post on the WordPress site.') }}</span>
+                    </div>
+                </x-ui.card>
+            @endif
+        </div>
+
+        {{-- Right: SEO Score + Revisions (1/3) --}}
+        <div class="space-y-6">
+            {{-- SEO Score Panel --}}
+            @if($seoContent && !empty($this->seoScore))
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('SEO Score') }}</h3>
+                    <div class="mb-4 flex items-center justify-center">
+                        <div @class([
+                            'flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold',
+                            'bg-green-100 text-green-700' => ($this->seoScore['score'] ?? 0) >= 80,
+                            'bg-yellow-100 text-yellow-700' => ($this->seoScore['score'] ?? 0) >= 50 && ($this->seoScore['score'] ?? 0) < 80,
+                            'bg-red-100 text-red-700' => ($this->seoScore['score'] ?? 0) < 50,
+                        ])>
+                            {{ $this->seoScore['score'] ?? 0 }}
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        @foreach($this->seoScore['checks'] ?? [] as $check)
+                            <div class="flex items-start gap-2 text-sm">
+                                @if($check['status'] === 'pass')
+                                    <span class="mt-0.5 text-green-500">&#10003;</span>
+                                @elseif($check['status'] === 'warn')
+                                    <span class="mt-0.5 text-yellow-500">&#9888;</span>
+                                @else
+                                    <span class="mt-0.5 text-red-500">&#10007;</span>
+                                @endif
+                                <span class="text-gray-600">{{ $check['message'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 border-t border-gray-200 pt-3 text-xs text-gray-500">
+                        <div>{{ __('Words') }}: {{ $this->seoScore['word_count'] ?? 0 }}</div>
+                        <div>{{ __('Keyword Density') }}: {{ $this->seoScore['keyword_density'] ?? 0 }}%</div>
+                    </div>
+                </x-ui.card>
+            @endif
+
+            {{-- Revisions --}}
+            @if($seoContent && $this->revisions->isNotEmpty())
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Revisions') }}</h3>
+                    <div class="space-y-2">
+                        @foreach($this->revisions as $rev)
+                            <div class="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-700">{{ ucfirst($rev->source) }}</span>
+                                    <span class="text-xs text-gray-400">{{ $rev->created_at->diffForHumans() }}</span>
+                                </div>
+                                <button wire:click="restoreRevision({{ $rev->id }})" class="text-xs text-purple-600 hover:text-purple-800">{{ __('Restore') }}</button>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+            @endif
+
+            {{-- Status --}}
+            @if($seoContent)
+                <x-ui.card>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Info') }}</h3>
+                    <dl class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <dt class="text-gray-500">{{ __('Status') }}</dt>
+                            <dd><span class="rounded-full bg-{{ $seoContent->status_color }}-100 px-2 py-0.5 text-xs font-semibold text-{{ $seoContent->status_color }}-800">{{ $seoContent->status_label }}</span></dd>
+                        </div>
+                        @if($seoContent->wp_post_id)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500">{{ __('WP Post ID') }}</dt>
+                                <dd class="text-gray-900">{{ $seoContent->wp_post_id }}</dd>
+                            </div>
+                        @endif
+                        <div class="flex justify-between">
+                            <dt class="text-gray-500">{{ __('Created') }}</dt>
+                            <dd class="text-gray-600">{{ $seoContent->created_at->format('M d, Y H:i') }}</dd>
+                        </div>
+                    </dl>
+                </x-ui.card>
+            @endif
+        </div>
+    </div>
+</div>

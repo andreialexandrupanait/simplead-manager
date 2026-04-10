@@ -33,6 +33,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $cloudflare_requests
  * @property int|null $cloudflare_bandwidth_bytes
  * @property float|null $cloudflare_cache_hit_ratio
+ * @property int|null $seo_score
+ * @property int|null $seo_issues_count
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -65,6 +67,8 @@ class SiteMonthlySnapshot extends Model
         'cloudflare_requests',
         'cloudflare_bandwidth_bytes',
         'cloudflare_cache_hit_ratio',
+        'seo_score',
+        'seo_issues_count',
     ];
 
     protected $casts = [
@@ -90,6 +94,8 @@ class SiteMonthlySnapshot extends Model
         'cloudflare_requests' => 'integer',
         'cloudflare_bandwidth_bytes' => 'integer',
         'cloudflare_cache_hit_ratio' => 'decimal:2',
+        'seo_score' => 'integer',
+        'seo_issues_count' => 'integer',
     ];
 
     public function site(): BelongsTo

@@ -18,6 +18,7 @@ use App\Livewire\Reports;
 use App\Livewire\Security;
 use App\Livewire\Settings;
 use App\Livewire\Sites;
+use App\Livewire\Seo;
 use App\Livewire\StatusPages;
 use App\Livewire\Uptime;
 use App\Models\Site;
@@ -95,6 +96,12 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
+        Route::get('/seo', Sites\Detail\Seo\SeoOverview::class)->name('sites.seo');
+        Route::get('/seo/audit', Sites\Detail\Seo\SeoAuditResults::class)->name('sites.seo.audit');
+        Route::get('/seo/keywords', Sites\Detail\Seo\SeoKeywords::class)->name('sites.seo.keywords');
+        Route::get('/seo/technical', Sites\Detail\Seo\SeoTechnical::class)->name('sites.seo.technical');
+        Route::get('/seo/crawl', Sites\Detail\Seo\SeoCrawl::class)->name('sites.seo.crawl');
+        Route::get('/seo/crawl/results', Sites\Detail\Seo\SeoCrawlResults::class)->name('sites.seo.crawl.results');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
         Route::get('/cron', Sites\Detail\SiteCron::class)->name('sites.cron');
@@ -125,6 +132,20 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');
     Route::get('/security/presets', Security\PresetManager::class)->name('security.presets')->middleware('role:admin');
+
+    // SEO — global views
+    Route::prefix('/seo')->group(function () {
+        Route::get('/', Seo\SeoDashboard::class)->name('seo.index');
+        Route::get('/crawler', Seo\CrawlerIndex::class)->name('seo.crawler.index');
+        Route::get('/crawler/create', Seo\CrawlerCreate::class)->name('seo.crawler.create');
+        Route::get('/crawler/{siteCrawl}', Seo\CrawlerResults::class)->name('seo.crawler.show');
+        Route::get('/crawler/{siteCrawl}/compare/{compareTo}', Seo\CrawlerComparison::class)->name('seo.crawler.compare');
+        Route::get('/content', Seo\ContentIndex::class)->name('seo.content.index');
+        Route::get('/content/create', Seo\ContentEditor::class)->name('seo.content.create');
+        Route::get('/content/{seoContent}/edit', Seo\ContentEditor::class)->name('seo.content.edit');
+        Route::get('/keywords', Seo\KeywordResearch::class)->name('seo.keywords.index');
+        Route::get('/calendar', Seo\ContentCalendar::class)->name('seo.calendar');
+    });
 
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
