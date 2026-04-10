@@ -13,7 +13,6 @@ use App\Models\Site;
 use App\Services\SeoContentAiService;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ContentEditor extends Component

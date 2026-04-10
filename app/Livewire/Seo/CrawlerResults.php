@@ -520,6 +520,6 @@ class CrawlerResults extends Component
         $crawlLabel = $this->siteCrawl->site?->name ?? $this->siteCrawl->start_url ?? 'Crawl #'.$this->siteCrawl->id;
 
         return view('livewire.seo.crawler-results', ['crawlLabel' => $crawlLabel])
-            ->layout('components.layouts.app', ['title' => 'Crawl: '.$crawlLabel]);
+            ->layout('components.layouts.app', ['title' => 'Crawl: '.$crawlLabel, 'maxWidth' => 'max-w-full']);
     }
 }

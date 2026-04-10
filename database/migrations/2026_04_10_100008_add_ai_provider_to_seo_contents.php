@@ -1,23 +1,19 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('seo_contents', function (Blueprint $table) {
-            $table->string('ai_provider', 30)->nullable()->after('persona');
-            $table->string('ai_model', 80)->nullable()->after('ai_provider');
-        });
+        DB::statement('ALTER TABLE seo_contents ADD COLUMN IF NOT EXISTS ai_provider varchar(30) DEFAULT NULL');
+        DB::statement('ALTER TABLE seo_contents ADD COLUMN IF NOT EXISTS ai_model varchar(80) DEFAULT NULL');
     }
 
     public function down(): void
     {
-        Schema::table('seo_contents', function (Blueprint $table) {
-            $table->dropColumn(['ai_provider', 'ai_model']);
-        });
+        DB::statement('ALTER TABLE seo_contents DROP COLUMN IF EXISTS ai_provider');
+        DB::statement('ALTER TABLE seo_contents DROP COLUMN IF EXISTS ai_model');
     }
 };
