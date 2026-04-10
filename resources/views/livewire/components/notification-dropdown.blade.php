@@ -27,11 +27,11 @@
             </span>
         </button>
     @else
-        {{-- Header button style (original) --}}
-        <button @click="open = !open" aria-label="{{ __('Notifications') }}" class="relative text-gray-400 hover:text-gray-600 transition">
+        {{-- Header button style --}}
+        <button @click="open = !open" aria-label="{{ __('Notifications') }}" class="relative rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
             <x-icons.bell class="h-5 w-5" aria-hidden="true" />
             @if($this->count > 0)
-                <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span class="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {{ $this->count > 9 ? '9+' : $this->count }}
                 </span>
             @endif

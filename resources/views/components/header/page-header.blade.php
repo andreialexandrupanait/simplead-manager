@@ -146,16 +146,11 @@
         </div>
 
         {{-- Right side actions --}}
-        <div class="flex items-center gap-2 ml-4">
-            {{-- Keyboard shortcuts hint --}}
-            <button @click="$dispatch('keydown', { key: '?' })" title="{{ __('Keyboard shortcuts (?)') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition hidden sm:block">
-                <x-icons.command class="h-4 w-4" />
-            </button>
-
+        <div class="flex items-center gap-3 ml-4">
             {{-- Dark mode toggle --}}
             <button @click="toggleDarkMode()" title="{{ __('Toggle dark mode') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
-                <x-icons.sun x-show="darkMode" x-cloak class="h-4 w-4" />
-                <x-icons.moon x-show="!darkMode" class="h-4 w-4" />
+                <x-icons.sun x-show="darkMode" x-cloak class="h-5 w-5" />
+                <x-icons.moon x-show="!darkMode" class="h-5 w-5" />
             </button>
 
             {{-- Notifications --}}

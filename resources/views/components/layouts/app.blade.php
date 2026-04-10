@@ -41,36 +41,6 @@
         Skip to content
     </a>
 
-    {{-- Keyboard shortcuts modal --}}
-    <div x-data="{ showShortcuts: false }"
-         @keydown.window="
-            if ($event.key === '?' && !$event.target.matches('input, textarea, select')) { $event.preventDefault(); showShortcuts = !showShortcuts; }
-            if ($event.key === '/' && !$event.target.matches('input, textarea, select')) { $event.preventDefault(); document.querySelector('[data-search-input]')?.focus(); }
-            if ($event.key === 'Escape') { showShortcuts = false; }
-         "
-    >
-        <template x-if="showShortcuts">
-            <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50" @click.self="showShortcuts = false">
-                <div class="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl" @keydown.escape="showShortcuts = false">
-                    <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{{ __('Keyboard Shortcuts') }}</h2>
-                    <div class="space-y-2">
-                        @foreach([
-                            ['/', 'Focus search'],
-                            ['?', 'Show this help'],
-                            ['Esc', 'Close modal/drawer'],
-                        ] as [$key, $desc])
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600 dark:text-gray-300">{{ $desc }}</span>
-                                <kbd class="rounded bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-mono text-gray-700 dark:text-gray-300">{{ $key }}</kbd>
-                            </div>
-                        @endforeach
-                    </div>
-                    <button @click="showShortcuts = false" class="mt-4 w-full rounded-lg bg-gray-100 dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">{{ __('Close') }}</button>
-                </div>
-            </div>
-        </template>
-    </div>
-
     <div class="flex h-full"
          x-data="{
             sidebarOpen: localStorage.getItem('sidebarOpen') !== 'false',
