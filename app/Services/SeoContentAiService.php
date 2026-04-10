@@ -94,7 +94,7 @@ class SeoContentAiService
         // Calculate SEO score
         $seoData = $this->calculateSeoScore($content, $parsed['content'], $parsed['meta_description']);
 
-        $content->update([
+        $updateData = [
             'content' => $parsed['content'],
             'meta_description' => $parsed['meta_description'] ?: $content->meta_description,
             'status' => SeoContentStatus::Review,
@@ -102,7 +102,15 @@ class SeoContentAiService
             'keyword_density' => $seoData['keyword_density'],
             'seo_score' => $seoData['score'],
             'seo_score_data' => $seoData,
-        ]);
+        ];
+
+        // Update title if AI generated one and user didn't provide one
+        if (! empty($parsed['title']) && (! $content->title || $content->title === $content->target_keyword)) {
+            $updateData['title'] = $parsed['title'];
+            $updateData['slug'] = Str::slug($parsed['title']);
+        }
+
+        $content->update($updateData);
 
         // Save revision
         $content->revisions()->create([
@@ -281,7 +289,11 @@ class SeoContentAiService
         - Use bullet or numbered lists where appropriate
         - Include a compelling introduction and conclusion
         - Output valid HTML (no <html>, <body> or <head> tags — just the article body)
-        - At the very end, after a line "---META---", output the meta description (max 160 chars)
+        - At the very end, output on separate lines:
+          ---TITLE---
+          The article title (compelling, SEO-friendly, max 80 chars)
+          ---META---
+          The meta description (max 160 chars)
         PROMPT;
     }
 
@@ -412,23 +424,43 @@ class SeoContentAiService
     }
 
     /**
-     * @return array{content: string, meta_description: string|null}
+     * @return array{content: string, title: string|null, meta_description: string|null}
      */
     private function parseAiResponse(string $raw): array
     {
-        // Split on ---META--- marker
-        $parts = preg_split('/---\s*META\s*---/i', $raw, 2);
+        $title = null;
+        $meta = null;
 
+        // Extract title
+        $parts = preg_split('/---\s*TITLE\s*---/i', $raw, 2);
         $content = trim($parts[0] ?? $raw);
-        $meta = isset($parts[1]) ? trim(strip_tags($parts[1])) : null;
+
+        if (isset($parts[1])) {
+            // Title is between ---TITLE--- and ---META---
+            $remainder = $parts[1];
+            $metaParts = preg_split('/---\s*META\s*---/i', $remainder, 2);
+            $title = trim(strip_tags($metaParts[0]));
+            $meta = isset($metaParts[1]) ? trim(strip_tags($metaParts[1])) : null;
+        } else {
+            // No ---TITLE---, try just ---META---
+            $metaParts = preg_split('/---\s*META\s*---/i', $content, 2);
+            $content = trim($metaParts[0]);
+            $meta = isset($metaParts[1]) ? trim(strip_tags($metaParts[1])) : null;
+        }
 
         // Limit meta to 160 chars
         if ($meta && mb_strlen($meta) > 160) {
             $meta = mb_substr($meta, 0, 157).'...';
         }
 
+        // Limit title to 80 chars
+        if ($title && mb_strlen($title) > 80) {
+            $title = mb_substr($title, 0, 80);
+        }
+
         return [
             'content' => $content,
+            'title' => $title,
             'meta_description' => $meta,
         ];
     }

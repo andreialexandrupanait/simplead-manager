@@ -1,6 +1,6 @@
 <div>
     <x-ui.page-header
-        title="{{ $seoContent ? __('Edit Article') : __('New Article') }}"
+        title="{{ $seoContent && $title ? $title : __('New Article') }}"
         subtitle="{{ __('AI-powered SEO content generator') }}"
     >
         <a href="{{ route('seo.content.index') }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
@@ -12,37 +12,37 @@
     <x-ui.flash-alert type="error" key="error" />
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {{-- Left: Brief + Content (2/3) --}}
+        {{-- Left column (2/3) --}}
         <div class="lg:col-span-2 space-y-6">
+
             {{-- Brief --}}
             <x-ui.card>
-                <h3 class="mb-4 text-sm font-semibold text-gray-900">{{ __('Article Brief') }}</h3>
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-900">{{ __('Article Brief') }}</h3>
+                    <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
+                        <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
+                        {{ __('Generate with AI') }}
+                    </x-ui.button>
+                </div>
                 <div class="space-y-4">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Title') }} *</label>
-                            <input type="text" wire:model="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Article title...') }}" />
-                            @error('title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Site') }}</label>
-                            <select wire:model="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
-                                <option value="">{{ __('No site (standalone)') }}</option>
-                                @foreach($this->sites as $site)
-                                    <option value="{{ $site->id }}">{{ $site->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Topic / Target Keyword') }} *</label>
+                        <input type="text" wire:model="targetKeyword" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., marketing digital pentru afaceri mici') }}" />
+                        @error('targetKeyword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Target Keyword') }}</label>
-                            <input type="text" wire:model="targetKeyword" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Main keyword...') }}" />
-                        </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
                             <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Secondary Keywords') }}</label>
                             <input type="text" wire:model="secondaryKeywords" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('keyword1, keyword2, ...') }}" />
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Target Audience') }}</label>
+                            <input type="text" wire:model="targetAudience" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., antreprenori') }}" />
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Title') }} <span class="text-xs text-gray-400">({{ __('optional') }})</span></label>
+                            <input type="text" wire:model="title" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Leave empty to auto-generate') }}" />
                         </div>
                     </div>
 
@@ -107,14 +107,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Target Audience') }}</label>
-                            <input type="text" wire:model="targetAudience" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('e.g., entrepreneurs') }}" />
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Site') }}</label>
+                            <select wire:model="siteId" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                <option value="">{{ __('No site') }}</option>
+                                @foreach($this->sites as $site)
+                                    <option value="{{ $site->id }}">{{ $site->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Additional Instructions') }}</label>
-                        <textarea wire:model="brief" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Any specific instructions for the AI...') }}"></textarea>
+                        <textarea wire:model="brief" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Any specific instructions for the AI...') }}"></textarea>
                     </div>
                 </div>
             </x-ui.card>
@@ -126,48 +131,70 @@
                 </div>
             @endif
 
-            {{-- Content editor --}}
-            <x-ui.card>
-                <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-900">{{ __('Content') }}</h3>
-                    <div class="flex items-center gap-2">
-                        <x-ui.button variant="secondary" size="sm" wire:click="saveDraft" wire:loading.attr="disabled">
-                            {{ __('Save Draft') }}
-                        </x-ui.button>
-                        <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
-                            <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
-                            {{ __('Generate with AI') }}
-                        </x-ui.button>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Meta Description') }}</label>
-                    <textarea wire:model.blur="metaDescription" rows="2" maxlength="160" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Meta description (max 160 characters)...') }}"></textarea>
-                    <p class="mt-1 text-xs text-gray-400">{{ mb_strlen($metaDescription) }}/160</p>
-                </div>
-
-                <div class="mt-4">
-                    <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Article Content (HTML)') }}</label>
-                    <textarea wire:model.blur="content" rows="20" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Article content will appear here after generation...') }}"></textarea>
-                </div>
-            </x-ui.card>
-
-            {{-- Actions --}}
-            @if($seoContent && $siteId)
+            {{-- Generated content (preview or edit mode) --}}
+            @if($content)
                 <x-ui.card>
-                    <h3 class="mb-3 text-sm font-semibold text-gray-900">{{ __('Publish') }}</h3>
-                    <div class="flex items-center gap-3">
-                        <x-ui.button variant="primary" wire:click="publishToWordPress" wire:loading.attr="disabled">
-                            {{ __('Publish to WordPress') }}
-                        </x-ui.button>
-                        <span class="text-xs text-gray-500">{{ __('Creates a draft post on the WordPress site.') }}</span>
+                    <div class="mb-3 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-900">{{ __('Generated Article') }}</h3>
+                        <div class="flex items-center gap-2">
+                            @if(!$editing)
+                                <x-ui.button variant="secondary" size="sm" wire:click="toggleEditing">
+                                    {{ __('Edit') }}
+                                </x-ui.button>
+                                <x-ui.button variant="primary" size="sm" wire:click="generateArticle" wire:loading.attr="disabled" wire:target="generateArticle">
+                                    <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="generateArticle" />
+                                    {{ __('Regenerate') }}
+                                </x-ui.button>
+                            @else
+                                <x-ui.button variant="secondary" size="sm" wire:click="saveDraft" wire:loading.attr="disabled">
+                                    {{ __('Save Changes') }}
+                                </x-ui.button>
+                                <x-ui.button variant="secondary" size="sm" wire:click="toggleEditing">
+                                    {{ __('Done Editing') }}
+                                </x-ui.button>
+                            @endif
+                        </div>
                     </div>
+
+                    {{-- Meta Description --}}
+                    <div class="mb-4 rounded-lg bg-gray-50 p-3">
+                        <label class="mb-1 block text-xs font-medium text-gray-500">{{ __('Meta Description') }}</label>
+                        @if($editing)
+                            <textarea wire:model.blur="metaDescription" rows="2" maxlength="160" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                            <p class="mt-1 text-xs text-gray-400">{{ mb_strlen($metaDescription) }}/160</p>
+                        @else
+                            <p class="text-sm text-gray-700">{{ $metaDescription ?: '—' }}</p>
+                        @endif
+                    </div>
+
+                    {{-- Article body --}}
+                    @if($editing)
+                        <textarea wire:model.blur="content" rows="25" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                    @else
+                        <div class="prose prose-sm max-w-none text-gray-800">
+                            {!! $content !!}
+                        </div>
+                    @endif
                 </x-ui.card>
+
+                {{-- Publish --}}
+                @if($seoContent && $siteId && !$editing)
+                    <x-ui.card>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ __('Publish to WordPress') }}</h3>
+                                <p class="text-xs text-gray-500">{{ __('Creates a draft post on the selected WordPress site.') }}</p>
+                            </div>
+                            <x-ui.button variant="primary" wire:click="publishToWordPress" wire:loading.attr="disabled">
+                                {{ __('Publish') }}
+                            </x-ui.button>
+                        </div>
+                    </x-ui.card>
+                @endif
             @endif
         </div>
 
-        {{-- Right: SEO Score + Revisions (1/3) --}}
+        {{-- Right column (1/3) --}}
         <div class="space-y-6">
             {{-- SEO Score Panel --}}
             @if($seoContent && !empty($this->seoScore))
@@ -233,6 +260,12 @@
                             <dt class="text-gray-500">{{ __('Status') }}</dt>
                             <dd><span class="rounded-full bg-{{ $seoContent->status_color }}-100 px-2 py-0.5 text-xs font-semibold text-{{ $seoContent->status_color }}-800">{{ $seoContent->status_label }}</span></dd>
                         </div>
+                        @if($seoContent->ai_provider)
+                            <div class="flex justify-between">
+                                <dt class="text-gray-500">{{ __('AI') }}</dt>
+                                <dd class="text-gray-600 text-xs">{{ $seoContent->ai_model ?? $seoContent->ai_provider }}</dd>
+                            </div>
+                        @endif
                         @if($seoContent->wp_post_id)
                             <div class="flex justify-between">
                                 <dt class="text-gray-500">{{ __('WP Post ID') }}</dt>

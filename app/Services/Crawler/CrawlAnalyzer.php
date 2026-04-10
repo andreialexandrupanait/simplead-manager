@@ -154,6 +154,7 @@ class CrawlAnalyzer
                     'type' => 'duplicate_title',
                     'severity' => 'high',
                     'message' => 'This page shares its title tag with one or more other pages.',
+                    'recommendation' => 'Write a unique, descriptive title for this page that includes the primary keyword. Each page should have a distinct title reflecting its specific content.',
                 ];
             }
 
@@ -162,6 +163,7 @@ class CrawlAnalyzer
                     'type' => 'duplicate_meta_description',
                     'severity' => 'medium',
                     'message' => 'This page shares its meta description with one or more other pages.',
+                    'recommendation' => 'Write a unique meta description (120-160 chars) that summarizes this specific page\'s content and includes a call-to-action.',
                 ];
             }
 
@@ -172,20 +174,22 @@ class CrawlAnalyzer
                     'type' => 'missing_title',
                     'severity' => 'critical',
                     'message' => 'Page has no title tag.',
+                    'recommendation' => 'Add a <title> tag in the <head> section. Use format: "Primary Keyword - Secondary Keyword | Brand Name". Keep it under 60 characters. In WordPress, set it via Yoast SEO or RankMath.',
                 ];
             } else {
-                // 4. Short or long title
                 if ($page->title_length < self::TITLE_MIN_LENGTH) {
                     $issues[] = [
                         'type' => 'short_title',
                         'severity' => 'medium',
                         'message' => "Title is too short ({$page->title_length} chars). Recommended minimum: ".self::TITLE_MIN_LENGTH.' chars.',
+                        'recommendation' => 'Expand the title to at least 30 characters. Include the primary keyword and make it descriptive enough to entice clicks from search results.',
                     ];
                 } elseif ($page->title_length > self::TITLE_MAX_LENGTH) {
                     $issues[] = [
                         'type' => 'long_title',
                         'severity' => 'low',
                         'message' => "Title is too long ({$page->title_length} chars). Recommended maximum: ".self::TITLE_MAX_LENGTH.' chars.',
+                        'recommendation' => 'Shorten the title to under 60 characters. Google truncates longer titles in search results, which can reduce click-through rates.',
                     ];
                 }
             }
@@ -197,20 +201,22 @@ class CrawlAnalyzer
                     'type' => 'missing_meta_description',
                     'severity' => 'high',
                     'message' => 'Page has no meta description.',
+                    'recommendation' => 'Add a meta description tag (120-160 chars) that summarizes the page content. Include the target keyword naturally. In WordPress, use Yoast SEO or RankMath to set it.',
                 ];
             } else {
-                // 6. Short or long description
                 if ($page->meta_desc_length < self::DESC_MIN_LENGTH) {
                     $issues[] = [
                         'type' => 'short_meta_description',
                         'severity' => 'low',
                         'message' => "Meta description is too short ({$page->meta_desc_length} chars). Recommended minimum: ".self::DESC_MIN_LENGTH.' chars.',
+                        'recommendation' => 'Expand the meta description to at least 120 characters. Use it to summarize the page content and include a compelling reason to click.',
                     ];
                 } elseif ($page->meta_desc_length > self::DESC_MAX_LENGTH) {
                     $issues[] = [
                         'type' => 'long_meta_description',
                         'severity' => 'low',
                         'message' => "Meta description is too long ({$page->meta_desc_length} chars). Recommended maximum: ".self::DESC_MAX_LENGTH.' chars.',
+                        'recommendation' => 'Shorten the meta description to under 160 characters. Google truncates longer descriptions, potentially cutting off important information.',
                     ];
                 }
             }
@@ -222,6 +228,7 @@ class CrawlAnalyzer
                     'type' => 'multiple_h1',
                     'severity' => 'medium',
                     'message' => "Page has {$page->h1_count} H1 tags. Only one H1 is recommended.",
+                    'recommendation' => 'Keep only one H1 tag per page — it should be the main heading describing the page topic. Convert extra H1s to H2 or H3 tags.',
                 ];
             }
 
@@ -232,6 +239,7 @@ class CrawlAnalyzer
                     'type' => 'missing_h1',
                     'severity' => 'high',
                     'message' => 'Page has no H1 heading.',
+                    'recommendation' => 'Add a single H1 tag containing the primary keyword for this page. The H1 should clearly describe the main topic. In WordPress, the post/page title usually generates the H1.',
                 ];
             }
 
@@ -242,10 +250,11 @@ class CrawlAnalyzer
                     'type' => 'thin_content',
                     'severity' => 'medium',
                     'message' => "Page has only {$page->word_count} words. Recommended minimum: ".self::THIN_CONTENT_THRESHOLD.' words.',
+                    'recommendation' => 'Add more substantive content — aim for at least 300 words. Cover the topic comprehensively: add explanations, examples, FAQs, or related information that adds value for users.',
                 ];
             }
 
-            // 12. Canonical issues — canonical points to a non-200 page we crawled
+            // 12. Canonical issues
             if ($page->canonical_url !== null && $page->canonical_url !== '') {
                 $canonicalNorm = rtrim($page->canonical_url, '/');
                 $canonicalStatus = $urlStatusMap[$canonicalNorm] ?? $urlStatusMap[$page->canonical_url] ?? null;
@@ -255,12 +264,12 @@ class CrawlAnalyzer
                         'type' => 'canonical_to_non_200',
                         'severity' => 'high',
                         'message' => "Canonical URL points to a page with status {$canonicalStatus}: {$page->canonical_url}",
+                        'recommendation' => "Update the canonical tag to point to a valid, accessible URL (status 200). If the target page was moved, update the canonical to the new location. If it was deleted, set a self-referencing canonical instead.",
                     ];
                 }
             }
 
-            // 13. Orphan page — not linked from any other crawled page
-            // The homepage is exempt from orphan detection
+            // 13. Orphan page
             $normPageUrl = rtrim($page->url, '/');
             $isHomepage = $siteHomepageUrl !== null && rtrim($siteHomepageUrl, '/') === $normPageUrl;
 
@@ -270,6 +279,7 @@ class CrawlAnalyzer
                     'type' => 'orphan_page',
                     'severity' => 'medium',
                     'message' => 'This page is not linked to from any other crawled page.',
+                    'recommendation' => 'Add internal links to this page from relevant content pages, navigation menus, or the sitemap. Orphan pages are hard for search engines to discover and rank.',
                 ];
             }
 
@@ -282,6 +292,7 @@ class CrawlAnalyzer
                     'type' => 'noindex',
                     'severity' => 'info',
                     'message' => 'Page is marked noindex and will not be indexed by search engines.',
+                    'recommendation' => 'If this page should appear in search results, remove the noindex directive from the meta robots tag or X-Robots-Tag header. If intentional (login pages, thank-you pages), no action needed.',
                 ];
             }
 
@@ -291,6 +302,7 @@ class CrawlAnalyzer
                     'type' => 'missing_og_image',
                     'severity' => 'low',
                     'message' => 'Page is missing an Open Graph image (og:image).',
+                    'recommendation' => 'Add an og:image meta tag with a high-quality image (1200x630px recommended). This image appears when the page is shared on social media. In WordPress, set the Featured Image and use Yoast/RankMath.',
                 ];
             }
 
@@ -300,6 +312,7 @@ class CrawlAnalyzer
                     'type' => 'missing_og_tags',
                     'severity' => 'low',
                     'message' => 'Page has no Open Graph tags (og:title, og:description).',
+                    'recommendation' => 'Add Open Graph meta tags (og:title, og:description, og:image, og:url) to control how the page appears when shared on Facebook, LinkedIn, etc. Yoast SEO and RankMath generate these automatically.',
                 ];
             }
 
@@ -311,16 +324,18 @@ class CrawlAnalyzer
                         'type' => 'h1_same_as_title',
                         'severity' => 'low',
                         'message' => 'H1 is identical to the title tag. Consider differentiating them.',
+                        'recommendation' => 'Use a slightly different H1 than the title. The title targets search results (include brand, keep short), while the H1 targets on-page readers (can be more descriptive or engaging).',
                     ];
                 }
             }
 
-            // 18. Heading hierarchy broken (H1 → H3 without H2)
+            // 18. Heading hierarchy broken
             if ($page->h1_count > 0 && $page->h3_count > 0 && $page->h2_count === 0) {
                 $issues[] = [
                     'type' => 'heading_hierarchy_broken',
                     'severity' => 'low',
                     'message' => 'Page skips H2 headings — has H1 and H3 but no H2.',
+                    'recommendation' => 'Use headings in proper order: H1 → H2 → H3. Don\'t skip levels. Convert H3 tags to H2, or add H2 sections above the H3 content to create a logical hierarchy.',
                 ];
             }
 
@@ -330,10 +345,11 @@ class CrawlAnalyzer
                     'type' => 'missing_canonical_self_ref',
                     'severity' => 'low',
                     'message' => 'Page has no canonical tag. A self-referencing canonical is recommended.',
+                    'recommendation' => 'Add a self-referencing canonical tag: <link rel="canonical" href="[this page URL]">. This helps search engines identify the preferred URL version and prevents duplicate content issues from URL parameters.',
                 ];
             }
 
-            // 20. Images missing dimensions (from images jsonb)
+            // 20. Images missing dimensions
             $imgsMissingDims = 0;
             foreach ($page->images ?? [] as $img) {
                 if (empty($img['width']) && empty($img['height'])) {
@@ -345,10 +361,11 @@ class CrawlAnalyzer
                     'type' => 'images_missing_dimensions',
                     'severity' => 'low',
                     'message' => "{$imgsMissingDims} image(s) missing width/height attributes (causes layout shift).",
+                    'recommendation' => "Add explicit width and height attributes to all <img> tags. This prevents Cumulative Layout Shift (CLS) — a Core Web Vital metric. WordPress usually adds these automatically; check your theme's image handling.",
                 ];
             }
 
-            // 21. Weak anchor text in internal links pointing to this page
+            // 21. Weak anchor text
             $weakAnchors = ['click here', 'aici', 'mai mult', 'read more', 'learn more', 'citeste', 'citește'];
             foreach ($page->internal_links ?? [] as $link) {
                 $anchor = mb_strtolower(trim($link['anchor'] ?? ''));
@@ -357,9 +374,10 @@ class CrawlAnalyzer
                         'type' => 'weak_anchor_text',
                         'severity' => 'info',
                         'message' => "Internal link with generic anchor text: \"{$link['anchor']}\".",
+                        'recommendation' => 'Replace generic anchor text ("click here", "read more") with descriptive text that tells users and search engines what the linked page is about. Example: "read our SEO guide" instead of "click here".',
                     ];
 
-                    break; // one per page is enough
+                    break;
                 }
             }
 
@@ -377,24 +395,27 @@ class CrawlAnalyzer
                     'type' => 'utm_in_internal_links',
                     'severity' => 'info',
                     'message' => 'Page contains internal links with UTM tracking parameters.',
+                    'recommendation' => 'Remove UTM parameters from internal links. They are meant for tracking external campaigns and pollute your analytics data when used internally. Use site search or events for internal tracking instead.',
                 ];
             }
 
-            // 23. Slow page (>2s response time)
+            // 23. Slow page
             if ($page->response_time_ms !== null && $page->response_time_ms > 2000) {
                 $issues[] = [
                     'type' => 'slow_response',
                     'severity' => 'medium',
                     'message' => "Page response time is {$page->response_time_ms}ms (>2000ms).",
+                    'recommendation' => 'Investigate server performance: enable page caching (WP Super Cache, W3 Total Cache), optimize database queries, upgrade hosting if needed. Check for heavy plugins or unoptimized images slowing the page.',
                 ];
             }
 
-            // 24. Deep page (depth > 5)
+            // 24. Deep page
             if ($page->depth > 5) {
                 $issues[] = [
                     'type' => 'deep_page',
                     'severity' => 'low',
                     'message' => "Page is at depth {$page->depth}. Pages beyond depth 5 are harder for search engines to discover.",
+                    'recommendation' => 'Restructure your site navigation to make this page reachable in fewer clicks from the homepage. Add it to a menu, sidebar, or link to it from higher-level pages. Aim for all important pages within 3 clicks.',
                 ];
             }
 
@@ -412,6 +433,13 @@ class CrawlAnalyzer
                         'type' => 'broken_page',
                         'severity' => 'critical',
                         'message' => "Page returned status {$page->status_code}.",
+                        'recommendation' => $page->status_code >= 500
+                            ? 'Server error — check server logs, fix the application error, or contact your hosting provider. Ensure the page loads without errors.'
+                            : ($page->status_code === 404
+                                ? 'Page not found — either restore the content, set up a 301 redirect to the most relevant existing page, or remove all internal links pointing to this URL.'
+                                : ($page->status_code === 0
+                                    ? 'Connection failed — the server did not respond. Check if the URL is correct, the server is running, and there are no firewall/DNS issues.'
+                                    : 'Fix the HTTP error or set up a 301 redirect to the appropriate page.')),
                     ],
                 ]);
             }
@@ -432,6 +460,7 @@ class CrawlAnalyzer
                     'type' => 'redirect_chain',
                     'severity' => 'medium',
                     'message' => "This page is part of a redirect chain: it redirects to {$redirectTarget} which also redirects.",
+                    'recommendation' => 'Update the redirect to point directly to the final destination URL, eliminating intermediate hops. Each redirect adds latency and dilutes link equity. Update internal links to point to the final URL directly.',
                 ];
                 $issuesMap[$page->id] = $existing;
             }

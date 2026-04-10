@@ -109,16 +109,33 @@
                             </h3>
                             <div class="space-y-2" x-data="{ openIssue: null }">
                                 @foreach($types as $type => $pages)
+                                    @php $firstRec = collect($pages)->pluck('recommendation')->filter()->first(); @endphp
                                     <div class="rounded-lg border border-gray-200">
                                         <button @click="openIssue = openIssue === '{{ $type }}' ? null : '{{ $type }}'" class="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-gray-50 transition">
                                             <span class="font-medium text-gray-700">{{ str_replace('_', ' ', ucfirst($type)) }}</span>
                                             <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">{{ count($pages) }}</span>
                                         </button>
-                                        <div x-show="openIssue === '{{ $type }}'" x-cloak class="border-t border-gray-100 px-4 py-3 max-h-60 overflow-y-auto space-y-1.5">
-                                            @foreach(array_slice($pages, 0, 50) as $entry)
-                                                <a href="{{ $entry['url'] }}" target="_blank" class="block truncate text-sm text-purple-600 hover:text-purple-800">{{ $entry['url'] }}</a>
-                                            @endforeach
-                                            @if(count($pages) > 50) <p class="text-xs text-gray-400">+{{ count($pages) - 50 }} more</p> @endif
+                                        <div x-show="openIssue === '{{ $type }}'" x-cloak class="border-t border-gray-100">
+                                            {{-- Recommendation --}}
+                                            @if($firstRec)
+                                                <div class="bg-blue-50 border-b border-blue-100 px-4 py-3">
+                                                    <div class="flex items-start gap-2">
+                                                        <span class="mt-0.5 shrink-0 text-blue-500">&#x1f527;</span>
+                                                        <div>
+                                                            <div class="text-xs font-semibold text-blue-700 mb-0.5">{{ __('How to fix') }}</div>
+                                                            <p class="text-sm text-blue-800">{{ $firstRec }}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                            {{-- Affected pages --}}
+                                            <div class="px-4 py-3 max-h-60 overflow-y-auto space-y-1.5">
+                                                <div class="text-xs font-medium text-gray-500 mb-1">{{ __('Affected pages') }}:</div>
+                                                @foreach(array_slice($pages, 0, 50) as $entry)
+                                                    <a href="{{ $entry['url'] }}" target="_blank" class="block truncate text-sm text-purple-600 hover:text-purple-800">{{ $entry['url'] }}</a>
+                                                @endforeach
+                                                @if(count($pages) > 50) <p class="text-xs text-gray-400">+{{ count($pages) - 50 }} more</p> @endif
+                                            </div>
                                         </div>
                                     </div>
                                 @endforeach
@@ -339,11 +356,18 @@
                     @if(!empty($sp->issues))
                         <div class="py-4">
                             <label class="text-xs font-medium uppercase tracking-wider text-gray-400">Issues ({{ count($sp->issues) }})</label>
-                            <div class="mt-2 space-y-2">
+                            <div class="mt-2 space-y-3">
                                 @foreach($sp->issues as $issue)
-                                    <div class="flex items-start gap-2 text-sm">
-                                        <span @class(['mt-1 h-2.5 w-2.5 rounded-full shrink-0', 'bg-red-500' => in_array($issue['severity'] ?? '', ['critical', 'high']), 'bg-yellow-500' => ($issue['severity'] ?? '') === 'medium', 'bg-blue-400' => in_array($issue['severity'] ?? '', ['low', 'info'])])></span>
-                                        <span class="text-gray-700">{{ $issue['message'] ?? '' }}</span>
+                                    <div class="rounded-lg border border-gray-200 p-3">
+                                        <div class="flex items-start gap-2 text-sm">
+                                            <span @class(['mt-1 h-2.5 w-2.5 rounded-full shrink-0', 'bg-red-500' => in_array($issue['severity'] ?? '', ['critical', 'high']), 'bg-yellow-500' => ($issue['severity'] ?? '') === 'medium', 'bg-blue-400' => in_array($issue['severity'] ?? '', ['low', 'info'])])></span>
+                                            <span class="font-medium text-gray-800">{{ $issue['message'] ?? '' }}</span>
+                                        </div>
+                                        @if(!empty($issue['recommendation']))
+                                            <div class="mt-2 ml-4 rounded bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                                                <span class="font-semibold">Fix:</span> {{ $issue['recommendation'] }}
+                                            </div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>

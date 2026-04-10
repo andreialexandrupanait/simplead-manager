@@ -11,9 +11,9 @@
                 <p class="mt-1 text-sm text-gray-500">{{ $subtitle }}</p>
             @endif
         </div>
-        @if(isset($actions))
+        @if($slot->isNotEmpty())
             <div class="flex items-center gap-3">
-                {{ $actions }}
+                {{ $slot }}
             </div>
         @endif
     </div>

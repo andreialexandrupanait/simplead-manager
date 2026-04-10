@@ -47,6 +47,8 @@ class ContentEditor extends Component
 
     public string $aiModel = '';
 
+    public bool $editing = false;
+
     protected function jobTrackingKeys(): array
     {
         return ['generate' => $this->seoContent ? 'seo-content-'.$this->seoContent->id : ''];
@@ -137,7 +139,8 @@ class ContentEditor extends Component
     public function saveDraft(): void
     {
         $this->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
+            'targetKeyword' => 'required|string|max:255',
             'siteId' => 'nullable|exists:sites,id',
         ]);
 
@@ -179,10 +182,16 @@ class ContentEditor extends Component
     {
         if ($this->seoContent) {
             $this->seoContent->refresh();
+            $this->title = $this->seoContent->title ?? $this->title;
             $this->content = $this->seoContent->content ?? '';
             $this->metaDescription = $this->seoContent->meta_description ?? '';
         }
         unset($this->seoScore, $this->revisions);
+    }
+
+    public function toggleEditing(): void
+    {
+        $this->editing = ! $this->editing;
     }
 
     public function publishToWordPress(): void
@@ -236,10 +245,12 @@ class ContentEditor extends Component
     {
         $secondary = array_filter(array_map('trim', explode(',', $this->secondaryKeywords)));
 
+        $title = $this->title ?: $this->targetKeyword;
+
         return [
             'site_id' => $this->siteId,
-            'title' => $this->title,
-            'slug' => Str::slug($this->title),
+            'title' => $title,
+            'slug' => Str::slug($title),
             'target_keyword' => $this->targetKeyword,
             'secondary_keywords' => $secondary,
             'brief' => $this->brief,

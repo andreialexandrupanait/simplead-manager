@@ -331,7 +331,11 @@ class CrawlerResults extends Component
             foreach ($page->issues ?? [] as $issue) {
                 $severity = $issue['severity'] ?? 'info';
                 $type = $issue['type'] ?? 'unknown';
-                $grouped[$severity][$type][] = ['url' => $page->url, 'message' => $issue['message'] ?? ''];
+                $grouped[$severity][$type][] = [
+                    'url' => $page->url,
+                    'message' => $issue['message'] ?? '',
+                    'recommendation' => $issue['recommendation'] ?? null,
+                ];
             }
         }
 
