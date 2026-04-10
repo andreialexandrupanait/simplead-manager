@@ -41,6 +41,18 @@ class IncidentResponseConfigServiceProvider extends ServiceProvider
                     }
                 }
 
+                // Fallback: use shared Anthropic key from integrations if IR-specific key is empty
+                if (! config('incident-response.ai.api_key')) {
+                    $anthropicKey = $settings->get('ai_anthropic_api_key');
+                    if ($anthropicKey) {
+                        try {
+                            config(['incident-response.ai.api_key' => decrypt($anthropicKey)]);
+                        } catch (\Exception) {
+                            // skip
+                        }
+                    }
+                }
+
                 if (isset($irSettings['ir_max_actions_per_incident'])) {
                     config(['incident-response.safety.max_actions_per_incident' => (int) $irSettings['ir_max_actions_per_incident']]);
                 }

@@ -13,6 +13,7 @@ use App\Models\Site;
 use App\Services\SeoContentAiService;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ContentEditor extends Component
@@ -43,6 +44,10 @@ class ContentEditor extends Component
 
     public int $targetWordCount = 1000;
 
+    public string $aiProvider = '';
+
+    public string $aiModel = '';
+
     protected function jobTrackingKeys(): array
     {
         return ['generate' => $this->seoContent ? 'seo-content-'.$this->seoContent->id : ''];
@@ -63,7 +68,38 @@ class ContentEditor extends Component
             $this->persona = $seoContent->persona ?? 'noi';
             $this->targetAudience = $seoContent->target_audience ?? '';
             $this->targetWordCount = $seoContent->target_word_count ?? 1000;
+            $this->aiProvider = $seoContent->ai_provider ?? '';
+            $this->aiModel = $seoContent->ai_model ?? '';
         }
+
+        // Set default provider if none selected
+        if (! $this->aiProvider) {
+            $configured = SeoContentAiService::configuredProviders();
+            $this->aiProvider = array_key_first($configured) ?? '';
+        }
+
+        // Set default model if none selected
+        if (! $this->aiModel && $this->aiProvider) {
+            $this->aiModel = $this->getDefaultModelForProvider($this->aiProvider);
+        }
+    }
+
+    #[Computed]
+    public function configuredProviders(): array
+    {
+        return SeoContentAiService::configuredProviders();
+    }
+
+    public function updatedAiProvider(): void
+    {
+        $this->aiModel = $this->getDefaultModelForProvider($this->aiProvider);
+    }
+
+    private function getDefaultModelForProvider(string $provider): string
+    {
+        $providers = SeoContentAiService::availableProviders();
+
+        return array_key_first($providers[$provider]['models'] ?? []) ?? '';
     }
 
     #[Computed]
@@ -212,6 +248,8 @@ class ContentEditor extends Component
             'meta_description' => $this->metaDescription,
             'tone' => $this->tone,
             'persona' => $this->persona,
+            'ai_provider' => $this->aiProvider,
+            'ai_model' => $this->aiModel,
             'target_audience' => $this->targetAudience,
             'target_word_count' => $this->targetWordCount,
         ];

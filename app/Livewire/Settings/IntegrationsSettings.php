@@ -13,6 +13,7 @@ use App\Services\OpenApiService;
 use App\Services\SettingsService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -38,6 +39,11 @@ class IntegrationsSettings extends Component
 
     // OpenAPI.ro
     public string $openApiKey = '';
+
+    // AI Providers
+    public string $anthropicApiKey = '';
+
+    public string $openAiApiKey = '';
 
     // Cloudflare
     public string $cfApiToken = '';
@@ -81,6 +87,23 @@ class IntegrationsSettings extends Component
             }
         }
 
+        $encryptedAnthropic = $settings->get('ai_anthropic_api_key');
+        if ($encryptedAnthropic) {
+            try {
+                $this->anthropicApiKey = decrypt($encryptedAnthropic);
+            } catch (DecryptException $e) {
+                $this->anthropicApiKey = '';
+            }
+        }
+
+        $encryptedOpenAi = $settings->get('ai_openai_api_key');
+        if ($encryptedOpenAi) {
+            try {
+                $this->openAiApiKey = decrypt($encryptedOpenAi);
+            } catch (DecryptException $e) {
+                $this->openAiApiKey = '';
+            }
+        }
     }
 
     public function saveDropboxCredentials(): void
@@ -256,6 +279,93 @@ class IntegrationsSettings extends Component
         $this->disconnectingId = null;
 
         session()->flash('success', 'Google account disconnected.');
+    }
+
+    // AI Provider methods
+
+    public function saveAnthropicCredentials(): void
+    {
+        $this->validate([
+            'anthropicApiKey' => 'required|string|min:10',
+        ]);
+
+        $settings = app(SettingsService::class);
+        $settings->set('ai_anthropic_api_key', encrypt(trim($this->anthropicApiKey)), 'ai_providers');
+
+        session()->flash('success', __('Anthropic API key saved.'));
+        $this->dispatch('close-modal-configure-anthropic');
+    }
+
+    public function testAnthropicConnection(): void
+    {
+        if (! $this->anthropicApiKey) {
+            session()->flash('error', __('Please enter an API key first.'));
+
+            return;
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $this->anthropicApiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(15)->post('https://api.anthropic.com/v1/messages', [
+                'model' => 'claude-sonnet-4-20250514',
+                'max_tokens' => 10,
+                'messages' => [['role' => 'user', 'content' => 'Say "ok"']],
+            ]);
+
+            if ($response->successful()) {
+                session()->flash('success', __('Anthropic connection successful!'));
+            } else {
+                $error = $response->json('error.message', 'Unknown error');
+                session()->flash('error', __('Anthropic connection failed: :error', ['error' => $error]));
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', __('Connection failed: :error', ['error' => $e->getMessage()]));
+        }
+    }
+
+    public function saveOpenAiCredentials(): void
+    {
+        $this->validate([
+            'openAiApiKey' => 'required|string|min:10',
+        ]);
+
+        $settings = app(SettingsService::class);
+        $settings->set('ai_openai_api_key', encrypt(trim($this->openAiApiKey)), 'ai_providers');
+
+        session()->flash('success', __('OpenAI API key saved.'));
+        $this->dispatch('close-modal-configure-openai-ai');
+    }
+
+    public function testOpenAiConnection(): void
+    {
+        if (! $this->openAiApiKey) {
+            session()->flash('error', __('Please enter an API key first.'));
+
+            return;
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.$this->openAiApiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(15)->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4o-mini',
+                'max_tokens' => 10,
+                'messages' => [['role' => 'user', 'content' => 'Say "ok"']],
+            ]);
+
+            if ($response->successful()) {
+                session()->flash('success', __('OpenAI connection successful!'));
+            } else {
+                $error = $response->json('error.message', 'Unknown error');
+                session()->flash('error', __('OpenAI connection failed: :error', ['error' => $error]));
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', __('Connection failed: :error', ['error' => $e->getMessage()]));
+        }
     }
 
     // Cloudflare methods

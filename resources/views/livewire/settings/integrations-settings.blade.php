@@ -12,7 +12,90 @@
         $dropboxConnected = $dropboxAppKey && $dropboxAppSecret;
         $unsplashConnected = (bool) $unsplashAccessKey;
         $openApiConnected = (bool) $openApiKey;
+        $anthropicConnected = (bool) $anthropicApiKey;
+        $openAiConnected = (bool) $openAiApiKey;
     @endphp
+
+    {{-- AI Providers Section --}}
+    <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('AI Providers') }}</h3>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+
+        {{-- Anthropic Claude Card --}}
+        <x-ui.card class="{{ $anthropicConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 shadow-sm ring-1 ring-amber-200">
+                        <svg class="h-5 w-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Anthropic Claude</h3>
+                        <p class="text-xs text-gray-500">{{ __('AI content generation') }}</p>
+                    </div>
+                </div>
+                @if($anthropicConnected)
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($anthropicConnected)
+                    {{ __('Claude Sonnet, Opus, Haiku') }}
+                @else
+                    {{ __('API key required') }}
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-anthropic')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {{ __('Settings') }}
+                </button>
+            </div>
+        </x-ui.card>
+
+        {{-- OpenAI Card --}}
+        <x-ui.card class="{{ $openAiConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 shadow-sm ring-1 ring-green-200">
+                        <svg class="h-5 w-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">OpenAI</h3>
+                        <p class="text-xs text-gray-500">{{ __('ChatGPT content generation') }}</p>
+                    </div>
+                </div>
+                @if($openAiConnected)
+                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($openAiConnected)
+                    {{ __('GPT-4o, GPT-4o mini') }}
+                @else
+                    {{ __('API key required') }}
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-openai-ai')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {{ __('Settings') }}
+                </button>
+            </div>
+        </x-ui.card>
+
+    </div>
+
+    {{-- Other Integrations --}}
+    <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Services') }}</h3>
 
     {{-- Integration Cards Grid --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -657,6 +740,86 @@
         <div class="mt-4 flex justify-end gap-2">
             <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">{{ __('Cancel') }}</x-ui.button>
             <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">{{ __('Delete') }}</x-ui.button>
+        </div>
+    </x-ui.modal>
+
+    {{-- Anthropic Claude Configuration Modal --}}
+    <x-ui.modal name="configure-anthropic" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Anthropic Claude &mdash; {{ __('Settings') }}</h2>
+
+        <p class="text-sm text-gray-500 mb-4">{{ __('Used for AI content generation (Content AI) and incident response. Supports Claude Sonnet, Opus, and Haiku models.') }}</p>
+
+        <form wire:submit="saveAnthropicCredentials" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <x-ui.input type="password" wire:model="anthropicApiKey" placeholder="sk-ant-api03-..." />
+                @error('anthropicApiKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="button" wire:click="testAnthropicConnection" wire:loading.attr="disabled" wire:target="testAnthropicConnection"
+                        class="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="testAnthropicConnection">{{ __('Test Connection') }}</span>
+                    <span wire:loading wire:target="testAnthropicConnection">{{ __('Testing...') }}</span>
+                </button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    {{ __('Save') }}
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                {{ __('How to obtain an Anthropic API key') }}
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>{{ __('Go to') }} <a href="https://console.anthropic.com/" target="_blank" class="font-medium underline hover:text-blue-900">console.anthropic.com</a></li>
+                    <li>{{ __('Create an account or sign in') }}</li>
+                    <li>{{ __('Navigate to API Keys and create a new key') }}</li>
+                    <li>{{ __('Paste the API key above and click Save') }}</li>
+                </ol>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- OpenAI Configuration Modal --}}
+    <x-ui.modal name="configure-openai-ai" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">OpenAI &mdash; {{ __('Settings') }}</h2>
+
+        <p class="text-sm text-gray-500 mb-4">{{ __('Used for AI content generation (Content AI). Supports GPT-4o, GPT-4o mini, and other models.') }}</p>
+
+        <form wire:submit="saveOpenAiCredentials" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                <x-ui.input type="password" wire:model="openAiApiKey" placeholder="sk-..." />
+                @error('openAiApiKey') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="button" wire:click="testOpenAiConnection" wire:loading.attr="disabled" wire:target="testOpenAiConnection"
+                        class="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="testOpenAiConnection">{{ __('Test Connection') }}</span>
+                    <span wire:loading wire:target="testOpenAiConnection">{{ __('Testing...') }}</span>
+                </button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    {{ __('Save') }}
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                {{ __('How to obtain an OpenAI API key') }}
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>{{ __('Go to') }} <a href="https://platform.openai.com/api-keys" target="_blank" class="font-medium underline hover:text-blue-900">platform.openai.com</a></li>
+                    <li>{{ __('Create an account or sign in') }}</li>
+                    <li>{{ __('Create a new API key') }}</li>
+                    <li>{{ __('Paste the API key above and click Save') }}</li>
+                </ol>
+            </div>
         </div>
     </x-ui.modal>
 </div>

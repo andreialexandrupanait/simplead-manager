@@ -34,6 +34,18 @@ class SeoCrawlResults extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+
+        // Redirect to global crawler results for consistent UX
+        $crawl = $crawlId
+            ? SiteCrawl::where('site_id', $site->id)->find($crawlId)
+            : $site->latestSiteCrawl;
+
+        if ($crawl) {
+            $this->redirect(route('seo.crawler.show', $crawl), navigate: true);
+
+            return;
+        }
+
         $this->crawlId = $crawlId;
     }
 

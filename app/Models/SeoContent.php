@@ -24,6 +24,8 @@ class SeoContent extends Model
         'meta_description',
         'tone',
         'persona',
+        'ai_provider',
+        'ai_model',
         'target_audience',
         'target_word_count',
         'sections',

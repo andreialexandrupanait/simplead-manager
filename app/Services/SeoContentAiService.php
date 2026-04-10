@@ -6,12 +6,61 @@ namespace App\Services;
 
 use App\Enums\SeoContentStatus;
 use App\Models\SeoContent;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SeoContentAiService
 {
+    /**
+     * Available providers and their models.
+     *
+     * @return array<string, array{label: string, models: array<string, string>}>
+     */
+    public static function availableProviders(): array
+    {
+        return [
+            'anthropic' => [
+                'label' => 'Anthropic Claude',
+                'models' => [
+                    'claude-sonnet-4-20250514' => 'Claude Sonnet 4',
+                    'claude-opus-4-20250514' => 'Claude Opus 4',
+                    'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5',
+                ],
+            ],
+            'openai' => [
+                'label' => 'OpenAI',
+                'models' => [
+                    'gpt-4o' => 'GPT-4o',
+                    'gpt-4o-mini' => 'GPT-4o mini',
+                    'gpt-4.1' => 'GPT-4.1',
+                    'gpt-4.1-mini' => 'GPT-4.1 mini',
+                    'gpt-4.1-nano' => 'GPT-4.1 nano',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get only providers that have an API key configured.
+     *
+     * @return array<string, array{label: string, models: array<string, string>}>
+     */
+    public static function configuredProviders(): array
+    {
+        $all = self::availableProviders();
+        $configured = [];
+
+        foreach ($all as $key => $provider) {
+            if (self::getApiKey($key)) {
+                $configured[$key] = $provider;
+            }
+        }
+
+        return $configured;
+    }
+
     public function generateArticle(SeoContent $content, ?string $trackerKey = null): SeoContent
     {
         $content->update(['status' => SeoContentStatus::Generating]);
@@ -23,11 +72,15 @@ class SeoContentAiService
         $systemPrompt = $this->buildSystemPrompt($content);
         $userMessage = $this->buildUserMessage($content);
 
+        $provider = $content->ai_provider ?? 'anthropic';
+        $model = $content->ai_model ?? $this->getDefaultModel($provider);
+
         if ($trackerKey) {
-            JobTracker::progress($trackerKey, 20, 'Generating article with AI...');
+            $providerLabel = self::availableProviders()[$provider]['label'] ?? $provider;
+            JobTracker::progress($trackerKey, 20, "Generating with {$providerLabel}...");
         }
 
-        $result = $this->callClaude($systemPrompt, $userMessage, $this->getMaxTokens($content));
+        $result = $this->callProvider($provider, $model, $systemPrompt, $userMessage, $this->getMaxTokens($content));
 
         if (! $result) {
             $content->update(['status' => SeoContentStatus::Failed]);
@@ -57,7 +110,8 @@ class SeoContentAiService
             'meta_description' => $parsed['meta_description'],
             'source' => 'ai',
             'generation_params' => [
-                'model' => config('incident-response.ai.model', 'claude-sonnet-4-20250514'),
+                'provider' => $provider,
+                'model' => $model,
                 'target_word_count' => $content->target_word_count,
                 'tone' => $content->tone,
             ],
@@ -165,6 +219,47 @@ class SeoContentAiService
         ];
     }
 
+    private function callProvider(string $provider, string $model, string $system, string $userMessage, int $maxTokens): ?string
+    {
+        return match ($provider) {
+            'openai' => $this->callOpenAi($model, $system, $userMessage, $maxTokens),
+            default => $this->callClaude($model, $system, $userMessage, $maxTokens),
+        };
+    }
+
+    private function getDefaultModel(string $provider): string
+    {
+        return match ($provider) {
+            'openai' => 'gpt-4o-mini',
+            default => 'claude-sonnet-4-20250514',
+        };
+    }
+
+    private static function getApiKey(string $provider): ?string
+    {
+        $settings = app(SettingsService::class);
+        $settingKey = match ($provider) {
+            'openai' => 'ai_openai_api_key',
+            default => 'ai_anthropic_api_key',
+        };
+
+        $encrypted = $settings->get($settingKey);
+        if (! $encrypted) {
+            // Fallback: for anthropic, also check incident-response config
+            if ($provider === 'anthropic') {
+                return config('incident-response.ai.api_key');
+            }
+
+            return null;
+        }
+
+        try {
+            return decrypt($encrypted);
+        } catch (DecryptException) {
+            return null;
+        }
+    }
+
     private function buildSystemPrompt(SeoContent $content): string
     {
         $language = 'Romanian';
@@ -231,11 +326,11 @@ class SeoContentAiService
         return min(16384, (int) ($targetWords * 2.5));
     }
 
-    private function callClaude(string $system, string $userMessage, int $maxTokens = 8192): ?string
+    private function callClaude(string $model, string $system, string $userMessage, int $maxTokens = 8192): ?string
     {
-        $apiKey = config('incident-response.ai.api_key');
+        $apiKey = self::getApiKey('anthropic');
         if (! $apiKey) {
-            Log::warning('SeoContentAi: No API key configured');
+            Log::warning('SeoContentAi: No Anthropic API key configured');
 
             return null;
         }
@@ -246,7 +341,7 @@ class SeoContentAiService
                 'anthropic-version' => '2023-06-01',
                 'content-type' => 'application/json',
             ])->timeout(300)->post('https://api.anthropic.com/v1/messages', [
-                'model' => config('incident-response.ai.model', 'claude-sonnet-4-20250514'),
+                'model' => $model,
                 'max_tokens' => $maxTokens,
                 'temperature' => 0.7,
                 'system' => $system,
@@ -269,6 +364,48 @@ class SeoContentAiService
             return null;
         } catch (\Throwable $e) {
             Log::error("SeoContentAi: Claude API exception: {$e->getMessage()}");
+
+            return null;
+        }
+    }
+
+    private function callOpenAi(string $model, string $system, string $userMessage, int $maxTokens = 8192): ?string
+    {
+        $apiKey = self::getApiKey('openai');
+        if (! $apiKey) {
+            Log::warning('SeoContentAi: No OpenAI API key configured');
+
+            return null;
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.$apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(300)->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'max_tokens' => $maxTokens,
+                'temperature' => 0.7,
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $userMessage],
+                ],
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                return $data['choices'][0]['message']['content'] ?? null;
+            }
+
+            Log::warning('SeoContentAi: OpenAI API error', [
+                'status' => $response->status(),
+                'body' => Str::limit($response->body(), 500),
+            ]);
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("SeoContentAi: OpenAI API exception: {$e->getMessage()}");
 
             return null;
         }

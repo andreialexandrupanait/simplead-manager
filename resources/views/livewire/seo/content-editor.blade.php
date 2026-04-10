@@ -46,6 +46,36 @@
                         </div>
                     </div>
 
+                    {{-- AI Provider & Model --}}
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('AI Provider') }}</label>
+                            @if(empty($this->configuredProviders))
+                                <p class="text-xs text-red-600 mt-1">{{ __('No AI providers configured.') }} <a href="{{ route('settings.integrations') }}" class="underline">{{ __('Settings') }}</a></p>
+                            @else
+                                <select wire:model.live="aiProvider" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                    @foreach($this->configuredProviders as $key => $provider)
+                                        <option value="{{ $key }}">{{ $provider['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Model') }}</label>
+                            @if($aiProvider && isset($this->configuredProviders[$aiProvider]))
+                                <select wire:model="aiModel" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                    @foreach($this->configuredProviders[$aiProvider]['models'] as $modelKey => $modelLabel)
+                                        <option value="{{ $modelKey }}">{{ $modelLabel }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <select disabled class="w-full rounded-lg border-gray-300 bg-gray-50 text-sm text-gray-400">
+                                    <option>{{ __('Select a provider first') }}</option>
+                                </select>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                         <div>
                             <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('Tone') }}</label>
