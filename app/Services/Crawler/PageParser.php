@@ -55,6 +55,14 @@ class PageParser
         $ogDescription = $this->extractMetaProperty($xpath, 'og:description');
         $ogImage = $this->extractMetaProperty($xpath, 'og:image');
 
+        $scripts = $this->extractScripts($xpath, $url);
+        $stylesheets = $this->extractStylesheets($xpath, $url);
+
+        // Security checks
+        $parsedUrlForScheme = parse_url($url);
+        $isHttps = ($parsedUrlForScheme['scheme'] ?? '') === 'https';
+        $hasMixedContent = $isHttps && $this->detectMixedContent($xpath);
+
         $parsedUrl = parse_url($url);
         $normalisedPageUrl = rtrim(
             ($parsedUrl['scheme'] ?? 'https').'://'.($parsedUrl['host'] ?? '').($parsedUrl['path'] ?? '/'),
@@ -90,6 +98,10 @@ class PageParser
             'og_title' => $ogTitle,
             'og_description' => $ogDescription,
             'og_image' => $ogImage,
+            'scripts' => array_slice($scripts, 0, 50),
+            'stylesheets' => array_slice($stylesheets, 0, 50),
+            'is_https' => $isHttps,
+            'has_mixed_content' => $hasMixedContent,
         ];
     }
 
@@ -236,6 +248,110 @@ class PageParser
         }
 
         return $images;
+    }
+
+    /**
+     * @return array<int, array{url: string, type: string}>
+     */
+    private function extractScripts(DOMXPath $xpath, string $pageUrl): array
+    {
+        $scripts = [];
+        $nodes = $xpath->query('//script[@src]');
+
+        if ($nodes === false) {
+            return $scripts;
+        }
+
+        foreach ($nodes as $node) {
+            /** @var \DOMElement $node */
+            $src = trim($node->getAttribute('src'));
+            if ($src === '' || str_starts_with($src, 'data:')) {
+                continue;
+            }
+
+            $absoluteUrl = $this->resolveResourceUrl($src, $pageUrl);
+            if ($absoluteUrl) {
+                $scripts[] = [
+                    'url' => mb_substr($absoluteUrl, 0, 2048),
+                    'type' => $node->getAttribute('type') ?: 'text/javascript',
+                ];
+            }
+        }
+
+        return $scripts;
+    }
+
+    /**
+     * @return array<int, array{url: string, media: string}>
+     */
+    private function extractStylesheets(DOMXPath $xpath, string $pageUrl): array
+    {
+        $sheets = [];
+        $nodes = $xpath->query('//link[@rel="stylesheet"][@href]');
+
+        if ($nodes === false) {
+            return $sheets;
+        }
+
+        foreach ($nodes as $node) {
+            /** @var \DOMElement $node */
+            $href = trim($node->getAttribute('href'));
+            if ($href === '') {
+                continue;
+            }
+
+            $absoluteUrl = $this->resolveResourceUrl($href, $pageUrl);
+            if ($absoluteUrl) {
+                $sheets[] = [
+                    'url' => mb_substr($absoluteUrl, 0, 2048),
+                    'media' => $node->getAttribute('media') ?: 'all',
+                ];
+            }
+        }
+
+        return $sheets;
+    }
+
+    private function detectMixedContent(DOMXPath $xpath): bool
+    {
+        // Check for http:// in src/href attributes on an https page
+        $checks = [
+            '//img[starts-with(@src, "http://")]',
+            '//script[starts-with(@src, "http://")]',
+            '//link[@rel="stylesheet"][starts-with(@href, "http://")]',
+        ];
+
+        foreach ($checks as $query) {
+            $nodes = $xpath->query($query);
+            if ($nodes !== false && $nodes->length > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolveResourceUrl(string $src, string $pageUrl): ?string
+    {
+        if (str_starts_with($src, 'http://') || str_starts_with($src, 'https://')) {
+            return $src;
+        }
+
+        $parsed = parse_url($pageUrl);
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = $parsed['host'] ?? '';
+
+        if (str_starts_with($src, '//')) {
+            return $scheme.':'.$src;
+        }
+
+        if (str_starts_with($src, '/')) {
+            return $scheme.'://'.$host.$src;
+        }
+
+        $basePath = dirname($parsed['path'] ?? '/');
+
+        return $scheme.'://'.$host.rtrim($basePath, '/').'/'.$src;
     }
 
     private function extractBodyText(DOMDocument $dom, DOMXPath $xpath): string
