@@ -457,6 +457,7 @@ class CrawlerResults extends Component
     public function setDataTab(string $tab): void
     {
         $this->dataTab = $tab;
+        $this->analysisTab = 'overview'; // reset to table view
         $this->resetPage();
         $this->selectedPageId = null;
         unset($this->tableData, $this->tableColumns, $this->selectedPage, $this->selectedPageInlinks);
@@ -465,6 +466,7 @@ class CrawlerResults extends Component
     public function setAnalysisTab(string $tab): void
     {
         $this->analysisTab = $tab;
+        // Keep dataTab as-is — analysis views are independent
     }
 
     public function setSort(string $col): void
