@@ -93,6 +93,54 @@ class SeoAuditResults extends Component
         unset($this->issues, $this->issuesByCategory);
     }
 
+    public function resolveFiltered(): void
+    {
+        if ($this->audit === null) {
+            return;
+        }
+
+        $query = SeoIssue::where('seo_audit_id', $this->audit->id)->whereNull('resolved_at');
+
+        if ($this->filterSeverity !== 'all') {
+            $query->severity($this->filterSeverity);
+        }
+
+        $count = $query->count();
+        $query->update(['resolved_at' => now()]);
+
+        unset($this->issues, $this->issuesByCategory, $this->audit);
+
+        session()->flash('success', "{$count} issue(s) marked as resolved.");
+    }
+
+    public function exportIssuesCsv()
+    {
+        if ($this->audit === null) {
+            return;
+        }
+
+        $issues = $this->issues;
+        $filename = 'seo-issues-'.$this->site->slug.'-'.now()->format('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($issues) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
+            fputcsv($handle, ['Severity', 'Category', 'Title', 'Description', 'URL', 'Recommendation']);
+
+            foreach ($issues as $issue) {
+                fputcsv($handle, [
+                    $issue->severity,
+                    $issue->category_label,
+                    $issue->title,
+                    $issue->description,
+                    $issue->url,
+                    $issue->recommendation,
+                ]);
+            }
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function rerunAudit(): void
     {
         $this->dispatchTrackedJob('audit', new RunSeoAudit($this->site), 'Starting SEO audit...');

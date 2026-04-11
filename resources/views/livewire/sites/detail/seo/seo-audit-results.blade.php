@@ -101,6 +101,22 @@
             @endforeach
         </div>
 
+        {{-- Bulk Actions --}}
+        @if($this->issues->isNotEmpty())
+            <div class="mb-4 flex flex-wrap gap-2">
+                <button wire:click="resolveFiltered" wire:confirm="{{ __('Mark all currently filtered issues as resolved?') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 transition hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {{ __('Resolve All') }} ({{ $this->issues->count() }})
+                </button>
+                <button wire:click="exportIssuesCsv"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    {{ __('Export CSV') }}
+                </button>
+            </div>
+        @endif
+
         {{-- Issues grouped by category --}}
         @php
             $issuesByCategory = $this->issuesByCategory;

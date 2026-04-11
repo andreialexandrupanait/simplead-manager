@@ -9,6 +9,7 @@ use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\TrackedKeyword;
+use App\Services\ContentIntelligenceService;
 use App\Services\KeywordTrackingService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -226,6 +227,12 @@ class SeoKeywords extends Component
     public function cannibalization(): array
     {
         return app(KeywordTrackingService::class)->detectCannibalization($this->site);
+    }
+
+    #[Computed]
+    public function contentGaps(): array
+    {
+        return app(ContentIntelligenceService::class)->getContentGaps($this->site);
     }
 
     protected function onJobFinished(string $jobName, array $data): void

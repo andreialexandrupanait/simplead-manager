@@ -3,6 +3,7 @@
         @php
             $tabs = [
                 ['route' => 'sites.seo', 'label' => __('Overview'), 'active' => request()->routeIs('sites.seo') && !request()->routeIs('sites.seo.*')],
+                ['route' => 'sites.seo.agent', 'label' => __('Agent'), 'active' => request()->routeIs('sites.seo.agent')],
                 ['route' => 'sites.seo.audit', 'label' => __('Audit Results'), 'active' => request()->routeIs('sites.seo.audit')],
                 ['route' => 'sites.seo.keywords', 'label' => __('Keywords'), 'active' => request()->routeIs('sites.seo.keywords')],
                 ['route' => 'sites.seo.technical', 'label' => __('Technical'), 'active' => request()->routeIs('sites.seo.technical')],

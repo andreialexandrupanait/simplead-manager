@@ -232,4 +232,48 @@
             </div>
         </x-ui.card>
     @endif
+
+    {{-- Content Gaps (keywords with impressions but no clicks) --}}
+    @php $gaps = $this->contentGaps; @endphp
+    @if(!empty($gaps))
+        <x-ui.card class="mt-6">
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Content Opportunities') }}</h3>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ __('Keywords with impressions but few clicks — optimize titles and meta descriptions to capture this traffic') }}</p>
+                </div>
+                <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{{ count($gaps) }} {{ __('opportunities') }}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Keyword') }}</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Impressions') }}</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Clicks') }}</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Position') }}</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{{ __('Opportunity') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @foreach(array_slice($gaps, 0, 15) as $gap)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                                <td class="px-4 py-2 font-medium text-gray-900 dark:text-white">{{ $gap['keyword'] }}</td>
+                                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ number_format($gap['impressions']) }}</td>
+                                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ $gap['clicks'] }}</td>
+                                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">{{ $gap['position'] ? round($gap['position'], 1) : '—' }}</td>
+                                <td class="px-4 py-2">
+                                    @if(str_starts_with($gap['opportunity'], 'High'))
+                                        <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">{{ __('High') }}</span>
+                                    @else
+                                        <span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">{{ __('Medium') }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </x-ui.card>
+    @endif
 </div>
