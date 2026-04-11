@@ -170,7 +170,7 @@
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
-    <x-sidebar.sidebar-section title="Analytics & SEO">
+    <x-sidebar.sidebar-section title="Analytics">
         <x-sidebar.sidebar-item
             :href="route('sites.analytics', $site)"
             icon="bar-chart-2"
@@ -187,15 +187,6 @@
             :inactive="!$moduleService->isModuleActive($site, 'search_console')"
         >
             Search Console
-        </x-sidebar.sidebar-item>
-
-        <x-sidebar.sidebar-item
-            :href="route('sites.seo', $site)"
-            icon="target"
-            :active="request()->routeIs('sites.seo*')"
-            :inactive="!$moduleService->isModuleActive($site, 'seo')"
-        >
-            SEO
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 

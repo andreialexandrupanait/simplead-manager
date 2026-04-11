@@ -42,42 +42,6 @@
     </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
-<x-sidebar.sidebar-section :title="__('SEO')">
-    <x-sidebar.sidebar-item
-        :href="route('seo.index')"
-        icon="target"
-        :active="request()->routeIs('seo.index')"
-    >
-        {{ __('Dashboard') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('seo.content.index')"
-        icon="file-text"
-        :active="request()->routeIs('seo.content.*')"
-    >
-        {{ __('Content AI') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('seo.keywords.index')"
-        icon="search"
-        :active="request()->routeIs('seo.keywords.*')"
-    >
-        {{ __('Keywords') }}
-    </x-sidebar.sidebar-item>
-</x-sidebar.sidebar-section>
-
-<x-sidebar.sidebar-section :title="__('Crawler')">
-    <x-sidebar.sidebar-item
-        :href="route('crawler.index')"
-        icon="globe"
-        :active="request()->routeIs('crawler.*')"
-    >
-        {{ __('Crawls') }}
-    </x-sidebar.sidebar-item>
-</x-sidebar.sidebar-section>
-
 <x-sidebar.sidebar-section :title="__('Management')">
     <x-sidebar.sidebar-item
         :href="route('backups.index')"

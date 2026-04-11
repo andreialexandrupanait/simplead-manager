@@ -11,7 +11,6 @@ enum IncidentTriggerType: string
     case Vulnerability = 'vulnerability';
     case PerformanceDrop = 'performance_drop';
     case DatabaseCritical = 'database_critical';
-    case SeoCriticalDrop = 'seo_critical_drop';
 
     public function label(): string
     {
@@ -21,7 +20,6 @@ enum IncidentTriggerType: string
             self::Vulnerability => 'Vulnerability',
             self::PerformanceDrop => 'Performance Drop',
             self::DatabaseCritical => 'Database Critical',
-            self::SeoCriticalDrop => 'SEO Critical Drop',
         };
     }
 
@@ -33,7 +31,6 @@ enum IncidentTriggerType: string
             self::Vulnerability => 'bug',
             self::PerformanceDrop => 'gauge',
             self::DatabaseCritical => 'database',
-            self::SeoCriticalDrop => 'target',
         };
     }
 
@@ -43,7 +40,6 @@ enum IncidentTriggerType: string
             self::SiteDown, self::SecurityCritical => 'critical',
             self::Vulnerability => 'warning',
             self::PerformanceDrop, self::DatabaseCritical => 'warning',
-            self::SeoCriticalDrop => 'critical',
         };
     }
 }

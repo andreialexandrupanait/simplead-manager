@@ -8,18 +8,14 @@ use App\Enums\BackupStatus;
 use App\Models\ActivityLog;
 use App\Models\AnalyticsCache;
 use App\Models\AnalyticsConnection;
-use App\Models\Backlink;
-use App\Models\BacklinkSnapshot;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Client;
-use App\Models\CompetitorSite;
 use App\Models\CoreFileCheck;
 use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
 use App\Models\IncidentResponse;
-use App\Models\KeywordPageMapping;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
@@ -40,13 +36,7 @@ use App\Models\SecurityPreset;
 use App\Models\SecurityRecommendation;
 use App\Models\SecurityScan;
 use App\Models\SecuritySetting;
-use App\Models\SeoAlertRule;
-use App\Models\SeoAudit;
-use App\Models\SeoContent;
-use App\Models\SeoIssue;
-use App\Models\SeoMonitor;
 use App\Models\SiteCloudflare;
-use App\Models\SiteCrawl;
 use App\Models\SiteHealthState;
 use App\Models\SiteMonthlySnapshot;
 use App\Models\SitePlugin;
@@ -56,7 +46,6 @@ use App\Models\SiteStatus;
 use App\Models\SiteTheme;
 use App\Models\ThemeFileCheck;
 use App\Models\SiteUser;
-use App\Models\TrackedKeyword;
 use App\Models\UpdateLog;
 use App\Models\UptimeMonitor;
 use App\Models\User;
@@ -258,79 +247,9 @@ trait HasSiteRelationships
         return $this->hasMany(SafeUpdate::class);
     }
 
-    public function trackedKeywords(): HasMany
-    {
-        return $this->hasMany(TrackedKeyword::class);
-    }
-
-    public function keywordPageMappings(): HasMany
-    {
-        return $this->hasMany(KeywordPageMapping::class);
-    }
-
-    public function seoAlertRules(): HasMany
-    {
-        return $this->hasMany(SeoAlertRule::class);
-    }
-
-    public function competitorSites(): HasMany
-    {
-        return $this->hasMany(CompetitorSite::class);
-    }
-
-    public function backlinks(): HasMany
-    {
-        return $this->hasMany(Backlink::class);
-    }
-
-    public function backlinkSnapshots(): HasMany
-    {
-        return $this->hasMany(BacklinkSnapshot::class);
-    }
-
-    public function latestBacklinkSnapshot(): HasOne
-    {
-        return $this->hasOne(BacklinkSnapshot::class)->latestOfMany('date');
-    }
-
     public function securityMonitor(): HasOne
     {
         return $this->hasOne(SecurityMonitor::class);
-    }
-
-    public function seoMonitor(): HasOne
-    {
-        return $this->hasOne(SeoMonitor::class);
-    }
-
-    public function seoAudits(): HasMany
-    {
-        return $this->hasMany(SeoAudit::class);
-    }
-
-    public function latestSeoAudit(): HasOne
-    {
-        return $this->hasOne(SeoAudit::class)->latestOfMany('scanned_at');
-    }
-
-    public function seoIssues(): HasMany
-    {
-        return $this->hasMany(SeoIssue::class);
-    }
-
-    public function seoContents(): HasMany
-    {
-        return $this->hasMany(SeoContent::class);
-    }
-
-    public function siteCrawls(): HasMany
-    {
-        return $this->hasMany(SiteCrawl::class);
-    }
-
-    public function latestSiteCrawl(): HasOne
-    {
-        return $this->hasOne(SiteCrawl::class)->latestOfMany();
     }
 
     public function databaseCleanupConfig(): HasOne

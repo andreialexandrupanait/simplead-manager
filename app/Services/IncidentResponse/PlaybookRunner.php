@@ -12,7 +12,6 @@ use App\Services\IncidentResponse\Playbooks\DatabaseCriticalPlaybook;
 use App\Services\IncidentResponse\Playbooks\PerformanceDropPlaybook;
 use App\Services\IncidentResponse\Playbooks\SecurityCriticalPlaybook;
 use App\Services\IncidentResponse\Playbooks\SiteDownPlaybook;
-use App\Services\IncidentResponse\Playbooks\SeoCriticalDropPlaybook;
 use App\Services\IncidentResponse\Playbooks\VulnerablePluginPlaybook;
 
 class PlaybookRunner
@@ -28,7 +27,6 @@ class PlaybookRunner
             new SecurityCriticalPlaybook,
             new PerformanceDropPlaybook,
             new DatabaseCriticalPlaybook,
-            new SeoCriticalDropPlaybook,
         ];
     }
 
