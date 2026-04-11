@@ -8,6 +8,8 @@ use App\Jobs\PushConnectorPlugin;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Site;
 use App\Models\SitePlugin;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -37,9 +39,15 @@ class PluginLicensesOverview extends Component
     {
         $sites = Site::where('is_connected', true)->get();
 
+        $pushId = Str::uuid()->toString();
+        $downloadUrl = URL::temporarySignedRoute(
+            'download.connector-plugin.signed',
+            now()->addMinutes(30)
+        );
+
         foreach ($sites as $site) {
-            PushConnectorPlugin::dispatch($site);
-            SyncWordPressSite::dispatch($site)->delay(now()->addSeconds(30 + rand(0, 60)));
+            PushConnectorPlugin::dispatch($site, $downloadUrl, $pushId);
+            SyncWordPressSite::dispatch($site)->delay(now()->addSeconds(45 + rand(0, 60)));
         }
 
         $this->dispatch('notify', type: 'success', message: "Updating connector & scanning licenses on {$sites->count()} sites. Results in ~2 minutes.");
