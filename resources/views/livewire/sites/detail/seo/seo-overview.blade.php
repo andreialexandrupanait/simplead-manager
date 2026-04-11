@@ -80,6 +80,12 @@
                             <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="runAudit" />
                             {{ __('Run Audit') }}
                         </x-ui.button>
+                        <select wire:change="updateSchedule($event.target.value)" class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-purple-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            <option value="off" {{ !$this->auditSchedule ? 'selected' : '' }}>{{ __('No schedule') }}</option>
+                            <option value="daily" {{ $this->auditSchedule === 'daily' ? 'selected' : '' }}>{{ __('Daily') }}</option>
+                            <option value="weekly" {{ $this->auditSchedule === 'weekly' ? 'selected' : '' }}>{{ __('Weekly') }}</option>
+                            <option value="monthly" {{ $this->auditSchedule === 'monthly' ? 'selected' : '' }}>{{ __('Monthly') }}</option>
+                        </select>
                         @if($latestAudit)
                             <a href="{{ route('sites.seo.audit', $site) }}"
                                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50">

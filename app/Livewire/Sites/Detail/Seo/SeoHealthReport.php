@@ -6,19 +6,16 @@ namespace App\Livewire\Sites\Detail\Seo;
 
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
-use App\Services\SeoAgentService;
-use Livewire\Attributes\Computed;
+use App\Services\SeoHealthReportService;
 use Livewire\Component;
 
-class SeoAgent extends Component
+class SeoHealthReport extends Component
 {
     use WithSiteAuthorization;
 
     public Site $site;
 
     public ?array $report = null;
-
-    public bool $isAnalyzing = false;
 
     public function mount(Site $site): void
     {
@@ -28,17 +25,15 @@ class SeoAgent extends Component
 
     public function analyze(): void
     {
-        $this->isAnalyzing = true;
-        $this->report = app(SeoAgentService::class)->analyze($this->site);
-        $this->isAnalyzing = false;
+        $this->report = app(SeoHealthReportService::class)->analyze($this->site);
     }
 
     public function render()
     {
-        return view('livewire.sites.detail.seo.seo-agent')
+        return view('livewire.sites.detail.seo.seo-health-report')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name.' — SEO Agent',
+                'title' => $this->site->name.' — SEO Health Report',
             ]);
     }
 }

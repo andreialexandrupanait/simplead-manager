@@ -140,6 +140,27 @@ class TrackKeywordPositions implements ShouldBeUnique, ShouldQueue
         // Sync keyword-to-page mappings from GSC
         $mappingsSynced = app(KeywordTrackingService::class)->syncKeywordPageMappings($this->site);
 
+        // Track published content performance — match target keywords to positions
+        $publishedContent = \App\Models\SeoContent::where('site_id', $this->site->id)
+            ->where('status', 'published')
+            ->whereNotNull('target_keyword')
+            ->get();
+
+        foreach ($publishedContent as $content) {
+            $kw = mb_strtolower(trim($content->target_keyword));
+            $tracked = $keywords->first(fn ($tk) => mb_strtolower($tk->keyword) === $kw);
+
+            if ($tracked) {
+                $latestPosition = $tracked->positions()->orderByDesc('date')->first();
+                if ($latestPosition && $latestPosition->position !== null) {
+                    $content->update([
+                        'ranking_position' => $latestPosition->position,
+                        'ranking_date' => $latestPosition->date,
+                    ]);
+                }
+            }
+        }
+
         ActivityLogger::log(
             type: 'seo',
             severity: 'info',

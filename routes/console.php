@@ -181,6 +181,31 @@ Schedule::command('security:maintenance recalculate-scores')
 // SEO Module
 // ==========================================================================
 
+// Scheduled SEO audits — check hourly for sites due for audit
+Schedule::call(function () {
+    $monitors = \App\Models\SeoMonitor::where('is_active', true)
+        ->whereNotNull('next_audit_at')
+        ->where('next_audit_at', '<=', now())
+        ->with('site')
+        ->get();
+
+    foreach ($monitors as $monitor) {
+        if (! $monitor->site) {
+            continue;
+        }
+
+        dispatch(new \App\Jobs\RunSeoAudit($monitor->site));
+
+        $monitor->update([
+            'last_audit_at' => now(),
+            'next_audit_at' => now()->addMinutes($monitor->interval_minutes),
+        ]);
+    }
+})->hourly()
+    ->name('seo-scheduled-audits')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Scheduled crawls — check hourly for sites with crawl_enabled
 Schedule::call(function () {
     $monitors = \App\Models\SeoMonitor::where('crawl_enabled', true)

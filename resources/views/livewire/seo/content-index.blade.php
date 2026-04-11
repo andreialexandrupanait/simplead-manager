@@ -41,6 +41,7 @@
                             <th class="px-4 py-2.5 text-left font-medium text-gray-500">{{ __('Site') }}</th>
                             <th class="px-4 py-2.5 text-center font-medium text-gray-500">{{ __('Status') }}</th>
                             <th class="px-4 py-2.5 text-center font-medium text-gray-500">{{ __('SEO') }}</th>
+                            <th class="px-4 py-2.5 text-center font-medium text-gray-500">{{ __('Ranking') }}</th>
                             <th class="px-4 py-2.5 text-center font-medium text-gray-500">{{ __('Words') }}</th>
                             <th class="px-4 py-2.5 text-center font-medium text-gray-500">{{ __('Date') }}</th>
                             <th class="px-4 py-2.5 text-right font-medium text-gray-500">{{ __('Actions') }}</th>
@@ -60,6 +61,13 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-2.5 text-center text-sm text-gray-600">{{ $item->seo_score ?? '—' }}</td>
+                                <td class="px-4 py-2.5 text-center">
+                                    @if($item->ranking_position)
+                                        <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-bold {{ $item->ranking_position <= 3 ? 'bg-green-100 text-green-700' : ($item->ranking_position <= 10 ? 'bg-blue-100 text-blue-700' : ($item->ranking_position <= 20 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600')) }}">#{{ round($item->ranking_position) }}</span>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-2.5 text-center text-sm text-gray-600">{{ $item->word_count ?? '—' }}</td>
                                 <td class="px-4 py-2.5 text-center text-xs text-gray-500">{{ $item->created_at->format('M d') }}</td>
                                 <td class="px-4 py-2.5 text-right space-x-2">

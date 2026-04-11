@@ -116,6 +116,28 @@ class SeoAuditService
             );
         }
 
+        // Score drop detection — compare with previous audit
+        $previousAudit = SeoAudit::where('site_id', $site->id)
+            ->where('id', '!=', $audit->id)
+            ->orderByDesc('scanned_at')
+            ->first();
+
+        if ($previousAudit && ($previousAudit->score - $score) >= 10) {
+            $drop = $previousAudit->score - $score;
+            NotificationService::notifySiteEvent(
+                $site,
+                'seo_score_drop',
+                'SEO Score Dropped',
+                "SEO score for {$site->name} dropped by {$drop} points (from {$previousAudit->score} to {$score}).",
+                [
+                    'Previous' => "{$previousAudit->score}/100",
+                    'Current' => "{$score}/100",
+                    'Drop' => "-{$drop} points",
+                ],
+                $drop >= 20 ? 'critical' : 'warning'
+            );
+        }
+
         ActivityLogger::log(
             'seo',
             $score < 50 ? 'critical' : ($score < 80 ? 'warning' : 'info'),

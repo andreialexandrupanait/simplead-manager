@@ -142,6 +142,48 @@ class SeoOverview extends Component
         return count(app(ContentIntelligenceService::class)->findPagesWithoutTraffic($this->site));
     }
 
+    #[Computed]
+    public function auditSchedule(): ?string
+    {
+        $monitor = $this->site->seoMonitor;
+        if (! $monitor || ! $monitor->is_active || ! $monitor->next_audit_at) {
+            return null;
+        }
+
+        return match ($monitor->interval_minutes) {
+            1440 => 'daily',
+            10080 => 'weekly',
+            43200 => 'monthly',
+            default => $monitor->interval_minutes.' min',
+        };
+    }
+
+    public function updateSchedule(string $interval): void
+    {
+        $monitor = $this->site->seoMonitor;
+        if (! $monitor) {
+            return;
+        }
+
+        if ($interval === 'off') {
+            $monitor->update(['next_audit_at' => null]);
+        } else {
+            $minutes = match ($interval) {
+                'daily' => 1440,
+                'weekly' => 10080,
+                'monthly' => 43200,
+                default => 10080,
+            };
+
+            $monitor->update([
+                'interval_minutes' => $minutes,
+                'next_audit_at' => now()->addMinutes($minutes),
+            ]);
+        }
+
+        unset($this->auditSchedule);
+    }
+
     public function activateModule(): void
     {
         app(ModuleConfigService::class)->toggleModule($this->site, 'seo', true);

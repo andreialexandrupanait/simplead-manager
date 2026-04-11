@@ -12,7 +12,7 @@ use App\Models\SeoIssue;
 use App\Models\Site;
 use App\Models\TrackedKeyword;
 
-class SeoAgentService
+class SeoHealthReportService
 {
     /**
      * Run a complete SEO analysis and generate prioritized recommendations.

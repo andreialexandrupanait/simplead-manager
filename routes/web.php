@@ -97,7 +97,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
         Route::get('/seo', Sites\Detail\Seo\SeoOverview::class)->name('sites.seo');
-        Route::get('/seo/agent', Sites\Detail\Seo\SeoAgent::class)->name('sites.seo.agent');
+        Route::get('/seo/health-report', Sites\Detail\Seo\SeoHealthReport::class)->name('sites.seo.health-report');
         Route::get('/seo/audit', Sites\Detail\Seo\SeoAuditResults::class)->name('sites.seo.audit');
         Route::get('/seo/keywords', Sites\Detail\Seo\SeoKeywords::class)->name('sites.seo.keywords');
         Route::get('/seo/technical', Sites\Detail\Seo\SeoTechnical::class)->name('sites.seo.technical');
