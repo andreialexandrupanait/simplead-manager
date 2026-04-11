@@ -55,6 +55,18 @@ class GlobalDashboard extends Component
     }
 
     #[Computed]
+    public function trends(): array
+    {
+        return app(DashboardService::class)->getTrends();
+    }
+
+    #[Computed]
+    public function sitesNeedingAttention(): array
+    {
+        return app(DashboardService::class)->getSitesWithIssues();
+    }
+
+    #[Computed]
     public function sites()
     {
         return app(DashboardService::class)->getSitesOverview(30, $this->search, $this->filter, $this->statusFilter, $this->clientFilter, $this->sort);

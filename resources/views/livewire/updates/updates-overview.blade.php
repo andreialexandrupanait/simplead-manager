@@ -102,6 +102,16 @@
                                 <span wire:loading.remove wire:target="updateAllForSite({{ $group['site_id'] }})">{{ __('Update All') }}</span>
                                 <span wire:loading wire:target="updateAllForSite({{ $group['site_id'] }})">{{ __('Updating...') }}</span>
                             </button>
+                        @elseif($groupBy === 'item' && $group['type'] === 'plugin')
+                            <button
+                                wire:click="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')"
+                                wire:loading.attr="disabled"
+                                wire:confirm="{{ __('Update :plugin on all :count site(s)?', ['plugin' => $group['label'], 'count' => count($group['items'])]) }}"
+                                class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition"
+                            >
+                                <span wire:loading.remove wire:target="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')">{{ __('Update All Sites') }}</span>
+                                <span wire:loading wire:target="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')">{{ __('Updating...') }}</span>
+                            </button>
                         @endif
                     </div>
 

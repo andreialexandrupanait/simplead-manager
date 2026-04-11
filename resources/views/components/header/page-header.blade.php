@@ -108,8 +108,8 @@
     }
 @endphp
 
-<header class="sticky top-0 z-30 border-b bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm">
-    <div class="flex h-16 items-center px-6">
+<header class="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm">
+    <div class="flex h-16 items-center px-6 border-b dark:border-gray-700">
         {{-- Mobile menu toggle --}}
         <button @click="mobileSidebarOpen = true" aria-label="{{ __('Open menu') }}" class="mr-3 lg:hidden text-gray-500">
             <x-icons.menu class="h-6 w-6" aria-hidden="true" />
@@ -147,6 +147,11 @@
 
         {{-- Right side actions --}}
         <div class="flex items-center gap-3 ml-4">
+            {{-- Global Search --}}
+            <div class="hidden sm:block">
+                <livewire:components.global-search />
+            </div>
+
             {{-- Dark mode toggle --}}
             <button @click="toggleDarkMode()" title="{{ __('Toggle dark mode') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
                 <x-icons.sun x-show="darkMode" x-cloak class="h-5 w-5" />

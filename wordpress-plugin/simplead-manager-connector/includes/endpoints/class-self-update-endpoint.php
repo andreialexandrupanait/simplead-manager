@@ -22,7 +22,8 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
         @set_time_limit(300);
 
         $params = $request->get_json_params();
-        $download_url = $params['download_url'] ?? '';
+        $download_url   = $params['download_url']   ?? '';
+        $expected_hash  = $params['expected_hash']  ?? '';
 
         if (empty($download_url) || !filter_var($download_url, FILTER_VALIDATE_URL)) {
             return new WP_REST_Response([
@@ -31,9 +32,37 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
+        // If a hash was supplied, download the zip manually, verify, then pass the
+        // local temp file path to the upgrader so it doesn't re-download.
+        $local_package = null;
+        if (!empty($expected_hash)) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+
+            $tmp = download_url($download_url, 120);
+            if (is_wp_error($tmp)) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error'   => ['code' => 'DOWNLOAD_FAILED', 'message' => $tmp->get_error_message()],
+                ], 500);
+            }
+
+            $actual_hash = hash_file('sha256', $tmp);
+            if (!hash_equals($expected_hash, $actual_hash)) {
+                @unlink($tmp);
+                return new WP_REST_Response([
+                    'success' => false,
+                    'error'   => ['code' => 'HASH_MISMATCH', 'message' => 'Package integrity check failed.'],
+                ], 400);
+            }
+
+            $local_package = $tmp;
+        }
+
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        require_once ABSPATH . 'wp-admin/includes/file.php';
+        if (!function_exists('download_url')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
 
         WP_Filesystem();
 
@@ -46,9 +75,11 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Plugin_Upgrader($skin);
 
-        // Override the package URL to our custom download URL
-        add_filter('upgrader_package_options', function ($options) use ($download_url) {
-            $options['package'] = $download_url;
+        // Override the package URL: use the pre-downloaded + verified local file when
+        // available, otherwise fall back to streaming directly from the URL.
+        $package_source = $local_package ?? $download_url;
+        add_filter('upgrader_package_options', function ($options) use ($package_source) {
+            $options['package'] = $package_source;
             return $options;
         });
 
@@ -70,6 +101,11 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
         set_site_transient('update_plugins', $update_transient);
 
         $result = $upgrader->upgrade($plugin_file);
+
+        // Clean up our manually downloaded temp file (if used)
+        if ($local_package !== null && file_exists($local_package)) {
+            @unlink($local_package);
+        }
 
         // Clean up the fake transient entry
         delete_site_transient('update_plugins');

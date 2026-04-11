@@ -16,6 +16,7 @@
     {{-- Section 1: Mini Stat Cards --}}
     @php
         $stats = $this->stats;
+        $trends = $this->trends;
 
         $uptimeColor = 'text-green-600';
         $uptimeBg = 'bg-green-50';
@@ -33,6 +34,19 @@
         } else {
             $storageLabel = '0 MB';
         }
+
+        // Helper: trend arrow HTML (inline, safe to use with {!! !!})
+        $trendArrow = function (string $direction, bool $invertColors = false): string {
+            if ($direction === 'up') {
+                $color = $invertColors ? 'text-red-500' : 'text-green-500';
+                return '<svg class="inline-block h-3 w-3 ' . $color . '" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>';
+            }
+            if ($direction === 'down') {
+                $color = $invertColors ? 'text-green-500' : 'text-red-500';
+                return '<svg class="inline-block h-3 w-3 ' . $color . '" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>';
+            }
+            return '<svg class="inline-block h-3 w-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/></svg>';
+        };
     @endphp
     @php
         // Smart link for Alerts card
@@ -71,7 +85,10 @@
                         <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
                     </div>
                     <div class="min-w-0">
-                        <div class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-base font-semibold {{ $uptimeColor }}">{{ $stats['avg_uptime'] !== null ? $stats['avg_uptime'] . '%' : '—' }}</span>
+                            {!! $trendArrow($trends['uptime']['direction']) !!}
+                        </div>
                         <div class="text-xs text-gray-500">{{ __('Uptime') }}</div>
                         <div class="mt-0.5 text-xs text-gray-400">{{ __('last 30 days') }}</div>
                     </div>
@@ -89,8 +106,10 @@
                     <div class="min-w-0">
                         <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
                         <div class="text-xs text-gray-500">{{ __('Backup Storage') }}</div>
-                        <div class="mt-0.5 text-xs text-gray-400">
+                        <div class="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
                             {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' ' . __('failed (24h)') : __('all healthy') }}
+                            {{-- Up = more failures = bad (invertColors=true) --}}
+                            {!! $trendArrow($trends['failed_backups']['direction'], true) !!}
                         </div>
                     </div>
                 </div>
@@ -125,7 +144,11 @@
                         @endif
                     </div>
                     <div class="min-w-0">
-                        <div class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-base font-semibold {{ $stats['total_alerts'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $stats['total_alerts'] }}</span>
+                            {{-- Alerts up = bad (invertColors) --}}
+                            {!! $trendArrow($trends['pending_updates']['direction'], true) !!}
+                        </div>
                         <div class="text-xs text-gray-500">{{ __('Alerts') }}</div>
                         <div class="mt-0.5 text-xs {{ $stats['total_alerts'] > 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
                             @if($stats['total_alerts'] === 0)
@@ -145,7 +168,60 @@
         </a>
     </div>
 
-    {{-- Section 2: Sites List View --}}
+    {{-- Section 2: Sites Needing Attention --}}
+    @if(count($this->sitesNeedingAttention) > 0)
+        <div class="mt-6">
+            <x-ui.card :padding="false" class="overflow-hidden">
+                {{-- Card header --}}
+                <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-red-50/60 dark:bg-red-900/10 px-4 py-3">
+                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                        <x-icons.alert-triangle class="h-4 w-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h2 class="text-sm font-semibold text-red-700 dark:text-red-400">
+                        {{ __('Sites Needing Attention') }}
+                    </h2>
+                    <span class="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        {{ count($this->sitesNeedingAttention) }}
+                    </span>
+                </div>
+
+                {{-- Site rows --}}
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @foreach($this->sitesNeedingAttention as $entry)
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
+                            {{-- Site name link --}}
+                            <a href="{{ route('sites.overview', $entry['site_id']) }}"
+                               class="min-w-0 text-sm font-medium text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition shrink-0"
+                               wire:navigate>
+                                {{ $entry['site_name'] }}
+                            </a>
+
+                            {{-- Issue badges --}}
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach($entry['issues'] as $issue)
+                                    @php
+                                        $badgeClass = match(true) {
+                                            $issue === 'Down' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                            str_contains($issue, 'fatal') => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                            str_contains($issue, 'Backup') => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                                            str_contains($issue, 'DNS') => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                                            str_contains($issue, 'vulnerabilit') => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                                            default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                        };
+                                    @endphp
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $badgeClass }}">
+                                        {{ $issue }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+        </div>
+    @endif
+
+    {{-- Section 3: Sites List View --}}
     <div id="sites" class="mt-6">
         <div class="mb-3">
             <h2 class="text-lg font-semibold text-gray-900">{{ __('Sites') }}</h2>

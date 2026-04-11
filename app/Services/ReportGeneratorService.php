@@ -10,8 +10,11 @@ use App\Models\SiteMonthlySnapshot;
 use App\Services\Reports\Sections\AnalyticsGatherer;
 use App\Services\Reports\Sections\BackupsGatherer;
 use App\Services\Reports\Sections\CloudflareGatherer;
+use App\Services\Reports\Sections\ContentFreshnessGatherer;
 use App\Services\Reports\Sections\DatabaseGatherer;
 use App\Services\Reports\Sections\DatabaseHealthGatherer;
+use App\Services\Reports\Sections\DnsGatherer;
+use App\Services\Reports\Sections\ErrorLogGatherer;
 use App\Services\Reports\Sections\ExecutiveSnapshotGatherer;
 use App\Services\Reports\Sections\OverviewGatherer;
 use App\Services\Reports\Sections\PerformanceGatherer;
@@ -193,6 +196,9 @@ class ReportGeneratorService
             new WpUsersGatherer,
             new SecurityChecksGatherer,
             new ExecutiveSnapshotGatherer,
+            new DnsGatherer,
+            new ErrorLogGatherer,
+            new ContentFreshnessGatherer,
         ];
     }
 

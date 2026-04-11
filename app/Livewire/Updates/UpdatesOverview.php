@@ -214,6 +214,70 @@ class UpdatesOverview extends Component
         unset($this->updates, $this->stats);
     }
 
+    public function updatePluginAcrossSites(string $slug): void
+    {
+        $rateLimitKey = "bulk-update-plugin:{$slug}:" . auth()->id();
+        if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
+            $this->dispatch('notify', type: 'error', message: 'Too many requests. Please wait.');
+
+            return;
+        }
+
+        $plugins = SitePlugin::where('slug', $slug)
+            ->where('has_update', true)
+            ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+            ->with('site')
+            ->get();
+
+        if ($plugins->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: 'No connected sites have a pending update for this plugin.');
+
+            return;
+        }
+
+        $service = app(PluginManagerService::class);
+        $success = 0;
+        $failed = 0;
+
+        foreach ($plugins as $plugin) {
+            $site = $plugin->site;
+            if (! $site?->is_connected) {
+                $failed++;
+                continue;
+            }
+
+            $result = $service->performUpdate(
+                $site,
+                'plugin',
+                $plugin->file,
+                $plugin->name,
+                $plugin->slug,
+                $plugin->version,
+                $plugin->update_version,
+            );
+
+            if ($result['success']) {
+                $plugin->update([
+                    'version' => $result['version'] ?? $plugin->update_version,
+                    'has_update' => false,
+                    'update_version' => null,
+                ]);
+                $site->decrement('pending_updates_count');
+                $success++;
+            } else {
+                $failed++;
+            }
+        }
+
+        $this->dispatch(
+            'notify',
+            type: $failed > 0 ? 'warning' : 'success',
+            message: "{$success} site(s) updated, {$failed} failed for \"{$slug}\".",
+        );
+
+        unset($this->updates, $this->stats);
+    }
+
     public function clearResult(string $key): void
     {
         unset($this->updateResults[$key]);

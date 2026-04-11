@@ -46,5 +46,29 @@
                 </span>
             @endforeach
         </div>
+
+        {{-- Score Breakdown --}}
+        @php
+            $breakdown = $this->healthBreakdown;
+        @endphp
+        <div class="border-t border-gray-100 pt-3 space-y-2">
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Score Breakdown</p>
+            @foreach($breakdown['components'] as $component)
+                @php
+                    $pct = $component['max'] > 0 ? round(($component['score'] / $component['max']) * 100) : 0;
+                    $compBarColor = $pct >= 75 ? 'bg-green-500' : ($pct >= 50 ? 'bg-yellow-400' : 'bg-red-400');
+                    $compTextColor = $pct >= 75 ? 'text-green-700' : ($pct >= 50 ? 'text-yellow-700' : 'text-red-600');
+                @endphp
+                <div>
+                    <div class="flex items-center justify-between mb-0.5">
+                        <span class="text-xs text-gray-600">{{ $component['label'] }}</span>
+                        <span class="text-xs font-semibold {{ $compTextColor }}">{{ $component['score'] }}<span class="font-normal text-gray-400">/{{ $component['max'] }}</span></span>
+                    </div>
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div class="h-full rounded-full {{ $compBarColor }}" style="width: {{ $pct }}%"></div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
 </x-ui.card>

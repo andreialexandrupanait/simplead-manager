@@ -207,6 +207,48 @@ class SiteOverview extends Component
         return \App\Helpers\SiteStatusHelper::compute($this->site);
     }
 
+    #[Computed]
+    public function healthBreakdown(): array
+    {
+        return \App\Services\HealthScoreService::calculate($this->site);
+    }
+
+    #[Computed]
+    public function dnsStatus(): array
+    {
+        $monitor = $this->site->dnsMonitor;
+        if (! $monitor || ! $monitor->current_records) {
+            return ['available' => false];
+        }
+        $txt = implode(' ', $monitor->current_records['TXT'] ?? []);
+
+        return [
+            'available' => true,
+            'has_spf' => stripos($txt, 'v=spf1') !== false,
+            'has_dmarc' => stripos($txt, 'v=DMARC1') !== false,
+            'has_changes' => $monitor->has_changes,
+            'last_checked' => $monitor->last_checked_at,
+        ];
+    }
+
+    #[Computed]
+    public function errorLogStatus(): array
+    {
+        $fatal = \App\Models\PhpErrorLog::where('site_id', $this->site->id)->unresolved()->fatal()->count();
+        $total = \App\Models\PhpErrorLog::where('site_id', $this->site->id)->unresolved()->count();
+
+        return ['fatal' => $fatal, 'total' => $total];
+    }
+
+    #[Computed]
+    public function contentFreshnessStatus(): array
+    {
+        $stale = \App\Models\SiteContent::where('site_id', $this->site->id)->published()->where('days_since_modified', '>', 180)->count();
+        $total = \App\Models\SiteContent::where('site_id', $this->site->id)->published()->count();
+
+        return ['stale' => $stale, 'total' => $total];
+    }
+
     public function runBackup(): void
     {
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();

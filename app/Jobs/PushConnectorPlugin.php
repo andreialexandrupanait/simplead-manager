@@ -14,6 +14,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use ZipArchive;
 
 class PushConnectorPlugin implements ShouldQueue
 {
@@ -31,15 +34,56 @@ class PushConnectorPlugin implements ShouldQueue
         $this->onQueue('default');
     }
 
+    private function buildPluginZipHash(): ?string
+    {
+        $sourceDir = base_path('wordpress-plugin/simplead-manager-connector');
+
+        if (! is_dir($sourceDir)) {
+            return null;
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'connector-hash-');
+
+        try {
+            $zip = new ZipArchive;
+            $zip->open($tempFile, ZipArchive::OVERWRITE);
+
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::LEAVES_ONLY
+            );
+
+            foreach ($files as $file) {
+                if ($file->isFile()) {
+                    $relativePath = 'simplead-manager-connector/'.substr($file->getRealPath(), strlen($sourceDir) + 1);
+                    $zip->addFile($file->getRealPath(), $relativePath);
+                }
+            }
+
+            $zip->close();
+
+            return hash_file('sha256', $tempFile);
+        } finally {
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
+    }
+
     public function handle(): void
     {
         $result = ['site' => $this->site->name, 'site_id' => $this->site->id];
 
         try {
+            $expectedHash = $this->buildPluginZipHash();
+
+            $payload = ['download_url' => $this->downloadUrl];
+            if ($expectedHash !== null) {
+                $payload['expected_hash'] = $expectedHash;
+            }
+
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
-            $response = $api->request('POST', '/self-update', [
-                'download_url' => $this->downloadUrl,
-            ], [], 120);
+            $response = $api->request('POST', '/self-update', $payload, [], 120);
 
             if ($response->successful()) {
                 $data = $response->json();

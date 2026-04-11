@@ -9,9 +9,11 @@ use App\Enums\HealthLevel;
 use App\Enums\MonitorState;
 use App\Models\ActivityLog;
 use App\Models\Backup;
+use App\Models\PhpErrorLog;
 use App\Models\Site;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
+use App\Models\VulnerabilityAlert;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 
@@ -57,6 +59,78 @@ class DashboardService
         ];
     }
 
+    public function getTrends(): array
+    {
+        return Cache::remember('dashboard:trends', self::CACHE_TTL, fn () => $this->computeTrends());
+    }
+
+    private function computeTrends(): array
+    {
+        // Uptime trend: compare 7-day average against 30-day average.
+        // If the recent 7d average is higher than 30d it is improving; lower means degrading.
+        $avg7d = UptimeMonitor::whereHas('site')
+            ->whereNotNull('uptime_7d')
+            ->avg('uptime_7d');
+
+        $avg30d = UptimeMonitor::whereHas('site')
+            ->whereNotNull('uptime_30d')
+            ->avg('uptime_30d');
+
+        if ($avg7d !== null && $avg30d !== null) {
+            $diff7v30 = (float) $avg7d - (float) $avg30d;
+            $uptimeTrend = $diff7v30 > 0.1 ? 'up' : ($diff7v30 < -0.1 ? 'down' : 'neutral');
+            $uptimeDelta = round($diff7v30, 2);
+        } else {
+            $uptimeTrend = 'neutral';
+            $uptimeDelta = null;
+        }
+
+        // Pending updates trend: persist a rolling snapshot in cache (refreshed hourly).
+        $currentUpdates = \App\Models\SitePlugin::whereHas('site')->where('has_update', true)->count()
+            + \App\Models\SiteTheme::whereHas('site')->where('has_update', true)->count()
+            + Site::whereNotNull('core_update_version')->count();
+
+        $previousUpdates = Cache::get('dashboard:trends:prev_updates');
+        if ($previousUpdates === null) {
+            Cache::put('dashboard:trends:prev_updates', $currentUpdates, 3600);
+            $updatesTrend = 'neutral';
+            $updatesDelta = null;
+        } else {
+            $updatesDelta = $currentUpdates - (int) $previousUpdates;
+            $updatesTrend = $updatesDelta > 0 ? 'up' : ($updatesDelta < 0 ? 'down' : 'neutral');
+            Cache::put('dashboard:trends:prev_updates', $currentUpdates, 3600);
+        }
+
+        // Failed backups trend: compare last 24 h against the prior 24–48 h window.
+        $failedLast24h = Backup::whereHas('site')
+            ->where('status', BackupStatus::Failed)
+            ->where('created_at', '>=', now()->subHours(24))
+            ->count();
+
+        $failedPrev24h = Backup::whereHas('site')
+            ->where('status', BackupStatus::Failed)
+            ->whereBetween('created_at', [now()->subHours(48), now()->subHours(24)])
+            ->count();
+
+        $backupsDelta = $failedLast24h - $failedPrev24h;
+        $backupsTrend = $backupsDelta > 0 ? 'up' : ($backupsDelta < 0 ? 'down' : 'neutral');
+
+        return [
+            'uptime' => [
+                'direction' => $uptimeTrend,
+                'delta' => $uptimeDelta,
+            ],
+            'pending_updates' => [
+                'direction' => $updatesTrend,
+                'delta' => $updatesDelta ?? null,
+            ],
+            'failed_backups' => [
+                'direction' => $backupsTrend,
+                'delta' => $backupsDelta,
+            ],
+        ];
+    }
+
     public static function invalidateCache(): void
     {
         Cache::forget('dashboard:stats');
@@ -64,6 +138,7 @@ class DashboardService
         Cache::forget('dashboard:summary_stats');
         Cache::forget('dashboard:health_distribution');
         Cache::forget('dashboard:backup_status');
+        Cache::forget('dashboard:trends');
     }
 
     public function getAlerts(): array
@@ -313,6 +388,89 @@ class DashboardService
             ->orderByRaw('COALESCE(health_score, 0) ASC')
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * Return sites that have active issues, each with a list of human-readable issue labels.
+     *
+     * @return array<int, array{site_id: int, site_name: string, site_url: string, issues: list<string>}>
+     */
+    public function getSitesWithIssues(int $limit = 10): array
+    {
+        // Gather site IDs for each issue category up front to avoid N+1 queries.
+        $downIds = Site::where('is_up', false)->pluck('id')->flip();
+
+        $failedBackupIds = Backup::whereHas('site')
+            ->where('status', BackupStatus::Failed)
+            ->where('created_at', '>=', now()->subDay())
+            ->pluck('site_id')
+            ->unique()
+            ->flip();
+
+        $fatalErrorCounts = PhpErrorLog::unresolved()->fatal()
+            ->selectRaw('site_id, COUNT(*) as cnt')
+            ->groupBy('site_id')
+            ->pluck('cnt', 'site_id');
+
+        $dnsChangedIds = \App\Models\DnsMonitor::where('has_changes', true)
+            ->pluck('site_id')
+            ->flip();
+
+        $vulnCounts = VulnerabilityAlert::active()
+            ->selectRaw('site_id, COUNT(*) as cnt')
+            ->groupBy('site_id')
+            ->pluck('cnt', 'site_id');
+
+        $allSiteIds = collect($downIds->keys())
+            ->merge($failedBackupIds->keys())
+            ->merge($fatalErrorCounts->keys())
+            ->merge($dnsChangedIds->keys())
+            ->merge($vulnCounts->keys())
+            ->unique();
+
+        if ($allSiteIds->isEmpty()) {
+            return [];
+        }
+
+        $sites = Site::whereIn('id', $allSiteIds)
+            ->orderByRaw('CASE WHEN is_up = false THEN 0 ELSE 1 END')
+            ->orderByRaw('COALESCE(health_score, 0) ASC')
+            ->limit($limit)
+            ->get(['id', 'name', 'url']);
+
+        $result = [];
+        foreach ($sites as $site) {
+            $issues = [];
+
+            if ($downIds->has($site->id)) {
+                $issues[] = 'Down';
+            }
+            if ($failedBackupIds->has($site->id)) {
+                $issues[] = 'Backup failed';
+            }
+            if ($fatalErrorCounts->has($site->id)) {
+                $count = (int) $fatalErrorCounts->get($site->id);
+                $issues[] = $count === 1 ? '1 fatal error' : "{$count} fatal errors";
+            }
+            if ($dnsChangedIds->has($site->id)) {
+                $issues[] = 'DNS changed';
+            }
+            if ($vulnCounts->has($site->id)) {
+                $count = (int) $vulnCounts->get($site->id);
+                $issues[] = $count === 1 ? '1 vulnerability' : "{$count} vulnerabilities";
+            }
+
+            if (! empty($issues)) {
+                $result[] = [
+                    'site_id' => $site->id,
+                    'site_name' => $site->name,
+                    'site_url' => $site->url,
+                    'issues' => $issues,
+                ];
+            }
+        }
+
+        return $result;
     }
 
     public function getBackupStatus(): array

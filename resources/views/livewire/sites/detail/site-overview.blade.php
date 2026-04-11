@@ -67,6 +67,9 @@
                 @include('livewire.sites.detail.overview._backups-card')
                 @include('livewire.sites.detail.overview._security-card')
                 @include('livewire.sites.detail.overview._reports-card')
+                @include('livewire.sites.detail.overview._dns-card')
+                @include('livewire.sites.detail.overview._error-logs-card')
+                @include('livewire.sites.detail.overview._content-freshness-card')
                 @include('livewire.sites.detail.overview._client-card')
             </div>
         </div>
