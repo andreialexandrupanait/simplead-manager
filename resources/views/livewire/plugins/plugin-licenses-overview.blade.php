@@ -1,11 +1,63 @@
-<div>
+<div {!! $scanning ? 'wire:poll.2s="checkScanProgress"' : '' !!}>
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="{{ __('Plugin Licenses') }}" subtitle="{{ __('Premium plugins and license tracking per site') }}" />
-        <x-ui.button wire:click="scanLicenses" wire:loading.attr="disabled" wire:confirm="{{ __('This will update the connector on all sites and re-scan plugins. Continue?') }}">
-            <span wire:loading.remove wire:target="scanLicenses">{{ __('Scan All Sites') }}</span>
-            <span wire:loading wire:target="scanLicenses">{{ __('Scanning...') }}</span>
-        </x-ui.button>
+        @if(!$scanning)
+            <x-ui.button wire:click="scanLicenses" wire:loading.attr="disabled" wire:confirm="{{ __('This will update the connector on all sites and re-scan plugins. Continue?') }}">
+                <span wire:loading.remove wire:target="scanLicenses">{{ __('Scan All Sites') }}</span>
+                <span wire:loading wire:target="scanLicenses">{{ __('Starting...') }}</span>
+            </x-ui.button>
+        @endif
     </div>
+
+    {{-- Scan Progress --}}
+    @if($scanning)
+        @php
+            $percent = $scanTotal > 0 ? round(($scanCompleted / $scanTotal) * 100) : 0;
+            if ($scanPhase === 'sync') {
+                $overallPercent = 50 + round(($scanCompleted / max($scanTotal, 1)) * 50);
+            } else {
+                $overallPercent = round(($scanCompleted / max($scanTotal, 1)) * 50);
+            }
+        @endphp
+        <x-ui.card class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <svg class="h-4 w-4 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        @if($scanPhase === 'push')
+                            {{ __('Updating connector plugin...') }}
+                        @else
+                            {{ __('Scanning for licenses...') }}
+                        @endif
+                    </span>
+                </div>
+                <span class="text-sm font-bold text-purple-600">{{ $overallPercent }}%</span>
+            </div>
+
+            {{-- Overall progress bar --}}
+            <div class="h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <div class="h-full rounded-full bg-purple-600 transition-all duration-500 ease-out" style="width: {{ $overallPercent }}%"></div>
+            </div>
+
+            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+                <div class="flex items-center gap-4">
+                    <span class="{{ $scanPhase === 'push' ? 'text-purple-600 font-medium' : 'text-green-600' }}">
+                        @if($scanPhase !== 'push')
+                            <svg class="inline h-3 w-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        @endif
+                        {{ __('1. Update connector') }}
+                    </span>
+                    <span class="{{ $scanPhase === 'sync' ? 'text-purple-600 font-medium' : ($scanPhase === 'push' ? 'text-gray-400' : 'text-green-600') }}">
+                        {{ __('2. Scan licenses') }}
+                    </span>
+                </div>
+                <span>{{ $scanCompleted }}/{{ $scanTotal }} {{ __('sites') }}</span>
+            </div>
+        </x-ui.card>
+    @endif
 
     {{-- Stats --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">

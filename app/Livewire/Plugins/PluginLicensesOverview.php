@@ -8,6 +8,7 @@ use App\Jobs\PushConnectorPlugin;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Site;
 use App\Models\SitePlugin;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -18,6 +19,18 @@ class PluginLicensesOverview extends Component
     public string $filter = 'all';
 
     public string $search = '';
+
+    public bool $scanning = false;
+
+    public string $scanPhase = '';
+
+    public int $scanTotal = 0;
+
+    public int $scanCompleted = 0;
+
+    public ?string $scanPushId = null;
+
+    public ?string $scanSyncId = null;
 
     #[Computed]
     public function stats(): array
@@ -77,18 +90,80 @@ class PluginLicensesOverview extends Component
     {
         $sites = Site::where('is_connected', true)->get();
 
-        $pushId = Str::uuid()->toString();
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: 'No connected sites found.');
+
+            return;
+        }
+
+        $this->scanning = true;
+        $this->scanPhase = 'push';
+        $this->scanTotal = $sites->count();
+        $this->scanCompleted = 0;
+        $this->scanPushId = Str::uuid()->toString();
+        $this->scanSyncId = Str::uuid()->toString();
+
+        $pushCacheKey = "connector-push:{$this->scanPushId}";
+        Cache::put("{$pushCacheKey}:results", [], 3600);
+        Cache::put("{$pushCacheKey}:completed", 0, 3600);
+
+        $syncCacheKey = "license-sync:{$this->scanSyncId}";
+        Cache::put("{$syncCacheKey}:completed", 0, 3600);
+
         $downloadUrl = URL::temporarySignedRoute(
             'download.connector-plugin.signed',
             now()->addMinutes(30)
         );
 
         foreach ($sites as $site) {
-            PushConnectorPlugin::dispatch($site, $downloadUrl, $pushId);
-            SyncWordPressSite::dispatch($site)->delay(now()->addSeconds(45 + rand(0, 60)));
+            PushConnectorPlugin::dispatch($site, $downloadUrl, $this->scanPushId);
+        }
+    }
+
+    public function checkScanProgress(): void
+    {
+        if (! $this->scanning) {
+            return;
         }
 
-        $this->dispatch('notify', type: 'success', message: "Updating connector & scanning {$sites->count()} sites. Refresh in ~2 minutes.");
+        if ($this->scanPhase === 'push') {
+            $completed = (int) Cache::get("connector-push:{$this->scanPushId}:completed", 0);
+            $this->scanCompleted = $completed;
+
+            if ($completed >= $this->scanTotal) {
+                // Push done — start sync phase
+                $this->scanPhase = 'sync';
+                $this->scanCompleted = 0;
+
+                $sites = Site::where('is_connected', true)->get();
+                foreach ($sites as $i => $site) {
+                    SyncWordPressSite::dispatch($site)
+                        ->delay(now()->addSeconds(5 + ($i * 2)));
+                }
+
+                Cache::forget("connector-push:{$this->scanPushId}:results");
+                Cache::forget("connector-push:{$this->scanPushId}:completed");
+            }
+        } elseif ($this->scanPhase === 'sync') {
+            // Check how many sites have been synced recently (last 2 minutes)
+            $recentlySynced = Site::where('is_connected', true)
+                ->where('last_synced_at', '>=', now()->subMinutes(2))
+                ->count();
+
+            $this->scanCompleted = min($recentlySynced, $this->scanTotal);
+
+            if ($this->scanCompleted >= $this->scanTotal) {
+                $this->scanning = false;
+                $this->scanPhase = '';
+                $this->scanPushId = null;
+                $this->scanSyncId = null;
+
+                Cache::forget("license-sync:{$this->scanSyncId}:completed");
+                unset($this->stats, $this->sites);
+
+                $this->dispatch('notify', type: 'success', message: "Scan complete. {$this->scanTotal} sites updated.");
+            }
+        }
     }
 
     public function render()
