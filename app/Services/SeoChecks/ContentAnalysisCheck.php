@@ -73,8 +73,10 @@ class ContentAnalysisCheck
 
     private function checkLinkRatio(array $page, ?string $url, string $label): array
     {
-        $internalLinks = (int) ($page['internal_link_count'] ?? count($page['internal_links'] ?? []));
-        $externalLinks = (int) ($page['external_link_count'] ?? count($page['external_links'] ?? []));
+        $rawInternal = $page['internal_links'] ?? [];
+        $rawExternal = $page['external_links'] ?? [];
+        $internalLinks = (int) ($page['internal_link_count'] ?? (is_array($rawInternal) ? count($rawInternal) : (int) $rawInternal));
+        $externalLinks = (int) ($page['external_link_count'] ?? (is_array($rawExternal) ? count($rawExternal) : (int) $rawExternal));
 
         if ($internalLinks === 0 && $externalLinks === 0) {
             return [];
