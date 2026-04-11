@@ -12,12 +12,9 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class PluginLicensesOverview extends Component
 {
-    use WithPagination;
-
     public string $filter = 'all';
 
     public string $search = '';
@@ -25,14 +22,55 @@ class PluginLicensesOverview extends Component
     #[Computed]
     public function stats(): array
     {
-        $base = SitePlugin::licensed()->whereHas('site');
+        $premium = SitePlugin::where('is_on_wp_org', false)->whereHas('site');
+        $licensed = SitePlugin::licensed()->whereHas('site');
 
         return [
-            'total' => (clone $base)->count(),
-            'active' => (clone $base)->where('license_status', 'active')->count(),
-            'expiring' => (clone $base)->expiringLicenses(30)->count(),
-            'expired' => (clone $base)->expiredLicenses()->count(),
+            'premium_plugins' => (clone $premium)->count(),
+            'with_license' => (clone $licensed)->count(),
+            'no_license' => (clone $premium)->whereNull('license_key')->count(),
+            'active' => (clone $licensed)->where('license_status', 'active')->count(),
+            'expiring' => (clone $licensed)->expiringLicenses(30)->count(),
+            'expired' => (clone $licensed)->expiredLicenses()->count(),
         ];
+    }
+
+    #[Computed]
+    public function sites(): array
+    {
+        $query = SitePlugin::query()
+            ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+            ->with('site')
+            ->where(function ($q) {
+                $q->where('is_on_wp_org', false)->orWhereNotNull('license_key');
+            })
+            ->when($this->filter === 'licensed', fn ($q) => $q->whereNotNull('license_key'))
+            ->when($this->filter === 'no_license', fn ($q) => $q->where('is_on_wp_org', false)->whereNull('license_key'))
+            ->when($this->filter === 'expiring', fn ($q) => $q->expiringLicenses(30))
+            ->when($this->filter === 'expired', fn ($q) => $q->expiredLicenses())
+            ->when($this->search, function ($q) {
+                $s = '%' . str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search) . '%';
+                $q->where(function ($sq) use ($s) {
+                    $sq->where('name', 'ilike', $s)
+                        ->orWhere('slug', 'ilike', $s)
+                        ->orWhereHas('site', fn ($site) => $site->where('name', 'ilike', $s));
+                });
+            })
+            ->orderBy('site_id')
+            ->orderBy('name')
+            ->get();
+
+        return $query->groupBy(fn ($p) => $p->site?->name ?? 'Unknown')->map(function ($plugins, $siteName) {
+            $site = $plugins->first()->site;
+
+            return [
+                'site_name' => $siteName,
+                'site_id' => $site?->id,
+                'plugins' => $plugins->values()->all(),
+                'licensed_count' => $plugins->filter(fn ($p) => $p->license_key)->count(),
+                'total_count' => $plugins->count(),
+            ];
+        })->sortBy('site_name')->values()->all();
     }
 
     public function scanLicenses(): void
@@ -50,41 +88,12 @@ class PluginLicensesOverview extends Component
             SyncWordPressSite::dispatch($site)->delay(now()->addSeconds(45 + rand(0, 60)));
         }
 
-        $this->dispatch('notify', type: 'success', message: "Updating connector & scanning licenses on {$sites->count()} sites. Results in ~2 minutes.");
-    }
-
-    public function updatedFilter(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedSearch(): void
-    {
-        $this->resetPage();
+        $this->dispatch('notify', type: 'success', message: "Updating connector & scanning {$sites->count()} sites. Refresh in ~2 minutes.");
     }
 
     public function render()
     {
-        $query = SitePlugin::licensed()
-            ->whereHas('site')
-            ->with('site')
-            ->when($this->filter === 'active', fn ($q) => $q->where('license_status', 'active'))
-            ->when($this->filter === 'expiring', fn ($q) => $q->expiringLicenses(30))
-            ->when($this->filter === 'expired', fn ($q) => $q->expiredLicenses())
-            ->when($this->search, function ($q) {
-                $search = '%' . str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search) . '%';
-                $q->where(function ($sq) use ($search) {
-                    $sq->where('name', 'ilike', $search)
-                        ->orWhere('slug', 'ilike', $search)
-                        ->orWhereHas('site', fn ($s) => $s->where('name', 'ilike', $search));
-                });
-            })
-            ->orderByRaw("CASE WHEN license_expires_at IS NOT NULL AND license_expires_at < NOW() THEN 0 WHEN license_expires_at IS NOT NULL AND license_expires_at <= NOW() + INTERVAL '30 days' THEN 1 ELSE 2 END")
-            ->orderBy('license_expires_at')
-            ->paginate(50);
-
-        return view('livewire.plugins.plugin-licenses-overview', [
-            'licenses' => $query,
-        ])->layout('components.layouts.app', ['title' => 'Plugin Licenses']);
+        return view('livewire.plugins.plugin-licenses-overview')
+            ->layout('components.layouts.app', ['title' => 'Plugin Licenses']);
     }
 }

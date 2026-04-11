@@ -112,6 +112,17 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         wp_update_plugins();
         $update_plugins = get_site_transient('update_plugins');
 
+        // Build wp.org lookup: plugins tracked by wordpress.org (have updates or are in no_update)
+        $wp_org_slugs = [];
+        if ($update_plugins) {
+            foreach ($update_plugins->response ?? [] as $f => $info) {
+                $wp_org_slugs[$f] = true;
+            }
+            foreach ($update_plugins->no_update ?? [] as $f => $info) {
+                $wp_org_slugs[$f] = true;
+            }
+        }
+
         $plugins = [];
         foreach ($all_plugins as $file => $data) {
             $slug = strpos($file, '/') !== false ? dirname($file) : basename($file, '.php');
@@ -122,6 +133,9 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
                 $update_available = true;
                 $new_version = $update_plugins->response[$file]->new_version ?? null;
             }
+
+            // A plugin is on wp.org if it appears in the update transient (response or no_update)
+            $is_on_wp_org = isset($wp_org_slugs[$file]);
 
             $plugins[] = [
                 'file'             => $file,
@@ -136,6 +150,7 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
                 'plugin_uri'       => $data['PluginURI'] ?? '',
                 'requires_wp'      => $data['RequiresWP'] ?? '',
                 'requires_php'     => $data['RequiresPHP'] ?? '',
+                'is_on_wp_org'     => $is_on_wp_org,
             ];
         }
 

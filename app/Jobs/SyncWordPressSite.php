@@ -88,6 +88,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                         'requires_wp' => $plugin['requires_wp'] ?? null,
                         'requires_php' => $plugin['requires_php'] ?? null,
                         'auto_update' => $plugin['auto_update'] ?? false,
+                        'is_on_wp_org' => $plugin['is_on_wp_org'] ?? null,
                     ] + (! empty($plugin['license_key']) ? [
                         'license_key' => $plugin['license_key'],
                         'license_status' => $plugin['license_status'] ?? 'active',
