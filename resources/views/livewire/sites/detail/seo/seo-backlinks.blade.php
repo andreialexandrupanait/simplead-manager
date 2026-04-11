@@ -57,16 +57,41 @@
         </div>
     </div>
 
-    {{-- Import CSV --}}
-    <div class="mb-6 flex justify-end">
-        <button
-            wire:click="toggleImportForm"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            {{ __('Import CSV') }}
-        </button>
+    {{-- Spam Warning --}}
+    @if($this->spamCount > 0)
+        <div class="mb-4 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-900/20">
+            <svg class="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <span class="text-sm text-red-700 dark:text-red-300"><strong>{{ $this->spamCount }}</strong> {{ __('potential spam backlink(s) detected') }} ({{ __('spam score') }} &ge; 40)</span>
+        </div>
+    @endif
+
+    {{-- Action Buttons --}}
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2">
+            @if($this->hasSearchConsole)
+                <x-ui.button variant="primary" size="sm" wire:click="syncFromGsc" wire:loading.attr="disabled" wire:target="syncFromGsc">
+                    <span wire:loading.remove wire:target="syncFromGsc">{{ __('Sync from GSC') }}</span>
+                    <span wire:loading wire:target="syncFromGsc">{{ __('Syncing...') }}</span>
+                </x-ui.button>
+            @endif
+            @if($this->hasCrawlData)
+                <x-ui.button variant="secondary" size="sm" wire:click="discoverFromCrawl" wire:loading.attr="disabled" wire:target="discoverFromCrawl">
+                    <span wire:loading.remove wire:target="discoverFromCrawl">{{ __('Discover from Crawl') }}</span>
+                    <span wire:loading wire:target="discoverFromCrawl">{{ __('Discovering...') }}</span>
+                </x-ui.button>
+            @endif
+            <button
+                wire:click="toggleImportForm"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                {{ __('Import CSV') }}
+            </button>
+        </div>
+        @if($this->lastSyncAt)
+            <span class="text-xs text-gray-400 dark:text-gray-500">{{ __('Last synced') }}: {{ $this->lastSyncAt }}</span>
+        @endif
     </div>
 
     {{-- CSV Import Form --}}

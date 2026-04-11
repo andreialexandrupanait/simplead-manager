@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Seo;
 
+use App\Jobs\RunPerformanceTest;
+use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\PerformanceTest;
 use App\Models\Site;
@@ -13,14 +15,42 @@ use Livewire\Component;
 
 class SeoCoreWebVitals extends Component
 {
-    use WithSiteAuthorization;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
+
+    protected function jobTrackingKeys(): array
+    {
+        $monitor = $this->site->performanceMonitor;
+
+        return [
+            'test' => $monitor ? 'perf-test-'.$monitor->id : 'perf-test-none',
+        ];
+    }
 
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        $this->initJobTracking();
+    }
+
+    public function runTest(): void
+    {
+        $monitor = $this->site->performanceMonitor;
+
+        if (! $monitor) {
+            session()->flash('error', 'Performance monitoring is not configured for this site.');
+
+            return;
+        }
+
+        $this->dispatchTrackedJob('test', new RunPerformanceTest($monitor, 'both'), 'Running performance test...');
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->latestMobile, $this->latestDesktop, $this->recentHistory);
     }
 
     #[Computed]

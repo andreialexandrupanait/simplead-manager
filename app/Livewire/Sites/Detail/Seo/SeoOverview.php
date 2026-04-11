@@ -71,6 +71,26 @@ class SeoOverview extends Component
     }
 
     #[Computed]
+    public function hasSearchConsole(): bool
+    {
+        $connection = $this->site->searchConsoleConnection;
+
+        return $connection !== null && $connection->is_active;
+    }
+
+    #[Computed]
+    public function seoPlugin(): ?string
+    {
+        $audit = $this->latestAudit;
+
+        if (! $audit || ! $audit->seo_plugin) {
+            return null;
+        }
+
+        return $audit->seo_plugin.($audit->seo_plugin_version ? ' v'.$audit->seo_plugin_version : '');
+    }
+
+    #[Computed]
     public function cwvSummary(): ?array
     {
         $test = PerformanceTest::where('site_id', $this->site->id)

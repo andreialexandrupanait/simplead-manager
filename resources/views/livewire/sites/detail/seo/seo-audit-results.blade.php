@@ -11,10 +11,21 @@
     <x-ui.job-progress job-key="audit" :jobs="$trackedJobs" title="{{ __('Running SEO audit...') }}" />
 
     @if($this->audit)
-        {{-- Audit meta bar --}}
+        {{-- Audit selector + meta bar --}}
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                <span>{{ __('Audited') }}: <strong class="text-gray-900">{{ $this->audit->created_at->format('M d, Y H:i') }}</strong></span>
+                {{-- Audit History Dropdown --}}
+                @if($this->auditHistory->count() > 1)
+                    <select wire:change="selectAudit($event.target.value)" class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                        @foreach($this->auditHistory as $h)
+                            <option value="{{ $h->id }}" {{ $this->audit->id === $h->id ? 'selected' : '' }}>
+                                {{ $h->scanned_at?->format('M d, Y H:i') }} — Score: {{ $h->score }}
+                            </option>
+                        @endforeach
+                    </select>
+                @else
+                    <span>{{ __('Audited') }}: <strong class="text-gray-900 dark:text-white">{{ $this->audit->created_at->format('M d, Y H:i') }}</strong></span>
+                @endif
                 @if($this->audit->scan_duration)
                     <span>{{ __('Duration') }}: <strong class="text-gray-900">{{ $this->audit->scan_duration }}s</strong></span>
                 @endif

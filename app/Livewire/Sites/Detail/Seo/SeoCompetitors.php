@@ -10,6 +10,7 @@ use App\Models\Site;
 use App\Services\CompetitorAnalysisService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
@@ -24,12 +25,27 @@ class SeoCompetitors extends Component
 
     public string $competitorName = '';
 
+    #[Url]
     public string $activeTab = 'overview';
 
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+    }
+
+    #[Computed]
+    public function hasSearchConsole(): bool
+    {
+        $connection = $this->site->searchConsoleConnection;
+
+        return $connection !== null && $connection->is_active;
+    }
+
+    #[Computed]
+    public function hasTrackedKeywords(): bool
+    {
+        return $this->site->trackedKeywords()->exists();
     }
 
     #[Computed]

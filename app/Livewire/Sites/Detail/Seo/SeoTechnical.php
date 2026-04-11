@@ -7,10 +7,8 @@ namespace App\Livewire\Sites\Detail\Seo;
 use App\Jobs\RunSeoAudit;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
-use App\Models\PerformanceTest;
 use App\Models\SeoAudit;
 use App\Models\Site;
-use App\Services\ContentIntelligenceService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -95,42 +93,15 @@ class SeoTechnical extends Component
     }
 
     #[Computed]
-    public function cwvSummary(): ?array
+    public function seoPlugin(): ?string
     {
-        $test = PerformanceTest::where('site_id', $this->site->id)
-            ->where('status', 'completed')
-            ->where('device', 'mobile')
-            ->latest('tested_at')
-            ->first();
+        $audit = $this->latestAudit;
 
-        if (! $test) {
+        if (! $audit || ! $audit->seo_plugin) {
             return null;
         }
 
-        return [
-            'lcp' => $test->field_lcp ?? $test->lcp,
-            'cls' => $test->field_cls ?? $test->cls,
-            'inp' => $test->field_inp,
-            'performance_score' => $test->performance_score,
-        ];
-    }
-
-    #[Computed]
-    public function cannibalization(): array
-    {
-        return app(ContentIntelligenceService::class)->detectCannibalization($this->site);
-    }
-
-    #[Computed]
-    public function zeroTrafficPages(): array
-    {
-        return app(ContentIntelligenceService::class)->findPagesWithoutTraffic($this->site);
-    }
-
-    #[Computed]
-    public function consolidationSuggestions(): array
-    {
-        return app(ContentIntelligenceService::class)->suggestConsolidation($this->site);
+        return $audit->seo_plugin.($audit->seo_plugin_version ? ' v'.$audit->seo_plugin_version : '');
     }
 
     public function render()

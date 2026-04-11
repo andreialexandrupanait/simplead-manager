@@ -72,6 +72,21 @@ class SeoAuditResults extends Component
         return $this->issues->groupBy('category');
     }
 
+    #[Computed]
+    public function auditHistory(): Collection
+    {
+        return $this->site->seoAudits()
+            ->orderByDesc('scanned_at')
+            ->limit(20)
+            ->get(['id', 'score', 'scanned_at', 'critical_count', 'high_count']);
+    }
+
+    public function selectAudit(int $id): void
+    {
+        $this->auditId = $id;
+        unset($this->audit, $this->issues, $this->issuesByCategory);
+    }
+
     public function setFilterSeverity(string $severity): void
     {
         $this->filterSeverity = $severity;
