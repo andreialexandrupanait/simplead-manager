@@ -69,7 +69,7 @@
 
     <x-sidebar.sidebar-item
         :href="route('seo.backlinks')"
-        icon="external-link"
+        icon="link"
         :active="request()->routeIs('seo.backlinks')"
     >
         {{ __('Backlinks') }}
