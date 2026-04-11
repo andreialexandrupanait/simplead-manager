@@ -162,6 +162,10 @@
                 <x-ui.form-group :label="__('Alert After Failures')" for="alertAfterFailures" :hint="__('Consecutive failures before alerting')">
                     <x-ui.input wire:model="form.alertAfterFailures" id="alertAfterFailures" type="number" min="1" max="10" />
                 </x-ui.form-group>
+
+                <x-ui.form-group :label="__('Dashboard Sites Per Page')" for="dashboardPerPage" :hint="__('Number of sites shown on the dashboard (10-200)')">
+                    <x-ui.input wire:model="form.dashboardPerPage" id="dashboardPerPage" type="number" min="10" max="200" />
+                </x-ui.form-group>
             </div>
         </x-ui.card>
 

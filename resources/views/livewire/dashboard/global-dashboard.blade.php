@@ -168,60 +168,7 @@
         </a>
     </div>
 
-    {{-- Section 2: Sites Needing Attention --}}
-    @if(count($this->sitesNeedingAttention) > 0)
-        <div class="mt-6">
-            <x-ui.card :padding="false" class="overflow-hidden">
-                {{-- Card header --}}
-                <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-red-50/60 dark:bg-red-900/10 px-4 py-3">
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-                        <x-icons.alert-triangle class="h-4 w-4 text-red-600 dark:text-red-400" />
-                    </div>
-                    <h2 class="text-sm font-semibold text-red-700 dark:text-red-400">
-                        {{ __('Sites Needing Attention') }}
-                    </h2>
-                    <span class="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                        {{ count($this->sitesNeedingAttention) }}
-                    </span>
-                </div>
-
-                {{-- Site rows --}}
-                <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach($this->sitesNeedingAttention as $entry)
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
-                            {{-- Site name link --}}
-                            <a href="{{ route('sites.overview', $entry['site_id']) }}"
-                               class="min-w-0 text-sm font-medium text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 transition shrink-0"
-                               wire:navigate>
-                                {{ $entry['site_name'] }}
-                            </a>
-
-                            {{-- Issue badges --}}
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach($entry['issues'] as $issue)
-                                    @php
-                                        $badgeClass = match(true) {
-                                            $issue === 'Down' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                            str_contains($issue, 'fatal') => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                            str_contains($issue, 'Backup') => 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-                                            str_contains($issue, 'DNS') => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                                            str_contains($issue, 'vulnerabilit') => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-                                            default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                        };
-                                    @endphp
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $badgeClass }}">
-                                        {{ $issue }}
-                                    </span>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </x-ui.card>
-        </div>
-    @endif
-
-    {{-- Section 3: Sites List View --}}
+    {{-- Section 2: Sites List View --}}
     <div id="sites" class="mt-6">
         <div class="mb-3">
             <h2 class="text-lg font-semibold text-gray-900">{{ __('Sites') }}</h2>

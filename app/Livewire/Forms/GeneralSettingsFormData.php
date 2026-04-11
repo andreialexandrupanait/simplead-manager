@@ -30,6 +30,9 @@ class GeneralSettingsFormData extends Form
     #[Validate('required|integer|min:1|max:10')]
     public int $alertAfterFailures = 3;
 
+    #[Validate('required|integer|min:10|max:200')]
+    public int $dashboardPerPage = 30;
+
     #[Validate('nullable|file|mimes:jpeg,jpg,png,gif,webp,ico,svg|max:1024')]
     public $favicon;
 

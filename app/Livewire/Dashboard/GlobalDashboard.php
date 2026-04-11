@@ -61,15 +61,9 @@ class GlobalDashboard extends Component
     }
 
     #[Computed]
-    public function sitesNeedingAttention(): array
-    {
-        return app(DashboardService::class)->getSitesWithIssues();
-    }
-
-    #[Computed]
     public function sites()
     {
-        $perPage = $this->reordering ? 10000 : 30;
+        $perPage = $this->reordering ? 10000 : (int) app(\App\Services\SettingsService::class)->get('dashboard_per_page', 30);
 
         return app(DashboardService::class)->getSitesOverview($perPage, $this->search, $this->filter, $this->statusFilter, $this->clientFilter, $this->sort);
     }

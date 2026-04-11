@@ -6,14 +6,6 @@
     >
         {{ __('Dashboard') }}
     </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('clients.index')"
-        icon="users"
-        :active="request()->routeIs('clients.*')"
-    >
-        {{ __('Clients') }}
-    </x-sidebar.sidebar-item>
 </div>
 
 <x-sidebar.sidebar-section :title="__('Monitoring')">
@@ -40,33 +32,9 @@
     >
         {{ __('Security') }}
     </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('activity.index')"
-        icon="clock"
-        :active="request()->routeIs('activity.*')"
-    >
-        {{ __('Activity') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('error-logs.index')"
-        icon="alert-triangle"
-        :active="request()->routeIs('error-logs.*')"
-    >
-        {{ __('Error Logs') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
-        :href="route('dns.index')"
-        icon="globe"
-        :active="request()->routeIs('dns.*')"
-    >
-        {{ __('DNS') }}
-    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
-<x-sidebar.sidebar-section :title="__('Management')">
+<x-sidebar.sidebar-section :title="__('Operations')">
     <x-sidebar.sidebar-item
         :href="route('updates.index')"
         icon="refresh-cw"
@@ -98,5 +66,38 @@
     >
         {{ __('Maintenance Plans') }}
     </x-sidebar.sidebar-item>
+</x-sidebar.sidebar-section>
 
+<x-sidebar.sidebar-section :title="__('Insights')">
+    <x-sidebar.sidebar-item
+        :href="route('activity.index')"
+        icon="clock"
+        :active="request()->routeIs('activity.*')"
+    >
+        {{ __('Activity') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('error-logs.index')"
+        icon="alert-triangle"
+        :active="request()->routeIs('error-logs.*')"
+    >
+        {{ __('Error Logs') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('dns.index')"
+        icon="globe"
+        :active="request()->routeIs('dns.*')"
+    >
+        {{ __('DNS') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('clients.index')"
+        icon="users"
+        :active="request()->routeIs('clients.*')"
+    >
+        {{ __('Clients') }}
+    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
