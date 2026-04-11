@@ -88,6 +88,16 @@ class Client extends Model
         return $this->hasMany(Site::class);
     }
 
+    public function costs(): HasMany
+    {
+        return $this->hasMany(ClientCost::class);
+    }
+
+    public function revenues(): HasMany
+    {
+        return $this->hasMany(ClientRevenue::class);
+    }
+
     /** @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<User, $this> */
     public function assignedUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {

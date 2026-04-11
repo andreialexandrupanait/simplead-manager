@@ -124,6 +124,26 @@ class SitePlugin extends Model
         return $query->where('is_active', false);
     }
 
+    public function scopeLicensed(Builder $query): Builder
+    {
+        return $query->whereNotNull('license_key');
+    }
+
+    public function scopeExpiringLicenses(Builder $query, int $days = 30): Builder
+    {
+        return $query->whereNotNull('license_key')
+            ->whereNotNull('license_expires_at')
+            ->where('license_expires_at', '>', now())
+            ->where('license_expires_at', '<=', now()->addDays($days));
+    }
+
+    public function scopeExpiredLicenses(Builder $query): Builder
+    {
+        return $query->whereNotNull('license_key')
+            ->whereNotNull('license_expires_at')
+            ->where('license_expires_at', '<', now());
+    }
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);

@@ -156,6 +156,12 @@
         </x-ui.card>
     </div>
 
+    {{-- Profitability --}}
+    <div class="mt-6">
+        <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ __('Profitability') }}</h2>
+        <livewire:clients.client-profitability :client="$client" />
+    </div>
+
     {{-- Client Portal --}}
     <x-ui.card class="mt-6">
         <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Client Portal') }}</h3>

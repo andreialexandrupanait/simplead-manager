@@ -123,6 +123,31 @@ Schedule::command('horizon:health-check')
     ->withoutOverlapping()
     ->onOneServer();
 
+// PHP error log fetch — every 6 hours across all sites
+Schedule::call(function () {
+    \App\Models\Site::where('is_connected', true)->each(function ($site) {
+        \App\Jobs\FetchPhpErrorLogs::dispatch($site)->delay(now()->addSeconds(rand(0, 120)));
+    });
+})->everySixHours()
+    ->name('php-error-log-fetch')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Weekly content freshness sync across all sites
+Schedule::call(function () {
+    \App\Models\Site::where('is_connected', true)->each(function ($site) {
+        \App\Jobs\SyncContentFreshness::dispatch($site)->delay(now()->addSeconds(rand(0, 300)));
+    });
+})->weeklyOn(1, '04:00')
+    ->name('weekly-content-freshness-sync')
+    ->onOneServer();
+
+// Daily license expiration check
+Schedule::job(new \App\Jobs\CheckLicenseExpirations)
+    ->dailyAt('08:00')
+    ->name('daily-license-check')
+    ->onOneServer();
+
 // Daily vulnerability check across all sites (Wordfence Intelligence API)
 Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->dailyAt('05:00')

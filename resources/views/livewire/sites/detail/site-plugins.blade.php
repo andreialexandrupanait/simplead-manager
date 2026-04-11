@@ -643,6 +643,16 @@
                             {{-- Update button --}}
                             @if($plugin->has_update)
                                 <span class="text-xs text-yellow-600">{{ $plugin->version }} &rarr; {{ $plugin->update_version }}</span>
+                                <button
+                                    wire:click="assessRisk({{ $plugin->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="assessRisk({{ $plugin->id }})"
+                                    class="rounded px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
+                                    title="{{ __('AI Risk Assessment') }}"
+                                >
+                                    <span wire:loading.remove wire:target="assessRisk({{ $plugin->id }})">AI</span>
+                                    <span wire:loading wire:target="assessRisk({{ $plugin->id }})">...</span>
+                                </button>
                                 <x-ui.button size="sm" wire:click="updatePlugin({{ $plugin->id }})" wire:loading.attr="disabled" wire:target="updatePlugin({{ $plugin->id }})">
                                     <span wire:loading.remove wire:target="updatePlugin({{ $plugin->id }})">{{ __('Update') }}</span>
                                     <span wire:loading wire:target="updatePlugin({{ $plugin->id }})">{{ __('Updating...') }}</span>
@@ -1075,6 +1085,62 @@
                 <div class="mt-4 flex justify-end">
                     <x-ui.button variant="secondary" @click="$dispatch('close-modal-plugin-detail')">{{ __('Close') }}</x-ui.button>
                 </div>
+            </div>
+        @endif
+    </x-ui.modal>
+
+    {{-- AI Risk Assessment Modal --}}
+    <x-ui.modal name="risk-assessment" maxWidth="md">
+        @if($riskAssessment)
+            <div class="p-2">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('AI Risk Assessment') }}</h3>
+
+                <div class="mt-4 flex items-center gap-3">
+                    <div class="h-16 w-16 rounded-full flex items-center justify-center text-xl font-bold
+                        {{ $riskAssessment['level'] === 'safe' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                           ($riskAssessment['level'] === 'risky' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                           'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400') }}">
+                        {{ $riskAssessment['score'] }}
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium {{ $riskAssessment['level'] === 'safe' ? 'text-green-700' : ($riskAssessment['level'] === 'risky' ? 'text-red-700' : 'text-yellow-700') }}">
+                            {{ ucfirst($riskAssessment['level']) }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Risk Score: :score/100', ['score' => $riskAssessment['score']]) }}</p>
+                    </div>
+                </div>
+
+                @if(!empty($riskAssessment['reasons']))
+                    <div class="mt-4">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">{{ __('Analysis') }}</p>
+                        <ul class="space-y-1">
+                            @foreach($riskAssessment['reasons'] as $reason)
+                                <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <span class="mt-1 h-1.5 w-1.5 rounded-full shrink-0 {{ $riskAssessment['level'] === 'safe' ? 'bg-green-400' : ($riskAssessment['level'] === 'risky' ? 'bg-red-400' : 'bg-yellow-400') }}"></span>
+                                    {{ $reason }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if(!empty($riskAssessment['recommendation']))
+                    <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 p-3">
+                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ $riskAssessment['recommendation'] }}</p>
+                    </div>
+                @endif
+
+                <div class="mt-4 flex justify-end">
+                    <x-ui.button variant="secondary" @click="$dispatch('close-modal-risk-assessment')">{{ __('Close') }}</x-ui.button>
+                </div>
+            </div>
+        @elseif($riskLoading)
+            <div class="p-6 text-center">
+                <svg class="mx-auto h-8 w-8 animate-spin text-purple-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-3 text-sm text-gray-500">{{ __('Analyzing update risk with AI...') }}</p>
             </div>
         @endif
     </x-ui.modal>

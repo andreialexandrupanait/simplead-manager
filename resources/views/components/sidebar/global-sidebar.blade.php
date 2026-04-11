@@ -48,6 +48,22 @@
     >
         {{ __('Activity') }}
     </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('error-logs.index')"
+        icon="alert-triangle"
+        :active="request()->routeIs('error-logs.*')"
+    >
+        {{ __('Error Logs') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('dns.index')"
+        icon="globe"
+        :active="request()->routeIs('dns.*')"
+    >
+        {{ __('DNS') }}
+    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Management')">
@@ -73,6 +89,14 @@
         :active="request()->routeIs('reports.*')"
     >
         {{ __('Reports') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('plugin-licenses.index')"
+        icon="key"
+        :active="request()->routeIs('plugin-licenses.*')"
+    >
+        {{ __('Licenses') }}
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item

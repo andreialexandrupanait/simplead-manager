@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Dispatchers;
 
+use App\Jobs\CheckDns;
 use App\Jobs\CheckUptime;
 use App\Jobs\RunSecurityScan;
+use App\Models\DnsMonitor;
 use App\Models\SecurityMonitor;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
@@ -22,6 +24,7 @@ class MonitoringDispatcher
 
         $this->dispatchUptimeChecks();
         $this->dispatchSecurityScans();
+        $this->dispatchDnsChecks();
     }
 
     private function dispatchUptimeChecks(): void
@@ -55,5 +58,14 @@ class MonitoringDispatcher
                 $site = $monitor->site;
                 RunSecurityScan::dispatch($site);
             });
+    }
+
+    private function dispatchDnsChecks(): void
+    {
+        DnsMonitor::query()
+            ->active()
+            ->due()
+            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            ->each(fn (DnsMonitor $monitor) => CheckDns::dispatch($monitor));
     }
 }

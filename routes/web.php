@@ -13,8 +13,11 @@ use App\Livewire\Activity;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
+use App\Livewire\Dns;
 use App\Livewire\MaintenancePlans;
+use App\Livewire\ErrorLogs;
 use App\Livewire\Performance;
+use App\Livewire\Plugins;
 use App\Livewire\Reports;
 use App\Livewire\Security;
 use App\Livewire\Settings;
@@ -99,6 +102,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
+        Route::get('/content-freshness', Sites\Detail\SiteContentFreshness::class)->name('sites.content-freshness');
         Route::get('/cron', Sites\Detail\SiteCron::class)->name('sites.cron');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/reports/{report}/view', Sites\Detail\ReportView::class)->name('sites.reports.view');
@@ -136,6 +140,15 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Activity — global timeline
     Route::get('/activity', Activity\ActivityTimeline::class)->name('activity.index');
+
+    // Plugin Licenses — global view
+    Route::get('/plugin-licenses', Plugins\PluginLicensesOverview::class)->name('plugin-licenses.index');
+
+    // Error Logs — global view
+    Route::get('/error-logs', ErrorLogs\ErrorLogsOverview::class)->name('error-logs.index');
+
+    // DNS — global view
+    Route::get('/dns', Dns\DnsOverview::class)->name('dns.index');
 
     // User preferences API
     Route::post('/api/user/theme', function () {
