@@ -17,7 +17,6 @@ use App\Livewire\Dns;
 use App\Livewire\MaintenancePlans;
 use App\Livewire\ErrorLogs;
 use App\Livewire\Performance;
-use App\Livewire\Plugins;
 use App\Livewire\Reports;
 use App\Livewire\Security;
 use App\Livewire\Settings;
@@ -140,9 +139,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Activity — global timeline
     Route::get('/activity', Activity\ActivityTimeline::class)->name('activity.index');
-
-    // Plugin Licenses — global view
-    Route::get('/plugin-licenses', Plugins\PluginLicensesOverview::class)->name('plugin-licenses.index');
 
     // Error Logs — global view
     Route::get('/error-logs', ErrorLogs\ErrorLogsOverview::class)->name('error-logs.index');

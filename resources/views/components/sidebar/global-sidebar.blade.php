@@ -92,14 +92,6 @@
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
-        :href="route('plugin-licenses.index')"
-        icon="key"
-        :active="request()->routeIs('plugin-licenses.*')"
-    >
-        {{ __('Licenses') }}
-    </x-sidebar.sidebar-item>
-
-    <x-sidebar.sidebar-item
         :href="route('maintenance-plans')"
         icon="layers"
         :active="request()->routeIs('maintenance-plans')"

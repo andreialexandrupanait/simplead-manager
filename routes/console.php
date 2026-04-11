@@ -142,12 +142,6 @@ Schedule::call(function () {
     ->name('weekly-content-freshness-sync')
     ->onOneServer();
 
-// Daily license expiration check
-Schedule::job(new \App\Jobs\CheckLicenseExpirations)
-    ->dailyAt('08:00')
-    ->name('daily-license-check')
-    ->onOneServer();
-
 // Daily vulnerability check across all sites (Wordfence Intelligence API)
 Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->dailyAt('05:00')
