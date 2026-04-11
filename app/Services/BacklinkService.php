@@ -32,24 +32,31 @@ class BacklinkService
      */
     public function fullSync(Site $site): array
     {
-        // 1. Get referring domains from GSC
+        $crawler = app(BacklinkCrawlerService::class);
+
+        // 1. Get referring pages from GSC (top pages by clicks)
         $gscSynced = $this->syncFromGsc($site);
 
-        // 2. Targeted crawl: visit unverified referring pages for details
+        // 2. Discover new referring pages via Google Search
+        $discoveredUrls = $crawler->discoverViaSearch($site);
+        $discovered = $crawler->crawlReferringPages($site, $discoveredUrls);
+
+        // 3. Targeted crawl: visit unverified existing backlink URLs
         $unverified = $this->getUnverifiedUrls($site);
-        $crawled = app(BacklinkCrawlerService::class)->crawlReferringPages($site, $unverified);
+        $crawled = $crawler->crawlReferringPages($site, $unverified);
 
-        // 3. Verify existing backlinks (check if old links still exist)
-        $verification = app(BacklinkCrawlerService::class)->verifyExistingBacklinks($site);
+        // 4. Verify existing backlinks (check if old links still exist)
+        $verification = $crawler->verifyExistingBacklinks($site);
 
-        // 4. Recalculate spam scores
+        // 5. Recalculate spam scores
         $this->recalculateSpamScores($site);
 
-        // 5. Create daily snapshot
+        // 6. Create daily snapshot
         $this->createSnapshot($site);
 
         return [
             'gsc_synced' => $gscSynced,
+            'discovered' => $discovered,
             'crawled' => $crawled,
             'verified' => $verification['verified'],
             'lost' => $verification['lost'],

@@ -378,6 +378,69 @@ class BacklinkCrawlerService
         return mb_strlen($text) > 300 ? mb_substr($text, 0, 300).'...' : $text;
     }
 
+    /**
+     * Discover backlinks via Google Search: search for pages mentioning our domain.
+     *
+     * Uses Google Custom Search or direct scraping to find:
+     * "domain.com" -site:domain.com
+     */
+    public function discoverViaSearch(Site $site, int $maxResults = 50): array
+    {
+        $siteHost = $this->normalizeDomain($site->url);
+        $discoveredUrls = [];
+
+        // Use Google Autocomplete/Suggest as a lightweight discovery
+        // Search for variations of the domain
+        $searchQueries = [
+            "\"{$siteHost}\"",
+            "link:{$siteHost}",
+        ];
+
+        foreach ($searchQueries as $query) {
+            try {
+                // Use a simple HTTP request to Google's search
+                $response = Http::withOptions(['verify' => false])
+                    ->withUserAgent('Mozilla/5.0 (compatible; SimpleAd SEO/1.0)')
+                    ->timeout(10)
+                    ->get('https://www.google.com/search', [
+                        'q' => $query.' -site:'.$siteHost,
+                        'num' => min($maxResults, 20),
+                    ]);
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $html = $response->body();
+
+                // Extract URLs from search results
+                preg_match_all('/https?:\/\/[^\s"<>]+/i', $html, $matches);
+                $urls = $matches[0] ?? [];
+
+                foreach ($urls as $url) {
+                    $urlHost = $this->normalizeDomain($url);
+
+                    // Skip Google's own URLs, our site, and common non-content URLs
+                    if ($urlHost === $siteHost ||
+                        str_contains($urlHost, 'google.') ||
+                        str_contains($urlHost, 'googleapis.') ||
+                        str_contains($urlHost, 'gstatic.') ||
+                        str_contains($urlHost, 'youtube.') ||
+                        str_contains($url, '/search?') ||
+                        str_contains($url, 'webcache.')) {
+                        continue;
+                    }
+
+                    $discoveredUrls[$url] = true;
+                }
+            } catch (\Throwable $e) {
+                Log::debug("Google search discovery failed for {$siteHost}: {$e->getMessage()}");
+            }
+        }
+
+        return array_keys($discoveredUrls);
+    }
+
     private function normalizeDomain(string $url): string
     {
         $host = parse_url($url, PHP_URL_HOST) ?: '';

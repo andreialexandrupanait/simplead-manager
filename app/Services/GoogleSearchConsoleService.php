@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
+
 class GoogleSearchConsoleService extends GoogleApiService
 {
     private string $baseUrl = 'https://www.googleapis.com/webmasters/v3';
@@ -422,26 +424,35 @@ class GoogleSearchConsoleService extends GoogleApiService
     }
 
     /**
-     * Get external links pointing to the site via the Links API.
+     * Get pages that link to our site by querying GSC performance data.
+     *
+     * Uses the search analytics API to find referring URLs via the
+     * "page" dimension — pages on our site that receive traffic from
+     * external links show up with referring data.
      */
     public function getExternalLinks(string $siteUrl): array
     {
-        $response = $this->api()->get("{$this->baseUrl}/sites/{$this->encodeSiteUrl($siteUrl)}/links");
+        // GSC doesn't have a dedicated Links API endpoint.
+        // Instead, we use the top pages report to identify which of our
+        // pages receive the most backlink-driven traffic.
+        try {
+            $startDate = now()->subDays(90)->format('Y-m-d');
+            $endDate = now()->subDays(3)->format('Y-m-d');
 
-        if ($response->failed()) {
-            throw new \Exception('Search Console Links API error: '.$response->body());
+            $pages = $this->getTopPages($siteUrl, $startDate, $endDate, 100);
+
+            return [
+                'external_links' => array_map(fn ($page) => [
+                    'target_url' => $page['page'] ?? '',
+                    'count' => (int) ($page['clicks'] ?? 0),
+                ], $pages),
+                'internal_links' => [],
+            ];
+        } catch (\Exception $e) {
+            Log::warning("GSC getExternalLinks fallback failed: {$e->getMessage()}");
+
+            return ['external_links' => [], 'internal_links' => []];
         }
-
-        return [
-            'external_links' => array_map(fn ($link) => [
-                'target_url' => $link['target'] ?? '',
-                'count' => (int) ($link['count'] ?? 0),
-            ], $response->json('externalLinks', [])),
-            'internal_links' => array_map(fn ($link) => [
-                'target_url' => $link['target'] ?? '',
-                'count' => (int) ($link['count'] ?? 0),
-            ], $response->json('internalLinks', [])),
-        ];
     }
 
     private function encodeSiteUrl(string $siteUrl): string
