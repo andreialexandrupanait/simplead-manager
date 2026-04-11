@@ -28,6 +28,97 @@ class BacklinkService
     ];
 
     /**
+     * Full sync: GSC → targeted crawl → verify existing → spam scores → snapshot.
+     */
+    public function fullSync(Site $site): array
+    {
+        // 1. Get referring domains from GSC
+        $gscSynced = $this->syncFromGsc($site);
+
+        // 2. Targeted crawl: visit unverified referring pages for details
+        $unverified = $this->getUnverifiedUrls($site);
+        $crawled = app(BacklinkCrawlerService::class)->crawlReferringPages($site, $unverified);
+
+        // 3. Verify existing backlinks (check if old links still exist)
+        $verification = app(BacklinkCrawlerService::class)->verifyExistingBacklinks($site);
+
+        // 4. Recalculate spam scores
+        $this->recalculateSpamScores($site);
+
+        // 5. Create daily snapshot
+        $this->createSnapshot($site);
+
+        return [
+            'gsc_synced' => $gscSynced,
+            'crawled' => $crawled,
+            'verified' => $verification['verified'],
+            'lost' => $verification['lost'],
+        ];
+    }
+
+    /**
+     * Get source URLs that haven't been verified by our crawler yet.
+     */
+    public function getUnverifiedUrls(Site $site): array
+    {
+        return Backlink::where('site_id', $site->id)
+            ->active()
+            ->where('source_type', '!=', 'gsc')
+            ->where(function ($q) {
+                $q->whereNull('last_verified_at')
+                    ->orWhere('last_verified_at', '<', now()->subDays(14));
+            })
+            ->pluck('source_url')
+            ->all();
+    }
+
+    /**
+     * Classify anchor text into type categories.
+     */
+    public function classifyAnchorText(string $anchorText, string $siteDomain, string $siteName, ?Site $site = null): string
+    {
+        $anchor = mb_strtolower(trim($anchorText));
+
+        if ($anchor === '' || $anchor === ' ') {
+            return 'image';
+        }
+
+        // URL anchor — the anchor text is a URL
+        if (str_starts_with($anchor, 'http://') || str_starts_with($anchor, 'https://') || str_starts_with($anchor, 'www.')) {
+            return 'url';
+        }
+
+        // Brand anchor — contains site name or domain
+        $domainLower = strtolower($siteDomain);
+        $nameLower = mb_strtolower($siteName);
+        if (str_contains($anchor, $domainLower) || str_contains($anchor, $nameLower)) {
+            return 'brand';
+        }
+
+        // Generic anchor
+        if (in_array($anchor, self::GENERIC_ANCHORS, true)) {
+            return 'generic';
+        }
+
+        // Exact match — check against tracked keywords
+        if ($site) {
+            $keywords = $site->trackedKeywords()->pluck('keyword')->map(fn ($k) => mb_strtolower($k))->all();
+            if (in_array($anchor, $keywords, true)) {
+                return 'exact_match';
+            }
+
+            // Partial match — anchor contains a tracked keyword
+            foreach ($keywords as $kw) {
+                if (str_contains($anchor, $kw)) {
+                    return 'partial_match';
+                }
+            }
+        }
+
+        return 'other';
+    }
+
+    /**
      * Discover backlinks from the site's latest crawl data.
      *
      * Extracts external pages that link TO our site by checking
@@ -262,7 +353,7 @@ class BacklinkService
      * Factors: TLD reputation, anchor text patterns, nofollow status,
      * domain length, suspicious patterns.
      */
-    public function calculateSpamScore(string $domain, ?string $anchorText, bool $isNofollow): int
+    public function calculateSpamScore(string $domain, ?string $anchorText, bool $isNofollow, array $pageAnalysis = []): int
     {
         $score = 0;
         $domain = strtolower($domain);
@@ -314,6 +405,26 @@ class BacklinkService
         $parts = explode('.', $domain);
         if (count($parts) > 4) {
             $score += 10;
+        }
+
+        // 8. Page quality signals (from targeted crawl)
+        if (! empty($pageAnalysis)) {
+            // Too many outbound links = link farm indicator (+15)
+            if (($pageAnalysis['outbound_links'] ?? 0) > 100) {
+                $score += 15;
+            } elseif (($pageAnalysis['outbound_links'] ?? 0) > 50) {
+                $score += 5;
+            }
+
+            // Thin content page (+10)
+            if ($pageAnalysis['is_thin'] ?? false) {
+                $score += 10;
+            }
+
+            // Excessive links on page (+10)
+            if ($pageAnalysis['has_excessive_links'] ?? false) {
+                $score += 10;
+            }
         }
 
         return min(100, max(0, $score));
