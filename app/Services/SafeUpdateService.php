@@ -12,9 +12,12 @@ use Illuminate\Support\Facades\Log;
 
 class SafeUpdateService
 {
+    private const VISUAL_DIFF_THRESHOLD = 15.0;
+
     public function __construct(
         protected RollbackService $rollbackService,
         protected WordPressApiServiceFactory $apiFactory,
+        protected ScreenshotService $screenshotService,
     ) {}
 
     public function createSafeUpdate(
@@ -51,7 +54,10 @@ class SafeUpdateService
                 CreateBackup::dispatchSync($site, 'database', 'pre_update', $config->storage_destination_id);
             }
 
-            // Step 2: Update
+            // Step 2: Pre-update screenshot
+            $beforeScreenshot = $this->captureScreenshot($site, $safeUpdate, 'before');
+
+            // Step 3: Update
             $safeUpdate->update(['status' => 'updating']);
             $updateResult = match ($safeUpdate->type) {
                 'plugin' => $api->updatePlugins([$safeUpdate->slug]),
@@ -60,7 +66,7 @@ class SafeUpdateService
                 default => throw new \InvalidArgumentException("Unknown update type: {$safeUpdate->type}"),
             };
 
-            // Step 3: Create rollback point
+            // Step 4: Create rollback point
             $rollbackPoint = $this->rollbackService->createRollbackPoint(
                 $site,
                 $safeUpdate->type,
@@ -81,18 +87,35 @@ class SafeUpdateService
                 'performed_at' => now(),
             ]);
 
-            // Step 4: Health check
+            // Step 5: Health check
             $safeUpdate->update(['status' => 'health_checking']);
             $healthResults = $this->runHealthChecks($site);
 
-            if ($healthResults['passed']) {
+            // Step 6: Visual regression check
+            $visualResults = null;
+            if ($beforeScreenshot) {
+                $visualResults = $this->runVisualRegression($site, $safeUpdate, $beforeScreenshot);
+            }
+
+            $healthPassed = $healthResults['passed'];
+            $visualPassed = ! $visualResults || ($visualResults['diff_percent'] ?? 0) < self::VISUAL_DIFF_THRESHOLD;
+
+            if ($healthPassed && $visualPassed) {
                 $safeUpdate->update([
                     'status' => 'completed',
                     'health_check_results' => $healthResults['checks'],
+                    'visual_regression_results' => $visualResults,
                     'completed_at' => now(),
                 ]);
             } else {
-                // Health check failed
+                $errorParts = [];
+                if (! $healthPassed) {
+                    $errorParts[] = 'Health check failed';
+                }
+                if (! $visualPassed) {
+                    $errorParts[] = 'Visual regression detected significant changes (' . ($visualResults['diff_percent'] ?? '?') . '% different)';
+                }
+
                 if ($safeUpdate->auto_rollback) {
                     $safeUpdate->update(['status' => 'rolling_back']);
                     $this->rollbackService->executeRollback($rollbackPoint);
@@ -101,7 +124,8 @@ class SafeUpdateService
                 $safeUpdate->update([
                     'status' => 'failed',
                     'health_check_results' => $healthResults['checks'],
-                    'error_message' => 'Health check failed after update',
+                    'visual_regression_results' => $visualResults,
+                    'error_message' => implode('. ', $errorParts),
                     'completed_at' => now(),
                 ]);
             }
@@ -131,6 +155,42 @@ class SafeUpdateService
                 'passed' => false,
                 'checks' => [['name' => 'health_endpoint', 'status' => 'error', 'message' => $e->getMessage()]],
             ];
+        }
+    }
+
+    protected function captureScreenshot(\App\Models\Site $site, SafeUpdate $safeUpdate, string $label): ?string
+    {
+        try {
+            $binary = $this->screenshotService->capture($site->url);
+            if ($binary) {
+                $path = $this->screenshotService->save($binary, $site->id, $safeUpdate->id, $label);
+                $safeUpdate->update(["screenshot_{$label}_path" => $path]);
+
+                return $binary;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Screenshot capture ({$label}) failed for site {$site->id}: {$e->getMessage()}");
+        }
+
+        return null;
+    }
+
+    protected function runVisualRegression(\App\Models\Site $site, SafeUpdate $safeUpdate, string $beforeBinary): ?array
+    {
+        try {
+            $afterBinary = $this->screenshotService->capture($site->url);
+            if (! $afterBinary) {
+                return null;
+            }
+
+            $this->screenshotService->save($afterBinary, $site->id, $safeUpdate->id, 'after');
+            $safeUpdate->update(['screenshot_after_path' => "update-screenshots/{$site->id}/{$safeUpdate->id}/after.jpg"]);
+
+            return $this->screenshotService->compare($beforeBinary, $afterBinary);
+        } catch (\Throwable $e) {
+            Log::warning("Visual regression check failed for site {$site->id}: {$e->getMessage()}");
+
+            return null;
         }
     }
 }

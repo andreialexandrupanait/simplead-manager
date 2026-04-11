@@ -9,6 +9,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ReportDownloadController;
 use App\Http\Controllers\ReportViewController;
+use App\Livewire\Activity;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
@@ -19,6 +20,7 @@ use App\Livewire\Security;
 use App\Livewire\Settings;
 use App\Livewire\Sites;
 use App\Livewire\StatusPages;
+use App\Livewire\Updates;
 use App\Livewire\Uptime;
 use App\Models\Site;
 
@@ -128,6 +130,12 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Uptime — global view
     Route::get('/uptime', Uptime\UptimeOverview::class)->name('uptime.index');
+
+    // Updates — global view
+    Route::get('/updates', Updates\UpdatesOverview::class)->name('updates.index');
+
+    // Activity — global timeline
+    Route::get('/activity', Activity\ActivityTimeline::class)->name('activity.index');
 
     // User preferences API
     Route::post('/api/user/theme', function () {

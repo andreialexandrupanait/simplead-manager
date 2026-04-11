@@ -123,6 +123,12 @@ Schedule::command('horizon:health-check')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Daily vulnerability check across all sites (Wordfence Intelligence API)
+Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
+    ->dailyAt('05:00')
+    ->name('daily-vulnerability-check')
+    ->onOneServer();
+
 // Validate external connections (Google, Cloudflare, Dropbox, WordPress)
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
     ->dailyAt('06:00')

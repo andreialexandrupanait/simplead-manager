@@ -15,6 +15,8 @@ use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -36,6 +38,10 @@ class SitePlugins extends Component
     public array $updateResults = [];
 
     public ?array $detailItem = null;
+
+    public ?string $changelog = null;
+
+    public bool $changelogLoading = false;
 
     protected function jobTrackingKeys(): array
     {
@@ -273,6 +279,8 @@ class SitePlugins extends Component
             $item = $this->site->siteThemes()->findOrFail($id);
         }
 
+        $this->changelog = null;
+
         $this->detailItem = [
             'id' => $item->id,
             'type' => $type,
@@ -300,6 +308,48 @@ class SitePlugins extends Component
         ];
 
         $this->dispatch('open-modal-plugin-detail');
+    }
+
+    public function fetchChangelog(): void
+    {
+        if (! $this->detailItem) {
+            return;
+        }
+
+        $slug = $this->detailItem['slug'];
+        $type = $this->detailItem['type'];
+        $this->changelogLoading = true;
+
+        try {
+            $cacheKey = "wp_org_changelog:{$type}:{$slug}";
+            $this->changelog = Cache::remember($cacheKey, 3600, function () use ($slug, $type) {
+                if ($type === 'plugin') {
+                    $response = Http::timeout(10)->get('https://api.wordpress.org/plugins/info/1.2/', [
+                        'action' => 'plugin_information',
+                        'request[slug]' => $slug,
+                        'request[fields][sections]' => true,
+                    ]);
+                } else {
+                    $response = Http::timeout(10)->get('https://api.wordpress.org/themes/info/1.2/', [
+                        'action' => 'theme_information',
+                        'request[slug]' => $slug,
+                        'request[fields][sections]' => true,
+                    ]);
+                }
+
+                if ($response->failed()) {
+                    return null;
+                }
+
+                $data = $response->json();
+
+                return $data['sections']['changelog'] ?? null;
+            });
+        } catch (\Throwable) {
+            $this->changelog = null;
+        }
+
+        $this->changelogLoading = false;
     }
 
     public function quickBackup(): void

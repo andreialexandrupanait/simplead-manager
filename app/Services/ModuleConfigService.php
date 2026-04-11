@@ -85,7 +85,6 @@ class ModuleConfigService
         'search_console' => 720, // 12h
         'cloudflare' => 360,  // 6h
         'database_cleanup' => 10080, // 7 days
-        'seo' => 10080,           // 7 days
     ];
 
     /**
@@ -100,7 +99,6 @@ class ModuleConfigService
         'search_console' => 1440, // 24h
         'cloudflare' => 360,   // 6h
         'database_cleanup' => 43200, // 30 days
-        'seo' => 10080,              // 7 days
     ];
 
     /**
@@ -312,12 +310,6 @@ class ModuleConfigService
                 $data['frequency'] = 'monthly';
                 $data['auto_clean_types'] = ['revisions', 'spam', 'trash', 'transients'];
                 $data['next_cleanup_at'] = now()->addMonth()->startOfMonth()->addMinutes($jitter);
-                break;
-
-            case 'seo':
-                $data['is_active'] = $enabled;
-                $data['interval_minutes'] = $interval ?? 10080;
-                $data['next_audit_at'] = now()->addMinutes(rand(5, 60));
                 break;
 
             default:

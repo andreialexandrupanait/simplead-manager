@@ -48,14 +48,14 @@ class ReportRecommendationService
     /**
      * Generate rule-based recommendations grouped by category.
      *
-     * @return array ['technical' => [...], 'performance' => [...], 'seo' => [...]]
+     * @return array ['technical' => [...], 'performance' => [...], 'search_visibility' => [...]]
      */
     public function generate(): array
     {
         return [
             'technical' => $this->getTechnicalRecs(3),
             'performance' => $this->getPerformanceRecs(2),
-            'seo' => $this->getSeoRecs(3),
+            'search_visibility' => $this->getSearchVisibilityRecs(3),
         ];
     }
 
@@ -177,7 +177,7 @@ class ReportRecommendationService
         return $this->prioritySortAndFill($recs, $max, 'performance');
     }
 
-    protected function getSeoRecs(int $max): array
+    protected function getSearchVisibilityRecs(int $max): array
     {
         $recs = [];
 
@@ -220,35 +220,7 @@ class ReportRecommendationService
             $recs[] = ['title' => __('report.rec_low_engagement', [], $this->language), 'description' => __('report.rec_low_engagement_desc', [], $this->language), 'priority' => 'medium'];
         }
 
-        // SEO Audit-based rules
-        $seo = $this->data['seo'] ?? [];
-
-        // Rule 7: No SEO plugin installed
-        if (isset($seo['seo_plugin']) && $seo['seo_plugin'] === null) {
-            $recs[] = ['title' => 'No SEO Plugin Installed', 'description' => 'Install and configure an SEO plugin (Yoast SEO, Rank Math) for proper meta tags, sitemaps, and structured data management.', 'priority' => 'high'];
-        }
-
-        // Rule 8: Low SEO score
-        if (isset($seo['score']) && $seo['score'] < 50) {
-            $recs[] = ['title' => 'Critical SEO Score', 'description' => "The site's SEO audit score is {$seo['score']}/100. Address critical and high-severity issues identified in the SEO audit to improve search visibility.", 'priority' => 'high'];
-        }
-
-        // Rule 9: No sitemap
-        if (isset($seo['technical']['sitemap_ok']) && $seo['technical']['sitemap_ok'] === false) {
-            $recs[] = ['title' => 'XML Sitemap Missing or Broken', 'description' => 'No valid XML sitemap was found. Ensure your SEO plugin generates a sitemap and submit it to Google Search Console.', 'priority' => 'high'];
-        }
-
-        // Rule 10: No structured data
-        if (isset($seo['technical']['structured_data_found']) && $seo['technical']['structured_data_found'] === false) {
-            $recs[] = ['title' => 'No Structured Data Found', 'description' => 'Add JSON-LD structured data (Organization, WebSite schema) to improve rich snippet eligibility in search results.', 'priority' => 'medium'];
-        }
-
-        // Rule 11: Search engine visibility disabled
-        if (isset($seo['technical']['search_visible']) && $seo['technical']['search_visible'] === false) {
-            $recs[] = ['title' => 'Search Engine Indexing Disabled', 'description' => 'WordPress is set to discourage search engines. Go to Settings → Reading and uncheck "Discourage search engines from indexing this site".', 'priority' => 'high'];
-        }
-
-        return $this->prioritySortAndFill($recs, $max, 'seo');
+        return $this->prioritySortAndFill($recs, $max, 'search_visibility');
     }
 
     /**

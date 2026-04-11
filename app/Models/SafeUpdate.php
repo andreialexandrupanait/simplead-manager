@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array|null $health_check_results
  * @property string|null $error_message
  * @property bool $auto_rollback
+ * @property string|null $screenshot_before_path
+ * @property string|null $screenshot_after_path
+ * @property array|null $visual_regression_results
  * @property \Illuminate\Support\Carbon|null $started_at
  * @property \Illuminate\Support\Carbon|null $completed_at
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -41,12 +44,16 @@ class SafeUpdate extends Model
         'health_check_results',
         'error_message',
         'auto_rollback',
+        'screenshot_before_path',
+        'screenshot_after_path',
+        'visual_regression_results',
         'started_at',
         'completed_at',
     ];
 
     protected $casts = [
         'health_check_results' => 'array',
+        'visual_regression_results' => 'array',
         'auto_rollback' => 'boolean',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',

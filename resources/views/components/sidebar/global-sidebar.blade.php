@@ -40,9 +40,25 @@
     >
         {{ __('Security') }}
     </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('activity.index')"
+        icon="clock"
+        :active="request()->routeIs('activity.*')"
+    >
+        {{ __('Activity') }}
+    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Management')">
+    <x-sidebar.sidebar-item
+        :href="route('updates.index')"
+        icon="refresh-cw"
+        :active="request()->routeIs('updates.*')"
+    >
+        {{ __('Updates') }}
+    </x-sidebar.sidebar-item>
+
     <x-sidebar.sidebar-item
         :href="route('backups.index')"
         icon="hard-drive"
