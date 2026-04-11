@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class HealthScoreHistory extends Model
 {
+    protected $table = 'health_score_history';
+
     public $timestamps = false;
 
     protected $fillable = [
