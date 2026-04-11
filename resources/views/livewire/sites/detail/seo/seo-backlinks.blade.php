@@ -1,5 +1,5 @@
 <div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
-    <x-ui.page-header title="{{ __('Backlinks') }}" subtitle="{{ __('External links pointing to your site — discover, verify, and monitor') }}" />
+    <x-ui.page-header title="{{ __('Backlinks') }}" subtitle="{{ __('Discover, verify, and monitor external links pointing to your site') }}" />
 
     @include('livewire.sites.detail.seo.partials.seo-tabs', ['site' => $site])
 

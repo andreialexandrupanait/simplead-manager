@@ -379,33 +379,38 @@ class BacklinkCrawlerService
     }
 
     /**
-     * Discover backlinks via Google Search: search for pages mentioning our domain.
+     * Discover backlinks via search engines.
      *
-     * Uses Google Custom Search or direct scraping to find:
-     * "domain.com" -site:domain.com
+     * Uses Bing (more permissive than Google) to find pages
+     * mentioning our domain: "domain.com" -site:domain.com
      */
     public function discoverViaSearch(Site $site, int $maxResults = 50): array
     {
         $siteHost = $this->normalizeDomain($site->url);
         $discoveredUrls = [];
 
-        // Use Google Autocomplete/Suggest as a lightweight discovery
-        // Search for variations of the domain
-        $searchQueries = [
-            "\"{$siteHost}\"",
-            "link:{$siteHost}",
+        $skipDomains = ['google.', 'googleapis.', 'gstatic.', 'youtube.', 'bing.', 'microsoft.', 'msn.', 'yahoo.', 'duckduckgo.', 'facebook.', 'twitter.', 'instagram.'];
+
+        // Try Bing (more permissive than Google for automated queries)
+        $searchEngines = [
+            [
+                'url' => 'https://www.bing.com/search',
+                'params' => ['q' => "\"{$siteHost}\" -site:{$siteHost}", 'count' => min($maxResults, 30)],
+                'pattern' => '/<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>/i',
+            ],
+            [
+                'url' => 'https://html.duckduckgo.com/html/',
+                'params' => ['q' => "\"{$siteHost}\" -site:{$siteHost}"],
+                'pattern' => '/<a[^>]+href="(https?:\/\/[^"]+)"[^>]*class="result__url"/i',
+            ],
         ];
 
-        foreach ($searchQueries as $query) {
+        foreach ($searchEngines as $engine) {
             try {
-                // Use a simple HTTP request to Google's search
                 $response = Http::withOptions(['verify' => false])
-                    ->withUserAgent('Mozilla/5.0 (compatible; SimpleAd SEO/1.0)')
-                    ->timeout(10)
-                    ->get('https://www.google.com/search', [
-                        'q' => $query.' -site:'.$siteHost,
-                        'num' => min($maxResults, 20),
-                    ]);
+                    ->withUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+                    ->timeout(15)
+                    ->get($engine['url'], $engine['params']);
 
                 if (! $response->successful()) {
                     continue;
@@ -413,30 +418,48 @@ class BacklinkCrawlerService
 
                 $html = $response->body();
 
-                // Extract URLs from search results
-                preg_match_all('/https?:\/\/[^\s"<>]+/i', $html, $matches);
-                $urls = $matches[0] ?? [];
+                // Extract all URLs from the page
+                preg_match_all('/https?:\/\/[^\s"\'<>]+/i', $html, $matches);
+                $urls = array_unique($matches[0] ?? []);
 
                 foreach ($urls as $url) {
+                    // Clean up URL (remove trailing punctuation)
+                    $url = rtrim($url, '.,;:)]}');
+
                     $urlHost = $this->normalizeDomain($url);
 
-                    // Skip Google's own URLs, our site, and common non-content URLs
-                    if ($urlHost === $siteHost ||
-                        str_contains($urlHost, 'google.') ||
-                        str_contains($urlHost, 'googleapis.') ||
-                        str_contains($urlHost, 'gstatic.') ||
-                        str_contains($urlHost, 'youtube.') ||
-                        str_contains($url, '/search?') ||
-                        str_contains($url, 'webcache.')) {
+                    if ($urlHost === '' || $urlHost === $siteHost) {
                         continue;
                     }
 
-                    $discoveredUrls[$url] = true;
+                    // Skip search engine domains
+                    $skip = false;
+                    foreach ($skipDomains as $skipDomain) {
+                        if (str_contains($urlHost, $skipDomain)) {
+                            $skip = true;
+                            break;
+                        }
+                    }
+
+                    if ($skip || str_contains($url, '/search?') || str_contains($url, 'webcache.')) {
+                        continue;
+                    }
+
+                    // Only keep URLs that look like real web pages
+                    if (preg_match('/\.(html?|php|asp|jsp|\/?)$/i', parse_url($url, PHP_URL_PATH) ?: '/') || ! str_contains($url, '.')) {
+                        $discoveredUrls[$url] = true;
+                    }
+                }
+
+                if (! empty($discoveredUrls)) {
+                    break; // Got results from this engine, don't try others
                 }
             } catch (\Throwable $e) {
-                Log::debug("Google search discovery failed for {$siteHost}: {$e->getMessage()}");
+                Log::debug("Search discovery via {$engine['url']} failed for {$siteHost}: {$e->getMessage()}");
             }
         }
+
+        Log::info("Backlink discovery: found ".count($discoveredUrls)." candidate URLs for {$siteHost}");
 
         return array_keys($discoveredUrls);
     }
