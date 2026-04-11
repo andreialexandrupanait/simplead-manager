@@ -35,6 +35,14 @@ trait ManagesSiteInfo
         return $response->json();
     }
 
+    public function getThemeIntegrityCheck(string $slug): array
+    {
+        $response = $this->request('GET', '/theme-integrity-check', ['slug' => $slug]);
+        $response->throw();
+
+        return $response->json();
+    }
+
     public function updateCore(): array
     {
         $response = $this->request('POST', '/core/update');

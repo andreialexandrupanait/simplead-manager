@@ -15,9 +15,19 @@
     <div class="flex flex-1 flex-col p-3">
         <div class="space-y-2">
             {{-- WordPress Version --}}
+            @php
+                $wpEol = $site->wp_version ? \App\Services\WordPressEolService::classify($site->wp_version) : null;
+            @endphp
             <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">WordPress</span>
-                <span class="text-sm font-medium text-gray-900">{{ $site->wp_version ?? 'N/A' }}</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-sm font-medium text-gray-900">{{ $site->wp_version ?? 'N/A' }}</span>
+                    @if($wpEol && $wpEol['severity'])
+                        <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {{ $wpEol['severity'] === 'critical' ? 'bg-red-100 text-red-700' : ($wpEol['severity'] === 'high' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700') }}">
+                            {{ $wpEol['label'] }}
+                        </span>
+                    @endif
+                </div>
             </div>
 
             {{-- PHP Version --}}

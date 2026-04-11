@@ -7,9 +7,9 @@
 @php
 $classes = match($variant) {
     'primary'   => 'bg-accent text-white hover:bg-accent-hover focus:ring-accent',
-    'secondary' => 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500',
+    'secondary' => 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600',
     'danger'    => 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    'ghost'     => 'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500',
+    'ghost'     => 'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500 dark:text-gray-400 dark:hover:bg-gray-700',
 };
 
 $sizes = match($size) {

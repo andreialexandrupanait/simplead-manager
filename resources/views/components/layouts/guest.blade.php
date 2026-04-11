@@ -2,6 +2,7 @@
 
 <!DOCTYPE html>
 <html lang="en" class="h-full">
+<script>if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')</script>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +11,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="h-full bg-white">
+<body class="h-full bg-white dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
 
     <div class="flex h-full min-h-screen">
         {{-- LEFT: Image Slideshow (hidden on mobile) --}}
@@ -124,7 +125,7 @@
         </div>
 
         {{-- RIGHT: Auth Form --}}
-        <div class="flex flex-1 items-center justify-center bg-white px-4 py-8 md:px-12">
+        <div class="flex flex-1 items-center justify-center bg-white dark:bg-gray-900 px-4 py-8 md:px-12">
             <div class="w-full max-w-md">
                 {{-- App Name / Logo --}}
                 @php
@@ -132,7 +133,7 @@
                 @endphp
                 <div class="mb-8">
                     @if($brandingLogo)
-                        <svg class="w-44 h-auto" viewBox="0 400 1000 210" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                        <svg class="w-44 h-auto dark:[&_g:first-of-type_path]:fill-gray-100" viewBox="0 400 1000 210" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
                             <defs>
                                 <linearGradient id="b" x1="92.945" y1="355.682" x2="252.233" y2="557.231" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#014df9"/><stop offset="1" stop-color="#ecc0fd"/></linearGradient>
                                 <linearGradient id="c" x1="47.005" y1="391.99" x2="206.293" y2="593.538" xlink:href="#b"/>
@@ -153,13 +154,13 @@
                     $isRegister = request()->routeIs('register');
                 @endphp
                 @if(Route::has('register'))
-                    <div class="mb-8 flex gap-1 rounded-full bg-gray-100 p-1 w-fit">
+                    <div class="mb-8 flex gap-1 rounded-full bg-gray-100 dark:bg-gray-800 p-1 w-fit">
                         <a href="{{ route('login') }}"
-                           class="rounded-full px-5 py-1.5 text-sm font-medium transition {{ $isLogin ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           class="rounded-full px-5 py-1.5 text-sm font-medium transition {{ $isLogin ? 'bg-white dark:bg-gray-700 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
                             Login
                         </a>
                         <a href="{{ route('register') }}"
-                           class="rounded-full px-5 py-1.5 text-sm font-medium transition {{ $isRegister ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                           class="rounded-full px-5 py-1.5 text-sm font-medium transition {{ $isRegister ? 'bg-white dark:bg-gray-700 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
                             Sign-up
                         </a>
                     </div>

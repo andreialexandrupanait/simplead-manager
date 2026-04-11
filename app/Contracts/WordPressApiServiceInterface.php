@@ -99,6 +99,8 @@ interface WordPressApiServiceInterface
 
     public function getCoreIntegrityCheck(): array;
 
+    public function getThemeIntegrityCheck(string $slug): array;
+
     public function updateCore(): array;
 
     public function rollback(string $type, string $slug, string $version): array;

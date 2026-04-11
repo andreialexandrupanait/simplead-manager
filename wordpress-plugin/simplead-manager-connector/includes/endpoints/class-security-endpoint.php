@@ -27,6 +27,15 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'core_integrity_check'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/theme-integrity-check', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'theme_integrity_check'],
+            'permission_callback' => [$this, 'check_permission'],
+            'args'                => [
+                'slug' => ['required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
     }
 
     public function security_check(WP_REST_Request $request): WP_REST_Response {
@@ -350,6 +359,50 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
             'modified'      => $modified,
             'missing'       => $missing,
             'clean'         => empty($modified) && empty($missing),
+        ]);
+    }
+
+    public function theme_integrity_check(WP_REST_Request $request): WP_REST_Response {
+        $slug = $request->get_param('slug');
+
+        $theme = wp_get_theme($slug);
+        if (!$theme->exists()) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'THEME_NOT_FOUND', 'message' => "Theme '{$slug}' not found."],
+            ], 404);
+        }
+
+        $theme_dir = $theme->get_stylesheet_directory();
+        $version = $theme->get('Version');
+        $files = [];
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($theme_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile()) {
+                continue;
+            }
+
+            $relative_path = str_replace($theme_dir . '/', '', $file->getPathname());
+
+            // Skip common non-essential files
+            if (preg_match('/\.(log|cache|tmp)$/i', $relative_path)) {
+                continue;
+            }
+
+            $files[$relative_path] = md5_file($file->getPathname());
+        }
+
+        return $this->success([
+            'slug'        => $slug,
+            'version'     => $version,
+            'name'        => $theme->get('Name'),
+            'file_count'  => count($files),
+            'files'       => $files,
         ]);
     }
 

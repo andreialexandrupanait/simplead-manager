@@ -1,46 +1,52 @@
 # SimpleAd Manager — Remaining Tasks
 
-## UX / Vizual
-- [ ] Dashboard customizabil (drag & drop widgets, userul alege ce vede)
-- [ ] Bulk actions pe site-uri (select multiple → apply plan, run backup, etc.)
-- [ ] Dark mode — rafinare (unele componente pot sa nu aiba dark: classes inca)
+- [x] Dark mode — rafinare — CSS overrides comprehensive + UI components + guest layout
 
 ## Monitorizare
-- [ ] SSL certificate expiry monitoring cu alerta automata
-- [ ] Domain expiry monitoring (WHOIS check)
 - [ ] Visual regression testing (screenshot comparison periodic)
-- [ ] Custom uptime checks (check specific endpoint/text on page)
-- [ ] Lighthouse/PageSpeed automation pe schedule
 
 ## WordPress Management
-- [ ] Safe update rollback automatic (update plugin → check site → rollback if broken)
-- [ ] Plugin vulnerability scanning (compare versions cu known CVEs)
-- [ ] Theme file integrity check (compare cu repository)
-- [ ] WordPress version EOL tracking cu alerte
-- [ ] Staging environment sync (prod → staging cu un click)
+- [x] Theme file integrity check — `ThemeIntegrityService` + baseline comparison + connector endpoint + notifications
+- [x] WordPress version EOL tracking cu alerte — `WordPressEolService` + sync integration + UI badges
 
-## Rapoarte
-- [ ] White-label PDF reports (logo client, branding custom)
-- [ ] Client portal — clientul vede doar site-urile lui, fara admin
-- [ ] Automated email reports pe schedule personalizat
-- [ ] Comparative reports (site A vs site B)
-- [ ] ROI tracking (before/after interventii)
-
-## Automatizare
-- [ ] Playbooks customizabile (if X happens → do Y → notify Z)
-- [ ] Maintenance windows (schedule downtime, skip monitoring)
-- [ ] Auto-optimize images pe WP (compress via connector)
-- [ ] Auto-update safe plugins (whitelist plugins care se updateaza automat)
 
 ## Integrari
 - [ ] Slack bot interactiv (commands: /status site.ro, /crawl site.ro)
 - [ ] Google Ads integration (spend + conversions in dashboard)
-- [ ] Jira/Linear ticket creation din issues
-- [ ] Custom webhooks configurabile per event
 
 ## SEO Module (ramase)
-- [ ] Content AI: editor rich text (Trix/TipTap in loc de textarea)
+- [x] Content AI: editor rich text (TipTap) — Alpine.js TipTap component + toolbar + `rich-editor` Blade component
 - [ ] Content AI: regenerare partiala (selecteaza sectiune → regenereaza)
 - [ ] Keyword Research: keyword gap analysis vs competitor
-- [ ] Incident Response playbook "SEO Critical Drop"
-- [ ] Export XLS cu multiple sheets (acum doar CSV)
+- [x] Incident Response playbook "SEO Critical Drop" — `SeoCriticalDropPlaybook` + `IncidentTriggerType::SeoCriticalDrop`
+- [x] Export XLS cu multiple sheets — PhpSpreadsheet + exportXlsx (Pages, Issues, Summary sheets)
+
+## Testing & Quality
+- [ ] Test suite expansion (4 test files pt 479+ clase — prioritar Services + Livewire)
+- [ ] E2E tests (Playwright/Cypress pt fluxuri critice: backup, restore, plugin update)
+- [ ] Code coverage reporting in CI
+- [x] PHPStan level upgrade (5 → 6) — config updated, baseline needs regeneration on CI
+- [ ] N+1 query audit (102+ queries fara eager loading)
+
+## Documentatie
+- [ ] API documentation (OpenAPI/Swagger pt user API + agent API)
+
+---
+
+## Done (implementate)
+- [x] Bulk actions pe site-uri — `WithBulkSiteActions` trait
+- [x] Plugin vulnerability scanning — `VulnerabilityCheckService` + `VulnerablePluginPlaybook`
+- [x] Custom uptime checks (endpoint, keyword, auth, headers) — `UptimeMonitor`
+- [x] Lighthouse/PageSpeed automation pe schedule — `PerformanceMonitor`
+- [x] White-label PDF reports (logo, branding) — `ReportTemplate`
+- [x] Client portal (clientul vede doar site-urile lui) — `/portal/{token}`
+- [x] Automated email reports pe schedule — `ReportSchedule`
+- [x] Custom webhooks configurabile per event — `WebhookNotificationSender`
+- [x] Maintenance windows (pause monitoring) — `UptimeMonitor` maintenance fields
+- [x] Safe update rollback automatic — `SafeUpdateService` + `RunSafeUpdate` job
+- [x] Playbooks customizabile (if X → do Y → notify Z) — 5 playbooks + `PlaybookRunner`
+- [x] Auto-update safe plugins (whitelist) — `toggleAutoUpdate()` in `SitePlugins`
+
+## Removed (intentionat)
+- ~~SSL certificate expiry monitoring~~ — removed (migration `drop_ssl_and_domain_tables`)
+- ~~Domain expiry monitoring (WHOIS)~~ — removed (same migration)

@@ -10,6 +10,7 @@ use App\Services\JobTracker;
 use App\Services\PluginConflictService;
 use App\Services\SecurityRecommendationService;
 use App\Services\WordPressApiServiceFactory;
+use App\Services\WordPressEolService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -208,6 +209,13 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 app(SecurityRecommendationService::class)->check($this->site);
             } catch (\Exception $e) {
                 Log::info("Security check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
+
+            // Check WordPress version EOL status
+            try {
+                WordPressEolService::check($this->site);
+            } catch (\Exception $e) {
+                Log::info("WordPress EOL check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Pull security activity logs from WordPress

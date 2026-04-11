@@ -9,7 +9,7 @@
         type="checkbox"
         @if($id) id="{{ $id }}" @endif
         @if($disabled) disabled @endif
-        {{ $attributes->merge(['class' => 'rounded border-gray-300 text-purple-600 focus:ring-purple-500']) }}
+        {{ $attributes->merge(['class' => 'rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700']) }}
     >
     @if($label)
         <span class="text-sm text-gray-700">{{ $label }}</span>

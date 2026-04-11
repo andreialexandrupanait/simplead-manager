@@ -52,6 +52,7 @@
             @endforeach
 
             <div class="space-y-1 border-t border-gray-200 pt-2">
+                <button wire:click="exportXlsx" class="flex w-full items-center rounded-md px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Export XLSX (Multi-sheet)</button>
                 <button wire:click="exportCsv" class="flex w-full items-center rounded-md px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-50">Export All CSV</button>
                 <button wire:click="exportIssuesCsv" class="flex w-full items-center rounded-md px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-50">Export Issues CSV</button>
             </div>

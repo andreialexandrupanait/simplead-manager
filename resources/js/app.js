@@ -3,6 +3,18 @@ import './bootstrap';
 import Chart from 'chart.js/auto';
 window.Chart = Chart;
 
+import { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Underline from '@tiptap/extension-underline';
+import Placeholder from '@tiptap/extension-placeholder';
+
+window.TipTapEditor = Editor;
+window.TipTapStarterKit = StarterKit;
+window.TipTapLink = Link;
+window.TipTapUnderline = Underline;
+window.TipTapPlaceholder = Placeholder;
+
 // Alpine.js comes with Livewire 3 — no manual import needed
 document.addEventListener('alpine:init', () => {
     Alpine.data('slideshow', (initialSlides = []) => ({
@@ -276,6 +288,94 @@ document.addEventListener('alpine:init', () => {
 
         destroy() {
             this._teardown();
+        },
+    }));
+
+    Alpine.data('tiptapEditor', (initialContent = '') => ({
+        editor: null,
+        content: initialContent,
+        isActive: {},
+
+        init() {
+            this.editor = new window.TipTapEditor({
+                element: this.$refs.editorContent,
+                extensions: [
+                    window.TipTapStarterKit.configure({
+                        heading: { levels: [2, 3, 4] },
+                    }),
+                    window.TipTapLink.configure({
+                        openOnClick: false,
+                        HTMLAttributes: { class: 'text-purple-600 underline' },
+                    }),
+                    window.TipTapUnderline,
+                    window.TipTapPlaceholder.configure({
+                        placeholder: 'Start writing your article...',
+                    }),
+                ],
+                content: this.content,
+                editorProps: {
+                    attributes: {
+                        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-4 py-3 prose-headings:text-gray-900 prose-p:text-gray-700',
+                    },
+                },
+                onUpdate: ({ editor }) => {
+                    this.content = editor.getHTML();
+                    this.$dispatch('input', this.content);
+                },
+                onSelectionUpdate: ({ editor }) => {
+                    this._updateActive(editor);
+                },
+                onTransaction: ({ editor }) => {
+                    this._updateActive(editor);
+                },
+            });
+
+            // Watch for external content changes (e.g., AI generation)
+            this.$watch('content', (val) => {
+                if (this.editor && val !== this.editor.getHTML()) {
+                    this.editor.commands.setContent(val, false);
+                }
+            });
+        },
+
+        _updateActive(editor) {
+            this.isActive = {
+                bold: editor.isActive('bold'),
+                italic: editor.isActive('italic'),
+                underline: editor.isActive('underline'),
+                strike: editor.isActive('strike'),
+                h2: editor.isActive('heading', { level: 2 }),
+                h3: editor.isActive('heading', { level: 3 }),
+                bulletList: editor.isActive('bulletList'),
+                orderedList: editor.isActive('orderedList'),
+                blockquote: editor.isActive('blockquote'),
+                link: editor.isActive('link'),
+            };
+        },
+
+        toggleBold() { this.editor.chain().focus().toggleBold().run(); },
+        toggleItalic() { this.editor.chain().focus().toggleItalic().run(); },
+        toggleUnderline() { this.editor.chain().focus().toggleUnderline().run(); },
+        toggleStrike() { this.editor.chain().focus().toggleStrike().run(); },
+        toggleH2() { this.editor.chain().focus().toggleHeading({ level: 2 }).run(); },
+        toggleH3() { this.editor.chain().focus().toggleHeading({ level: 3 }).run(); },
+        toggleBulletList() { this.editor.chain().focus().toggleBulletList().run(); },
+        toggleOrderedList() { this.editor.chain().focus().toggleOrderedList().run(); },
+        toggleBlockquote() { this.editor.chain().focus().toggleBlockquote().run(); },
+        setLink() {
+            const url = prompt('URL:');
+            if (url) {
+                this.editor.chain().focus().setLink({ href: url }).run();
+            }
+        },
+        unsetLink() { this.editor.chain().focus().unsetLink().run(); },
+        undo() { this.editor.chain().focus().undo().run(); },
+        redo() { this.editor.chain().focus().redo().run(); },
+
+        destroy() {
+            if (this.editor) {
+                this.editor.destroy();
+            }
         },
     }));
 

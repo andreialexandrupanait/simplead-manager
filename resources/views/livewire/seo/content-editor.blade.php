@@ -209,7 +209,7 @@
 
                     {{-- Article body --}}
                     @if($editing)
-                        <textarea wire:model.blur="content" rows="25" class="w-full rounded-lg border-gray-300 font-mono text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                        <x-ui.rich-editor wire-model="content" />
                     @else
                         <div class="prose prose-sm max-w-none prose-headings:text-gray-900 prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-base prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700 prose-blockquote:border-purple-300 prose-blockquote:text-gray-600 prose-a:text-purple-600">
                             {!! $content !!}

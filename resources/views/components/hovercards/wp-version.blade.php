@@ -2,8 +2,23 @@
 
 @if($site->wp_version)
     @php
-        $wpVerVariant = $site->core_update_version ? 'yellow' : 'green';
-        $wpVerLabel = $site->core_update_version ? 'Update available' : 'Up to date';
+        $eol = \App\Services\WordPressEolService::classify($site->wp_version);
+        if ($eol['status'] === 'eol') {
+            $wpVerVariant = 'red';
+            $wpVerLabel = $eol['label'];
+        } elseif ($eol['severity'] === 'high') {
+            $wpVerVariant = 'red';
+            $wpVerLabel = $eol['label'];
+        } elseif ($eol['severity'] === 'warning') {
+            $wpVerVariant = 'orange';
+            $wpVerLabel = $eol['label'];
+        } elseif ($site->core_update_version) {
+            $wpVerVariant = 'yellow';
+            $wpVerLabel = 'Update available';
+        } else {
+            $wpVerVariant = 'green';
+            $wpVerLabel = 'Up to date';
+        }
     @endphp
     <div class="flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">WordPress Version</span>
@@ -14,6 +29,12 @@
             <span class="text-gray-500">Current version</span>
             <span class="font-medium text-gray-900">{{ $site->wp_version }}</span>
         </div>
+        @if($eol['behind'] > 0)
+            <div class="flex items-center justify-between">
+                <span class="text-gray-500">Versions behind</span>
+                <span class="font-medium {{ $eol['severity'] === 'critical' ? 'text-red-600' : ($eol['severity'] === 'high' ? 'text-red-600' : ($eol['severity'] === 'warning' ? 'text-orange-600' : 'text-gray-900')) }}">{{ $eol['behind'] }}</span>
+            </div>
+        @endif
         @if($site->core_update_version)
             <div class="flex items-center justify-between">
                 <span class="text-gray-500">Update available</span>

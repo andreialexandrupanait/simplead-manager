@@ -29,7 +29,7 @@ $maxWidthClass = match($maxWidth) {
     {{-- Content --}}
     <div x-show="open" x-transition
          x-trap.inert.noscroll="open"
-         class="relative w-full {{ $maxWidthClass }} max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+         class="relative w-full {{ $maxWidthClass }} max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl">
         {{ $slot }}
     </div>
 </div>

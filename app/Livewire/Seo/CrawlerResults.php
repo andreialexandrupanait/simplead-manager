@@ -10,6 +10,8 @@ use App\Services\Crawler\CrawlComparisonService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class CrawlerResults extends Component
 {
@@ -726,6 +728,86 @@ class CrawlerResults extends Component
             }
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    public function exportXlsx()
+    {
+        $pages = $this->siteCrawl->pages()->orderBy('url')->get();
+        $filename = 'crawl-'.$this->siteCrawl->id.'-'.now()->format('Y-m-d').'.xlsx';
+
+        $spreadsheet = new Spreadsheet();
+
+        // Sheet 1: All Pages
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Pages');
+        $headers = ['URL', 'Status', 'Title', 'Title Length', 'Meta Description', 'Meta Desc Length', 'H1 Count', 'H2 Count', 'Word Count', 'Canonical', 'Meta Robots', 'Response Time (ms)', 'Content Length', 'Internal Links', 'External Links', 'Images', 'Depth', 'OG Title', 'OG Description', 'Quality Score'];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $row = 2;
+        foreach ($pages as $page) {
+            $sheet->fromArray([
+                $page->url, $page->status_code, $page->title, $page->title_length,
+                $page->meta_description, $page->meta_desc_length, $page->h1_count,
+                $page->h2_count, $page->word_count, $page->canonical_url, $page->meta_robots,
+                $page->response_time_ms, $page->content_length, $page->internal_links_count,
+                $page->external_links_count, $page->images_count, $page->depth,
+                $page->og_title, $page->og_description, self::contentQualityScore($page),
+            ], null, "A{$row}");
+            $row++;
+        }
+
+        // Bold header row
+        $sheet->getStyle('A1:T1')->getFont()->setBold(true);
+
+        // Sheet 2: Issues
+        $issuesSheet = $spreadsheet->createSheet();
+        $issuesSheet->setTitle('Issues');
+        $issuesSheet->fromArray(['URL', 'Severity', 'Issue Type', 'Message', 'Recommendation'], null, 'A1');
+        $issuesSheet->getStyle('A1:E1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($pages as $page) {
+            foreach ($page->issues ?? [] as $issue) {
+                $issuesSheet->fromArray([
+                    $page->url, $issue['severity'] ?? '', $issue['type'] ?? '',
+                    $issue['message'] ?? '', $issue['recommendation'] ?? '',
+                ], null, "A{$row}");
+                $row++;
+            }
+        }
+
+        // Sheet 3: Summary
+        $summarySheet = $spreadsheet->createSheet();
+        $summarySheet->setTitle('Summary');
+        $summarySheet->getStyle('A1:A10')->getFont()->setBold(true);
+
+        $totalPages = $pages->count();
+        $totalIssues = $pages->sum(fn ($p) => count($p->issues ?? []));
+        $avgResponseTime = $pages->avg('response_time_ms');
+        $pagesWithErrors = $pages->filter(fn ($p) => ($p->status_code ?? 200) >= 400)->count();
+        $avgWordCount = $pages->avg('word_count');
+
+        $summaryData = [
+            ['Crawl Report', $this->siteCrawl->site?->name ?? $this->siteCrawl->start_url],
+            ['Date', now()->format('Y-m-d H:i')],
+            ['Total Pages', $totalPages],
+            ['Pages with Errors', $pagesWithErrors],
+            ['Total Issues', $totalIssues],
+            ['Avg Response Time (ms)', round($avgResponseTime ?? 0)],
+            ['Avg Word Count', round($avgWordCount ?? 0)],
+            ['Max Depth', $pages->max('depth') ?? 0],
+        ];
+        $summarySheet->fromArray($summaryData, null, 'A1');
+
+        // Write to temp file and stream
+        $temp = tempnam(sys_get_temp_dir(), 'crawl_export_');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($temp);
+        $spreadsheet->disconnectWorksheets();
+
+        return response()->download($temp, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function render()

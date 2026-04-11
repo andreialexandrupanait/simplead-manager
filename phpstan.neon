@@ -5,7 +5,7 @@ includes:
 parameters:
     paths:
         - app/
-    level: 5
+    level: 6
     ignoreErrors:
         # Livewire magic properties
         - '#Access to an undefined property App\\Livewire\\#'

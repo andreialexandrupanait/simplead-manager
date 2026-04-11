@@ -49,6 +49,7 @@ use App\Models\SitePluginConflict;
 use App\Models\SiteReportConfig;
 use App\Models\SiteStatus;
 use App\Models\SiteTheme;
+use App\Models\ThemeFileCheck;
 use App\Models\SiteUser;
 use App\Models\TrackedKeyword;
 use App\Models\UpdateLog;
@@ -185,6 +186,11 @@ trait HasSiteRelationships
     public function latestCoreFileCheck(): HasOne
     {
         return $this->hasOne(CoreFileCheck::class)->latestOfMany('checked_at');
+    }
+
+    public function themeFileChecks(): HasMany
+    {
+        return $this->hasMany(ThemeFileCheck::class);
     }
 
     public function sitePluginConflicts(): HasMany
