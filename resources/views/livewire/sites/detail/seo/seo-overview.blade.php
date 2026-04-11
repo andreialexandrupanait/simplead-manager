@@ -91,6 +91,17 @@
             </x-ui.card>
         </div>
 
+        {{-- Connector Warning --}}
+        @if($latestAudit && ($latestAudit->data['_connector_failed'] ?? false))
+            <div class="mb-4 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-900/20">
+                <svg class="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <div>
+                    <span class="text-sm font-medium text-red-800 dark:text-red-300">{{ __('Last audit has incomplete data') }}</span>
+                    <span class="ml-1 text-sm text-red-600 dark:text-red-400">— {{ __('WordPress connector was unreachable. Re-run the audit to get full results (plugin detection, robots.txt, sitemaps, etc.).') }}</span>
+                </div>
+            </div>
+        @endif
+
         {{-- Connection Status --}}
         <div class="mb-6 flex flex-wrap gap-3">
             @if($this->seoPlugin)

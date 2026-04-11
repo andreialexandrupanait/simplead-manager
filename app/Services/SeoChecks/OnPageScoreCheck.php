@@ -96,8 +96,10 @@ class OnPageScoreCheck
     {
         $issues = [];
 
-        $internalLinks = (int) ($page['internal_link_count'] ?? count($page['internal_links'] ?? []));
-        $externalLinks = (int) ($page['external_link_count'] ?? count($page['external_links'] ?? []));
+        $internalLinksRaw = $page['internal_links'] ?? [];
+        $externalLinksRaw = $page['external_links'] ?? [];
+        $internalLinks = (int) ($page['internal_link_count'] ?? (is_array($internalLinksRaw) ? count($internalLinksRaw) : (int) $internalLinksRaw));
+        $externalLinks = (int) ($page['external_link_count'] ?? (is_array($externalLinksRaw) ? count($externalLinksRaw) : (int) $externalLinksRaw));
 
         if ($internalLinks === 0) {
             $issues[] = [

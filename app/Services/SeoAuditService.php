@@ -41,9 +41,17 @@ class SeoAuditService
         }
 
         $connectorData = $this->fetchConnectorData($site);
+        $connectorFailed = empty($connectorData) || ! isset($connectorData['seo_plugin']);
+
+        if ($connectorFailed) {
+            Log::warning("SEO audit: connector returned empty/incomplete data for site {$site->id}. Audit will have limited data.");
+        }
 
         if ($trackerKey) {
-            JobTracker::progress($trackerKey, 20, 'Fetching Google Search Console data...');
+            $msg = $connectorFailed
+                ? 'Connector data unavailable — fetching Google Search Console data...'
+                : 'Fetching Google Search Console data...';
+            JobTracker::progress($trackerKey, 20, $msg);
         }
 
         $gscData = $this->fetchGscData($site);
@@ -79,7 +87,11 @@ class SeoAuditService
             'pages_crawled' => $pageCount,
             'seo_plugin' => $seoPlugin ? ($seoPlugin['name'] ?? null) : null,
             'seo_plugin_version' => $seoPlugin ? ($seoPlugin['version'] ?? null) : null,
-            'data' => array_merge($connectorData, $gscData ? ['gsc_sitemaps' => $gscData['sitemaps'] ?? null, 'index_coverage' => $gscData['index_coverage'] ?? null] : []),
+            'data' => array_merge(
+                $connectorData,
+                $gscData ? ['gsc_sitemaps' => $gscData['sitemaps'] ?? null, 'index_coverage' => $gscData['index_coverage'] ?? null] : [],
+                $connectorFailed ? ['_connector_failed' => true] : [],
+            ),
             'scanned_at' => now(),
         ]);
 
