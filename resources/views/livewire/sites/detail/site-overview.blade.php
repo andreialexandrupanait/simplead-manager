@@ -55,6 +55,7 @@
             @include('livewire.sites.detail.overview._database-card')
             @include('livewire.sites.detail.overview._analytics-performance-card')
             @include('livewire.sites.detail.overview._search-console-card')
+            @include('livewire.sites.detail.overview._recent-activity-card')
         </div>
 
         {{-- Overview Sidebar (right, 1/3 width) --}}

@@ -1,5 +1,19 @@
 <div>
-    <x-ui.page-header title="Reports" subtitle="All reports across sites" />
+    <x-ui.page-header title="Reports" subtitle="All reports across sites">
+        <x-slot:actions>
+            <button wire:click="generateAllReports"
+                    wire:confirm="{{ __('Queue report generation for all connected sites using the default template?') }}"
+                    wire:loading.attr="disabled"
+                    wire:target="generateAllReports"
+                    class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-purple-500 transition disabled:opacity-60 dark:bg-purple-700 dark:hover:bg-purple-600">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span wire:loading.remove wire:target="generateAllReports">{{ __('Generate All') }}</span>
+                <span wire:loading wire:target="generateAllReports">{{ __('Queuing...') }}</span>
+            </button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
     {{-- Filters --}}
     <div class="mb-6 flex flex-wrap items-center gap-3">

@@ -230,14 +230,30 @@
         </div>
     </div>
 
-    {{-- Global toast notification --}}
-    <div x-data="toast" x-on:notify.window="notify($event.detail)" x-show="show" x-cloak
-         x-transition.duration.200ms
-         role="status"
+    {{-- Global toast notification stack --}}
+    <div x-data="toastStack"
+         x-on:notify.window="notify($event.detail)"
+         class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end"
          aria-live="polite"
-         class="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg p-4 text-sm shadow-lg"
-         :class="type === 'success' ? 'bg-green-50 text-green-800' : type === 'error' ? 'bg-red-50 text-red-800' : type === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-blue-50 text-blue-800'"
-         x-text="message">
+         role="status">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="toast.visible"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-2"
+                 :class="colorClass(toast.type)"
+                 class="flex items-start gap-3 max-w-sm rounded-lg px-4 py-3 text-sm shadow-lg">
+                <span x-text="toast.message" class="flex-1 min-w-0"></span>
+                <button @click="dismiss(toast.id)"
+                        class="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                        aria-label="Dismiss">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+        </template>
     </div>
 
     {{-- Shared sidebar tooltip --}}

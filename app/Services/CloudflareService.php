@@ -202,6 +202,16 @@ class CloudflareService
         return $response['result']['value'] ?? 'off';
     }
 
+    public function enableWaf(string $zoneId): array
+    {
+        return $this->request('PATCH', "/zones/{$zoneId}/settings/waf", ['value' => 'on']);
+    }
+
+    public function disableWaf(string $zoneId): array
+    {
+        return $this->request('PATCH', "/zones/{$zoneId}/settings/waf", ['value' => 'off']);
+    }
+
     // Access Rules (IP blocking)
 
     public function listAccessRules(string $zoneId): array

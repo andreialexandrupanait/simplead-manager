@@ -72,6 +72,7 @@ spl_autoload_register(function ($class) {
         'SAM_Posts_Endpoint'        => 'endpoints/class-posts-endpoint.php',
         'SAM_Content_Freshness_Endpoint' => 'endpoints/class-content-freshness-endpoint.php',
         'SAM_Error_Logs_Endpoint'    => 'endpoints/class-error-logs-endpoint.php',
+        'SAM_Key_Rotation_Endpoint'  => 'endpoints/class-key-rotation-endpoint.php',
         // Direct upload helper
         'SAM_Direct_Uploader'       => 'class-direct-uploader.php',
         // Admin

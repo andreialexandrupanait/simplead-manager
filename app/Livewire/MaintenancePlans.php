@@ -160,6 +160,18 @@ class MaintenancePlans extends Component
         ];
     }
 
+    // --- Bulk Apply ---
+
+    public function applyPlanToAll(int $planId): void
+    {
+        $plan = \App\Models\MaintenancePlan::findOrFail($planId);
+        $sites = \App\Models\Site::where('is_connected', true)->whereNull('maintenance_plan_id')->get();
+        foreach ($sites as $site) {
+            app(\App\Services\ModuleConfigService::class)->applyPlan($site, $plan);
+        }
+        $this->dispatch('notify', type: 'success', message: "Applied plan to {$sites->count()} sites.");
+    }
+
     // --- Delete ---
 
     public function confirmDelete(int $id): void

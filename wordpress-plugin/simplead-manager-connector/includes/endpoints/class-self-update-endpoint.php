@@ -72,6 +72,19 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
         $all_plugins = get_plugins();
         $old_version = $all_plugins[$plugin_file]['Version'] ?? 'unknown';
 
+        // Backup current plugin folder for rollback
+        $connector_dir = WP_PLUGIN_DIR . '/simplead-manager-connector';
+        $backup_dir = WP_PLUGIN_DIR . '/simplead-manager-connector-rollback';
+        $rollback_available = false;
+
+        if (is_dir($connector_dir)) {
+            // Remove any stale rollback from previous update
+            if (is_dir($backup_dir)) {
+                $this->recursive_delete($backup_dir);
+            }
+            $rollback_available = $this->recursive_copy($connector_dir, $backup_dir);
+        }
+
         $skin = new Automatic_Upgrader_Skin();
         $upgrader = new Plugin_Upgrader($skin);
 
@@ -111,19 +124,30 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
         delete_site_transient('update_plugins');
         wp_update_plugins();
 
-        if (is_wp_error($result)) {
+        if (is_wp_error($result) || $result === false) {
+            $error_msg = is_wp_error($result)
+                ? $result->get_error_message()
+                : 'Update failed. ' . implode(' ', $skin->get_upgrade_messages());
+
+            // Attempt rollback
+            if ($rollback_available && is_dir($backup_dir)) {
+                $this->recursive_delete($connector_dir);
+                rename($backup_dir, $connector_dir);
+                if (!is_plugin_active($plugin_file)) {
+                    activate_plugin($plugin_file);
+                }
+                $error_msg .= ' (rolled back to previous version)';
+            }
+
             return new WP_REST_Response([
                 'success' => false,
-                'error'   => ['code' => 'UPDATE_FAILED', 'message' => $result->get_error_message()],
+                'error'   => ['code' => 'UPDATE_FAILED', 'message' => $error_msg],
             ], 500);
         }
 
-        if ($result === false) {
-            $feedback = $skin->get_upgrade_messages();
-            return new WP_REST_Response([
-                'success' => false,
-                'error'   => ['code' => 'UPDATE_FAILED', 'message' => 'Update failed. ' . implode(' ', $feedback)],
-            ], 500);
+        // Clean up rollback backup on success
+        if (is_dir($backup_dir)) {
+            $this->recursive_delete($backup_dir);
         }
 
         // Ensure plugin is still active
@@ -174,5 +198,44 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
             'new_version' => $new_version,
             'message'     => "Plugin updated from {$old_version} to {$new_version}.",
         ]);
+    }
+
+    private function recursive_copy(string $src, string $dst): bool {
+        if (!@mkdir($dst, 0755, true)) {
+            return false;
+        }
+        $dir = opendir($src);
+        if (!$dir) {
+            return false;
+        }
+        while (($file = readdir($dir)) !== false) {
+            if ($file === '.' || $file === '..') continue;
+            $srcPath = $src . '/' . $file;
+            $dstPath = $dst . '/' . $file;
+            if (is_dir($srcPath)) {
+                if (!$this->recursive_copy($srcPath, $dstPath)) {
+                    closedir($dir);
+                    return false;
+                }
+            } else {
+                if (!@copy($srcPath, $dstPath)) {
+                    closedir($dir);
+                    return false;
+                }
+            }
+        }
+        closedir($dir);
+        return true;
+    }
+
+    private function recursive_delete(string $dir): void {
+        if (!is_dir($dir)) return;
+        $items = scandir($dir);
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $path = $dir . '/' . $item;
+            is_dir($path) ? $this->recursive_delete($path) : @unlink($path);
+        }
+        @rmdir($dir);
     }
 }

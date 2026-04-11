@@ -17,7 +17,7 @@ class ClientPortalController extends Controller
             ->firstOrFail();
 
         $sites = $client->sites()
-            ->with(['uptimeMonitor', 'uptimeMonitor.ongoingIncident', 'latestCompletedBackup', 'performanceMonitor'])
+            ->with(['uptimeMonitor', 'uptimeMonitor.ongoingIncident', 'latestCompletedBackup', 'performanceMonitor', 'securityMonitor', 'backupConfig'])
             ->get();
 
         $siteIds = $sites->pluck('id');

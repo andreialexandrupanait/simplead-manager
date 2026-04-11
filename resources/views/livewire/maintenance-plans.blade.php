@@ -2,6 +2,20 @@
     <x-ui.page-header :title="__('Maintenance Plans')" :subtitle="__('Create and apply configuration plans to your sites')">
         @if($view === 'list' && auth()->user()->isAdmin())
             <x-slot:actions>
+                @if($this->plans->isNotEmpty())
+                    @php $defaultPlan = $this->plans->firstWhere('is_default', true) ?? $this->plans->first(); @endphp
+                    <button wire:click="applyPlanToAll({{ $defaultPlan->id }})"
+                            wire:confirm="{{ __('Apply the default plan to all connected sites that have no plan assigned?') }}"
+                            wire:loading.attr="disabled"
+                            wire:target="applyPlanToAll"
+                            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        <span wire:loading.remove wire:target="applyPlanToAll">{{ __('Apply to Unassigned') }}</span>
+                        <span wire:loading wire:target="applyPlanToAll">{{ __('Applying...') }}</span>
+                    </button>
+                @endif
                 <x-ui.button variant="secondary" wire:click="openCreateFromSite">{{ __('Create from Site') }}</x-ui.button>
                 <x-ui.button wire:click="openCreate">{{ __('New Plan') }}</x-ui.button>
             </x-slot:actions>

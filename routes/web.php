@@ -9,6 +9,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ReportDownloadController;
 use App\Http\Controllers\ReportViewController;
+use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
@@ -16,6 +17,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Dns;
 use App\Livewire\MaintenancePlans;
 use App\Livewire\ErrorLogs;
+use App\Livewire\Notifications;
 use App\Livewire\Performance;
 use App\Livewire\Reports;
 use App\Livewire\Security;
@@ -28,6 +30,9 @@ use App\Models\Site;
 
 // Health check (no auth)
 Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1');
+
+// Inbound webhooks (no auth, rate-limited)
+Route::post('/api/webhooks/inbound', [WebhookController::class, 'handle'])->name('webhooks.inbound')->middleware('throttle:60,1');
 
 // Temporary restore file download (token-protected, no auth)
 Route::get('/restore-download/{token}', function (string $token) {
@@ -145,6 +150,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // DNS — global view
     Route::get('/dns', Dns\DnsOverview::class)->name('dns.index');
+
+    // Notification Center
+    Route::get('/notifications', Notifications\NotificationCenter::class)->name('notifications.index');
 
     // User preferences API
     Route::post('/api/user/theme', function () {

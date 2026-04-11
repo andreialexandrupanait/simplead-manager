@@ -153,17 +153,35 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('toast', () => ({
-        show: false,
-        message: '',
-        type: 'success',
-        _timeout: null,
+    Alpine.data('toastStack', () => ({
+        toasts: [],
+        _nextId: 1,
+
         notify(detail) {
-            this.message = detail.message;
-            this.type = detail.type ?? 'success';
-            this.show = true;
-            clearTimeout(this._timeout);
-            this._timeout = setTimeout(() => this.show = false, 4000);
+            if (this.toasts.length >= 5) {
+                this.toasts.shift();
+            }
+            const id = this._nextId++;
+            const toast = {
+                id,
+                message: detail.message ?? '',
+                type: detail.type ?? 'success',
+                visible: true,
+            };
+            this.toasts.push(toast);
+            setTimeout(() => this.dismiss(id), 5000);
+        },
+
+        dismiss(id) {
+            const idx = this.toasts.findIndex(t => t.id === id);
+            if (idx !== -1) this.toasts.splice(idx, 1);
+        },
+
+        colorClass(type) {
+            if (type === 'success') return 'bg-green-50 text-green-800 dark:bg-green-900/80 dark:text-green-200';
+            if (type === 'error') return 'bg-red-50 text-red-800 dark:bg-red-900/80 dark:text-red-200';
+            if (type === 'warning') return 'bg-yellow-50 text-yellow-800 dark:bg-yellow-900/80 dark:text-yellow-200';
+            return 'bg-blue-50 text-blue-800 dark:bg-blue-900/80 dark:text-blue-200';
         },
     }));
 

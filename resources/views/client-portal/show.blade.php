@@ -33,6 +33,9 @@
                         default    => 'bg-gray-300',
                     };
                     $incident = $monitor?->ongoingIncident;
+                    $healthScore = \App\Services\HealthScoreService::calculate($site)['total'];
+                    $healthColor = $healthScore >= 75 ? 'text-green-600' : ($healthScore >= 50 ? 'text-amber-600' : 'text-red-600');
+                    $securityScore = $site->security_hardening_score;
                 @endphp
                 <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                     {{-- Ongoing incident banner --}}
@@ -92,6 +95,28 @@
                             <p class="text-sm font-bold text-gray-900">
                                 {{ $site->latestCompletedBackup?->completed_at?->diffForHumans() ?? 'None' }}
                             </p>
+                        </div>
+                    </div>
+
+                    {{-- Extended health & version info --}}
+                    <div class="mt-3 grid grid-cols-2 gap-3 rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500">Health Score</p>
+                            <p class="text-sm font-bold {{ $healthColor }}">{{ $healthScore }}<span class="text-xs font-normal text-gray-400">/100</span></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500">Security</p>
+                            <p class="text-sm font-bold {{ $securityScore !== null ? ($securityScore >= 75 ? 'text-green-600' : ($securityScore >= 50 ? 'text-amber-600' : 'text-red-600')) : 'text-gray-400' }}">
+                                {{ $securityScore !== null ? $securityScore . '%' : '—' }}
+                            </p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500">PHP</p>
+                            <p class="text-sm font-semibold text-gray-700">{{ $site->php_version ?? '—' }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500">WordPress</p>
+                            <p class="text-sm font-semibold text-gray-700">{{ $site->wp_version ?? '—' }}</p>
                         </div>
                     </div>
                 </div>

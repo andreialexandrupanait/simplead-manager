@@ -58,6 +58,16 @@ class GoogleApiService
 
     protected function api(): \Illuminate\Http\Client\PendingRequest
     {
-        return Http::timeout(30)->withToken($this->accessToken);
+        return Http::timeout(30)
+            ->withToken($this->accessToken)
+            ->retry(3, 2000, function (\Exception $exception, \Illuminate\Http\Client\Request $request): bool {
+                if (! $exception instanceof \Illuminate\Http\Client\RequestException) {
+                    return false;
+                }
+
+                $status = $exception->response?->status();
+
+                return in_array($status, [429, 500, 502, 503, 504], true);
+            }, throw: false);
     }
 }

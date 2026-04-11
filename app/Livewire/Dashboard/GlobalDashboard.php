@@ -69,7 +69,9 @@ class GlobalDashboard extends Component
     #[Computed]
     public function sites()
     {
-        return app(DashboardService::class)->getSitesOverview(30, $this->search, $this->filter, $this->statusFilter, $this->clientFilter, $this->sort);
+        $perPage = $this->reordering ? 10000 : 30;
+
+        return app(DashboardService::class)->getSitesOverview($perPage, $this->search, $this->filter, $this->statusFilter, $this->clientFilter, $this->sort);
     }
 
     #[Computed]
@@ -292,6 +294,11 @@ class GlobalDashboard extends Component
     {
         $this->reordering = true;
         $this->sort = 'manual';
+        $this->search = '';
+        $this->filter = 'all';
+        $this->statusFilter = null;
+        $this->clientFilter = null;
+        $this->resetPage();
         unset($this->sites);
     }
 
@@ -309,12 +316,8 @@ class GlobalDashboard extends Component
             return;
         }
 
-        $page = $this->sites->currentPage();
-        $perPage = $this->sites->perPage();
-        $offset = ($page - 1) * $perPage;
-
         foreach ($orderedIds as $index => $siteId) {
-            Site::where('id', $siteId)->update(['sort_order' => $offset + $index + 1]);
+            Site::where('id', $siteId)->update(['sort_order' => $index + 1]);
         }
 
         $this->reordering = false;

@@ -6,6 +6,7 @@ namespace App\Services\Notifications;
 
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationChannel;
+use App\Models\NotificationEventPreference;
 use App\Models\NotificationTemplate;
 use App\Models\Site;
 use App\Services\SettingsService;
@@ -70,6 +71,11 @@ class NotificationService
                 continue;
             }
 
+            // Check per-event per-channel preference for the site owner
+            if (! static::isEventEnabledForChannel($site->user_id, $channel->id, $event)) {
+                continue;
+            }
+
             // Only buffer info-level notifications; everything else dispatches immediately
             if ($severity === 'info') {
                 static::buffer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
@@ -121,8 +127,15 @@ class NotificationService
             $channels = NotificationChannel::where('is_default', true)->where('is_active', true)->get();
         }
 
+        $authUserId = auth()->id();
+
         foreach ($channels as $channel) {
             if (! $channel->subscribedTo($event)) {
+                continue;
+            }
+
+            // Check per-event per-channel preference for the authenticated user (if available)
+            if ($authUserId !== null && ! static::isEventEnabledForChannel($authUserId, $channel->id, $event)) {
                 continue;
             }
 
@@ -178,6 +191,25 @@ class NotificationService
                 $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
             );
         }
+    }
+
+    /**
+     * Check per-event per-channel preference for a user.
+     * Returns true (send) when no preference row exists (default enabled) or when enabled=true.
+     * Returns false (skip) only when an explicit preference exists with enabled=false.
+     */
+    protected static function isEventEnabledForChannel(int $userId, int $channelId, string $event): bool
+    {
+        $preference = NotificationEventPreference::where('user_id', $userId)
+            ->where('notification_channel_id', $channelId)
+            ->where('event', $event)
+            ->first();
+
+        if ($preference === null) {
+            return true; // No preference row — default to enabled
+        }
+
+        return $preference->enabled;
     }
 
     /**

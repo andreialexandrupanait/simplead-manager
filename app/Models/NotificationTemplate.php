@@ -58,6 +58,10 @@ class NotificationTemplate extends Model
         'safe_update_failed' => 'Safe Update Failed',
         'report_reminder' => 'Report Reminder',
         'connection_validation_failed' => 'Connection Failed',
+        'dns_changed' => 'DNS Records Changed',
+        'php_fatal_error' => 'PHP Fatal Error Detected',
+        'content_stale' => 'Stale Content Detected',
+        'connector_update_failed' => 'Connector Update Failed',
     ];
 
     /**

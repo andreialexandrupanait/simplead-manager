@@ -101,4 +101,12 @@ trait ManagesSiteInfo
 
         return $response->json();
     }
+
+    public function rotateApiKeys(): array
+    {
+        $response = $this->request('POST', '/rotate-keys');
+        $response->throw();
+
+        return $response->json();
+    }
 }

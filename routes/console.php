@@ -46,6 +46,9 @@ Schedule::call(new IncidentResponseDispatcher)
     ->withoutOverlapping()
     ->onOneServer();
 
+// Daily health score snapshot
+Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();
+
 // ==========================================================================
 // Monthly Aggregation
 // ==========================================================================

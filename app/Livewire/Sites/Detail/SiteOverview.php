@@ -8,7 +8,9 @@ use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithWpAdminLogin;
+use App\Models\ActivityLog;
 use App\Models\AnalyticsCache;
+use App\Models\HealthScoreHistory;
 use App\Models\SearchConsoleCache;
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
@@ -214,6 +216,31 @@ class SiteOverview extends Component
     }
 
     #[Computed]
+    public function recentActivity(): \Illuminate\Support\Collection
+    {
+        return ActivityLog::where('site_id', $this->site->id)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
+
+    #[Computed]
+    public function healthTrend(): array
+    {
+        $history = HealthScoreHistory::where('site_id', $this->site->id)
+            ->where('recorded_at', '>=', now()->subDays(30))
+            ->orderBy('recorded_at')
+            ->pluck('score')
+            ->toArray();
+        $current = end($history) ?: 0;
+        $oldest = reset($history) ?: $current;
+        $change = $current - $oldest;
+
+        return ['history' => $history, 'change' => $change, 'direction' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'neutral')];
+    }
+
+    #[Computed]
     public function dnsStatus(): array
     {
         $monitor = $this->site->dnsMonitor;
@@ -365,6 +392,32 @@ class SiteOverview extends Component
 
         $this->dispatch('close-modal-connect-plugin');
         session()->flash('success', 'Site disconnected.');
+    }
+
+    public function rotateApiKeys(): void
+    {
+        if (! $this->site->is_connected) {
+            $this->dispatch('notify', type: 'error', message: 'Site is not connected.');
+
+            return;
+        }
+
+        try {
+            $api = $this->apiFactory->make($this->site);
+            $result = $api->rotateApiKeys();
+
+            $this->site->update([
+                'api_key' => $result['new_key'],
+                'api_secret' => $result['new_secret'],
+            ]);
+
+            $this->apiKey = $result['new_key'];
+            $this->apiSecret = $result['new_secret'];
+
+            $this->dispatch('notify', type: 'success', message: 'API keys rotated successfully.');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Key rotation failed: ' . $e->getMessage());
+        }
     }
 
     public function resumeMonitoring(): void

@@ -311,7 +311,34 @@
         @else
         {{-- Search + Filter Pills --}}
         <div class="mb-3 flex flex-wrap items-center gap-2">
-            {{-- Client Pill --}}
+            @if($this->reordering)
+                {{-- Reorder mode: only Save/Cancel --}}
+                <span class="text-sm text-gray-500">{{ __('Drag sites to reorder') }}</span>
+                <div class="flex items-center gap-2 sm:ml-auto">
+                    <button
+                        type="button"
+                        x-data
+                        @click="
+                            let c = document.getElementById('sortable-site-list');
+                            let ids = [...c.querySelectorAll('[data-site-id]')].map(el => Number(el.dataset.siteId));
+                            if (ids.length) $wire.saveReorder(ids);
+                        "
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
+                    >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        {{ __('Save Order') }}
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="cancelReordering"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                    >
+                        {{ __('Cancel') }}
+                    </button>
+                </div>
+            @else
+                {{-- Normal mode: filters + sort + reorder + search --}}
+                {{-- Client Pill --}}
                 @php
                     $clientActive = $this->clientFilter !== null;
                     $clientLabel = __('Client');
@@ -436,43 +463,21 @@
                 </x-ui.dropdown>
 
                 {{-- Reorder Button --}}
-                @if($this->reordering)
-                    <button
-                        type="button"
-                        x-data
-                        @click="
-                            let c = document.getElementById('sortable-site-list');
-                            let ids = [...c.querySelectorAll('[data-site-id]')].map(el => Number(el.dataset.siteId));
-                            if (ids.length) $wire.saveReorder(ids);
-                        "
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100"
-                    >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        {{ __('Save Order') }}
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="cancelReordering"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                    >
-                        {{ __('Cancel') }}
-                    </button>
-                @else
-                    <button
-                        type="button"
-                        wire:click="startReordering"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                    >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
-                        {{ __('Reorder') }}
-                    </button>
-                @endif
+                <button
+                    type="button"
+                    wire:click="startReordering"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>
+                    {{ __('Reorder') }}
+                </button>
 
-            <x-ui.search-input
-                wire:model.live.debounce.300ms="search"
-                placeholder="{{ __('Search sites...') }}"
-                class="w-full sm:ml-auto sm:w-64"
-            />
+                <x-ui.search-input
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="{{ __('Search sites...') }}"
+                    class="w-full sm:ml-auto sm:w-64"
+                />
+            @endif
         </div>
         @endif
 
@@ -494,9 +499,11 @@
                 </div>
             </div>
 
+            @if(!$this->reordering)
             <div class="mt-4">
                 {{ $this->sites->links() }}
             </div>
+            @endif
         @endif
     </div>
 

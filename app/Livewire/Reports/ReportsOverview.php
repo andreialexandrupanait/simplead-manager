@@ -43,6 +43,23 @@ class ReportsOverview extends Component
         $this->resetPage();
     }
 
+    public function generateAllReports(): void
+    {
+        $sites = Site::where('is_connected', true)->get();
+        $template = \App\Models\ReportTemplate::where('is_default', true)->first();
+        if (! $template) {
+            $this->dispatch('notify', type: 'error', message: 'No default report template found.');
+
+            return;
+        }
+        $queued = 0;
+        foreach ($sites as $site) {
+            \App\Jobs\GenerateReport::dispatch($site, $template);
+            $queued++;
+        }
+        $this->dispatch('notify', type: 'success', message: "Queued reports for {$queued} sites.");
+    }
+
     public function deleteReport(int $reportId): void
     {
         $report = Report::findOrFail($reportId);

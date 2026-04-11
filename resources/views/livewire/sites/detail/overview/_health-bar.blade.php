@@ -70,5 +70,43 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- 30-day Trend --}}
+        @php
+            $trend = $this->healthTrend;
+        @endphp
+        @if(!empty($trend['history']))
+            <div class="border-t border-gray-100 pt-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">30-day Trend</p>
+                    @php
+                        $trendIcon = match($trend['direction']) {
+                            'up'   => '&#8593;',
+                            'down' => '&#8595;',
+                            default => '&#8212;',
+                        };
+                        $trendColor = match($trend['direction']) {
+                            'up'   => 'text-green-600',
+                            'down' => 'text-red-500',
+                            default => 'text-gray-400',
+                        };
+                    @endphp
+                    <span class="text-xs font-semibold {{ $trendColor }}">
+                        {!! $trendIcon !!} {{ $trend['change'] > 0 ? '+' : '' }}{{ $trend['change'] }}
+                    </span>
+                </div>
+
+                {{-- Mini sparkline bars --}}
+                <div class="flex items-end gap-0.5 h-8">
+                    @foreach($trend['history'] as $point)
+                        @php
+                            $barPct = max(10, min(100, $point));
+                            $barColor = $point >= 75 ? 'bg-green-400' : ($point >= 50 ? 'bg-yellow-400' : 'bg-red-400');
+                        @endphp
+                        <div class="flex-1 rounded-sm {{ $barColor }}" style="height: {{ $barPct }}%;" title="{{ $point }}/100"></div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </div>
 </x-ui.card>
