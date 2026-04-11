@@ -13,6 +13,7 @@ use App\Models\BacklinkSnapshot;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Client;
+use App\Models\CompetitorSite;
 use App\Models\CoreFileCheck;
 use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
@@ -270,6 +271,11 @@ trait HasSiteRelationships
     public function seoAlertRules(): HasMany
     {
         return $this->hasMany(SeoAlertRule::class);
+    }
+
+    public function competitorSites(): HasMany
+    {
+        return $this->hasMany(CompetitorSite::class);
     }
 
     public function backlinks(): HasMany

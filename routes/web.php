@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/seo/technical', Sites\Detail\Seo\SeoTechnical::class)->name('sites.seo.technical');
         Route::get('/seo/performance', Sites\Detail\Seo\SeoCoreWebVitals::class)->name('sites.seo.performance');
         Route::get('/seo/backlinks', Sites\Detail\Seo\SeoBacklinks::class)->name('sites.seo.backlinks');
+        Route::get('/seo/competitors', Sites\Detail\Seo\SeoCompetitors::class)->name('sites.seo.competitors');
         Route::get('/seo/crawl', Sites\Detail\Seo\SeoCrawl::class)->name('sites.seo.crawl');
         Route::get('/seo/crawl/results', Sites\Detail\Seo\SeoCrawlResults::class)->name('sites.seo.crawl.results');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
