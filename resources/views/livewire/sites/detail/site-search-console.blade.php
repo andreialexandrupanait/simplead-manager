@@ -73,7 +73,7 @@
 
             @if($overview)
             {{-- Metric Cards + Performance Chart wrapped in one Alpine scope for toggle + aggregation --}}
-            <div x-data="{
+            <div @search-console-data-updated.window="updateData($event.detail)" x-data="{
                 {{-- Metric toggle state --}}
                 activeMetrics: { clicks: true, impressions: true, ctr: true, position: true },
                 toggleMetric(key) { this.activeMetrics[key] = !this.activeMetrics[key]; this.renderChart(); },
@@ -85,6 +85,17 @@
                 rawImpressions: @js(collect($performanceOverTime)->pluck('impressions')->toArray()),
                 rawCtr: @js(collect($performanceOverTime)->pluck('ctr')->toArray()),
                 rawPosition: @js(collect($performanceOverTime)->pluck('position')->toArray()),
+
+                {{-- Live update from Livewire after sync --}}
+                updateData(detail) {
+                    const d = detail[0] || detail;
+                    this.rawLabels = d.labels || [];
+                    this.rawClicks = d.clicks || [];
+                    this.rawImpressions = d.impressions || [];
+                    this.rawCtr = d.ctr || [];
+                    this.rawPosition = d.position || [];
+                    this.$nextTick(() => this.renderChart());
+                },
 
                 get chartData() {
                     if (this.aggregation === 'weekly') return this.weeklyData();

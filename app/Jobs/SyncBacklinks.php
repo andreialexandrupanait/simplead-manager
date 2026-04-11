@@ -39,18 +39,25 @@ class SyncBacklinks implements ShouldBeUnique, ShouldQueue
     {
         $service = app(BacklinkService::class);
 
-        $synced = $service->syncFromGsc($this->site);
+        // Primary: discover from crawl data (works without GSC)
+        $crawlDiscovered = $service->discoverFromCrawl($this->site);
+
+        // Supplementary: GSC data if available (gracefully returns 0 if not connected)
+        $gscSynced = $service->syncFromGsc($this->site);
+
         $lost = $service->detectLostBacklinks($this->site);
         $snapshot = $service->createSnapshot($this->site);
+
+        $total = $crawlDiscovered + $gscSynced;
 
         ActivityLogger::log(
             type: 'seo',
             severity: 'info',
             title: "Backlinks synced for {$this->site->name}",
-            description: "Synced {$synced} backlink(s), detected {$lost} lost. Total: {$snapshot->total_backlinks}, Domains: {$snapshot->referring_domains}",
+            description: "Discovered {$crawlDiscovered} from crawl, {$gscSynced} from GSC, {$lost} lost. Total: {$snapshot->total_backlinks}, Domains: {$snapshot->referring_domains}",
             site: $this->site,
-            metadata: ['synced' => $synced, 'lost' => $lost, 'total' => $snapshot->total_backlinks, 'referring_domains' => $snapshot->referring_domains],
-            icon: 'arrow-top-right-on-square',
+            metadata: ['crawl_discovered' => $crawlDiscovered, 'gsc_synced' => $gscSynced, 'lost' => $lost, 'total' => $snapshot->total_backlinks, 'referring_domains' => $snapshot->referring_domains],
+            icon: 'link',
         );
     }
 

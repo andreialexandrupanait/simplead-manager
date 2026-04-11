@@ -6,13 +6,115 @@ namespace App\Services;
 
 use App\Models\Backlink;
 use App\Models\BacklinkSnapshot;
+use App\Models\CrawledPage;
 use App\Models\Site;
+use App\Models\SiteCrawl;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BacklinkService
 {
     /**
+     * Known spam TLD patterns and suspicious domain indicators.
+     */
+    private const SPAM_TLDS = [
+        '.xyz', '.top', '.tk', '.ml', '.ga', '.cf', '.gq', '.buzz', '.club',
+        '.icu', '.work', '.site', '.online', '.fun', '.space', '.pw',
+    ];
+
+    private const GENERIC_ANCHORS = [
+        'click here', 'read more', 'here', 'website', 'link', 'visit',
+        'this site', 'more info', 'learn more', 'go here', 'see more',
+    ];
+
+    /**
+     * Discover backlinks from the site's latest crawl data.
+     *
+     * Extracts external pages that link TO our site by checking
+     * referring pages found during crawling (pages that our crawler
+     * found linking to external sites — but reversed: what external
+     * sites link to us).
+     *
+     * This works WITHOUT Google Search Console.
+     */
+    public function discoverFromCrawl(Site $site): int
+    {
+        $latestCrawl = SiteCrawl::where('site_id', $site->id)
+            ->where('status', SiteCrawl::STATUS_COMPLETED)
+            ->latest()
+            ->first();
+
+        if (! $latestCrawl) {
+            return 0;
+        }
+
+        $siteHost = parse_url($site->url, PHP_URL_HOST) ?: '';
+        $siteHostNormalized = preg_replace('/^www\./', '', strtolower($siteHost));
+        $today = now()->toDateString();
+        $discovered = 0;
+
+        // Find all crawled pages and check their external links
+        // External links pointing TO other sites aren't backlinks,
+        // but we can discover pages on OUR site that receive internal links
+        // For actual external backlink discovery, we check external_links
+        // that point BACK to our own domain (circular references from external)
+
+        // The real value: discover referring pages by crawling the web
+        // For now, use a lightweight approach: check if any external pages
+        // discovered during crawl link back to us
+        $pages = $latestCrawl->pages()
+            ->whereRaw("jsonb_array_length(COALESCE(external_links, '[]'::jsonb)) > 0")
+            ->get(['url', 'external_links']);
+
+        foreach ($pages as $page) {
+            $pageHost = parse_url($page->url, PHP_URL_HOST) ?: '';
+            $pageHostNormalized = preg_replace('/^www\./', '', strtolower($pageHost));
+
+            // Skip pages on our own site
+            if ($pageHostNormalized === $siteHostNormalized) {
+                continue;
+            }
+
+            // This external page links to URLs — check if any point to our site
+            foreach ($page->external_links ?? [] as $link) {
+                $linkUrl = $link['url'] ?? '';
+                $linkHost = parse_url($linkUrl, PHP_URL_HOST) ?: '';
+                $linkHostNormalized = preg_replace('/^www\./', '', strtolower($linkHost));
+
+                if ($linkHostNormalized === $siteHostNormalized) {
+                    $sourceDomain = $pageHostNormalized;
+                    $spamScore = $this->calculateSpamScore($sourceDomain, $link['text'] ?? null, false);
+
+                    Backlink::updateOrCreate(
+                        [
+                            'site_id' => $site->id,
+                            'source_url' => $page->url,
+                            'target_url' => $linkUrl,
+                        ],
+                        [
+                            'source_domain' => $sourceDomain,
+                            'anchor_text' => ! empty($link['text']) ? mb_substr($link['text'], 0, 500) : null,
+                            'is_nofollow' => (bool) ($link['nofollow'] ?? false),
+                            'link_type' => $link['nofollow'] ?? false ? 'nofollow' : 'dofollow',
+                            'first_seen_at' => $today,
+                            'last_seen_at' => $today,
+                            'lost_at' => null,
+                            'source_type' => 'crawl',
+                            'spam_score' => $spamScore,
+                        ],
+                    );
+
+                    $discovered++;
+                }
+            }
+        }
+
+        return $discovered;
+    }
+
+    /**
      * Sync backlinks from Google Search Console Links API.
+     * Returns 0 gracefully if GSC is not connected (not required).
      */
     public function syncFromGsc(Site $site): int
     {
@@ -40,17 +142,12 @@ class BacklinkService
         $externalLinks = $linksData['external_links'] ?? [];
         $synced = 0;
         $today = now()->toDateString();
-        $siteHost = parse_url($site->url, PHP_URL_HOST) ?: '';
 
         foreach ($externalLinks as $link) {
             $targetUrl = $link['target_url'] ?? '';
             if ($targetUrl === '') {
                 continue;
             }
-
-            // GSC Links API returns target URLs on our site being linked to
-            // We don't get source URLs from this API, so we create aggregate entries
-            $domain = 'gsc-aggregate';
 
             Backlink::updateOrCreate(
                 [
@@ -59,7 +156,7 @@ class BacklinkService
                     'target_url' => $targetUrl,
                 ],
                 [
-                    'source_domain' => $domain,
+                    'source_domain' => 'gsc-aggregate',
                     'anchor_text' => null,
                     'is_nofollow' => false,
                     'first_seen_at' => $today,
@@ -130,6 +227,8 @@ class BacklinkService
                 ? in_array(mb_strtolower(trim($row[$nofollowIdx])), ['1', 'true', 'yes'], true)
                 : false;
 
+            $spamScore = $this->calculateSpamScore($sourceDomain, $anchorText, $isNofollow);
+
             Backlink::updateOrCreate(
                 [
                     'site_id' => $site->id,
@@ -140,10 +239,12 @@ class BacklinkService
                     'source_domain' => $sourceDomain,
                     'anchor_text' => $anchorText ?: null,
                     'is_nofollow' => $isNofollow,
+                    'link_type' => $isNofollow ? 'nofollow' : 'dofollow',
                     'first_seen_at' => $today,
                     'last_seen_at' => $today,
                     'lost_at' => null,
                     'source_type' => 'csv_import',
+                    'spam_score' => $spamScore,
                 ],
             );
 
@@ -156,14 +257,100 @@ class BacklinkService
     }
 
     /**
+     * Calculate spam score for a backlink (0-100, higher = more spam).
+     *
+     * Factors: TLD reputation, anchor text patterns, nofollow status,
+     * domain length, suspicious patterns.
+     */
+    public function calculateSpamScore(string $domain, ?string $anchorText, bool $isNofollow): int
+    {
+        $score = 0;
+        $domain = strtolower($domain);
+
+        // 1. Suspicious TLD (+25)
+        foreach (self::SPAM_TLDS as $tld) {
+            if (str_ends_with($domain, $tld)) {
+                $score += 25;
+
+                break;
+            }
+        }
+
+        // 2. Very long domain name (+15)
+        $domainWithoutTld = explode('.', $domain)[0] ?? '';
+        if (mb_strlen($domainWithoutTld) > 20) {
+            $score += 15;
+        }
+
+        // 3. Domain with many hyphens (+10)
+        if (substr_count($domain, '-') >= 3) {
+            $score += 10;
+        }
+
+        // 4. Domain with numbers (+5)
+        if (preg_match('/\d{3,}/', $domainWithoutTld)) {
+            $score += 5;
+        }
+
+        // 5. Generic anchor text (+10)
+        if ($anchorText) {
+            $normalizedAnchor = mb_strtolower(trim($anchorText));
+            if (in_array($normalizedAnchor, self::GENERIC_ANCHORS, true)) {
+                $score += 10;
+            }
+
+            // Exact match keyword-rich anchor (suspicious if very long) (+10)
+            if (mb_strlen($normalizedAnchor) > 50) {
+                $score += 10;
+            }
+        }
+
+        // 6. Nofollow links from suspicious domains are extra suspicious (+5)
+        if ($isNofollow && $score > 20) {
+            $score += 5;
+        }
+
+        // 7. Subdomain depth >3 (+10)
+        $parts = explode('.', $domain);
+        if (count($parts) > 4) {
+            $score += 10;
+        }
+
+        return min(100, max(0, $score));
+    }
+
+    /**
+     * Recalculate spam scores for all backlinks of a site.
+     */
+    public function recalculateSpamScores(Site $site): int
+    {
+        $backlinks = Backlink::where('site_id', $site->id)->get();
+        $updated = 0;
+
+        foreach ($backlinks as $backlink) {
+            $spamScore = $this->calculateSpamScore(
+                $backlink->source_domain,
+                $backlink->anchor_text,
+                $backlink->is_nofollow,
+            );
+
+            if ($backlink->spam_score !== $spamScore) {
+                $backlink->update(['spam_score' => $spamScore]);
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    /**
      * Create a daily snapshot of backlink statistics.
      */
     public function createSnapshot(Site $site): BacklinkSnapshot
     {
         $today = now()->toDateString();
 
-        $active = Backlink::where('site_id', $site->id)->active();
-        $totalActive = $active->count();
+        $totalActive = Backlink::where('site_id', $site->id)->active()->count();
         $referringDomains = Backlink::where('site_id', $site->id)->active()->distinct('source_domain')->count('source_domain');
 
         $newToday = Backlink::where('site_id', $site->id)
@@ -249,6 +436,11 @@ class BacklinkService
             ->where('lost_at', '>=', now()->subDays(30)->toDateString())
             ->count();
 
+        $spamCount = Backlink::where('site_id', $site->id)
+            ->active()
+            ->where('spam_score', '>=', 40)
+            ->count();
+
         return [
             'total' => $total,
             'referring_domains' => $referringDomains,
@@ -256,6 +448,7 @@ class BacklinkService
             'lost_last_30_days' => $lostLast30,
             'dofollow' => Backlink::where('site_id', $site->id)->active()->where('is_nofollow', false)->count(),
             'nofollow' => Backlink::where('site_id', $site->id)->active()->where('is_nofollow', true)->count(),
+            'spam' => $spamCount,
         ];
     }
 

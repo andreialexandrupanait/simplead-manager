@@ -343,14 +343,14 @@
                     <x-ui.card class="mb-4">
                         <h3 class="mb-2 text-sm font-semibold text-orange-700">In Sitemap but NOT Crawled ({{ $sm['only_sitemap_count'] }})</h3>
                         <div class="rounded-lg bg-blue-50 p-3 mb-3 text-xs text-blue-800"><strong>Fix:</strong> Add internal links to these pages or remove from sitemap.</div>
-                        <div class="max-h-60 overflow-y-auto space-y-1">@foreach($sm['only_sitemap'] as $url)<a href="{{ $url }}" target="_blank" class="block truncate text-sm text-purple-600 hover:text-purple-800">{{ $url }}</a>@endforeach</div>
+                        <div class="max-h-60 min-w-0 overflow-y-auto overflow-x-hidden space-y-1">@foreach($sm['only_sitemap'] as $url)<a href="{{ $url }}" target="_blank" class="block min-w-0 truncate text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400">{{ $url }}</a>@endforeach</div>
                     </x-ui.card>
                 @endif
                 @if($sm['only_crawl_count'] > 0)
                     <x-ui.card class="mb-4">
                         <h3 class="mb-2 text-sm font-semibold text-yellow-700">Crawled but NOT in Sitemap ({{ $sm['only_crawl_count'] }})</h3>
                         <div class="rounded-lg bg-blue-50 p-3 mb-3 text-xs text-blue-800"><strong>Fix:</strong> Add these to your sitemap if they should be indexed.</div>
-                        <div class="max-h-60 overflow-y-auto space-y-1">@foreach($sm['only_crawl'] as $url)<div class="truncate text-sm text-gray-700">{{ $url }}</div>@endforeach</div>
+                        <div class="max-h-60 min-w-0 overflow-y-auto overflow-x-hidden space-y-1">@foreach($sm['only_crawl'] as $url)<div class="min-w-0 truncate text-sm text-gray-700 dark:text-gray-300">{{ $url }}</div>@endforeach</div>
                     </x-ui.card>
                 @endif
             @endif

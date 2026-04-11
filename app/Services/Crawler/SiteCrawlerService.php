@@ -141,21 +141,22 @@ class SiteCrawlerService
 
                 if ($response === null) {
                     // Connection/timeout failure
-                    CrawledPage::create([
-                        'site_crawl_id' => $crawl->id,
-                        'url' => $url,
-                        'status_code' => 0,
-                        'depth' => $depth,
-                        'response_time_ms' => $responseTimeMs,
-                        'issues' => [
-                            [
-                                'type' => 'request_failed',
-                                'severity' => 'high',
-                                'message' => 'HTTP request failed (timeout or connection error).',
+                    CrawledPage::updateOrCreate(
+                        ['site_crawl_id' => $crawl->id, 'url' => $url],
+                        [
+                            'status_code' => 0,
+                            'depth' => $depth,
+                            'response_time_ms' => $responseTimeMs,
+                            'issues' => [
+                                [
+                                    'type' => 'request_failed',
+                                    'severity' => 'high',
+                                    'message' => 'HTTP request failed (timeout or connection error).',
+                                ],
                             ],
+                            'crawled_at' => now(),
                         ],
-                        'crawled_at' => now(),
-                    ]);
+                    );
 
                     $pagesCrawled++;
                     $crawl->increment('pages_crawled');
@@ -194,44 +195,45 @@ class SiteCrawlerService
                     }
                 }
 
-                CrawledPage::create(array_merge([
-                    'site_crawl_id' => $crawl->id,
-                    'url' => $resolvedUrl,
-                    'status_code' => $statusCode,
-                    'content_type' => $contentType ? mb_substr($contentType, 0, 255) : null,
-                    'response_time_ms' => $responseTimeMs,
-                    'content_length' => $contentLength,
-                    'depth' => $depth,
-                    'x_robots_tag' => $xRobotsTag ? mb_substr($xRobotsTag, 0, 1024) : null,
-                    'redirect_url' => $redirectUrl,
-                    'redirect_status_code' => $redirectStatusCode,
-                    'title' => null,
-                    'title_length' => 0,
-                    'meta_description' => null,
-                    'meta_desc_length' => 0,
-                    'canonical_self_ref' => false,
-                    'h1_tags' => [],
-                    'h1_count' => 0,
-                    'h2_count' => 0,
-                    'h3_count' => 0,
-                    'word_count' => 0,
-                    'readability_score' => null,
-                    'internal_links' => [],
-                    'internal_links_count' => 0,
-                    'external_links' => [],
-                    'external_links_count' => 0,
-                    'images' => [],
-                    'images_count' => 0,
-                    'images_without_alt' => 0,
-                    'scripts' => [],
-                    'stylesheets' => [],
-                    'is_https' => str_starts_with($resolvedUrl, 'https://'),
-                    'has_mixed_content' => false,
-                    'structured_data_types' => [],
-                    'hreflang' => [],
-                    'issues' => [],
-                    'crawled_at' => now(),
-                ], $seoData));
+                CrawledPage::updateOrCreate(
+                    ['site_crawl_id' => $crawl->id, 'url' => $resolvedUrl],
+                    array_merge([
+                        'status_code' => $statusCode,
+                        'content_type' => $contentType ? mb_substr($contentType, 0, 255) : null,
+                        'response_time_ms' => $responseTimeMs,
+                        'content_length' => $contentLength,
+                        'depth' => $depth,
+                        'x_robots_tag' => $xRobotsTag ? mb_substr($xRobotsTag, 0, 1024) : null,
+                        'redirect_url' => $redirectUrl,
+                        'redirect_status_code' => $redirectStatusCode,
+                        'title' => null,
+                        'title_length' => 0,
+                        'meta_description' => null,
+                        'meta_desc_length' => 0,
+                        'canonical_self_ref' => false,
+                        'h1_tags' => [],
+                        'h1_count' => 0,
+                        'h2_count' => 0,
+                        'h3_count' => 0,
+                        'word_count' => 0,
+                        'readability_score' => null,
+                        'internal_links' => [],
+                        'internal_links_count' => 0,
+                        'external_links' => [],
+                        'external_links_count' => 0,
+                        'images' => [],
+                        'images_count' => 0,
+                        'images_without_alt' => 0,
+                        'scripts' => [],
+                        'stylesheets' => [],
+                        'is_https' => str_starts_with($resolvedUrl, 'https://'),
+                        'has_mixed_content' => false,
+                        'structured_data_types' => [],
+                        'hreflang' => [],
+                        'issues' => [],
+                        'crawled_at' => now(),
+                    ], $seoData),
+                );
 
                 $pagesCrawled++;
 

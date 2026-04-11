@@ -95,10 +95,10 @@
                 @if(!empty($maps))
                     <div class="space-y-2">
                         @foreach($maps as $sitemap)
-                            <div class="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5">
-                                <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2.5 dark:border-gray-700">
+                                <div class="min-w-0 flex-1 overflow-hidden">
                                     <a href="{{ $sitemap['url'] }}" target="_blank" rel="noopener noreferrer"
-                                       class="truncate text-xs font-medium text-purple-600 hover:text-purple-700">
+                                       class="block truncate text-xs font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400">
                                         {{ $sitemap['url'] }}
                                     </a>
                                 </div>
@@ -256,18 +256,19 @@
     @else
         {{-- No audit data --}}
         <x-ui.card>
-            <x-ui.empty-state
-                title="{{ __('No technical data available') }}"
-                description="{{ __('Run your first SEO audit from the Overview tab to see a technical analysis.') }}"
-                icon="search"
-            >
-                <x-slot:action>
-                    <a href="{{ route('sites.seo', $site) }}"
-                       class="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700">
-                        {{ __('Go to SEO Overview') }} &rarr;
-                    </a>
-                </x-slot:action>
-            </x-ui.empty-state>
+            <div class="py-12 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <h3 class="mt-3 text-sm font-medium text-gray-900 dark:text-white">{{ __('No technical data available') }}</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Run an SEO audit to analyze robots.txt, sitemaps, structured data, redirects, and broken links.') }}</p>
+                <div class="mt-4">
+                    <x-ui.button variant="primary" size="sm" wire:click="runAudit" wire:loading.attr="disabled" wire:target="runAudit">
+                        <span wire:loading.remove wire:target="runAudit">{{ __('Run SEO Audit') }}</span>
+                        <span wire:loading wire:target="runAudit">{{ __('Starting audit...') }}</span>
+                    </x-ui.button>
+                </div>
+            </div>
         </x-ui.card>
     @endif
 </div>

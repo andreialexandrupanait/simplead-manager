@@ -16,10 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $source_domain
  * @property string|null $anchor_text
  * @property bool $is_nofollow
+ * @property string|null $link_type
  * @property \Illuminate\Support\Carbon $first_seen_at
  * @property \Illuminate\Support\Carbon $last_seen_at
  * @property \Illuminate\Support\Carbon|null $lost_at
  * @property string $source_type
+ * @property int|null $spam_score
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Site|null $site
@@ -33,10 +35,12 @@ class Backlink extends Model
         'source_domain',
         'anchor_text',
         'is_nofollow',
+        'link_type',
         'first_seen_at',
         'last_seen_at',
         'lost_at',
         'source_type',
+        'spam_score',
     ];
 
     protected function casts(): array

@@ -733,38 +733,124 @@ class CrawlerResults extends Component
     public function exportXlsx()
     {
         $pages = $this->siteCrawl->pages()->orderBy('url')->get();
+        $htmlPages = $pages->filter(fn ($p) => str_contains(strtolower($p->content_type ?? ''), 'text/html'));
         $filename = 'crawl-'.$this->siteCrawl->id.'-'.now()->format('Y-m-d').'.xlsx';
 
         $spreadsheet = new Spreadsheet();
 
-        // Sheet 1: All Pages
+        // ── Sheet 1: All Pages (Internal) ──
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Pages');
-        $headers = ['URL', 'Status', 'Title', 'Title Length', 'Meta Description', 'Meta Desc Length', 'H1 Count', 'H2 Count', 'Word Count', 'Canonical', 'Meta Robots', 'Response Time (ms)', 'Content Length', 'Internal Links', 'External Links', 'Images', 'Depth', 'OG Title', 'OG Description', 'Quality Score'];
+        $sheet->setTitle('Internal');
+        $headers = ['URL', 'Status Code', 'Title', 'Title Length', 'Meta Description', 'Meta Desc Length', 'H1', 'H1 Count', 'H2 Count', 'H3 Count', 'Word Count', 'Readability', 'Canonical URL', 'Self-Referencing', 'Meta Robots', 'X-Robots-Tag', 'Response Time (ms)', 'Content Length', 'Content Type', 'Internal Links', 'External Links', 'Images', 'Images Missing Alt', 'Depth', 'HTTPS', 'OG Title', 'OG Description', 'Structured Data', 'Quality Score'];
         $sheet->fromArray($headers, null, 'A1');
+        $this->boldHeaderRow($sheet, 'A1', count($headers));
 
         $row = 2;
         foreach ($pages as $page) {
+            $h1 = implode(' | ', $page->h1_tags ?? []);
+            $structuredData = implode(', ', $page->structured_data_types ?? []);
             $sheet->fromArray([
                 $page->url, $page->status_code, $page->title, $page->title_length,
-                $page->meta_description, $page->meta_desc_length, $page->h1_count,
-                $page->h2_count, $page->word_count, $page->canonical_url, $page->meta_robots,
-                $page->response_time_ms, $page->content_length, $page->internal_links_count,
-                $page->external_links_count, $page->images_count, $page->depth,
-                $page->og_title, $page->og_description, self::contentQualityScore($page),
+                $page->meta_description, $page->meta_desc_length, $h1, $page->h1_count,
+                $page->h2_count, $page->h3_count, $page->word_count, $page->readability_score,
+                $page->canonical_url, $page->canonical_self_ref ? 'Yes' : 'No',
+                $page->meta_robots, $page->x_robots_tag, $page->response_time_ms,
+                $page->content_length, $page->content_type, $page->internal_links_count,
+                $page->external_links_count, $page->images_count, $page->images_without_alt,
+                $page->depth, $page->is_https ? 'Yes' : 'No',
+                $page->og_title, $page->og_description, $structuredData, self::contentQualityScore($page),
             ], null, "A{$row}");
             $row++;
         }
 
-        // Bold header row
-        $sheet->getStyle('A1:T1')->getFont()->setBold(true);
+        // ── Sheet 2: Page Titles ──
+        $titlesSheet = $spreadsheet->createSheet();
+        $titlesSheet->setTitle('Page Titles');
+        $titlesSheet->fromArray(['URL', 'Title', 'Title Length', 'Status'], null, 'A1');
+        $this->boldHeaderRow($titlesSheet, 'A1', 4);
+        $row = 2;
+        foreach ($htmlPages as $page) {
+            $status = ! $page->title ? 'Missing' : ($page->title_length < 30 ? 'Too Short' : ($page->title_length > 60 ? 'Too Long' : 'OK'));
+            $titlesSheet->fromArray([$page->url, $page->title, $page->title_length, $status], null, "A{$row}");
+            $row++;
+        }
 
-        // Sheet 2: Issues
+        // ── Sheet 3: Meta Descriptions ──
+        $metaSheet = $spreadsheet->createSheet();
+        $metaSheet->setTitle('Meta Descriptions');
+        $metaSheet->fromArray(['URL', 'Meta Description', 'Length', 'Status'], null, 'A1');
+        $this->boldHeaderRow($metaSheet, 'A1', 4);
+        $row = 2;
+        foreach ($htmlPages as $page) {
+            $status = ! $page->meta_description ? 'Missing' : ($page->meta_desc_length < 120 ? 'Too Short' : ($page->meta_desc_length > 160 ? 'Too Long' : 'OK'));
+            $metaSheet->fromArray([$page->url, $page->meta_description, $page->meta_desc_length, $status], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 4: H1 / H2 ──
+        $headingsSheet = $spreadsheet->createSheet();
+        $headingsSheet->setTitle('Headings');
+        $headingsSheet->fromArray(['URL', 'H1', 'H1 Count', 'H2 Count', 'H3 Count', 'Status'], null, 'A1');
+        $this->boldHeaderRow($headingsSheet, 'A1', 6);
+        $row = 2;
+        foreach ($htmlPages as $page) {
+            $h1 = implode(' | ', $page->h1_tags ?? []);
+            $status = $page->h1_count === 0 ? 'Missing H1' : ($page->h1_count > 1 ? 'Multiple H1' : 'OK');
+            $headingsSheet->fromArray([$page->url, $h1, $page->h1_count, $page->h2_count, $page->h3_count, $status], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 5: Images ──
+        $imagesSheet = $spreadsheet->createSheet();
+        $imagesSheet->setTitle('Images');
+        $imagesSheet->fromArray(['URL', 'Total Images', 'Missing Alt', 'Status'], null, 'A1');
+        $this->boldHeaderRow($imagesSheet, 'A1', 4);
+        $row = 2;
+        foreach ($htmlPages->where('images_count', '>', 0) as $page) {
+            $status = $page->images_without_alt > 0 ? "{$page->images_without_alt} missing alt" : 'OK';
+            $imagesSheet->fromArray([$page->url, $page->images_count, $page->images_without_alt, $status], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 6: Redirects ──
+        $redirectsSheet = $spreadsheet->createSheet();
+        $redirectsSheet->setTitle('Redirects');
+        $redirectsSheet->fromArray(['URL', 'Status Code', 'Redirect URL', 'Redirect Status'], null, 'A1');
+        $this->boldHeaderRow($redirectsSheet, 'A1', 4);
+        $row = 2;
+        foreach ($pages->filter(fn ($p) => $p->redirect_url) as $page) {
+            $redirectsSheet->fromArray([$page->url, $page->status_code, $page->redirect_url, $page->redirect_status_code], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 7: Canonicals ──
+        $canonicalsSheet = $spreadsheet->createSheet();
+        $canonicalsSheet->setTitle('Canonicals');
+        $canonicalsSheet->fromArray(['URL', 'Canonical URL', 'Self-Referencing', 'Status'], null, 'A1');
+        $this->boldHeaderRow($canonicalsSheet, 'A1', 4);
+        $row = 2;
+        foreach ($htmlPages as $page) {
+            $status = ! $page->canonical_url ? 'Missing' : ($page->canonical_self_ref ? 'Self-Ref' : 'Points Elsewhere');
+            $canonicalsSheet->fromArray([$page->url, $page->canonical_url, $page->canonical_self_ref ? 'Yes' : 'No', $status], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 8: Links ──
+        $linksSheet = $spreadsheet->createSheet();
+        $linksSheet->setTitle('Links');
+        $linksSheet->fromArray(['URL', 'Internal Links', 'External Links', 'Total Links'], null, 'A1');
+        $this->boldHeaderRow($linksSheet, 'A1', 4);
+        $row = 2;
+        foreach ($htmlPages as $page) {
+            $linksSheet->fromArray([$page->url, $page->internal_links_count, $page->external_links_count, $page->internal_links_count + $page->external_links_count], null, "A{$row}");
+            $row++;
+        }
+
+        // ── Sheet 9: Issues ──
         $issuesSheet = $spreadsheet->createSheet();
         $issuesSheet->setTitle('Issues');
         $issuesSheet->fromArray(['URL', 'Severity', 'Issue Type', 'Message', 'Recommendation'], null, 'A1');
-        $issuesSheet->getStyle('A1:E1')->getFont()->setBold(true);
-
+        $this->boldHeaderRow($issuesSheet, 'A1', 5);
         $row = 2;
         foreach ($pages as $page) {
             foreach ($page->issues ?? [] as $issue) {
@@ -776,26 +862,31 @@ class CrawlerResults extends Component
             }
         }
 
-        // Sheet 3: Summary
+        // ── Sheet 10: Summary ──
         $summarySheet = $spreadsheet->createSheet();
         $summarySheet->setTitle('Summary');
-        $summarySheet->getStyle('A1:A10')->getFont()->setBold(true);
+        $this->boldHeaderRow($summarySheet, 'A1', 1);
 
         $totalPages = $pages->count();
         $totalIssues = $pages->sum(fn ($p) => count($p->issues ?? []));
         $avgResponseTime = $pages->avg('response_time_ms');
         $pagesWithErrors = $pages->filter(fn ($p) => ($p->status_code ?? 200) >= 400)->count();
-        $avgWordCount = $pages->avg('word_count');
 
         $summaryData = [
             ['Crawl Report', $this->siteCrawl->site?->name ?? $this->siteCrawl->start_url],
             ['Date', now()->format('Y-m-d H:i')],
             ['Total Pages', $totalPages],
-            ['Pages with Errors', $pagesWithErrors],
+            ['HTML Pages', $htmlPages->count()],
+            ['Pages with Errors (4xx/5xx)', $pagesWithErrors],
             ['Total Issues', $totalIssues],
             ['Avg Response Time (ms)', round($avgResponseTime ?? 0)],
-            ['Avg Word Count', round($avgWordCount ?? 0)],
+            ['Avg Word Count', round($htmlPages->avg('word_count') ?? 0)],
             ['Max Depth', $pages->max('depth') ?? 0],
+            ['Pages Missing Title', $htmlPages->filter(fn ($p) => ! $p->title)->count()],
+            ['Pages Missing Meta Description', $htmlPages->filter(fn ($p) => ! $p->meta_description)->count()],
+            ['Pages Missing H1', $htmlPages->where('h1_count', 0)->count()],
+            ['Pages with Images Missing Alt', $htmlPages->where('images_without_alt', '>', 0)->count()],
+            ['Redirects', $pages->filter(fn ($p) => $p->redirect_url)->count()],
         ];
         $summarySheet->fromArray($summaryData, null, 'A1');
 
@@ -808,6 +899,12 @@ class CrawlerResults extends Component
         return response()->download($temp, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    private function boldHeaderRow(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, string $startCell, int $columns): void
+    {
+        $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columns);
+        $sheet->getStyle("{$startCell}:{$endCol}1")->getFont()->setBold(true);
     }
 
     public function render()

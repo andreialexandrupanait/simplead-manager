@@ -143,7 +143,27 @@ class SiteSearchConsole extends Component
 
     protected function onJobFinished(string $jobName, array $data): void
     {
-        // Data will refresh automatically on next render since it reads from cache
+        // Reload fresh data from cache and push to Alpine chart via browser event
+        $connection = $this->site->searchConsoleConnection;
+
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
+
+        $caches = \App\Models\SearchConsoleCache::where('site_id', $this->site->id)
+            ->where('date_range', $this->dateRange)
+            ->get()
+            ->keyBy('data_type');
+
+        $performanceOverTime = $caches->get('performance_over_time')?->data ?? [];
+
+        $this->dispatch('search-console-data-updated', [
+            'labels' => collect($performanceOverTime)->pluck('date')->toArray(),
+            'clicks' => collect($performanceOverTime)->pluck('clicks')->toArray(),
+            'impressions' => collect($performanceOverTime)->pluck('impressions')->toArray(),
+            'ctr' => collect($performanceOverTime)->pluck('ctr')->toArray(),
+            'position' => collect($performanceOverTime)->pluck('position')->toArray(),
+        ]);
     }
 
     public function connectSearchConsole(): void

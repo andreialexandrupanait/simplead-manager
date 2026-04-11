@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Seo;
 
+use App\Jobs\RunSeoAudit;
+use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\PerformanceTest;
 use App\Models\SeoAudit;
@@ -14,14 +16,32 @@ use Livewire\Component;
 
 class SeoTechnical extends Component
 {
-    use WithSiteAuthorization;
+    use WithJobTracking, WithSiteAuthorization;
 
     public Site $site;
+
+    protected function jobTrackingKeys(): array
+    {
+        return [
+            'audit' => 'seo-audit-'.$this->site->id,
+        ];
+    }
 
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        $this->initJobTracking();
+    }
+
+    public function runAudit(): void
+    {
+        $this->dispatchTrackedJob('audit', new RunSeoAudit($this->site), 'Running SEO audit...');
+    }
+
+    protected function onJobFinished(string $jobName, array $data): void
+    {
+        unset($this->latestAudit, $this->robotsTxt, $this->sitemaps, $this->structuredData, $this->redirects, $this->brokenLinks, $this->searchVisibility);
     }
 
     #[Computed]
