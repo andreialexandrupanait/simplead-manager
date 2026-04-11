@@ -390,6 +390,60 @@ class GoogleSearchConsoleService extends GoogleApiService
         return $data;
     }
 
+    /**
+     * Get query+page performance data for keyword-to-page mapping.
+     */
+    public function getQueryPagePerformance(string $siteUrl, string $startDate, string $endDate, int $limit = 1000): array
+    {
+        $response = $this->api()->post("{$this->baseUrl}/sites/{$this->encodeSiteUrl($siteUrl)}/searchAnalytics/query", [
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'dimensions' => ['query', 'page'],
+            'rowLimit' => $limit,
+        ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Search Console API error: '.$response->body());
+        }
+
+        $data = [];
+        foreach ($response->json('rows', []) as $row) {
+            $data[] = [
+                'query' => $row['keys'][0] ?? '',
+                'page' => $row['keys'][1] ?? '',
+                'clicks' => (int) ($row['clicks'] ?? 0),
+                'impressions' => (int) ($row['impressions'] ?? 0),
+                'ctr' => round(($row['ctr'] ?? 0) * 100, 2),
+                'position' => round($row['position'] ?? 0, 1),
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get external links pointing to the site via the Links API.
+     */
+    public function getExternalLinks(string $siteUrl): array
+    {
+        $response = $this->api()->get("{$this->baseUrl}/sites/{$this->encodeSiteUrl($siteUrl)}/links");
+
+        if ($response->failed()) {
+            throw new \Exception('Search Console Links API error: '.$response->body());
+        }
+
+        return [
+            'external_links' => array_map(fn ($link) => [
+                'target_url' => $link['target'] ?? '',
+                'count' => (int) ($link['count'] ?? 0),
+            ], $response->json('externalLinks', [])),
+            'internal_links' => array_map(fn ($link) => [
+                'target_url' => $link['target'] ?? '',
+                'count' => (int) ($link['count'] ?? 0),
+            ], $response->json('internalLinks', [])),
+        ];
+    }
+
     private function encodeSiteUrl(string $siteUrl): string
     {
         return urlencode($siteUrl);

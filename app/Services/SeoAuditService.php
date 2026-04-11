@@ -9,9 +9,14 @@ use App\Models\SeoAudit;
 use App\Models\SeoIssue;
 use App\Models\Site;
 use App\Services\Notifications\NotificationService;
+use App\Services\SeoChecks\BacklinksCheck;
 use App\Services\SeoChecks\BrokenLinksCheck;
 use App\Services\SeoChecks\ContentAnalysisCheck;
+use App\Services\SeoChecks\CoreWebVitalsCheck;
+use App\Services\SeoChecks\DuplicateContentCheck;
 use App\Services\SeoChecks\IndexCoverageCheck;
+use App\Services\SeoChecks\KeywordCannibalizationCheck;
+use App\Services\SeoChecks\ZeroTrafficCheck;
 use App\Services\SeoChecks\MetaTagsCheck;
 use App\Services\SeoChecks\OnPageScoreCheck;
 use App\Services\SeoChecks\RedirectChainCheck;
@@ -47,7 +52,7 @@ class SeoAuditService
             JobTracker::progress($trackerKey, 35, 'Running SEO checks...');
         }
 
-        $issues = $this->runChecks($connectorData, $gscData, $trackerKey);
+        $issues = $this->runChecks($site, $connectorData, $gscData, $trackerKey);
 
         if ($trackerKey) {
             JobTracker::progress($trackerKey, 80, 'Calculating SEO score...');
@@ -174,7 +179,7 @@ class SeoAuditService
         }
     }
 
-    private function runChecks(array $connectorData, ?array $gscData, ?string $trackerKey): array
+    private function runChecks(Site $site, array $connectorData, ?array $gscData, ?string $trackerKey): array
     {
         $checks = [
             new SeoPluginCheck,
@@ -187,6 +192,11 @@ class SeoAuditService
             new OnPageScoreCheck,
             new IndexCoverageCheck,
             new ContentAnalysisCheck,
+            (new CoreWebVitalsCheck)->withSiteId($site->id),
+            new DuplicateContentCheck,
+            (new BacklinksCheck)->withSiteId($site->id),
+            (new KeywordCannibalizationCheck)->withSiteId($site->id),
+            (new ZeroTrafficCheck)->withSiteId($site->id),
         ];
 
         $issues = [];

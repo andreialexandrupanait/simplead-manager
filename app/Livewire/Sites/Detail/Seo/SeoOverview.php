@@ -7,8 +7,11 @@ namespace App\Livewire\Sites\Detail\Seo;
 use App\Jobs\RunSeoAudit;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Models\BacklinkSnapshot;
+use App\Models\PerformanceTest;
 use App\Models\SeoAudit;
 use App\Models\Site;
+use App\Services\ContentIntelligenceService;
 use App\Services\ModuleConfigService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -65,6 +68,58 @@ class SeoOverview extends Component
     public function activeIssuesCount(): int
     {
         return $this->site->seoIssues()->whereNull('resolved_at')->count();
+    }
+
+    #[Computed]
+    public function cwvSummary(): ?array
+    {
+        $test = PerformanceTest::where('site_id', $this->site->id)
+            ->where('status', 'completed')
+            ->where('device', 'mobile')
+            ->latest('tested_at')
+            ->first();
+
+        if (! $test) {
+            return null;
+        }
+
+        return [
+            'lcp' => $test->field_lcp ?? $test->lcp,
+            'cls' => $test->field_cls ?? $test->cls,
+            'inp' => $test->field_inp,
+            'performance_score' => $test->performance_score,
+        ];
+    }
+
+    #[Computed]
+    public function backlinkStats(): ?array
+    {
+        $snapshot = BacklinkSnapshot::where('site_id', $this->site->id)
+            ->latest('date')
+            ->first();
+
+        if (! $snapshot) {
+            return null;
+        }
+
+        return [
+            'total' => $snapshot->total_backlinks,
+            'referring_domains' => $snapshot->referring_domains,
+            'new' => $snapshot->new_backlinks,
+            'lost' => $snapshot->lost_backlinks,
+        ];
+    }
+
+    #[Computed]
+    public function cannibalizationCount(): int
+    {
+        return count(app(ContentIntelligenceService::class)->detectCannibalization($this->site));
+    }
+
+    #[Computed]
+    public function zeroTrafficPagesCount(): int
+    {
+        return count(app(ContentIntelligenceService::class)->findPagesWithoutTraffic($this->site));
     }
 
     public function activateModule(): void

@@ -29,6 +29,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $h1_count
  * @property int $h2_count
  * @property int $h3_count
+ * @property int $h4_count
+ * @property int $h5_count
+ * @property int $h6_count
  * @property int $word_count
  * @property float|null $readability_score
  * @property int $internal_links_count
@@ -74,6 +77,9 @@ class CrawledPage extends Model
         'h1_count',
         'h2_count',
         'h3_count',
+        'h4_count',
+        'h5_count',
+        'h6_count',
         'word_count',
         'readability_score',
         'internal_links_count',
@@ -110,6 +116,9 @@ class CrawledPage extends Model
         'h1_count' => 'integer',
         'h2_count' => 'integer',
         'h3_count' => 'integer',
+        'h4_count' => 'integer',
+        'h5_count' => 'integer',
+        'h6_count' => 'integer',
         'word_count' => 'integer',
         'readability_score' => 'float',
         'internal_links_count' => 'integer',

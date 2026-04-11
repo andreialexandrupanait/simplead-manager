@@ -16,6 +16,9 @@ enum SeoIssueCategory: string
     case Robots = 'robots';
     case Performance = 'performance';
     case Plugin = 'plugin';
+    case CoreWebVitals = 'core_web_vitals';
+    case DuplicateContent = 'duplicate_content';
+    case Backlinks = 'backlinks';
 
     public function label(): string
     {
@@ -30,6 +33,9 @@ enum SeoIssueCategory: string
             self::Robots => 'Robots.txt',
             self::Performance => 'Performance',
             self::Plugin => 'SEO Plugin',
+            self::CoreWebVitals => 'Core Web Vitals',
+            self::DuplicateContent => 'Duplicate Content',
+            self::Backlinks => 'Backlinks',
         };
     }
 
@@ -46,6 +52,9 @@ enum SeoIssueCategory: string
             self::Robots => 'shield-check',
             self::Performance => 'bolt',
             self::Plugin => 'puzzle-piece',
+            self::CoreWebVitals => 'clock',
+            self::DuplicateContent => 'document-duplicate',
+            self::Backlinks => 'arrow-top-right-on-square',
         };
     }
 }

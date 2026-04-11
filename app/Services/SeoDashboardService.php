@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Backlink;
+use App\Models\PerformanceTest;
+use App\Models\SeoAlertRule;
 use App\Models\SeoAudit;
 use App\Models\SeoContent;
 use App\Models\SeoIssue;
@@ -49,6 +52,27 @@ class SeoDashboardService
                 })
                 ->avg('score');
 
+            $totalBacklinks = Backlink::whereIn('site_id', $siteIds)
+                ->active()
+                ->count();
+
+            $alertsTriggeredThisWeek = SeoAlertRule::whereIn('site_id', $siteIds)
+                ->whereNotNull('last_triggered_at')
+                ->where('last_triggered_at', '>=', now()->startOfWeek())
+                ->count();
+
+            $avgCwvScore = PerformanceTest::whereIn('site_id', $siteIds)
+                ->where('status', 'completed')
+                ->where('device', 'mobile')
+                ->whereIn('id', function ($q) {
+                    $q->select(DB::raw('MAX(id)'))
+                        ->from('performance_tests')
+                        ->where('device', 'mobile')
+                        ->where('status', 'completed')
+                        ->groupBy('site_id');
+                })
+                ->avg('performance_score');
+
             return [
                 'monitored' => $monitored,
                 'active_crawls' => $activeCrawls,
@@ -56,6 +80,9 @@ class SeoDashboardService
                 'articles_this_month' => $articlesThisMonth,
                 'keywords_tracked' => $keywordsTracked,
                 'avg_score' => $avgScore !== null ? round((float) $avgScore, 1) : null,
+                'total_backlinks' => $totalBacklinks,
+                'alerts_triggered_week' => $alertsTriggeredThisWeek,
+                'avg_cwv_score' => $avgCwvScore !== null ? round((float) $avgCwvScore) : null,
             ];
         });
     }

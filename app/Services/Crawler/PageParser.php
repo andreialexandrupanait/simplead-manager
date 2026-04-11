@@ -38,6 +38,9 @@ class PageParser
         $h1Tags = $this->extractTagTexts($xpath, '//h1');
         $h2Count = $this->countTags($xpath, '//h2');
         $h3Count = $this->countTags($xpath, '//h3');
+        $h4Count = $this->countTags($xpath, '//h4');
+        $h5Count = $this->countTags($xpath, '//h5');
+        $h6Count = $this->countTags($xpath, '//h6');
 
         $bodyText = $this->extractBodyText($dom, $xpath);
         $wordCount = $this->countWords($bodyText);
@@ -85,6 +88,9 @@ class PageParser
             'h1_count' => count($h1Tags),
             'h2_count' => $h2Count,
             'h3_count' => $h3Count,
+            'h4_count' => $h4Count,
+            'h5_count' => $h5Count,
+            'h6_count' => $h6Count,
             'word_count' => $wordCount,
             'readability_score' => $readabilityScore,
             'internal_links' => $internalLinks,

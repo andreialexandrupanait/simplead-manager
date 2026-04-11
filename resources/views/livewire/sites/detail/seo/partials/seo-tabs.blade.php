@@ -6,6 +6,8 @@
                 ['route' => 'sites.seo.audit', 'label' => __('Audit Results'), 'active' => request()->routeIs('sites.seo.audit')],
                 ['route' => 'sites.seo.keywords', 'label' => __('Keywords'), 'active' => request()->routeIs('sites.seo.keywords')],
                 ['route' => 'sites.seo.technical', 'label' => __('Technical'), 'active' => request()->routeIs('sites.seo.technical')],
+                ['route' => 'sites.seo.performance', 'label' => __('Performance'), 'active' => request()->routeIs('sites.seo.performance')],
+                ['route' => 'sites.seo.backlinks', 'label' => __('Backlinks'), 'active' => request()->routeIs('sites.seo.backlinks')],
                 ['route' => 'sites.seo.crawl', 'label' => __('Crawl'), 'active' => request()->routeIs('sites.seo.crawl') || request()->routeIs('sites.seo.crawl.results')],
             ];
         @endphp

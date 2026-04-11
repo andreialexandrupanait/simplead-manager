@@ -8,6 +8,7 @@ use App\Models\KeywordPosition;
 use App\Models\Site;
 use App\Services\ActivityLogger;
 use App\Services\GoogleSearchConsoleService;
+use App\Services\KeywordTrackingService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -136,13 +137,16 @@ class TrackKeywordPositions implements ShouldBeUnique, ShouldQueue
             }
         }
 
+        // Sync keyword-to-page mappings from GSC
+        $mappingsSynced = app(KeywordTrackingService::class)->syncKeywordPageMappings($this->site);
+
         ActivityLogger::log(
             type: 'seo',
             severity: 'info',
             title: "Keyword positions updated for {$this->site->name}",
-            description: "Tracked {$updatedCount} keyword(s) via Search Console",
+            description: "Tracked {$updatedCount} keyword(s) via Search Console, synced {$mappingsSynced} page mapping(s)",
             site: $this->site,
-            metadata: ['keyword_count' => $updatedCount, 'property' => $propertyUrl, 'significant_changes' => count($significantChanges)],
+            metadata: ['keyword_count' => $updatedCount, 'property' => $propertyUrl, 'significant_changes' => count($significantChanges), 'page_mappings' => $mappingsSynced],
             icon: 'magnifying-glass',
         );
     }

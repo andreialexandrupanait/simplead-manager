@@ -28,6 +28,12 @@ class SeoKeywords extends Component
 
     public ?int $selectedKeywordId = null;
 
+    public string $brandFilter = '';
+
+    public string $viewMode = 'list';
+
+    public string $manualImportKeywords = '';
+
     protected function jobTrackingKeys(): array
     {
         return [
@@ -45,7 +51,29 @@ class SeoKeywords extends Component
     #[Computed]
     public function keywords(): Collection
     {
-        return app(KeywordTrackingService::class)->getKeywordsWithLatestPosition($this->site);
+        $keywords = app(KeywordTrackingService::class)->getKeywordsWithLatestPosition($this->site);
+
+        if ($this->brandFilter === 'brand') {
+            return $keywords->where('is_brand', true)->values();
+        }
+
+        if ($this->brandFilter === 'non_brand') {
+            return $keywords->where('is_brand', false)->values();
+        }
+
+        return $keywords;
+    }
+
+    #[Computed]
+    public function brandVsNonBrand(): array
+    {
+        return app(KeywordTrackingService::class)->getBrandVsNonBrand($this->site);
+    }
+
+    #[Computed]
+    public function keywordsByPage(): \Illuminate\Support\Collection
+    {
+        return app(KeywordTrackingService::class)->getKeywordsGroupedByPage($this->site);
     }
 
     #[Computed]
@@ -124,6 +152,48 @@ class SeoKeywords extends Component
     public function importFromSearchConsole(): void
     {
         app(KeywordTrackingService::class)->syncFromSearchConsole($this->site);
+        unset($this->keywords, $this->brandVsNonBrand, $this->keywordsByPage);
+    }
+
+    public function importManually(): void
+    {
+        $keywords = array_filter(
+            array_map('trim', preg_split('/[\r\n,]+/', $this->manualImportKeywords)),
+            fn (string $kw) => $kw !== '',
+        );
+
+        if (empty($keywords)) {
+            return;
+        }
+
+        $added = app(KeywordTrackingService::class)->importKeywordsManually($this->site, $keywords);
+        $this->manualImportKeywords = '';
+        unset($this->keywords, $this->brandVsNonBrand, $this->keywordsByPage);
+
+        session()->flash('message', "{$added} keyword(s) imported successfully.");
+    }
+
+    public function toggleBrand(int $id): void
+    {
+        $keyword = TrackedKeyword::where('site_id', $this->site->id)->find($id);
+
+        if ($keyword === null) {
+            return;
+        }
+
+        $keyword->update(['is_brand' => ! $keyword->is_brand]);
+        unset($this->keywords, $this->brandVsNonBrand);
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        if (in_array($mode, ['list', 'pages'], true)) {
+            $this->viewMode = $mode;
+        }
+    }
+
+    public function updatedBrandFilter(): void
+    {
         unset($this->keywords);
     }
 

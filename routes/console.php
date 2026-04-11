@@ -211,6 +211,44 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
+// SEO Alerts — evaluate every 6 hours for sites with active monitoring
+Schedule::call(function () {
+    $monitors = \App\Models\SeoMonitor::where('is_active', true)
+        ->with('site')
+        ->get();
+
+    foreach ($monitors as $monitor) {
+        if (! $monitor->site) {
+            continue;
+        }
+
+        dispatch(new \App\Jobs\EvaluateSeoAlerts($monitor->site));
+    }
+})->everySixHours()
+    ->name('seo-alerts')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Weekly backlink sync for sites with active SEO monitoring
+Schedule::call(function () {
+    $monitors = \App\Models\SeoMonitor::where('is_active', true)
+        ->with('site')
+        ->get();
+
+    foreach ($monitors as $monitor) {
+        if (! $monitor->site) {
+            continue;
+        }
+
+        dispatch(new \App\Jobs\SyncBacklinks($monitor->site));
+    }
+})->weekly()
+    ->sundays()
+    ->at('04:00')
+    ->name('seo-backlink-sync')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Publish scheduled SEO content
 Schedule::call(function () {
     $contents = \App\Models\SeoContent::where('status', 'scheduled')

@@ -100,6 +100,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/seo/audit', Sites\Detail\Seo\SeoAuditResults::class)->name('sites.seo.audit');
         Route::get('/seo/keywords', Sites\Detail\Seo\SeoKeywords::class)->name('sites.seo.keywords');
         Route::get('/seo/technical', Sites\Detail\Seo\SeoTechnical::class)->name('sites.seo.technical');
+        Route::get('/seo/performance', Sites\Detail\Seo\SeoCoreWebVitals::class)->name('sites.seo.performance');
+        Route::get('/seo/backlinks', Sites\Detail\Seo\SeoBacklinks::class)->name('sites.seo.backlinks');
         Route::get('/seo/crawl', Sites\Detail\Seo\SeoCrawl::class)->name('sites.seo.crawl');
         Route::get('/seo/crawl/results', Sites\Detail\Seo\SeoCrawlResults::class)->name('sites.seo.crawl.results');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
@@ -141,6 +143,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/content/{seoContent}/edit', Seo\ContentEditor::class)->name('seo.content.edit');
         Route::get('/keywords', Seo\KeywordResearch::class)->name('seo.keywords.index');
         Route::get('/calendar', Seo\ContentCalendar::class)->name('seo.calendar');
+        Route::get('/backlinks', Seo\SeoBacklinks::class)->name('seo.backlinks');
+        Route::get('/alerts', Seo\SeoAlerts::class)->name('seo.alerts');
     });
 
     // Crawler — separate module

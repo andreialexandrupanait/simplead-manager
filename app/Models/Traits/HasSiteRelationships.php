@@ -8,6 +8,8 @@ use App\Enums\BackupStatus;
 use App\Models\ActivityLog;
 use App\Models\AnalyticsCache;
 use App\Models\AnalyticsConnection;
+use App\Models\Backlink;
+use App\Models\BacklinkSnapshot;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Client;
@@ -16,6 +18,7 @@ use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
 use App\Models\IncidentResponse;
+use App\Models\KeywordPageMapping;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
@@ -36,6 +39,7 @@ use App\Models\SecurityPreset;
 use App\Models\SecurityRecommendation;
 use App\Models\SecurityScan;
 use App\Models\SecuritySetting;
+use App\Models\SeoAlertRule;
 use App\Models\SeoAudit;
 use App\Models\SeoContent;
 use App\Models\SeoIssue;
@@ -256,6 +260,31 @@ trait HasSiteRelationships
     public function trackedKeywords(): HasMany
     {
         return $this->hasMany(TrackedKeyword::class);
+    }
+
+    public function keywordPageMappings(): HasMany
+    {
+        return $this->hasMany(KeywordPageMapping::class);
+    }
+
+    public function seoAlertRules(): HasMany
+    {
+        return $this->hasMany(SeoAlertRule::class);
+    }
+
+    public function backlinks(): HasMany
+    {
+        return $this->hasMany(Backlink::class);
+    }
+
+    public function backlinkSnapshots(): HasMany
+    {
+        return $this->hasMany(BacklinkSnapshot::class);
+    }
+
+    public function latestBacklinkSnapshot(): HasOne
+    {
+        return $this->hasOne(BacklinkSnapshot::class)->latestOfMany('date');
     }
 
     public function securityMonitor(): HasOne

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Reports\Sections;
 
+use App\Models\BacklinkSnapshot;
 use App\Models\KeywordPosition;
+use App\Models\PerformanceTest;
 use App\Models\SeoAudit;
 use App\Models\SeoContent;
 use App\Models\SeoIssue;
@@ -12,6 +14,8 @@ use App\Models\Site;
 use App\Models\SiteCrawl;
 use App\Models\SiteMonthlySnapshot;
 use App\Models\TrackedKeyword;
+use App\Services\ContentIntelligenceService;
+use App\Services\KeywordTrackingService;
 use App\Services\ReportChartService;
 use App\Services\Reports\BaseReportSectionGatherer;
 use Carbon\Carbon;
@@ -80,6 +84,10 @@ class SeoGatherer extends BaseReportSectionGatherer
             'score_diff' => $scoreTrend,
             'crawl' => $this->gatherCrawlData($site, $periodStart, $periodEnd),
             'content_published' => $this->gatherContentPublished($site, $periodStart, $periodEnd),
+            'cwv' => $this->gatherCwvSummary($site),
+            'backlinks' => $this->gatherBacklinkStats($site),
+            'brand_vs_non_brand' => $this->gatherBrandVsNonBrand($site),
+            'cannibalization_count' => count(app(ContentIntelligenceService::class)->detectCannibalization($site)),
         ];
     }
 
@@ -194,5 +202,58 @@ class SeoGatherer extends BaseReportSectionGatherer
             'structured_data_found' => (bool) ($data['structured_data_found'] ?? false),
             'search_visible' => (bool) ($data['search_visible'] ?? true),
         ];
+    }
+
+    private function gatherCwvSummary(Site $site): ?array
+    {
+        $mobileTest = PerformanceTest::where('site_id', $site->id)
+            ->where('status', 'completed')
+            ->where('device', 'mobile')
+            ->latest('tested_at')
+            ->first();
+
+        if (! $mobileTest) {
+            return null;
+        }
+
+        return [
+            'lcp' => $mobileTest->field_lcp ?? $mobileTest->lcp,
+            'cls' => $mobileTest->field_cls ?? $mobileTest->cls,
+            'inp' => $mobileTest->field_inp,
+            'performance_score' => $mobileTest->performance_score,
+            'tested_at' => $mobileTest->tested_at?->format('M d, Y'),
+        ];
+    }
+
+    private function gatherBacklinkStats(Site $site): ?array
+    {
+        $snapshot = BacklinkSnapshot::where('site_id', $site->id)
+            ->latest('date')
+            ->first();
+
+        if (! $snapshot) {
+            return null;
+        }
+
+        return [
+            'total' => $snapshot->total_backlinks,
+            'referring_domains' => $snapshot->referring_domains,
+            'new' => $snapshot->new_backlinks,
+            'lost' => $snapshot->lost_backlinks,
+            'dofollow' => $snapshot->dofollow_count,
+            'nofollow' => $snapshot->nofollow_count,
+            'date' => $snapshot->date->format('M d, Y'),
+        ];
+    }
+
+    private function gatherBrandVsNonBrand(Site $site): ?array
+    {
+        $keywords = TrackedKeyword::where('site_id', $site->id)->get();
+
+        if ($keywords->isEmpty()) {
+            return null;
+        }
+
+        return app(KeywordTrackingService::class)->getBrandVsNonBrand($site);
     }
 }
