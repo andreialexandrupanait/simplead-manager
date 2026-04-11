@@ -94,7 +94,6 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\SiteCloudflare|null $siteCloudflare
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\RollbackPoint> $rollbackPoints
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SafeUpdate> $safeUpdates
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TrackedKeyword> $trackedKeywords
  * @property-read \App\Models\SecurityMonitor|null $securityMonitor
  * @property-read \App\Models\DatabaseCleanupConfig|null $databaseCleanupConfig
  * @property-read \App\Models\SiteHealthState|null $healthState

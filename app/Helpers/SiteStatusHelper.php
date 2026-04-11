@@ -204,18 +204,7 @@ class SiteStatusHelper
 
     protected static function seo(Site $site): array
     {
-        $color = 'text-gray-300';
-        $tip = 'SEO: Not audited';
-
-        /** @var \App\Models\SeoAudit|null $audit */
-        $audit = $site->latestSeoAudit;
-        if ($audit) {
-            $score = $audit->score;
-            $color = $score >= 80 ? 'text-green-500' : ($score >= 50 ? 'text-yellow-500' : 'text-red-500');
-            $tip = "SEO: {$score}/100";
-        }
-
-        return compact('color', 'tip');
+        return ['color' => 'text-gray-300', 'tip' => 'SEO: Module removed'];
     }
 
     protected static function searchConsole(Site $site): array

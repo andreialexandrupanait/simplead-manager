@@ -6,13 +6,10 @@ namespace App\Dispatchers;
 
 use App\Jobs\FetchAnalyticsData;
 use App\Jobs\FetchSearchConsoleData;
-use App\Jobs\RunSeoAudit;
 use App\Jobs\SyncCloudflareZone;
 use App\Jobs\SyncWordPressSite;
-use App\Jobs\TrackKeywordPositions;
 use App\Models\AnalyticsConnection;
 use App\Models\SearchConsoleConnection;
-use App\Models\SeoMonitor;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
 use App\Services\CircuitBreakerService;
@@ -31,8 +28,6 @@ class DataSyncDispatcher
         $this->dispatchSearchConsoleSync();
         $this->dispatchCloudflareSync();
         $this->dispatchWordPressSync();
-        $this->dispatchSeoAudits();
-        $this->dispatchKeywordTracking();
     }
 
     private function dispatchAnalyticsSync(): void
@@ -100,39 +95,5 @@ class DataSyncDispatcher
                 ->orWhere('last_synced_at', '<=', now()->subHours(6))
             )
             ->each(fn (Site $site) => SyncWordPressSite::dispatch($site));
-    }
-
-    private function dispatchSeoAudits(): void
-    {
-        SeoMonitor::query()
-            ->where('is_active', true)
-            ->where(fn ($q) => $q->whereNull('next_audit_at')->orWhere('next_audit_at', '<=', now()))
-            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
-            ->with('site')
-            ->each(function (SeoMonitor $monitor) {
-                RunSeoAudit::dispatch($monitor->site);
-                $monitor->update(['next_audit_at' => now()->addMinutes($monitor->interval_minutes)]);
-            });
-    }
-
-    private function dispatchKeywordTracking(): void
-    {
-        Site::query()
-            ->whereNull('deleted_at')
-            ->whereHas('trackedKeywords')
-            ->whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
-            ->whereHas('healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
-            ->whereDoesntHave('trackedKeywords', function ($q) {
-                // Skip sites that had keyword tracking in the last 24 hours
-                $q->whereHas('positions', fn ($p) => $p->where('created_at', '>=', now()->subHours(24)));
-            })
-            ->each(fn (Site $site) => TrackKeywordPositions::dispatch($site));
     }
 }

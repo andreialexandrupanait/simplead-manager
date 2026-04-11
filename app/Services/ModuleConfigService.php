@@ -11,7 +11,6 @@ use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
-use App\Models\SeoMonitor;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
 use App\Models\UptimeMonitor;
@@ -71,12 +70,6 @@ class ModuleConfigService
             'model' => DatabaseCleanupConfig::class,
             'enabled_column' => 'is_enabled',
             'interval_column' => null, // uses frequency
-        ],
-        'seo' => [
-            'relation' => 'seoMonitor',
-            'model' => SeoMonitor::class,
-            'enabled_column' => 'is_active',
-            'interval_column' => 'interval_minutes',
         ],
     ];
 

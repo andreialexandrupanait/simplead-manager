@@ -66,7 +66,6 @@
                 @include('livewire.sites.detail.overview._uptime-card')
                 @include('livewire.sites.detail.overview._backups-card')
                 @include('livewire.sites.detail.overview._security-card')
-                @include('livewire.sites.detail.overview._seo-card')
                 @include('livewire.sites.detail.overview._reports-card')
                 @include('livewire.sites.detail.overview._client-card')
             </div>
