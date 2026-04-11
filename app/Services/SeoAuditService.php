@@ -295,15 +295,34 @@ class SeoAuditService
         $now = now();
 
         foreach ($issues as $issue) {
+            $title = $issue['title'] ?? 'Unknown issue';
+            $description = $issue['description'] ?? null;
+            $recommendation = $issue['recommendation'] ?? null;
+            $url = $issue['url'] ?? null;
+
+            // Ensure all text fields are strings (some checks may return arrays)
+            if (is_array($title)) {
+                $title = implode(', ', $title);
+            }
+            if (is_array($description)) {
+                $description = implode(' ', $description);
+            }
+            if (is_array($recommendation)) {
+                $recommendation = implode(' ', $recommendation);
+            }
+            if (is_array($url)) {
+                $url = $url[0] ?? null;
+            }
+
             $records[] = [
                 'site_id' => $site->id,
                 'seo_audit_id' => $audit->id,
-                'category' => $issue['category'] ?? 'technical',
-                'severity' => $issue['severity'] ?? 'info',
-                'title' => $issue['title'] ?? 'Unknown issue',
-                'description' => $issue['description'] ?? null,
-                'url' => $issue['url'] ?? null,
-                'recommendation' => $issue['recommendation'] ?? null,
+                'category' => (string) ($issue['category'] ?? 'technical'),
+                'severity' => (string) ($issue['severity'] ?? 'info'),
+                'title' => mb_substr((string) $title, 0, 500),
+                'description' => $description !== null ? mb_substr((string) $description, 0, 2000) : null,
+                'url' => $url !== null ? mb_substr((string) $url, 0, 2048) : null,
+                'recommendation' => $recommendation !== null ? mb_substr((string) $recommendation, 0, 2000) : null,
                 'meta' => isset($issue['meta']) ? json_encode($issue['meta']) : null,
                 'resolved_at' => null,
                 'created_at' => $now,
