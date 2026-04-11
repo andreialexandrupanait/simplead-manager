@@ -257,6 +257,11 @@ trait HasSiteRelationships
         return $this->hasOne(DatabaseCleanupConfig::class);
     }
 
+    public function dnsMonitor(): HasOne
+    {
+        return $this->hasOne(\App\Models\DnsMonitor::class);
+    }
+
     public function healthState(): HasOne
     {
         return $this->hasOne(SiteHealthState::class);

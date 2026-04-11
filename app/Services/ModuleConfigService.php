@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\AnalyticsConnection;
 use App\Models\BackupConfig;
 use App\Models\DatabaseCleanupConfig;
+use App\Models\DnsMonitor;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\SearchConsoleConnection;
@@ -71,6 +72,12 @@ class ModuleConfigService
             'enabled_column' => 'is_enabled',
             'interval_column' => null, // uses frequency
         ],
+        'dns' => [
+            'relation' => 'dnsMonitor',
+            'model' => DnsMonitor::class,
+            'enabled_column' => 'is_active',
+            'interval_column' => 'interval_minutes',
+        ],
     ];
 
     /**
@@ -85,6 +92,7 @@ class ModuleConfigService
         'search_console' => 720, // 12h
         'cloudflare' => 360,  // 6h
         'database_cleanup' => 10080, // 7 days
+        'dns' => 360,             // 6h
     ];
 
     /**
@@ -99,6 +107,7 @@ class ModuleConfigService
         'search_console' => 1440, // 24h
         'cloudflare' => 360,   // 6h
         'database_cleanup' => 43200, // 30 days
+        'dns' => 360,              // 6h
     ];
 
     /**
@@ -310,6 +319,14 @@ class ModuleConfigService
                 $data['frequency'] = 'monthly';
                 $data['auto_clean_types'] = ['revisions', 'spam', 'trash', 'transients'];
                 $data['next_cleanup_at'] = now()->addMonth()->startOfMonth()->addMinutes($jitter);
+                break;
+
+            case 'dns':
+                $host = parse_url($site->url, PHP_URL_HOST);
+                $data['domain'] = $host ? preg_replace('/^www\./', '', $host) : $site->url;
+                $data['is_active'] = $enabled;
+                $data['interval_minutes'] = $interval ?? 360;
+                $data['next_check_at'] = now()->addMinutes($jitter);
                 break;
 
             default:

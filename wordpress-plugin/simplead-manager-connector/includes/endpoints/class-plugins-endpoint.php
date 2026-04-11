@@ -150,6 +150,12 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
                     $plugin['new_version'] = null;
                 }
             }
+
+            // Auto-detect license info from wp_options
+            $license = $this->detect_plugin_license($plugin['slug']);
+            $plugin['license_key'] = $license['key'];
+            $plugin['license_status'] = $license['status'];
+            $plugin['license_expires_at'] = $license['expires_at'];
         }
         unset($plugin);
 
@@ -384,5 +390,108 @@ class SAM_Plugins_Endpoint extends SAM_Endpoint_Base {
         }
 
         return $this->success(['cleared_files' => $cleared]);
+    }
+
+    /**
+     * Detect license info for a plugin by scanning wp_options.
+     *
+     * @return array{key: string|null, status: string|null, expires_at: string|null}
+     */
+    private function detect_plugin_license(string $slug): array {
+        $result = ['key' => null, 'status' => null, 'expires_at' => null];
+
+        $clean_slug = str_replace('-', '_', $slug);
+
+        // Common license key option patterns used by premium plugins
+        $key_patterns = [
+            "{$clean_slug}_license_key",
+            "{$slug}_license_key",
+            "{$clean_slug}_license",
+            "{$slug}_license",
+            "{$clean_slug}_api_key",
+            "{$clean_slug}_pro_license_key",
+            "{$slug}-license-key",
+        ];
+
+        // Known plugin-specific option names
+        $known_keys = [
+            'elementor'        => 'elementor_pro_license_key',
+            'elementor-pro'    => 'elementor_pro_license_key',
+            'advanced-custom-fields-pro' => 'acf_pro_license',
+            'acf-pro'          => 'acf_pro_license',
+            'gravityforms'     => 'rg_gforms_key',
+            'gravity-forms'    => 'rg_gforms_key',
+            'wpforms'          => 'wpforms_license',
+            'wpforms-lite'     => 'wpforms_license',
+            'updraftplus'      => 'updraftplus_options',
+            'wordfence'        => 'wordfence_apiKey',
+            'yoast-seo-premium' => 'wpseo_license',
+            'wordpress-seo-premium' => 'wpseo_license',
+            'rankmath-pro'     => 'rank_math_pro_license_key',
+            'rank-math-pro'    => 'rank_math_pro_license_key',
+            'wp-rocket'        => 'wp_rocket_settings',
+            'sucuri-scanner'   => 'sucuri_api_key',
+            'ithemes-security-pro' => 'itsec_license',
+            'all-in-one-seo-pack-pro' => 'aioseo_pro_license_key',
+            'monsterinsights'  => 'monsterinsights_license',
+        ];
+
+        // Check known patterns first
+        if (isset($known_keys[$slug])) {
+            array_unshift($key_patterns, $known_keys[$slug]);
+        }
+
+        // Search for license key
+        foreach ($key_patterns as $option_name) {
+            $value = get_option($option_name);
+            if ($value && is_string($value) && strlen($value) >= 8) {
+                $result['key'] = $value;
+                break;
+            }
+            // Some plugins store license as array
+            if (is_array($value) && !empty($value['license_key'] ?? $value['key'] ?? null)) {
+                $result['key'] = $value['license_key'] ?? $value['key'];
+                break;
+            }
+        }
+
+        if (!$result['key']) {
+            return $result;
+        }
+
+        // Detect license status
+        $status_patterns = [
+            "{$clean_slug}_license_status",
+            "{$slug}_license_status",
+            "{$clean_slug}_license_data",
+            "{$slug}_license_data",
+        ];
+
+        foreach ($status_patterns as $option_name) {
+            $value = get_option($option_name);
+            if ($value) {
+                if (is_string($value)) {
+                    $result['status'] = $value;
+                } elseif (is_array($value)) {
+                    $result['status'] = $value['license'] ?? $value['status'] ?? null;
+                    if (isset($value['expires'])) {
+                        $result['expires_at'] = $value['expires'];
+                    }
+                }
+                break;
+            }
+        }
+
+        // Default status if key exists but no status found
+        if ($result['key'] && !$result['status']) {
+            $result['status'] = 'active';
+        }
+
+        // Mask the key for security — only send last 8 chars
+        if ($result['key'] && strlen($result['key']) > 8) {
+            $result['key'] = str_repeat('*', strlen($result['key']) - 8) . substr($result['key'], -8);
+        }
+
+        return $result;
     }
 }
