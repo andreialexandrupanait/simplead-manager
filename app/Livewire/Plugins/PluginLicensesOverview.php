@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Plugins;
 
+use App\Jobs\PushConnectorPlugin;
+use App\Jobs\SyncWordPressSite;
+use App\Models\Site;
 use App\Models\SitePlugin;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -28,6 +31,18 @@ class PluginLicensesOverview extends Component
             'expiring' => (clone $base)->expiringLicenses(30)->count(),
             'expired' => (clone $base)->expiredLicenses()->count(),
         ];
+    }
+
+    public function scanLicenses(): void
+    {
+        $sites = Site::where('is_connected', true)->get();
+
+        foreach ($sites as $site) {
+            PushConnectorPlugin::dispatch($site);
+            SyncWordPressSite::dispatch($site)->delay(now()->addSeconds(30 + rand(0, 60)));
+        }
+
+        $this->dispatch('notify', type: 'success', message: "Updating connector & scanning licenses on {$sites->count()} sites. Results in ~2 minutes.");
     }
 
     public function updatedFilter(): void

@@ -1,6 +1,10 @@
 <div>
-    <div class="mb-6">
+    <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="{{ __('Plugin Licenses') }}" subtitle="{{ __('Manage licenses across all sites') }}" />
+        <x-ui.button wire:click="scanLicenses" wire:loading.attr="disabled" wire:confirm="{{ __('This will update the connector plugin on all sites and scan for licenses. Continue?') }}">
+            <span wire:loading.remove wire:target="scanLicenses">{{ __('Scan Licenses') }}</span>
+            <span wire:loading wire:target="scanLicenses">{{ __('Scanning...') }}</span>
+        </x-ui.button>
     </div>
 
     {{-- Stats --}}

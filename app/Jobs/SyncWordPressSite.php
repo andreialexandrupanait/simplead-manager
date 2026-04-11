@@ -88,10 +88,11 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                         'requires_wp' => $plugin['requires_wp'] ?? null,
                         'requires_php' => $plugin['requires_php'] ?? null,
                         'auto_update' => $plugin['auto_update'] ?? false,
-                        'license_key' => $plugin['license_key'] ?? null,
-                        'license_status' => $plugin['license_status'] ?? null,
+                    ] + (! empty($plugin['license_key']) ? [
+                        'license_key' => $plugin['license_key'],
+                        'license_status' => $plugin['license_status'] ?? 'active',
                         'license_expires_at' => ! empty($plugin['license_expires_at']) ? $plugin['license_expires_at'] : null,
-                    ]
+                    ] : [])
                 );
                 $existingPluginFiles[] = $plugin['file'];
             }
