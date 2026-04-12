@@ -1,25 +1,426 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Enums\SeoAuditStatus;
 use App\Models\SeoAudit;
+use App\Models\SeoLink;
+use App\Models\SeoPage;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
+use App\Services\SeoAudit\UrlNormalizerService;
+use DOMDocument;
+use DOMElement;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    public int $tries = 2; public int $timeout = 540; public array $backoff = [60, 120];
-    public function __construct(public Site $site, public SeoAudit $audit) { $this->onQueue('performance'); }
-    public function uniqueId(): string { return 'seo-crawl-'.$this->site->id; }
-    public function handle(): void { $this->audit->markAs(SeoAuditStatus::Crawling); JobTracker::progress('seo-audit-'.$this->site->id, 10, 'Starting crawl...'); JobTracker::progress('seo-audit-'.$this->site->id, 60, 'Crawl complete.'); }
-    public function failed(?\Throwable $e): void { $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage()); CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed'); JobTracker::fail('seo-audit-'.$this->site->id, 'Crawl failed'); }
+
+    public int $tries = 2;
+    public int $timeout = 540;
+    public array $backoff = [60, 120];
+
+    private const SKIP_EXTENSIONS = ['pdf','doc','docx','xls','xlsx','zip','rar','jpg','jpeg','png','gif','svg','webp','ico','mp3','mp4','avi','mov','woff','woff2','ttf','eot','css','js','xml','json','map'];
+    private const SKIP_PATHS = ['/wp-admin', '/wp-login.php', '/wp-json', '/feed', '/xmlrpc.php', '/wp-cron.php', '/wp-content/uploads'];
+
+    public function __construct(public Site $site, public SeoAudit $audit)
+    {
+        $this->onQueue('performance');
+    }
+
+    public function uniqueId(): string
+    {
+        return 'seo-crawl-' . $this->site->id;
+    }
+
+    public function handle(): void
+    {
+        $trackerId = 'seo-audit-' . $this->site->id;
+        $this->audit->markAs(SeoAuditStatus::Crawling);
+
+        $siteUrl = rtrim($this->site->url, '/');
+        $baseDomain = UrlNormalizerService::extractHost($siteUrl) ?? parse_url($siteUrl, PHP_URL_HOST);
+        $monitor = $this->site->seoMonitor;
+        $maxPages = $monitor?->max_pages ?? (int) config('seo.crawler.default_max_pages');
+        $delayMs = (int) config('seo.crawler.delay_ms');
+        $userAgent = config('seo.crawler.user_agent');
+        $pageTimeout = (int) config('seo.crawler.timeout_per_page');
+
+        $visited = [];
+        $queue = [$siteUrl . '/'];
+        $crawled = 0;
+        $inboundCounts = [];
+
+        JobTracker::progress($trackerId, 5, 'Starting crawl...');
+
+        while (!empty($queue) && $crawled < $maxPages) {
+            $url = array_shift($queue);
+            $urlHash = UrlNormalizerService::hash($url);
+
+            if (isset($visited[$urlHash])) {
+                continue;
+            }
+            $visited[$urlHash] = true;
+            $crawled++;
+
+            try {
+                $startTime = microtime(true);
+                $response = Http::timeout($pageTimeout)
+                    ->withUserAgent($userAgent)
+                    ->withoutVerifying()
+                    ->withoutRedirecting()
+                    ->get($url);
+
+                $ttfb = microtime(true) - $startTime;
+                $statusCode = $response->status();
+                $contentType = $response->header('Content-Type') ?? '';
+                $mimeType = explode(';', $contentType)[0] ?? '';
+
+                // Handle redirects
+                $redirectTarget = null;
+                $redirectChainLength = 0;
+                if ($statusCode >= 300 && $statusCode < 400) {
+                    $redirectTarget = $response->header('Location');
+                    $redirectChainLength = 1;
+                    // Follow redirect and add to queue
+                    if ($redirectTarget) {
+                        $resolvedRedirect = $this->resolveUrl($redirectTarget, $url);
+                        if (UrlNormalizerService::isSameDomain($resolvedRedirect, $baseDomain)) {
+                            $queue[] = $resolvedRedirect;
+                        }
+                    }
+
+                    SeoPage::create([
+                        'seo_audit_id' => $this->audit->id,
+                        'site_id' => $this->site->id,
+                        'url' => mb_substr($url, 0, 2048),
+                        'url_hash' => $urlHash,
+                        'status_code' => $statusCode,
+                        'depth' => $this->calculateDepth($url, $siteUrl),
+                        'content_type' => mb_substr($mimeType, 0, 100),
+                        'redirect_target' => $redirectTarget ? mb_substr($redirectTarget, 0, 2048) : null,
+                        'redirect_chain_length' => $redirectChainLength,
+                        'ttfb_seconds' => round($ttfb, 3),
+                        'is_indexable' => false,
+                    ]);
+
+                    $this->updateProgress($trackerId, $crawled, $maxPages);
+                    usleep($delayMs * 1000);
+                    continue;
+                }
+
+                // Skip non-HTML
+                if ($statusCode === 200 && !str_contains($mimeType, 'text/html')) {
+                    SeoPage::create([
+                        'seo_audit_id' => $this->audit->id,
+                        'site_id' => $this->site->id,
+                        'url' => mb_substr($url, 0, 2048),
+                        'url_hash' => $urlHash,
+                        'status_code' => $statusCode,
+                        'content_type' => mb_substr($mimeType, 0, 100),
+                        'is_indexable' => false,
+                    ]);
+                    $this->updateProgress($trackerId, $crawled, $maxPages);
+                    usleep($delayMs * 1000);
+                    continue;
+                }
+
+                // Parse HTML
+                $body = $response->body();
+                $pageData = $this->parseHtml($body, $url, $baseDomain);
+
+                // Determine indexability
+                $isIndexable = $statusCode === 200;
+                $metaRobots = $pageData['meta_robots'];
+                if ($metaRobots && str_contains(strtolower($metaRobots), 'noindex')) {
+                    $isIndexable = false;
+                }
+                $xRobots = $response->header('X-Robots-Tag');
+                if ($xRobots && str_contains(strtolower($xRobots), 'noindex')) {
+                    $isIndexable = false;
+                }
+
+                $page = SeoPage::create([
+                    'seo_audit_id' => $this->audit->id,
+                    'site_id' => $this->site->id,
+                    'url' => mb_substr($url, 0, 2048),
+                    'url_hash' => $urlHash,
+                    'status_code' => $statusCode,
+                    'depth' => $this->calculateDepth($url, $siteUrl),
+                    'content_type' => mb_substr($mimeType, 0, 100),
+                    'title' => $pageData['title'] ? mb_substr($pageData['title'], 0, 1000) : null,
+                    'title_length' => $pageData['title_length'],
+                    'meta_description' => $pageData['meta_description'],
+                    'meta_description_length' => $pageData['meta_description_length'],
+                    'h1_tags' => $pageData['h1_tags'] ?: null,
+                    'heading_structure' => $pageData['heading_structure'],
+                    'word_count' => $pageData['word_count'],
+                    'image_count' => $pageData['image_count'],
+                    'images_without_alt' => $pageData['images_without_alt'],
+                    'canonical_url' => $pageData['canonical_url'] ? mb_substr($pageData['canonical_url'], 0, 2048) : null,
+                    'is_self_canonical' => $pageData['is_self_canonical'],
+                    'meta_robots' => $metaRobots,
+                    'is_indexable' => $isIndexable,
+                    'internal_link_count' => count($pageData['internal_links']),
+                    'external_link_count' => count($pageData['external_links']),
+                    'page_size_bytes' => strlen($body),
+                    'ttfb_seconds' => round($ttfb, 3),
+                    'structured_data_types' => $pageData['structured_data_types'] ?: null,
+                    'og_tags' => !empty($pageData['og_tags']) ? $pageData['og_tags'] : null,
+                    'twitter_tags' => !empty($pageData['twitter_tags']) ? $pageData['twitter_tags'] : null,
+                    'has_viewport_meta' => $pageData['has_viewport_meta'],
+                ]);
+
+                // Store links
+                $this->storeLinks($page, $pageData);
+
+                // Track inbound links
+                foreach ($pageData['internal_links'] as $link) {
+                    $linkHash = UrlNormalizerService::hash($link['url']);
+                    $inboundCounts[$linkHash] = ($inboundCounts[$linkHash] ?? 0) + 1;
+                }
+
+                // Add discovered internal links to queue
+                foreach ($pageData['internal_links'] as $link) {
+                    $resolvedUrl = $this->resolveUrl($link['url'], $url);
+                    if (!$this->shouldSkipUrl($resolvedUrl, $baseDomain)) {
+                        $linkHash = UrlNormalizerService::hash($resolvedUrl);
+                        if (!isset($visited[$linkHash])) {
+                            $queue[] = $resolvedUrl;
+                        }
+                    }
+                }
+
+            } catch (\Throwable $e) {
+                // Record failed page
+                SeoPage::create([
+                    'seo_audit_id' => $this->audit->id,
+                    'site_id' => $this->site->id,
+                    'url' => mb_substr($url, 0, 2048),
+                    'url_hash' => $urlHash,
+                    'is_indexable' => false,
+                    'meta' => ['error' => mb_substr($e->getMessage(), 0, 500)],
+                ]);
+                Log::debug('SEO crawl: page failed', ['url' => $url, 'error' => $e->getMessage()]);
+            }
+
+            $this->updateProgress($trackerId, $crawled, $maxPages);
+            usleep($delayMs * 1000);
+        }
+
+        // Update inbound link counts
+        foreach ($inboundCounts as $urlHash => $count) {
+            SeoPage::where('seo_audit_id', $this->audit->id)
+                ->where('url_hash', $urlHash)
+                ->update(['inbound_internal_links' => $count]);
+        }
+
+        $this->audit->update(['pages_crawled' => $crawled]);
+        JobTracker::progress($trackerId, 60, "Crawl complete. {$crawled} pages.");
+    }
+
+    public function failed(?\Throwable $e): void
+    {
+        $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed');
+        JobTracker::fail('seo-audit-' . $this->site->id, 'Crawl failed');
+    }
+
+    private function parseHtml(string $html, string $url, string $baseDomain): array
+    {
+        $data = [
+            'title' => null, 'title_length' => null,
+            'meta_description' => null, 'meta_description_length' => null,
+            'meta_robots' => null, 'canonical_url' => null, 'is_self_canonical' => null,
+            'h1_tags' => [], 'heading_structure' => ['h1'=>0,'h2'=>0,'h3'=>0,'h4'=>0,'h5'=>0,'h6'=>0],
+            'word_count' => 0, 'image_count' => 0, 'images_without_alt' => 0,
+            'internal_links' => [], 'external_links' => [],
+            'structured_data_types' => [], 'og_tags' => [], 'twitter_tags' => [],
+            'has_viewport_meta' => false,
+        ];
+
+        libxml_use_internal_errors(true);
+        $doc = new DOMDocument();
+        $doc->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        libxml_clear_errors();
+
+        // Title
+        $titles = $doc->getElementsByTagName('title');
+        if ($titles->length > 0) {
+            $data['title'] = trim($titles->item(0)->textContent);
+            $data['title_length'] = mb_strlen($data['title']);
+        }
+
+        // Meta tags
+        foreach ($doc->getElementsByTagName('meta') as $meta) {
+            if (!$meta instanceof DOMElement) continue;
+            $name = strtolower($meta->getAttribute('name'));
+            $property = strtolower($meta->getAttribute('property'));
+            $content = $meta->getAttribute('content');
+
+            if ($name === 'description') { $data['meta_description'] = $content; $data['meta_description_length'] = mb_strlen($content); }
+            elseif ($name === 'robots') { $data['meta_robots'] = $content; }
+            elseif ($name === 'viewport') { $data['has_viewport_meta'] = true; }
+
+            if (str_starts_with($property, 'og:')) { $data['og_tags'][$property] = $content; }
+            if (str_starts_with($name, 'twitter:') || str_starts_with($property, 'twitter:')) { $data['twitter_tags'][$name ?: $property] = $content; }
+        }
+
+        // Canonical
+        foreach ($doc->getElementsByTagName('link') as $link) {
+            if ($link instanceof DOMElement && strtolower($link->getAttribute('rel')) === 'canonical') {
+                $data['canonical_url'] = $link->getAttribute('href');
+                $data['is_self_canonical'] = UrlNormalizerService::areEqual($data['canonical_url'], $url);
+                break;
+            }
+        }
+
+        // Headings
+        for ($level = 1; $level <= 6; $level++) {
+            $tag = 'h' . $level;
+            $els = $doc->getElementsByTagName($tag);
+            $data['heading_structure'][$tag] = $els->length;
+            if ($level === 1) {
+                for ($i = 0; $i < $els->length; $i++) {
+                    $text = trim($els->item($i)->textContent);
+                    if ($text !== '') $data['h1_tags'][] = $text;
+                }
+            }
+        }
+
+        // Images
+        $imgs = $doc->getElementsByTagName('img');
+        $data['image_count'] = $imgs->length;
+        foreach ($imgs as $img) {
+            if ($img instanceof DOMElement && trim($img->getAttribute('alt')) === '') {
+                $data['images_without_alt']++;
+            }
+        }
+
+        // Links
+        foreach ($doc->getElementsByTagName('a') as $a) {
+            if (!$a instanceof DOMElement) continue;
+            $href = $a->getAttribute('href');
+            if (empty($href) || str_starts_with($href, '#') || str_starts_with($href, 'javascript:') || str_starts_with($href, 'mailto:') || str_starts_with($href, 'tel:')) continue;
+
+            $rel = strtolower($a->getAttribute('rel'));
+            $anchor = mb_substr(trim($a->textContent), 0, 500);
+            $resolved = $this->resolveUrl($href, $url);
+
+            if (UrlNormalizerService::isSameDomain($resolved, $baseDomain)) {
+                $data['internal_links'][] = ['url' => $resolved, 'rel' => $rel, 'anchor_text' => $anchor];
+            } else {
+                $data['external_links'][] = ['url' => $resolved, 'rel' => $rel, 'anchor_text' => $anchor];
+            }
+        }
+
+        // Word count
+        $bodyTag = $doc->getElementsByTagName('body');
+        if ($bodyTag->length > 0) {
+            $text = preg_replace('/\s+/', ' ', $bodyTag->item(0)->textContent);
+            $data['word_count'] = str_word_count(trim($text ?? ''));
+        }
+
+        // Structured data (JSON-LD)
+        foreach ($doc->getElementsByTagName('script') as $script) {
+            if ($script instanceof DOMElement && strtolower($script->getAttribute('type')) === 'application/ld+json') {
+                $json = json_decode(trim($script->textContent), true);
+                if (is_array($json)) {
+                    if (isset($json['@type'])) $data['structured_data_types'][] = $json['@type'];
+                    if (isset($json['@graph'])) {
+                        foreach ($json['@graph'] as $item) {
+                            if (isset($item['@type'])) $data['structured_data_types'][] = $item['@type'];
+                        }
+                    }
+                }
+            }
+        }
+        $data['structured_data_types'] = array_values(array_unique($data['structured_data_types']));
+
+        return $data;
+    }
+
+    private function storeLinks(SeoPage $page, array $pageData): void
+    {
+        $links = [];
+        foreach ($pageData['internal_links'] as $link) {
+            $links[] = [
+                'seo_audit_id' => $this->audit->id, 'seo_page_id' => $page->id,
+                'target_url' => mb_substr($link['url'], 0, 2048),
+                'target_url_hash' => UrlNormalizerService::hash($link['url']),
+                'type' => 'internal', 'rel' => $link['rel'] ?: null,
+                'anchor_text' => $link['anchor_text'] ?: null,
+                'created_at' => now(), 'updated_at' => now(),
+            ];
+        }
+        foreach ($pageData['external_links'] as $link) {
+            $links[] = [
+                'seo_audit_id' => $this->audit->id, 'seo_page_id' => $page->id,
+                'target_url' => mb_substr($link['url'], 0, 2048),
+                'target_url_hash' => UrlNormalizerService::hash($link['url']),
+                'type' => 'external', 'rel' => $link['rel'] ?: null,
+                'anchor_text' => $link['anchor_text'] ?: null,
+                'created_at' => now(), 'updated_at' => now(),
+            ];
+        }
+        foreach (array_chunk($links, 100) as $chunk) {
+            SeoLink::insert($chunk);
+        }
+    }
+
+    private function resolveUrl(string $href, string $baseUrl): string
+    {
+        if (str_starts_with($href, 'http://') || str_starts_with($href, 'https://')) {
+            return $href;
+        }
+        $parsed = parse_url($baseUrl);
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = $parsed['host'] ?? '';
+        if (str_starts_with($href, '//')) {
+            return $scheme . ':' . $href;
+        }
+        if (str_starts_with($href, '/')) {
+            return $scheme . '://' . $host . $href;
+        }
+        $basePath = $parsed['path'] ?? '/';
+        $baseDir = substr($basePath, 0, (int) strrpos($basePath, '/') + 1);
+        return $scheme . '://' . $host . $baseDir . $href;
+    }
+
+    private function shouldSkipUrl(string $url, string $baseDomain): bool
+    {
+        if (!UrlNormalizerService::isSameDomain($url, $baseDomain)) return true;
+        $path = parse_url($url, PHP_URL_PATH) ?? '';
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, self::SKIP_EXTENSIONS, true)) return true;
+        foreach (self::SKIP_PATHS as $skip) {
+            if (str_starts_with($path, $skip)) return true;
+        }
+        return false;
+    }
+
+    private function calculateDepth(string $url, string $siteUrl): int
+    {
+        $path = trim(parse_url($url, PHP_URL_PATH) ?? '', '/');
+        if ($path === '') return 0;
+        return count(explode('/', $path));
+    }
+
+    private function updateProgress(string $trackerId, int $crawled, int $maxPages): void
+    {
+        $pct = $maxPages > 0 ? min(55, (int) round(($crawled / $maxPages) * 55) + 5) : 5;
+        $this->audit->update(['pages_crawled' => $crawled]);
+        JobTracker::progress($trackerId, $pct, "Crawling... {$crawled}/{$maxPages} pages");
+    }
 }
