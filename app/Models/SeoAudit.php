@@ -21,4 +21,4 @@ class SeoAudit extends Model
     public function isRunning(): bool { return $this->status->isRunning(); }
     public function totalIssues(): int { return $this->critical_count + $this->high_count + $this->medium_count + $this->low_count + $this->info_count; }
     public function markAs(SeoAuditStatus $status, ?string $errorMessage = null): void { $d = ['status' => $status]; if ($errorMessage !== null) { $d['error_message'] = $errorMessage; } if ($status === SeoAuditStatus::Completed) { $d['scanned_at'] = now(); } $this->update($d); }
-}\n
+}

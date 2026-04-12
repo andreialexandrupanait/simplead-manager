@@ -17,4 +17,4 @@ class SeoIssue extends Model
     public function scopeActive(Builder $query): Builder { return $query->whereNull('resolved_at'); }
     public function scopeBySeverity(Builder $query, SeoIssueSeverity $severity): Builder { return $query->where('severity', $severity); }
     public function scopeByCategory(Builder $query, SeoIssueCategory $category): Builder { return $query->where('category', $category); }
-}\n
+}

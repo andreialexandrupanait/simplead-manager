@@ -16,4 +16,4 @@ class SeoPage extends Model
     public function links(): HasMany { return $this->hasMany(SeoLink::class); }
     public function scopeIndexable(Builder $query): Builder { return $query->where('is_indexable', true); }
     public function scopeOrphaned(Builder $query): Builder { return $query->where('inbound_internal_links', 0)->where('status_code', 200); }
-}\n
+}

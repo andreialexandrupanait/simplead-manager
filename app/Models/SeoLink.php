@@ -15,4 +15,4 @@ class SeoLink extends Model
     public function scopeBroken(Builder $query): Builder { return $query->where('is_broken', true); }
     public function scopeInternal(Builder $query): Builder { return $query->where('type', 'internal'); }
     public function scopeExternal(Builder $query): Builder { return $query->where('type', 'external'); }
-}\n
+}

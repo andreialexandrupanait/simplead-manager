@@ -15,4 +15,4 @@ class SeoMonitor extends Model
     public function audits(): HasMany { return $this->hasMany(SeoAudit::class, 'site_id', 'site_id'); }
     public function scopeActive(Builder $query): Builder { return $query->where('is_active', true); }
     public function scopeDue(Builder $query): Builder { return $query->where(fn (Builder $q) => $q->whereNull('next_audit_at')->orWhere('next_audit_at', '<=', now())); }
-}\n
+}
