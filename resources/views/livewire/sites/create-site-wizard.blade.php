@@ -8,7 +8,7 @@
                         wire:click="goToStep({{ $num }})"
                         @if($num > $step) disabled @endif
                         class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition
-                            {{ $step === $num ? 'bg-purple-600 text-white' : ($step > $num ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400') }}"
+                            {{ $step === $num ? 'bg-accent-600 text-white' : ($step > $num ? 'bg-accent-100 text-accent-700 hover:bg-accent-200' : 'bg-gray-100 text-gray-400') }}"
                     >
                         @if($step > $num)
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -18,7 +18,7 @@
                     </button>
                     <span class="ml-2 text-sm font-medium {{ $step >= $num ? 'text-gray-900' : 'text-gray-400' }}">{{ $label }}</span>
                     @if($num < 4)
-                        <div class="mx-4 h-px flex-1 {{ $step > $num ? 'bg-purple-300' : 'bg-gray-200' }}"></div>
+                        <div class="mx-4 h-px flex-1 {{ $step > $num ? 'bg-accent-300' : 'bg-gray-200' }}"></div>
                     @endif
                 </div>
             @endforeach
@@ -79,7 +79,7 @@
                 <button
                     wire:click="$set('form.clientId', null)"
                     class="w-full rounded-lg border p-3 text-left transition
-                        {{ $form->clientId === null ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                        {{ $form->clientId === null ? 'border-accent-300 bg-accent-50 ring-1 ring-accent-300' : 'border-gray-200 hover:border-accent-200 hover:bg-accent-50/50' }}"
                 >
                     <div class="text-sm font-medium text-gray-900">{{ __('No client') }}</div>
                     <div class="mt-0.5 text-xs text-gray-500">{{ __('Skip client assignment for now.') }}</div>
@@ -90,7 +90,7 @@
                     <button
                         wire:click="$set('form.clientId', {{ $client->id }})"
                         class="w-full rounded-lg border p-3 text-left transition
-                            {{ $form->clientId === $client->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                            {{ $form->clientId === $client->id ? 'border-accent-300 bg-accent-50 ring-1 ring-accent-300' : 'border-gray-200 hover:border-accent-200 hover:bg-accent-50/50' }}"
                     >
                         <div class="text-sm font-medium text-gray-900">{{ $client->name }}</div>
                         @if($client->email)
@@ -103,12 +103,12 @@
                 @if(!$creatingClient)
                     <button
                         wire:click="$set('creatingClient', true)"
-                        class="w-full rounded-lg border border-dashed border-gray-300 p-3 text-center text-sm font-medium text-gray-500 hover:border-purple-300 hover:text-purple-600 transition"
+                        class="w-full rounded-lg border border-dashed border-gray-300 p-3 text-center text-sm font-medium text-gray-500 hover:border-accent-300 hover:text-accent-600 transition"
                     >
                         + {{ __('Create new client') }}
                     </button>
                 @else
-                    <div class="rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+                    <div class="rounded-lg border border-accent-200 bg-accent-50/50 p-4">
                         <h4 class="text-sm font-medium text-gray-900 mb-3">{{ __('New Client') }}</h4>
                         <div class="space-y-3">
                             <x-ui.form-group error="form.newClientName">
@@ -144,12 +144,12 @@
                     <button
                         wire:click="$set('form.planId', {{ $plan->id }})"
                         class="w-full rounded-lg border p-4 text-left transition
-                            {{ $form->planId === $plan->id ? 'border-purple-300 bg-purple-50 ring-1 ring-purple-300' : 'border-gray-200 hover:border-purple-200 hover:bg-purple-50/50' }}"
+                            {{ $form->planId === $plan->id ? 'border-accent-300 bg-accent-50 ring-1 ring-accent-300' : 'border-gray-200 hover:border-accent-200 hover:bg-accent-50/50' }}"
                     >
                         <div class="flex items-center justify-between">
                             <div class="text-sm font-semibold text-gray-900">{{ $plan->name }}</div>
                             @if($plan->is_default)
-                                <span class="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{{ __('Default') }}</span>
+                                <span class="rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700">{{ __('Default') }}</span>
                             @endif
                         </div>
                         @if($plan->description)

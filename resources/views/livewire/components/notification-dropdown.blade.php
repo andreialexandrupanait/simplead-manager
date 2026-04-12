@@ -28,7 +28,7 @@
         </button>
     @else
         {{-- Header button style --}}
-        <button @click="open = !open" aria-label="{{ __('Notifications') }}" class="relative rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+        <button @click="open = !open" aria-label="{{ $this->count > 0 ? __('Notifications (:count unread)', ['count' => $this->count]) : __('Notifications') }}" class="relative rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
             <x-icons.bell class="h-5 w-5" aria-hidden="true" />
             @if($this->count > 0)
                 <span class="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
@@ -98,7 +98,7 @@
                                 <span class="text-xs text-gray-400">{{ $alert['timestamp']->diffForHumans() }}</span>
                             @endif
                             @if($alert['url'])
-                                <a href="{{ $alert['url'] }}" class="text-xs font-medium text-purple-600 hover:text-purple-800 transition">View</a>
+                                <a href="{{ $alert['url'] }}" class="text-xs font-medium text-accent-600 hover:text-accent-800 transition">View</a>
                             @endif
                             @if(str_starts_with($alert['action'] ?? '', 'retry_backup_'))
                                 <button
@@ -146,7 +146,7 @@
                     </div>
                 </div>
                 @foreach($this->notifications as $notif)
-                    <div class="flex items-start gap-3 border-b border-gray-50 px-4 py-2.5 {{ !$notif->isRead() ? 'bg-purple-50/30' : '' }}" wire:key="notif-{{ $notif->id }}">
+                    <div class="flex items-start gap-3 border-b border-gray-50 px-4 py-2.5 {{ !$notif->isRead() ? 'bg-accent-50/30' : '' }}" wire:key="notif-{{ $notif->id }}">
                         <div class="mt-0.5 shrink-0">
                             <span @class([
                                 'h-2 w-2 rounded-full inline-block',
@@ -165,7 +165,7 @@
                         <div class="flex shrink-0 gap-1">
                             @if(!$notif->isRead())
                                 <button wire:click="markAsRead({{ $notif->id }})" class="rounded p-1 text-gray-400 hover:text-green-600 hover:bg-green-50" title="Mark read">
-                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <svg aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                 </button>
                             @endif
                             <button wire:click="deleteNotification({{ $notif->id }})" class="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete">

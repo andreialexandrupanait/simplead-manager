@@ -73,7 +73,7 @@
                         wire:model="form.webhookHeaders"
                         rows="3"
                         placeholder='{"Authorization": "Bearer token"}'
-                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                     ></textarea>
                 </div>
                 <div>
@@ -84,7 +84,7 @@
             @endif
 
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="form.is_default" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model="form.is_default" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">Use as default channel for all monitors</span>
             </label>
 
@@ -108,7 +108,7 @@
                         'test' => 'Test Notification',
                     ] as $eventKey => $eventLabel)
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" wire:model="form.eventSubscriptions" value="{{ $eventKey }}" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model="form.eventSubscriptions" value="{{ $eventKey }}" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             <span class="text-xs text-gray-600">{{ $eventLabel }}</span>
                         </label>
                     @endforeach

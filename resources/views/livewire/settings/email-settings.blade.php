@@ -70,8 +70,8 @@
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
-                        <x-icons.inbox class="h-5 w-5 text-purple-600" />
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
+                        <x-icons.inbox class="h-5 w-5 text-accent-600" />
                     </div>
                     <div>
                         <h3 class="text-base font-semibold text-gray-900">{{ __('Sender Identity') }}</h3>

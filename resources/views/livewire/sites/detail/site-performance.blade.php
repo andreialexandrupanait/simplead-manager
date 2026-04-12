@@ -5,14 +5,14 @@
         <div class="flex items-center gap-3">
             @if($this->monitor)
                 <x-ui.button variant="secondary" wire:click="openBudgetModal">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                     </svg>
                     {{ __('Budgets') }}
                 </x-ui.button>
             @endif
             <x-ui.button variant="secondary" wire:click="openSettings">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
@@ -20,7 +20,7 @@
             </x-ui.button>
             <x-ui.button wire:click="runTest" wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="runTest">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </span>
@@ -76,15 +76,15 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <template x-if="running">
-                                <x-ui.spinner size="md" class="text-purple-600" />
+                                <x-ui.spinner size="md" class="text-accent-600" />
                             </template>
                             <template x-if="!running && !failed">
-                                <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg aria-hidden="true" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
                             </template>
                             <template x-if="!running && failed">
-                                <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg aria-hidden="true" class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </template>
@@ -105,8 +105,8 @@
                                 <span x-show="count === 2">2 tests running</span>
                             </span>
                             <span x-show="running && count === 0">{{ __('Queued') }}</span>
-                            <button x-show="!running" @click="dismissed = true" class="text-gray-400 hover:text-gray-600">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button x-show="!running" @click="dismissed = true" class="text-gray-400 hover:text-gray-600" aria-label="{{ __('Dismiss') }}">
+                                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
@@ -120,7 +120,7 @@
                             :class="{
                                 'bg-green-500': !running && !failed,
                                 'bg-red-500': !running && failed,
-                                'bg-purple-500': running,
+                                'bg-accent-500': running,
                             }"
                             :style="!running ? 'width: 100%' : 'width: 60%; animation: indeterminate 1.5s infinite ease-in-out'"
                         ></div>
@@ -252,7 +252,7 @@
                 <div class="flex rounded-lg border border-gray-200 bg-gray-50">
                     @foreach(['7d' => '7d', '30d' => '30d', '90d' => '90d', '180d' => '180d'] as $key => $label)
                         <button wire:click="setHistoryRange('{{ $key }}')"
-                                class="px-3 py-1 text-xs font-medium transition {{ $historyRange === $key ? 'bg-white text-purple-700 shadow-sm rounded-lg' : 'text-gray-500 hover:text-gray-700' }}">
+                                class="px-3 py-1 text-xs font-medium transition {{ $historyRange === $key ? 'bg-white text-accent-700 shadow-sm rounded-lg' : 'text-gray-500 hover:text-gray-700' }}">
                             {{ $label }}
                         </button>
                     @endforeach
@@ -280,7 +280,7 @@
                 @if(!empty($this->competitorComparison))
                     {{-- Mobile cards --}}
                     <div class="md:hidden space-y-2 mb-4">
-                        <div class="rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div class="rounded-lg border border-accent-200 bg-accent-50 p-3">
                             <div class="text-sm font-medium text-gray-900">{{ $this->site->name }} <span class="text-xs text-gray-500">(you)</span></div>
                             <div class="mt-1.5 flex items-center gap-4">
                                 <span class="text-xs text-gray-500">Mobile: <span class="font-semibold text-gray-900">{{ $this->monitor->latest_mobile_score ?? '—' }}</span></span>
@@ -313,7 +313,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr class="border-b border-gray-100 bg-purple-50">
+                                <tr class="border-b border-gray-100 bg-accent-50">
                                     <td class="py-2 font-medium text-gray-900">{{ $this->site->name }} (you)</td>
                                     <td class="py-2 text-center font-semibold">{{ $this->monitor->latest_mobile_score ?? '—' }}</td>
                                     <td class="py-2 text-center font-semibold">{{ $this->monitor->latest_desktop_score ?? '—' }}</td>
@@ -457,7 +457,7 @@
         {{-- Empty state --}}
         <x-ui.card>
             <div class="py-12 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
                 <h3 class="mt-4 text-sm font-semibold text-gray-900">{{ __('No performance data yet') }}</h3>
@@ -465,8 +465,8 @@
                 <div class="mt-6">
                     <button wire:click="runTest"
                             wire:loading.attr="disabled"
-                            class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50">
-                        <svg wire:loading.remove wire:target="runTest" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-700 disabled:opacity-50">
+                        <svg aria-hidden="true" wire:loading.remove wire:target="runTest" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                         <x-ui.spinner size="sm" wire:loading wire:target="runTest" />
@@ -534,7 +534,7 @@
                     {{ __('Cancel') }}
                 </button>
                 <button type="submit"
-                        class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700">
+                        class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-700">
                     {{ __('Save Settings') }}
                 </button>
             </div>
@@ -599,7 +599,7 @@
                     Cancel
                 </button>
                 <button type="submit"
-                        class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-700">
+                        class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-700">
                     {{ __('Save Budgets') }}
                 </button>
             </div>

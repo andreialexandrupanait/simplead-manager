@@ -53,9 +53,9 @@
         }"
     >
         {{-- Bulk action bar (desktop only — bulk selection is impractical on touch) --}}
-        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
-            <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' {{ __('selected') }}'"></span>
-            <select wire:model="bulkPresetId" class="rounded-lg border-gray-300 text-xs focus:border-purple-500 focus:ring-purple-500">
+        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-accent-50/50 px-5 py-2.5">
+            <span class="text-sm font-medium text-accent-700" x-text="selected.length + ' {{ __('selected') }}'"></span>
+            <select wire:model="bulkPresetId" class="rounded-lg border-gray-300 text-xs focus:border-accent-500 focus:ring-accent-500">
                 <option value="">{{ __('Choose preset...') }}</option>
                 @foreach($this->presets as $preset)
                     <option value="{{ $preset->id }}">{{ $preset->name }}</option>
@@ -63,7 +63,7 @@
             </select>
             <button
                 @click="if (confirm('{{ __('Apply preset to') }} ' + selected.length + ' {{ __('site(s)?') }}')) { $wire.bulkApplyPreset(selected).then(() => selected = []) }"
-                class="inline-flex items-center rounded-lg border border-purple-300 bg-white px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                class="inline-flex items-center rounded-lg border border-accent-300 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
             >
                 {{ __('Apply Preset') }}
             </button>
@@ -81,7 +81,7 @@
                 @foreach($this->sites as $site)
                     <div class="p-3">
                         <div class="flex items-start justify-between gap-2">
-                            <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 min-w-0 hover:text-purple-600" wire:navigate>
+                            <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 min-w-0 hover:text-accent-600" wire:navigate>
                                 <x-site-favicon :site="$site" class="h-5 w-5 shrink-0" />
                                 <div class="min-w-0">
                                     <p class="font-medium text-gray-900 truncate">{{ $site->name }}</p>
@@ -126,7 +126,7 @@
                         <tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
                             <th class="px-3 py-2 w-10">
                                 <input type="checkbox" :checked="allSelected" @change="toggleAll()"
-                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                             </th>
                             <x-ui.sortable-th column="name" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Site') }}</x-ui.sortable-th>
                             <x-ui.sortable-th column="security_hardening_score" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Score') }}</x-ui.sortable-th>
@@ -137,13 +137,13 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($this->sites as $site)
-                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $site->id }}) && 'bg-purple-50/50'">
+                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $site->id }}) && 'bg-accent-50/50'">
                                 <td class="px-3 py-3">
                                     <input type="checkbox" value="{{ $site->id }}" x-model.number="selected"
-                                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                           class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 </td>
                                 <td class="px-3 py-3">
-                                    <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 hover:text-purple-600" wire:navigate>
+                                    <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 hover:text-accent-600" wire:navigate>
                                         <x-site-favicon :site="$site" class="h-5 w-5" />
                                         <div>
                                             <p class="font-medium text-gray-900">{{ $site->name }}</p>

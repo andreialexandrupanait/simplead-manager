@@ -30,7 +30,7 @@
                         @endif
                         @if($client->phone)
                             <a href="tel:{{ $client->phone }}" class="flex items-center gap-1 hover:text-gray-700">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
                                 {{ $client->phone }}
                             </a>
                         @endif
@@ -46,7 +46,7 @@
                     @if($client->portal_enabled && $client->portal_token)
                         <a href="{{ route('client-portal.show', $client->portal_token) }}" target="_blank" rel="noopener">
                             <x-ui.button variant="secondary">
-                                <svg class="mr-1.5 h-4 w-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                <svg aria-hidden="true" class="mr-1.5 h-4 w-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                 {{ __('Open Portal') }}
                             </x-ui.button>
                         </a>
@@ -170,7 +170,7 @@
         <div class="flex items-center gap-3">
             <label class="flex items-center gap-2">
                 <input type="checkbox" wire:click="togglePortal" @checked($client->portal_enabled)
-                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">{{ __('Enable portal') }}</span>
             </label>
         </div>
@@ -181,7 +181,7 @@
                 <div class="flex items-center gap-2">
                     <code class="flex-1 rounded bg-white border px-3 py-1.5 text-xs font-mono text-gray-900 select-all truncate">{{ route('client-portal.show', $client->portal_token) }}</code>
                     <button wire:click="regeneratePortalToken" wire:confirm="{{ __('Regenerate token? The old link will stop working.') }}"
-                            class="text-xs text-gray-500 hover:text-purple-600 whitespace-nowrap">{{ __('Regenerate') }}</button>
+                            class="text-xs text-gray-500 hover:text-accent-600 whitespace-nowrap">{{ __('Regenerate') }}</button>
                 </div>
             </div>
         @endif
@@ -191,7 +191,7 @@
     <x-ui.modal name="delete-client" maxWidth="sm">
         <div class="text-center">
             <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
             </div>

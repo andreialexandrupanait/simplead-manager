@@ -7,13 +7,13 @@
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
-                <svg class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
                 </svg>
             </div>
             <h3 class="text-sm font-semibold text-gray-900">Database</h3>
         </div>
-        <a href="{{ route('sites.database', $site) }}" class="text-xs text-purple-600 hover:text-purple-700">
+        <a href="{{ route('sites.database', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
             View Details &rarr;
         </a>
     </div>
@@ -71,7 +71,7 @@
                 @elseif(isset($dbData['optimization_total']) && $dbData['optimization_total'] === 0)
                     <div class="border-t border-gray-100 pt-3">
                         <div class="flex items-center gap-1.5 text-xs text-green-600">
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                             Database is clean — no pending optimizations
@@ -81,7 +81,7 @@
             @elseif(!$site->db_size_mb)
                 <p class="py-2 text-center text-sm text-gray-500">No database info available</p>
                 <div class="text-center">
-                    <a href="{{ route('sites.database', $site) }}" class="text-xs text-purple-600 hover:text-purple-700">
+                    <a href="{{ route('sites.database', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
                         Configure Database Cleanup &rarr;
                     </a>
                 </div>

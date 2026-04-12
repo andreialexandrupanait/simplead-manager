@@ -21,6 +21,7 @@
 @if($site->favicon_path)
     <img src="{{ Storage::disk('public')->url($site->favicon_path) }}"
          alt="{{ $site->name }} favicon"
+         loading="lazy"
          class="{{ $sizeClasses }} rounded shrink-0"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
     <span class="{{ $sizeClasses }} rounded shrink-0 items-center justify-center font-bold text-white {{ $textSize }}"

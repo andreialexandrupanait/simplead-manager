@@ -13,12 +13,13 @@
         data: @js($data),
         colors: @js($colors),
         centerText: @js($centerText),
-        init() {
-            this.renderChart();
+        async init() {
+            await this.renderChart();
             this.$watch('data', () => this.renderChart());
             this.$watch('labels', () => this.renderChart());
         },
-        renderChart() {
+        async renderChart() {
+            const Chart = await window.loadChart();
             if (this.chart) {
                 this.chart.destroy();
             }
@@ -32,7 +33,7 @@
                     const centerY = (top + bottom) / 2;
                     ctx.save();
                     ctx.font = 'bold 20px sans-serif';
-                    ctx.fillStyle = '#1f2937';
+                    ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#1f2937';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(centerText, centerX, centerY);
@@ -48,7 +49,7 @@
                         data: this.data,
                         backgroundColor: this.colors,
                         borderWidth: 2,
-                        borderColor: '#ffffff',
+                        borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
                     }],
                 },
                 options: {

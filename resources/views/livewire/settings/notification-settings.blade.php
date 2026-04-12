@@ -6,8 +6,8 @@
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
-                        <x-icons.bell class="h-5 w-5 text-purple-600" />
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
+                        <x-icons.bell class="h-5 w-5 text-accent-600" />
                     </div>
                     <div>
                         <h3 class="text-base font-semibold text-gray-900">{{ __('Notification Channels') }}</h3>
@@ -104,7 +104,7 @@
                             <p class="text-sm font-medium text-gray-700">{{ __('Site Down') }}</p>
                             <p class="text-xs text-gray-400">{{ __('Notify when a site goes down') }}</p>
                         </div>
-                        <input type="checkbox" wire:model="notifyDown" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="notifyDown" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     </label>
 
                     <label class="flex items-center justify-between">
@@ -112,7 +112,7 @@
                             <p class="text-sm font-medium text-gray-700">{{ __('Site Recovery') }}</p>
                             <p class="text-xs text-gray-400">{{ __('Notify when a site recovers') }}</p>
                         </div>
-                        <input type="checkbox" wire:model="notifyRecovery" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="notifyRecovery" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     </label>
 
                     <label class="flex items-center justify-between">
@@ -120,7 +120,7 @@
                             <p class="text-sm font-medium text-gray-700">{{ __('SSL Expiring') }}</p>
                             <p class="text-xs text-gray-400">{{ __('Notify when SSL certificate is expiring soon') }}</p>
                         </div>
-                        <input type="checkbox" wire:model="notifySslExpiring" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="notifySslExpiring" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     </label>
 
                     <label class="flex items-center justify-between">
@@ -128,7 +128,7 @@
                             <p class="text-sm font-medium text-gray-700">{{ __('Degraded Performance') }}</p>
                             <p class="text-xs text-gray-400">{{ __('Notify when a site shows degraded performance') }}</p>
                         </div>
-                        <input type="checkbox" wire:model="notifyDegraded" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="notifyDegraded" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     </label>
                 </div>
             </x-ui.card>
@@ -267,7 +267,7 @@
                             <p class="text-xs text-gray-500 truncate">{{ $tmpl->title_template }}</p>
                         </div>
                         <div class="flex gap-2 ml-4">
-                            <button wire:click="editTemplate({{ $tmpl->id }})" class="text-xs text-purple-600 hover:text-purple-800">{{ __('Edit') }}</button>
+                            <button wire:click="editTemplate({{ $tmpl->id }})" class="text-xs text-accent-600 hover:text-accent-800">{{ __('Edit') }}</button>
                             <button wire:click="deleteTemplate({{ $tmpl->id }})" wire:confirm="{{ __('Delete this template?') }}" class="text-xs text-red-600 hover:text-red-800">{{ __('Delete') }}</button>
                         </div>
                     </div>
@@ -303,12 +303,12 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Message Template') }}</label>
-                <textarea wire:model="templateMessage" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="e.g. {site_name} ({site_url}) is currently experiencing issues. {details}"></textarea>
+                <textarea wire:model="templateMessage" rows="3" class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500" placeholder="e.g. {site_name} ({site_url}) is currently experiencing issues. {details}"></textarea>
                 @error('templateMessage') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="templateIsActive" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model="templateIsActive" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">{{ __('Active') }}</span>
             </label>
         </div>

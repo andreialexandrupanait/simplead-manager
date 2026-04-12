@@ -13,12 +13,13 @@
         data: @js($data),
         color: @js($color),
         horizontal: @js($horizontal),
-        init() {
-            this.renderChart();
+        async init() {
+            await this.renderChart();
             this.$watch('data', () => this.renderChart());
             this.$watch('labels', () => this.renderChart());
         },
-        renderChart() {
+        async renderChart() {
+            const Chart = await window.loadChart();
             if (this.chart) {
                 this.chart.destroy();
             }
@@ -44,13 +45,13 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: '#f3f4f6' },
-                            ticks: { color: '#6b7280' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' },
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' },
                             beginAtZero: true,
                         },
                         y: {
                             grid: { display: false },
-                            ticks: { color: '#6b7280' },
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' },
                         },
                     },
                 },

@@ -10,6 +10,7 @@ use App\Models\DatabaseCleanupConfig;
 use App\Models\DnsMonitor;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
+use App\Models\SeoMonitor;
 use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
 use App\Models\Site;
@@ -93,6 +94,7 @@ class ModuleConfigService
         'cloudflare' => 360,  // 6h
         'database_cleanup' => 10080, // 7 days
         'dns' => 360,             // 6h
+        'seo' => 1440,
     ];
 
     /**
@@ -108,6 +110,7 @@ class ModuleConfigService
         'cloudflare' => 360,   // 6h
         'database_cleanup' => 43200, // 30 days
         'dns' => 360,              // 6h
+        'seo' => 10080,
     ];
 
     /**

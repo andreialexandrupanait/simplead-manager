@@ -13,7 +13,6 @@
                     ['route' => 'settings.status-pages', 'label' => __('Status Pages')],
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
                     ['route' => 'settings.data-retention', 'label' => __('Data Retention')],
-                    ['route' => 'settings.ai-incident-response', 'label' => __('AI Incident Response')],
                     ['route' => 'settings.application-backup', 'label' => __('Application Backup')],
                     ['route' => 'settings.users', 'label' => __('Users')],
                 ], $tabs);
@@ -24,7 +23,7 @@
             <a href="{{ route($tab['route']) }}"
                class="whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition
                       {{ request()->routeIs($tab['route'])
-                          ? 'border-purple-500 text-purple-600'
+                          ? 'border-accent-500 text-accent-600'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                 {{ $tab['label'] }}
             </a>

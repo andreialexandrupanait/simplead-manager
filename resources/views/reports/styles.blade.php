@@ -1,7 +1,7 @@
 <style>
     /* ============================================================
        PDF Report Styles — Chrome/Gotenberg Renderer
-       Modern design with Inter font, flexbox, rounded corners
+       Modern design with system font stack, flexbox, rounded corners
        ============================================================ */
 
     /* --- CSS Variables --- */
@@ -46,7 +46,7 @@
 
     /* --- Typography --- */
     body {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
         font-size: 9pt;
         line-height: 1.7;
         color: var(--slate-700);
@@ -680,9 +680,8 @@
 
     /* --- Highlight box --- */
     .highlight-box {
-        background: var(--white);
+        background: rgba(99, 102, 241, 0.04);
         border: 1px solid var(--slate-200);
-        border-left: 4px solid var(--primary);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         padding: 14px 15px;
@@ -843,15 +842,11 @@
         color: var(--slate-400);
         margin-top: 4px;
     }
-    .snapshot-status-good { border-left: 4px solid var(--green-500); }
-    .snapshot-status-warning { border-left: 4px solid var(--amber-500); }
-    .snapshot-status-danger { border-left: 4px solid var(--red-500); }
-    .snapshot-status-neutral { border-left: 4px solid var(--slate-400); }
-
     /* Status tint backgrounds for snapshot cards */
     .snapshot-status-good { background: linear-gradient(135deg, #f0fdf4, var(--white)); }
     .snapshot-status-warning { background: linear-gradient(135deg, #fffbeb, var(--white)); }
     .snapshot-status-danger { background: linear-gradient(135deg, #fef2f2, var(--white)); }
+    .snapshot-status-neutral { background: linear-gradient(135deg, #f8fafc, var(--white)); }
 
     /* --- Recommendation cards --- */
     .rec-card {
@@ -874,9 +869,9 @@
         color: var(--slate-500);
         line-height: 1.6;
     }
-    .rec-priority-high { border-left: 6px solid var(--red-500); }
-    .rec-priority-medium { border-left: 6px solid var(--amber-500); }
-    .rec-priority-low { border-left: 6px solid var(--slate-400); }
+    .rec-priority-high { background-color: rgba(239, 68, 68, 0.05); }
+    .rec-priority-medium { background-color: rgba(245, 158, 11, 0.05); }
+    .rec-priority-low { background-color: rgba(148, 163, 184, 0.05); }
     .rec-category-label {
         font-size: 8pt;
         font-weight: 700;
@@ -889,9 +884,8 @@
 
     /* --- Sub-cards (security/database inside Technical Stability, infrastructure) --- */
     .subcard {
-        background: var(--white);
+        background: rgba(99, 102, 241, 0.04);
         border: 1px solid var(--slate-200);
-        border-left: 4px solid var(--primary);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         padding: 14px 15px;
@@ -924,9 +918,8 @@
         gap: 16px;
     }
     .infra-card {
-        background: var(--white);
+        background: rgba(99, 102, 241, 0.03);
         border: 1px solid #f0f0f0;
-        border-left: 3px solid var(--primary);
         border-radius: var(--radius);
         overflow: hidden;
         page-break-inside: avoid;

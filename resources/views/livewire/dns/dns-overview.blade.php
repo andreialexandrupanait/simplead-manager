@@ -23,7 +23,7 @@
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->stats['cloudflare'] }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['cloudflare'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Cloudflare') }}</p>
             </div>
         </x-ui.card>
@@ -267,7 +267,7 @@
                         <div class="flex items-center gap-2">
                             <x-ui.badge variant="purple">{{ $change->record_type }}</x-ui.badge>
                             @if($change->monitor?->site)
-                                <a href="{{ route('sites.overview', $change->monitor->site) }}" class="text-sm text-purple-600 hover:underline" wire:navigate>{{ $change->monitor->domain }}</a>
+                                <a href="{{ route('sites.overview', $change->monitor->site) }}" class="text-sm text-accent-600 hover:underline" wire:navigate>{{ $change->monitor->domain }}</a>
                             @else
                                 <span class="text-sm text-gray-900 dark:text-white">{{ $change->monitor?->domain ?? '—' }}</span>
                             @endif

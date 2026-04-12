@@ -23,6 +23,6 @@
     </form>
 
     <p class="mt-6 text-center text-sm text-gray-500">
-        <a href="{{ route('login') }}" class="text-purple-600 hover:text-purple-700 font-medium">Back to login</a>
+        <a href="{{ route('login') }}" class="text-accent-600 hover:text-accent-700 font-medium">Back to login</a>
     </p>
 </x-guest-layout>

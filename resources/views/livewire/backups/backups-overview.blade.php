@@ -34,7 +34,7 @@
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->stats['in_progress'] }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['in_progress'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('In Progress') }}</p>
             </div>
         </x-ui.card>
@@ -71,8 +71,8 @@
         }"
     >
         {{-- Bulk action bar (desktop only — bulk selection is impractical on touch) --}}
-        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-purple-50/50 px-5 py-2.5">
-            <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' {{ __('selected') }}'"></span>
+        <div x-show="selected.length > 0" x-cloak class="hidden md:flex items-center gap-3 border-b border-gray-200 bg-accent-50/50 px-5 py-2.5">
+            <span class="text-sm font-medium text-accent-700" x-text="selected.length + ' {{ __('selected') }}'"></span>
             <button
                 @click="if (confirm('{{ __('Delete') }} ' + selected.length + ' {{ __('backup(s)? This cannot be undone.') }}')) { $wire.bulkDelete(selected).then(() => selected = []) }"
                 class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
@@ -92,7 +92,7 @@
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 @if($backup->site)
-                                    <a href="{{ route('sites.backups', $backup->site) }}" class="font-medium text-purple-600 hover:text-purple-800 truncate block">
+                                    <a href="{{ route('sites.backups', $backup->site) }}" class="font-medium text-accent-600 hover:text-accent-800 truncate block">
                                         {{ $backup->site->name }}
                                     </a>
                                     <p class="text-xs text-gray-400 truncate">{{ $backup->site->domain }}</p>
@@ -133,7 +133,7 @@
                         <tr>
                             <th class="w-10 px-3 py-2">
                                 <input type="checkbox" :checked="allSelected" @change="toggleAll()"
-                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                             </th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Site') }}</th>
                             <x-ui.sortable-th column="created_at" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Date') }}</x-ui.sortable-th>
@@ -146,14 +146,14 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($backups as $backup)
-                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $backup->id }}) && 'bg-purple-50/50'">
+                            <tr class="hover:bg-gray-50" :class="selected.includes({{ $backup->id }}) && 'bg-accent-50/50'">
                                 <td class="px-3 py-3">
                                     <input type="checkbox" value="{{ $backup->id }}" x-model.number="selected"
-                                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                           class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 </td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($backup->site)
-                                        <a href="{{ route('sites.backups', $backup->site) }}" class="text-purple-600 hover:text-purple-800 font-medium">
+                                        <a href="{{ route('sites.backups', $backup->site) }}" class="text-accent-600 hover:text-accent-800 font-medium">
                                             {{ $backup->site->name }}
                                         </a>
                                         <div class="text-xs text-gray-400">{{ $backup->site->domain }}</div>

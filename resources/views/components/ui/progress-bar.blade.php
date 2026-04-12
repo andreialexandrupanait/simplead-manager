@@ -7,20 +7,20 @@
 
 @php
 $bgColor = match($color) {
-    'purple' => 'bg-purple-500',
+    'purple' => 'bg-accent-500',
     'green' => 'bg-green-500',
     'red' => 'bg-red-500',
     'yellow' => 'bg-yellow-500',
     'blue' => 'bg-blue-500',
-    default => 'bg-purple-500',
+    default => 'bg-accent-500',
 };
 $trackColor = match($color) {
-    'purple' => 'bg-purple-100',
+    'purple' => 'bg-accent-100',
     'green' => 'bg-green-100',
     'red' => 'bg-red-100',
     'yellow' => 'bg-yellow-100',
     'blue' => 'bg-blue-100',
-    default => 'bg-purple-100',
+    default => 'bg-accent-100',
 };
 $height = match($size) {
     'sm' => 'h-1.5',

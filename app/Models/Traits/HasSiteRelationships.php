@@ -17,6 +17,8 @@ use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
 use App\Models\IncidentResponse;
 use App\Models\MaintenancePlan;
+use App\Models\SeoAudit;
+use App\Models\SeoMonitor;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
 use App\Models\ReportRecommendation;
@@ -313,5 +315,20 @@ trait HasSiteRelationships
     public function incidentResponses(): HasMany
     {
         return $this->hasMany(IncidentResponse::class);
+    }
+
+    public function seoMonitor(): HasOne
+    {
+        return $this->hasOne(SeoMonitor::class);
+    }
+
+    public function seoAudits(): HasMany
+    {
+        return $this->hasMany(SeoAudit::class);
+    }
+
+    public function latestSeoAudit(): HasOne
+    {
+        return $this->hasOne(SeoAudit::class)->latestOfMany('scanned_at');
     }
 }

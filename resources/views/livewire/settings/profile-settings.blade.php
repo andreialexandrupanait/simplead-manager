@@ -7,9 +7,9 @@
             <x-ui.card>
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-600 overflow-hidden">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-100 text-sm font-bold text-accent-600 overflow-hidden">
                             @if(Auth::user()->avatar_path)
-                                <img src="{{ Storage::url(Auth::user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                                <img src="{{ Storage::url(Auth::user()->avatar_path) }}" alt="Avatar {{ Auth::user()->name }}" class="h-full w-full object-cover">
                             @else
                                 {{ Auth::user()->initials }}
                             @endif
@@ -26,15 +26,15 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Avatar') }}</label>
                         <div class="flex items-center gap-4">
-                            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-lg font-bold text-purple-600 overflow-hidden">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-accent-100 text-lg font-bold text-accent-600 overflow-hidden">
                                 @if(Auth::user()->avatar_path)
-                                    <img src="{{ Storage::url(Auth::user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                                    <img src="{{ Storage::url(Auth::user()->avatar_path) }}" alt="Avatar {{ Auth::user()->name }}" class="h-full w-full object-cover">
                                 @else
                                     {{ Auth::user()->initials }}
                                 @endif
                             </div>
                             <div>
-                                <input type="file" wire:model="avatar" accept="image/*" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                                <input type="file" wire:model="avatar" accept="image/*" class="text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-accent-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-700 hover:file:bg-accent-100">
                                 @error('avatar') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>

@@ -5,13 +5,13 @@
     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 px-3 py-2.5">
         <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 items-center justify-center rounded-lg {{ $freshness['stale'] > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30' }}">
-                <svg class="h-4 w-4 {{ $freshness['stale'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4 {{ $freshness['stale'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
             </div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Content</h3>
         </div>
-        <a href="{{ route('sites.content-freshness', $site) }}" class="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
+        <a href="{{ route('sites.content-freshness', $site) }}" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
             Details →
         </a>
     </div>
@@ -47,7 +47,7 @@
         @else
             <div class="py-2 text-center">
                 <p class="text-sm text-gray-500 dark:text-gray-400">No published content tracked</p>
-                <a href="{{ route('sites.content-freshness', $site) }}" class="mt-1 inline-block text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
+                <a href="{{ route('sites.content-freshness', $site) }}" class="mt-1 inline-block text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
                     View Content →
                 </a>
             </div>

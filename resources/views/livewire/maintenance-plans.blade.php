@@ -9,7 +9,7 @@
                             wire:loading.attr="disabled"
                             wire:target="applyPlanToAll"
                             class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                         </svg>
                         <span wire:loading.remove wire:target="applyPlanToAll">{{ __('Apply to Unassigned') }}</span>
@@ -38,7 +38,7 @@
                                 <div class="flex items-center gap-2">
                                     <h4 class="text-sm font-semibold text-gray-900">{{ $plan->name }}</h4>
                                     @if($plan->is_default)
-                                        <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{{ __('Default') }}</span>
+                                        <span class="inline-flex items-center rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700">{{ __('Default') }}</span>
                                     @endif
                                     <span class="text-xs text-gray-400">{{ $plan->sites_count }} {{ __('site(s)') }}</span>
                                 </div>
@@ -78,7 +78,7 @@
                             </div>
 
                             <div class="ml-4 flex items-center gap-2 shrink-0">
-                                <button wire:click="startApply({{ $plan->id }})" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition" title="{{ __('Apply to sites') }}">
+                                <button wire:click="startApply({{ $plan->id }})" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition" title="{{ __('Apply to sites') }}">
                                     {{ __('Apply') }}
                                 </button>
 
@@ -129,19 +129,19 @@
                     <div class="flex flex-wrap gap-4">
                         @if($plan->include_modules)
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="applyModules" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="applyModules" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Modules') }}
                             </label>
                         @endif
                         @if($plan->include_security && !empty($plan->security_settings))
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="applySecurity" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="applySecurity" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Security') }} ({{ $this->countSettings($plan->security_settings) }} {{ __('settings') }})
                             </label>
                         @endif
                         @if($plan->include_tweaks && !empty($plan->tweak_settings))
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="applyTweaks" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="applyTweaks" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Tweaks') }} ({{ $this->countSettings($plan->tweak_settings) }} {{ __('settings') }})
                             </label>
                         @endif
@@ -151,13 +151,13 @@
                 {{-- Site selector --}}
                 <div class="flex items-center justify-between mb-3">
                     <label class="flex items-center gap-2 text-xs text-gray-500">
-                        <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         {{ __('Select All') }}
                     </label>
                 </div>
 
                 <div class="mb-3">
-                    <input type="text" wire:model.live.debounce.300ms="siteSearch" placeholder="{{ __('Search sites...') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                    <input type="text" wire:model.live.debounce.300ms="siteSearch" placeholder="{{ __('Search sites...') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                 </div>
 
                 <div class="max-h-80 overflow-y-auto rounded-lg border border-gray-200">
@@ -167,7 +167,7 @@
                                 type="checkbox"
                                 wire:model="selectedSiteIds"
                                 value="{{ $site->id }}"
-                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                             >
                             <x-site-favicon :site="$site" class="h-5 w-5" />
                             <div class="min-w-0 flex-1">
@@ -230,13 +230,13 @@
                         wire:model="planDescription"
                         rows="2"
                         placeholder="{{ __('Optional description...') }}"
-                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                        class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition placeholder:text-gray-400 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                     ></textarea>
                 </div>
 
                 <div>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model="planIsDefault" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="planIsDefault" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <span class="text-sm font-medium text-gray-700">{{ __('Default plan for new sites') }}</span>
                     </label>
                 </div>
@@ -246,15 +246,15 @@
                     <p class="text-sm font-medium text-gray-700 mb-2">{{ __('Sections to include:') }}</p>
                     <div class="flex flex-wrap gap-4">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model.live="includeModules" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model.live="includeModules" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Modules') }}
                         </label>
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model.live="includeSecurity" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model.live="includeSecurity" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Security') }}
                         </label>
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model.live="includeTweaks" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model.live="includeTweaks" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Tweaks') }}
                         </label>
                     </div>
@@ -266,12 +266,12 @@
                         <label class="block text-sm font-medium text-gray-700 mb-3">{{ __('Enabled Modules') }}</label>
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach($this->moduleKeys as $key)
-                                <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition {{ ($planModules[$key]['enabled'] ?? false) ? 'bg-purple-50 border-purple-200' : '' }}">
+                                <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition {{ ($planModules[$key]['enabled'] ?? false) ? 'bg-accent-50 border-accent-200' : '' }}">
                                     <input
                                         type="checkbox"
                                         wire:click="toggleModuleInForm('{{ $key }}')"
                                         @checked($planModules[$key]['enabled'] ?? false)
-                                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                     >
                                     <span class="text-sm text-gray-700">{{ $this->moduleLabels[$key] ?? $key }}</span>
                                 </label>
@@ -285,7 +285,7 @@
                                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Frequency') }}</label>
-                                        <select wire:model="backupFrequency" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                        <select wire:model="backupFrequency" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                             <option value="daily">{{ __('Daily') }}</option>
                                             <option value="weekly">{{ __('Weekly') }}</option>
                                             <option value="monthly">{{ __('Monthly') }}</option>
@@ -293,11 +293,11 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Time') }}</label>
-                                        <input type="time" wire:model="backupTime" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                                        <input type="time" wire:model="backupTime" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Timezone') }}</label>
-                                        <select wire:model="backupTimezone" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                        <select wire:model="backupTimezone" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                             <option value="UTC">UTC</option>
                                             <option value="America/New_York">America/New_York</option>
                                             <option value="America/Chicago">America/Chicago</option>
@@ -313,25 +313,25 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Backup Type') }}</label>
-                                        <select wire:model="backupType" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                        <select wire:model="backupType" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                             <option value="full">{{ __('Full (Files + Database)') }}</option>
                                             <option value="database">{{ __('Database Only') }}</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Retention Type') }}</label>
-                                        <select wire:model="backupRetentionType" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                        <select wire:model="backupRetentionType" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                             <option value="count">{{ __('Keep N backups') }}</option>
                                             <option value="days">{{ __('Keep for N days') }}</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600">{{ __('Retention Value') }}</label>
-                                        <input type="number" wire:model="backupRetentionValue" min="1" max="365" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                                        <input type="number" wire:model="backupRetentionValue" min="1" max="365" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                     </div>
                                 </div>
                                 <label class="flex items-center gap-2 text-sm text-gray-700">
-                                    <input type="checkbox" wire:model="backupBeforeUpdates" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                    <input type="checkbox" wire:model="backupBeforeUpdates" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                     {{ __('Backup before updates') }}
                                 </label>
                             </div>
@@ -362,7 +362,7 @@
 
                                 {{-- Sub-config: Brute Force Protection --}}
                                 @if($category === 'login' && ($securityToggles['brute_force_protection'] ?? false))
-                                    <div class="mt-2 ml-2 border-l-2 border-amber-100 pl-4">
+                                    <div class="mt-2 ml-2 bg-gray-50 rounded-lg p-3">
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Max Attempts') }}</label>
@@ -407,7 +407,7 @@
 
                                 {{-- Sub-config: Heartbeat --}}
                                 @if($category === 'performance' && ($tweakToggles['heartbeat_control'] ?? false))
-                                    <div class="mt-2 ml-2 border-l-2 border-indigo-100 pl-4 space-y-2">
+                                    <div class="mt-2 ml-2 bg-gray-50 rounded-lg p-3 space-y-2">
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Frontend') }}</label>
@@ -443,7 +443,7 @@
 
                                 {{-- Sub-config: Revisions --}}
                                 @if($category === 'performance' && ($tweakToggles['revisions_control'] ?? false))
-                                    <div class="mt-2 ml-2 border-l-2 border-indigo-100 pl-4">
+                                    <div class="mt-2 ml-2 bg-gray-50 rounded-lg p-3">
                                         <div class="max-w-xs">
                                             <label class="block text-xs font-medium text-gray-600">{{ __('Max Revisions') }}</label>
                                             <input type="number" wire:model="revisionsLimit" min="0" max="100" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
@@ -453,7 +453,7 @@
 
                                 {{-- Sub-config: Image Upload --}}
                                 @if($category === 'performance' && ($tweakToggles['image_upload_control'] ?? false))
-                                    <div class="mt-2 ml-2 border-l-2 border-indigo-100 pl-4">
+                                    <div class="mt-2 ml-2 bg-gray-50 rounded-lg p-3">
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Max Width (px)') }}</label>
@@ -523,15 +523,15 @@
                     <p class="text-sm font-medium text-gray-700 mb-2">{{ __('What to include:') }}</p>
                     <div class="space-y-2">
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model="snapshotModules" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model="snapshotModules" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Module Configuration (uptime, backup, performance, security monitors)') }}
                         </label>
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model="snapshotSecurity" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model="snapshotSecurity" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Security Settings (hardening, .htaccess, login, captcha, IP management, activity log)') }}
                         </label>
                         <label class="flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" wire:model="snapshotTweaks" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model="snapshotTweaks" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ __('Tweak Settings (performance, site control, admin UX, content/media, email)') }}
                         </label>
                     </div>

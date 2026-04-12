@@ -9,7 +9,7 @@
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->enabledCount }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->enabledCount }}</p>
                 <p class="text-sm text-gray-500">{{ __('Tweaks Enabled') }}</p>
             </div>
         </x-ui.card>
@@ -41,7 +41,7 @@
                     <h3 class="text-base font-semibold text-gray-900">{{ __('Performance') }}</h3>
                     <p class="mt-1 text-sm text-gray-500">{{ __('Heartbeat, revisions, image optimization, and frontend cleanup.') }}</p>
                 </div>
-                <x-icons.zap class="h-5 w-5 text-purple-500 shrink-0" />
+                <x-icons.zap class="h-5 w-5 text-accent-500 shrink-0" />
             </div>
             <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span>{{ $perfEnabled }} {{ __('enabled') }}</span>
@@ -51,7 +51,7 @@
                 @endif
             </div>
             <div class="mt-3 flex items-center justify-end">
-                <a href="{{ route('sites.tweaks.performance', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                <a href="{{ route('sites.tweaks.performance', $site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-700">
                     {{ __('Configure') }} &rarr;
                 </a>
             </div>
@@ -69,7 +69,7 @@
                     <h3 class="text-base font-semibold text-gray-900">{{ __('Site Control') }}</h3>
                     <p class="mt-1 text-sm text-gray-500">{{ __('Updates, comments, feeds, embeds, Gutenberg, and redirects.') }}</p>
                 </div>
-                <x-icons.settings class="h-5 w-5 text-purple-500 shrink-0" />
+                <x-icons.settings class="h-5 w-5 text-accent-500 shrink-0" />
             </div>
             <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span>{{ $controlEnabled }} {{ __('enabled') }}</span>
@@ -79,7 +79,7 @@
                 @endif
             </div>
             <div class="mt-3 flex items-center justify-end">
-                <a href="{{ route('sites.tweaks.site-control', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                <a href="{{ route('sites.tweaks.site-control', $site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-700">
                     {{ __('Configure') }} &rarr;
                 </a>
             </div>
@@ -97,7 +97,7 @@
                     <h3 class="text-base font-semibold text-gray-900">{{ __('Admin UX') }}</h3>
                     <p class="mt-1 text-sm text-gray-500">{{ __('Customize the WordPress admin experience.') }}</p>
                 </div>
-                <x-icons.layout class="h-5 w-5 text-purple-500 shrink-0" />
+                <x-icons.layout class="h-5 w-5 text-accent-500 shrink-0" />
             </div>
             <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span>{{ $auxEnabled }} {{ __('enabled') }}</span>
@@ -107,7 +107,7 @@
                 @endif
             </div>
             <div class="mt-3 flex items-center justify-end">
-                <a href="{{ route('sites.tweaks.admin-ux', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                <a href="{{ route('sites.tweaks.admin-ux', $site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-700">
                     {{ __('Configure') }} &rarr;
                 </a>
             </div>
@@ -125,7 +125,7 @@
                     <h3 class="text-base font-semibold text-gray-900">{{ __('Content & Media') }}</h3>
                     <p class="mt-1 text-sm text-gray-500">{{ __('Content duplication, media management, and publishing tools.') }}</p>
                 </div>
-                <x-icons.image class="h-5 w-5 text-purple-500 shrink-0" />
+                <x-icons.image class="h-5 w-5 text-accent-500 shrink-0" />
             </div>
             <div class="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span>{{ $cmEnabled }} {{ __('enabled') }}</span>
@@ -135,7 +135,7 @@
                 @endif
             </div>
             <div class="mt-3 flex items-center justify-end">
-                <a href="{{ route('sites.tweaks.content-media', $site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-700">
+                <a href="{{ route('sites.tweaks.content-media', $site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-700">
                     {{ __('Configure') }} &rarr;
                 </a>
             </div>

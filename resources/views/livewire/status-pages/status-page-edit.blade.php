@@ -6,7 +6,7 @@
             <h2 class="text-lg font-semibold text-gray-900">{{ $statusPage ? __('Edit Status Page') : __('Create Status Page') }}</h2>
             @if($statusPage)
                 <p class="text-sm text-gray-500">
-                    <a href="{{ url('/status/' . $statusPage->slug) }}" target="_blank" class="text-purple-600 hover:text-purple-700">
+                    <a href="{{ url('/status/' . $statusPage->slug) }}" target="_blank" class="text-accent-600 hover:text-accent-700">
                         {{ url('/status/' . $statusPage->slug) }}
                         <svg class="inline h-3 w-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                     </a>
@@ -36,7 +36,7 @@
                 </div>
                 <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Description') }}</label>
-                    <textarea wire:model="description" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Optional description shown on the status page') }}"></textarea>
+                    <textarea wire:model="description" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500" placeholder="{{ __('Optional description shown on the status page') }}"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Logo URL') }}</label>
@@ -88,27 +88,27 @@
             <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Display Options') }}</h3>
             <div class="space-y-3">
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="isPublic" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="isPublic" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Public (visible to anyone with the URL)') }}</span>
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="showUptimePercentage" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="showUptimePercentage" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Show uptime percentage') }}</span>
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="showResponseTime" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="showResponseTime" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Show average response time') }}</span>
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="showIncidentHistory" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="showIncidentHistory" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Show incident history') }}</span>
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="autoIncidents" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="autoIncidents" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Auto-create incidents on downtime') }}</span>
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="showSla" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="showSla" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-700">{{ __('Show SLA compliance') }}</span>
                 </label>
             </div>
@@ -142,7 +142,7 @@
             <div class="space-y-2 max-h-64 overflow-y-auto">
                 @foreach($this->availableSites as $site)
                     <label class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50 cursor-pointer">
-                        <input type="checkbox" wire:model="selectedSites" value="{{ $site->id }}" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="selectedSites" value="{{ $site->id }}" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <div>
                             <span class="text-sm font-medium text-gray-900">{{ $site->name }}</span>
                             <span class="text-xs text-gray-500 ml-2">{{ parse_url($site->url, PHP_URL_HOST) }}</span>
@@ -221,7 +221,7 @@
                             </x-ui.select>
                         </div>
                         <div class="sm:col-span-2">
-                            <textarea wire:model="incidentDescription" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Description (optional)') }}"></textarea>
+                            <textarea wire:model="incidentDescription" rows="2" class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500" placeholder="{{ __('Description (optional)') }}"></textarea>
                         </div>
                         <div>
                             <x-ui.select wire:model="incidentSiteId" class="mb-2">

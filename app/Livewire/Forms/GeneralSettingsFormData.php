@@ -33,6 +33,9 @@ class GeneralSettingsFormData extends Form
     #[Validate('required|integer|min:10|max:200')]
     public int $dashboardPerPage = 30;
 
+    #[Validate('nullable|string|regex:/^#[0-9a-fA-F]{6}$/')]
+    public ?string $accentColor = null;
+
     #[Validate('nullable|file|mimes:jpeg,jpg,png,gif,webp,ico,svg|max:1024')]
     public $favicon;
 

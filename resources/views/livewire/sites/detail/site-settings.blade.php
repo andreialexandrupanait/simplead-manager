@@ -49,7 +49,7 @@
                 @foreach($this->moduleConfig as $key => $mod)
                     <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                         <div class="flex items-center gap-3 min-w-0">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {{ $mod['enabled'] ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400' }}">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {{ $mod['enabled'] ? 'bg-accent-100 text-accent-600' : 'bg-gray-100 text-gray-400' }}">
                                 <x-dynamic-component :component="'icons.' . ($this->moduleIcons[$key] ?? 'settings')" class="h-4 w-4" />
                             </div>
                             <div class="min-w-0">
@@ -83,7 +83,7 @@
                             @if(!$mod['requires_connection'] || $mod['is_connected'])
                                 <button
                                     wire:click="toggleModule('{{ $key }}')"
-                                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {{ $mod['enabled'] ? 'bg-purple-600' : 'bg-gray-200' }}"
+                                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {{ $mod['enabled'] ? 'bg-accent-600' : 'bg-gray-200' }}"
                                     role="switch"
                                     aria-checked="{{ $mod['enabled'] ? 'true' : 'false' }}"
                                 >

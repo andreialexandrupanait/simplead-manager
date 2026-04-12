@@ -20,7 +20,7 @@
                         {{ __('Scan for Spam') }}
                     </span>
                     <span wire:loading wire:target="scanForSpam" class="inline-flex items-center">
-                        <svg class="mr-1 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <svg aria-hidden="true" class="mr-1 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         {{ __('Scanning...') }}
                     </span>
                 </x-ui.button>
@@ -46,15 +46,15 @@
             wire:key="job-progress-spam-delete"
             x-data="{ progress: {{ $spamJob['progress'] }}, message: '{{ addslashes($spamJob['message']) }}' }"
             x-effect="progress = {{ $spamJob['progress'] }}; message = '{{ addslashes($spamJob['message']) }}';"
-            class="mb-4 rounded-lg bg-purple-50 border border-purple-200 p-4"
+            class="mb-4 rounded-lg bg-accent-50 border border-accent-200 p-4"
         >
             {{-- Header: spinner + title + percentage --}}
             <div class="flex items-center justify-between gap-2.5">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <x-ui.spinner size="sm" class="text-purple-600 shrink-0" />
-                    <span class="text-sm font-medium text-purple-700">{{ __('Deleting spam users...') }}</span>
+                    <x-ui.spinner size="sm" class="text-accent-600 shrink-0" />
+                    <span class="text-sm font-medium text-accent-700">{{ __('Deleting spam users...') }}</span>
                 </div>
-                <span class="text-lg font-bold text-purple-700 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
+                <span class="text-lg font-bold text-accent-700 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
             </div>
 
             {{-- Stats counters --}}
@@ -64,27 +64,27 @@
                     @if($failCount > 0)
                         <span class="font-medium text-red-600">{{ $failCount }} {{ __('failed') }}</span>
                     @endif
-                    <span class="text-purple-500">{{ __('of') }} {{ $successCount + $failCount }} {{ __('processed') }}</span>
+                    <span class="text-accent-500">{{ __('of') }} {{ $successCount + $failCount }} {{ __('processed') }}</span>
                 </div>
             @endif
 
             {{-- Progress bar --}}
             <div class="mt-2.5">
-                <div class="w-full overflow-hidden rounded-full bg-purple-100 h-2">
+                <div class="w-full overflow-hidden rounded-full bg-accent-100 h-2">
                     <div
                         x-show="progress > 0"
-                        class="bg-purple-500 h-2 rounded-full transition-all duration-700 ease-out"
+                        class="bg-accent-500 h-2 rounded-full transition-all duration-700 ease-out"
                         :style="'width: ' + progress + '%'"
                     ></div>
                     <div
                         x-show="progress === 0"
-                        class="bg-purple-500 h-2 w-1/3 animate-[progress-indeterminate_1.5s_infinite_ease-in-out]"
+                        class="bg-accent-500 h-2 w-1/3 animate-[progress-indeterminate_1.5s_infinite_ease-in-out]"
                     ></div>
                 </div>
             </div>
 
             {{-- Dynamic status message --}}
-            <p class="mt-2 text-xs text-purple-600" x-show="progress > 0 && message" x-text="message" x-cloak></p>
+            <p class="mt-2 text-xs text-accent-600" x-show="progress > 0 && message" x-text="message" x-cloak></p>
 
             {{-- Activity log --}}
             @if(!empty($log))
@@ -180,7 +180,7 @@
                     <div class="mb-3 flex items-center justify-between">
                         <label class="flex items-center gap-2 text-sm text-gray-600">
                             <input type="checkbox"
-                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                 x-on:change="selected = $event.target.checked ? {{ json_encode($allIds) }} : []"
                                 :checked="selected.length === {{ count($flagged) }} && selected.length > 0"
                             />
@@ -217,7 +217,7 @@
                                             <input type="checkbox"
                                                 value="{{ $spamUser['wp_user_id'] }}"
                                                 x-model="selected"
-                                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                             />
                                         </td>
                                         <td class="pt-2 pr-4">
@@ -256,12 +256,12 @@
     {{-- Role Filter Tabs --}}
     <div class="mb-4 flex flex-wrap gap-2">
         <button wire:click="$set('roleFilter', '')"
-            class="rounded-full px-3 py-1 text-xs font-medium {{ $roleFilter === '' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+            class="rounded-full px-3 py-1 text-xs font-medium {{ $roleFilter === '' ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
             {{ __('All') }} ({{ array_sum($this->roleCounts) }})
         </button>
         @foreach($this->roleCounts as $role => $count)
             <button wire:click="$set('roleFilter', '{{ $role }}')"
-                class="rounded-full px-3 py-1 text-xs font-medium {{ $roleFilter === $role ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                class="rounded-full px-3 py-1 text-xs font-medium {{ $roleFilter === $role ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                 {{ ucfirst($role) }} ({{ $count }})
             </button>
         @endforeach
@@ -284,7 +284,7 @@
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 @if($user->avatar_url)
-                                    <img src="{{ $user->avatar_url }}" alt="" class="h-8 w-8 rounded-full flex-shrink-0" />
+                                    <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?? $user->username }}" loading="lazy" class="h-8 w-8 rounded-full flex-shrink-0" />
                                 @else
                                     <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-500">
                                         {{ strtoupper(substr($user->username, 0, 1)) }}
@@ -353,7 +353,7 @@
                                 <td class="py-2 pr-4">
                                     <div class="flex items-center gap-2">
                                         @if($user->avatar_url)
-                                            <img src="{{ $user->avatar_url }}" alt="" class="h-6 w-6 rounded-full" />
+                                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->username }}" loading="lazy" class="h-6 w-6 rounded-full" />
                                         @else
                                             <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-500">
                                                 {{ strtoupper(substr($user->username, 0, 1)) }}

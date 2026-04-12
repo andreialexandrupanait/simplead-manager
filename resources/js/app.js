@@ -1,19 +1,40 @@
 import './bootstrap';
 
-import Chart from 'chart.js/auto';
-window.Chart = Chart;
+// Lazy-load Chart.js — only fetched when first chart is created
+window.Chart = null;
+window.loadChart = async () => {
+    if (!window.Chart) {
+        const { default: Chart } = await import('chart.js/auto');
+        window.Chart = Chart;
+    }
+    return window.Chart;
+};
 
-import { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import Underline from '@tiptap/extension-underline';
-import Placeholder from '@tiptap/extension-placeholder';
-
-window.TipTapEditor = Editor;
-window.TipTapStarterKit = StarterKit;
-window.TipTapLink = Link;
-window.TipTapUnderline = Underline;
-window.TipTapPlaceholder = Placeholder;
+// Lazy-load TipTap — only fetched when editor is created
+window._tiptapLoaded = false;
+window.loadTipTap = async () => {
+    if (!window._tiptapLoaded) {
+        const [
+            { Editor },
+            { default: StarterKit },
+            { default: Link },
+            { default: Underline },
+            { default: Placeholder },
+        ] = await Promise.all([
+            import('@tiptap/core'),
+            import('@tiptap/starter-kit'),
+            import('@tiptap/extension-link'),
+            import('@tiptap/extension-underline'),
+            import('@tiptap/extension-placeholder'),
+        ]);
+        window.TipTapEditor = Editor;
+        window.TipTapStarterKit = StarterKit;
+        window.TipTapLink = Link;
+        window.TipTapUnderline = Underline;
+        window.TipTapPlaceholder = Placeholder;
+        window._tiptapLoaded = true;
+    }
+};
 
 // Alpine.js comes with Livewire 3 — no manual import needed
 document.addEventListener('alpine:init', () => {
@@ -314,7 +335,8 @@ document.addEventListener('alpine:init', () => {
         content: initialContent,
         isActive: {},
 
-        init() {
+        async init() {
+            await window.loadTipTap();
             this.editor = new window.TipTapEditor({
                 element: this.$refs.editorContent,
                 extensions: [

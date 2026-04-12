@@ -63,7 +63,7 @@
                         <td class="px-4 py-3">
                             <div class="text-sm font-medium text-gray-900 dark:text-white">{{ Str::limit($content->title, 60) }}</div>
                             @if($content->url)
-                                <a href="{{ $content->url }}" target="_blank" class="text-xs text-purple-500 hover:underline">{{ __('View') }}</a>
+                                <a href="{{ $content->url }}" target="_blank" class="text-xs text-accent-500 hover:underline">{{ __('View') }}</a>
                             @endif
                         </td>
                         <td class="px-4 py-3">

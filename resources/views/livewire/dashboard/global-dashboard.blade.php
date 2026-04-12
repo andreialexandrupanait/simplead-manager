@@ -61,7 +61,7 @@
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {{-- Sites --}}
         <a href="#sites" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['sites_down'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
                         <x-icons.globe class="h-5 w-5 {{ $stats['sites_down'] > 0 ? 'text-red-500' : 'text-green-500' }}" />
@@ -79,7 +79,7 @@
 
         {{-- Uptime --}}
         <a href="{{ route('uptime.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $uptimeBg }}">
                         <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
@@ -98,13 +98,13 @@
 
         {{-- Backup Storage --}}
         <a href="{{ route('backups.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50">
-                        <x-icons.hard-drive class="h-5 w-5 text-purple-500" />
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50">
+                        <x-icons.hard-drive class="h-5 w-5 text-accent-500" />
                     </div>
                     <div class="min-w-0">
-                        <div class="text-base font-semibold text-purple-600">{{ $storageLabel }}</div>
+                        <div class="text-base font-semibold text-accent-600">{{ $storageLabel }}</div>
                         <div class="text-xs text-gray-500">{{ __('Backup Storage') }}</div>
                         <div class="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
                             {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' ' . __('failed (24h)') : __('all healthy') }}
@@ -118,7 +118,7 @@
 
         {{-- Backups Today --}}
         <a href="{{ route('backups.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                         <x-icons.check-circle class="h-5 w-5 text-blue-500" />
@@ -134,7 +134,7 @@
 
         {{-- Alerts --}}
         <a href="{{ $alertsLink }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-purple-200">
+            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
                         @if($stats['total_alerts'] > 0)
@@ -176,14 +176,14 @@
 
         @if(count($selectedSites) > 0)
             {{-- Bulk Action Bar --}}
-            <div class="mb-3 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2.5">
+            <div class="mb-3 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent-200 bg-accent-50 px-4 py-2.5">
                 <div class="flex items-center gap-3">
                     {{-- Select All checkbox --}}
                     <input type="checkbox"
                         wire:click="toggleSelectAll"
                         @checked(count(array_intersect($selectedSites, $this->sites->pluck('id')->toArray())) === $this->sites->count())
-                        class="h-4 w-4 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
-                    <span class="text-sm font-medium text-purple-700">
+                        class="h-4 w-4 cursor-pointer rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                    <span class="text-sm font-medium text-accent-700">
                         {{ count($selectedSites) }} {{ Str::plural('site', count($selectedSites)) }} {{ __('selected') }}
                     </span>
                 </div>
@@ -250,7 +250,7 @@
                     </x-ui.button>
 
                     {{-- Deselect all --}}
-                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-purple-400 transition hover:bg-purple-100 hover:text-purple-600" title="{{ __('Clear selection') }}">
+                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-accent-400 transition hover:bg-accent-100 hover:text-accent-600" title="{{ __('Clear selection') }}">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -296,24 +296,24 @@
                 @endphp
                 <x-ui.dropdown align="left" width="56">
                     <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $clientActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $clientActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             <span class="max-w-[8rem] truncate">{{ $clientLabel }}</span>
                             <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                     </x-slot:trigger>
 
-                    <button wire:click="setClientFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$clientActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    <button wire:click="setClientFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$clientActive ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                         {{ __('All Clients') }}
                         @if(!$clientActive)
-                            <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         @endif
                     </button>
                     @foreach($this->clients as $client)
-                        <button wire:click="setClientFilter({{ $client->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->clientFilter === $client->id ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        <button wire:click="setClientFilter({{ $client->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->clientFilter === $client->id ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ $client->name }} ({{ $client->sites_count }})
                             @if($this->clientFilter === $client->id)
-                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             @endif
                         </button>
                     @endforeach
@@ -327,7 +327,7 @@
                 @endphp
                 <x-ui.dropdown align="left" width="48">
                     <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $healthActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $healthActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                             {{ $healthLabel }}
                             <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -335,10 +335,10 @@
                     </x-slot:trigger>
 
                     @foreach(['all' => __('All Health'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')] as $value => $label)
-                        <button wire:click="setFilter('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->filter === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        <button wire:click="setFilter('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->filter === $value ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ $label }}
                             @if($this->filter === $value)
-                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             @endif
                         </button>
                     @endforeach
@@ -356,27 +356,27 @@
                     @endphp
                     <x-ui.dropdown align="left" width="56">
                         <x-slot:trigger>
-                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $statusActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $statusActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 <span class="max-w-[8rem] truncate">{{ $statusLabel }}</span>
                                 <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                         </x-slot:trigger>
 
-                        <button wire:click="setStatusFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$statusActive ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        <button wire:click="setStatusFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$statusActive ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ __('All Statuses') }}
                             @if(!$statusActive)
-                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             @endif
                         </button>
                         @foreach($this->siteStatuses as $status)
-                            <button wire:click="setStatusFilter({{ $status->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->statusFilter === $status->id ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                            <button wire:click="setStatusFilter({{ $status->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->statusFilter === $status->id ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                                 <span class="flex items-center gap-2">
                                     <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
                                     {{ $status->name }} ({{ $status->sites_count }})
                                 </span>
                                 @if($this->statusFilter === $status->id)
-                                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 @endif
                             </button>
                         @endforeach
@@ -392,7 +392,7 @@
                 @endphp
                 <x-ui.dropdown align="left" width="48">
                     <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $sortActive ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $sortActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
                             {{ $sortLabel }}
                             <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -400,10 +400,10 @@
                     </x-slot:trigger>
 
                     @foreach(['manual' => __('Manual'), 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A'), 'health-asc' => __('Health') . ' ↑', 'health-desc' => __('Health') . ' ↓'] as $value => $label)
-                        <button wire:click="setSort('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->sort === $value ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        <button wire:click="setSort('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->sort === $value ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                             {{ $label }}
                             @if($this->sort === $value)
-                                <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             @endif
                         </button>
                     @endforeach

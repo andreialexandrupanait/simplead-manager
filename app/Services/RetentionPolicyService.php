@@ -100,6 +100,15 @@ class RetentionPolicyService
                 ['table' => 'failed_jobs', 'column' => 'failed_at', 'col_type' => 'timestamp', 'label' => 'Failed jobs', 'condition' => null],
             ],
         ],
+        'seo' => [
+            'label' => 'SEO Audits',
+            'default' => 90,
+            'min' => 30,
+            'max' => 365,
+            'tables' => [
+                ['table' => 'seo_audits', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'SEO audits', 'condition' => ['status', '=', 'completed']],
+            ],
+        ],
     ];
 
     public function __construct(

@@ -57,7 +57,7 @@
                                 <input type="checkbox"
                                        wire:click="toggleIncluded({{ $rec->id }})"
                                        {{ $rec->is_included ? 'checked' : '' }}
-                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             </div>
 
                             {{-- Content --}}
@@ -80,13 +80,13 @@
                                 @if($index > 0)
                                     <button wire:click="moveUp({{ $rec->id }})"
                                             class="text-gray-400 hover:text-gray-600 p-1" title="{{ __('Move up') }}">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                        <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                     </button>
                                 @endif
                                 @if(!$loop->last)
                                     <button wire:click="moveDown({{ $rec->id }})"
                                             class="text-gray-400 hover:text-gray-600 p-1" title="{{ __('Move down') }}">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </button>
                                 @endif
                                 <button wire:click="removeRecommendation({{ $rec->id }})"
@@ -135,7 +135,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Description') }}</label>
                     <textarea wire:model="newRecDescription" rows="2"
                               placeholder="{{ __('Detailed recommendation description') }}"
-                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                     @error('newRecDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <x-ui.button wire:click="addCustomRecommendation" size="sm">

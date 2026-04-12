@@ -14,7 +14,7 @@
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->unreadCount }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->unreadCount }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Unread') }}</p>
             </div>
         </x-ui.card>
@@ -97,7 +97,7 @@
         @forelse($notifications as $notification)
             <div
                 wire:key="notification-{{ $notification->id }}"
-                class="flex items-start gap-4 px-4 py-3.5 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition {{ !$notification->isRead() ? 'bg-purple-50/40 dark:bg-purple-900/10' : '' }}"
+                class="flex items-start gap-4 px-4 py-3.5 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition {{ !$notification->isRead() ? 'bg-accent-50/40 dark:bg-accent-900/10' : '' }}"
             >
                 {{-- Type Icon --}}
                 <div class="shrink-0 mt-0.5">
@@ -143,7 +143,7 @@
                             {{ $notification->title }}
                         </p>
                         @if(!$notification->isRead())
-                            <span class="shrink-0 inline-block h-2 w-2 rounded-full bg-purple-500 mt-1.5" title="{{ __('Unread') }}"></span>
+                            <span class="shrink-0 inline-block h-2 w-2 rounded-full bg-accent-500 mt-1.5" title="{{ __('Unread') }}"></span>
                         @endif
                     </div>
                     @if($notification->message)

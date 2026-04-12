@@ -58,7 +58,7 @@
             type="checkbox"
             wire:click="toggleSiteSelection({{ $site->id }})"
             @checked($isSelected)
-            class="h-4 w-4 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500 {{ $isSelected ? '' : 'opacity-0 group-hover:opacity-100' }} transition"
+            class="h-4 w-4 cursor-pointer rounded border-gray-300 text-accent-600 focus:ring-accent-500 {{ $isSelected ? '' : 'opacity-0 group-hover:opacity-100' }} transition"
         />
     </div>
 
@@ -79,7 +79,7 @@
         @endif
         <button
             wire:click="syncSite({{ $site->id }})"
-            class="hidden rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-purple-600 lg:inline-flex"
+            class="hidden rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-accent-600 lg:inline-flex"
             title="Sync site"
         >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -89,7 +89,7 @@
             href="{{ $site->url }}"
             target="_blank"
             rel="noopener"
-            class="hidden rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-purple-600 lg:inline-flex"
+            class="hidden rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-accent-600 lg:inline-flex"
             title="Open site"
         >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
@@ -227,7 +227,7 @@
                     <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
                     {{ $status->name }}
                     @if($site->site_status_id === $status->id)
-                        <svg class="ml-auto h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <svg class="ml-auto h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     @endif
                 </button>
             @endforeach

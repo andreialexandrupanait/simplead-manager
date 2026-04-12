@@ -148,8 +148,43 @@
         {{-- Right side actions --}}
         <div class="flex items-center gap-3 ml-4">
             {{-- Global Search --}}
-            <div class="hidden sm:block">
-                <livewire:components.global-search />
+            {{-- Mobile: icon-only button that toggles a full-width search overlay --}}
+            <div x-data="{ mobileSearchOpen: false }" class="relative">
+                {{-- Trigger button — visible on mobile only --}}
+                <button @click="mobileSearchOpen = true"
+                        type="button"
+                        aria-label="{{ __('Open search') }}"
+                        class="sm:hidden rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                    </svg>
+                </button>
+
+                {{-- Mobile full-width search overlay --}}
+                <div x-show="mobileSearchOpen"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 -translate-y-1"
+                     @keydown.escape.window="mobileSearchOpen = false"
+                     class="sm:hidden fixed inset-x-0 top-0 z-50 bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-4 py-3 flex items-center gap-2 shadow-md">
+                    <livewire:components.global-search />
+                    <button @click="mobileSearchOpen = false"
+                            type="button"
+                            aria-label="{{ __('Close search') }}"
+                            class="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Desktop: always-visible search --}}
+                <div class="hidden sm:block">
+                    <livewire:components.global-search />
+                </div>
             </div>
 
             {{-- Dark mode toggle --}}

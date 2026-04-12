@@ -6,8 +6,8 @@
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
-                        <x-icons.image class="h-5 w-5 text-purple-600" />
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
+                        <x-icons.image class="h-5 w-5 text-accent-600" />
                     </div>
                     <div>
                         <h3 class="text-base font-semibold text-gray-900">{{ __('Branding') }}</h3>
@@ -28,7 +28,7 @@
                     <div class="rounded-lg border border-gray-200 p-4">
                         <label class="block text-sm font-medium text-gray-700 mb-3">{{ __('Favicon') }}</label>
                         <div class="flex items-center gap-4">
-                            <div class="h-12 w-12 rounded-lg {{ ($form->favicon || $faviconPath) ? 'bg-white border border-gray-200' : 'bg-purple-500' }} flex items-center justify-center text-white text-sm font-bold overflow-hidden shrink-0">
+                            <div class="h-12 w-12 rounded-lg {{ ($form->favicon || $faviconPath) ? 'bg-white border border-gray-200' : 'bg-accent-500' }} flex items-center justify-center text-white text-sm font-bold overflow-hidden shrink-0">
                                 @if($form->favicon)
                                     <img src="{{ $form->favicon->temporaryUrl() }}" alt="Preview" class="h-full w-full object-contain">
                                 @elseif($faviconPath)
@@ -38,7 +38,7 @@
                                 @endif
                             </div>
                             <div class="min-w-0 flex-1">
-                                <input type="file" wire:model="form.favicon" accept="image/*,.svg" class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                                <input type="file" wire:model="form.favicon" accept="image/*,.svg" class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-accent-700 hover:file:bg-accent-100">
                                 @error('form.favicon') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 <p class="mt-1 text-xs text-gray-400">{{ __('Square image or SVG.') }}</p>
                                 @if($faviconPath)
@@ -62,7 +62,7 @@
                                 @endif
                             </div>
                             <div class="min-w-0 flex-1">
-                                <input type="file" wire:model="form.logo" accept="image/*,.svg" class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-purple-700 hover:file:bg-purple-100">
+                                <input type="file" wire:model="form.logo" accept="image/*,.svg" class="w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-accent-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-accent-700 hover:file:bg-accent-100">
                                 @error('form.logo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 <p class="mt-1 text-xs text-gray-400">{{ __('Replaces app name in sidebar.') }}</p>
                                 @if($logoPath)
@@ -71,6 +71,31 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {{-- Accent Color --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Accent Color') }}</label>
+                    <div class="flex items-center gap-3">
+                        <input type="color"
+                               wire:model.live="form.accentColor"
+                               id="accentColor"
+                               class="h-10 w-14 cursor-pointer rounded-lg border border-gray-300 p-1"
+                               value="{{ $form->accentColor ?? '#8D5CF5' }}">
+                        <input type="text"
+                               wire:model.live="form.accentColor"
+                               class="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-accent-500 focus:ring-accent-500"
+                               placeholder="#8D5CF5"
+                               maxlength="7">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block h-8 w-8 rounded-lg shadow-sm" style="background-color: {{ $form->accentColor ?? '#8D5CF5' }}"></span>
+                            @if($form->accentColor)
+                                <button type="button" wire:click="$set('form.accentColor', null)" class="text-xs text-gray-500 hover:text-red-600">{{ __('Reset') }}</button>
+                            @endif
+                        </div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Primary color used across the interface. Leave empty for default purple.') }}</p>
+                    @error('form.accentColor') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <x-ui.form-group :label="__('Application URL')" for="appUrl" error="form.appUrl">
@@ -185,7 +210,7 @@
             </div>
 
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="mfaRequired" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model="mfaRequired" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">{{ __('Require two-factor authentication for all users') }}</span>
             </label>
             <p class="mt-1 text-xs text-gray-500">{{ __('Users without 2FA enabled will be redirected to their profile to set it up.') }}</p>

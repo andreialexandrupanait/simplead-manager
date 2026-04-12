@@ -49,6 +49,7 @@ class GeneralSettings extends Component
         $this->form->defaultTimeout = (int) $settings->get('default_timeout', 30);
         $this->form->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
         $this->form->dashboardPerPage = (int) $settings->get('dashboard_per_page', 30);
+        $this->form->accentColor = $settings->get('branding.accent_color');
         $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
         $this->mfaRequired = (bool) $settings->get('mfa_required', false);
@@ -72,6 +73,7 @@ class GeneralSettings extends Component
         $settings->set('default_timeout', $this->form->defaultTimeout, 'monitoring', 'integer');
         $settings->set('alert_after_failures', $this->form->alertAfterFailures, 'monitoring', 'integer');
         $settings->set('dashboard_per_page', $this->form->dashboardPerPage, 'general', 'integer');
+        $settings->set('branding.accent_color', $this->form->accentColor, 'branding', 'string');
 
         if ($this->form->favicon) {
             if ($this->faviconPath) {

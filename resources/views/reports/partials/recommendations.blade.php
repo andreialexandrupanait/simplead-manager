@@ -59,7 +59,7 @@
             </div>
 
             @foreach($group['items'] as $rec)
-                <div class="rec-card" style="border-left: 6px solid {{ $group['border'] }};">
+                <div class="rec-card" style="background-color: {{ $group['border'] }}0D; padding: 1rem; border-radius: 8px;">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                         <span style="font-size: 8pt; font-weight: 700; color: {{ $group['color'] }}; min-width: 18px;">{{ $recNumber }}.</span>
                         <div class="rec-title" style="flex: 1;">{{ $rec['title'] }}</div>

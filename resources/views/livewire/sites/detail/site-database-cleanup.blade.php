@@ -311,83 +311,6 @@
     {{-- Divider --}}
     <div class="mb-8 border-t border-gray-200"></div>
 
-    {{-- Config Health Section --}}
-    <div class="mb-8">
-        <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">{{ __('Config Health') }}</h2>
-            <x-ui.button variant="secondary" wire:click="loadConfigHealth" wire:loading.attr="disabled">
-                <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="loadConfigHealth" />
-                <span wire:loading.remove wire:target="loadConfigHealth">{{ __('Run Check') }}</span>
-                <span wire:loading wire:target="loadConfigHealth">{{ __('Checking...') }}</span>
-            </x-ui.button>
-        </div>
-
-        @if($configHealth)
-            @php
-                $checks = $configHealth['checks'] ?? [];
-                $config = $configHealth['config'] ?? [];
-                $criticalCount = collect($checks)->where('status', 'critical')->count();
-                $warningCount = collect($checks)->where('status', 'warning')->count();
-            @endphp
-
-            {{-- Config overview cards --}}
-            <div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <x-ui.stat-card label="PHP Version" :value="$config['php_version'] ?? '—'" icon="code" color="blue" />
-                <x-ui.stat-card label="WP Version" :value="$config['wp_version'] ?? '—'" icon="globe" color="purple" />
-                <x-ui.stat-card label="PHP Memory" :value="$config['php_memory_limit'] ?? '—'" icon="cpu" color="green" />
-                <x-ui.stat-card label="WP Memory" :value="$config['wp_memory_limit'] ?? '—'" icon="layers" color="orange" />
-            </div>
-
-            {{-- Config checks --}}
-            <x-ui.card class="mb-4">
-                @if($criticalCount > 0 || $warningCount > 0)
-                    <div class="mb-3 flex items-center gap-3">
-                        @if($criticalCount > 0)
-                            <span class="inline-flex items-center gap-1 text-sm font-medium text-red-700">
-                                <x-icons.alert-triangle class="h-4 w-4" />
-                                {{ $criticalCount }} {{ __('critical') }}
-                            </span>
-                        @endif
-                        @if($warningCount > 0)
-                            <span class="inline-flex items-center gap-1 text-sm font-medium text-yellow-700">
-                                <x-icons.alert-triangle class="h-4 w-4" />
-                                {{ $warningCount }} {{ __('warnings') }}
-                            </span>
-                        @endif
-                    </div>
-                @endif
-
-                <div class="space-y-2">
-                    @foreach($checks as $check)
-                        <div class="flex items-start gap-3 rounded-lg border p-3
-                            {{ $check['status'] === 'critical' ? 'border-red-200 bg-red-50' : ($check['status'] === 'warning' ? 'border-yellow-200 bg-yellow-50' : ($check['status'] === 'ok' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50')) }}">
-                            @if($check['status'] === 'critical')
-                                <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-red-600" />
-                            @elseif($check['status'] === 'warning')
-                                <x-icons.alert-triangle class="h-5 w-5 shrink-0 text-yellow-600" />
-                            @elseif($check['status'] === 'ok')
-                                <x-icons.check-circle class="h-5 w-5 shrink-0 text-green-600" />
-                            @else
-                                <x-icons.info class="h-5 w-5 shrink-0 text-blue-600" />
-                            @endif
-                            <div>
-                                <p class="text-sm font-medium {{ $check['status'] === 'critical' ? 'text-red-800' : ($check['status'] === 'warning' ? 'text-yellow-800' : ($check['status'] === 'ok' ? 'text-green-800' : 'text-gray-800')) }}">
-                                    {{ $check['label'] }}
-                                </p>
-                                <p class="text-xs {{ $check['status'] === 'critical' ? 'text-red-600' : ($check['status'] === 'warning' ? 'text-yellow-600' : ($check['status'] === 'ok' ? 'text-green-600' : 'text-gray-500')) }}">
-                                    {{ $check['detail'] }}
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </x-ui.card>
-        @endif
-    </div>
-
-    {{-- Divider --}}
-    <div class="mb-8 border-t border-gray-200"></div>
-
     {{-- Autoload Audit Section --}}
     <div class="mb-8">
         <div class="mb-4 flex items-center justify-between">
@@ -542,7 +465,7 @@
     {{-- Safety banner --}}
     <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
         <div class="flex items-center gap-2">
-            <svg class="h-5 w-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" class="h-5 w-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <span class="text-sm text-blue-800">{{ __('We recommend creating a backup before performing database cleanup.') }}</span>
@@ -555,49 +478,49 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Cleanup Preview') }}</h3>
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanRevisions" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanRevisions" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Revisions') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['revisions'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanAutoDrafts" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanAutoDrafts" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Auto-Drafts') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['auto_drafts'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanTrashPosts" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanTrashPosts" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Trash Posts') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['trash_posts'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanSpamComments" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanSpamComments" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Spam Comments') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['spam_comments'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanTrashComments" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanTrashComments" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Trash Comments') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['trash_comments'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanTransients" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanTransients" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Transients') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['transients'] ?? 0) }}</div>
                     </div>
                 </label>
                 <label class="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" wire:model="cleanOrphanedMeta" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                    <input type="checkbox" wire:model="cleanOrphanedMeta" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <div>
                         <div class="text-sm font-medium text-gray-900">{{ __('Orphaned Meta') }}</div>
                         <div class="text-lg font-bold text-gray-700">{{ number_format($stats['orphaned_meta'] ?? 0) }}</div>
@@ -784,7 +707,7 @@
                 <label class="mt-4 flex items-center gap-2 cursor-pointer">
                     <input type="checkbox"
                            wire:model="{{ $pendingTableAction === 'optimize' ? 'skipConfirmOptimize' : 'skipConfirmConvert' }}"
-                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                           class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <span class="text-sm text-gray-600">{{ __('Don\'t ask again for this action') }}</span>
                 </label>
             @endif

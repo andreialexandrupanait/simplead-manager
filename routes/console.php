@@ -5,6 +5,7 @@ use App\Dispatchers\DataSyncDispatcher;
 use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
+use App\Dispatchers\SeoAuditDispatcher;
 use Illuminate\Support\Facades\Schedule;
 
 // ==========================================================================
@@ -45,6 +46,8 @@ Schedule::call(new IncidentResponseDispatcher)
     ->name('incident-response-dispatcher')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping()->onOneServer();
 
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();

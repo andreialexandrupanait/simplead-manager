@@ -16,7 +16,7 @@
         <div class="mt-6 space-y-4">
             {{-- Enable toggle --}}
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model.live="is_enabled" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model.live="is_enabled" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm font-medium text-gray-700">{{ __('Enable scheduled backups') }}</span>
             </label>
 
@@ -25,11 +25,11 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Backup Type') }}</label>
                 <div class="flex gap-4">
                     <label class="flex items-center gap-2">
-                        <input type="radio" wire:model="type" value="full" class="text-purple-600 focus:ring-purple-500">
+                        <input type="radio" wire:model="type" value="full" class="text-accent-600 focus:ring-accent-500">
                         <span class="text-sm text-gray-700">{{ __('Full (Database + Files)') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="radio" wire:model="type" value="database" class="text-purple-600 focus:ring-purple-500">
+                        <input type="radio" wire:model="type" value="database" class="text-accent-600 focus:ring-accent-500">
                         <span class="text-sm text-gray-700">{{ __('Database Only') }}</span>
                     </label>
                 </div>
@@ -119,7 +119,7 @@
             @if($type === 'full')
                 <div class="rounded-lg border border-gray-200 p-4 space-y-3">
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="enable_incremental" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model.live="enable_incremental" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <span class="text-sm font-medium text-gray-700">{{ __('Enable Incremental Backups') }}</span>
                     </label>
                     <p class="text-xs text-gray-500">{{ __('When enabled, daily backups will be incremental (only changed files), with a full backup on the selected day.') }}</p>
@@ -144,7 +144,7 @@
 
             {{-- Backup before updates --}}
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">{{ __('Create backup before applying updates') }}</span>
             </label>
         </div>

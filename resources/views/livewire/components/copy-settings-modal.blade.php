@@ -15,19 +15,19 @@
             <div class="space-y-2">
                 @if($showSecurityOption)
                     <label class="flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" wire:model="copySecuritySettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="copySecuritySettings" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         Security Settings
                     </label>
                 @endif
                 @if($showTweaksOption)
                     <label class="flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" wire:model="copyTweakSettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="copyTweakSettings" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         Tweak Settings
                     </label>
                 @endif
                 @if($showModulesOption)
                     <label class="flex items-center gap-2 text-sm text-gray-700">
-                        <input type="checkbox" wire:model="copyModuleConfig" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="copyModuleConfig" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         Module Configuration
                     </label>
                 @endif
@@ -40,7 +40,7 @@
         <div class="flex items-center justify-between mb-2">
             <p class="text-sm font-medium text-gray-700">Target sites:</p>
             <label class="flex items-center gap-2 text-xs text-gray-500">
-                <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 Select All
             </label>
         </div>
@@ -52,7 +52,7 @@
                         type="checkbox"
                         wire:model="selectedSiteIds"
                         value="{{ $site->id }}"
-                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                     >
                     <x-site-favicon :site="$site" class="h-4 w-4" />
                     <div class="min-w-0 flex-1">

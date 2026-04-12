@@ -10,7 +10,8 @@ $classes = match($type) {
 @endphp
 
 <div {{ $attributes->merge([
-    'class' => "rounded-lg border px-4 py-3 text-sm {$classes}"
+    'class' => "rounded-lg border px-4 py-3 text-sm {$classes}",
+    'role' => 'alert',
 ]) }}>
     {{ $slot }}
 </div>

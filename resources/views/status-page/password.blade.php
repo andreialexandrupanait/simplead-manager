@@ -15,7 +15,7 @@
                     <div class="mb-4">
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
                         <input type="password" name="password" id="password" required autofocus
-                            class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                            class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500"
                             placeholder="Enter password">
                         @error('password')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>

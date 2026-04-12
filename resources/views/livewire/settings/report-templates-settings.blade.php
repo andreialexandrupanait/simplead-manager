@@ -3,7 +3,7 @@
 
     <div class="mb-6 flex justify-end">
         <button wire:click="openCreateForm"
-                class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
+                class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 transition">
             <x-icons.plus class="h-4 w-4" />
             {{ __('New Template') }}
         </button>
@@ -72,8 +72,8 @@
                             <span>{{ $template->sites_count }} {{ Str::plural('site', $template->sites_count) }} {{ __('assigned') }}</span>
                             <span>{{ strtoupper($template->language) }}</span>
                             @if(($nextRunDates[$template->id] ?? null))
-                                <span class="inline-flex items-center gap-1 text-purple-600 font-medium">
-                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span class="inline-flex items-center gap-1 text-accent-600 font-medium">
+                                    <svg aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     {{ __('Next report:') }} {{ $nextRunDates[$template->id]->timezone('Europe/Bucharest')->format('M d, Y H:i') }}
                                 </span>
                             @endif
@@ -83,7 +83,7 @@
                     <div class="flex items-center gap-2 ml-4">
                         <button wire:click="openBulkScheduleModal({{ $template->id }})"
                                 wire:loading.attr="disabled"
-                                class="rounded-lg border border-purple-300 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition disabled:opacity-50"
+                                class="rounded-lg border border-accent-300 px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition disabled:opacity-50"
                                 title="{{ __('Create monthly schedules for all assigned sites') }}">
                             {{ __('Schedule All') }}
                         </button>
@@ -167,7 +167,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Description') }}</label>
                 <textarea wire:model="description" rows="2"
                           placeholder="{{ __('Optional description') }}"
-                          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
             </div>
 
             {{-- Sections with expandable customization --}}
@@ -202,16 +202,16 @@
                             $hasSubOptions = $optionsKey && !empty($sectionSubOptions[$optionsKey] ?? []);
                             $isExpanded = in_array($sectionKey, $expandedSections);
                         @endphp
-                        <div class="rounded-lg border {{ $isEnabled ? 'border-purple-300 bg-purple-50/50' : 'border-gray-200 bg-white' }} transition-colors">
+                        <div class="rounded-lg border {{ $isEnabled ? 'border-accent-300 bg-accent-50/50' : 'border-gray-200 bg-white' }} transition-colors">
                             {{-- Section header row --}}
                             <div class="flex items-center gap-3 p-3 {{ $isEnabled && $optionsKey ? 'cursor-pointer' : '' }}"
                                  @if($isEnabled && $optionsKey) wire:click="toggleSectionExpand('{{ $sectionKey }}')" @endif>
                                 <input type="checkbox" wire:model.live="sections" value="{{ $sectionKey }}"
-                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                        onclick="event.stopPropagation()">
                                 <span class="flex-1 text-sm font-medium {{ $isEnabled ? 'text-gray-900' : 'text-gray-500' }}">{{ $sectionConfig['label'] }}</span>
                                 @if($isEnabled && ($hasSubOptions || $optionsKey))
-                                    <svg class="h-4 w-4 text-gray-400 transition-transform {{ $isExpanded ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400 transition-transform {{ $isExpanded ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                 @endif
@@ -219,14 +219,14 @@
 
                             {{-- Expanded customization panel --}}
                             @if($isEnabled && $isExpanded && $optionsKey)
-                                <div class="border-t border-purple-200/60 px-3 pb-3 pt-3 space-y-3">
+                                <div class="border-t border-accent-200/60 px-3 pb-3 pt-3 space-y-3">
                                     {{-- Title override --}}
                                     <div>
                                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Custom Title') }}</label>
                                         <input type="text"
                                                wire:model="section_overrides.{{ $optionsKey }}.title"
                                                placeholder="{{ __('Default from translations') }}"
-                                               class="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
+                                               class="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500">
                                     </div>
 
                                     {{-- Description override --}}
@@ -235,7 +235,7 @@
                                         <textarea wire:model="section_overrides.{{ $optionsKey }}.description"
                                                   rows="2"
                                                   placeholder="{{ __('Default from translations') }}"
-                                                  class="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                                                  class="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                                     </div>
 
                                     {{-- Sub-section toggles --}}
@@ -247,7 +247,7 @@
                                                     <label class="flex items-center gap-2 rounded border border-gray-200 bg-white px-2.5 py-1.5 cursor-pointer hover:bg-gray-50 text-xs">
                                                         <input type="checkbox"
                                                                wire:model="section_options.{{ $optionsKey }}.{{ $optKey }}"
-                                                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5">
+                                                               class="rounded border-gray-300 text-accent-600 focus:ring-accent-500 h-3.5 w-3.5">
                                                         <span class="text-gray-700">{{ $optLabel }}</span>
                                                     </label>
                                                 @endforeach
@@ -267,11 +267,11 @@
                 <h4 class="text-sm font-medium text-gray-900 mb-3">{{ __('Language') }}</h4>
                 <div class="flex gap-4">
                     <label class="flex items-center gap-2">
-                        <input type="radio" wire:model="language" value="ro" class="text-purple-600 focus:ring-purple-500">
+                        <input type="radio" wire:model="language" value="ro" class="text-accent-600 focus:ring-accent-500">
                         <span class="text-sm">{{ __('Romanian (RO)') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="radio" wire:model="language" value="en" class="text-purple-600 focus:ring-purple-500">
+                        <input type="radio" wire:model="language" value="en" class="text-accent-600 focus:ring-accent-500">
                         <span class="text-sm">{{ __('English (EN)') }}</span>
                     </label>
                 </div>
@@ -306,13 +306,13 @@
                     <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Introduction Text') }}</label>
                     <textarea wire:model="intro_text" rows="3"
                               placeholder="{{ __('Text shown at the beginning of the report...') }}"
-                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                 </div>
                 <div class="mt-3">
                     <label class="block text-xs font-medium text-gray-700 mb-1">{{ __('Closing Text') }}</label>
                     <textarea wire:model="closing_text" rows="3"
                               placeholder="{{ __('Text shown at the end of the report...') }}"
-                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                 </div>
             </div>
         </div>
@@ -366,7 +366,7 @@
 
                     <div class="flex items-center gap-2">
                         <input type="checkbox" wire:model="bulkScheduleSendCopyToAdmin" id="bulkAdminCopy"
-                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                               class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <label for="bulkAdminCopy" class="text-sm text-gray-700">{{ __('Send copy to admin email') }}</label>
                     </div>
                 </div>
@@ -408,14 +408,14 @@
                             <input type="checkbox"
                                    wire:click="toggleSiteAssignment({{ $site->id }})"
                                    {{ $isAssigned ? 'checked' : '' }}
-                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                   class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium text-gray-900 truncate">{{ $site->name }}</div>
                                 <div class="text-xs text-gray-500 truncate">{{ $site->url }}</div>
                             </div>
                             @if($otherTemplate)
                                 <span class="text-amber-500 flex-shrink-0" title="{{ __('Already assigned to another template') }}">
-                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                    <svg aria-hidden="true" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                                 </span>
                             @endif
                         </label>

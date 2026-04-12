@@ -5,7 +5,7 @@
         'uptime' => ['icon' => 'activity', 'bg' => 'bg-green-50', 'ring' => 'ring-green-200', 'text' => 'text-green-600'],
         'performance' => ['icon' => 'trending-up', 'bg' => 'bg-orange-50', 'ring' => 'ring-orange-200', 'text' => 'text-orange-600'],
         'security' => ['icon' => 'shield', 'bg' => 'bg-blue-50', 'ring' => 'ring-blue-200', 'text' => 'text-blue-600'],
-        'analytics' => ['icon' => 'bar-chart-2', 'bg' => 'bg-purple-50', 'ring' => 'ring-purple-200', 'text' => 'text-purple-600'],
+        'analytics' => ['icon' => 'bar-chart-2', 'bg' => 'bg-accent-50', 'ring' => 'ring-accent-200', 'text' => 'text-accent-600'],
         'activity_logs' => ['icon' => 'file-text', 'bg' => 'bg-gray-100', 'ring' => 'ring-gray-200', 'text' => 'text-gray-600'],
         'notification_logs' => ['icon' => 'bell', 'bg' => 'bg-indigo-50', 'ring' => 'ring-indigo-200', 'text' => 'text-indigo-600'],
         'system' => ['icon' => 'database', 'bg' => 'bg-yellow-50', 'ring' => 'ring-yellow-200', 'text' => 'text-yellow-600'],
@@ -24,8 +24,8 @@
         {{-- Header --}}
         <div class="mb-6 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 shadow-sm ring-1 ring-purple-200">
-                    <x-icons.clock class="h-5 w-5 text-purple-600" />
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
+                    <x-icons.clock class="h-5 w-5 text-accent-600" />
                 </div>
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900">{{ __('Data Retention') }}</h2>
@@ -172,9 +172,9 @@
                                     @php
                                         $catLabel = RetentionPolicyService::CATEGORIES[$catKey]['label'] ?? $catKey;
                                     @endphp
-                                    <div class="flex items-center justify-between rounded-lg px-3 py-2 {{ ($catResult['deleted'] ?? 0) > 0 ? 'bg-purple-50' : 'bg-gray-50' }}">
+                                    <div class="flex items-center justify-between rounded-lg px-3 py-2 {{ ($catResult['deleted'] ?? 0) > 0 ? 'bg-accent-50' : 'bg-gray-50' }}">
                                         <span class="text-xs text-gray-600">{{ $catLabel }}</span>
-                                        <span class="text-xs font-medium {{ ($catResult['deleted'] ?? 0) > 0 ? 'text-purple-700' : 'text-gray-400' }}">
+                                        <span class="text-xs font-medium {{ ($catResult['deleted'] ?? 0) > 0 ? 'text-accent-700' : 'text-gray-400' }}">
                                             {{ number_format($catResult['deleted'] ?? 0) }}
                                         </span>
                                     </div>

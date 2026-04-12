@@ -29,7 +29,7 @@
 
         @if($pluginPushRunning)
             <div class="w-full bg-gray-200 rounded-full h-1.5 mb-3">
-                <div class="bg-purple-600 h-1.5 rounded-full transition-all duration-300"
+                <div class="bg-accent-600 h-1.5 rounded-full transition-all duration-300"
                      style="width: {{ $pushTotal > 0 ? round(count($pluginPushResults) / $pushTotal * 100) : 0 }}%"></div>
             </div>
         @endif
@@ -92,13 +92,13 @@
             <input type="text"
                    wire:model.live.debounce.300ms="pushSiteSearch"
                    placeholder="{{ __('Search sites...') }}"
-                   class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                   class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
         </div>
 
         <div class="mt-3 flex items-center justify-between">
             <label class="flex items-center gap-2 text-xs text-gray-500">
                 <input type="checkbox" wire:model.live="pushSelectAll"
-                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 {{ __('Select All') }}
             </label>
             @if(count($selectedPushSiteIds) > 0)
@@ -112,7 +112,7 @@
                     <input type="checkbox"
                            wire:model.live="selectedPushSiteIds"
                            value="{{ $site->id }}"
-                           class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                           class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     <x-site-favicon :site="$site" size="sm" />
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-gray-900 truncate">{{ $site->name }}</p>

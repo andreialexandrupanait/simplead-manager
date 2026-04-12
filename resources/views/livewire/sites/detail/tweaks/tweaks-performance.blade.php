@@ -40,10 +40,10 @@
             </div>
 
             @if($toggles['heartbeat_control'] ?? false)
-                <div class="ml-4 space-y-3 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-3 bg-gray-50 rounded-lg p-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Frontend') }}</label>
-                        <select wire:model.live="heartbeatFrontend" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <select wire:model.live="heartbeatFrontend" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                             <option value="disable">{{ __('Disable') }}</option>
                             <option value="throttle">{{ __('Throttle') }}</option>
                             <option value="default">{{ __('Default') }}</option>
@@ -51,7 +51,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Dashboard') }}</label>
-                        <select wire:model.live="heartbeatDashboard" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <select wire:model.live="heartbeatDashboard" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                             <option value="default">{{ __('Default') }}</option>
                             <option value="throttle">{{ __('Throttle') }}</option>
                             <option value="disable">{{ __('Disable') }}</option>
@@ -59,7 +59,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Post Editor') }}</label>
-                        <select wire:model.live="heartbeatEditor" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <select wire:model.live="heartbeatEditor" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                             <option value="default">{{ __('Default') }}</option>
                             <option value="throttle">{{ __('Throttle') }}</option>
                             <option value="disable">{{ __('Disable') }}</option>
@@ -67,7 +67,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Interval (seconds)') }}</label>
-                        <input type="number" wire:model.live="heartbeatInterval" min="15" max="300" class="block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                        <input type="number" wire:model.live="heartbeatInterval" min="15" max="300" class="block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                     </div>
                 </div>
             @endif
@@ -93,9 +93,9 @@
             </div>
 
             @if($toggles['revisions_control'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Maximum Revisions') }}</label>
-                    <input type="number" wire:model.live="revisionsLimit" min="0" max="100" class="block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                    <input type="number" wire:model.live="revisionsLimit" min="0" max="100" class="block w-32 rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                     <p class="mt-1 text-xs text-gray-400">{{ __('Set to 0 to disable revisions entirely.') }}</p>
                 </div>
             @endif
@@ -121,20 +121,20 @@
             </div>
 
             @if($toggles['image_upload_control'] ?? false)
-                <div class="ml-4 space-y-3 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-3 bg-gray-50 rounded-lg p-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Max Width (px)') }}</label>
-                            <input type="number" wire:model.live="imageMaxWidth" min="100" max="10000" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                            <input type="number" wire:model.live="imageMaxWidth" min="100" max="10000" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Max Height (px)') }}</label>
-                            <input type="number" wire:model.live="imageMaxHeight" min="100" max="10000" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                            <input type="number" wire:model.live="imageMaxHeight" min="100" max="10000" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('JPEG Quality') }} ({{ $jpegQuality }}%)</label>
-                        <input type="range" wire:model.live="jpegQuality" min="10" max="100" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600" />
+                        <input type="range" wire:model.live="jpegQuality" min="10" max="100" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-accent-600" />
                         <div class="flex justify-between text-xs text-gray-400 mt-1">
                             <span>{{ __('10% (smallest)') }}</span>
                             <span>{{ __('100% (best quality)') }}</span>
@@ -208,13 +208,13 @@
             </div>
 
             @if($toggles['optimize_woocommerce'] ?? false)
-                <div class="ml-4 space-y-2 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-2 bg-gray-50 rounded-lg p-4">
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="wooDisableCartFragments" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="wooDisableCartFragments" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Disable cart fragments AJAX on non-cart/checkout pages') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="wooDisableScriptsNonWc" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="wooDisableScriptsNonWc" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Dequeue WooCommerce scripts/styles on non-WooCommerce pages') }}</span>
                     </label>
                 </div>

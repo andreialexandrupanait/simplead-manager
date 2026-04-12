@@ -3,7 +3,7 @@
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="Performance" subtitle="Monitor site performance and Core Web Vitals" />
         <x-ui.button wire:click="testAllSites" wire:loading.attr="disabled" wire:confirm="This will queue performance tests for all monitored sites. Continue?">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             <span wire:loading.remove wire:target="testAllSites">Test All Sites</span>
             <span wire:loading wire:target="testAllSites">Queuing...</span>
         </x-ui.button>
@@ -89,7 +89,7 @@
                             <span class="text-sm font-semibold text-gray-400 w-5 flex-shrink-0">#{{ $index + 1 }}</span>
                             <div class="min-w-0">
                                 @if($monitor->site)
-                                    <a href="{{ route('sites.performance', $monitor->site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-800 truncate block">
+                                    <a href="{{ route('sites.performance', $monitor->site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-800 truncate block">
                                         {{ $monitor->site->name }}
                                     </a>
                                     <div class="text-xs text-gray-400 truncate">{{ $monitor->site->domain }}</div>
@@ -137,7 +137,7 @@
                                 <button wire:click="sort('mobile_score')" class="inline-flex items-center gap-1 hover:text-gray-700">
                                     Mobile
                                     @if($sortBy === 'mobile_score')
-                                        <svg class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                        <svg aria-hidden="true" class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                                     @endif
                                 </button>
                             </th>
@@ -145,7 +145,7 @@
                                 <button wire:click="sort('desktop_score')" class="inline-flex items-center gap-1 hover:text-gray-700">
                                     Desktop
                                     @if($sortBy === 'desktop_score')
-                                        <svg class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                        <svg aria-hidden="true" class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                                     @endif
                                 </button>
                             </th>
@@ -153,7 +153,7 @@
                                 <button wire:click="sort('lcp')" class="inline-flex items-center gap-1 hover:text-gray-700">
                                     LCP
                                     @if($sortBy === 'lcp')
-                                        <svg class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                        <svg aria-hidden="true" class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                                     @endif
                                 </button>
                             </th>
@@ -161,7 +161,7 @@
                                 <button wire:click="sort('trend')" class="inline-flex items-center gap-1 hover:text-gray-700">
                                     Trend
                                     @if($sortBy === 'trend')
-                                        <svg class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                                        <svg aria-hidden="true" class="h-3 w-3 {{ $sortDir === 'asc' ? 'rotate-180' : '' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                                     @endif
                                 </button>
                             </th>
@@ -173,7 +173,7 @@
                                 <td class="px-3 py-3 text-sm text-gray-500">{{ $index + 1 }}</td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($monitor->site)
-                                        <a href="{{ route('sites.performance', $monitor->site) }}" class="font-medium text-purple-600 hover:text-purple-800">
+                                        <a href="{{ route('sites.performance', $monitor->site) }}" class="font-medium text-accent-600 hover:text-accent-800">
                                             {{ $monitor->site->name }}
                                         </a>
                                         <div class="text-xs text-gray-400">{{ $monitor->site->domain }}</div>

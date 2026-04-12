@@ -10,7 +10,8 @@
         data: @js($data),
         color: @js($color),
         init() { this.$nextTick(() => this.render()); },
-        render() {
+        async render() {
+            const Chart = await window.loadChart();
             if (this.chart) this.chart.destroy();
             this.chart = new Chart(this.$refs.spark, {
                 type: 'line',

@@ -71,7 +71,7 @@
             <nav class="-mb-px flex gap-6">
                 @foreach(['overview' => __('Overview'), 'cache' => __('Cache'), 'analytics' => __('Analytics')] as $key => $label)
                     <button wire:click="$set('tab', '{{ $key }}')"
-                        class="whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition {{ $tab === $key ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+                        class="whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition {{ $tab === $key ? 'border-accent-500 text-accent-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                         {{ $label }}
                     </button>
                 @endforeach
@@ -94,7 +94,7 @@
                                         <x-ui.badge variant="gray">{{ $record['type'] }}</x-ui.badge>
                                         @if(in_array($record['type'], ['A', 'AAAA', 'CNAME']))
                                             <span class="{{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
-                                                <svg class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                                                <svg aria-hidden="true" class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
                                             </span>
                                         @endif
                                     </div>
@@ -130,7 +130,7 @@
                                         <td class="py-2 pr-4">
                                             @if(in_array($record['type'], ['A', 'AAAA', 'CNAME']))
                                                 <span class="text-xs {{ $record['proxied'] ? 'text-orange-500' : 'text-gray-400' }}">
-                                                    <svg class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                                                    <svg aria-hidden="true" class="h-4 w-4" fill="{{ $record['proxied'] ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
                                                 </span>
                                             @endif
                                         </td>
@@ -159,7 +159,7 @@
                 <x-ui.card>
                     <h3 class="text-sm font-semibold text-gray-900 mb-4">{{ __('Purge by URL') }}</h3>
                     <p class="text-sm text-gray-500 mb-2">{{ __('Enter one URL per line to purge specific pages.') }}</p>
-                    <textarea wire:model="purgeUrls" rows="4" class="w-full rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500" placeholder="https://example.com/page-1&#10;https://example.com/page-2"></textarea>
+                    <textarea wire:model="purgeUrls" rows="4" class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500" placeholder="https://example.com/page-1&#10;https://example.com/page-2"></textarea>
                     <div class="mt-3 flex justify-end">
                         <x-ui.button wire:click="purgeByUrls" size="sm" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="purgeByUrls">{{ __('Purge URLs') }}</span>
@@ -230,8 +230,8 @@
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                     <x-ui.card class="!p-4">
                         <div class="flex items-center justify-between">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-                                <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-100">
+                                <svg aria-hidden="true" class="h-5 w-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($totalReqs) }}</p>
@@ -242,7 +242,7 @@
                     <x-ui.card class="!p-4">
                         <div class="flex items-center justify-between">
                             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                <svg aria-hidden="true" class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                             </div>
                         </div>
                         @php
@@ -257,7 +257,7 @@
                     <x-ui.card class="!p-4">
                         <div class="flex items-center justify-between">
                             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
-                                <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <svg aria-hidden="true" class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
@@ -267,7 +267,7 @@
                     <x-ui.card class="!p-4">
                         <div class="flex items-center justify-between">
                             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-                                <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <svg aria-hidden="true" class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             </div>
                         </div>
                         <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($uniques['all'] ?? $pageviews['all'] ?? 0) }}</p>
@@ -312,7 +312,7 @@
                                             <div class="rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg whitespace-nowrap">
                                                 <div class="font-medium" x-text="formatTime(point.since)"></div>
                                                 <div class="mt-1 flex items-center gap-1.5">
-                                                    <span class="h-2 w-2 rounded-full bg-purple-400"></span>
+                                                    <span class="h-2 w-2 rounded-full bg-accent-400"></span>
                                                     <span>{{ __('Total:') }} <span x-text="formatNum(point.requests)"></span></span>
                                                 </div>
                                                 <div class="flex items-center gap-1.5">
@@ -322,9 +322,9 @@
                                             </div>
                                         </div>
                                         {{-- Bar (uncached background + cached overlay) --}}
-                                        <div class="w-full rounded-t bg-purple-200 transition-all group-hover:bg-purple-300"
+                                        <div class="w-full rounded-t bg-accent-200 transition-all group-hover:bg-accent-300"
                                              :style="'height: ' + Math.max((point.requests / maxVal) * 100, 1) + '%'">
-                                            <div class="w-full rounded-t bg-purple-500 transition-all"
+                                            <div class="w-full rounded-t bg-accent-500 transition-all"
                                                  :style="'height: ' + (point.requests > 0 ? (point.cached / point.requests) * 100 : 0) + '%'">
                                             </div>
                                         </div>
@@ -334,11 +334,11 @@
                             {{-- Legend --}}
                             <div class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2.5 w-2.5 rounded-sm bg-purple-500"></span>
+                                    <span class="h-2.5 w-2.5 rounded-sm bg-accent-500"></span>
                                     {{ __('Cached') }}
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <span class="h-2.5 w-2.5 rounded-sm bg-purple-200"></span>
+                                    <span class="h-2.5 w-2.5 rounded-sm bg-accent-200"></span>
                                     {{ __('Uncached') }}
                                 </div>
                             </div>
@@ -416,7 +416,7 @@
                                     <div class="flex-1">
                                         <div class="flex items-center gap-3">
                                             <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
-                                                <div class="h-full rounded-full bg-purple-500 transition-all" style="width: {{ round(($count / $maxCount) * 100) }}%"></div>
+                                                <div class="h-full rounded-full bg-accent-500 transition-all" style="width: {{ round(($count / $maxCount) * 100) }}%"></div>
                                             </div>
                                             <div class="flex items-center gap-2 shrink-0">
                                                 <span class="text-sm font-medium text-gray-900 w-20 text-right">{{ number_format($count) }}</span>

@@ -67,7 +67,7 @@
                     </div>
                 </div>
                 @if(!$wpUpToDate)
-                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>{{ __('Update') }}</a>
+                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-accent-600 hover:text-accent-800" wire:navigate>{{ __('Update') }}</a>
                 @endif
             </div>
 
@@ -94,7 +94,7 @@
                     </div>
                 </div>
                 @if($vulnCount > 0)
-                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-purple-600 hover:text-purple-800" wire:navigate>{{ __('View') }}</a>
+                    <a href="{{ route('sites.plugins', $this->site) }}" class="text-xs font-medium text-accent-600 hover:text-accent-800" wire:navigate>{{ __('View') }}</a>
                 @endif
             </div>
 

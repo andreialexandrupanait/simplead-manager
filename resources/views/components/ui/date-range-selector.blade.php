@@ -22,8 +22,8 @@
             @click="showCustom = false"
             @class([
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition',
-                'bg-purple-100 text-purple-700' => $selected === $value,
-                'bg-gray-100 text-gray-600 hover:bg-gray-200' => $selected !== $value,
+                'bg-accent-100 text-accent-700' => $selected === $value,
+                'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' => $selected !== $value,
             ])
         >
             {{ $label }}
@@ -36,8 +36,8 @@
             @click="showCustom = !showCustom"
             @class([
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition',
-                'bg-purple-100 text-purple-700' => $selected === 'custom',
-                'bg-gray-100 text-gray-600 hover:bg-gray-200' => $selected !== 'custom',
+                'bg-accent-100 text-accent-700' => $selected === 'custom',
+                'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' => $selected !== 'custom',
             ])
         >
             Custom
@@ -46,21 +46,21 @@
             x-show="showCustom"
             x-transition
             @click.outside="showCustom = false"
-            class="absolute right-0 top-full mt-2 z-50 rounded-lg border border-gray-200 bg-white p-4 shadow-lg"
+            class="absolute right-0 top-full mt-2 z-50 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-lg"
             style="min-width: 280px"
         >
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
-                    <input x-model="customStart" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500" />
+                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Start Date</label>
+                    <input x-model="customStart" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
-                    <input x-model="customEnd" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500" />
+                    <input x-model="customEnd" type="date" class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500" />
                 </div>
                 <button
                     @click="applyCustom()"
-                    class="w-full rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700 transition"
+                    class="w-full rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-700 transition"
                 >
                     Apply
                 </button>
@@ -72,7 +72,7 @@
         <button
             wire:click="{{ $refreshAction }}"
             wire:loading.attr="disabled"
-            class="rounded-lg bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200 transition"
+            class="rounded-lg bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition"
             title="Refresh data"
         >
             <svg class="h-4 w-4" wire:loading.class="animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">

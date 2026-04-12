@@ -24,7 +24,7 @@
             <input type="text"
                    wire:model.live.debounce.300ms="search"
                    placeholder="{{ __('Search hooks...') }}"
-                   class="w-full max-w-sm rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                   class="w-full max-w-sm rounded-lg border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
         </div>
 
         {{-- Stats --}}
@@ -307,7 +307,7 @@
             <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Schedule') }}</label>
                 <select wire:model="enableSchedule"
-                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                     @if($cronData && isset($cronData['schedules']))
                         @foreach($cronData['schedules'] as $key => $schedule)
                             <option value="{{ $key }}">{{ $schedule['display'] }} ({{ round($schedule['interval'] / 3600, 1) }}h)</option>

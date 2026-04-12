@@ -118,14 +118,14 @@
         <x-slot:actions>
             <x-ui.wp-admin-button :site="$site" />
             <x-ui.button variant="secondary" wire:click="quickBackup" wire:loading.attr="disabled" wire:target="quickBackup">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
                 </svg>
                 <span wire:loading.remove wire:target="quickBackup">{{ __('Backup Now') }}</span>
                 <span wire:loading wire:target="quickBackup">{{ __('Starting...') }}</span>
             </x-ui.button>
             <x-ui.button variant="secondary" wire:click="syncNow" wire:loading.attr="disabled">
-                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
                 <span wire:loading.remove wire:target="syncNow">{{ __('Sync Now') }}</span>
@@ -189,8 +189,8 @@
                     </ul>
                 </template>
             </div>
-            <button @click="bulkSummary = null" class="text-gray-400 hover:text-gray-600 ml-4 shrink-0">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button @click="bulkSummary = null" class="text-gray-400 hover:text-gray-600 ml-4 shrink-0" aria-label="{{ __('Dismiss') }}">
+                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -248,8 +248,8 @@
         {{-- Embedded card header (matches overview card pattern) --}}
         <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <div class="flex items-center gap-2">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
-                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-100">
+                    <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                     </svg>
                 </div>
@@ -280,7 +280,7 @@
                         Themes
                     </button>
                 </div>
-                <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:text-purple-700" wire:navigate>
+                <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-accent-600 hover:text-accent-700" wire:navigate>
                     {{ __('View All') }} →
                 </a>
             </div>
@@ -290,7 +290,7 @@
         {{-- Action loading status bar --}}
         <div wire:loading.flex wire:target="updateCore, updatePlugin, updateTheme, activatePlugin, deactivatePlugin, activateTheme, toggleAutoUpdate, syncNow, deletePlugin, deleteTheme"
              class="items-center gap-2 border-b bg-blue-50 px-4 py-2">
-            <svg class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg aria-hidden="true" class="h-3.5 w-3.5 shrink-0 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
@@ -320,7 +320,7 @@
                             <input type="checkbox"
                                 :checked="selected.length === {{ count($this->plugins) }} && selected.length > 0"
                                 @change="selected = $event.target.checked ? @js($this->plugins->pluck('id')->values()->toArray()) : []"
-                                class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                class="h-4 w-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                 title="Select all">
                         @endif
                         <span class="text-sm text-gray-600">
@@ -339,7 +339,7 @@
                             <input type="checkbox"
                                 :checked="selected.length === {{ count($this->themes) }} && selected.length > 0"
                                 @change="selected = $event.target.checked ? @js($this->themes->pluck('id')->values()->toArray()) : []"
-                                class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                class="h-4 w-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                 title="Select all">
                         @endif
                         <span class="text-sm text-gray-600">
@@ -376,7 +376,7 @@
                     @endphp
                     @if($embedded)
                         {{-- Compact dropdown filter for embedded mode --}}
-                        <select wire:model.live="filter" class="rounded-md border-gray-300 text-xs py-1 pl-2 pr-7 focus:border-purple-500 focus:ring-purple-500">
+                        <select wire:model.live="filter" class="rounded-md border-gray-300 text-xs py-1 pl-2 pr-7 focus:border-accent-500 focus:ring-accent-500">
                             @foreach($filters as $key => $label)
                                 <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
@@ -407,10 +407,10 @@
 
         {{-- Bulk action bar (full page only) --}}
         @if(!$embedded && ($tab === 'plugins' || $tab === 'themes'))
-            <div x-show="selected.length > 0" x-cloak class="border-b bg-purple-50 px-4 py-2">
+            <div x-show="selected.length > 0" x-cloak class="border-b bg-accent-50 px-4 py-2">
                 <div class="flex items-center gap-3">
-                    <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
-                    <select x-model="bulkAction" class="rounded-md border-gray-300 text-sm py-1 pl-2 pr-8 focus:border-purple-500 focus:ring-purple-500">
+                    <span class="text-sm font-medium text-accent-700" x-text="selected.length + ' selected'"></span>
+                    <select x-model="bulkAction" class="rounded-md border-gray-300 text-sm py-1 pl-2 pr-8 focus:border-accent-500 focus:ring-accent-500">
                         <option value="">{{ __('Bulk Actions') }}</option>
                         <option value="activate">{{ __('Activate') }}</option>
                         @if($tab === 'plugins')
@@ -473,7 +473,7 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
-                                        <svg class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg aria-hidden="true" class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
                                         </svg>
                                     </div>
@@ -556,11 +556,11 @@
                     >
                         @if(!$embedded)
                         <input type="checkbox" :value="{{ $plugin->id }}" x-model="selected"
-                            class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3 shrink-0">
+                            class="h-4 w-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500 mr-3 shrink-0">
                         @endif
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <button wire:click="showDetail('plugin', {{ $plugin->id }})" class="text-sm font-medium text-gray-900 hover:text-purple-700 hover:underline text-left">
+                                <button wire:click="showDetail('plugin', {{ $plugin->id }})" class="text-sm font-medium text-gray-900 hover:text-accent-700 hover:underline text-left">
                                     {{ $plugin->name }}
                                 </button>
                                 <x-ui.badge :variant="$plugin->is_active ? 'green' : 'gray'">
@@ -568,7 +568,7 @@
                                 </x-ui.badge>
                                 <button
                                     wire:click="toggleAutoUpdate('plugin', {{ $plugin->id }})"
-                                    class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $plugin->auto_update ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
+                                    class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $plugin->auto_update ? 'bg-accent-100 text-accent-700 hover:bg-accent-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
                                     title="{{ $plugin->auto_update ? __('Disable') : __('Enable') }} {{ __('auto-updates') }}"
                                 >
                                     {{ $plugin->auto_update ? 'Auto ✓' : 'Auto' }}
@@ -597,12 +597,12 @@
                                     {{-- Error: styled alert box --}}
                                     <div x-data="{ show: true }" x-show="show"
                                          class="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                                        <svg class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg aria-hidden="true" class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                                         </svg>
                                         <span class="text-xs font-medium text-red-700 flex-1">{{ $updateResults[$resultKey]['message'] }}</span>
-                                        <button wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0">
-                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <button wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0" aria-label="{{ __('Dismiss') }}">
+                                            <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                             </svg>
                                         </button>
@@ -647,7 +647,7 @@
                                     wire:click="assessRisk({{ $plugin->id }})"
                                     wire:loading.attr="disabled"
                                     wire:target="assessRisk({{ $plugin->id }})"
-                                    class="rounded px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
+                                    class="rounded px-2 py-1 text-xs font-medium text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-900/20 transition"
                                     title="{{ __('AI Risk Assessment') }}"
                                 >
                                     <span wire:loading.remove wire:target="assessRisk({{ $plugin->id }})">AI</span>
@@ -681,21 +681,21 @@
                     >
                         @if(!$embedded)
                         <input type="checkbox" :value="{{ $theme->id }}" x-model="selected"
-                            class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3 shrink-0">
+                            class="h-4 w-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500 mr-3 shrink-0">
                         @endif
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             @if($theme->screenshot_url)
-                                <img src="{{ $theme->screenshot_url }}" alt="" class="h-10 w-16 rounded object-cover ring-1 ring-gray-200">
+                                <img src="{{ $theme->screenshot_url }}" alt="{{ $theme->name }} screenshot" loading="lazy" class="h-10 w-16 rounded object-cover ring-1 ring-gray-200">
                             @else
                                 <div class="h-10 w-16 rounded bg-gray-100 flex items-center justify-center">
-                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg aria-hidden="true" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                 </div>
                             @endif
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
-                                    <button wire:click="showDetail('theme', {{ $theme->id }})" class="text-sm font-medium text-gray-900 hover:text-purple-700 hover:underline text-left">
+                                    <button wire:click="showDetail('theme', {{ $theme->id }})" class="text-sm font-medium text-gray-900 hover:text-accent-700 hover:underline text-left">
                                         {{ $theme->name }}
                                     </button>
                                     <x-ui.badge :variant="$theme->is_active ? 'green' : 'gray'">
@@ -706,7 +706,7 @@
                                     @endif
                                     <button
                                         wire:click="toggleAutoUpdate('theme', {{ $theme->id }})"
-                                        class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $theme->auto_update ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
+                                        class="rounded px-1.5 py-0.5 text-xs font-medium transition {{ $theme->auto_update ? 'bg-accent-100 text-accent-700 hover:bg-accent-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
                                         title="{{ $theme->auto_update ? __('Disable') : __('Enable') }} {{ __('auto-updates') }}"
                                     >
                                         {{ $theme->auto_update ? 'Auto ✓' : 'Auto' }}
@@ -738,12 +738,12 @@
                                         {{-- Error: styled alert box --}}
                                         <div x-data="{ show: true }" x-show="show"
                                              class="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-                                            <svg class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg aria-hidden="true" class="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                                             </svg>
                                             <span class="text-xs font-medium text-red-700 flex-1">{{ $updateResults[$resultKey]['message'] }}</span>
-                                            <button wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0">
-                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <button aria-label="{{ __('Dismiss') }}" wire:click="clearResult('{{ $resultKey }}')" class="text-red-400 hover:text-red-600 shrink-0">
+                                                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                                 </svg>
                                             </button>
@@ -842,7 +842,7 @@
                 @forelse($this->users as $user)
                     <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
                         <div class="flex items-center gap-3 min-w-0 flex-1">
-                            <img src="{{ $user->avatar_url }}" alt="" class="h-10 w-10 rounded-full ring-1 ring-gray-200 bg-gray-100">
+                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?: $user->username }}" loading="lazy" class="h-10 w-10 rounded-full ring-1 ring-gray-200 bg-gray-100">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm font-medium text-gray-900">{{ $user->display_name ?: $user->username }}</span>
@@ -987,7 +987,7 @@
                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div><span class="text-gray-500">{{ __('Author') }}:</span> <span class="text-gray-900">{{ $detailItem['author'] ?? '—' }}</span></div>
                     <div><span class="text-gray-500">{{ __('Slug') }}:</span> <span class="text-gray-900 font-mono text-xs">{{ $detailItem['slug'] }}</span></div>
-                    <div><span class="text-gray-500">{{ __('Auto-Update') }}:</span> <span class="{{ $detailItem['auto_update'] ? 'text-purple-700' : 'text-gray-900' }}">{{ $detailItem['auto_update'] ? __('Enabled') : __('Disabled') }}</span></div>
+                    <div><span class="text-gray-500">{{ __('Auto-Update') }}:</span> <span class="{{ $detailItem['auto_update'] ? 'text-accent-700' : 'text-gray-900' }}">{{ $detailItem['auto_update'] ? __('Enabled') : __('Disabled') }}</span></div>
                     @if($detailItem['wp_org_last_updated'])
                         <div><span class="text-gray-500">{{ __('Last WP.org Update') }}:</span> <span class="text-gray-900">{{ $detailItem['wp_org_last_updated'] }}</span></div>
                     @endif
@@ -1013,9 +1013,9 @@
                 <div class="mt-4 border-t pt-3" x-data="{ showChangelog: false }">
                     <button
                         @click="showChangelog = !showChangelog; if (showChangelog && !$wire.changelog && !$wire.changelogLoading) { $wire.fetchChangelog(); }"
-                        class="flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-800 transition"
+                        class="flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-800 transition"
                     >
-                        <svg class="h-4 w-4 transition-transform" :class="showChangelog && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg aria-hidden="true" class="h-4 w-4 transition-transform" :class="showChangelog && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
                         {{ __('Changelog') }}
@@ -1024,7 +1024,7 @@
                         <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                             @if($changelogLoading)
                                 <div class="flex items-center gap-2 text-gray-400">
-                                    <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <svg aria-hidden="true" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
@@ -1073,12 +1073,12 @@
 
                 {{-- Quick links --}}
                 <div class="mt-4 flex items-center gap-2 border-t pt-3">
-                    <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>{{ __('Plugins') }}</a>
+                    <a href="{{ route('sites.plugins', $site) }}" class="text-xs text-accent-600 hover:underline" wire:navigate>{{ __('Plugins') }}</a>
                     <span class="text-gray-300">|</span>
-                    <a href="{{ route('sites.security', $site) }}" class="text-xs text-purple-600 hover:underline" wire:navigate>{{ __('Security') }}</a>
+                    <a href="{{ route('sites.security', $site) }}" class="text-xs text-accent-600 hover:underline" wire:navigate>{{ __('Security') }}</a>
                     @if($detailItem['url'])
                         <span class="text-gray-300">|</span>
-                        <a href="{{ $detailItem['url'] }}" target="_blank" class="text-xs text-purple-600 hover:underline">{{ __('Website') }}</a>
+                        <a href="{{ $detailItem['url'] }}" target="_blank" class="text-xs text-accent-600 hover:underline">{{ __('Website') }}</a>
                     @endif
                 </div>
 
@@ -1136,7 +1136,7 @@
             </div>
         @elseif($riskLoading)
             <div class="p-6 text-center">
-                <svg class="mx-auto h-8 w-8 animate-spin text-purple-500" fill="none" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="mx-auto h-8 w-8 animate-spin text-accent-500" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>

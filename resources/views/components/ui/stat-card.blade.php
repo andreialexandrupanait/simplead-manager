@@ -7,24 +7,24 @@
 
 @php
 $bgColor = match($color) {
-    'purple' => 'bg-purple-50',
+    'purple' => 'bg-accent-50',
     'green' => 'bg-green-50',
     'red' => 'bg-red-50',
     'yellow' => 'bg-yellow-50',
     'orange' => 'bg-orange-50',
     'blue' => 'bg-blue-50',
     'gray' => 'bg-gray-50',
-    default => 'bg-purple-50',
+    default => 'bg-accent-50',
 };
 $iconColor = match($color) {
-    'purple' => 'text-purple-600',
+    'purple' => 'text-accent-600',
     'green' => 'text-green-600',
     'red' => 'text-red-600',
     'yellow' => 'text-yellow-600',
     'orange' => 'text-orange-600',
     'blue' => 'text-blue-600',
     'gray' => 'text-gray-600',
-    default => 'text-purple-600',
+    default => 'text-accent-600',
 };
 @endphp
 

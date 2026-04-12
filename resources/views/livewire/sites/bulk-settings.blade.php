@@ -8,13 +8,13 @@
     <div class="mb-6 flex items-center gap-2 text-sm">
         @foreach([1 => __('Select Sites'), 2 => __('Choose Operation'), 3 => __('Configure & Apply')] as $num => $label)
             <div class="flex items-center gap-2">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium {{ $step >= $num ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500' }}">
+                <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium {{ $step >= $num ? 'bg-accent-600 text-white' : 'bg-gray-200 text-gray-500' }}">
                     {{ $num }}
                 </span>
                 <span class="{{ $step >= $num ? 'text-gray-900 font-medium' : 'text-gray-400' }}">{{ $label }}</span>
             </div>
             @if($num < 3)
-                <div class="h-px w-8 {{ $step > $num ? 'bg-purple-600' : 'bg-gray-200' }}"></div>
+                <div class="h-px w-8 {{ $step > $num ? 'bg-accent-600' : 'bg-gray-200' }}"></div>
             @endif
         @endforeach
     </div>
@@ -26,14 +26,14 @@
                 <h3 class="text-base font-semibold text-gray-900">{{ __('Select Sites') }}</h3>
                 <div class="flex items-center gap-3">
                     <label class="flex items-center gap-2 text-xs text-gray-500">
-                        <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model.live="selectAll" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         {{ __('Select All') }}
                     </label>
                 </div>
             </div>
 
             <div class="mb-4">
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search sites...') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="{{ __('Search sites...') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
             </div>
 
             <div class="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
@@ -43,7 +43,7 @@
                             type="checkbox"
                             wire:model="selectedSiteIds"
                             value="{{ $site->id }}"
-                            class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                         >
                         <x-site-favicon :site="$site" class="h-5 w-5" />
                         <div class="min-w-0 flex-1">
@@ -78,7 +78,7 @@
             <p class="text-sm text-gray-500 mb-4">{{ __('What would you like to do with the') }} {{ count($selectedSiteIds) }} {{ __('selected site(s)?') }}</p>
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'copy_from_site' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
+                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'copy_from_site' ? 'border-accent-600 bg-accent-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="copy_from_site" class="sr-only">
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ __('Copy from Site') }}</p>
@@ -86,7 +86,7 @@
                     </div>
                 </label>
 
-                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'security_preset' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
+                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'security_preset' ? 'border-accent-600 bg-accent-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="security_preset" class="sr-only">
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ __('Security Preset') }}</p>
@@ -94,7 +94,7 @@
                     </div>
                 </label>
 
-                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'module_plan' ? 'border-purple-600 bg-purple-50' : 'border-gray-200' }}">
+                <label class="relative cursor-pointer rounded-lg border-2 p-4 hover:bg-gray-50 {{ $operation === 'module_plan' ? 'border-accent-600 bg-accent-50' : 'border-gray-200' }}">
                     <input type="radio" wire:model.live="operation" value="module_plan" class="sr-only">
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ __('Maintenance Plan') }}</p>
@@ -139,15 +139,15 @@
                         <p class="text-sm font-medium text-gray-700 mb-2">{{ __('What to copy:') }}</p>
                         <div class="space-y-2">
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="copySecuritySettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="copySecuritySettings" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Security Settings (hardening, .htaccess, login, captcha, IP management, activity log)') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="copyTweakSettings" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="copyTweakSettings" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Tweak Settings (performance, site control, admin UX, content/media, email)') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" wire:model="copyModuleConfig" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <input type="checkbox" wire:model="copyModuleConfig" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 {{ __('Module Configuration (uptime, backup, performance, security monitors)') }}
                             </label>
                         </div>

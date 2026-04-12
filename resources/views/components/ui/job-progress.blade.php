@@ -16,29 +16,29 @@ if (!$job) return;
             x-data="{ progress: {{ $job['progress'] }}, message: '{{ addslashes($job['message']) }}' }"
             x-init="$watch('progress', () => {})"
             x-effect="progress = {{ $job['progress'] }}; message = '{{ addslashes($job['message']) }}';"
-            {{ $attributes->merge(['class' => 'mb-4 rounded-lg bg-purple-50 border border-purple-200 p-3']) }}
+            {{ $attributes->merge(['class' => 'mb-4 rounded-lg bg-accent-50 border border-accent-200 p-3']) }}
         >
             <div class="flex items-center justify-between gap-2.5">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <x-ui.spinner size="sm" class="text-purple-600 shrink-0" />
-                    <span class="text-sm font-medium text-purple-700 truncate">{{ $title ?? $job['message'] }}</span>
+                    <x-ui.spinner size="sm" class="text-accent-600 shrink-0" />
+                    <span class="text-sm font-medium text-accent-700 truncate">{{ $title ?? $job['message'] }}</span>
                 </div>
-                <span class="text-xs font-semibold text-purple-600 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
+                <span class="text-xs font-semibold text-accent-600 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
             </div>
             <div class="mt-2">
-                <div class="w-full overflow-hidden rounded-full bg-purple-100 h-1.5">
+                <div class="w-full overflow-hidden rounded-full bg-accent-100 h-1.5">
                     <div
                         x-show="progress > 0"
-                        class="bg-purple-500 h-1.5 rounded-full transition-all duration-700 ease-out"
+                        class="bg-accent-500 h-1.5 rounded-full transition-all duration-700 ease-out"
                         :style="'width: ' + progress + '%'"
                     ></div>
                     <div
                         x-show="progress === 0"
-                        class="bg-purple-500 h-1.5 w-1/3 animate-[progress-indeterminate_1.5s_infinite_ease-in-out]"
+                        class="bg-accent-500 h-1.5 w-1/3 animate-[progress-indeterminate_1.5s_infinite_ease-in-out]"
                     ></div>
                 </div>
             </div>
-            <p class="mt-1.5 text-xs text-purple-600 transition-opacity duration-300" x-show="progress > 0 && message" x-text="message" x-cloak></p>
+            <p class="mt-1.5 text-xs text-accent-600 transition-opacity duration-300" x-show="progress > 0 && message" x-text="message" x-cloak></p>
         </div>
     @elseif($job['status'] === 'complete')
         <div

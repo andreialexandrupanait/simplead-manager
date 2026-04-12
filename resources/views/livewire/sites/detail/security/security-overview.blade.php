@@ -143,7 +143,7 @@
                 $totalCount = $catSettings->count();
             @endphp
             <a href="{{ route($catInfo['route'], $site) }}">
-                <x-ui.card class="cursor-pointer hover:border-purple-200 transition-colors">
+                <x-ui.card class="cursor-pointer hover:border-accent-200 transition-colors">
                     <div class="flex items-start justify-between">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>

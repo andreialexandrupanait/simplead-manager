@@ -5,8 +5,8 @@
                     wire:confirm="{{ __('Queue report generation for all connected sites using the default template?') }}"
                     wire:loading.attr="disabled"
                     wire:target="generateAllReports"
-                    class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-purple-500 transition disabled:opacity-60 dark:bg-purple-700 dark:hover:bg-purple-600">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-accent-500 transition disabled:opacity-60 dark:bg-accent-700 dark:hover:bg-accent-600">
+                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <span wire:loading.remove wire:target="generateAllReports">{{ __('Generate All') }}</span>
@@ -20,13 +20,13 @@
         <div class="flex-1">
             <x-ui.input type="text" wire:model.live.debounce.300ms="search" placeholder="Search reports..." />
         </div>
-        <select wire:model.live="siteFilter" class="rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+        <select wire:model.live="siteFilter" class="rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500">
             <option value="">All Sites</option>
             @foreach($sites as $site)
                 <option value="{{ $site->id }}">{{ $site->name }}</option>
             @endforeach
         </select>
-        <select wire:model.live="status" class="rounded-lg border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500">
+        <select wire:model.live="status" class="rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500">
             <option value="all">All Statuses</option>
             <option value="completed">Completed</option>
             <option value="generating">Generating</option>
@@ -56,7 +56,7 @@
                     <div class="px-5 py-3 space-y-2">
                         <div class="flex items-start justify-between gap-2">
                             <div>
-                                <a href="{{ route('sites.reports', $report->site) }}" class="text-sm font-medium text-purple-600 hover:text-purple-800">{{ $report->site?->name ?? '—' }}</a>
+                                <a href="{{ route('sites.reports', $report->site) }}" class="text-sm font-medium text-accent-600 hover:text-accent-800">{{ $report->site?->name ?? '—' }}</a>
                                 @if($report->site?->client)
                                     <p class="text-xs text-gray-400">{{ $report->site->client->name }}</p>
                                 @endif
@@ -80,7 +80,7 @@
                                 @if($report->site?->client?->portal_enabled && $report->data_snapshot)
                                     <a href="{{ route('client-portal.report', [$report->site->client->portal_token, $report]) }}"
                                        target="_blank"
-                                       class="inline-flex items-center rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                                       class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
                                        title="View online">
                                         <x-icons.globe class="h-3.5 w-3.5" />
                                     </a>
@@ -121,7 +121,7 @@
                         @foreach($reports as $report)
                             <tr class="hover:bg-gray-50">
                                 <td class="whitespace-nowrap px-5 py-3 text-sm">
-                                    <a href="{{ route('sites.reports', $report->site) }}" class="font-medium text-purple-600 hover:text-purple-800">{{ $report->site?->name ?? '—' }}</a>
+                                    <a href="{{ route('sites.reports', $report->site) }}" class="font-medium text-accent-600 hover:text-accent-800">{{ $report->site?->name ?? '—' }}</a>
                                     @if($report->site?->client)
                                         <p class="text-xs text-gray-400">{{ $report->site->client->name }}</p>
                                     @endif
@@ -161,7 +161,7 @@
                                             @if($report->site?->client?->portal_enabled && $report->data_snapshot)
                                                 <a href="{{ route('client-portal.report', [$report->site->client->portal_token, $report]) }}"
                                                    target="_blank"
-                                                   class="inline-flex items-center rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                                                   class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
                                                    title="View online">
                                                     <x-icons.globe class="h-3.5 w-3.5" />
                                                 </a>

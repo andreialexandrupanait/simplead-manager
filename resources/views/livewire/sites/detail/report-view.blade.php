@@ -6,7 +6,7 @@
             <p class="text-sm text-gray-500">
                 {{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}
                 @if($report->file_path)
-                    &middot; <a href="{{ route('reports.download', $report) }}" class="text-purple-600 hover:text-purple-800">{{ __('Download PDF') }}</a>
+                    &middot; <a href="{{ route('reports.download', $report) }}" class="text-accent-600 hover:text-accent-800">{{ __('Download PDF') }}</a>
                 @endif
             </p>
         </div>
@@ -20,7 +20,7 @@
                 @foreach($this->sections as $key => $label)
                     <button wire:click="setSection('{{ $key }}')"
                             class="w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition
-                                   {{ $activeSection === $key ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100' }}">
+                                   {{ $activeSection === $key ? 'bg-accent-100 text-accent-700' : 'text-gray-600 hover:bg-gray-100' }}">
                         {{ $label }}
                     </button>
                 @endforeach

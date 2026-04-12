@@ -16,25 +16,25 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Storage Type</label>
                 <div class="grid grid-cols-3 gap-3">
-                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'local' ? 'border-purple-500 ring-1 ring-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300' }}">
+                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'local' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
                         <input type="radio" wire:model.live="form.type" value="local" class="sr-only">
                         <div class="text-center w-full">
-                            <svg class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'local' ? 'text-purple-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-                            <span class="text-xs font-medium {{ $form->type === 'local' ? 'text-purple-700' : 'text-gray-600' }}">Local</span>
+                            <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'local' ? 'text-accent-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                            <span class="text-xs font-medium {{ $form->type === 'local' ? 'text-accent-700' : 'text-gray-600' }}">Local</span>
                         </div>
                     </label>
-                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'dropbox' ? 'border-purple-500 ring-1 ring-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300' }}">
+                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'dropbox' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
                         <input type="radio" wire:model.live="form.type" value="dropbox" class="sr-only">
                         <div class="text-center w-full">
-                            <svg class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'dropbox' ? 'text-purple-600' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
-                            <span class="text-xs font-medium {{ $form->type === 'dropbox' ? 'text-purple-700' : 'text-gray-600' }}">Dropbox</span>
+                            <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'dropbox' ? 'text-accent-600' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
+                            <span class="text-xs font-medium {{ $form->type === 'dropbox' ? 'text-accent-700' : 'text-gray-600' }}">Dropbox</span>
                         </div>
                     </label>
-                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 's3' ? 'border-purple-500 ring-1 ring-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300' }}">
+                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 's3' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
                         <input type="radio" wire:model.live="form.type" value="s3" class="sr-only">
                         <div class="text-center w-full">
-                            <svg class="w-6 h-6 mx-auto mb-1 {{ $form->type === 's3' ? 'text-purple-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-                            <span class="text-xs font-medium {{ $form->type === 's3' ? 'text-purple-700' : 'text-gray-600' }}">S3 / Compatible</span>
+                            <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 's3' ? 'text-accent-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+                            <span class="text-xs font-medium {{ $form->type === 's3' ? 'text-accent-700' : 'text-gray-600' }}">S3 / Compatible</span>
                         </div>
                     </label>
                 </div>
@@ -108,17 +108,17 @@
                         <div class="flex items-center gap-2 border-b border-gray-200 px-3 py-2">
                             @if($browserCurrentPath !== '')
                                 <button type="button" wire:click="browseUp" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Go up">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                 </button>
                             @endif
                             <span class="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">
                                 {{ $browserCurrentPath ?: '/ (root)' }}
                             </span>
                             <span wire:loading wire:target="browseTo, browseUp, openFolderBrowser" class="text-gray-400">
-                                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <svg aria-hidden="true" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                             </span>
                             <button type="button" wire:click="closeFolderBrowser" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Close">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
 
@@ -134,11 +134,11 @@
                             <div class="max-h-56 overflow-y-auto" wire:loading.class="opacity-50" wire:target="browseTo, browseUp, openFolderBrowser">
                                 @forelse($browserFolders as $folder)
                                     <div class="group flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50">
-                                        <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                                        <svg aria-hidden="true" class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
                                         <button type="button" wire:click="browseTo('{{ $folder['path'] }}')" class="min-w-0 flex-1 truncate text-left text-sm text-gray-700 hover:text-gray-900">
                                             {{ $folder['name'] }}
                                         </button>
-                                        <button type="button" wire:click="selectFolder('{{ $folder['path'] }}')" class="shrink-0 rounded bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600 opacity-0 transition hover:bg-purple-100 group-hover:opacity-100">
+                                        <button type="button" wire:click="selectFolder('{{ $folder['path'] }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-600 opacity-0 transition hover:bg-accent-100 group-hover:opacity-100">
                                             Select
                                         </button>
                                     </div>
@@ -187,14 +187,14 @@
                 <div class="pt-3">
                     <a href="{{ route('dropbox.auth') }}"
                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50">
-                        <svg class="w-4 h-4" fill="#0061FE" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
+                        <svg aria-hidden="true" class="w-4 h-4" fill="#0061FE" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
                         {{ $destinationId ? 'Reconnect Dropbox' : 'Connect Dropbox' }}
                     </a>
                 </div>
             @endif
 
             <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="form.is_default" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                <input type="checkbox" wire:model="form.is_default" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">Set as default storage destination</span>
             </label>
         </div>

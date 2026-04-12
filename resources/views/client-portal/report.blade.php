@@ -84,7 +84,7 @@
                 @endif
                 <div class="min-w-0">
                     @if(!$isPublicView && $client?->portal_token)
-                        <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-purple-600 hover:text-purple-800 font-medium">&larr; Back to portal</a>
+                        <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-accent-600 hover:text-accent-800 font-medium">&larr; Back to portal</a>
                     @endif
                     <h1 class="text-base font-bold text-gray-900 truncate">{{ $report->title }}</h1>
                     <p class="text-[11px] text-gray-500">{{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}</p>
@@ -92,7 +92,7 @@
             </div>
             @if($report->file_path && !$isPublicView && $client?->portal_token)
                 <a href="{{ route('client-portal.download', [$client->portal_token, $report]) }}"
-                   class="no-print ml-4 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition flex-shrink-0">
+                   class="no-print ml-4 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 transition flex-shrink-0">
                     Download PDF
                 </a>
             @endif
@@ -124,7 +124,7 @@
             @foreach($nav as $id => $label)
                 <a href="#{{ $id }}"
                    class="flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium transition"
-                   :class="active === '{{ $id }}' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-gray-100'">{{ $label }}</a>
+                   :class="active === '{{ $id }}' ? 'bg-accent-100 text-accent-700' : 'text-gray-500 hover:bg-gray-100'">{{ $label }}</a>
             @endforeach
         </div>
     </div>
@@ -137,7 +137,7 @@
                 @foreach($nav as $id => $label)
                     <a href="#{{ $id }}"
                        class="block rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition"
-                       :class="active === '{{ $id }}' ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'">{{ $label }}</a>
+                       :class="active === '{{ $id }}' ? 'bg-accent-50 text-accent-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'">{{ $label }}</a>
                 @endforeach
             </div>
         </nav>
@@ -150,7 +150,7 @@
             @php $ov = $s['overview'] ?? []; @endphp
             <section id="overview" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
-                    <x-icons.layout-dashboard class="h-5 w-5 text-purple-600" />
+                    <x-icons.layout-dashboard class="h-5 w-5 text-accent-600" />
                     <h2 class="text-lg font-bold text-gray-900">Overview</h2>
                 </div>
 
@@ -175,10 +175,10 @@
                         </div>
                     @endif
                     @if(isset($ov['performance']) && (($sOpts['executive_snapshot']['show_desktop_perf'] ?? true) || ($sOpts['executive_snapshot']['show_mobile_perf'] ?? true)))
-                        <div class="metric metric-hero bg-purple-50/60">
-                            <div class="metric-icon bg-purple-100"><x-icons.zap class="h-4 w-4 text-purple-600" /></div>
+                        <div class="metric metric-hero bg-accent-50/60">
+                            <div class="metric-icon bg-accent-100"><x-icons.zap class="h-4 w-4 text-accent-600" /></div>
                             <div>
-                                <p class="metric-value text-purple-600">{{ $ov['performance']['mobile'] ?? '—' }} <span class="text-sm font-normal text-gray-400">/ {{ $ov['performance']['desktop'] ?? '—' }}</span></p>
+                                <p class="metric-value text-accent-600">{{ $ov['performance']['mobile'] ?? '—' }} <span class="text-sm font-normal text-gray-400">/ {{ $ov['performance']['desktop'] ?? '—' }}</span></p>
                                 <p class="metric-label">Mobile / Desktop</p>
                             </div>
                         </div>
@@ -225,7 +225,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div class="metric bg-green-50/50"><div><p class="metric-value text-green-600">{{ number_format((float)($ut['uptime_percentage'] ?? 0), 3) }}%</p><p class="metric-label">Uptime</p></div></div>
-                    <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ $ut['avg_response_time'] ?? '—' }}<span class="text-sm font-normal text-gray-400">ms</span></p><p class="metric-label">Avg Response</p></div></div>
+                    <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ $ut['avg_response_time'] ?? '—' }}<span class="text-sm font-normal text-gray-400">ms</span></p><p class="metric-label">Avg Response</p></div></div>
                     <div class="metric {{ ($ut['incidents_count'] ?? 0) > 0 ? 'bg-red-50/50' : 'bg-green-50/50' }}"><div><p class="metric-value {{ ($ut['incidents_count'] ?? 0) > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $ut['incidents_count'] ?? 0 }}</p><p class="metric-label">Incidents</p></div></div>
                     <div class="metric bg-gray-50/50"><div><p class="metric-value" style="font-size:1rem">{{ $ut['formatted_downtime'] ?? 'None' }}</p><p class="metric-label">Total Downtime</p></div></div>
                 </div>
@@ -396,7 +396,7 @@
                     <h2 class="text-lg font-bold text-gray-900">Updates Applied</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ $upd['total_count'] ?? 0 }}</p><p class="metric-label">Total</p></div></div>
+                    <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ $upd['total_count'] ?? 0 }}</p><p class="metric-label">Total</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ $upd['plugin_count'] ?? 0 }}</p><p class="metric-label">Plugins</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ $upd['theme_count'] ?? 0 }}</p><p class="metric-label">Themes</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ $upd['core_count'] ?? 0 }}</p><p class="metric-label">Core</p></div></div>
@@ -471,7 +471,7 @@
                     <div class="flex-1 grid grid-cols-2 gap-3">
                         <div class="metric bg-green-50/50"><div><p class="metric-value text-green-600">{{ $bkSuccess }}</p><p class="metric-label">Successful</p></div></div>
                         <div class="metric {{ $bkFailed > 0 ? 'bg-red-50/50' : 'bg-green-50/50' }}"><div><p class="metric-value {{ $bkFailed > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $bkFailed }}</p><p class="metric-label">Failed</p></div></div>
-                        <div class="metric bg-purple-50/50"><div><p class="metric-value" style="font-size:1rem">{{ $bk['total_size'] ?? '—' }}</p><p class="metric-label">Total Size</p></div></div>
+                        <div class="metric bg-accent-50/50"><div><p class="metric-value" style="font-size:1rem">{{ $bk['total_size'] ?? '—' }}</p><p class="metric-label">Total Size</p></div></div>
                         <div class="metric bg-gray-50/50"><div><p class="metric-value" style="font-size:1rem">{{ ($bk['schedule_enabled'] ?? false) ? ucfirst($bk['frequency'] ?? 'daily') : 'Disabled' }}</p><p class="metric-label">Schedule</p></div></div>
                     </div>
                 </div>
@@ -525,11 +525,11 @@
             @php $an = $s['analytics']; @endphp
             <section id="analytics" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
-                    <x-icons.bar-chart-2 class="h-5 w-5 text-purple-600" />
+                    <x-icons.bar-chart-2 class="h-5 w-5 text-accent-600" />
                     <h2 class="text-lg font-bold text-gray-900">Analytics</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ number_format((int)($an['total_pageviews'] ?? 0)) }}</p><p class="metric-label">Pageviews</p></div></div>
+                    <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ number_format((int)($an['total_pageviews'] ?? 0)) }}</p><p class="metric-label">Pageviews</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ number_format((int)($an['total_users'] ?? 0)) }}</p><p class="metric-label">Users</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ number_format((int)($an['sessions'] ?? 0)) }}</p><p class="metric-label">Sessions</p></div></div>
                     <div class="metric bg-yellow-50/50"><div><p class="metric-value">{{ number_format((float)($an['bounce_rate'] ?? 0), 1) }}%</p><p class="metric-label">Bounce Rate</p></div></div>
@@ -621,8 +621,8 @@
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div class="metric bg-green-50/50"><div><p class="metric-value text-green-600">{{ number_format((int)($scOv['total_clicks'] ?? 0)) }}</p><p class="metric-label">Clicks</p></div></div>
                     <div class="metric bg-blue-50/50"><div><p class="metric-value">{{ number_format((int)($scOv['total_impressions'] ?? 0)) }}</p><p class="metric-label">Impressions</p></div></div>
-                    <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ number_format((float)($scOv['avg_ctr'] ?? 0), 2) }}%</p><p class="metric-label">Avg CTR</p></div></div>
-                    <div class="metric bg-purple-50/50"><div><p class="metric-value">{{ number_format((float)($scOv['avg_position'] ?? 0), 1) }}</p><p class="metric-label">Avg Position</p></div></div>
+                    <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ number_format((float)($scOv['avg_ctr'] ?? 0), 2) }}%</p><p class="metric-label">Avg CTR</p></div></div>
+                    <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ number_format((float)($scOv['avg_position'] ?? 0), 1) }}</p><p class="metric-label">Avg Position</p></div></div>
                 </div>
 
                 @if(!empty($sc['queries']) && ($sOpts['search_console']['show_performance_chart'] ?? true))
@@ -752,7 +752,7 @@
                 @php $inv = $s['plugin_inventory']; @endphp
                 <section id="plugins" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
-                        <x-icons.puzzle class="h-4 w-4 text-purple-500" />
+                        <x-icons.puzzle class="h-4 w-4 text-accent-500" />
                         <h2 class="text-base font-bold text-gray-900">Plugins & Themes</h2>
                     </div>
                     @if(!empty($inv['plugins']))
@@ -892,7 +892,7 @@
                 @php $wpu = $s['wp_users']; @endphp
                 <section id="users" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
-                        <x-icons.users class="h-4 w-4 text-purple-500" />
+                        <x-icons.users class="h-4 w-4 text-accent-500" />
                         <h2 class="text-base font-bold text-gray-900">WordPress Users</h2>
                     </div>
                     {{-- Mobile cards --}}
@@ -989,10 +989,10 @@
                     @foreach($flatRecs as $rec)
                         @if(is_array($rec) && isset($rec['title']))
                             @php $pri = $rec['priority'] ?? 'medium'; @endphp
-                            <div class="rec-card flex items-start gap-3 rounded-lg p-4 border-l-4 {{ match($pri) {
-                                'high' => 'border-l-red-500 bg-red-50/40',
-                                'medium' => 'border-l-yellow-500 bg-yellow-50/40',
-                                default => 'border-l-blue-500 bg-blue-50/40',
+                            <div class="rec-card flex items-start gap-3 rounded-lg p-4 {{ match($pri) {
+                                'high' => 'bg-red-50',
+                                'medium' => 'bg-yellow-50',
+                                default => 'bg-blue-50',
                             } }}">
                                 <x-ui.badge :variant="match($pri) { 'high' => 'red', 'medium' => 'yellow', default => 'blue' }" class="mt-0.5 flex-shrink-0">
                                     {{ ucfirst($pri) }}

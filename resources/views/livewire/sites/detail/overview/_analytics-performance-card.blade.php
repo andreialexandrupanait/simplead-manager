@@ -7,13 +7,13 @@
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-2">
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
-                <svg class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
             </div>
             <h3 class="text-sm font-semibold text-gray-900">Analytics & Performance</h3>
         </div>
-        <a href="{{ route('sites.analytics', $site) }}" class="text-xs text-purple-600 hover:text-purple-700">
+        <a href="{{ route('sites.analytics', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
             View Analytics →
         </a>
     </div>
@@ -26,7 +26,7 @@
                 @foreach(['1d' => 'Yesterday', '7d' => '7 Days', '28d' => '30 Days', '90d' => '90 Days'] as $period => $label)
                     <button
                         wire:click="setAnalyticsPeriod('{{ $period }}')"
-                        class="rounded-lg px-2.5 py-1 text-xs font-medium transition {{ $analyticsPeriod === $period ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100' }}"
+                        class="rounded-lg px-2.5 py-1 text-xs font-medium transition {{ $analyticsPeriod === $period ? 'bg-accent-100 text-accent-700' : 'text-gray-600 hover:bg-gray-100' }}"
                     >
                         {{ $label }}
                     </button>
@@ -67,7 +67,7 @@
                             </div>
                             @if($change !== null)
                                 <div class="mt-0.5 flex items-center justify-center gap-0.5 text-xs {{ $isPositive ? 'text-green-600' : 'text-red-600' }}">
-                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg aria-hidden="true" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         @if($change >= 0)
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
                                         @else
@@ -85,7 +85,7 @@
             @else
                 <div class="rounded-lg border border-dashed border-gray-200 p-4 text-center">
                     <p class="text-sm text-gray-500">Analytics not connected</p>
-                    <a href="{{ route('sites.analytics', $site) }}" class="mt-1 inline-block text-xs text-purple-600 hover:text-purple-700">
+                    <a href="{{ route('sites.analytics', $site) }}" class="mt-1 inline-block text-xs text-accent-600 hover:text-accent-700">
                         Connect Google Analytics →
                     </a>
                 </div>
@@ -96,7 +96,7 @@
         <div class="border-t border-gray-100 pt-4">
             <div class="flex items-center justify-between mb-3">
                 <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Performance</h4>
-                <a href="{{ route('sites.performance', $site) }}" class="text-xs text-purple-600 hover:text-purple-700">
+                <a href="{{ route('sites.performance', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
                     Details →
                 </a>
             </div>
@@ -188,7 +188,7 @@
             @else
                 <div class="rounded-lg border border-dashed border-gray-200 p-4 text-center">
                     <p class="text-sm text-gray-500">No performance data</p>
-                    <a href="{{ route('sites.performance', $site) }}" class="mt-1 inline-block text-xs text-purple-600 hover:text-purple-700">
+                    <a href="{{ route('sites.performance', $site) }}" class="mt-1 inline-block text-xs text-accent-600 hover:text-accent-700">
                         Run first test →
                     </a>
                 </div>

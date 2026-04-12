@@ -16,8 +16,8 @@
                             'critical' => 'bg-red-50 text-red-700',
                             default => 'bg-gray-50 text-gray-600',
                         } }}">
-                        <span class="h-1.5 w-1.5 rounded-full {{ $healthLevel->bgColor() }}"></span>
-                        {{ $healthLevel->label() }}
+                        <span aria-hidden="true" class="h-1.5 w-1.5 rounded-full {{ $healthLevel->bgColor() }}"></span>
+                        <span class="sr-only">{{ __('Health status:') }} </span>{{ $healthLevel->label() }}
                     </span>
                 </div>
 

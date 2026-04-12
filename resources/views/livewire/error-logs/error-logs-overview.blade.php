@@ -24,7 +24,7 @@
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->stats['sites'] }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['sites'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Sites Affected') }}</p>
             </div>
         </x-ui.card>
@@ -71,7 +71,7 @@
                     @endif
                     <div class="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
                         @if($error->site)
-                            <a href="{{ route('sites.overview', $error->site) }}" class="text-purple-500 hover:underline" wire:navigate>{{ $error->site->name }}</a>
+                            <a href="{{ route('sites.overview', $error->site) }}" class="text-accent-500 hover:underline" wire:navigate>{{ $error->site->name }}</a>
                         @endif
                         <span>{{ __('Last seen') }}: {{ $error->last_seen_at->diffForHumans() }}</span>
                         <span>{{ __('First seen') }}: {{ $error->first_seen_at->diffForHumans() }}</span>

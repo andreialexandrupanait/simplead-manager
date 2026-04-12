@@ -5,6 +5,6 @@
         </svg>
         <h2 class="mt-4 text-xl font-bold text-gray-900">Invitation Expired</h2>
         <p class="mt-2 text-sm text-gray-600">This invitation has expired. Please ask the administrator to send a new one.</p>
-        <a href="{{ route('login') }}" class="mt-6 inline-block text-sm font-medium text-purple-600 hover:text-purple-500">Back to login</a>
+        <a href="{{ route('login') }}" class="mt-6 inline-block text-sm font-medium text-accent-600 hover:text-accent-500">Back to login</a>
     </div>
 </x-guest-layout>

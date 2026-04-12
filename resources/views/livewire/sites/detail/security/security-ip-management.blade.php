@@ -17,7 +17,7 @@
     <div class="mb-6 flex gap-2">
         @foreach(['whitelist' => __('Whitelist'), 'blocklist' => __('Blocklist'), 'banned' => __('Banned IPs'), 'settings' => __('Settings')] as $key => $label)
             <button wire:click="$set('subTab', '{{ $key }}')"
-                class="rounded-full px-3 py-1 text-xs font-medium {{ $subTab === $key ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                class="rounded-full px-3 py-1 text-xs font-medium {{ $subTab === $key ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                 {{ $label }}
                 @if($key === 'whitelist')
                     ({{ $this->whitelist->count() }})
@@ -73,7 +73,7 @@
                         <div class="rounded-lg border border-gray-200 p-3">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="font-mono text-sm text-gray-900">{{ $item->ip_address }}</span>
-                                <span class="text-xs {{ $item->site_id ? 'text-gray-500' : 'text-purple-600 font-medium' }}">
+                                <span class="text-xs {{ $item->site_id ? 'text-gray-500' : 'text-accent-600 font-medium' }}">
                                     {{ $item->site_id ? __('Site') : __('Global') }}
                                 </span>
                             </div>
@@ -112,7 +112,7 @@
                                     <td class="py-2 pr-4 font-mono text-sm">{{ $item->ip_address }}</td>
                                     <td class="py-2 pr-4 text-gray-500 text-sm">{{ $item->reason ?? '—' }}</td>
                                     <td class="py-2 pr-4">
-                                        <span class="text-xs {{ $item->site_id ? 'text-gray-500' : 'text-purple-600 font-medium' }}">
+                                        <span class="text-xs {{ $item->site_id ? 'text-gray-500' : 'text-accent-600 font-medium' }}">
                                             {{ $item->site_id ? __('Site') : __('Global') }}
                                         </span>
                                     </td>
@@ -160,7 +160,7 @@
                                 <span>{{ __('Expires') }}: <span class="text-gray-700">{{ $ban->expires_at?->format('M d, Y H:i') ?? __('Never') }}</span></span>
                             </div>
                             <div class="mt-2">
-                                <button wire:click="unbanIp({{ $ban->id }})" wire:confirm="{{ __('Unban this IP?') }}" class="text-xs text-purple-600 hover:text-purple-800">
+                                <button wire:click="unbanIp({{ $ban->id }})" wire:confirm="{{ __('Unban this IP?') }}" class="text-xs text-accent-600 hover:text-accent-800">
                                     {{ __('Unban') }}
                                 </button>
                             </div>
@@ -192,7 +192,7 @@
                                         {{ $ban->expires_at?->format('M d, Y H:i') ?? __('Never') }}
                                     </td>
                                     <td class="py-2">
-                                        <button wire:click="unbanIp({{ $ban->id }})" wire:confirm="{{ __('Unban this IP?') }}" class="text-xs text-purple-600 hover:text-purple-800">
+                                        <button wire:click="unbanIp({{ $ban->id }})" wire:confirm="{{ __('Unban this IP?') }}" class="text-xs text-accent-600 hover:text-accent-800">
                                             {{ __('Unban') }}
                                         </button>
                                     </td>

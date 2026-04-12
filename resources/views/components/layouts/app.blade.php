@@ -8,10 +8,14 @@
         $settingsService = app(\App\Services\SettingsService::class);
         $brandingFavicon = $settingsService->get('branding.favicon');
         $brandingLogo = $settingsService->get('branding.logo');
+        $accentColor = $settingsService->get('branding.accent_color');
     @endphp
     <title>{{ $settingsService->get('app_name', 'SimpleAd Manager') }}{{ isset($title) ? ' - ' . $title : '' }}</title>
     @if($brandingFavicon)
         <link rel="icon" type="image/png" href="{{ Storage::url($brandingFavicon) }}">
+    @endif
+    @if($accentColor)
+        <style nonce="{{ csp_nonce() }}">:root { {!! \App\Helpers\AccentColorHelper::generateCssVariables($accentColor) !!} }</style>
     @endif
     {{-- Pre-Alpine: dark mode + sidebar state to prevent flash --}}
     <script nonce="{{ csp_nonce() }}">
@@ -37,7 +41,7 @@
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
 
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-purple-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-accent-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
         Skip to content
     </a>
 
@@ -147,9 +151,9 @@
                        @mouseleave="hideSidebarTooltip()"
                        class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                        <div class="h-5 w-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
+                        <div class="h-5 w-5 rounded-full bg-accent-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
                             @if(auth()->user()->avatar_path)
-                                <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                                <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="Avatar {{ auth()->user()->name }}" class="h-full w-full object-cover">
                             @else
                                 {{ auth()->user()->initials }}
                             @endif
@@ -189,12 +193,10 @@
                              const year = now.getFullYear();
                              const hours = String(now.getHours()).padStart(2, '0');
                              const minutes = String(now.getMinutes()).padStart(2, '0');
-                             const seconds = String(now.getSeconds()).padStart(2, '0');
-
-                             this.datetime = `${day} ${month} ${year} | ${hours}:${minutes}:${seconds}`;
+                             this.datetime = `${day} ${month} ${year} | ${hours}:${minutes}`;
                          }
                      }"
-                     x-init="updateClock(); setInterval(() => updateClock(), 1000)">
+                     x-init="updateClock(); setInterval(() => updateClock(), 60000)">
 
                     {{-- When expanded --}}
                     <div x-show="sidebarOpen" class="transition-all duration-300">

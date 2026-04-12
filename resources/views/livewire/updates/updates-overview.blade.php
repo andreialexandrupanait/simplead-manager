@@ -14,7 +14,7 @@
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-purple-600">{{ $this->stats['plugins'] }}</p>
+                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['plugins'] }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Plugin Updates') }}</p>
             </div>
         </x-ui.card>
@@ -43,11 +43,11 @@
         <div class="flex items-center gap-2 ml-2">
             <span class="text-xs text-gray-500">{{ __('Group by') }}:</span>
             <button wire:click="$set('groupBy', 'site')"
-                    class="rounded px-2 py-1 text-xs font-medium transition {{ $groupBy === 'site' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                    class="rounded px-2 py-1 text-xs font-medium transition {{ $groupBy === 'site' ? 'bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
                 {{ __('Site') }}
             </button>
             <button wire:click="$set('groupBy', 'item')"
-                    class="rounded px-2 py-1 text-xs font-medium transition {{ $groupBy === 'item' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                    class="rounded px-2 py-1 text-xs font-medium transition {{ $groupBy === 'item' ? 'bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
                 {{ __('Plugin/Theme') }}
             </button>
         </div>
@@ -78,7 +78,7 @@
                     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 px-4 py-3">
                         <div class="flex items-center gap-2">
                             @if($groupBy === 'site')
-                                <a href="{{ route('sites.plugins', $group['site_id']) }}" class="text-sm font-semibold text-gray-900 dark:text-white hover:text-purple-600 transition" wire:navigate>
+                                <a href="{{ route('sites.plugins', $group['site_id']) }}" class="text-sm font-semibold text-gray-900 dark:text-white hover:text-accent-600 transition" wire:navigate>
                                     {{ $group['label'] }}
                                 </a>
                                 <x-ui.badge variant="purple">{{ count($group['items']) }} {{ __('update(s)') }}</x-ui.badge>
@@ -97,7 +97,7 @@
                                 wire:click="updateAllForSite({{ $group['site_id'] }})"
                                 wire:loading.attr="disabled"
                                 wire:confirm="{{ __('Update all plugins and themes on :site?', ['site' => $group['label']]) }}"
-                                class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition"
+                                class="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50 transition"
                             >
                                 <span wire:loading.remove wire:target="updateAllForSite({{ $group['site_id'] }})">{{ __('Update All') }}</span>
                                 <span wire:loading wire:target="updateAllForSite({{ $group['site_id'] }})">{{ __('Updating...') }}</span>
@@ -107,7 +107,7 @@
                                 wire:click="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')"
                                 wire:loading.attr="disabled"
                                 wire:confirm="{{ __('Update :plugin on all :count site(s)?', ['plugin' => $group['label'], 'count' => count($group['items'])]) }}"
-                                class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition"
+                                class="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50 transition"
                             >
                                 <span wire:loading.remove wire:target="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')">{{ __('Update All Sites') }}</span>
                                 <span wire:loading wire:target="updatePluginAcrossSites('{{ $group['items'][0]['slug'] ?? '' }}')">{{ __('Updating...') }}</span>
@@ -129,7 +129,7 @@
                                             <span class="h-1.5 w-1.5 rounded-full bg-green-400" title="{{ __('Active') }}"></span>
                                         @endif
                                         @if($item['auto_update'])
-                                            <span class="text-[10px] text-purple-500 font-medium">Auto</span>
+                                            <span class="text-[10px] text-accent-500 font-medium">Auto</span>
                                         @endif
                                     </div>
                                     <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -159,7 +159,7 @@
                                         wire:click="updateSingle('{{ $item['type'] }}', {{ $item['id'] }})"
                                         wire:loading.attr="disabled"
                                         wire:target="updateSingle('{{ $item['type'] }}', {{ $item['id'] }})"
-                                        class="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition"
+                                        class="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50 transition"
                                     >
                                         <span wire:loading.remove wire:target="updateSingle('{{ $item['type'] }}', {{ $item['id'] }})">{{ __('Update') }}</span>
                                         <span wire:loading wire:target="updateSingle('{{ $item['type'] }}', {{ $item['id'] }})">...</span>

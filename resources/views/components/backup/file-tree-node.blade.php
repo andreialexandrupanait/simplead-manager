@@ -16,7 +16,7 @@
                 {{-- Directory checkbox (tri-state) --}}
                 <button type="button"
                         class="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
-                        :class="dirState('{{ $node['path'] }}') === 'all' ? 'bg-purple-600 border-purple-600' : (dirState('{{ $node['path'] }}') === 'some' ? 'bg-purple-300 border-purple-400' : 'border-gray-300 bg-white')"
+                        :class="dirState('{{ $node['path'] }}') === 'all' ? 'bg-accent-600 border-accent-600' : (dirState('{{ $node['path'] }}') === 'some' ? 'bg-accent-300 border-accent-400' : 'border-gray-300 bg-white')"
                         @click.stop="toggleDir('{{ $node['path'] }}')"
                         title="Select all files in {{ $node['name'] }}">
                     <svg x-show="dirState('{{ $node['path'] }}') === 'all'" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +28,7 @@
                 </button>
 
                 {{-- Folder icon --}}
-                <svg class="w-4 h-4 flex-shrink-0" :class="expanded['{{ $node['path'] }}'] ? 'text-purple-500' : 'text-yellow-500'" fill="currentColor" viewBox="0 0 20 20">
+                <svg class="w-4 h-4 flex-shrink-0" :class="expanded['{{ $node['path'] }}'] ? 'text-accent-500' : 'text-yellow-500'" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                 </svg>
 
@@ -47,7 +47,7 @@
              style="padding-left: {{ ($depth * 1.25) + 1.25 }}rem">
             {{-- File checkbox --}}
             <input type="checkbox"
-                   class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0"
+                   class="w-4 h-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500 flex-shrink-0"
                    :checked="selected['{{ $node['path'] }}']"
                    @change="toggleFile('{{ $node['path'] }}')" />
 

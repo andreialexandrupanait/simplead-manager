@@ -20,8 +20,8 @@
 
         // Task / process
         'pending' => 'bg-yellow-100 text-yellow-800',
-        'in_progress' => 'bg-purple-100 text-purple-800',
-        'generating' => 'bg-purple-100 text-purple-800',
+        'in_progress' => 'bg-accent-100 text-accent-800',
+        'generating' => 'bg-accent-100 text-accent-800',
         'completed' => 'bg-green-100 text-green-800',
         'failed' => 'bg-red-100 text-red-800',
 

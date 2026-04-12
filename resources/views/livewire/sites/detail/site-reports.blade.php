@@ -4,7 +4,7 @@
         <div class="flex items-center gap-3">
             <label class="text-sm font-medium text-gray-700">{{ __('Template') }}</label>
             <select wire:model.live="selectedTemplateId" wire:change="updateSiteTemplate"
-                    class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500">
+                    class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500">
                 @foreach($templates as $tpl)
                     <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
                 @endforeach
@@ -64,7 +64,7 @@
                         </p>
                     </div>
                 </div>
-                <button wire:click="openScheduleModal" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                <button wire:click="openScheduleModal" class="text-sm text-accent-600 hover:text-accent-700 font-medium">
                     {{ __('Configure') }}
                 </button>
             </div>
@@ -74,7 +74,7 @@
             <x-icons.refresh-cw class="mx-auto h-8 w-8 text-gray-400" />
             <p class="mt-2 text-sm font-medium text-gray-900">{{ __('No scheduled reports') }}</p>
             <p class="mt-1 text-sm text-gray-500">{{ __('Set up automatic report generation and delivery') }}</p>
-            <button wire:click="openScheduleModal" class="mt-3 text-sm font-medium text-purple-600 hover:text-purple-700">
+            <button wire:click="openScheduleModal" class="mt-3 text-sm font-medium text-accent-600 hover:text-accent-700">
                 {{ __('Set Up Schedule') }}
             </button>
         </div>
@@ -96,8 +96,8 @@
         </div>
 
         {{-- Bulk action bar --}}
-        <div x-show="selected.length > 0" x-cloak class="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-purple-50 px-5 py-3">
-            <span class="text-sm font-medium text-purple-700" x-text="selected.length + ' selected'"></span>
+        <div x-show="selected.length > 0" x-cloak class="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-accent-50 px-5 py-3">
+            <span class="text-sm font-medium text-accent-700" x-text="selected.length + ' selected'"></span>
 
             <button @click="if (confirm('Delete ' + selected.length + ' report(s)?')) { $wire.bulkDelete(selected).then(() => resetSelection()) }"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition">
@@ -115,9 +115,9 @@
 
             <div x-show="showBulkSend" x-cloak class="flex items-center gap-2">
                 <input type="email" x-model="bulkEmail" placeholder="recipient@example.com"
-                       class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:border-purple-500 focus:ring-purple-500 w-56" />
+                       class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:border-accent-500 focus:ring-accent-500 w-56" />
                 <button @click="if (bulkEmail) { $wire.bulkSend(selected, bulkEmail).then(() => resetSelection()) }"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 transition">
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 transition">
                     Send
                 </button>
                 <button @click="showBulkSend = false; bulkEmail = ''"
@@ -148,11 +148,11 @@
                         default => 'red',
                     };
                 @endphp
-                <div class="px-5 py-3 space-y-2" :class="selected.includes({{ $report->id }}) && 'bg-purple-50/50'">
+                <div class="px-5 py-3 space-y-2" :class="selected.includes({{ $report->id }}) && 'bg-accent-50/50'">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" value="{{ $report->id }}" x-model.number="selected"
-                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                   class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                             <div>
                                 <div class="text-sm font-medium text-gray-900">{{ $report->created_at->format('M d, Y H:i') }}</div>
                                 <div class="text-xs text-gray-500">{{ $report->period_start->format('M d') }} — {{ $report->period_end->format('M d, Y') }}</div>
@@ -175,7 +175,7 @@
                             @if(($portalToken ?? null) && $report->data_snapshot)
                                 <a href="{{ route('client-portal.report', [$portalToken, $report]) }}"
                                    target="_blank"
-                                   class="inline-flex items-center rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                                   class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
                                    title="View online">
                                     <x-icons.globe class="h-3.5 w-3.5" />
                                 </a>
@@ -210,7 +210,7 @@
                     <tr>
                         <th class="w-10 px-5 py-3">
                             <input type="checkbox" :checked="allSelected" @change="toggleAll()"
-                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                   class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         </th>
                         <x-ui.sortable-th column="created_at" :sortBy="$sortBy" :sortDir="$sortDir">Date</x-ui.sortable-th>
                         <x-ui.sortable-th column="period_start" :sortBy="$sortBy" :sortDir="$sortDir">Period</x-ui.sortable-th>
@@ -222,10 +222,10 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     @foreach($reports as $report)
-                        <tr class="hover:bg-gray-50" :class="selected.includes({{ $report->id }}) && 'bg-purple-50/50'">
+                        <tr class="hover:bg-gray-50" :class="selected.includes({{ $report->id }}) && 'bg-accent-50/50'">
                             <td class="px-5 py-3">
                                 <input type="checkbox" value="{{ $report->id }}" x-model.number="selected"
-                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                             </td>
                             <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-900">
                                 {{ $report->created_at->format('M d, Y H:i') }}
@@ -262,7 +262,7 @@
                                         @if(($portalToken ?? null) && $report->data_snapshot)
                                             <a href="{{ route('client-portal.report', [$portalToken, $report]) }}"
                                                target="_blank"
-                                               class="inline-flex items-center rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition"
+                                               class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
                                                title="View online">
                                                 <x-icons.globe class="h-3.5 w-3.5" />
                                             </a>
@@ -327,12 +327,12 @@
                 <div class="px-6 pt-4 pb-2">
                     <div class="flex items-center gap-2">
                         <div class="flex items-center gap-1.5">
-                            <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 1 ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600' }}">1</div>
+                            <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 1 ? 'bg-accent-600 text-white' : 'bg-accent-100 text-accent-600' }}">1</div>
                             <span class="text-sm {{ $generateStep === 1 ? 'font-medium text-gray-900' : 'text-gray-500' }}">{{ __('Data Preview') }}</span>
                         </div>
                         <div class="h-px flex-1 bg-gray-200"></div>
                         <div class="flex items-center gap-1.5">
-                            <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 2 ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500' }}">2</div>
+                            <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ $generateStep === 2 ? 'bg-accent-600 text-white' : 'bg-gray-200 text-gray-500' }}">2</div>
                             <span class="text-sm {{ $generateStep === 2 ? 'font-medium text-gray-900' : 'text-gray-500' }}">{{ __('Recommendations') }}</span>
                         </div>
                     </div>
@@ -360,7 +360,7 @@
                                         <input type="checkbox"
                                                wire:click="toggleSection('{{ $sectionKey }}')"
                                                {{ !$isExcluded ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0">
+                                               class="rounded border-gray-300 text-accent-600 focus:ring-accent-500 flex-shrink-0">
                                         <span class="h-2 w-2 rounded-full {{ $dotColor }} flex-shrink-0"></span>
                                         <span class="text-sm font-medium text-gray-900 min-w-0 truncate">{{ $preview['label'] }}</span>
                                         @if(!empty($preview['metrics']))
@@ -382,7 +382,7 @@
                                                 <input type="checkbox"
                                                        wire:click="toggleSection('{{ $sub['key'] }}')"
                                                        {{ !$subExcluded ? 'checked' : '' }}
-                                                       class="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0">
+                                                       class="h-3.5 w-3.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500 flex-shrink-0">
                                                 <span class="text-xs text-gray-600">{{ $sub['label'] }}</span>
                                             </div>
                                         @endforeach
@@ -419,7 +419,7 @@
                                             <input type="checkbox"
                                                    wire:click="toggleRecommendation({{ $rec['id'] }})"
                                                    {{ $rec['is_included'] ? 'checked' : '' }}
-                                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                                   class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2 mb-0.5">
@@ -453,9 +453,9 @@
                         {{-- Add custom recommendation --}}
                         <div x-data="{ showForm: false }">
                             <button @click="showForm = !showForm"
-                                    class="flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 mb-3">
-                                <svg x-show="!showForm" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                <svg x-show="showForm" x-cloak class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    class="flex items-center gap-2 text-sm font-medium text-accent-600 hover:text-accent-700 mb-3">
+                                <svg aria-hidden="true" x-show="!showForm" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <svg aria-hidden="true" x-show="showForm" x-cloak class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
                                 {{ __('Add Custom Recommendation') }}
                             </button>
 
@@ -488,7 +488,7 @@
                                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Description') }}</label>
                                         <textarea wire:model="newRecDescription" rows="2"
                                                   placeholder="{{ __('Detailed recommendation description') }}"
-                                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                                         @error('newRecDescription') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                     </div>
                                     <x-ui.button wire:click="addCustomRecommendation" size="sm">
@@ -545,7 +545,7 @@
                     <div class="flex items-center justify-between rounded-lg border border-gray-200 p-3">
                         <span class="text-sm font-medium text-gray-700">{{ __('Enable automatic reports') }}</span>
                         <button wire:click="$toggle('scheduleActive')"
-                                class="relative inline-flex h-6 w-11 items-center rounded-full transition {{ $scheduleActive ? 'bg-purple-600' : 'bg-gray-200' }}">
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition {{ $scheduleActive ? 'bg-accent-600' : 'bg-gray-200' }}">
                             <span class="inline-block h-4 w-4 rounded-full bg-white transition {{ $scheduleActive ? 'translate-x-6' : 'translate-x-1' }}"></span>
                         </button>
                     </div>
@@ -565,11 +565,11 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Frequency') }}</label>
                         <div class="flex gap-4">
                             <label class="flex items-center gap-2">
-                                <input type="radio" wire:model.live="scheduleFrequency" value="weekly" class="text-purple-600 focus:ring-purple-500">
+                                <input type="radio" wire:model.live="scheduleFrequency" value="weekly" class="text-accent-600 focus:ring-accent-500">
                                 <span class="text-sm">{{ __('Weekly') }}</span>
                             </label>
                             <label class="flex items-center gap-2">
-                                <input type="radio" wire:model.live="scheduleFrequency" value="monthly" class="text-purple-600 focus:ring-purple-500">
+                                <input type="radio" wire:model.live="scheduleFrequency" value="monthly" class="text-accent-600 focus:ring-accent-500">
                                 <span class="text-sm">{{ __('Monthly') }}</span>
                             </label>
                         </div>
@@ -627,7 +627,7 @@
                     {{-- Admin copy --}}
                     <div class="flex items-center gap-2">
                         <input type="checkbox" wire:model="scheduleSendCopyToAdmin" id="adminCopy"
-                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                               class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <label for="adminCopy" class="text-sm text-gray-700">{{ __('Send copy to admin email') }}</label>
                     </div>
 
@@ -641,7 +641,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Email Body (optional)') }}</label>
                         <textarea wire:model="scheduleEmailBody" rows="3"
                                   placeholder="{{ __('Custom message in the email body') }}"
-                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500"></textarea>
                     </div>
                 </div>
 

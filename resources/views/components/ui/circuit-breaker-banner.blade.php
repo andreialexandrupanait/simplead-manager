@@ -12,16 +12,16 @@
 @endphp
 
 @if($disabled)
-    <div class="mb-4 rounded-lg border border-gray-300 bg-gray-50 p-4">
+    <div class="mb-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 p-4">
         <div class="flex items-start gap-3">
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
                 <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
             <div class="flex-1">
-                <h4 class="text-sm font-semibold text-gray-900">Monitoring Disabled</h4>
-                <p class="mt-1 text-sm text-gray-600">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Monitoring Disabled</h4>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                     Automatic monitoring is paused for this site. Uptime checks, backups, and sync operations will not run.
                 </p>
                 <div class="mt-3">

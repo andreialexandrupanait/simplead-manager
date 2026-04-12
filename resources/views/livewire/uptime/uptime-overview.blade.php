@@ -78,7 +78,7 @@
     @else
         <div class="space-y-3">
             @foreach($monitors as $monitor)
-                <x-ui.card class="hover:ring-purple-200 transition">
+                <x-ui.card class="hover:ring-accent-200 transition">
                     <div class="flex items-center gap-4">
                         {{-- Status indicator --}}
                         <div class="flex-shrink-0">
@@ -102,7 +102,7 @@
                         {{-- Site info --}}
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('sites.uptime', $monitor->site) }}" class="truncate text-sm font-semibold text-gray-900 hover:text-purple-600 transition">
+                                <a href="{{ route('sites.uptime', $monitor->site) }}" class="truncate text-sm font-semibold text-gray-900 hover:text-accent-600 transition">
                                     {{ $monitor->site->name }}
                                 </a>
                                 @if($isPaused)
@@ -217,19 +217,19 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700">{{ __('Start') }}</label>
                 <input type="datetime-local" wire:model="maintenanceStartsAt"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent-500 focus:ring-accent-500 sm:text-sm" />
                 @error('maintenanceStartsAt') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">{{ __('End') }}</label>
                 <input type="datetime-local" wire:model="maintenanceEndsAt"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent-500 focus:ring-accent-500 sm:text-sm" />
                 @error('maintenanceEndsAt') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">{{ __('Reason (optional)') }}</label>
                 <input type="text" wire:model="maintenanceReason" placeholder="{{ __('e.g. Server migration') }}"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm" />
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent-500 focus:ring-accent-500 sm:text-sm" />
             </div>
         </div>
 

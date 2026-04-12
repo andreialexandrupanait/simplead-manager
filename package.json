@@ -17,6 +17,7 @@
         "vite": "^6.0.11"
     },
     "dependencies": {
+        "@fontsource/geist-sans": "^5.2.5",
         "@tailwindcss/typography": "^0.5.19",
         "@tiptap/core": "^3.22.3",
         "@tiptap/extension-link": "^3.22.3",

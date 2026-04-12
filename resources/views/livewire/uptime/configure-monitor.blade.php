@@ -38,7 +38,7 @@
                         </x-ui.select>
                     </div>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model="form.keyword_case_sensitive" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <input type="checkbox" wire:model="form.keyword_case_sensitive" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                         <span class="text-sm text-gray-700">{{ __('Case sensitive') }}</span>
                     </label>
                 </div>
@@ -82,7 +82,7 @@
                     {{-- Follow Redirects --}}
                     <div class="flex items-end pb-1">
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" wire:model="form.follow_redirects" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <input type="checkbox" wire:model="form.follow_redirects" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             <span class="text-sm text-gray-700">{{ __('Follow redirects') }}</span>
                         </label>
                     </div>

@@ -20,7 +20,7 @@
 
                 <x-ui.form-group label="{{ __('Description') }}" for="presetDescription">
                     <textarea id="presetDescription" wire:model="presetDescription" rows="2"
-                        class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                        class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500"
                         placeholder="{{ __('Describe what this preset configures...') }}"></textarea>
                 </x-ui.form-group>
 

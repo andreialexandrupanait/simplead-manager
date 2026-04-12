@@ -143,7 +143,7 @@
                         <div class="flex items-center gap-3">
                             @if($report->data_snapshot)
                                 <a href="{{ route('client-portal.report', [$client->portal_token, $report]) }}"
-                                   class="rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition">
+                                   class="rounded-lg bg-accent-50 px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-100 transition">
                                     View Online
                                 </a>
                             @endif

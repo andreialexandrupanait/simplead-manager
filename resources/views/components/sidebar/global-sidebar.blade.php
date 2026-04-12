@@ -32,6 +32,14 @@
     >
         {{ __('Security') }}
     </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('seo.index')"
+        icon="search"
+        :active="request()->routeIs('seo.*')"
+    >
+        {{ __('SEO') }}
+    </x-sidebar.sidebar-item>
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Operations')">

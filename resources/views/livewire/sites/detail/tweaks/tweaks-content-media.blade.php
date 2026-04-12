@@ -35,7 +35,7 @@
             </div>
 
             @if($toggles['content_duplication'] ?? false)
-                <div class="ml-4 space-y-4 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-4 bg-gray-50 rounded-lg p-4">
                     {{-- Post Types --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Post Types') }}</label>
@@ -45,7 +45,7 @@
                                     <input type="checkbox"
                                         {{ in_array($type, $duplicationPostTypes) ? 'checked' : '' }}
                                         wire:click="toggleDuplicationPostType('{{ $type }}')"
-                                        class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                        class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                     <span class="text-sm text-gray-700">{{ ucfirst($type) }}</span>
                                 </label>
                             @endforeach
@@ -57,15 +57,15 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Copy Options') }}</label>
                         <div class="space-y-2">
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" wire:model.live="duplicationCopyTaxonomies" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                <input type="checkbox" wire:model.live="duplicationCopyTaxonomies" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 <span class="text-sm text-gray-700">{{ __('Copy taxonomies (categories, tags)') }}</span>
                             </label>
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" wire:model.live="duplicationCopyMeta" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                <input type="checkbox" wire:model.live="duplicationCopyMeta" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 <span class="text-sm text-gray-700">{{ __('Copy custom fields (post meta)') }}</span>
                             </label>
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" wire:model.live="duplicationCopyFeaturedImage" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                <input type="checkbox" wire:model.live="duplicationCopyFeaturedImage" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 <span class="text-sm text-gray-700">{{ __('Copy featured image') }}</span>
                             </label>
                         </div>
@@ -74,7 +74,7 @@
                     {{-- Duplicate Status --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Duplicate Status') }}</label>
-                        <select wire:model.live="duplicationStatus" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500 max-w-xs">
+                        <select wire:model.live="duplicationStatus" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500 max-w-xs">
                             <option value="draft">{{ __('Draft') }}</option>
                             <option value="publish">{{ __('Published') }}</option>
                             <option value="private">{{ __('Private') }}</option>
@@ -85,18 +85,18 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title Prefix') }}</label>
-                            <input type="text" wire:model.live="duplicationTitlePrefix" placeholder="{{ __('e.g. Copy of') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                            <input type="text" wire:model.live="duplicationTitlePrefix" placeholder="{{ __('e.g. Copy of') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title Suffix') }}</label>
-                            <input type="text" wire:model.live="duplicationTitleSuffix" placeholder="{{ __('e.g. (Copy)') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" />
+                            <input type="text" wire:model.live="duplicationTitleSuffix" placeholder="{{ __('e.g. (Copy)') }}" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                         </div>
                     </div>
 
                     {{-- Redirect After --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('After Duplication') }}</label>
-                        <select wire:model.live="duplicationRedirectAfter" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500 max-w-xs">
+                        <select wire:model.live="duplicationRedirectAfter" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500 max-w-xs">
                             <option value="edit">{{ __('Open the editor') }}</option>
                             <option value="list">{{ __('Return to list') }}</option>
                         </select>
@@ -190,7 +190,7 @@
             </div>
 
             @if($toggles['content_order'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Post Types') }}</label>
                     <div class="flex flex-wrap gap-3">
                         @foreach(['post', 'page'] as $type)
@@ -198,7 +198,7 @@
                                 <input type="checkbox"
                                     {{ in_array($type, $contentOrderPostTypes) ? 'checked' : '' }}
                                     wire:click="toggleContentOrderPostType('{{ $type }}')"
-                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                    class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 <span class="text-sm text-gray-700">{{ ucfirst($type) }}</span>
                             </label>
                         @endforeach

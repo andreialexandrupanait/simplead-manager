@@ -51,7 +51,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <a href="{{ url('/status/' . $page->slug) }}" target="_blank"
-                               class="rounded p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50" title="{{ __('View Public Page') }}">
+                               class="rounded p-1.5 text-gray-400 hover:text-accent-600 hover:bg-accent-50" title="{{ __('View Public Page') }}">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
                             <a href="{{ route('settings.status-pages.edit', $page) }}"

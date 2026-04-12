@@ -35,21 +35,21 @@
             </div>
 
             @if($toggles['clean_admin_bar'] ?? false)
-                <div class="ml-4 space-y-2 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-2 bg-gray-50 rounded-lg p-4">
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="adminBarRemoveWpLogo" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="adminBarRemoveWpLogo" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Remove WordPress logo') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="adminBarRemoveComments" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="adminBarRemoveComments" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Remove comments link') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="adminBarRemoveNewContent" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="adminBarRemoveNewContent" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Remove "+ New" menu') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="adminBarRemoveCustomize" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="adminBarRemoveCustomize" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Remove Customize link') }}</span>
                     </label>
                 </div>
@@ -70,9 +70,9 @@
             </div>
 
             @if($toggles['hide_admin_bar'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Hide for') }}</label>
-                    <select wire:model.live="hideAdminBarFor" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500 max-w-xs">
+                    <select wire:model.live="hideAdminBarFor" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500 max-w-xs">
                         <option value="all">{{ __('All users') }}</option>
                         <option value="non_admins">{{ __('Non-administrators') }}</option>
                         <option value="non_editors">{{ __('Non-editors and below') }}</option>
@@ -134,25 +134,25 @@
             </div>
 
             @if($toggles['disable_dashboard_widgets'] ?? false)
-                <div class="ml-4 space-y-2 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-2 bg-gray-50 rounded-lg p-4">
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="dashboardRemoveWelcome" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="dashboardRemoveWelcome" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Welcome panel') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="dashboardRemoveQuickPress" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="dashboardRemoveQuickPress" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Quick Draft') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="dashboardRemoveActivity" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="dashboardRemoveActivity" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('Activity') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="dashboardRemovePrimary" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="dashboardRemovePrimary" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('WordPress Events and News') }}</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="dashboardRemoveEvents" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <input type="checkbox" wire:model.live="dashboardRemoveEvents" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                         <span class="text-sm text-gray-700">{{ __('At a Glance') }}</span>
                     </label>
                 </div>
@@ -179,7 +179,7 @@
             </div>
 
             @if($toggles['admin_menu_organizer'] ?? false)
-                <div class="ml-4 space-y-2 border-l-2 border-purple-100 pl-4">
+                <div class="ml-6 space-y-2 bg-gray-50 rounded-lg p-4">
                     @php
                         $menuItems = [
                             'edit-comments.php' => __('Comments'),
@@ -197,7 +197,7 @@
                             <input type="checkbox"
                                 {{ in_array($slug, $hiddenMenuItems) ? 'checked' : '' }}
                                 wire:click="toggleMenuItem('{{ $slug }}')"
-                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                             <span class="text-sm text-gray-700">{{ __('Hide') }} {{ $label }}</span>
                         </label>
                     @endforeach
@@ -226,8 +226,8 @@
             </div>
 
             @if($toggles['custom_admin_css'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
-                    <textarea wire:model.live="customAdminCss" rows="6" class="block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" placeholder="/* Custom admin CSS */"></textarea>
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
+                    <textarea wire:model.live="customAdminCss" rows="6" class="block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" placeholder="/* Custom admin CSS */"></textarea>
                     <p class="mt-1 text-xs text-gray-400">{{ __('Maximum 10KB.') }}</p>
                 </div>
             @endif
@@ -248,8 +248,8 @@
             </div>
 
             @if($toggles['custom_frontend_css'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
-                    <textarea wire:model.live="customFrontendCss" rows="6" class="block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" placeholder="/* Custom frontend CSS */"></textarea>
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
+                    <textarea wire:model.live="customFrontendCss" rows="6" class="block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" placeholder="/* Custom frontend CSS */"></textarea>
                     <p class="mt-1 text-xs text-gray-400">{{ __('Maximum 10KB.') }}</p>
                 </div>
             @endif
@@ -275,8 +275,8 @@
             </div>
 
             @if($toggles['custom_admin_footer'] ?? false)
-                <div class="ml-4 border-l-2 border-purple-100 pl-4">
-                    <input type="text" wire:model.live="customAdminFooterText" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" placeholder="{{ __('Managed by SimpleAd') }}" />
+                <div class="ml-6 bg-gray-50 rounded-lg p-4">
+                    <input type="text" wire:model.live="customAdminFooterText" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" placeholder="{{ __('Managed by SimpleAd') }}" />
                 </div>
             @endif
         </div>

@@ -15,7 +15,7 @@
             wire:model.live.debounce.300ms="query"
             placeholder="{{ __('Search sites, plugins, clients…') }}"
             autocomplete="off"
-            class="block w-56 rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-purple-500 dark:focus:bg-gray-800 transition"
+            class="block w-56 rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-accent-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-accent-500 dark:focus:bg-gray-800 transition"
         />
     </div>
 
@@ -48,14 +48,14 @@
                             <a href="{{ $item['url'] }}"
                                wire:navigate
                                wire:click="close"
-                               class="flex items-center gap-3 px-4 py-2.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition group">
-                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/40 transition">
-                                    <svg class="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               class="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 dark:hover:bg-accent-900/20 transition group">
+                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 group-hover:bg-accent-100 dark:group-hover:bg-accent-900/40 transition">
+                                    <svg class="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 group-hover:text-accent-600 dark:group-hover:text-accent-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                     </svg>
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition">{{ $item['title'] }}</p>
+                                    <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition">{{ $item['title'] }}</p>
                                     @if(!empty($item['subtitle']))
                                         <p class="truncate text-xs text-gray-400 dark:text-gray-500">{{ $item['subtitle'] }}</p>
                                     @endif

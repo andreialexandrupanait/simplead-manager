@@ -3,7 +3,7 @@
         <div @if($preRestoreBackupId && $preRestoreStatus && !in_array($preRestoreStatus, ['completed', 'failed'])) wire:poll.2s="checkPreRestoreStatus" @endif>
             <div class="flex items-center gap-3 mb-4">
                 <div class="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                 </div>
@@ -75,7 +75,7 @@
                 @if($loadingFileList && !$fileListLoaded)
                     <div class="flex items-center justify-center py-12 mb-4" wire:poll.500ms="loadFileList">
                         <div class="text-center">
-                            <x-ui.spinner size="lg" class="text-purple-600 mx-auto" />
+                            <x-ui.spinner size="lg" class="text-accent-600 mx-auto" />
                             <p class="mt-3 text-sm text-gray-500">{{ __('Loading backup contents...') }}</p>
                             <p class="text-xs text-gray-400 mt-1">{{ __('This may take a moment for large backups') }}</p>
                         </div>
@@ -83,7 +83,7 @@
                 @elseif($fileListError)
                     <div class="rounded-lg border border-red-200 bg-red-50 p-4 mb-4">
                         <div class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg aria-hidden="true" class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <div class="flex-1 min-w-0">
@@ -99,9 +99,9 @@
                     <div class="space-y-3 mb-4">
                         {{-- Database toggle --}}
                         @if($hasDatabase)
-                            <label class="flex items-center gap-3 p-3 rounded-lg border {{ $restoreDatabase ? 'border-purple-200 bg-purple-50' : 'border-gray-200 bg-white' }} cursor-pointer transition-colors">
+                            <label class="flex items-center gap-3 p-3 rounded-lg border {{ $restoreDatabase ? 'border-accent-200 bg-accent-50' : 'border-gray-200 bg-white' }} cursor-pointer transition-colors">
                                 <input type="checkbox" wire:model.live="restoreDatabase"
-                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                    class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                 <div>
                                     <span class="text-sm font-medium text-gray-900">{{ __('Restore Database') }}</span>
                                     <p class="text-xs text-gray-500">{{ __('Overwrite the current database with the backup version') }}</p>
@@ -117,19 +117,19 @@
                                         <span class="text-sm font-medium text-gray-900">{{ __('Restore Files') }}</span>
                                         <div class="flex items-center gap-2 text-xs">
                                             <span class="text-gray-500" x-text="selectedCount + ' of {{ $totalFileCount }} files selected'"></span>
-                                            <button type="button" @click="selectAll()" class="text-purple-600 hover:text-purple-800 font-medium">{{ __('Select All') }}</button>
+                                            <button type="button" @click="selectAll()" class="text-accent-600 hover:text-accent-800 font-medium">{{ __('Select All') }}</button>
                                             <span class="text-gray-300">|</span>
-                                            <button type="button" @click="clearAll()" class="text-purple-600 hover:text-purple-800 font-medium">{{ __('Clear') }}</button>
+                                            <button type="button" @click="clearAll()" class="text-accent-600 hover:text-accent-800 font-medium">{{ __('Clear') }}</button>
                                         </div>
                                     </div>
 
                                     {{-- Search --}}
                                     <div class="relative">
-                                        <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg aria-hidden="true" class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
                                         <input type="text" x-model.debounce.200ms="search" placeholder="{{ __('Search files...') }}"
-                                            class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                            class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-accent-500 focus:border-accent-500">
                                     </div>
                                 </div>
 
@@ -170,7 +170,7 @@
             {{-- Auto-backup toggle --}}
             <label class="flex items-center gap-2 mb-3">
                 <input type="checkbox" wire:model.live="backupBeforeRestore"
-                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                     @if($preRestoreBackupId) disabled @endif>
                 <span class="text-sm text-gray-700">{{ __('Create a safety backup before restoring') }}</span>
             </label>
@@ -183,15 +183,15 @@
 
             {{-- Pre-restore backup progress --}}
             @if($preRestoreBackupId && $preRestoreStatus)
-                <div class="rounded-lg bg-purple-50 border border-purple-200 p-3 mb-4">
+                <div class="rounded-lg bg-accent-50 border border-accent-200 p-3 mb-4">
                     @if(in_array($preRestoreStatus, ['pending', 'in_progress']))
                         <div class="flex items-center gap-2">
-                            <x-ui.spinner size="sm" class="text-purple-600" />
-                            <span class="text-sm text-purple-700">{{ __('Creating safety backup before restore...') }}</span>
+                            <x-ui.spinner size="sm" class="text-accent-600" />
+                            <span class="text-sm text-accent-700">{{ __('Creating safety backup before restore...') }}</span>
                         </div>
                     @elseif($preRestoreStatus === 'failed')
                         <div class="flex items-center gap-2">
-                            <svg class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg aria-hidden="true" class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                             <span class="text-sm text-red-700">{{ __('Pre-restore backup failed.') }}</span>

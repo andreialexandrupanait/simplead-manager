@@ -140,7 +140,8 @@
                 {{-- Chart --}}
                 chart: null,
                 init() { this.$nextTick(() => this.renderChart()); },
-                renderChart() {
+                async renderChart() {
+                    const Chart = await window.loadChart();
                     if (this.chart) this.chart.destroy();
                     const d = this.chartData;
                     const datasets = [];
@@ -181,8 +182,8 @@
                                 }}}
                             },
                             scales: {
-                                x: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280' } },
-                                y: { display: hasY, type: 'linear', position: 'left', grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280' }, beginAtZero: true, title: { display: true, text: 'Clicks / Impressions', color: '#6b7280' } },
+                                x: { grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' }, ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' } },
+                                y: { display: hasY, type: 'linear', position: 'left', grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' }, ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' }, beginAtZero: true, title: { display: true, text: 'Clicks / Impressions', color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' } },
                                 y1: { display: hasY1, type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#10b981', callback: v => v + '%' }, beginAtZero: true, title: { display: true, text: 'CTR %', color: '#10b981' } },
                                 y2: { display: hasY2, type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f59e0b' }, reverse: true, title: { display: true, text: 'Position', color: '#f59e0b' } },
                             },
@@ -195,7 +196,7 @@
                     {{-- Clicks --}}
                     <div @click="toggleMetric('clicks')" class="cursor-pointer transition" :class="activeMetrics.clicks ? '' : 'opacity-50'">
                         <x-ui.card>
-                            <div :class="activeMetrics.clicks ? 'border-b-2 border-purple-500 pb-2' : 'pb-2'">
+                            <div :class="activeMetrics.clicks ? 'border-b-2 border-accent-500 pb-2' : 'pb-2'">
                                 <div class="text-xs font-medium text-gray-500">Clicks</div>
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['clicks']) }}</div>
                             </div>
@@ -249,8 +250,8 @@
                             <div class="mb-4 flex items-center justify-between">
                                 <h3 class="text-base font-semibold text-gray-900">{{ __('Performance Over Time') }}</h3>
                                 <div class="flex gap-1">
-                                    <button @click="aggregation = 'daily'; renderChart()" :class="aggregation === 'daily' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Daily</button>
-                                    <button @click="aggregation = 'weekly'; renderChart()" :class="aggregation === 'weekly' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Weekly</button>
+                                    <button @click="aggregation = 'daily'; renderChart()" :class="aggregation === 'daily' ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Daily</button>
+                                    <button @click="aggregation = 'weekly'; renderChart()" :class="aggregation === 'weekly' ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Weekly</button>
                                 </div>
                             </div>
                             <div style="height: 350px" class="relative">
@@ -278,9 +279,9 @@
                         <div class="mb-4 flex items-center justify-between gap-3">
                             <h3 class="text-base font-semibold text-gray-900">{{ __('Top Search Queries') }}</h3>
                             <div class="flex items-center gap-2">
-                                <input x-model="search" type="text" placeholder="Search queries..." class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-purple-500 focus:ring-purple-500 w-48" />
+                                <input x-model="search" type="text" placeholder="Search queries..." class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-accent-500 focus:ring-accent-500 w-48" />
                                 <button @click="exportCsv()" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition" title="Export CSV">
-                                    <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>CSV
+                                    <svg aria-hidden="true" class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>CSV
                                 </button>
                             </div>
                         </div>
@@ -300,7 +301,7 @@
                                         <tr x-show="idx < limit">
                                             <td class="py-2 font-medium text-gray-700" x-text="row.query"></td>
                                             <td class="py-2 text-right text-gray-600 relative">
-                                                <div class="absolute inset-y-0 left-0 bg-purple-50 rounded-sm" :style="'width:' + (row.clicks / maxClicks * 100) + '%'"></div>
+                                                <div class="absolute inset-y-0 left-0 bg-accent-50 rounded-sm" :style="'width:' + (row.clicks / maxClicks * 100) + '%'"></div>
                                                 <span class="relative" x-text="row.clicks.toLocaleString()"></span>
                                             </td>
                                             <td class="py-2 text-right text-gray-600" x-text="row.impressions.toLocaleString()"></td>
@@ -313,10 +314,10 @@
                         </div>
                         <template x-if="total > 10">
                             <div class="mt-3 text-center">
-                                <button x-show="limit < total" @click="limit = total" class="text-sm text-purple-600 hover:text-purple-800">
+                                <button x-show="limit < total" @click="limit = total" class="text-sm text-accent-600 hover:text-accent-800">
                                     Show all <span x-text="total"></span> queries
                                 </button>
-                                <button x-show="limit >= total" @click="limit = 10" class="text-sm text-purple-600 hover:text-purple-800">
+                                <button x-show="limit >= total" @click="limit = 10" class="text-sm text-accent-600 hover:text-accent-800">
                                     Show less
                                 </button>
                             </div>
@@ -419,13 +420,13 @@
                         x-model="search"
                         type="text"
                         placeholder="Search properties..."
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-purple-500 mb-3"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-accent-500 focus:ring-accent-500 mb-3"
                     />
                     <div class="max-h-64 overflow-y-auto space-y-1">
                         <template x-for="property in filtered" :key="property._index">
                             <button
                                 @click="$wire.selectProperty(property._index)"
-                                class="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-purple-300 hover:bg-purple-50 transition"
+                                class="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-accent-300 hover:bg-accent-50 transition"
                             >
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm font-medium text-gray-900" x-text="property.site_url"></span>

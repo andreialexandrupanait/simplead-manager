@@ -121,7 +121,7 @@
                     <div class="mt-1 flex items-center gap-3 text-[11px] text-gray-400 dark:text-gray-500">
                         <span title="{{ $event->created_at->format('Y-m-d H:i:s') }}">{{ $event->created_at->diffForHumans() }}</span>
                         @if($event->site)
-                            <a href="{{ route('sites.overview', $event->site) }}" class="text-purple-500 hover:text-purple-700 hover:underline" wire:navigate>{{ $event->site->name }}</a>
+                            <a href="{{ route('sites.overview', $event->site) }}" class="text-accent-500 hover:text-accent-700 hover:underline" wire:navigate>{{ $event->site->name }}</a>
                         @endif
                         @if($event->user)
                             <span>{{ $event->user->name }}</span>
@@ -131,7 +131,7 @@
 
                 {{-- Link --}}
                 @if($event->url)
-                    <a href="{{ $event->url }}" class="shrink-0 self-center text-gray-400 hover:text-purple-600 transition" wire:navigate>
+                    <a href="{{ $event->url }}" class="shrink-0 self-center text-gray-400 hover:text-accent-600 transition" wire:navigate>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>

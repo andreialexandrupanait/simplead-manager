@@ -45,7 +45,7 @@
                         <div class="flex items-center gap-2">
                             <span class="font-medium text-green-600">&euro;{{ number_format($rev->amount, 2) }}</span>
                             <button wire:click="deleteEntry('revenue', {{ $rev->id }})" wire:confirm="{{ __('Delete this revenue entry?') }}" class="text-gray-300 hover:text-red-500">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <svg aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
                     </div>
@@ -65,7 +65,7 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <label class="flex items-center gap-1 text-xs text-gray-500">
-                        <input type="checkbox" wire:model="revenueRecurring" class="rounded border-gray-300 text-purple-600 h-3 w-3">
+                        <input type="checkbox" wire:model="revenueRecurring" class="rounded border-gray-300 text-accent-600 h-3 w-3">
                         {{ __('Recurring') }}
                     </label>
                     @if($revenueRecurring)
@@ -97,7 +97,7 @@
                         <div class="flex items-center gap-2">
                             <span class="font-medium text-red-600">&euro;{{ number_format($cost->amount, 2) }}</span>
                             <button wire:click="deleteEntry('cost', {{ $cost->id }})" wire:confirm="{{ __('Delete this cost entry?') }}" class="text-gray-300 hover:text-red-500">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <svg aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
                     </div>
@@ -118,7 +118,7 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <label class="flex items-center gap-1 text-xs text-gray-500">
-                        <input type="checkbox" wire:model="costRecurring" class="rounded border-gray-300 text-purple-600 h-3 w-3">
+                        <input type="checkbox" wire:model="costRecurring" class="rounded border-gray-300 text-accent-600 h-3 w-3">
                         {{ __('Recurring') }}
                     </label>
                     @if($costRecurring)

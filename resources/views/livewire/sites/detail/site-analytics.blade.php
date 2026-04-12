@@ -179,7 +179,8 @@
 
                     chart: null,
                     init() { this.$nextTick(() => this.renderChart()); },
-                    renderChart() {
+                    async renderChart() {
+                        const Chart = await window.loadChart();
                         if (this.chart) this.chart.destroy();
                         const d = this.chartData;
                         const datasets = [
@@ -221,8 +222,8 @@
                                     } } },
                                 },
                                 scales: {
-                                    x: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280' } },
-                                    y: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280' }, beginAtZero: true },
+                                    x: { grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' }, ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' } },
+                                    y: { grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' }, ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' }, beginAtZero: true },
                                 },
                             },
                         });
@@ -232,8 +233,8 @@
                         <div class="mb-4 flex items-center justify-between">
                             <h3 class="text-base font-semibold text-gray-900">{{ __('Users Over Time') }}</h3>
                             <div class="flex gap-1">
-                                <button @click="aggregation = 'daily'; renderChart()" :class="aggregation === 'daily' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Daily</button>
-                                <button @click="aggregation = 'weekly'; renderChart()" :class="aggregation === 'weekly' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Weekly</button>
+                                <button @click="aggregation = 'daily'; renderChart()" :class="aggregation === 'daily' ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Daily</button>
+                                <button @click="aggregation = 'weekly'; renderChart()" :class="aggregation === 'weekly' ? 'bg-accent-100 text-accent-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="rounded-lg px-3 py-1 text-xs font-medium transition">Weekly</button>
                             </div>
                         </div>
                         <div style="height: 300px" class="relative">
@@ -321,7 +322,7 @@
                 @if(count($googleConnections) > 1)
                     <div class="mb-3">
                         <label class="block text-xs font-medium text-gray-500 mb-1">Google Account</label>
-                        <select wire:change="switchGoogleAccount($event.target.value)" class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <select wire:change="switchGoogleAccount($event.target.value)" class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                             @foreach($googleConnections as $gc)
                                 <option value="{{ $gc->id }}" @selected($gc->id === ($selectedGoogleConnectionId ?? $googleConnections->first()->id))>{{ $gc->email }}</option>
                             @endforeach
@@ -353,7 +354,7 @@
                         <template x-for="property in filtered" :key="property._index">
                             <button
                                 @click="$wire.selectProperty(property._index)"
-                                class="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-purple-300 hover:bg-purple-50 transition"
+                                class="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-accent-300 hover:bg-accent-50 transition"
                             >
                                 <div class="text-sm font-medium text-gray-900" x-text="property.property_name"></div>
                                 <div class="mt-0.5 text-xs text-gray-500">
