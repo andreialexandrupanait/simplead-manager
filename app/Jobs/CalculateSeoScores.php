@@ -29,7 +29,19 @@ class CalculateSeoScores implements ShouldQueue
         $this->audit->update(['score' => $scores['overall'], 'category_scores' => $scores['categories'], 'scan_duration' => $this->audit->created_at ? (int) now()->diffInSeconds($this->audit->created_at) : null]);
         $prev = SeoAudit::where('site_id', $this->site->id)->where('id', '!=', $this->audit->id)->completed()->latest('scanned_at')->first();
         if ($prev) { $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['diff' => $ds->diff($this->audit, $prev)])]); }
-        $m = $this->site->seoMonitor; if ($m) { $m->update(['last_audit_at' => now(), 'next_audit_at' => now()->addMinutes($m->interval_minutes)]); }
+        $m = $this->site->seoMonitor;
+        if ($m) {
+            $next = now()->addMinutes($m->interval_minutes);
+            $preferredTime = $m->audit_config['preferred_time'] ?? null;
+            if ($preferredTime) {
+                [$h, $i] = explode(':', $preferredTime);
+                $next->setTime((int) $h, (int) $i);
+                if ($next->isPast()) {
+                    $next->addDay();
+                }
+            }
+            $m->update(['last_audit_at' => now(), 'next_audit_at' => $next]);
+        }
         $this->audit->markAs(SeoAuditStatus::Completed);
         CircuitBreakerService::recordSuccess($this->site);
         $ti = $this->audit->totalIssues(); $sev = $this->audit->critical_count > 0 ? 'critical' : ($this->audit->high_count > 0 ? 'warning' : 'info');

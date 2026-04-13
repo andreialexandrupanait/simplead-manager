@@ -29,6 +29,7 @@ class SiteSeoAudit extends Component
     public int $settingsInterval = 10080;
     public int $settingsMaxPages = 200;
     public string $settingsSitemapUrl = '';
+    public string $settingsPreferredTime = '03:00';
 
     public function mount(Site $site): void
     {
@@ -36,7 +37,7 @@ class SiteSeoAudit extends Component
         $this->site = $site;
         $this->isRunning = app(SiteAuditService::class)->hasRunningAudit($site);
         $monitor = $site->seoMonitor;
-        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; }
+        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; $this->settingsPreferredTime = $monitor->audit_config['preferred_time'] ?? '03:00'; }
     }
 
     #[Computed] public function monitor() { return $this->site->seoMonitor; }
@@ -112,7 +113,9 @@ class SiteSeoAudit extends Component
     public function updateSettings(): void
     {
         $m = $this->site->seoMonitor ?? \App\Models\SeoMonitor::create(['site_id' => $this->site->id, 'is_active' => true]);
-        $m->update(['is_active' => $this->settingsAutoAudit, 'interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int)config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null]);
+        $config = $m->audit_config ?? [];
+        $config['preferred_time'] = $this->settingsPreferredTime;
+        $m->update(['is_active' => $this->settingsAutoAudit, 'interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int) config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null, 'audit_config' => $config]);
         $this->dispatch('close-modal-seo-settings');
         $this->dispatch('notify', type: 'success', message: 'Settings updated.');
     }
