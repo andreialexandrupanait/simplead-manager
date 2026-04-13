@@ -406,10 +406,16 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             if ($script instanceof DOMElement && strtolower($script->getAttribute('type')) === 'application/ld+json') {
                 $json = json_decode(trim($script->textContent), true);
                 if (is_array($json)) {
-                    if (isset($json['@type'])) $data['structured_data_types'][] = $json['@type'];
+                    if (isset($json['@type'])) {
+                        $types = is_array($json['@type']) ? $json['@type'] : [$json['@type']];
+                        array_push($data['structured_data_types'], ...$types);
+                    }
                     if (isset($json['@graph'])) {
                         foreach ($json['@graph'] as $item) {
-                            if (isset($item['@type'])) $data['structured_data_types'][] = $item['@type'];
+                            if (isset($item['@type'])) {
+                                $types = is_array($item['@type']) ? $item['@type'] : [$item['@type']];
+                                array_push($data['structured_data_types'], ...$types);
+                            }
                         }
                     }
                 }
