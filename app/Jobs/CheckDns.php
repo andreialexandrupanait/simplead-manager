@@ -124,7 +124,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 return match ($label) {
                     'A' => $r['ip'] ?? null,
                     'AAAA' => $r['ipv6'] ?? null,
-                    'MX' => ['target' => $r['target'] ?? '', 'pri' => $r['pri'] ?? 0],
+                    'MX' => ['pri' => $r['pri'] ?? 0, 'target' => $r['target'] ?? ''],
                     'NS' => $r['target'] ?? null,
                     'CNAME' => $r['target'] ?? null,
                     'TXT' => $r['txt'] ?? null,
@@ -143,8 +143,8 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
         $allTypes = array_unique(array_merge(array_keys($old), array_keys($new)));
 
         foreach ($allTypes as $type) {
-            $oldRecords = json_encode($old[$type] ?? []);
-            $newRecords = json_encode($new[$type] ?? []);
+            $oldRecords = $this->normalizeForComparison($old[$type] ?? []);
+            $newRecords = $this->normalizeForComparison($new[$type] ?? []);
 
             if ($oldRecords !== $newRecords) {
                 $changes[] = [
@@ -156,5 +156,33 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
         }
 
         return $changes;
+    }
+
+    private function normalizeForComparison(array $data): string
+    {
+        array_walk_recursive($data, function (&$value) {
+            if (is_string($value)) {
+                $value = mb_strtolower($value);
+            }
+        });
+
+        $normalize = function ($item) use (&$normalize) {
+            if (is_array($item)) {
+                if (array_is_list($item)) {
+                    $item = array_map($normalize, $item);
+                    $item = array_map(fn ($v) => json_encode($v), $item);
+                    sort($item);
+
+                    return $item;
+                }
+                ksort($item);
+
+                return array_map($normalize, $item);
+            }
+
+            return $item;
+        };
+
+        return json_encode($normalize($data));
     }
 }
