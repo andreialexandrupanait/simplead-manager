@@ -49,9 +49,10 @@
         <div class="space-y-2">
             @foreach($this->topIssues as $ti)
                 <div class="flex items-center gap-3">
-                    <span class="h-2 w-2 shrink-0 rounded-full {{ ['critical'=>'bg-red-500','high'=>'bg-orange-500','medium'=>'bg-yellow-500','low'=>'bg-blue-500','info'=>'bg-gray-400'][$ti->severity] ?? 'bg-gray-400' }}"></span>
+                    @php $sevVal = $ti->severity instanceof \App\Enums\SeoIssueSeverity ? $ti->severity->value : $ti->severity; @endphp
+                    <span class="h-2 w-2 shrink-0 rounded-full {{ ['critical'=>'bg-red-500','high'=>'bg-orange-500','medium'=>'bg-yellow-500','low'=>'bg-blue-500','info'=>'bg-gray-400'][$sevVal] ?? 'bg-gray-400' }}"></span>
                     <span class="min-w-0 flex-1 truncate text-sm text-gray-700">{{ $ti->title }}</span>
-                    <x-ui.badge variant="gray">{{ $ti->sites_affected }} {{ $ti->sites_affected === 1 ? 'site' : 'sites' }}</x-ui.badge>
+                    <x-ui.badge variant="gray">{{ $ti->sites_affected }} {{ (int) $ti->sites_affected === 1 ? 'site' : 'sites' }}</x-ui.badge>
                 </div>
             @endforeach
         </div>
