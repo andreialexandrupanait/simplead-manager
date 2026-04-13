@@ -10,6 +10,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class SeoMonitor extends Model
 {
     protected $fillable = ['site_id','is_active','interval_minutes','next_audit_at','last_audit_at','max_pages','max_external_link_checks','sitemap_url','audit_config'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (SeoMonitor $monitor) {
+            if ($monitor->interval_minutes < 1440) {
+                $monitor->interval_minutes = 1440;
+            }
+        });
+    }
     protected function casts(): array { return ['is_active'=>'boolean','next_audit_at'=>'datetime','last_audit_at'=>'datetime','audit_config'=>'array']; }
     public function site(): BelongsTo { return $this->belongsTo(Site::class); }
     public function audits(): HasMany { return $this->hasMany(SeoAudit::class, 'site_id', 'site_id'); }

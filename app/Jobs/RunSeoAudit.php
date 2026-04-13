@@ -22,6 +22,7 @@ class RunSeoAudit implements ShouldBeUnique, ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     public int $tries = 1;
     public int $timeout = 60;
+    public int $uniqueFor = 900;
 
     public function __construct(public Site $site, public SeoAudit $audit) { $this->onQueue('performance'); }
     public function uniqueId(): string { return 'seo-audit-'.$this->site->id; }

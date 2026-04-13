@@ -9,6 +9,7 @@ use App\Enums\SeoIssueCategory;
 use App\Enums\SeoIssueSeverity;
 use App\Models\SeoAudit;
 use App\Models\SeoIssue;
+use App\Models\SeoLink;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
@@ -166,9 +167,20 @@ class AnalyzeSeoPages implements ShouldQueue
             }
         }
 
-        $orphans = $allPages->filter(fn($p) => $p->status_code === 200 && $p->inbound_internal_links === 0 && $p->depth > 0);
+        $orphans = $allPages->filter(fn ($p) => $p->status_code === 200 && $p->inbound_internal_links === 0 && $p->depth > 0);
         foreach ($orphans as $p) {
             $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Medium, 'Orphan page', 'Page has no internal links pointing to it.', $p->url, 'Add internal links from relevant pages.');
+        }
+
+        $brokenExternal = SeoLink::where('seo_audit_id', $this->audit->id)->where('is_broken', true)->where('type', 'external')->count();
+        if ($brokenExternal > 0) {
+            $sev = $brokenExternal > 10 ? SeoIssueSeverity::High : SeoIssueSeverity::Medium;
+            $this->addIssue(SeoIssueCategory::Links, $sev, 'Broken external links', "{$brokenExternal} external link(s) return errors.", null, 'Fix or remove broken external links.');
+        }
+
+        $brokenInternal = SeoLink::where('seo_audit_id', $this->audit->id)->where('is_broken', true)->where('type', 'internal')->count();
+        if ($brokenInternal > 0) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::High, 'Broken internal links', "{$brokenInternal} internal link(s) point to error pages.", null, 'Fix or update broken internal links.');
         }
     }
 

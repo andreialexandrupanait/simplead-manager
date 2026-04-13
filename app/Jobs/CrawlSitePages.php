@@ -28,7 +28,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
-    public int $timeout = 540;
+    public int $timeout = 900;
+    public int $uniqueFor = 1080;
     public array $backoff = [60, 120];
 
     private const SKIP_EXTENSIONS = ['pdf','doc','docx','xls','xlsx','zip','rar','jpg','jpeg','png','gif','svg','webp','ico','mp3','mp4','avi','mov','woff','woff2','ttf','eot','css','js','xml','json','map'];
@@ -227,6 +228,10 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         }
 
         $this->audit->update(['pages_crawled' => $crawled]);
+
+        JobTracker::progress($trackerId, 56, 'Checking broken links...');
+        $this->checkBrokenLinks();
+
         JobTracker::progress($trackerId, 60, "Crawl complete. {$crawled} pages.");
     }
 
@@ -235,6 +240,70 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
         CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed');
         JobTracker::fail('seo-audit-' . $this->site->id, 'Crawl failed');
+    }
+
+    private function checkBrokenLinks(): void
+    {
+        $monitor = $this->site->seoMonitor;
+        $maxChecks = $monitor?->max_external_link_checks
+            ?? (int) config('seo.analysis.max_external_link_checks', 50);
+        $userAgent = config('seo.crawler.user_agent');
+
+        // External links: HEAD-check unique URLs
+        $externalUrls = SeoLink::where('seo_audit_id', $this->audit->id)
+            ->where('type', 'external')
+            ->selectRaw('MIN(target_url) as target_url, target_url_hash')
+            ->groupBy('target_url_hash')
+            ->limit($maxChecks)
+            ->get();
+
+        foreach ($externalUrls as $link) {
+            try {
+                $response = Http::timeout(5)->withUserAgent($userAgent)->withoutVerifying()->head($link->target_url);
+                $status = $response->status();
+
+                if ($status === 405) {
+                    $response = Http::timeout(5)->withUserAgent($userAgent)->withoutVerifying()->get($link->target_url);
+                    $status = $response->status();
+                }
+            } catch (\Throwable) {
+                $status = null;
+            }
+
+            $isBroken = $status === null || $status >= 400;
+            SeoLink::where('seo_audit_id', $this->audit->id)
+                ->where('target_url_hash', $link->target_url_hash)
+                ->update(['status_code' => $status, 'is_broken' => $isBroken]);
+
+            usleep(100_000);
+        }
+
+        // Internal links: cross-reference with crawled pages
+        $pageStatuses = SeoPage::where('seo_audit_id', $this->audit->id)
+            ->whereNotNull('status_code')
+            ->pluck('status_code', 'url_hash')
+            ->toArray();
+
+        $internalLinks = SeoLink::where('seo_audit_id', $this->audit->id)
+            ->where('type', 'internal')
+            ->select('target_url_hash')
+            ->distinct()
+            ->pluck('target_url_hash');
+
+        foreach ($internalLinks as $hash) {
+            $pageStatus = $pageStatuses[$hash] ?? null;
+            if ($pageStatus === null) {
+                continue;
+            }
+
+            SeoLink::where('seo_audit_id', $this->audit->id)
+                ->where('target_url_hash', $hash)
+                ->where('type', 'internal')
+                ->update([
+                    'status_code' => $pageStatus,
+                    'is_broken' => $pageStatus >= 400,
+                ]);
+        }
     }
 
     private function parseHtml(string $html, string $url, string $baseDomain): array
