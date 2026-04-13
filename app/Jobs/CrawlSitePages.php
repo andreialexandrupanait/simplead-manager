@@ -63,6 +63,14 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $crawled = 0;
         $inboundCounts = [];
 
+        // Fetch sitemap
+        JobTracker::progress($trackerId, 2, 'Fetching sitemap...');
+        $sitemapUrls = $this->fetchSitemap($siteUrl, $monitor?->sitemap_url, $userAgent, $pageTimeout);
+
+        // Fetch robots.txt
+        $robotsData = $this->fetchRobotsTxt($siteUrl, $userAgent, $pageTimeout);
+        $this->audit->update(['robots_txt_data' => $robotsData]);
+
         JobTracker::progress($trackerId, 5, 'Starting crawl...');
 
         while (!empty($queue) && $crawled < $maxPages) {
@@ -173,6 +181,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                     'is_self_canonical' => $pageData['is_self_canonical'],
                     'meta_robots' => $metaRobots,
                     'is_indexable' => $isIndexable,
+                    'in_sitemap' => isset($sitemapUrls[UrlNormalizerService::hash($url)]),
+                    'blocked_by_robots' => $this->isBlockedByRobots($url, $robotsData),
                     'internal_link_count' => count($pageData['internal_links']),
                     'external_link_count' => count($pageData['external_links']),
                     'page_size_bytes' => strlen($body),
@@ -313,7 +323,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             'meta_description' => null, 'meta_description_length' => null,
             'meta_robots' => null, 'canonical_url' => null, 'is_self_canonical' => null,
             'h1_tags' => [], 'heading_structure' => ['h1'=>0,'h2'=>0,'h3'=>0,'h4'=>0,'h5'=>0,'h6'=>0],
-            'word_count' => 0, 'image_count' => 0, 'images_without_alt' => 0,
+            'word_count' => 0, 'image_count' => 0, 'images_without_alt' => 0, 'images_without_lazy' => 0,
             'internal_links' => [], 'external_links' => [],
             'structured_data_types' => [], 'og_tags' => [], 'twitter_tags' => [],
             'has_viewport_meta' => false,
@@ -369,11 +379,17 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         }
 
         // Images
+        $data['images_without_lazy'] = 0;
         $imgs = $doc->getElementsByTagName('img');
         $data['image_count'] = $imgs->length;
         foreach ($imgs as $img) {
-            if ($img instanceof DOMElement && trim($img->getAttribute('alt')) === '') {
-                $data['images_without_alt']++;
+            if ($img instanceof DOMElement) {
+                if (trim($img->getAttribute('alt')) === '') {
+                    $data['images_without_alt']++;
+                }
+                if ($img->getAttribute('loading') !== 'lazy' && ! $img->getAttribute('data-lazy') && ! $img->getAttribute('data-src')) {
+                    $data['images_without_lazy']++;
+                }
             }
         }
 
@@ -497,5 +513,118 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $pct = $maxPages > 0 ? min(55, (int) round(($crawled / $maxPages) * 55) + 5) : 5;
         $this->audit->update(['pages_crawled' => $crawled]);
         JobTracker::progress($trackerId, $pct, "Crawling... {$crawled}/{$maxPages} pages");
+    }
+
+    private function fetchSitemap(string $siteUrl, ?string $configuredUrl, string $userAgent, int $timeout): array
+    {
+        $urls = [];
+        $sitemapUrl = $configuredUrl ?: $siteUrl.'/sitemap.xml';
+
+        try {
+            $response = Http::timeout($timeout)->withUserAgent($userAgent)->withoutVerifying()->get($sitemapUrl);
+            if (! $response->successful()) {
+                $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['sitemap' => ['found' => false, 'url' => $sitemapUrl]])]);
+
+                return [];
+            }
+
+            $xml = @simplexml_load_string($response->body());
+            if (! $xml) {
+                return [];
+            }
+
+            // Handle sitemap index
+            if (isset($xml->sitemap)) {
+                foreach ($xml->sitemap as $entry) {
+                    $subUrl = (string) $entry->loc;
+                    try {
+                        $subResponse = Http::timeout($timeout)->withUserAgent($userAgent)->withoutVerifying()->get($subUrl);
+                        if ($subResponse->successful()) {
+                            $subXml = @simplexml_load_string($subResponse->body());
+                            if ($subXml && isset($subXml->url)) {
+                                foreach ($subXml->url as $u) {
+                                    $loc = (string) $u->loc;
+                                    $urls[UrlNormalizerService::hash($loc)] = $loc;
+                                }
+                            }
+                        }
+                    } catch (\Throwable) {
+                    }
+                }
+            }
+
+            // Handle regular sitemap
+            if (isset($xml->url)) {
+                foreach ($xml->url as $u) {
+                    $loc = (string) $u->loc;
+                    $urls[UrlNormalizerService::hash($loc)] = $loc;
+                }
+            }
+
+            $this->audit->update([
+                'data' => array_merge($this->audit->data ?? [], [
+                    'sitemap' => ['found' => true, 'url' => $sitemapUrl, 'url_count' => count($urls)],
+                ]),
+                'sitemap_urls_count' => count($urls),
+            ]);
+        } catch (\Throwable $e) {
+            Log::debug('SEO: sitemap fetch failed', ['url' => $sitemapUrl, 'error' => $e->getMessage()]);
+        }
+
+        return $urls;
+    }
+
+    private function fetchRobotsTxt(string $siteUrl, string $userAgent, int $timeout): array
+    {
+        try {
+            $response = Http::timeout($timeout)->withUserAgent($userAgent)->withoutVerifying()->get($siteUrl.'/robots.txt');
+            if (! $response->successful()) {
+                return ['exists' => false, 'disallow_rules' => [], 'sitemap_urls' => []];
+            }
+
+            $body = $response->body();
+            $disallowRules = [];
+            $sitemapUrls = [];
+            $currentAgent = '';
+
+            foreach (explode("\n", $body) as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) {
+                    continue;
+                }
+                if (preg_match('/^User-agent:\s*(.+)/i', $line, $m)) {
+                    $currentAgent = strtolower(trim($m[1]));
+                } elseif (preg_match('/^Disallow:\s*(.+)/i', $line, $m)) {
+                    if ($currentAgent === '*' || $currentAgent === '') {
+                        $disallowRules[] = trim($m[1]);
+                    }
+                } elseif (preg_match('/^Sitemap:\s*(.+)/i', $line, $m)) {
+                    $sitemapUrls[] = trim($m[1]);
+                }
+            }
+
+            return ['exists' => true, 'disallow_rules' => $disallowRules, 'sitemap_urls' => $sitemapUrls];
+        } catch (\Throwable) {
+            return ['exists' => false, 'disallow_rules' => [], 'sitemap_urls' => []];
+        }
+    }
+
+    private function isBlockedByRobots(string $url, array $robotsData): bool
+    {
+        if (! ($robotsData['exists'] ?? false)) {
+            return false;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?? '/';
+        foreach ($robotsData['disallow_rules'] ?? [] as $rule) {
+            if ($rule === '/') {
+                return true;
+            }
+            if (str_starts_with($path, $rule)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

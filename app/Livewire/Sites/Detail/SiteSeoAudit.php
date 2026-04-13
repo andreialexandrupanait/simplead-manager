@@ -46,6 +46,41 @@ class SiteSeoAudit extends Component
     #[Computed] public function auditHistory() { return $this->site->seoAudits()->completed()->latest('scanned_at')->limit(20)->get(['id','score','critical_count','high_count','medium_count','low_count','info_count','pages_crawled','scan_duration','scanned_at','category_scores']); }
 
     #[Computed]
+    public function trendData(): array
+    {
+        $audits = $this->auditHistory->reverse()->values();
+        if ($audits->count() < 2) {
+            return [];
+        }
+
+        return [
+            'labels' => $audits->pluck('scanned_at')->map(fn ($d) => $d?->format('M d'))->toArray(),
+            'overall' => $audits->pluck('score')->toArray(),
+            'technical' => $audits->map(fn ($a) => $a->category_scores['technical'] ?? 0)->toArray(),
+            'on_page' => $audits->map(fn ($a) => $a->category_scores['on_page'] ?? 0)->toArray(),
+            'performance' => $audits->map(fn ($a) => $a->category_scores['performance'] ?? 0)->toArray(),
+            'issues' => $audits->map(fn ($a) => $a->critical_count + $a->high_count + $a->medium_count)->toArray(),
+        ];
+    }
+
+    #[Computed]
+    public function ttfbInsights(): array
+    {
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return [];
+        }
+        $pages = $audit->pages()->whereNotNull('ttfb_seconds')->where('status_code', 200)->get(['url', 'ttfb_seconds', 'page_size_bytes']);
+
+        return [
+            'fastest' => $pages->sortBy('ttfb_seconds')->take(3)->map(fn ($p) => ['url' => $p->url, 'ttfb' => $p->ttfb_seconds])->values()->toArray(),
+            'slowest' => $pages->sortByDesc('ttfb_seconds')->take(3)->map(fn ($p) => ['url' => $p->url, 'ttfb' => $p->ttfb_seconds])->values()->toArray(),
+            'largest' => $pages->sortByDesc('page_size_bytes')->take(3)->map(fn ($p) => ['url' => $p->url, 'size_kb' => round(($p->page_size_bytes ?? 0) / 1024, 1)])->values()->toArray(),
+            'avg_ttfb' => $pages->count() > 0 ? round($pages->avg('ttfb_seconds'), 3) : 0,
+        ];
+    }
+
+    #[Computed]
     public function groupedIssues(): \Illuminate\Support\Collection
     {
         $audit = $this->latestCompletedAudit;
@@ -132,6 +167,47 @@ class SiteSeoAudit extends Component
         $path = app(\App\Services\SeoAudit\ExcelExportService::class)->export($audit);
 
         return response()->download($path, 'seo-audit-'.$this->site->domain.'-'.now()->format('Y-m-d').'.xlsx')->deleteFileAfterSend();
+    }
+
+    public string $fixUrl = '';
+    public string $fixTitle = '';
+    public string $fixDescription = '';
+
+    public function openFixModal(string $url): void
+    {
+        $this->fixUrl = $url;
+        $page = $this->latestCompletedAudit?->pages()->where('url', $url)->first();
+        $this->fixTitle = $page?->title ?? '';
+        $this->fixDescription = $page?->meta_description ?? '';
+        $this->dispatch('open-modal-seo-fix');
+    }
+
+    public function pushMetaFix(): void
+    {
+        if (! $this->site->is_connected || $this->site->is_prospect) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-meta', [
+                    'url' => $this->fixUrl,
+                    'meta_title' => $this->fixTitle,
+                    'meta_description' => $this->fixDescription,
+                ]);
+
+            if ($response->successful()) {
+                $this->dispatch('close-modal-seo-fix');
+                $this->dispatch('notify', type: 'success', message: 'Meta updated on '.$this->site->name);
+            } else {
+                $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Connection failed: '.$e->getMessage());
+        }
     }
 
     public function deleteAudit(int $id): void

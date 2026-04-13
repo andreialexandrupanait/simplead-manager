@@ -108,7 +108,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/search-console', Sites\Detail\SiteSearchConsole::class)->name('sites.search-console');
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
-        Route::get('/content-freshness', Sites\Detail\SiteContentFreshness::class)->name('sites.content-freshness');
         Route::get('/cron', Sites\Detail\SiteCron::class)->name('sites.cron');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/reports/{report}/view', Sites\Detail\ReportView::class)->name('sites.reports.view');
@@ -137,6 +136,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // SEO
     Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
     Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
+    Route::get('/seo/compare', Seo\SeoCompare::class)->name('seo.compare');
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');

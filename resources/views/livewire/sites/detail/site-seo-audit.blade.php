@@ -118,9 +118,15 @@
                                             <svg class="h-3 w-3 transition-transform" :class="showUrls && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             <span x-text="showUrls ? 'Hide URLs' : 'Show {{ $group->urls->count() }} affected URL{{ $group->urls->count() > 1 ? 's' : '' }}'"></span>
                                         </button>
+                                        @php $isFixable = $site->is_connected && !($site->is_prospect ?? false) && in_array($group->title, ['Missing title tag', 'Title too short', 'Title too long', 'Missing meta description', 'Meta description too short', 'Meta description too long']); @endphp
                                         <div x-show="showUrls" x-collapse class="mt-2 space-y-1 border-l-2 border-gray-100 pl-3">
                                             @foreach($group->urls->take(20) as $url)
-                                                <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600">{{ Str::limit($url, 80) }}</a>
+                                                <div class="flex items-center gap-2">
+                                                    <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600 flex-1">{{ Str::limit($url, 70) }}</a>
+                                                    @if($isFixable)
+                                                        <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                    @endif
+                                                </div>
                                             @endforeach
                                             @if($group->urls->count() > 20)
                                                 <p class="text-xs text-gray-300">... and {{ $group->urls->count() - 20 }} more</p>
@@ -139,6 +145,29 @@
 
         {{-- PAGES TAB --}}
         @if($activeTab==='pages')
+            {{-- TTFB Insights --}}
+            @if(!empty($this->ttfbInsights) && !empty($this->ttfbInsights['slowest']))
+                <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <x-ui.card class="!p-3">
+                        <p class="text-xs font-medium text-gray-500 mb-1">Avg TTFB</p>
+                        @php $avg = $this->ttfbInsights['avg_ttfb']; @endphp
+                        <p class="text-lg font-bold {{ $avg < 0.2 ? 'text-green-600' : ($avg < 0.5 ? 'text-yellow-600' : 'text-red-600') }}">{{ number_format($avg * 1000) }}ms</p>
+                    </x-ui.card>
+                    <x-ui.card class="!p-3">
+                        <p class="text-xs font-medium text-gray-500 mb-1">Slowest Pages</p>
+                        @foreach($this->ttfbInsights['slowest'] as $sp)
+                            <p class="text-xs text-red-600 truncate">{{ number_format($sp['ttfb'] * 1000) }}ms — {{ Str::limit(parse_url($sp['url'], PHP_URL_PATH) ?: '/', 30) }}</p>
+                        @endforeach
+                    </x-ui.card>
+                    <x-ui.card class="!p-3">
+                        <p class="text-xs font-medium text-gray-500 mb-1">Largest Pages</p>
+                        @foreach($this->ttfbInsights['largest'] as $lp)
+                            <p class="text-xs text-orange-600 truncate">{{ $lp['size_kb'] }}KB — {{ Str::limit(parse_url($lp['url'], PHP_URL_PATH) ?: '/', 30) }}</p>
+                        @endforeach
+                    </x-ui.card>
+                </div>
+            @endif
+
             <div class="mb-4"><input wire:model.live.debounce.300ms="pageSearch" type="text" placeholder="Search pages..." class="rounded-lg border-gray-300 text-sm shadow-sm sm:w-80"></div>
             <x-ui.table>
                 <x-slot:head>
@@ -148,19 +177,45 @@
                     <x-ui.th>Word Count</x-ui.th>
                     <x-ui.th class="hidden lg:table-cell">Internal Links</x-ui.th>
                     <x-ui.th class="hidden lg:table-cell">External Links</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">TTFB</x-ui.th>
                     <x-ui.th>Indexable</x-ui.th>
                 </x-slot:head>
             @forelse($this->pages as $p)
-                <tr class="hover:bg-gray-50">
-                    <x-ui.td class="max-w-xs !whitespace-normal"><a href="{{ $p->url }}" target="_blank" class="text-accent-600 hover:underline">{{ Str::limit(parse_url($p->url,PHP_URL_PATH)?:'/',50) }}</a></x-ui.td>
+                <tbody x-data="{ expanded: false }">
+                <tr class="hover:bg-gray-50 cursor-pointer" @click="expanded = !expanded">
+                    <x-ui.td class="max-w-xs !whitespace-normal"><a href="{{ $p->url }}" target="_blank" class="text-accent-600 hover:underline" @click.stop>{{ Str::limit(parse_url($p->url,PHP_URL_PATH)?:'/',50) }}</a></x-ui.td>
                     <x-ui.td><x-ui.badge :variant="$p->status_code===200?'green':($p->status_code>=400?'red':'yellow')">{{ $p->status_code??'—' }}</x-ui.badge></x-ui.td>
                     <x-ui.td title="{{ $p->title }}">@if($p->title_length)<span class="{{ $p->title_length<30||$p->title_length>60?'text-red-600 font-medium':'text-green-600' }}">{{ $p->title_length }}</span>@else<span class="text-red-600 font-medium">Missing</span>@endif</x-ui.td>
                     <x-ui.td><span class="{{ $p->word_count!==null && $p->word_count<300?'text-orange-600 font-medium':'' }}">{{ $p->word_count??'—' }}</span></x-ui.td>
                     <x-ui.td class="hidden lg:table-cell">{{ $p->internal_link_count }}</x-ui.td>
                     <x-ui.td class="hidden lg:table-cell">{{ $p->external_link_count }}</x-ui.td>
+                    <x-ui.td class="hidden lg:table-cell">
+                        @if($p->ttfb_seconds)
+                            <span class="{{ $p->ttfb_seconds < 0.2 ? 'text-green-600' : ($p->ttfb_seconds < 0.5 ? 'text-yellow-600' : 'text-red-600') }}">{{ number_format($p->ttfb_seconds * 1000) }}ms</span>
+                        @else — @endif
+                    </x-ui.td>
                     <x-ui.td><x-ui.badge :variant="$p->is_indexable?'green':'red'">{{ $p->is_indexable?'Yes':'No' }}</x-ui.badge></x-ui.td>
                 </tr>
-            @empty<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No pages.</td></tr>@endforelse</x-ui.table>
+                <tr x-show="expanded" x-collapse>
+                    <td colspan="8" class="bg-gray-50 px-6 py-3">
+                        <div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                            <div><span class="font-medium text-gray-500">Title:</span> <span class="text-gray-700">{{ $p->title ?? '—' }}</span></div>
+                            <div><span class="font-medium text-gray-500">Meta Description:</span> <span class="text-gray-700">{{ Str::limit($p->meta_description ?? '—', 100) }}</span></div>
+                            <div><span class="font-medium text-gray-500">Canonical:</span> <span class="text-gray-700">{{ $p->canonical_url ? ($p->is_self_canonical ? 'Self' : Str::limit($p->canonical_url, 50)) : 'Missing' }}</span></div>
+                            <div><span class="font-medium text-gray-500">H1 Tags:</span> <span class="text-gray-700">{{ !empty($p->h1_tags) ? implode(', ', array_map(fn($h) => Str::limit($h, 40), $p->h1_tags)) : '—' }}</span></div>
+                            <div><span class="font-medium text-gray-500">Images:</span> <span class="text-gray-700">{{ $p->image_count ?? 0 }} total, {{ $p->images_without_alt ?? 0 }} missing alt</span></div>
+                            <div><span class="font-medium text-gray-500">Page Size:</span> <span class="text-gray-700">{{ $p->page_size_bytes ? round($p->page_size_bytes / 1024, 1) . ' KB' : '—' }}</span></div>
+                            <div><span class="font-medium text-gray-500">Depth:</span> <span class="text-gray-700">{{ $p->depth ?? '—' }}</span></div>
+                            <div><span class="font-medium text-gray-500">Structured Data:</span> <span class="text-gray-700">{{ !empty($p->structured_data_types) ? implode(', ', $p->structured_data_types) : 'None' }}</span></div>
+                            <div><span class="font-medium text-gray-500">In Sitemap:</span> <x-ui.badge :variant="$p->in_sitemap ? 'green' : 'gray'">{{ $p->in_sitemap ? 'Yes' : 'No' }}</x-ui.badge></div>
+                            @if(!empty($p->og_tags))
+                                <div class="sm:col-span-2"><span class="font-medium text-gray-500">OG Tags:</span> <span class="text-gray-700">{{ collect($p->og_tags)->keys()->map(fn($k) => str_replace('og:', '', $k))->implode(', ') }}</span></div>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            @empty<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No pages.</td></tr>@endforelse</x-ui.table>
             @if($this->pages instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->pages->hasPages())<div class="mt-4">{{ $this->pages->links() }}</div>@endif
         @endif
 
@@ -181,9 +236,20 @@
         {{-- HISTORY TAB --}}
         @if($activeTab==='history')
             <div class="space-y-4">
-                @if($this->auditHistory->count()>1)
-                    <x-ui.card><h3 class="mb-3 text-sm font-medium text-gray-900">Score Trend</h3>
-                    <x-charts.line-chart :labels="$this->auditHistory->reverse()->pluck('scanned_at')->map(fn($d)=>$d?->format('M d'))->values()->toArray()" :datasets="[['label'=>'SEO Score','data'=>$this->auditHistory->reverse()->pluck('score')->values()->toArray(),'color'=>'#8D5CF5']]" height="200px" /></x-ui.card>
+                @if(!empty($this->trendData))
+                    <x-ui.card>
+                        <h3 class="mb-3 text-sm font-medium text-gray-900">Score Trend (Overall + Categories)</h3>
+                        <x-charts.line-chart
+                            :labels="$this->trendData['labels']"
+                            :datasets="[
+                                ['label' => 'Overall', 'data' => $this->trendData['overall'], 'color' => '#8D5CF5'],
+                                ['label' => 'Technical', 'data' => $this->trendData['technical'], 'color' => '#3b82f6'],
+                                ['label' => 'On-Page', 'data' => $this->trendData['on_page'], 'color' => '#10b981'],
+                                ['label' => 'Performance', 'data' => $this->trendData['performance'], 'color' => '#f59e0b'],
+                            ]"
+                            height="250px"
+                        />
+                    </x-ui.card>
                 @endif
                 @foreach($this->auditHistory as $h)
                     <x-ui.card><div class="flex items-center gap-4">
@@ -231,6 +297,31 @@
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Max Pages</label><input wire:model="settingsMaxPages" type="number" min="10" max="1000" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Sitemap URL (optional)</label><input wire:model="settingsSitemapUrl" type="url" placeholder="https://example.com/sitemap.xml" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"></div>
             <div class="flex justify-end gap-3 pt-2"><x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-settings')">Cancel</x-ui.button><x-ui.button wire:click="updateSettings">Save</x-ui.button></div>
+        </div>
+    </x-ui.modal>
+
+    {{-- FIX META MODAL --}}
+    <x-ui.modal name="seo-fix" maxWidth="md">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Edit SEO Meta</h3>
+        <p class="text-xs text-gray-400 mb-4 truncate">{{ $fixUrl }}</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Meta Title</label>
+                <input wire:model="fixTitle" type="text" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" maxlength="200">
+                <p class="mt-1 text-xs {{ strlen($fixTitle) >= 30 && strlen($fixTitle) <= 60 ? 'text-green-600' : 'text-red-500' }}">{{ strlen($fixTitle) }} characters (recommended: 30-60)</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
+                <textarea wire:model="fixDescription" rows="3" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" maxlength="300"></textarea>
+                <p class="mt-1 text-xs {{ strlen($fixDescription) >= 70 && strlen($fixDescription) <= 160 ? 'text-green-600' : 'text-red-500' }}">{{ strlen($fixDescription) }} characters (recommended: 70-160)</p>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-fix')">Cancel</x-ui.button>
+                <x-ui.button wire:click="pushMetaFix">
+                    <x-ui.spinner size="sm" wire:loading wire:target="pushMetaFix" />
+                    <span wire:loading.remove wire:target="pushMetaFix">Apply to Site</span>
+                </x-ui.button>
+            </div>
         </div>
     </x-ui.modal>
 </div>

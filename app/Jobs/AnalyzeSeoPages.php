@@ -58,6 +58,12 @@ class AnalyzeSeoPages implements ShouldQueue
         $this->checkStructuredData($okPages);
         $this->checkUrlStructure($okPages);
 
+        $this->checkImageOptimization($okPages);
+        $this->checkSchemaMarkup($okPages);
+        $this->checkSitemap($pages);
+        $this->checkRobotsTxt();
+        $this->checkInternalLinking($okPages);
+
         JobTracker::progress($trackerId, 80, 'Checking security headers...');
         $this->checkSecurityHeaders();
         $this->checkSsl();
@@ -245,6 +251,103 @@ class AnalyzeSeoPages implements ShouldQueue
         if ($long > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Long URLs', "{$long} URL(s) exceed {$maxLen} chars.", null, 'Shorten URLs.');
         if ($underscores > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Info, 'URLs with underscores', "{$underscores} URL(s) use underscores instead of hyphens.", null, 'Use hyphens (-) in URLs.');
         if ($uppercase > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Uppercase URLs', "{$uppercase} URL(s) have uppercase characters.", null, 'Use lowercase URLs.');
+    }
+
+    private function checkSchemaMarkup($pages): void
+    {
+        $homepage = $pages->first(fn ($p) => $p->depth === 0);
+        if ($homepage && empty($homepage->structured_data_types)) {
+            $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::Medium, 'Homepage missing structured data', 'The homepage has no JSON-LD schema markup.', $homepage->url, 'Add Organization and WebSite schema to the homepage.');
+        }
+
+        if ($homepage && ! empty($homepage->structured_data_types)) {
+            $types = $homepage->structured_data_types;
+            if (! in_array('Organization', $types) && ! in_array('LocalBusiness', $types)) {
+                $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::Low, 'Missing Organization schema', 'Homepage structured data does not include Organization or LocalBusiness.', $homepage->url, 'Add Organization schema to help search engines understand your business.');
+            }
+        }
+
+        $innerPages = $pages->filter(fn ($p) => $p->depth > 0);
+        $withBreadcrumb = $innerPages->filter(fn ($p) => ! empty($p->structured_data_types) && in_array('BreadcrumbList', $p->structured_data_types))->count();
+        if ($innerPages->count() > 5 && $withBreadcrumb === 0) {
+            $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::Low, 'No BreadcrumbList schema', 'No inner pages have BreadcrumbList structured data.', null, 'Add BreadcrumbList schema to inner pages for enhanced search snippets.');
+        }
+    }
+
+    private function checkImageOptimization($pages): void
+    {
+        $totalMissingLazy = $pages->sum(fn ($p) => $p->meta['images_without_lazy'] ?? 0);
+        $pagesWithoutLazy = $pages->filter(fn ($p) => ($p->meta['images_without_lazy'] ?? 0) > 3)->count();
+
+        if ($pagesWithoutLazy > 0) {
+            $this->addIssue(SeoIssueCategory::Performance, SeoIssueSeverity::Medium, 'Images without lazy loading', "{$pagesWithoutLazy} page(s) have images without lazy loading.", null, 'Add loading="lazy" to offscreen images to improve page load speed.');
+        }
+
+        $totalMissingAlt = $pages->sum('images_without_alt');
+        if ($totalMissingAlt > 10) {
+            $this->addIssue(SeoIssueCategory::Images, SeoIssueSeverity::High, 'Missing alt text (site-wide)', "{$totalMissingAlt} images across the site lack alt text.", null, 'Add descriptive alt text to all images for accessibility and SEO.');
+        }
+    }
+
+    private function checkSitemap($allPages): void
+    {
+        $sitemapData = $this->audit->data['sitemap'] ?? null;
+        if (! $sitemapData) {
+            return;
+        }
+
+        if (! ($sitemapData['found'] ?? false)) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Medium, 'No XML sitemap found', 'No sitemap.xml found at the expected location.', null, 'Create and submit an XML sitemap to help search engines discover your pages.');
+
+            return;
+        }
+
+        $inSitemap = $allPages->filter(fn ($p) => $p->in_sitemap);
+        $errorInSitemap = $inSitemap->filter(fn ($p) => $p->status_code >= 400)->count();
+        if ($errorInSitemap > 0) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::High, 'Error pages in sitemap', "{$errorInSitemap} page(s) in sitemap return HTTP errors.", null, 'Remove error pages from sitemap or fix the pages.');
+        }
+
+        $indexableNotInSitemap = $allPages->filter(fn ($p) => $p->is_indexable && ! $p->in_sitemap && $p->status_code === 200)->count();
+        if ($indexableNotInSitemap > 5) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Indexable pages not in sitemap', "{$indexableNotInSitemap} indexable page(s) are not in the sitemap.", null, 'Add important indexable pages to the sitemap.');
+        }
+    }
+
+    private function checkRobotsTxt(): void
+    {
+        $robots = $this->audit->robots_txt_data;
+        if (! $robots || ! ($robots['exists'] ?? false)) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Medium, 'No robots.txt found', 'No robots.txt file detected.', null, 'Create a robots.txt file with proper directives and a Sitemap reference.');
+
+            return;
+        }
+
+        if (empty($robots['sitemap_urls'] ?? [])) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'No Sitemap in robots.txt', 'robots.txt does not reference a Sitemap URL.', null, 'Add a Sitemap: directive to robots.txt.');
+        }
+
+        if (in_array('/', $robots['disallow_rules'] ?? [])) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Critical, 'robots.txt blocks entire site', 'Disallow: / blocks all crawlers from the entire site.', null, 'Remove the Disallow: / rule unless intentional.');
+        }
+    }
+
+    private function checkInternalLinking($pages): void
+    {
+        $deepPages = $pages->filter(fn ($p) => $p->depth > 3 && $p->status_code === 200)->count();
+        if ($deepPages > 0) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Deep pages', "{$deepPages} page(s) are more than 3 clicks from homepage.", null, 'Improve internal linking to reduce click depth for important pages.');
+        }
+
+        $deadEnds = $pages->filter(fn ($p) => $p->internal_link_count === 0 && $p->status_code === 200 && $p->depth > 0)->count();
+        if ($deadEnds > 0) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Medium, 'Dead-end pages', "{$deadEnds} page(s) have no outbound internal links.", null, 'Add internal links to guide users and distribute link equity.');
+        }
+
+        $diluted = $pages->filter(fn ($p) => $p->internal_link_count > 100 && $p->status_code === 200)->count();
+        if ($diluted > 0) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Link dilution', "{$diluted} page(s) have over 100 outbound links.", null, 'Consider reducing the number of links on these pages.');
+        }
     }
 
     private function checkSecurityHeaders(): void
