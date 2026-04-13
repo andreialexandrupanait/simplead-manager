@@ -74,7 +74,7 @@
         <div class="mb-4 flex flex-wrap items-center gap-3">
             <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Search sites..." class="w-full sm:w-64" />
             <select wire:model.live="scoreFilter" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="">All Scores</option><option value="good">Good (80+)</option><option value="needs_work">Needs Work (50-79)</option><option value="poor">Poor (&lt;50)</option><option value="no_audit">No Audit</option></select>
-            <select wire:model.live="sort" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="score_asc">Score: Low→High</option><option value="score_desc">Score: High→Low</option><option value="issues">Most Critical</option><option value="name">Name</option></select>
+            <select wire:model.live="sort" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="manual">Manual Order</option><option value="score_asc">Score: Low→High</option><option value="score_desc">Score: High→Low</option><option value="issues">Most Critical</option><option value="name">Name</option></select>
         </div>
 
         <x-ui.table>

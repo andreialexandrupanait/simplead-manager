@@ -60,7 +60,10 @@ class ErrorLogsOverview extends Component
                         ->orWhereHas('site', fn ($site) => $site->where('name', 'ilike', $s));
                 });
             })
-            ->orderByDesc('last_seen_at')
+            ->join('sites', 'php_error_logs.site_id', '=', 'sites.id')
+            ->orderBy('sites.sort_order')
+            ->orderByDesc('php_error_logs.last_seen_at')
+            ->select('php_error_logs.*')
             ->paginate(50);
 
         return view('livewire.error-logs.error-logs-overview', [

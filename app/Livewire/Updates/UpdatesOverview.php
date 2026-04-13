@@ -75,6 +75,7 @@ class UpdatesOverview extends Component
                     'site_id' => $p->site_id,
                     'site_name' => $p->site?->name ?? '—',
                     'site_url' => $p->site?->url ?? '',
+                    'site_sort_order' => $p->site?->sort_order ?? 0,
                     'is_active' => $p->is_active,
                     'auto_update' => $p->auto_update,
                 ]);
@@ -106,6 +107,7 @@ class UpdatesOverview extends Component
                     'site_id' => $t->site_id,
                     'site_name' => $t->site?->name ?? '—',
                     'site_url' => $t->site?->url ?? '',
+                    'site_sort_order' => $t->site?->sort_order ?? 0,
                     'is_active' => $t->is_active,
                     'auto_update' => $t->auto_update,
                 ]);
@@ -118,12 +120,12 @@ class UpdatesOverview extends Component
                 'label' => $group->first()['name'],
                 'type' => $group->first()['type'],
                 'update_version' => $group->first()['update_version'],
-                'items' => $group->sortBy('site_name')->values()->all(),
+                'items' => $group->sortBy('site_sort_order')->values()->all(),
             ])->values()->all();
         }
 
-        return $items->sortBy('site_name')->groupBy('site_name')->map(fn ($group, $siteName) => [
-            'label' => $siteName,
+        return $items->sortBy('site_sort_order')->groupBy('site_id')->map(fn ($group) => [
+            'label' => $group->first()['site_name'],
             'site_id' => $group->first()['site_id'],
             'items' => $group->sortBy('name')->values()->all(),
         ])->values()->all();

@@ -98,8 +98,10 @@ class DnsOverview extends Component
                         ->orWhereHas('site', fn ($site) => $site->where('name', 'ilike', $s));
                 });
             })
+            ->join('sites', 'dns_monitors.site_id', '=', 'sites.id')
             ->orderByDesc('has_changes')
-            ->orderBy('domain')
+            ->orderBy('sites.sort_order')
+            ->select('dns_monitors.*')
             ->paginate(50);
 
         return view('livewire.dns.dns-overview', [

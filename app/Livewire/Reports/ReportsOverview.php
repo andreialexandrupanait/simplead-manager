@@ -82,7 +82,7 @@ class ReportsOverview extends Component
             )
             ->paginate(20);
 
-        $sites = Site::orderBy('name')->get(['id', 'name']);
+        $sites = Site::get(['id', 'name']);
 
         return view('livewire.reports.reports-overview', [
             'reports' => $reports,

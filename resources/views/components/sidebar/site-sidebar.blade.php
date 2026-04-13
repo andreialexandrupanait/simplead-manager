@@ -151,13 +151,6 @@
             Cron Jobs
         </x-sidebar.sidebar-item>
 
-        <x-sidebar.sidebar-item
-            :href="route('sites.content-freshness', $site)"
-            icon="pencil"
-            :active="request()->routeIs('sites.content-freshness')"
-        >
-            Content Freshness
-        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Monitoring">

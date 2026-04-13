@@ -193,8 +193,13 @@ class AnalyzeSeoPages implements ShouldQueue
     private function checkIndexability($allPages): void
     {
         foreach ($allPages as $p) {
+            if ($p->status_code !== 200) {
+                continue;
+            }
             if ($p->in_sitemap && $p->is_indexable === false && $p->meta_robots) {
                 $this->addIssue(SeoIssueCategory::Indexability, SeoIssueSeverity::Critical, 'Noindex page in sitemap', 'Page is noindex but in sitemap.', $p->url, 'Remove noindex or remove from sitemap.');
+            } elseif (! $p->in_sitemap && $p->is_indexable === false && $p->meta_robots && str_contains(strtolower($p->meta_robots), 'noindex')) {
+                $this->addIssue(SeoIssueCategory::Indexability, SeoIssueSeverity::Medium, 'Page set to noindex', 'Page has meta robots noindex directive.', $p->url, 'Verify this page should be noindexed. If not, remove the noindex directive.');
             }
         }
     }

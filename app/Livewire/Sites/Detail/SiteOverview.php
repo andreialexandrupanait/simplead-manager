@@ -267,15 +267,6 @@ class SiteOverview extends Component
         return ['fatal' => $fatal, 'total' => $total];
     }
 
-    #[Computed]
-    public function contentFreshnessStatus(): array
-    {
-        $stale = \App\Models\SiteContent::where('site_id', $this->site->id)->published()->where('days_since_modified', '>', 180)->count();
-        $total = \App\Models\SiteContent::where('site_id', $this->site->id)->published()->count();
-
-        return ['stale' => $stale, 'total' => $total];
-    }
-
     public function runBackup(): void
     {
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();

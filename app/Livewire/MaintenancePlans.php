@@ -45,8 +45,7 @@ class MaintenancePlans extends Component
     public function sites()
     {
         $query = Site::query()
-            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
-            ->orderBy('name');
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
 
         if ($this->siteSearch) {
             $query->where(function ($q) {
@@ -63,7 +62,6 @@ class MaintenancePlans extends Component
     {
         return Site::query()
             ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
-            ->orderBy('name')
             ->get();
     }
 

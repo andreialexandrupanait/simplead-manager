@@ -34,7 +34,7 @@ class ReportTemplatesSettings extends Component
 
         $assignSites = [];
         if ($this->showAssignSitesModal) {
-            $query = Site::select('id', 'name', 'url', 'report_template_id')->orderBy('name');
+            $query = Site::select('id', 'name', 'url', 'report_template_id');
             if ($this->siteSearch !== '') {
                 $query->where(function ($q) {
                     $q->where('name', 'ilike', '%'.$this->siteSearch.'%')

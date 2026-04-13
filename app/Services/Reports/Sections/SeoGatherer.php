@@ -76,6 +76,61 @@ class SeoGatherer extends BaseReportSectionGatherer
             );
         }
 
+        // Pages with status 200 for stats
+        $okPages = $audit->pages()->where('status_code', 200);
+        $totalOkPages = $okPages->count();
+
+        // Broken links detail (top 10)
+        $brokenLinksDetail = $audit->links()->broken()->with('page')
+            ->limit(10)->get()
+            ->map(fn ($l) => [
+                'url' => $l->target_url,
+                'status' => $l->status_code,
+                'type' => $l->type,
+                'found_on' => $l->page?->url,
+            ])->toArray();
+
+        // Top pages by most problems
+        $topPages = $audit->pages()
+            ->where('status_code', 200)
+            ->orderByDesc('images_without_alt')
+            ->limit(10)
+            ->get(['url', 'title_length', 'word_count', 'images_without_alt', 'is_indexable', 'in_sitemap', 'ttfb_seconds'])
+            ->map(fn ($p) => [
+                'url' => $p->url,
+                'title_length' => $p->title_length,
+                'word_count' => $p->word_count,
+                'images_no_alt' => $p->images_without_alt,
+                'indexable' => $p->is_indexable,
+                'in_sitemap' => $p->in_sitemap,
+                'ttfb_ms' => $p->ttfb_seconds ? round($p->ttfb_seconds * 1000) : null,
+            ])->toArray();
+
+        // Structured data coverage
+        $pagesWithSchema = $totalOkPages > 0
+            ? $audit->pages()->where('status_code', 200)->whereNotNull('structured_data_types')->whereRaw("structured_data_types::text != '[]'")->count()
+            : 0;
+
+        // Image stats
+        $totalImages = (int) $audit->pages()->where('status_code', 200)->sum('image_count');
+        $totalMissingAlt = (int) $audit->pages()->where('status_code', 200)->sum('images_without_alt');
+
+        // Social meta (OG) coverage
+        $pagesWithOg = $totalOkPages > 0
+            ? $audit->pages()->where('status_code', 200)->whereNotNull('og_tags')->whereRaw("og_tags::text != 'null' AND og_tags::text != '{}'")->count()
+            : 0;
+
+        // Internal linking
+        $avgInternalLinks = $totalOkPages > 0 ? round((float) $audit->pages()->where('status_code', 200)->avg('internal_link_count'), 1) : 0;
+        $orphanCount = $audit->pages()->where('status_code', 200)->where('inbound_internal_links', 0)->where('depth', '>', 0)->count();
+        $deepPageCount = $audit->pages()->where('status_code', 200)->where('depth', '>', 3)->count();
+
+        // Robots.txt data
+        $robotsData = $audit->robots_txt_data ?? [];
+
+        // Sitemap data
+        $sitemapData = $audit->data['sitemap'] ?? [];
+
         return [
             'score' => $audit->score,
             'score_trend' => $scoreTrend,
@@ -101,9 +156,47 @@ class SeoGatherer extends BaseReportSectionGatherer
                 'valid' => $ssl['valid'] ?? null,
                 'expiry' => $ssl['expiry'] ?? null,
                 'days_left' => $ssl['days_until_expiry'] ?? null,
+                'issuer' => $ssl['issuer'] ?? null,
             ],
             'trend_chart' => $trendChart,
             'previous_score' => $previousAudit?->score,
+
+            // New data
+            'security_headers' => $audit->security_headers ?? [],
+            'sitemap' => [
+                'found' => $sitemapData['found'] ?? false,
+                'url' => $sitemapData['url'] ?? null,
+                'url_count' => $audit->sitemap_urls_count ?? $sitemapData['url_count'] ?? 0,
+            ],
+            'robots' => [
+                'exists' => $robotsData['exists'] ?? false,
+                'allows_crawling' => empty($robotsData['disallow_rules']) || ! in_array('/', $robotsData['disallow_rules'] ?? []),
+                'has_sitemap' => ! empty($robotsData['sitemap_urls'] ?? []),
+                'disallow_count' => count($robotsData['disallow_rules'] ?? []),
+            ],
+            'broken_links_detail' => $brokenLinksDetail,
+            'top_pages' => $topPages,
+            'structured_data' => [
+                'pages_with_schema' => $pagesWithSchema,
+                'total_pages' => $totalOkPages,
+                'coverage_pct' => $totalOkPages > 0 ? round(($pagesWithSchema / $totalOkPages) * 100) : 0,
+            ],
+            'internal_linking' => [
+                'avg_internal_links' => $avgInternalLinks,
+                'orphan_count' => $orphanCount,
+                'deep_page_count' => $deepPageCount,
+            ],
+            'images' => [
+                'total_images' => $totalImages,
+                'total_missing_alt' => $totalMissingAlt,
+                'missing_alt_pct' => $totalImages > 0 ? round(($totalMissingAlt / $totalImages) * 100) : 0,
+            ],
+            'social' => [
+                'pages_with_og' => $pagesWithOg,
+                'total_pages' => $totalOkPages,
+                'coverage_pct' => $totalOkPages > 0 ? round(($pagesWithOg / $totalOkPages) * 100) : 0,
+            ],
+            'seo_plugin' => $audit->seo_plugin,
         ];
     }
 }

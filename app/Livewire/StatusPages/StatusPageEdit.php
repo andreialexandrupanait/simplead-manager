@@ -105,7 +105,7 @@ class StatusPageEdit extends Component
     #[Computed]
     public function availableSites()
     {
-        return Site::orderBy('name')->get(['id', 'name', 'url']);
+        return Site::get(['id', 'name', 'url']);
     }
 
     #[Computed]

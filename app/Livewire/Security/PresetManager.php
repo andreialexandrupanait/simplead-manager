@@ -55,7 +55,7 @@ class PresetManager extends Component
     #[Computed]
     public function availableSites()
     {
-        return Site::orderBy('name')->get(['id', 'name', 'url']);
+        return Site::get(['id', 'name', 'url']);
     }
 
     public function editPreset(int $id): void

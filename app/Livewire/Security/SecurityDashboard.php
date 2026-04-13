@@ -18,9 +18,9 @@ class SecurityDashboard extends Component
 {
     use WithPagination, WithSorting;
 
-    protected string $defaultSortBy = 'security_hardening_score';
+    protected string $defaultSortBy = 'sort_order';
 
-    protected string $defaultSortDir = 'desc';
+    protected string $defaultSortDir = 'asc';
 
     public string $scoreFilter = '';
 
@@ -89,10 +89,10 @@ class SecurityDashboard extends Component
                     ->orderByDesc('applied_at')
                     ->limit(1),
             ])
-            ->orderBy(
-                in_array($this->sortBy, ['name', 'security_hardening_score']) ? $this->sortBy : 'security_hardening_score',
+            ->when($this->sortBy !== 'sort_order', fn ($q) => $q->reorder(
+                in_array($this->sortBy, ['name', 'security_hardening_score']) ? $this->sortBy : 'sort_order',
                 $this->sortDir
-            );
+            ));
 
         if ($this->search) {
             $query->where(function ($q) {

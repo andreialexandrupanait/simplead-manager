@@ -139,15 +139,6 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
-// Weekly content freshness sync across all sites
-Schedule::call(function () {
-    \App\Models\Site::where('is_connected', true)->each(function ($site) {
-        \App\Jobs\SyncContentFreshness::dispatch($site)->delay(now()->addSeconds(rand(0, 300)));
-    });
-})->weeklyOn(1, '04:00')
-    ->name('weekly-content-freshness-sync')
-    ->onOneServer();
-
 // Daily vulnerability check across all sites (Wordfence Intelligence API)
 Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->dailyAt('05:00')

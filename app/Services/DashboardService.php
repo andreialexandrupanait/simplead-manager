@@ -258,12 +258,11 @@ class DashboardService
         }
 
         match ($sort) {
-            'manual' => $query->orderBy('sort_order', 'asc'),
-            'name-asc' => $query->orderBy('name', 'asc'),
-            'name-desc' => $query->orderBy('name', 'desc'),
-            'health-asc' => $query->orderByRaw('COALESCE(health_score, 0) ASC'),
-            'health-desc' => $query->orderByRaw('COALESCE(health_score, 0) DESC'),
-            default => $query->orderBy('sort_order', 'asc'),
+            'name-asc' => $query->reorder('name', 'asc'),
+            'name-desc' => $query->reorder('name', 'desc'),
+            'health-asc' => $query->reorder()->orderByRaw('COALESCE(health_score, 0) ASC'),
+            'health-desc' => $query->reorder()->orderByRaw('COALESCE(health_score, 0) DESC'),
+            default => null,
         };
 
         return $query->paginate($perPage);

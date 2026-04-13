@@ -19,7 +19,7 @@ class SeoOverview extends Component
 {
     #[Url] public string $search = '';
     #[Url] public string $scoreFilter = '';
-    #[Url] public string $sort = 'score_asc';
+    #[Url] public string $sort = 'manual';
     #[Url] public string $activeTab = 'portfolio';
 
     #[Computed]
@@ -46,6 +46,10 @@ class SeoOverview extends Component
                     default => true,
                 };
             });
+        }
+
+        if ($this->sort === 'manual') {
+            return $sites->values();
         }
 
         return $sites->sortBy(fn ($s) => match ($this->sort) {

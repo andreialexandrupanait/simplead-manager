@@ -41,6 +41,36 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'update_meta'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/update-robots', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'update_robots'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/update-canonical', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'update_canonical'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/update-og', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'update_og'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/update-alt-text', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'update_alt_text'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/toggle-search-visibility', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'toggle_search_visibility'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
 
     /**
@@ -55,19 +85,7 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             return $this->error('missing_url', 'URL is required.', 400);
         }
 
-        // Find the post by URL
-        $post_id = url_to_postid($url);
-        if (!$post_id) {
-            // Try with trailing slash
-            $post_id = url_to_postid(trailingslashit($url));
-        }
-        if (!$post_id) {
-            // Try homepage
-            if (rtrim($url, '/') === rtrim(home_url(), '/')) {
-                $post_id = get_option('page_on_front');
-            }
-        }
-
+        $post_id = $this->find_post_by_url($url);
         if (!$post_id) {
             return $this->error('post_not_found', 'No post/page found for this URL.', 404);
         }
@@ -113,6 +131,255 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             'updated' => $updated,
             'permalink' => get_permalink($post_id),
         ]);
+    }
+
+    /**
+     * Update meta robots (index/noindex) for a specific page/post by URL.
+     */
+    public function update_robots(WP_REST_Request $request): WP_REST_Response {
+        $url    = esc_url_raw($request->get_param('url') ?? '');
+        $action = sanitize_text_field($request->get_param('action') ?? '');
+
+        if (empty($url)) {
+            return $this->error('missing_url', 'URL is required.', 400);
+        }
+        if (!in_array($action, ['index', 'noindex'], true)) {
+            return $this->error('invalid_action', 'Action must be "index" or "noindex".', 400);
+        }
+
+        $post_id = $this->find_post_by_url($url);
+        if (!$post_id) {
+            return $this->error('post_not_found', 'No post/page found for this URL.', 404);
+        }
+
+        $via = 'custom';
+
+        if (defined('WPSEO_VERSION')) {
+            // Yoast: 0 = default, 1 = noindex, 2 = index
+            update_post_meta($post_id, '_yoast_wpseo_meta-robots-noindex', $action === 'index' ? '2' : '1');
+            $via = 'yoast';
+        } elseif (defined('RANK_MATH_VERSION')) {
+            $robots = get_post_meta($post_id, 'rank_math_robots', true);
+            if (!is_array($robots)) {
+                $robots = [];
+            }
+            if ($action === 'noindex') {
+                if (!in_array('noindex', $robots, true)) {
+                    $robots[] = 'noindex';
+                }
+                $robots = array_values(array_diff($robots, ['index']));
+            } else {
+                $robots = array_values(array_diff($robots, ['noindex']));
+                if (!in_array('index', $robots, true)) {
+                    $robots[] = 'index';
+                }
+            }
+            update_post_meta($post_id, 'rank_math_robots', $robots);
+            $via = 'rankmath';
+        } elseif (class_exists('\AIOSEO\Plugin\AIOSEO')) {
+            update_post_meta($post_id, '_aioseo_noindex', $action === 'noindex' ? '1' : '0');
+            $via = 'aioseo';
+        } else {
+            update_post_meta($post_id, '_sam_meta_robots', $action === 'index' ? 'index,follow' : 'noindex,follow');
+        }
+
+        return $this->success([
+            'post_id'   => $post_id,
+            'action'    => $action,
+            'via'       => $via,
+            'permalink' => get_permalink($post_id),
+        ]);
+    }
+
+    /**
+     * Update canonical URL for a specific page/post by URL.
+     */
+    public function update_canonical(WP_REST_Request $request): WP_REST_Response {
+        $url           = esc_url_raw($request->get_param('url') ?? '');
+        $canonical_url = esc_url_raw($request->get_param('canonical_url') ?? '');
+
+        if (empty($url)) {
+            return $this->error('missing_url', 'URL is required.', 400);
+        }
+        if (empty($canonical_url)) {
+            return $this->error('missing_canonical', 'Canonical URL is required.', 400);
+        }
+
+        $post_id = $this->find_post_by_url($url);
+        if (!$post_id) {
+            return $this->error('post_not_found', 'No post/page found for this URL.', 404);
+        }
+
+        $via = 'custom';
+
+        if (defined('WPSEO_VERSION')) {
+            update_post_meta($post_id, '_yoast_wpseo_canonical', $canonical_url);
+            $via = 'yoast';
+        } elseif (defined('RANK_MATH_VERSION')) {
+            update_post_meta($post_id, 'rank_math_canonical_url', $canonical_url);
+            $via = 'rankmath';
+        } else {
+            update_post_meta($post_id, '_sam_canonical_url', $canonical_url);
+        }
+
+        return $this->success([
+            'post_id'       => $post_id,
+            'canonical_url' => $canonical_url,
+            'via'           => $via,
+            'permalink'     => get_permalink($post_id),
+        ]);
+    }
+
+    /**
+     * Update Open Graph tags for a specific page/post by URL.
+     */
+    public function update_og(WP_REST_Request $request): WP_REST_Response {
+        $url            = esc_url_raw($request->get_param('url') ?? '');
+        $og_title       = sanitize_text_field($request->get_param('og_title') ?? '');
+        $og_description = sanitize_text_field($request->get_param('og_description') ?? '');
+        $og_image       = esc_url_raw($request->get_param('og_image') ?? '');
+
+        if (empty($url)) {
+            return $this->error('missing_url', 'URL is required.', 400);
+        }
+        if (empty($og_title) && empty($og_description) && empty($og_image)) {
+            return $this->error('no_data', 'At least one OG field is required.', 400);
+        }
+
+        $post_id = $this->find_post_by_url($url);
+        if (!$post_id) {
+            return $this->error('post_not_found', 'No post/page found for this URL.', 404);
+        }
+
+        $updated = [];
+        $via = 'custom';
+
+        if (defined('WPSEO_VERSION')) {
+            $via = 'yoast';
+            if ($og_title) {
+                update_post_meta($post_id, '_yoast_wpseo_opengraph-title', $og_title);
+                $updated[] = 'og_title';
+            }
+            if ($og_description) {
+                update_post_meta($post_id, '_yoast_wpseo_opengraph-description', $og_description);
+                $updated[] = 'og_description';
+            }
+            if ($og_image) {
+                update_post_meta($post_id, '_yoast_wpseo_opengraph-image', $og_image);
+                $updated[] = 'og_image';
+            }
+        } elseif (defined('RANK_MATH_VERSION')) {
+            $via = 'rankmath';
+            if ($og_title) {
+                update_post_meta($post_id, 'rank_math_facebook_title', $og_title);
+                $updated[] = 'og_title';
+            }
+            if ($og_description) {
+                update_post_meta($post_id, 'rank_math_facebook_description', $og_description);
+                $updated[] = 'og_description';
+            }
+            if ($og_image) {
+                update_post_meta($post_id, 'rank_math_facebook_image', $og_image);
+                $updated[] = 'og_image';
+            }
+        } else {
+            if ($og_title) {
+                update_post_meta($post_id, '_sam_og_title', $og_title);
+                $updated[] = 'og_title';
+            }
+            if ($og_description) {
+                update_post_meta($post_id, '_sam_og_description', $og_description);
+                $updated[] = 'og_description';
+            }
+            if ($og_image) {
+                update_post_meta($post_id, '_sam_og_image', $og_image);
+                $updated[] = 'og_image';
+            }
+        }
+
+        return $this->success([
+            'post_id'       => $post_id,
+            'updated'       => $updated,
+            'via'           => $via,
+            'permalink'     => get_permalink($post_id),
+        ]);
+    }
+
+    /**
+     * Update alt text for an image attachment by its URL.
+     */
+    public function update_alt_text(WP_REST_Request $request): WP_REST_Response {
+        $image_url = esc_url_raw($request->get_param('image_url') ?? '');
+        $alt_text  = sanitize_text_field($request->get_param('alt_text') ?? '');
+
+        if (empty($image_url)) {
+            return $this->error('missing_url', 'Image URL is required.', 400);
+        }
+        if (empty($alt_text)) {
+            return $this->error('missing_alt', 'Alt text is required.', 400);
+        }
+
+        $attachment_id = attachment_url_to_postid($image_url);
+
+        if (!$attachment_id) {
+            // Try matching by filename in guid
+            global $wpdb;
+            $filename = basename(wp_parse_url($image_url, PHP_URL_PATH));
+            if ($filename) {
+                $attachment_id = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND guid LIKE %s LIMIT 1",
+                    '%' . $wpdb->esc_like($filename)
+                ));
+            }
+        }
+
+        if (!$attachment_id) {
+            return $this->error('attachment_not_found', 'No attachment found for this image URL.', 404);
+        }
+
+        update_post_meta($attachment_id, '_wp_attachment_image_alt', $alt_text);
+
+        return $this->success([
+            'attachment_id' => $attachment_id,
+            'alt_text'      => $alt_text,
+            'image_url'     => wp_get_attachment_url($attachment_id),
+        ]);
+    }
+
+    /**
+     * Toggle WordPress "Discourage search engines" setting.
+     */
+    public function toggle_search_visibility(WP_REST_Request $request): WP_REST_Response {
+        $visible = $request->get_param('visible');
+
+        if ($visible === null) {
+            return $this->error('missing_param', 'The "visible" parameter is required.', 400);
+        }
+
+        $value = filter_var($visible, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+        update_option('blog_public', $value);
+
+        return $this->success([
+            'blog_public' => get_option('blog_public'),
+            'visible'     => get_option('blog_public') === '1',
+        ]);
+    }
+
+    /**
+     * Find a post/page by URL with multiple fallback strategies.
+     */
+    private function find_post_by_url(string $url): int {
+        $post_id = url_to_postid($url);
+        if (!$post_id) {
+            $post_id = url_to_postid(trailingslashit($url));
+        }
+        if (!$post_id) {
+            if (rtrim($url, '/') === rtrim(home_url(), '/')) {
+                $post_id = (int) get_option('page_on_front');
+            }
+        }
+
+        return $post_id;
     }
 
     public function analyze(WP_REST_Request $request): WP_REST_Response {

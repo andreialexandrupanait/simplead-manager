@@ -31,7 +31,7 @@ class WordPressSettings extends Component
     #[Computed]
     public function connectedSites()
     {
-        $query = Site::connected()->orderBy('name');
+        $query = Site::connected();
 
         if ($this->pushSiteSearch) {
             $query->where(function ($q) {

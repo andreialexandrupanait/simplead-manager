@@ -11,6 +11,7 @@ use App\Models\Traits\HasSiteRelationships;
 use App\Models\Traits\HasSiteScopes;
 use App\Services\DashboardService;
 use App\Services\ModuleConfigService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -182,6 +183,8 @@ class Site extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope('ordered', fn (Builder $query) => $query->orderBy('sort_order'));
+
         static::creating(function (Site $site) {
             if (! $site->sort_order) {
                 $site->sort_order = (static::max('sort_order') ?? 0) + 1;

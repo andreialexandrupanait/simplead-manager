@@ -971,7 +971,7 @@
                             @php $sc = $seo['score']; $scc = $sc >= 80 ? 'text-green-600' : ($sc >= 50 ? 'text-yellow-600' : 'text-red-600'); @endphp
                             <span class="text-3xl font-bold {{ $scc }}">{{ $sc }}</span>
                             <span class="text-sm text-gray-400">/100</span>
-                            <p class="text-xs text-gray-500 mt-1">{{ $seo['pages_crawled'] }} pages &middot; {{ $seo['scanned_at'] }}</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ $seo['pages_crawled'] }} pages &middot; {{ $seo['scanned_at'] }}@if($seo['seo_plugin'] ?? null) &middot; {{ $seo['seo_plugin'] }}@endif</p>
                         </div>
                         <div class="flex-1 space-y-2">
                             @foreach(['technical' => 'Technical', 'on_page' => 'On-Page', 'performance' => 'Performance', 'other' => 'Other'] as $ck => $cl)
@@ -984,14 +984,23 @@
                             @endforeach
                         </div>
                     </div>
+
+                    {{-- Issue badges --}}
+                    @if($sOpts['seo']['show_issues'] ?? true)
                     <div class="flex flex-wrap gap-2 mb-3">
                         @foreach(['critical', 'high', 'medium', 'low', 'info'] as $sv)
                             @if(($seo['issues'][$sv] ?? 0) > 0)
                                 <x-ui.badge :variant="$sevColors[$sv]">{{ $seo['issues'][$sv] }} {{ ucfirst($sv) }}</x-ui.badge>
                             @endif
                         @endforeach
+                        @if($seo['broken_links'] > 0)
+                            <x-ui.badge variant="red">{{ $seo['broken_links'] }} Broken Links</x-ui.badge>
+                        @endif
                     </div>
-                    @if(!empty($seo['top_issues']))
+                    @endif
+
+                    {{-- Top issues --}}
+                    @if(($sOpts['seo']['show_recommendations'] ?? true) && !empty($seo['top_issues']))
                         <div class="space-y-2 mt-3">
                             @foreach($seo['top_issues'] as $ti)
                                 <div class="flex items-start gap-2 text-sm">
@@ -1000,6 +1009,104 @@
                                 </div>
                             @endforeach
                         </div>
+                    @endif
+
+                    {{-- Additional SEO data sections --}}
+                    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {{-- SSL --}}
+                        @if(($sOpts['seo']['show_ssl_status'] ?? true) && ($seo['ssl']['valid'] ?? null) !== null)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">SSL Certificate</p>
+                            <p class="text-sm font-medium {{ $seo['ssl']['valid'] ? 'text-green-600' : 'text-red-600' }}">{{ $seo['ssl']['valid'] ? 'Valid' : 'Expired' }}</p>
+                            @if($seo['ssl']['days_left'] ?? null)<p class="text-xs text-gray-400">{{ $seo['ssl']['days_left'] }} days remaining</p>@endif
+                        </div>
+                        @endif
+
+                        {{-- Security Headers --}}
+                        @if(($sOpts['seo']['show_security_headers'] ?? true) && !empty($seo['security_headers']))
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Security Headers</p>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                @foreach(['hsts' => 'HSTS', 'x_frame_options' => 'X-Frame', 'x_content_type_options' => 'X-CT', 'csp' => 'CSP'] as $hk => $hl)
+                                    <span class="{{ !empty($seo['security_headers'][$hk]) ? 'text-green-600' : 'text-red-500' }}">{{ $hl }} {{ !empty($seo['security_headers'][$hk]) ? '&#10003;' : '&#10007;' }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Sitemap --}}
+                        @if($sOpts['seo']['show_sitemap'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Sitemap</p>
+                            <p class="text-sm font-medium {{ ($seo['sitemap']['found'] ?? false) ? 'text-green-600' : 'text-red-600' }}">{{ ($seo['sitemap']['found'] ?? false) ? 'Found' : 'Not Found' }}</p>
+                            @if($seo['sitemap']['found'] ?? false)<p class="text-xs text-gray-400">{{ $seo['sitemap']['url_count'] ?? 0 }} URLs</p>@endif
+                        </div>
+                        @endif
+
+                        {{-- Robots --}}
+                        @if($sOpts['seo']['show_robots'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Robots.txt</p>
+                            <p class="text-sm font-medium {{ ($seo['robots']['exists'] ?? false) ? 'text-green-600' : 'text-red-600' }}">{{ ($seo['robots']['exists'] ?? false) ? 'Found' : 'Missing' }}</p>
+                            @if($seo['robots']['exists'] ?? false)<p class="text-xs text-gray-400">{{ ($seo['robots']['allows_crawling'] ?? true) ? 'Allows crawling' : 'Blocks crawling' }}</p>@endif
+                        </div>
+                        @endif
+
+                        {{-- Structured Data --}}
+                        @if($sOpts['seo']['show_structured_data'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Structured Data</p>
+                            @php $sdPct = $seo['structured_data']['coverage_pct'] ?? 0; @endphp
+                            <p class="text-sm font-medium {{ $sdPct >= 50 ? 'text-green-600' : ($sdPct >= 20 ? 'text-yellow-600' : 'text-red-600') }}">{{ $sdPct }}% coverage</p>
+                            <p class="text-xs text-gray-400">{{ $seo['structured_data']['pages_with_schema'] ?? 0 }}/{{ $seo['structured_data']['total_pages'] ?? 0 }} pages</p>
+                        </div>
+                        @endif
+
+                        {{-- Internal Linking --}}
+                        @if($sOpts['seo']['show_internal_linking'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Internal Linking</p>
+                            <p class="text-sm text-gray-700">{{ $seo['internal_linking']['avg_internal_links'] ?? 0 }} avg links/page</p>
+                            <p class="text-xs text-gray-400">{{ $seo['internal_linking']['orphan_count'] ?? 0 }} orphan, {{ $seo['internal_linking']['deep_page_count'] ?? 0 }} deep</p>
+                        </div>
+                        @endif
+
+                        {{-- Images --}}
+                        @if($sOpts['seo']['show_images'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Images</p>
+                            @php $imgPct = $seo['images']['missing_alt_pct'] ?? 0; @endphp
+                            <p class="text-sm font-medium {{ $imgPct <= 10 ? 'text-green-600' : ($imgPct <= 30 ? 'text-yellow-600' : 'text-red-600') }}">{{ $seo['images']['total_missing_alt'] ?? 0 }} missing alt</p>
+                            <p class="text-xs text-gray-400">{{ $seo['images']['total_images'] ?? 0 }} total ({{ $imgPct }}% missing)</p>
+                        </div>
+                        @endif
+
+                        {{-- Social Meta --}}
+                        @if($sOpts['seo']['show_social'] ?? true)
+                        <div class="rounded-lg bg-gray-50 p-3">
+                            <p class="text-xs font-medium text-gray-500 mb-1">Social Meta (OG)</p>
+                            @php $ogPct = $seo['social']['coverage_pct'] ?? 0; @endphp
+                            <p class="text-sm font-medium {{ $ogPct >= 80 ? 'text-green-600' : ($ogPct >= 40 ? 'text-yellow-600' : 'text-red-600') }}">{{ $ogPct }}% coverage</p>
+                            <p class="text-xs text-gray-400">{{ $seo['social']['pages_with_og'] ?? 0 }}/{{ $seo['social']['total_pages'] ?? 0 }} pages</p>
+                        </div>
+                        @endif
+                    </div>
+
+                    {{-- Broken Links Detail --}}
+                    @if(($sOpts['seo']['show_broken_links'] ?? true) && !empty($seo['broken_links_detail']))
+                    <div class="mt-4">
+                        <p class="text-xs font-medium text-gray-500 mb-2">Broken Links (top 10)</p>
+                        <div class="space-y-1">
+                            @foreach(array_slice($seo['broken_links_detail'], 0, 10) as $bl)
+                                <div class="flex items-center gap-2 text-xs">
+                                    <x-ui.badge variant="red">{{ $bl['status'] ?? '—' }}</x-ui.badge>
+                                    <span class="truncate text-red-600">{{ Str::limit($bl['url'], 50) }}</span>
+                                    <span class="text-gray-300">on</span>
+                                    <span class="truncate text-gray-400">{{ Str::limit(parse_url($bl['found_on'] ?? '', PHP_URL_PATH) ?: '/', 25) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                     @endif
                 </section>
                 @endif

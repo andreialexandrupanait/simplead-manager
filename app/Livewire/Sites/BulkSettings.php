@@ -44,8 +44,7 @@ class BulkSettings extends Component
     public function sites()
     {
         $query = Site::query()
-            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
-            ->orderBy('name');
+            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -74,7 +73,6 @@ class BulkSettings extends Component
     {
         return Site::query()
             ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
-            ->orderBy('name')
             ->get();
     }
 

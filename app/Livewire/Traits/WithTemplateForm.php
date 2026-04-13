@@ -119,6 +119,16 @@ trait WithTemplateForm
                 'show_issues' => 'Issue Summary',
                 'show_recommendations' => 'Priority Recommendations',
                 'show_score_trend' => 'Score Trend Chart',
+                'show_ssl_status' => 'SSL Certificate',
+                'show_security_headers' => 'Security Headers',
+                'show_broken_links' => 'Broken Links',
+                'show_sitemap' => 'Sitemap Analysis',
+                'show_robots' => 'Robots.txt Analysis',
+                'show_top_pages' => 'Top Pages Overview',
+                'show_structured_data' => 'Structured Data',
+                'show_internal_linking' => 'Internal Linking',
+                'show_images' => 'Image Optimization',
+                'show_social' => 'Social Meta Coverage',
             ],
         ];
     }

@@ -36,7 +36,6 @@ class SitesList extends Component
             })
             ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection')
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
-            ->latest()
             ->paginate(16);
 
         return view('livewire.sites.sites-list', compact('sites'))

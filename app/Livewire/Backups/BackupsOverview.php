@@ -20,9 +20,9 @@ class BackupsOverview extends Component
 {
     use WithSorting, WithTableFilters;
 
-    protected string $defaultSortBy = 'created_at';
+    protected string $defaultSortBy = 'site';
 
-    protected string $defaultSortDir = 'desc';
+    protected string $defaultSortDir = 'asc';
 
     #[Computed]
     public function stats(): array
@@ -160,7 +160,11 @@ class BackupsOverview extends Component
             })
             ->join('sites', 'backups.site_id', '=', 'sites.id')
             ->orderBy(
-                in_array($this->sortBy, ['created_at', 'type', 'file_size', 'status']) ? "backups.{$this->sortBy}" : 'backups.created_at',
+                match (true) {
+                    $this->sortBy === 'site' => 'sites.sort_order',
+                    in_array($this->sortBy, ['created_at', 'type', 'file_size', 'status']) => "backups.{$this->sortBy}",
+                    default => 'sites.sort_order',
+                },
                 $this->sortDir
             )
             ->select('backups.*')

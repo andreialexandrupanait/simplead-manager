@@ -129,6 +129,64 @@ class SiteSeoAudit extends Component
     #[Computed] public function severityOptions(): array { return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases()); }
     #[Computed] public function categoryOptions(): array { return array_map(fn ($c) => ['value' => $c->value, 'label' => $c->label()], SeoIssueCategory::cases()); }
 
+    #[Computed]
+    public function infrastructureData(): array
+    {
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return [];
+        }
+
+        return [
+            'sitemap' => $audit->data['sitemap'] ?? null,
+            'sitemap_urls_count' => $audit->sitemap_urls_count,
+            'robots' => $audit->robots_txt_data,
+            'security_headers' => $audit->security_headers,
+            'ssl' => $audit->ssl_info,
+            'seo_plugin' => $audit->seo_plugin,
+            'seo_plugin_version' => $audit->seo_plugin_version,
+            'redirect' => $audit->redirect_info ?? $audit->data['redirects'] ?? null,
+            'search_visibility' => $audit->data['search_visibility'] ?? null,
+        ];
+    }
+
+    #[Computed]
+    public function internalLinkingStats(): array
+    {
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return [];
+        }
+
+        $pages = $audit->pages()->where('status_code', 200);
+        $total = $pages->count();
+
+        return [
+            'avg_internal_links' => $total > 0 ? round((float) $pages->avg('internal_link_count'), 1) : 0,
+            'orphan_count' => $pages->clone()->where('inbound_internal_links', 0)->where('depth', '>', 0)->count(),
+            'deep_pages_count' => $pages->clone()->where('depth', '>', 3)->count(),
+            'total_pages' => $total,
+        ];
+    }
+
+    #[Computed]
+    public function fixableIssueTitles(): array
+    {
+        return [
+            'Missing title tag' => 'meta',
+            'Title too short' => 'meta',
+            'Title too long' => 'meta',
+            'Missing meta description' => 'meta',
+            'Meta description too short' => 'meta',
+            'Meta description too long' => 'meta',
+            'Page set to noindex' => 'robots',
+            'Noindex page in sitemap' => 'robots',
+            'Canonical mismatch' => 'canonical',
+            'Missing canonical' => 'canonical',
+            'Missing Open Graph tags' => 'og',
+        ];
+    }
+
     public function runAudit(): void
     {
         if (!RateLimiter::attempt('seo-audit-'.$this->site->id, 1, fn() => true, 60)) { $this->dispatch('notify', type: 'warning', message: 'Please wait.'); return; }
@@ -173,6 +231,17 @@ class SiteSeoAudit extends Component
     public string $fixTitle = '';
     public string $fixDescription = '';
 
+    public string $fixRobotsUrl = '';
+    public string $fixRobotsAction = 'index';
+
+    public string $fixCanonicalUrl = '';
+    public string $fixCanonicalTarget = '';
+
+    public string $fixOgUrl = '';
+    public string $fixOgTitle = '';
+    public string $fixOgDescription = '';
+    public string $fixOgImage = '';
+
     public function openFixModal(string $url): void
     {
         $this->fixUrl = $url;
@@ -200,8 +269,147 @@ class SiteSeoAudit extends Component
                 ]);
 
             if ($response->successful()) {
+                \App\Services\ActivityLogger::log('seo_fix', 'info', 'Meta fix applied', $this->fixUrl, $this->site, ['fix_type' => 'meta', 'url' => $this->fixUrl, 'title' => $this->fixTitle]);
                 $this->dispatch('close-modal-seo-fix');
                 $this->dispatch('notify', type: 'success', message: 'Meta updated on '.$this->site->name);
+            } else {
+                $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Connection failed: '.$e->getMessage());
+        }
+    }
+
+    public function openRobotsFix(string $url): void
+    {
+        $this->fixRobotsUrl = $url;
+        $page = $this->latestCompletedAudit?->pages()->where('url', $url)->first();
+        $this->fixRobotsAction = ($page?->is_indexable === false) ? 'index' : 'noindex';
+        $this->dispatch('open-modal-seo-fix-robots');
+    }
+
+    public function pushRobotsFix(): void
+    {
+        if (! $this->site->is_connected || $this->site->is_prospect) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-robots', [
+                    'url' => $this->fixRobotsUrl,
+                    'action' => $this->fixRobotsAction,
+                ]);
+
+            if ($response->successful()) {
+                \App\Services\ActivityLogger::log('seo_fix', 'info', 'Indexing fix: '.$this->fixRobotsAction, $this->fixRobotsUrl, $this->site, ['fix_type' => 'robots', 'action' => $this->fixRobotsAction, 'url' => $this->fixRobotsUrl]);
+                $this->dispatch('close-modal-seo-fix-robots');
+                $this->dispatch('notify', type: 'success', message: 'Indexing updated on '.$this->site->name);
+            } else {
+                $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Connection failed: '.$e->getMessage());
+        }
+    }
+
+    public function openCanonicalFix(string $url): void
+    {
+        $this->fixCanonicalUrl = $url;
+        $this->fixCanonicalTarget = $url;
+        $this->dispatch('open-modal-seo-fix-canonical');
+    }
+
+    public function pushCanonicalFix(): void
+    {
+        if (! $this->site->is_connected || $this->site->is_prospect) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-canonical', [
+                    'url' => $this->fixCanonicalUrl,
+                    'canonical_url' => $this->fixCanonicalTarget,
+                ]);
+
+            if ($response->successful()) {
+                \App\Services\ActivityLogger::log('seo_fix', 'info', 'Canonical fix applied', $this->fixCanonicalUrl, $this->site, ['fix_type' => 'canonical', 'url' => $this->fixCanonicalUrl, 'canonical' => $this->fixCanonicalTarget]);
+                $this->dispatch('close-modal-seo-fix-canonical');
+                $this->dispatch('notify', type: 'success', message: 'Canonical updated on '.$this->site->name);
+            } else {
+                $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Connection failed: '.$e->getMessage());
+        }
+    }
+
+    public function openOgFix(string $url): void
+    {
+        $this->fixOgUrl = $url;
+        $page = $this->latestCompletedAudit?->pages()->where('url', $url)->first();
+        $ogTags = $page?->og_tags ?? [];
+        $this->fixOgTitle = $ogTags['og:title'] ?? $page?->title ?? '';
+        $this->fixOgDescription = $ogTags['og:description'] ?? $page?->meta_description ?? '';
+        $this->fixOgImage = $ogTags['og:image'] ?? '';
+        $this->dispatch('open-modal-seo-fix-og');
+    }
+
+    public function pushOgFix(): void
+    {
+        if (! $this->site->is_connected || $this->site->is_prospect) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-og', [
+                    'url' => $this->fixOgUrl,
+                    'og_title' => $this->fixOgTitle,
+                    'og_description' => $this->fixOgDescription,
+                    'og_image' => $this->fixOgImage,
+                ]);
+
+            if ($response->successful()) {
+                \App\Services\ActivityLogger::log('seo_fix', 'info', 'Open Graph fix applied', $this->fixOgUrl, $this->site, ['fix_type' => 'og', 'url' => $this->fixOgUrl]);
+                $this->dispatch('close-modal-seo-fix-og');
+                $this->dispatch('notify', type: 'success', message: 'OG tags updated on '.$this->site->name);
+            } else {
+                $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Connection failed: '.$e->getMessage());
+        }
+    }
+
+    public function toggleSearchVisibility(): void
+    {
+        if (! $this->site->is_connected || $this->site->is_prospect) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/toggle-search-visibility', [
+                    'visible' => true,
+                ]);
+
+            if ($response->successful()) {
+                \App\Services\ActivityLogger::log('seo_fix', 'info', 'Search visibility enabled', null, $this->site, ['fix_type' => 'search_visibility']);
+                $this->dispatch('notify', type: 'success', message: 'Search visibility enabled on '.$this->site->name);
             } else {
                 $this->dispatch('notify', type: 'error', message: 'Failed: '.($response->json('message') ?? 'Unknown error'));
             }

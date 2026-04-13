@@ -84,26 +84,42 @@
         </div>
 
         {{-- Tabs --}}
-        <div class="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
-            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','history'=>'History'] as $tab=>$label)
-                <button wire:click="$set('activeTab','{{ $tab }}')" class="rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $activeTab===$tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">{{ $label }}</button>
+        <div class="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-gray-100 p-1">
+            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','infrastructure'=>'Infrastructure','history'=>'History'] as $tab=>$label)
+                <button wire:click="$set('activeTab','{{ $tab }}')" class="whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $activeTab===$tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">{{ $label }}</button>
             @endforeach
         </div>
 
         {{-- ISSUES TAB --}}
         @if($activeTab==='issues')
             <div class="space-y-3">
-                <div class="flex gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <select wire:model.live="severityFilter" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="">All Severities</option>@foreach($this->severityOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach</select>
                     <select wire:model.live="categoryFilter" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="">All Categories</option>@foreach($this->categoryOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach</select>
+                    @php
+                        $totalIssueGroups = $this->groupedIssues->count();
+                        $fixableMap = $this->fixableIssueTitles;
+                        $fixableCount = $this->groupedIssues->filter(fn($g) => isset($fixableMap[$g->title]))->count();
+                        $fixablePct = $totalIssueGroups > 0 ? round(($fixableCount / $totalIssueGroups) * 100) : 0;
+                    @endphp
+                    @if($site->is_connected && !($site->is_prospect ?? false) && $fixableCount > 0)
+                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <svg class="h-3.5 w-3.5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span class="font-medium text-accent-600">{{ $fixablePct }}%</span> auto-fixable ({{ $fixableCount }}/{{ $totalIssueGroups }})
+                        </span>
+                    @endif
                 </div>
                 @forelse($this->groupedIssues as $group)
+                    @php $fixType = $fixableMap[$group->title] ?? null; $canFix = $site->is_connected && !($site->is_prospect ?? false) && $fixType !== null; @endphp
                     <x-ui.card x-data="{ showUrls: false }">
                         <div class="flex items-start gap-3">
                             <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full {{ ['critical'=>'bg-red-500','high'=>'bg-orange-500','medium'=>'bg-yellow-500','low'=>'bg-blue-500','info'=>'bg-gray-400'][$group->severity->value] ?? 'bg-gray-400' }}"></span>
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h4 class="text-sm font-medium text-gray-900">{{ $group->title }}</h4>
+                                    @if($canFix)
+                                        <svg class="h-3.5 w-3.5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Auto-fixable"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    @endif
                                     <x-ui.badge variant="gray">{{ $group->category->label() }}</x-ui.badge>
                                     @if($group->affected_count > 1)
                                         <x-ui.badge variant="blue">{{ $group->affected_count }} pages</x-ui.badge>
@@ -118,13 +134,20 @@
                                             <svg class="h-3 w-3 transition-transform" :class="showUrls && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             <span x-text="showUrls ? 'Hide URLs' : 'Show {{ $group->urls->count() }} affected URL{{ $group->urls->count() > 1 ? 's' : '' }}'"></span>
                                         </button>
-                                        @php $isFixable = $site->is_connected && !($site->is_prospect ?? false) && in_array($group->title, ['Missing title tag', 'Title too short', 'Title too long', 'Missing meta description', 'Meta description too short', 'Meta description too long']); @endphp
                                         <div x-show="showUrls" x-collapse class="mt-2 space-y-1 border-l-2 border-gray-100 pl-3">
                                             @foreach($group->urls->take(20) as $url)
                                                 <div class="flex items-center gap-2">
                                                     <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600 flex-1">{{ Str::limit($url, 70) }}</a>
-                                                    @if($isFixable)
-                                                        <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                    @if($canFix)
+                                                        @if($fixType === 'meta')
+                                                            <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                        @elseif($fixType === 'robots')
+                                                            <button wire:click="openRobotsFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                        @elseif($fixType === 'canonical')
+                                                            <button wire:click="openCanonicalFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                        @elseif($fixType === 'og')
+                                                            <button wire:click="openOgFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
+                                                        @endif
                                                     @endif
                                                 </div>
                                             @endforeach
@@ -179,6 +202,8 @@
                     <x-ui.th class="hidden lg:table-cell">External Links</x-ui.th>
                     <x-ui.th class="hidden lg:table-cell">TTFB</x-ui.th>
                     <x-ui.th>Indexable</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">Sitemap</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">Blocked</x-ui.th>
                 </x-slot:head>
             @forelse($this->pages as $p)
                 <tbody x-data="{ expanded: false }">
@@ -195,9 +220,11 @@
                         @else — @endif
                     </x-ui.td>
                     <x-ui.td><x-ui.badge :variant="$p->is_indexable?'green':'red'">{{ $p->is_indexable?'Yes':'No' }}</x-ui.badge></x-ui.td>
+                    <x-ui.td class="hidden lg:table-cell"><x-ui.badge :variant="$p->in_sitemap ? 'green' : 'gray'">{{ $p->in_sitemap ? 'Yes' : 'No' }}</x-ui.badge></x-ui.td>
+                    <x-ui.td class="hidden lg:table-cell">@if($p->blocked_by_robots)<x-ui.badge variant="red">Blocked</x-ui.badge>@else<span class="text-gray-400">—</span>@endif</x-ui.td>
                 </tr>
                 <tr x-show="expanded" x-collapse>
-                    <td colspan="8" class="bg-gray-50 px-6 py-3">
+                    <td colspan="10" class="bg-gray-50 px-6 py-3">
                         <div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-3">
                             <div><span class="font-medium text-gray-500">Title:</span> <span class="text-gray-700">{{ $p->title ?? '—' }}</span></div>
                             <div><span class="font-medium text-gray-500">Meta Description:</span> <span class="text-gray-700">{{ Str::limit($p->meta_description ?? '—', 100) }}</span></div>
@@ -207,7 +234,7 @@
                             <div><span class="font-medium text-gray-500">Page Size:</span> <span class="text-gray-700">{{ $p->page_size_bytes ? round($p->page_size_bytes / 1024, 1) . ' KB' : '—' }}</span></div>
                             <div><span class="font-medium text-gray-500">Depth:</span> <span class="text-gray-700">{{ $p->depth ?? '—' }}</span></div>
                             <div><span class="font-medium text-gray-500">Structured Data:</span> <span class="text-gray-700">{{ !empty($p->structured_data_types) ? implode(', ', $p->structured_data_types) : 'None' }}</span></div>
-                            <div><span class="font-medium text-gray-500">In Sitemap:</span> <x-ui.badge :variant="$p->in_sitemap ? 'green' : 'gray'">{{ $p->in_sitemap ? 'Yes' : 'No' }}</x-ui.badge></div>
+                            <div><span class="font-medium text-gray-500">Meta Robots:</span> <span class="text-gray-700">{{ $p->meta_robots ?? 'None' }}</span></div>
                             @if(!empty($p->og_tags))
                                 <div class="sm:col-span-2"><span class="font-medium text-gray-500">OG Tags:</span> <span class="text-gray-700">{{ collect($p->og_tags)->keys()->map(fn($k) => str_replace('og:', '', $k))->implode(', ') }}</span></div>
                             @endif
@@ -215,7 +242,7 @@
                     </td>
                 </tr>
                 </tbody>
-            @empty<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No pages.</td></tr>@endforelse</x-ui.table>
+            @empty<tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">No pages.</td></tr>@endforelse</x-ui.table>
             @if($this->pages instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->pages->hasPages())<div class="mt-4">{{ $this->pages->links() }}</div>@endif
         @endif
 
@@ -231,6 +258,165 @@
                 </tr>
             @empty<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No broken links found.</td></tr>@endforelse</x-ui.table>
             @if($this->brokenLinks instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->brokenLinks->hasPages())<div class="mt-4">{{ $this->brokenLinks->links() }}</div>@endif
+        @endif
+
+        {{-- INFRASTRUCTURE TAB --}}
+        @if($activeTab==='infrastructure')
+            @php $infra = $this->infrastructureData; $linkStats = $this->internalLinkingStats; @endphp
+            @if(!empty($infra))
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {{-- Sitemap --}}
+                <x-ui.card>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-medium text-gray-900">Sitemap</h3>
+                        @if($infra['sitemap'] && ($infra['sitemap']['found'] ?? false))
+                            <x-ui.badge variant="green">Found</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="red">Not Found</x-ui.badge>
+                        @endif
+                    </div>
+                    @if($infra['sitemap'] && ($infra['sitemap']['found'] ?? false))
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">URL</span><a href="{{ $infra['sitemap']['url'] ?? '' }}" target="_blank" class="text-accent-600 hover:underline truncate ml-4">{{ Str::limit($infra['sitemap']['url'] ?? '—', 40) }}</a></div>
+                            <div class="flex justify-between"><span class="text-gray-500">URLs in Sitemap</span><span class="font-medium">{{ $infra['sitemap_urls_count'] ?? $infra['sitemap']['url_count'] ?? '—' }}</span></div>
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-400">No XML sitemap was found. Consider adding one to help search engines discover your pages.</p>
+                    @endif
+                </x-ui.card>
+
+                {{-- Robots.txt --}}
+                <x-ui.card>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-medium text-gray-900">Robots.txt</h3>
+                        @if($infra['robots'] && ($infra['robots']['exists'] ?? false))
+                            <x-ui.badge variant="green">Found</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="red">Missing</x-ui.badge>
+                        @endif
+                    </div>
+                    @if($infra['robots'] && ($infra['robots']['exists'] ?? false))
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">Allows Crawling</span>
+                                @php $blocked = !empty($infra['robots']['disallow_rules']) && in_array('/', $infra['robots']['disallow_rules']); @endphp
+                                <x-ui.badge :variant="$blocked ? 'red' : 'green'">{{ $blocked ? 'Blocked' : 'Yes' }}</x-ui.badge>
+                            </div>
+                            <div class="flex justify-between"><span class="text-gray-500">Sitemap Directive</span><x-ui.badge :variant="!empty($infra['robots']['sitemap_urls']) ? 'green' : 'yellow'">{{ !empty($infra['robots']['sitemap_urls']) ? 'Yes' : 'Missing' }}</x-ui.badge></div>
+                            @if(!empty($infra['robots']['disallow_rules']))
+                                <div><span class="text-gray-500">Disallow Rules ({{ count($infra['robots']['disallow_rules']) }})</span>
+                                    <div class="mt-1 rounded bg-gray-50 p-2 text-xs font-mono text-gray-600 max-h-24 overflow-y-auto">
+                                        @foreach(array_slice($infra['robots']['disallow_rules'], 0, 10) as $rule)
+                                            <div>Disallow: {{ $rule }}</div>
+                                        @endforeach
+                                        @if(count($infra['robots']['disallow_rules']) > 10)
+                                            <div class="text-gray-400">... and {{ count($infra['robots']['disallow_rules']) - 10 }} more</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-400">No robots.txt file found. Consider adding one to control search engine crawling.</p>
+                    @endif
+                </x-ui.card>
+
+                {{-- Security Headers --}}
+                <x-ui.card>
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">Security Headers</h3>
+                    @php $headers = $infra['security_headers'] ?? []; @endphp
+                    <div class="space-y-2">
+                        @foreach(['hsts' => 'HSTS (Strict-Transport-Security)', 'x_frame_options' => 'X-Frame-Options', 'x_content_type_options' => 'X-Content-Type-Options', 'csp' => 'Content-Security-Policy'] as $key => $label)
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">{{ $label }}</span>
+                                @if(!empty($headers[$key]))
+                                    <span class="text-green-600 font-medium">&#10003;</span>
+                                @else
+                                    <span class="text-red-500 font-medium">&#10007;</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+
+                {{-- SSL Certificate --}}
+                <x-ui.card>
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">SSL Certificate</h3>
+                    @php $ssl = $infra['ssl'] ?? []; @endphp
+                    @if(!empty($ssl))
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">Status</span><x-ui.badge :variant="($ssl['valid'] ?? false) ? 'green' : 'red'">{{ ($ssl['valid'] ?? false) ? 'Valid' : 'Invalid / Expired' }}</x-ui.badge></div>
+                            @if($ssl['issuer'] ?? null)<div class="flex justify-between"><span class="text-gray-500">Issuer</span><span class="font-medium text-gray-700">{{ $ssl['issuer'] }}</span></div>@endif
+                            @if($ssl['expiry'] ?? null)<div class="flex justify-between"><span class="text-gray-500">Expires</span><span class="font-medium text-gray-700">{{ $ssl['expiry'] }}</span></div>@endif
+                            @if(isset($ssl['days_until_expiry']))<div class="flex justify-between"><span class="text-gray-500">Days Remaining</span><span class="font-medium {{ $ssl['days_until_expiry'] < 30 ? 'text-red-600' : 'text-green-600' }}">{{ $ssl['days_until_expiry'] }}</span></div>@endif
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-400">SSL information not available.</p>
+                    @endif
+                </x-ui.card>
+
+                {{-- SEO Plugin --}}
+                <x-ui.card>
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">SEO Plugin</h3>
+                    @if($infra['seo_plugin'])
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">Plugin</span><span class="font-medium text-gray-700">{{ $infra['seo_plugin'] }}</span></div>
+                            @if($infra['seo_plugin_version'])<div class="flex justify-between"><span class="text-gray-500">Version</span><span class="font-medium text-gray-700">{{ $infra['seo_plugin_version'] }}</span></div>@endif
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-400">No SEO plugin detected.</p>
+                    @endif
+                </x-ui.card>
+
+                {{-- Internal Linking --}}
+                <x-ui.card>
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">Internal Linking</h3>
+                    @if(!empty($linkStats))
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">Avg Internal Links / Page</span><span class="font-medium text-gray-700">{{ $linkStats['avg_internal_links'] }}</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Orphan Pages</span><span class="font-medium {{ $linkStats['orphan_count'] > 0 ? 'text-orange-600' : 'text-green-600' }}">{{ $linkStats['orphan_count'] }}</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Deep Pages (depth > 3)</span><span class="font-medium {{ $linkStats['deep_pages_count'] > 0 ? 'text-yellow-600' : 'text-green-600' }}">{{ $linkStats['deep_pages_count'] }}</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Total Pages</span><span class="font-medium text-gray-700">{{ $linkStats['total_pages'] }}</span></div>
+                        </div>
+                    @endif
+                </x-ui.card>
+
+                {{-- Search Visibility --}}
+                @if($infra['search_visibility'])
+                    <x-ui.card>
+                        <h3 class="text-sm font-medium text-gray-900 mb-3">Search Visibility</h3>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Visible to Search Engines</span>
+                            <x-ui.badge :variant="($infra['search_visibility']['visible'] ?? true) ? 'green' : 'red'">
+                                {{ ($infra['search_visibility']['visible'] ?? true) ? 'Yes' : 'Discouraged' }}
+                            </x-ui.badge>
+                        </div>
+                        @if(!($infra['search_visibility']['visible'] ?? true) && $site->is_connected && !($site->is_prospect ?? false))
+                            <button wire:click="toggleSearchVisibility" class="mt-3 text-xs font-medium text-accent-600 hover:text-accent-800">Enable Search Visibility</button>
+                        @endif
+                    </x-ui.card>
+                @endif
+
+                {{-- Redirect Info --}}
+                @if(!empty($infra['redirect']) && !empty($infra['redirect']['chain']))
+                    <x-ui.card>
+                        <h3 class="text-sm font-medium text-gray-900 mb-3">Homepage Redirects</h3>
+                        <div class="space-y-1 text-sm">
+                            @foreach($infra['redirect']['chain'] as $step)
+                                <div class="flex items-center gap-2">
+                                    <x-ui.badge :variant="($step['status'] ?? 200) >= 300 ? 'yellow' : 'green'">{{ $step['status'] ?? '—' }}</x-ui.badge>
+                                    <span class="truncate text-gray-600">{{ Str::limit($step['url'] ?? '', 60) }}</span>
+                                </div>
+                            @endforeach
+                            @if($infra['redirect']['has_mixed_ssl'] ?? false)
+                                <p class="mt-2 text-xs text-red-500">Mixed HTTP/HTTPS detected in redirect chain.</p>
+                            @endif
+                        </div>
+                    </x-ui.card>
+                @endif
+            </div>
+            @else
+                <x-ui.card><x-ui.empty-state title="No infrastructure data" description="Run an audit to collect infrastructure information." icon="server" /></x-ui.card>
+            @endif
         @endif
 
         {{-- HISTORY TAB --}}
@@ -320,6 +506,87 @@
                 <x-ui.button wire:click="pushMetaFix">
                     <x-ui.spinner size="sm" wire:loading wire:target="pushMetaFix" />
                     <span wire:loading.remove wire:target="pushMetaFix">Apply to Site</span>
+                </x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- FIX ROBOTS MODAL --}}
+    <x-ui.modal name="seo-fix-robots" maxWidth="md">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Fix Indexing</h3>
+        <p class="text-xs text-gray-400 mb-4 truncate">{{ $fixRobotsUrl }}</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
+                        <input type="radio" wire:model="fixRobotsAction" value="index" class="text-accent-600">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Allow Indexing</p>
+                            <p class="text-xs text-gray-500">Remove noindex — allow search engines to index this page</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
+                        <input type="radio" wire:model="fixRobotsAction" value="noindex" class="text-accent-600">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Block Indexing</p>
+                            <p class="text-xs text-gray-500">Set noindex — prevent search engines from indexing this page</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-fix-robots')">Cancel</x-ui.button>
+                <x-ui.button wire:click="pushRobotsFix">
+                    <x-ui.spinner size="sm" wire:loading wire:target="pushRobotsFix" />
+                    <span wire:loading.remove wire:target="pushRobotsFix">Apply to Site</span>
+                </x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- FIX CANONICAL MODAL --}}
+    <x-ui.modal name="seo-fix-canonical" maxWidth="md">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Fix Canonical URL</h3>
+        <p class="text-xs text-gray-400 mb-4 truncate">{{ $fixCanonicalUrl }}</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Canonical URL</label>
+                <input wire:model="fixCanonicalTarget" type="url" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" placeholder="https://example.com/page">
+                <p class="mt-1 text-xs text-gray-500">The canonical URL tells search engines which version of this page to index.</p>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-fix-canonical')">Cancel</x-ui.button>
+                <x-ui.button wire:click="pushCanonicalFix">
+                    <x-ui.spinner size="sm" wire:loading wire:target="pushCanonicalFix" />
+                    <span wire:loading.remove wire:target="pushCanonicalFix">Apply to Site</span>
+                </x-ui.button>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- FIX OG MODAL --}}
+    <x-ui.modal name="seo-fix-og" maxWidth="md">
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Fix Open Graph Tags</h3>
+        <p class="text-xs text-gray-400 mb-4 truncate">{{ $fixOgUrl }}</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">OG Title</label>
+                <input wire:model="fixOgTitle" type="text" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" maxlength="200">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">OG Description</label>
+                <textarea wire:model="fixOgDescription" rows="2" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" maxlength="300"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">OG Image URL</label>
+                <input wire:model="fixOgImage" type="url" class="w-full rounded-lg border-gray-300 text-sm shadow-sm" placeholder="https://example.com/image.jpg">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-fix-og')">Cancel</x-ui.button>
+                <x-ui.button wire:click="pushOgFix">
+                    <x-ui.spinner size="sm" wire:loading wire:target="pushOgFix" />
+                    <span wire:loading.remove wire:target="pushOgFix">Apply to Site</span>
                 </x-ui.button>
             </div>
         </div>

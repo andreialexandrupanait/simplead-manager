@@ -96,8 +96,7 @@ class CopySettingsModal extends Component
 
     public function getAvailableSites()
     {
-        $query = Site::where('id', '!=', $this->sourceSite->id)
-            ->orderBy('name');
+        $query = Site::where('id', '!=', $this->sourceSite->id);
 
         $user = auth()->user();
         if (! $user->isAdmin()) {
