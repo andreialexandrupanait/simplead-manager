@@ -150,6 +150,22 @@ class SeoQuickAudit extends Component
         }
     }
 
+    public function exportXls()
+    {
+        $audit = $this->completedAudit;
+        if (! $audit) {
+            $this->dispatch('notify', type: 'warning', message: 'No completed audit to export.');
+
+            return;
+        }
+
+        $site = \App\Models\Site::find($this->prospectSiteId);
+        $domain = $site?->domain ?? 'prospect';
+        $path = app(\App\Services\SeoAudit\ExcelExportService::class)->export($audit);
+
+        return response()->download($path, 'seo-audit-'.$domain.'-'.now()->format('Y-m-d').'.xlsx')->deleteFileAfterSend();
+    }
+
     public function viewAudit(int $siteId): void
     {
         $this->prospectSiteId = $siteId;

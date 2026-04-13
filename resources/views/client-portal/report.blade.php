@@ -958,6 +958,52 @@
                 </section>
                 @endif
 
+                {{-- ═══ SEO AUDIT ═══ --}}
+                @if(isset($on['seo']) && !empty($s['seo']))
+                @php $seo = $s['seo']; $sevColors = ['critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', 'low' => 'blue', 'info' => 'gray']; @endphp
+                <section id="seo" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
+                    <div class="flex items-center gap-2 mb-4">
+                        <x-icons.search class="h-4 w-4 text-purple-500" />
+                        <h3 class="text-base font-bold text-gray-900">SEO Audit</h3>
+                    </div>
+                    <div class="flex items-center gap-6 mb-4">
+                        <div class="text-center">
+                            @php $sc = $seo['score']; $scc = $sc >= 80 ? 'text-green-600' : ($sc >= 50 ? 'text-yellow-600' : 'text-red-600'); @endphp
+                            <span class="text-3xl font-bold {{ $scc }}">{{ $sc }}</span>
+                            <span class="text-sm text-gray-400">/100</span>
+                            <p class="text-xs text-gray-500 mt-1">{{ $seo['pages_crawled'] }} pages &middot; {{ $seo['scanned_at'] }}</p>
+                        </div>
+                        <div class="flex-1 space-y-2">
+                            @foreach(['technical' => 'Technical', 'on_page' => 'On-Page', 'performance' => 'Performance', 'other' => 'Other'] as $ck => $cl)
+                                @php $cv = $seo['categories'][$ck] ?? 0; $cc = $cv >= 80 ? 'bg-green-500' : ($cv >= 50 ? 'bg-yellow-500' : 'bg-red-500'); @endphp
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="w-20 text-gray-500">{{ $cl }}</span>
+                                    <div class="flex-1 h-2 rounded-full bg-gray-100"><div class="h-full rounded-full {{ $cc }}" style="width:{{ $cv }}%"></div></div>
+                                    <span class="w-8 text-right font-medium text-gray-700">{{ $cv }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        @foreach(['critical', 'high', 'medium', 'low', 'info'] as $sv)
+                            @if(($seo['issues'][$sv] ?? 0) > 0)
+                                <x-ui.badge :variant="$sevColors[$sv]">{{ $seo['issues'][$sv] }} {{ ucfirst($sv) }}</x-ui.badge>
+                            @endif
+                        @endforeach
+                    </div>
+                    @if(!empty($seo['top_issues']))
+                        <div class="space-y-2 mt-3">
+                            @foreach($seo['top_issues'] as $ti)
+                                <div class="flex items-start gap-2 text-sm">
+                                    <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-{{ $sevColors[$ti['severity']] ?? 'gray' }}-500"></span>
+                                    <div><p class="font-medium text-gray-900">{{ $ti['title'] }}</p>@if($ti['recommendation'])<p class="text-xs text-gray-500">{{ $ti['recommendation'] }}</p>@endif</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
+                @endif
+
             </div>{{-- end secondary sections --}}
 
             {{-- ═══ RECOMMENDATIONS (standalone, prominent) ═══ --}}

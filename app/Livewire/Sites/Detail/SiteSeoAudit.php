@@ -120,6 +120,20 @@ class SiteSeoAudit extends Component
         $this->dispatch('notify', type: 'success', message: 'Settings updated.');
     }
 
+    public function exportXls()
+    {
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            $this->dispatch('notify', type: 'warning', message: 'No completed audit to export.');
+
+            return;
+        }
+
+        $path = app(\App\Services\SeoAudit\ExcelExportService::class)->export($audit);
+
+        return response()->download($path, 'seo-audit-'.$this->site->domain.'-'.now()->format('Y-m-d').'.xlsx')->deleteFileAfterSend();
+    }
+
     public function deleteAudit(int $id): void
     {
         $a = SeoAudit::where('site_id', $this->site->id)->findOrFail($id);

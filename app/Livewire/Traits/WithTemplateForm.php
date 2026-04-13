@@ -53,6 +53,7 @@ trait WithTemplateForm
         'wp_users' => 'wp_users',
         'security_checks' => 'security_checks',
         'recommendations' => 'recommendations',
+        'seo' => 'seo',
     ];
 
     /**
@@ -114,6 +115,11 @@ trait WithTemplateForm
             'cloudflare' => [],
             'wp_users' => [],
             'security_checks' => [],
+            'seo' => [
+                'show_issues' => 'Issue Summary',
+                'show_recommendations' => 'Priority Recommendations',
+                'show_score_trend' => 'Score Trend Chart',
+            ],
         ];
     }
 

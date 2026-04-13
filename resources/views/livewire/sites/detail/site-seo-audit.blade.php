@@ -1,6 +1,9 @@
 <div class="min-w-0" @if($isRunning) wire:poll.2s="checkProgress" @endif>
     <x-ui.page-header title="SEO Audit" subtitle="Crawl and analyze your site for SEO issues">
         <x-slot:actions>
+            @if($this->latestCompletedAudit)
+                <x-ui.button variant="secondary" wire:click="exportXls"><x-icons.file-text class="h-4 w-4" /> Export XLS</x-ui.button>
+            @endif
             <x-ui.button variant="secondary" @click="$dispatch('open-modal-seo-settings')"><x-icons.settings class="h-4 w-4" /> Settings</x-ui.button>
             <x-ui.button wire:click="runAudit" wire:loading.attr="disabled" :disabled="$isRunning">
                 <span wire:loading.remove wire:target="runAudit"><x-icons.search class="h-4 w-4" /></span>

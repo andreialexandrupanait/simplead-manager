@@ -40,6 +40,10 @@
     @if($this->completedAudit && !$isRunning)
         @php $audit = $this->completedAudit; @endphp
 
+        <div class="mb-4 flex justify-end">
+            <x-ui.button variant="secondary" wire:click="exportXls"><x-icons.file-text class="h-4 w-4" /> Export XLS</x-ui.button>
+        </div>
+
         {{-- Score --}}
         <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
             <x-ui.card class="text-center lg:col-span-1">

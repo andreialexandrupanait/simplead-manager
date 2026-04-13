@@ -136,6 +136,14 @@
         </div>
     @endif
 
+    {{-- SEO Audit --}}
+    @if(in_array('seo', $sections) && isset($data['seo']) && $data['seo'])
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.seo')
+        </div>
+    @endif
+
     {{-- Recommendations --}}
     @if(in_array('recommendations', $sections))
         @php $sectionNumber++; @endphp

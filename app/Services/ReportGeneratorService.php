@@ -10,7 +10,6 @@ use App\Models\SiteMonthlySnapshot;
 use App\Services\Reports\Sections\AnalyticsGatherer;
 use App\Services\Reports\Sections\BackupsGatherer;
 use App\Services\Reports\Sections\CloudflareGatherer;
-use App\Services\Reports\Sections\ContentFreshnessGatherer;
 use App\Services\Reports\Sections\DatabaseGatherer;
 use App\Services\Reports\Sections\DatabaseHealthGatherer;
 use App\Services\Reports\Sections\DnsGatherer;
@@ -20,6 +19,7 @@ use App\Services\Reports\Sections\OverviewGatherer;
 use App\Services\Reports\Sections\PerformanceGatherer;
 use App\Services\Reports\Sections\PluginInventoryGatherer;
 use App\Services\Reports\Sections\SearchConsoleGatherer;
+use App\Services\Reports\Sections\SeoGatherer;
 use App\Services\Reports\Sections\SecurityChecksGatherer;
 use App\Services\Reports\Sections\SecurityGatherer;
 use App\Services\Reports\Sections\UpdatesGatherer;
@@ -198,7 +198,7 @@ class ReportGeneratorService
             new ExecutiveSnapshotGatherer,
             new DnsGatherer,
             new ErrorLogGatherer,
-            new ContentFreshnessGatherer,
+            new SeoGatherer,
         ];
     }
 

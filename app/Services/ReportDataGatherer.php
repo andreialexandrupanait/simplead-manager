@@ -52,6 +52,7 @@ class ReportDataGatherer
             'cloudflare',
             'wp_users',
             'security_checks',
+            'seo',
         ];
 
         foreach ($sectionKeys as $key) {
