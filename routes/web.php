@@ -136,6 +136,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // SEO
     Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
+    Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');

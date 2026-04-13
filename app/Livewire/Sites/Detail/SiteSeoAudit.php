@@ -25,6 +25,7 @@ class SiteSeoAudit extends Component
     public string $categoryFilter = '';
     public string $pageSearch = '';
     public bool $isRunning = false;
+    public bool $settingsAutoAudit = false;
     public int $settingsInterval = 10080;
     public int $settingsMaxPages = 200;
     public string $settingsSitemapUrl = '';
@@ -35,7 +36,7 @@ class SiteSeoAudit extends Component
         $this->site = $site;
         $this->isRunning = app(SiteAuditService::class)->hasRunningAudit($site);
         $monitor = $site->seoMonitor;
-        if ($monitor) { $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; }
+        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; }
     }
 
     #[Computed] public function monitor() { return $this->site->seoMonitor; }
@@ -44,13 +45,36 @@ class SiteSeoAudit extends Component
     #[Computed] public function auditHistory() { return $this->site->seoAudits()->completed()->latest('scanned_at')->limit(20)->get(['id','score','critical_count','high_count','medium_count','low_count','info_count','pages_crawled','scan_duration','scanned_at','category_scores']); }
 
     #[Computed]
-    public function issues()
+    public function groupedIssues(): \Illuminate\Support\Collection
     {
-        $audit = $this->latestCompletedAudit; if (!$audit) return collect();
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return collect();
+        }
+
         $q = $audit->issues();
-        if ($this->severityFilter !== '') $q->where('severity', $this->severityFilter);
-        if ($this->categoryFilter !== '') $q->where('category', $this->categoryFilter);
-        return $q->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")->paginate(25);
+        if ($this->severityFilter !== '') {
+            $q->where('severity', $this->severityFilter);
+        }
+        if ($this->categoryFilter !== '') {
+            $q->where('category', $this->categoryFilter);
+        }
+
+        $all = $q->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->limit(500)
+            ->get();
+
+        return $all->groupBy(fn ($i) => $i->title.'||'.$i->severity->value.'||'.$i->category->value)
+            ->map(fn ($group) => (object) [
+                'title' => $group->first()->title,
+                'severity' => $group->first()->severity,
+                'category' => $group->first()->category,
+                'recommendation' => $group->first()->recommendation,
+                'description' => $group->first()->description,
+                'urls' => $group->pluck('url')->filter()->unique()->values(),
+                'affected_count' => $group->count(),
+            ])
+            ->values();
     }
 
     #[Computed]
@@ -62,7 +86,8 @@ class SiteSeoAudit extends Component
         return $q->orderBy('status_code')->paginate(50, pageName: 'pagesPage');
     }
 
-    #[Computed] public function brokenLinks() { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->with('page')->limit(50)->get() : collect(); }
+    #[Computed] public function brokenLinks() { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->with('page')->paginate(50, pageName: 'linksPage') : collect(); }
+    #[Computed] public function brokenLinksCount(): int { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->count() : 0; }
     #[Computed] public function categoryScores(): array { return $this->latestCompletedAudit?->category_scores ?? []; }
     #[Computed] public function auditDiff(): ?array { return $this->latestCompletedAudit?->data['diff'] ?? null; }
     #[Computed] public function severityOptions(): array { return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases()); }
@@ -81,13 +106,13 @@ class SiteSeoAudit extends Component
     public function checkProgress(): void
     {
         $l = $this->site->seoAudits()->latest('id')->first();
-        if (!$l || !$l->isRunning()) { $this->isRunning = false; unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->issues, $this->pages, $this->categoryScores); }
+        if (!$l || !$l->isRunning()) { $this->isRunning = false; unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->categoryScores, $this->brokenLinks, $this->brokenLinksCount); }
     }
 
     public function updateSettings(): void
     {
         $m = $this->site->seoMonitor ?? \App\Models\SeoMonitor::create(['site_id' => $this->site->id, 'is_active' => true]);
-        $m->update(['interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int)config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null]);
+        $m->update(['is_active' => $this->settingsAutoAudit, 'interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int)config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null]);
         $this->dispatch('close-modal-seo-settings');
         $this->dispatch('notify', type: 'success', message: 'Settings updated.');
     }
@@ -96,7 +121,7 @@ class SiteSeoAudit extends Component
     {
         $a = SeoAudit::where('site_id', $this->site->id)->findOrFail($id);
         if ($a->isRunning()) { $this->dispatch('notify', type: 'warning', message: 'Cannot delete running audit.'); return; }
-        $a->delete(); unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->issues, $this->pages);
+        $a->delete(); unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->brokenLinks, $this->brokenLinksCount);
         $this->dispatch('notify', type: 'success', message: 'Audit deleted.');
     }
 

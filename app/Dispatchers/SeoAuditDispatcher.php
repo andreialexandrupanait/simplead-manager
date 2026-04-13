@@ -21,7 +21,7 @@ class SeoAuditDispatcher
         SeoMonitor::query()
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_audit_at')->orWhere('next_audit_at', '<=', now()))
-            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at')->where('is_prospect', false))
             ->where(fn ($q) => $q
                 ->whereDoesntHave('site.healthState')
                 ->orWhereHas('site.healthState', fn ($q2) => $q2

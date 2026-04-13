@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait HasSiteScopes
 {
+    public function scopePortfolio(Builder $query): Builder
+    {
+        return $query->where('is_prospect', false);
+    }
+
     public function scopeHealthy(Builder $query): Builder
     {
         return $query->where('health_score', '>=', HealthLevel::HEALTHY_THRESHOLD)->where('is_up', true);
