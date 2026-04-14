@@ -3,14 +3,6 @@
     <div class="mb-6 flex items-center justify-between">
         <x-ui.page-header title="{{ __('Performance') }}" subtitle="{{ __('Monitor Core Web Vitals and PageSpeed scores') }}" />
         <div class="flex items-center gap-3">
-            @if($this->monitor)
-                <x-ui.button variant="secondary" wire:click="openBudgetModal">
-                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                    </svg>
-                    {{ __('Budgets') }}
-                </x-ui.button>
-            @endif
             <x-ui.button variant="secondary" wire:click="openSettings">
                 <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -541,68 +533,4 @@
         </form>
     </x-ui.modal>
 
-    {{-- Budget Edit Modal --}}
-    <x-ui.modal name="edit-budgets" maxWidth="md">
-        <form wire:submit="saveBudgets">
-            <h2 class="text-lg font-semibold text-gray-900">{{ __('Edit Performance Budgets') }}</h2>
-            <p class="mt-1 text-sm text-gray-500">{{ __('Set thresholds for key metrics. Leave empty to skip.') }}</p>
-
-            <div class="mt-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Performance Score (min)') }}</label>
-                    <x-ui.input wire:model="budgetForm.performance_score" type="number" min="0" max="100" placeholder="e.g. 80" class="mt-1" />
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('LCP (max, seconds)') }}</label>
-                        <x-ui.input wire:model="budgetForm.lcp" type="number" step="0.1" min="0" placeholder="e.g. 2.5" class="mt-1" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('FCP (max, seconds)') }}</label>
-                        <x-ui.input wire:model="budgetForm.fcp" type="number" step="0.1" min="0" placeholder="e.g. 1.8" class="mt-1" />
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('CLS (max)') }}</label>
-                        <x-ui.input wire:model="budgetForm.cls" type="number" step="0.001" min="0" placeholder="e.g. 0.1" class="mt-1" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('TBT (max, ms)') }}</label>
-                        <x-ui.input wire:model="budgetForm.tbt" type="number" min="0" placeholder="e.g. 200" class="mt-1" />
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Speed Index (max, seconds)') }}</label>
-                    <x-ui.input wire:model="budgetForm.si" type="number" step="0.1" min="0" placeholder="e.g. 3.4" class="mt-1" />
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Total Page Size (max, bytes)') }}</label>
-                        <x-ui.input wire:model="budgetForm.total_size_bytes" type="number" min="0" placeholder="e.g. 2000000" class="mt-1" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('JS Size (max, bytes)') }}</label>
-                        <x-ui.input wire:model="budgetForm.js_size" type="number" min="0" placeholder="e.g. 500000" class="mt-1" />
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Image Size (max, bytes)') }}</label>
-                    <x-ui.input wire:model="budgetForm.image_size" type="number" min="0" placeholder="e.g. 1000000" class="mt-1" />
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button"
-                        @click="$dispatch('close-modal-edit-budgets')"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent-700">
-                    {{ __('Save Budgets') }}
-                </button>
-            </div>
-        </form>
-    </x-ui.modal>
 </div>
