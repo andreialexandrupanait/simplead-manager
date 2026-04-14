@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\SeoAuditStatus;
 use App\Models\SeoAudit;
+use App\Models\SeoImage;
 use App\Models\SeoLink;
 use App\Models\SeoPage;
 use App\Models\Site;
@@ -193,8 +194,9 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                     'has_viewport_meta' => $pageData['has_viewport_meta'],
                 ]);
 
-                // Store links
+                // Store links and images
                 $this->storeLinks($page, $pageData);
+                $this->storeImages($page, $pageData);
 
                 // Track inbound links
                 foreach ($pageData['internal_links'] as $link) {
@@ -241,6 +243,9 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         JobTracker::progress($trackerId, 56, 'Checking broken links...');
         $this->checkBrokenLinks();
+
+        JobTracker::progress($trackerId, 58, 'Checking broken images...');
+        $this->checkBrokenImages();
 
         JobTracker::progress($trackerId, 60, "Crawl complete. {$crawled} pages.");
     }
@@ -324,7 +329,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             'meta_robots' => null, 'canonical_url' => null, 'is_self_canonical' => null,
             'h1_tags' => [], 'heading_structure' => ['h1'=>0,'h2'=>0,'h3'=>0,'h4'=>0,'h5'=>0,'h6'=>0],
             'word_count' => 0, 'image_count' => 0, 'images_without_alt' => 0, 'images_without_lazy' => 0,
-            'internal_links' => [], 'external_links' => [],
+            'image_urls' => [], 'internal_links' => [], 'external_links' => [],
             'structured_data_types' => [], 'og_tags' => [], 'twitter_tags' => [],
             'has_viewport_meta' => false,
         ];
@@ -384,11 +389,26 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $data['image_count'] = $imgs->length;
         foreach ($imgs as $img) {
             if ($img instanceof DOMElement) {
-                if (trim($img->getAttribute('alt')) === '') {
+                $altText = trim($img->getAttribute('alt'));
+                $hasAlt = $altText !== '';
+                $hasLazy = $img->getAttribute('loading') === 'lazy' || (bool) $img->getAttribute('data-lazy') || (bool) $img->getAttribute('data-src');
+
+                if (! $hasAlt) {
                     $data['images_without_alt']++;
                 }
-                if ($img->getAttribute('loading') !== 'lazy' && ! $img->getAttribute('data-lazy') && ! $img->getAttribute('data-src')) {
+                if (! $hasLazy) {
                     $data['images_without_lazy']++;
+                }
+
+                $src = $img->getAttribute('src') ?: $img->getAttribute('data-src') ?: $img->getAttribute('data-lazy-src');
+                if ($src && ! str_starts_with($src, 'data:')) {
+                    $resolvedSrc = $this->resolveUrl($src, $url);
+                    $data['image_urls'][] = [
+                        'url' => $resolvedSrc,
+                        'alt' => $altText,
+                        'has_alt' => $hasAlt,
+                        'has_lazy' => $hasLazy,
+                    ];
                 }
             }
         }
@@ -467,6 +487,68 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         }
         foreach (array_chunk($links, 100) as $chunk) {
             SeoLink::insert($chunk);
+        }
+    }
+
+    private function storeImages(SeoPage $page, array $pageData): void
+    {
+        $images = [];
+        foreach ($pageData['image_urls'] as $img) {
+            $images[] = [
+                'seo_audit_id' => $this->audit->id,
+                'seo_page_id' => $page->id,
+                'image_url' => mb_substr($img['url'], 0, 2048),
+                'image_url_hash' => UrlNormalizerService::hash($img['url']),
+                'alt_text' => $img['alt'] ? mb_substr($img['alt'], 0, 1000) : null,
+                'has_alt' => $img['has_alt'],
+                'has_lazy_loading' => $img['has_lazy'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        foreach (array_chunk($images, 100) as $chunk) {
+            SeoImage::insert($chunk);
+        }
+    }
+
+    private function checkBrokenImages(): void
+    {
+        $maxChecks = (int) config('seo.analysis.max_image_checks', 100);
+        $userAgent = config('seo.crawler.user_agent');
+
+        $imageUrls = SeoImage::where('seo_audit_id', $this->audit->id)
+            ->selectRaw('MIN(image_url) as image_url, image_url_hash')
+            ->groupBy('image_url_hash')
+            ->limit($maxChecks)
+            ->get();
+
+        foreach ($imageUrls as $image) {
+            try {
+                $response = Http::timeout(5)
+                    ->withUserAgent($userAgent)
+                    ->withoutVerifying()
+                    ->head($image->image_url);
+                $status = $response->status();
+                $contentType = $response->header('Content-Type') ?? '';
+                $contentLength = (int) ($response->header('Content-Length') ?? 0);
+            } catch (\Throwable) {
+                $status = null;
+                $contentType = '';
+                $contentLength = 0;
+            }
+
+            $isBroken = $status === null || $status >= 400;
+            SeoImage::where('seo_audit_id', $this->audit->id)
+                ->where('image_url_hash', $image->image_url_hash)
+                ->update([
+                    'status_code' => $status,
+                    'is_broken' => $isBroken,
+                    'content_type' => $contentType ? mb_substr(explode(';', $contentType)[0], 0, 100) : null,
+                    'file_size_bytes' => $contentLength > 0 ? $contentLength : null,
+                ]);
+
+            usleep(50_000);
         }
     }
 

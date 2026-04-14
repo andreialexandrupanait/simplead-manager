@@ -6,12 +6,14 @@
     </x-ui.page-header>
 
     {{-- Stat cards --}}
-    <div class="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div class="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
         <x-ui.stat-card label="Total Sites" :value="$this->stats['total_sites']" icon="globe" color="purple" />
         <x-ui.stat-card label="Audited" :value="$this->stats['audited_sites']" icon="check-circle" color="blue" />
         <x-ui.stat-card label="Avg Score" :value="$this->stats['avg_score']" icon="zap" :color="$this->stats['avg_score']>=80?'green':($this->stats['avg_score']>=50?'yellow':'red')" />
         <x-ui.stat-card label="Needs Attention" :value="$this->stats['needs_attention']" icon="alert-triangle" :color="$this->stats['needs_attention']>0?'orange':'green'" />
         <x-ui.stat-card label="Critical Issues" :value="$this->stats['total_critical']" icon="shield-alert" :color="$this->stats['total_critical']>0?'red':'green'" />
+        <x-ui.stat-card label="Broken Links" :value="$this->stats['total_broken_links']" icon="link" :color="$this->stats['total_broken_links']>0?'red':'green'" />
+        <x-ui.stat-card label="Broken Images" :value="$this->stats['total_broken_images']" icon="image" :color="$this->stats['total_broken_images']>0?'red':'green'" />
     </div>
 
     {{-- Charts row --}}
@@ -85,6 +87,8 @@
                 <x-ui.th class="hidden text-center xl:table-cell">On-Page</x-ui.th>
                 <x-ui.th class="hidden text-center xl:table-cell">Performance</x-ui.th>
                 <x-ui.th>Issues</x-ui.th>
+                <x-ui.th class="hidden xl:table-cell text-center">Links</x-ui.th>
+                <x-ui.th class="hidden xl:table-cell text-center">Images</x-ui.th>
                 <x-ui.th class="hidden lg:table-cell">Last Scan</x-ui.th>
                 <x-ui.th class="text-right">Action</x-ui.th>
             </x-slot:head>
@@ -119,13 +123,31 @@
                     <x-ui.td>
                         <div class="flex flex-wrap gap-1">
                             @if($audit)
-                                @if($audit->critical_count > 0)<x-ui.badge variant="red">{{ $audit->critical_count }}C</x-ui.badge>@endif
-                                @if($audit->high_count > 0)<x-ui.badge variant="orange">{{ $audit->high_count }}H</x-ui.badge>@endif
-                                @if($audit->medium_count > 0)<x-ui.badge variant="yellow">{{ $audit->medium_count }}M</x-ui.badge>@endif
+                                @if($audit->critical_count > 0)<x-ui.badge variant="red">{{ $audit->critical_count }} Critical</x-ui.badge>@endif
+                                @if($audit->high_count > 0)<x-ui.badge variant="orange">{{ $audit->high_count }} High</x-ui.badge>@endif
+                                @if($audit->medium_count > 0)<x-ui.badge variant="yellow">{{ $audit->medium_count }} Medium</x-ui.badge>@endif
                             @else
                                 <span class="text-xs text-gray-300">No audit</span>
                             @endif
                         </div>
+                    </x-ui.td>
+                    <x-ui.td class="hidden xl:table-cell text-center">
+                        @if($audit && ($audit->broken_links_count ?? 0) > 0)
+                            <span class="text-sm font-medium text-red-600">{{ $audit->broken_links_count }}</span>
+                        @elseif($audit)
+                            <span class="text-sm text-green-600">0</span>
+                        @else
+                            <span class="text-gray-300">—</span>
+                        @endif
+                    </x-ui.td>
+                    <x-ui.td class="hidden xl:table-cell text-center">
+                        @if($audit && ($audit->broken_images_count ?? 0) > 0)
+                            <span class="text-sm font-medium text-red-600">{{ $audit->broken_images_count }}</span>
+                        @elseif($audit)
+                            <span class="text-sm text-green-600">0</span>
+                        @else
+                            <span class="text-gray-300">—</span>
+                        @endif
                     </x-ui.td>
                     <x-ui.td class="hidden lg:table-cell"><span class="text-xs text-gray-400">{{ $audit?->scanned_at?->diffForHumans() ?? 'Never' }}</span></x-ui.td>
                     <x-ui.td class="text-right">
@@ -137,7 +159,7 @@
                     </x-ui.td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No sites match your filters.</td></tr>
+                <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-500">No sites match your filters.</td></tr>
             @endforelse
         </x-ui.table>
     @endif
@@ -172,8 +194,9 @@
                         </x-ui.td>
                         <x-ui.td class="hidden lg:table-cell">
                             @if($pa)
-                                @if($pa->critical_count > 0)<x-ui.badge variant="red">{{ $pa->critical_count }}C</x-ui.badge>@endif
-                                @if($pa->high_count > 0)<x-ui.badge variant="orange">{{ $pa->high_count }}H</x-ui.badge>@endif
+                                @if($pa->critical_count > 0)<x-ui.badge variant="red">{{ $pa->critical_count }} Critical</x-ui.badge>@endif
+                                @if($pa->high_count > 0)<x-ui.badge variant="orange">{{ $pa->high_count }} High</x-ui.badge>@endif
+                                @if($pa->medium_count > 0)<x-ui.badge variant="yellow">{{ $pa->medium_count }} Medium</x-ui.badge>@endif
                             @endif
                         </x-ui.td>
                         <x-ui.td class="hidden lg:table-cell">{{ $pa?->pages_crawled ?? '—' }}</x-ui.td>

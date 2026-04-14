@@ -71,6 +71,24 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             'callback'            => [$this, 'toggle_search_visibility'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/redirects', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'list_redirects'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/redirects', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'create_redirect'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/seo/redirects/(?P<id>\d+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [$this, 'delete_redirect'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
     }
 
     /**
@@ -363,6 +381,179 @@ class SAM_SEO_Endpoint extends SAM_Endpoint_Base {
             'blog_public' => get_option('blog_public'),
             'visible'     => get_option('blog_public') === '1',
         ]);
+    }
+
+    /**
+     * List all redirects from the active SEO/redirect plugin.
+     */
+    public function list_redirects(WP_REST_Request $request): WP_REST_Response {
+        $redirects = [];
+        $plugin    = 'none';
+
+        // Rank Math
+        if (defined('RANK_MATH_VERSION')) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'rank_math_redirections';
+            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
+                $plugin = 'rankmath';
+                $rows   = $wpdb->get_results("SELECT id, sources, url_to, header_code, status FROM {$table} ORDER BY id DESC LIMIT 200");
+                foreach ($rows as $row) {
+                    $sources = json_decode($row->sources, true);
+                    $source  = is_array($sources) && isset($sources[0]['pattern']) ? $sources[0]['pattern'] : (string) $row->sources;
+                    $redirects[] = [
+                        'id'     => (int) $row->id,
+                        'source' => $source,
+                        'target' => $row->url_to,
+                        'type'   => (int) $row->header_code,
+                        'status' => $row->status,
+                        'via'    => 'rankmath',
+                    ];
+                }
+            }
+        }
+        // Yoast Premium
+        elseif (class_exists('WPSEO_Redirect_Manager') || defined('WPSEO_PREMIUM_FILE')) {
+            $plugin    = 'yoast';
+            $yoast_redirects = get_option('wpseo-premium-redirects-base', []);
+            if (is_array($yoast_redirects)) {
+                $id = 1;
+                foreach ($yoast_redirects as $source => $data) {
+                    $redirects[] = [
+                        'id'     => $id++,
+                        'source' => $source,
+                        'target' => $data['url'] ?? '',
+                        'type'   => (int) ($data['type'] ?? 301),
+                        'status' => 'active',
+                        'via'    => 'yoast',
+                    ];
+                }
+            }
+        }
+        // Redirection plugin
+        elseif (class_exists('Red_Item') || defined('REDIRECTION_FILE')) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'redirection_items';
+            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
+                $plugin = 'redirection';
+                $rows   = $wpdb->get_results("SELECT id, url AS source, action_data AS target, action_code AS type, status FROM {$table} WHERE action_type = 'url' ORDER BY id DESC LIMIT 200");
+                foreach ($rows as $row) {
+                    $redirects[] = [
+                        'id'     => (int) $row->id,
+                        'source' => $row->source,
+                        'target' => $row->target,
+                        'type'   => (int) $row->type,
+                        'status' => $row->status,
+                        'via'    => 'redirection',
+                    ];
+                }
+            }
+        }
+
+        return $this->success([
+            'redirects' => $redirects,
+            'plugin'    => $plugin,
+            'count'     => count($redirects),
+        ]);
+    }
+
+    /**
+     * Create a new redirect via the active SEO/redirect plugin.
+     */
+    public function create_redirect(WP_REST_Request $request): WP_REST_Response {
+        $source = sanitize_text_field($request->get_param('source') ?? '');
+        $target = esc_url_raw($request->get_param('target') ?? '');
+        $type   = (int) ($request->get_param('type') ?? 301);
+
+        if (empty($source) || empty($target)) {
+            return $this->error('missing_params', 'Source and target are required.', 400);
+        }
+        if (!in_array($type, [301, 302, 307, 410], true)) {
+            return $this->error('invalid_type', 'Invalid redirect type. Use 301, 302, 307, or 410.', 400);
+        }
+
+        // Rank Math
+        if (defined('RANK_MATH_VERSION')) {
+            global $wpdb;
+            $table  = $wpdb->prefix . 'rank_math_redirections';
+            $sources_json = wp_json_encode([['pattern' => $source, 'comparison' => 'exact']]);
+            $wpdb->insert($table, [
+                'sources'     => $sources_json,
+                'url_to'      => $target,
+                'header_code' => $type,
+                'status'      => 'active',
+                'created'     => current_time('mysql'),
+                'updated'     => current_time('mysql'),
+            ]);
+            $new_id = (int) $wpdb->insert_id;
+
+            return $this->success(['redirect_id' => $new_id, 'source' => $source, 'target' => $target, 'type' => $type, 'via' => 'rankmath']);
+        }
+
+        // Yoast Premium
+        if (class_exists('WPSEO_Redirect_Manager') || defined('WPSEO_PREMIUM_FILE')) {
+            $yoast_redirects = get_option('wpseo-premium-redirects-base', []);
+            if (!is_array($yoast_redirects)) {
+                $yoast_redirects = [];
+            }
+            $yoast_redirects[$source] = ['url' => $target, 'type' => $type];
+            update_option('wpseo-premium-redirects-base', $yoast_redirects);
+
+            return $this->success(['redirect_id' => crc32($source), 'source' => $source, 'target' => $target, 'type' => $type, 'via' => 'yoast']);
+        }
+
+        // Redirection plugin
+        if (class_exists('Red_Item') || defined('REDIRECTION_FILE')) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'redirection_items';
+            $wpdb->insert($table, [
+                'url'         => $source,
+                'action_data' => $target,
+                'action_code' => $type,
+                'action_type' => 'url',
+                'match_type'  => 'url',
+                'regex'       => 0,
+                'status'      => 'enabled',
+                'group_id'    => 1,
+            ]);
+            $new_id = (int) $wpdb->insert_id;
+
+            return $this->success(['redirect_id' => $new_id, 'source' => $source, 'target' => $target, 'type' => $type, 'via' => 'redirection']);
+        }
+
+        return $this->error('no_plugin', 'No supported redirect plugin found. Install Rank Math, Yoast Premium, or Redirection plugin.', 400);
+    }
+
+    /**
+     * Delete a redirect via the active SEO/redirect plugin.
+     */
+    public function delete_redirect(WP_REST_Request $request): WP_REST_Response {
+        $id = (int) $request->get_param('id');
+
+        if (!$id) {
+            return $this->error('missing_id', 'Redirect ID is required.', 400);
+        }
+
+        // Rank Math
+        if (defined('RANK_MATH_VERSION')) {
+            global $wpdb;
+            $table   = $wpdb->prefix . 'rank_math_redirections';
+            $deleted = $wpdb->delete($table, ['id' => $id]);
+
+            return $deleted ? $this->success(['deleted' => $id, 'via' => 'rankmath'])
+                : $this->error('not_found', 'Redirect not found.', 404);
+        }
+
+        // Redirection plugin
+        if (class_exists('Red_Item') || defined('REDIRECTION_FILE')) {
+            global $wpdb;
+            $table   = $wpdb->prefix . 'redirection_items';
+            $deleted = $wpdb->delete($table, ['id' => $id]);
+
+            return $deleted ? $this->success(['deleted' => $id, 'via' => 'redirection'])
+                : $this->error('not_found', 'Redirect not found.', 404);
+        }
+
+        return $this->error('no_plugin', 'No supported redirect plugin found.', 400);
     }
 
     /**

@@ -460,6 +460,14 @@
                         </div>
                     </x-ui.card>
                 @endif
+            @elseif($analyticsError)
+                <x-ui.card>
+                    <x-ui.empty-state
+                        title="{{ __('Failed to load analytics') }}"
+                        :description="$analyticsError"
+                        icon="alert-triangle"
+                    />
+                </x-ui.card>
             @else
                 <x-ui.card>
                     <x-ui.empty-state

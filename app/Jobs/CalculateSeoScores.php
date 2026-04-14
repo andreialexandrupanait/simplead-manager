@@ -26,7 +26,15 @@ class CalculateSeoScores implements ShouldQueue
         $tid = 'seo-audit-'.$this->site->id;
         $this->audit->markAs(SeoAuditStatus::Scoring); JobTracker::progress($tid, 92, 'Calculating scores...');
         $scores = $ss->calculateScores($this->audit);
-        $this->audit->update(['score' => $scores['overall'], 'category_scores' => $scores['categories'], 'scan_duration' => $this->audit->created_at ? (int) now()->diffInSeconds($this->audit->created_at) : null]);
+        $this->audit->update([
+            'score' => $scores['overall'],
+            'category_scores' => $scores['categories'],
+            'scan_duration' => $this->audit->created_at ? (int) now()->diffInSeconds($this->audit->created_at) : null,
+            'broken_links_count' => $this->audit->links()->where('is_broken', true)->count(),
+            'broken_images_count' => $this->audit->images()->where('is_broken', true)->count(),
+            'total_images_count' => $this->audit->images()->count(),
+            'redirect_pages_count' => $this->audit->pages()->whereNotNull('redirect_target')->count(),
+        ]);
         $prev = SeoAudit::where('site_id', $this->site->id)->where('id', '!=', $this->audit->id)->completed()->latest('scanned_at')->first();
         if ($prev) { $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['diff' => $ds->diff($this->audit, $prev)])]); }
         $m = $this->site->seoMonitor;

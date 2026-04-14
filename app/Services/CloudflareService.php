@@ -255,12 +255,162 @@ class CloudflareService
 
     public function getAnalytics(string $zoneId, string $since): array
     {
-        $response = $this->request('GET', "/zones/{$zoneId}/analytics/dashboard?since={$since}&continuous=true");
+        $minutes = abs((int) $since);
+        $end = now()->utc();
+        $start = $end->copy()->subMinutes($minutes);
 
-        return $response['result'] ?? [];
+        $startIso = $start->toIso8601String();
+        $endIso = $end->toIso8601String();
+
+        // Use daily groups for 7d+, hourly otherwise
+        if ($minutes >= 10080) {
+            $timeseriesNode = 'httpRequests1dGroups';
+            $timeDim = 'date';
+            $timeFilter = "date_geq: \"{$start->toDateString()}\", date_leq: \"{$end->toDateString()}\"";
+        } else {
+            $timeseriesNode = 'httpRequests1hGroups';
+            $timeDim = 'datetimeHour';
+            $timeFilter = "datetimeHour_geq: \"{$startIso}\", datetimeHour_lt: \"{$endIso}\"";
+        }
+
+        $query = <<<GRAPHQL
+        {
+          viewer {
+            zones(filter: {zoneTag: "{$zoneId}"}) {
+              timeseries: {$timeseriesNode}(
+                filter: {{$timeFilter}}
+                orderBy: [{$timeDim}_ASC]
+                limit: 1000
+              ) {
+                sum { requests cachedRequests bytes cachedBytes threats pageViews }
+                uniq { uniques }
+                dimensions { {$timeDim} }
+              }
+              countries: httpRequestsAdaptiveGroups(
+                filter: {datetime_geq: "{$startIso}", datetime_lt: "{$endIso}"}
+                orderBy: [count_DESC]
+                limit: 15
+              ) {
+                count
+                dimensions { clientCountryName }
+              }
+              statuses: httpRequestsAdaptiveGroups(
+                filter: {datetime_geq: "{$startIso}", datetime_lt: "{$endIso}"}
+                orderBy: [count_DESC]
+                limit: 15
+              ) {
+                count
+                dimensions { edgeResponseStatus }
+              }
+            }
+          }
+        }
+        GRAPHQL;
+
+        $response = $this->graphqlRequest($query);
+
+        $zones = $response['data']['viewer']['zones'] ?? [];
+        if (empty($zones)) {
+            return [];
+        }
+        $zone = $zones[0];
+
+        $ts = $zone['timeseries'] ?? [];
+        $countryGroups = $zone['countries'] ?? [];
+        $statusGroups = $zone['statuses'] ?? [];
+
+        // Aggregate totals from timeseries
+        $totalReqs = 0;
+        $cachedReqs = 0;
+        $totalBytes = 0;
+        $cachedBytes = 0;
+        $totalThreats = 0;
+        $totalPageviews = 0;
+        $totalUniques = 0;
+        $timeseries = [];
+
+        foreach ($ts as $point) {
+            $sum = $point['sum'] ?? [];
+            $uniq = $point['uniq'] ?? [];
+            $dim = $point['dimensions'] ?? [];
+
+            $reqs = $sum['requests'] ?? 0;
+            $cached = $sum['cachedRequests'] ?? 0;
+
+            $totalReqs += $reqs;
+            $cachedReqs += $cached;
+            $totalBytes += $sum['bytes'] ?? 0;
+            $cachedBytes += $sum['cachedBytes'] ?? 0;
+            $totalThreats += $sum['threats'] ?? 0;
+            $totalPageviews += $sum['pageViews'] ?? 0;
+            $totalUniques += $uniq['uniques'] ?? 0;
+
+            $timeseries[] = [
+                'since' => $dim[$timeDim] ?? '',
+                'requests' => ['all' => $reqs, 'cached' => $cached],
+            ];
+        }
+
+        // Country map
+        $countryMap = [];
+        foreach ($countryGroups as $c) {
+            $name = $c['dimensions']['clientCountryName'] ?? 'Unknown';
+            $countryMap[$name] = $c['count'] ?? 0;
+        }
+
+        // Status code map
+        $statusMap = [];
+        foreach ($statusGroups as $s) {
+            $code = $s['dimensions']['edgeResponseStatus'] ?? 0;
+            $statusMap[(int) $code] = $s['count'] ?? 0;
+        }
+
+        return [
+            'totals' => [
+                'requests' => [
+                    'all' => $totalReqs,
+                    'cached' => $cachedReqs,
+                    'country' => $countryMap,
+                    'http_status' => $statusMap,
+                ],
+                'bandwidth' => [
+                    'all' => $totalBytes,
+                    'cached' => $cachedBytes,
+                ],
+                'threats' => ['all' => $totalThreats],
+                'pageviews' => ['all' => $totalPageviews],
+                'uniques' => ['all' => $totalUniques],
+            ],
+            'timeseries' => $timeseries,
+        ];
     }
 
-    // Private helper
+    // Private helpers
+
+    private function graphqlRequest(string $query): array
+    {
+        $rateLimitKey = "cloudflare:{$this->connection->id}";
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 200)) {
+            throw new \RuntimeException('Cloudflare API rate limit exceeded.');
+        }
+
+        RateLimiter::hit($rateLimitKey, 60);
+
+        $response = Http::withToken($this->connection->api_token)
+            ->timeout(30)
+            ->post('https://api.cloudflare.com/client/v4/graphql', [
+                'query' => $query,
+            ]);
+
+        $json = $response->json() ?? [];
+
+        if (! empty($json['errors'])) {
+            throw new \RuntimeException('Cloudflare analytics error: '.($json['errors'][0]['message'] ?? 'Unknown error'));
+        }
+
+        return $json;
+    }
 
     private function request(string $method, string $path, array $data = []): array
     {

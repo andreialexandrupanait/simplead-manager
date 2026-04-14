@@ -72,6 +72,8 @@ class SeoOverview extends Component
             'avg_score' => $wa->count() > 0 ? (int) round($wa->avg(fn ($s) => $s->latestSeoAudit->score)) : 0,
             'needs_attention' => $wa->filter(fn ($s) => $s->latestSeoAudit->score < 60)->count(),
             'total_critical' => $wa->sum(fn ($s) => $s->latestSeoAudit->critical_count),
+            'total_broken_links' => $wa->sum(fn ($s) => $s->latestSeoAudit->broken_links_count ?? 0),
+            'total_broken_images' => $wa->sum(fn ($s) => $s->latestSeoAudit->broken_images_count ?? 0),
         ];
     }
 

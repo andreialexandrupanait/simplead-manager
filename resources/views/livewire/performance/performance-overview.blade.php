@@ -12,7 +12,7 @@
     <x-ui.flash-alert type="success" key="perf-success" />
 
     {{-- Stats Cards --}}
-    <div class="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-ui.card>
             <div class="text-center">
                 <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total'] }}</p>
@@ -43,12 +43,6 @@
             <div class="text-center">
                 <p class="text-2xl font-bold text-red-600">{{ $this->stats['poor_count'] }}</p>
                 <p class="mt-1 text-xs text-gray-500">Poor (&lt;50)</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-bold text-orange-600">{{ $this->stats['budget_violations'] }}</p>
-                <p class="mt-1 text-xs text-gray-500">Budget Violations</p>
             </div>
         </x-ui.card>
     </div>

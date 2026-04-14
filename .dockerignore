@@ -16,8 +16,9 @@
 .env.*
 !.env.example
 
-# Node / JS — not needed in the PHP runtime image
+# Node / JS — assets are built in the Docker multi-stage node build
 node_modules
+public/build
 
 # PHP dependencies — installed fresh by Composer inside the build
 vendor

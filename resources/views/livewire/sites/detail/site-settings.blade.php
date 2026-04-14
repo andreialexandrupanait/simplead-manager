@@ -65,13 +65,9 @@
                         <div class="flex items-center gap-3 shrink-0">
                             {{-- Interval selector (only for modules with interval support) --}}
                             @if($mod['enabled'] && $mod['interval'] && $mod['exists'])
-                                @php
-                                    $minIntervals = \App\Services\ModuleConfigService::getMinIntervals();
-                                    $min = $minIntervals[$key] ?? 1;
-                                @endphp
                                 <select
                                     wire:change="updateInterval('{{ $key }}', $event.target.value)"
-                                    class="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-600"
+                                    class="relative z-10 rounded-lg border border-gray-300 bg-white px-3 py-1.5 pr-8 text-xs text-gray-700 shadow-sm focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                                 >
                                     @foreach($this->getIntervalOptions($key) as $val => $label)
                                         <option value="{{ $val }}" @selected($mod['interval'] == $val)>{{ $label }}</option>

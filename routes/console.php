@@ -1,6 +1,7 @@
 <?php
 
 use App\Dispatchers\BackupDispatcher;
+use App\Dispatchers\BrokenResourceDispatcher;
 use App\Dispatchers\DataSyncDispatcher;
 use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
@@ -48,6 +49,9 @@ Schedule::call(new IncidentResponseDispatcher)
     ->onOneServer();
 
 Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping()->onOneServer();
+
+// Daily broken links/images re-check (lightweight, no re-crawl)
+Schedule::call(new BrokenResourceDispatcher)->dailyAt('02:00')->name('broken-resource-dispatcher')->withoutOverlapping()->onOneServer();
 
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();

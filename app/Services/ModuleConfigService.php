@@ -376,7 +376,13 @@ class ModuleConfigService
         }
 
         if ($config['enabled_column'] === 'status') {
-            return $record->status === ($config['enabled_value'] ?? 'active');
+            $status = $record->status;
+            $expected = $config['enabled_value'] ?? 'active';
+
+            // Handle enum-backed status columns (e.g. MonitorStatus::Active vs 'active')
+            return $status instanceof \BackedEnum
+                ? $status->value === $expected
+                : $status === $expected;
         }
 
         return (bool) $record->{$config['enabled_column']};

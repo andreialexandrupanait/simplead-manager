@@ -73,7 +73,7 @@
 
             @if($overview)
             {{-- Metric Cards + Performance Chart wrapped in one Alpine scope for toggle + aggregation --}}
-            <div @search-console-data-updated.window="updateData($event.detail)" x-data="{
+            <div wire:key="sc-chart-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" @search-console-data-updated.window="updateData($event.detail)" x-data="{
                 {{-- Metric toggle state --}}
                 activeMetrics: { clicks: true, impressions: true, ctr: true, position: true },
                 toggleMetric(key) { this.activeMetrics[key] = !this.activeMetrics[key]; this.renderChart(); },

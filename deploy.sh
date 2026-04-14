@@ -27,24 +27,16 @@ cd "$APP_DIR"
 [ -f .env ] || fail ".env file not found"
 command -v docker >/dev/null 2>&1 || fail "docker not found"
 docker compose version >/dev/null 2>&1 || fail "docker compose plugin not found"
-command -v node >/dev/null 2>&1 || fail "node not found (needed for Vite build)"
 
 # ── Step 1: Pull latest code ─────────────────────────────────────────────────
 
 log "Pulling latest code..."
 git pull --ff-only || fail "git pull failed — resolve conflicts manually"
 
-# ── Step 2: Build frontend assets ────────────────────────────────────────────
-
-log "Installing NPM dependencies and building assets..."
-npm ci --no-audit --no-fund
-npm run build
-rm -rf node_modules
-
-# ── Step 3: Build Docker image ───────────────────────────────────────────────
+# ── Step 2: Build Docker image (includes frontend assets via multi-stage) ────
 
 log "Building new Docker image..."
-$COMPOSE build app nginx
+DOCKER_BUILDKIT=1 $COMPOSE build app nginx
 
 # ── Step 4: Gracefully stop Horizon ──────────────────────────────────────────
 

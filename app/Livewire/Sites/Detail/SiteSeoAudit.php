@@ -24,12 +24,14 @@ class SiteSeoAudit extends Component
     public string $severityFilter = '';
     public string $categoryFilter = '';
     public string $pageSearch = '';
+    public string $linkTypeFilter = '';
     public bool $isRunning = false;
     public bool $settingsAutoAudit = false;
     public int $settingsInterval = 10080;
     public int $settingsMaxPages = 200;
     public string $settingsSitemapUrl = '';
     public string $settingsPreferredTime = '03:00';
+    public bool $settingsCrawlEnabled = false;
 
     public function mount(Site $site): void
     {
@@ -37,7 +39,7 @@ class SiteSeoAudit extends Component
         $this->site = $site;
         $this->isRunning = app(SiteAuditService::class)->hasRunningAudit($site);
         $monitor = $site->seoMonitor;
-        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; $this->settingsPreferredTime = $monitor->audit_config['preferred_time'] ?? '03:00'; }
+        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; $this->settingsPreferredTime = $monitor->audit_config['preferred_time'] ?? '03:00'; $this->settingsCrawlEnabled = $monitor->crawl_enabled ?? false; }
     }
 
     #[Computed] public function monitor() { return $this->site->seoMonitor; }
@@ -122,8 +124,69 @@ class SiteSeoAudit extends Component
         return $q->orderBy('status_code')->paginate(50, pageName: 'pagesPage');
     }
 
-    #[Computed] public function brokenLinks() { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->with('page')->paginate(50, pageName: 'linksPage') : collect(); }
+    #[Computed]
+    public function brokenLinks()
+    {
+        $a = $this->latestCompletedAudit;
+        if (! $a) {
+            return collect();
+        }
+        $q = $a->links()->broken()->with('page');
+        if ($this->linkTypeFilter !== '') {
+            $q->where('type', $this->linkTypeFilter);
+        }
+
+        return $q->paginate(50, pageName: 'linksPage');
+    }
+
     #[Computed] public function brokenLinksCount(): int { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->count() : 0; }
+
+    #[Computed]
+    public function brokenLinksStats(): array
+    {
+        $a = $this->latestCompletedAudit;
+        if (! $a) {
+            return ['total' => 0, 'internal' => 0, 'external' => 0];
+        }
+
+        return [
+            'total' => $a->links()->broken()->count(),
+            'internal' => $a->links()->broken()->where('type', 'internal')->count(),
+            'external' => $a->links()->broken()->where('type', 'external')->count(),
+        ];
+    }
+    #[Computed]
+    public function brokenImages()
+    {
+        $a = $this->latestCompletedAudit;
+
+        return $a ? $a->images()->where('is_broken', true)->with('page')->paginate(50, pageName: 'imagesPage') : collect();
+    }
+
+    #[Computed]
+    public function brokenImagesCount(): int
+    {
+        $a = $this->latestCompletedAudit;
+
+        return $a ? $a->images()->where('is_broken', true)->count() : 0;
+    }
+
+    #[Computed]
+    public function redirectPages()
+    {
+        $a = $this->latestCompletedAudit;
+
+        return $a ? $a->pages()->whereNotNull('redirect_target')->orderByDesc('redirect_chain_length')->paginate(50, pageName: 'redirectsPage') : collect();
+    }
+
+    #[Computed]
+    public function redirectPagesCount(): int
+    {
+        $a = $this->latestCompletedAudit;
+
+        return $a ? $a->pages()->whereNotNull('redirect_target')->count() : 0;
+    }
+
     #[Computed] public function categoryScores(): array { return $this->latestCompletedAudit?->category_scores ?? []; }
     #[Computed] public function auditDiff(): ?array { return $this->latestCompletedAudit?->data['diff'] ?? null; }
     #[Computed] public function severityOptions(): array { return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases()); }
@@ -200,7 +263,7 @@ class SiteSeoAudit extends Component
     public function checkProgress(): void
     {
         $l = $this->site->seoAudits()->latest('id')->first();
-        if (!$l || !$l->isRunning()) { $this->isRunning = false; unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->categoryScores, $this->brokenLinks, $this->brokenLinksCount); }
+        if (!$l || !$l->isRunning()) { $this->isRunning = false; unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->categoryScores, $this->brokenLinks, $this->brokenLinksCount, $this->brokenLinksStats, $this->brokenImages, $this->brokenImagesCount, $this->redirectPages, $this->redirectPagesCount); }
     }
 
     public function updateSettings(): void
@@ -208,7 +271,7 @@ class SiteSeoAudit extends Component
         $m = $this->site->seoMonitor ?? \App\Models\SeoMonitor::create(['site_id' => $this->site->id, 'is_active' => true]);
         $config = $m->audit_config ?? [];
         $config['preferred_time'] = $this->settingsPreferredTime;
-        $m->update(['is_active' => $this->settingsAutoAudit, 'interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int) config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null, 'audit_config' => $config]);
+        $m->update(['is_active' => $this->settingsAutoAudit, 'interval_minutes' => max(1440, $this->settingsInterval), 'max_pages' => min((int) config('seo.crawler.max_pages_hard_limit'), max(10, $this->settingsMaxPages)), 'sitemap_url' => $this->settingsSitemapUrl ?: null, 'audit_config' => $config, 'crawl_enabled' => $this->settingsCrawlEnabled]);
         $this->dispatch('close-modal-seo-settings');
         $this->dispatch('notify', type: 'success', message: 'Settings updated.');
     }

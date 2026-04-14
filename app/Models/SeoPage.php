@@ -14,6 +14,7 @@ class SeoPage extends Model
     public function audit(): BelongsTo { return $this->belongsTo(SeoAudit::class, 'seo_audit_id'); }
     public function site(): BelongsTo { return $this->belongsTo(Site::class); }
     public function links(): HasMany { return $this->hasMany(SeoLink::class); }
+    public function images(): HasMany { return $this->hasMany(SeoImage::class); }
     public function scopeIndexable(Builder $query): Builder { return $query->where('is_indexable', true); }
     public function scopeOrphaned(Builder $query): Builder { return $query->where('inbound_internal_links', 0)->where('status_code', 200); }
 }

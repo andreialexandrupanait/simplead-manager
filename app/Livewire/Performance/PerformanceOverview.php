@@ -50,42 +50,11 @@ class PerformanceOverview extends Component
             ($m->latest_desktop_score !== null && $m->latest_desktop_score < 50)
         )->count();
 
-        $budgetViolations = $monitors
-            ->filter(function ($monitor) {
-                $budgets = $monitor->budgets;
-                if (empty($budgets)) {
-                    return false;
-                }
-                $test = $monitor->latestMobileTest;
-                if (! $test) {
-                    return false;
-                }
-                $minBudgets = ['performance_score'];
-                foreach ($budgets as $key => $budget) {
-                    if ($budget === null || $budget === '') {
-                        continue;
-                    }
-                    $actual = $test->$key;
-                    if ($actual === null) {
-                        continue;
-                    }
-                    $isMin = in_array($key, $minBudgets);
-                    $exceeded = $isMin ? $actual < (float) $budget : $actual > (float) $budget;
-                    if ($exceeded) {
-                        return true;
-                    }
-                }
-
-                return false;
-            })
-            ->count();
-
         return [
             'total' => $total,
             'avg_mobile' => $avgMobile ? round($avgMobile) : null,
             'avg_desktop' => $avgDesktop ? round($avgDesktop) : null,
             'poor_count' => $poorCount,
-            'budget_violations' => $budgetViolations,
         ];
     }
 

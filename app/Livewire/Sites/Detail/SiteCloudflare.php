@@ -32,6 +32,8 @@ class SiteCloudflare extends Component
     // Analytics
     public string $analyticsPeriod = '-1440';
 
+    public string $analyticsError = '';
+
     public function mount(Site $site): void
     {
         $this->authorizeSiteAccess($site);
@@ -229,10 +231,13 @@ class SiteCloudflare extends Component
         }
 
         try {
+            $this->analyticsError = '';
             $service = new CloudflareService($cf->cloudflareConnection);
 
             return $service->getAnalytics($cf->zone_id, $this->analyticsPeriod);
         } catch (\Exception $e) {
+            $this->analyticsError = $e->getMessage();
+
             return [];
         }
     }

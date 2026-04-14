@@ -73,7 +73,7 @@
             @endforeach
         </div>
 
-        {{-- Clickable severity badges --}}
+        {{-- Severity badges + filters row --}}
         <div class="mb-6 flex flex-wrap items-center gap-3">
             @foreach([['Critical',$audit->critical_count,'red','critical'],['High',$audit->high_count,'orange','high'],['Medium',$audit->medium_count,'yellow','medium'],['Low',$audit->low_count,'blue','low'],['Info',$audit->info_count,'gray','info']] as [$l,$c,$v,$filter])
                 <button wire:click="$set('severityFilter','{{ $severityFilter === $filter ? '' : $filter }}');$set('activeTab','issues')" class="transition-opacity {{ $severityFilter !== '' && $severityFilter !== $filter ? 'opacity-40' : '' }}">
@@ -81,85 +81,108 @@
                 </button>
             @endforeach
             <span class="text-sm text-gray-500">{{ $audit->pages_crawled }} pages &middot; {{ $audit->scan_duration ? gmdate('i:s', $audit->scan_duration) : '—' }}</span>
+
+            <div class="ml-auto flex flex-wrap items-center gap-2">
+                <select wire:model.live="severityFilter" class="rounded-lg border-gray-300 text-sm shadow-sm">
+                    <option value="">All Severities</option>
+                    @foreach($this->severityOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach
+                </select>
+                <select wire:model.live="categoryFilter" class="rounded-lg border-gray-300 text-sm shadow-sm">
+                    <option value="">All Categories</option>
+                    @foreach($this->categoryOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach
+                </select>
+                @php
+                    $totalIssueGroups = $this->groupedIssues->count();
+                    $fixableMap = $this->fixableIssueTitles;
+                    $fixableCount = $this->groupedIssues->filter(fn($g) => isset($fixableMap[$g->title]))->count();
+                    $fixablePct = $totalIssueGroups > 0 ? round(($fixableCount / $totalIssueGroups) * 100) : 0;
+                @endphp
+                @if($site->is_connected && !($site->is_prospect ?? false) && $fixableCount > 0)
+                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                        <svg class="h-3.5 w-3.5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span class="font-medium text-accent-600">{{ $fixablePct }}%</span> auto-fixable
+                    </span>
+                @endif
+            </div>
         </div>
 
         {{-- Tabs --}}
         <div class="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-gray-100 p-1">
-            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','infrastructure'=>'Infrastructure','history'=>'History'] as $tab=>$label)
+            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','images'=>'Broken Images ('.$this->brokenImagesCount.')','redirects'=>'Redirects ('.$this->redirectPagesCount.')','infrastructure'=>'Infrastructure','history'=>'History'] as $tab=>$label)
                 <button wire:click="$set('activeTab','{{ $tab }}')" class="whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $activeTab===$tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">{{ $label }}</button>
             @endforeach
         </div>
 
         {{-- ISSUES TAB --}}
         @if($activeTab==='issues')
-            <div class="space-y-3">
-                <div class="flex flex-wrap items-center gap-3">
-                    <select wire:model.live="severityFilter" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="">All Severities</option>@foreach($this->severityOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach</select>
-                    <select wire:model.live="categoryFilter" class="rounded-lg border-gray-300 text-sm shadow-sm"><option value="">All Categories</option>@foreach($this->categoryOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach</select>
-                    @php
-                        $totalIssueGroups = $this->groupedIssues->count();
-                        $fixableMap = $this->fixableIssueTitles;
-                        $fixableCount = $this->groupedIssues->filter(fn($g) => isset($fixableMap[$g->title]))->count();
-                        $fixablePct = $totalIssueGroups > 0 ? round(($fixableCount / $totalIssueGroups) * 100) : 0;
-                    @endphp
-                    @if($site->is_connected && !($site->is_prospect ?? false) && $fixableCount > 0)
-                        <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                            <svg class="h-3.5 w-3.5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span class="font-medium text-accent-600">{{ $fixablePct }}%</span> auto-fixable ({{ $fixableCount }}/{{ $totalIssueGroups }})
-                        </span>
-                    @endif
-                </div>
+            <div class="space-y-2">
                 @forelse($this->groupedIssues as $group)
-                    @php $fixType = $fixableMap[$group->title] ?? null; $canFix = $site->is_connected && !($site->is_prospect ?? false) && $fixType !== null; @endphp
-                    <x-ui.card x-data="{ showUrls: false }">
-                        <div class="flex items-start gap-3">
-                            <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full {{ ['critical'=>'bg-red-500','high'=>'bg-orange-500','medium'=>'bg-yellow-500','low'=>'bg-blue-500','info'=>'bg-gray-400'][$group->severity->value] ?? 'bg-gray-400' }}"></span>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <h4 class="text-sm font-medium text-gray-900">{{ $group->title }}</h4>
-                                    @if($canFix)
-                                        <svg class="h-3.5 w-3.5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Auto-fixable"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    @endif
-                                    <x-ui.badge variant="gray">{{ $group->category->label() }}</x-ui.badge>
-                                    @if($group->affected_count > 1)
-                                        <x-ui.badge variant="blue">{{ $group->affected_count }} pages</x-ui.badge>
-                                    @endif
-                                </div>
-                                @if($group->recommendation)
-                                    <p class="mt-1.5 text-sm text-gray-500">{{ $group->recommendation }}</p>
+                    @php
+                        $fixType = $fixableMap[$group->title] ?? null;
+                        $canFix = $site->is_connected && !($site->is_prospect ?? false) && $fixType !== null;
+                        $sevColors = ['critical'=>'border-l-red-500 bg-white','high'=>'border-l-orange-400 bg-white','medium'=>'border-l-yellow-400 bg-white','low'=>'border-l-blue-400 bg-white','info'=>'border-l-gray-300 bg-white'];
+                        $sevBadge = ['critical'=>'bg-red-100 text-red-700','high'=>'bg-orange-100 text-orange-700','medium'=>'bg-yellow-100 text-yellow-700','low'=>'bg-blue-100 text-blue-700','info'=>'bg-gray-100 text-gray-600'];
+                    @endphp
+                    <div class="rounded-lg border border-gray-200 border-l-4 {{ $sevColors[$group->severity->value] ?? 'border-l-gray-300' }}" x-data="{ showUrls: false }">
+                        <div class="px-4 py-3">
+                            {{-- Top row: severity badge + title + meta --}}
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $sevBadge[$group->severity->value] ?? 'bg-gray-100 text-gray-600' }}">{{ $group->severity->label() }}</span>
+                                <h4 class="text-sm font-semibold text-gray-900">{{ $group->title }}</h4>
+                                @if($canFix)
+                                    <span class="inline-flex items-center gap-0.5 rounded bg-accent-50 px-1.5 py-0.5 text-xs font-medium text-accent-700">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        Auto-fix
+                                    </span>
                                 @endif
-                                @if($group->urls->isNotEmpty())
-                                    <div class="mt-2">
-                                        <button @click="showUrls = !showUrls" class="inline-flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700">
-                                            <svg class="h-3 w-3 transition-transform" :class="showUrls && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                            <span x-text="showUrls ? 'Hide URLs' : 'Show {{ $group->urls->count() }} affected URL{{ $group->urls->count() > 1 ? 's' : '' }}'"></span>
-                                        </button>
-                                        <div x-show="showUrls" x-collapse class="mt-2 space-y-1 border-l-2 border-gray-100 pl-3">
-                                            @foreach($group->urls->take(20) as $url)
-                                                <div class="flex items-center gap-2">
-                                                    <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600 flex-1">{{ Str::limit($url, 70) }}</a>
-                                                    @if($canFix)
-                                                        @if($fixType === 'meta')
-                                                            <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
-                                                        @elseif($fixType === 'robots')
-                                                            <button wire:click="openRobotsFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
-                                                        @elseif($fixType === 'canonical')
-                                                            <button wire:click="openCanonicalFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
-                                                        @elseif($fixType === 'og')
-                                                            <button wire:click="openOgFix('{{ $url }}')" class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-800">Fix</button>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                            @if($group->urls->count() > 20)
-                                                <p class="text-xs text-gray-300">... and {{ $group->urls->count() - 20 }} more</p>
-                                            @endif
-                                        </div>
-                                    </div>
+                                <span class="text-xs text-gray-400">{{ $group->category->label() }}</span>
+                                @if($group->affected_count > 1)
+                                    <span class="text-xs font-medium text-gray-500">{{ $group->affected_count }} pages</span>
                                 @endif
                             </div>
+
+                            {{-- Description --}}
+                            @if($group->description)
+                                <p class="mt-1.5 text-sm text-gray-600">{{ $group->description }}</p>
+                            @endif
+
+                            {{-- Recommendation --}}
+                            @if($group->recommendation)
+                                <div class="mt-2 flex items-start gap-1.5 rounded-md bg-white/60 px-2.5 py-1.5 text-sm">
+                                    <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                                    <span class="text-gray-500">{{ $group->recommendation }}</span>
+                                </div>
+                            @endif
+
+                            {{-- Affected URLs --}}
+                            @if($group->urls->isNotEmpty())
+                                <div class="mt-2">
+                                    <button @click="showUrls = !showUrls" class="inline-flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700">
+                                        <svg class="h-3 w-3 transition-transform" :class="showUrls && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                        <span x-text="showUrls ? 'Hide URLs' : 'Show {{ $group->urls->count() }} affected URL{{ $group->urls->count() > 1 ? 's' : '' }}'"></span>
+                                    </button>
+                                    <div x-show="showUrls" x-collapse class="mt-2 max-h-64 overflow-y-auto space-y-1 border-l-2 border-gray-200 pl-3">
+                                        @foreach($group->urls as $url)
+                                            <div class="flex items-center gap-2">
+                                                <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600 flex-1">{{ Str::limit($url, 70) }}</a>
+                                                @if($canFix)
+                                                    @if($fixType === 'meta')
+                                                        <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
+                                                    @elseif($fixType === 'robots')
+                                                        <button wire:click="openRobotsFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
+                                                    @elseif($fixType === 'canonical')
+                                                        <button wire:click="openCanonicalFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
+                                                    @elseif($fixType === 'og')
+                                                        <button wire:click="openOgFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
+                                                    @endif
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         </div>
-                    </x-ui.card>
+                    </div>
                 @empty
                     <x-ui.card><x-ui.empty-state title="No issues found" description="Great job — or adjust your filters." icon="check-circle" /></x-ui.card>
                 @endforelse
@@ -207,7 +230,7 @@
                 </x-slot:head>
             @forelse($this->pages as $p)
                 <tbody x-data="{ expanded: false }">
-                <tr class="hover:bg-gray-50 cursor-pointer" @click="expanded = !expanded">
+                <tr class="{{ $p->status_code >= 400 ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50' }} cursor-pointer" @click="expanded = !expanded">
                     <x-ui.td class="max-w-xs !whitespace-normal"><a href="{{ $p->url }}" target="_blank" class="text-accent-600 hover:underline" @click.stop>{{ Str::limit(parse_url($p->url,PHP_URL_PATH)?:'/',50) }}</a></x-ui.td>
                     <x-ui.td><x-ui.badge :variant="$p->status_code===200?'green':($p->status_code>=400?'red':'yellow')">{{ $p->status_code??'—' }}</x-ui.badge></x-ui.td>
                     <x-ui.td title="{{ $p->title }}">@if($p->title_length)<span class="{{ $p->title_length<30||$p->title_length>60?'text-red-600 font-medium':'text-green-600' }}">{{ $p->title_length }}</span>@else<span class="text-red-600 font-medium">Missing</span>@endif</x-ui.td>
@@ -248,16 +271,192 @@
 
         {{-- BROKEN LINKS TAB --}}
         @if($activeTab==='links')
-            <x-ui.table><x-slot:head><x-ui.th>Broken URL</x-ui.th><x-ui.th>Status</x-ui.th><x-ui.th>Type</x-ui.th><x-ui.th>Found On</x-ui.th></x-slot:head>
-            @forelse($this->brokenLinks as $lk)
-                <tr class="hover:bg-gray-50">
-                    <x-ui.td class="max-w-xs !whitespace-normal text-red-600">{{ Str::limit($lk->target_url,60) }}</x-ui.td>
-                    <x-ui.td><x-ui.badge variant="red">{{ $lk->status_code??'Error' }}</x-ui.badge></x-ui.td>
-                    <x-ui.td>{{ ucfirst($lk->type) }}</x-ui.td>
-                    <x-ui.td class="max-w-xs !whitespace-normal">@if($lk->page)<a href="{{ $lk->page->url }}" target="_blank" class="text-accent-600 hover:underline">{{ Str::limit(parse_url($lk->page->url,PHP_URL_PATH)?:'/',40) }}</a>@else — @endif</x-ui.td>
-                </tr>
-            @empty<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No broken links found.</td></tr>@endforelse</x-ui.table>
+            <div class="mb-4">
+                <select wire:model.live="linkTypeFilter" class="rounded-lg border-gray-300 text-sm shadow-sm">
+                    <option value="">All Types</option>
+                    <option value="internal">Internal</option>
+                    <option value="external">External</option>
+                </select>
+            </div>
+
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th>Broken URL</x-ui.th>
+                    <x-ui.th>Status</x-ui.th>
+                    <x-ui.th>Type</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">Anchor Text</x-ui.th>
+                    <x-ui.th>Found On</x-ui.th>
+                </x-slot:head>
+                @forelse($this->brokenLinks as $lk)
+                    <tr class="hover:bg-gray-50">
+                        <x-ui.td class="max-w-xs !whitespace-normal text-red-600">{{ Str::limit($lk->target_url, 60) }}</x-ui.td>
+                        <x-ui.td><x-ui.badge variant="red">{{ $lk->status_code ?? 'Error' }}</x-ui.badge></x-ui.td>
+                        <x-ui.td><x-ui.badge :variant="$lk->type === 'internal' ? 'blue' : 'gray'">{{ ucfirst($lk->type) }}</x-ui.badge></x-ui.td>
+                        <x-ui.td class="hidden lg:table-cell max-w-[200px] truncate text-gray-500">{{ $lk->anchor_text ? Str::limit($lk->anchor_text, 40) : '—' }}</x-ui.td>
+                        <x-ui.td class="max-w-xs !whitespace-normal">@if($lk->page)<a href="{{ $lk->page->url }}" target="_blank" class="text-accent-600 hover:underline">{{ Str::limit(parse_url($lk->page->url, PHP_URL_PATH) ?: '/', 40) }}</a>@else — @endif</x-ui.td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">No broken links found.</td></tr>
+                @endforelse
+            </x-ui.table>
             @if($this->brokenLinks instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->brokenLinks->hasPages())<div class="mt-4">{{ $this->brokenLinks->links() }}</div>@endif
+        @endif
+
+        {{-- BROKEN IMAGES TAB --}}
+        @if($activeTab==='images')
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th>Broken Image URL</x-ui.th>
+                    <x-ui.th>Status</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">Alt Text</x-ui.th>
+                    <x-ui.th>Found On</x-ui.th>
+                </x-slot:head>
+                @forelse($this->brokenImages as $img)
+                    <tr class="hover:bg-gray-50">
+                        <x-ui.td class="max-w-xs !whitespace-normal text-red-600">{{ Str::limit($img->image_url, 60) }}</x-ui.td>
+                        <x-ui.td><x-ui.badge variant="red">{{ $img->status_code ?? 'Error' }}</x-ui.badge></x-ui.td>
+                        <x-ui.td class="hidden lg:table-cell max-w-[200px] truncate text-gray-500">{{ $img->has_alt ? Str::limit($img->alt_text, 40) : '—' }}</x-ui.td>
+                        <x-ui.td class="max-w-xs !whitespace-normal">
+                            @if($img->page)
+                                <a href="{{ $img->page->url }}" target="_blank" class="text-accent-600 hover:underline">{{ Str::limit(parse_url($img->page->url, PHP_URL_PATH) ?: '/', 40) }}</a>
+                            @else — @endif
+                        </x-ui.td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No broken images found.</td></tr>
+                @endforelse
+            </x-ui.table>
+            @if($this->brokenImages instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->brokenImages->hasPages())<div class="mt-4">{{ $this->brokenImages->links() }}</div>@endif
+        @endif
+
+        {{-- REDIRECTS TAB --}}
+        @if($activeTab==='redirects')
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th>Source URL</x-ui.th>
+                    <x-ui.th>Status</x-ui.th>
+                    <x-ui.th>Redirect Target</x-ui.th>
+                    <x-ui.th>Chain</x-ui.th>
+                </x-slot:head>
+                @forelse($this->redirectPages as $rp)
+                    <tr class="hover:bg-gray-50">
+                        <x-ui.td class="max-w-xs !whitespace-normal">
+                            <a href="{{ $rp->url }}" target="_blank" class="text-accent-600 hover:underline">{{ Str::limit(parse_url($rp->url, PHP_URL_PATH) ?: $rp->url, 50) }}</a>
+                        </x-ui.td>
+                        <x-ui.td><x-ui.badge variant="yellow">{{ $rp->status_code }}</x-ui.badge></x-ui.td>
+                        <x-ui.td class="max-w-xs !whitespace-normal text-gray-600">{{ Str::limit($rp->redirect_target, 50) }}</x-ui.td>
+                        <x-ui.td>
+                            <x-ui.badge :variant="$rp->redirect_chain_length > 2 ? 'red' : ($rp->redirect_chain_length > 1 ? 'yellow' : 'green')">
+                                {{ $rp->redirect_chain_length }} hop{{ $rp->redirect_chain_length !== 1 ? 's' : '' }}
+                            </x-ui.badge>
+                        </x-ui.td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">No redirects found.</td></tr>
+                @endforelse
+            </x-ui.table>
+            @if($this->redirectPages instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->redirectPages->hasPages())<div class="mt-4">{{ $this->redirectPages->links() }}</div>@endif
+
+            {{-- Redirect Management (connected sites only) --}}
+            @if($site->is_connected && !($site->is_prospect ?? false))
+                <div class="mt-6" x-data="{ redirects: [], loading: true, plugin: '', newSource: '', newTarget: '', newType: 301, saving: false }" x-init="
+                    fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects', { headers: { 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' } })
+                        .then(r => r.json())
+                        .then(data => { redirects = data.redirects || []; plugin = data.plugin || ''; loading = false; })
+                        .catch(() => { loading = false; })
+                ">
+                    <x-ui.card>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-medium text-gray-900">Redirect Management</h3>
+                            <template x-if="plugin">
+                                <x-ui.badge variant="blue"><span x-text="'via ' + plugin"></span></x-ui.badge>
+                            </template>
+                        </div>
+
+                        {{-- Create redirect form --}}
+                        <div class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 p-3">
+                            <div class="flex-1 min-w-[180px]">
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Source Path</label>
+                                <input x-model="newSource" type="text" placeholder="/old-page" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            </div>
+                            <div class="flex-1 min-w-[180px]">
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Target URL</label>
+                                <input x-model="newTarget" type="text" placeholder="/new-page" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                            </div>
+                            <div class="w-24">
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                                <select x-model="newType" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                                    <option value="301">301</option>
+                                    <option value="302">302</option>
+                                    <option value="307">307</option>
+                                    <option value="410">410</option>
+                                </select>
+                            </div>
+                            <button
+                                @click="
+                                    if (!newSource || !newTarget) return;
+                                    saving = true;
+                                    fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' },
+                                        body: JSON.stringify({ source: newSource, target: newTarget, type: parseInt(newType) })
+                                    })
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        if (data.redirect_id) { redirects.unshift({ id: data.redirect_id, source: newSource, target: newTarget, type: parseInt(newType) }); newSource = ''; newTarget = ''; }
+                                        saving = false;
+                                    })
+                                    .catch(() => { saving = false; })
+                                "
+                                :disabled="saving || !newSource || !newTarget"
+                                class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+                            >
+                                <span x-show="!saving">Add</span>
+                                <span x-show="saving">...</span>
+                            </button>
+                        </div>
+
+                        {{-- Existing redirects table --}}
+                        <template x-if="loading">
+                            <div class="py-4 text-center text-sm text-gray-400">Loading redirects...</div>
+                        </template>
+                        <template x-if="!loading && redirects.length === 0">
+                            <div class="py-4 text-center text-sm text-gray-400">No managed redirects found.</div>
+                        </template>
+                        <template x-if="!loading && redirects.length > 0">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead><tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+                                        <th class="px-3 py-2">Source</th><th class="px-3 py-2">Target</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Action</th>
+                                    </tr></thead>
+                                    <tbody>
+                                        <template x-for="r in redirects" :key="r.id">
+                                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                                <td class="px-3 py-2 text-gray-700" x-text="r.source"></td>
+                                                <td class="px-3 py-2 text-gray-600" x-text="r.target"></td>
+                                                <td class="px-3 py-2"><span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium" x-text="r.type"></span></td>
+                                                <td class="px-3 py-2 text-right">
+                                                    <button
+                                                        @click="
+                                                            if (!confirm('Delete this redirect?')) return;
+                                                            fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects/' + r.id, {
+                                                                method: 'DELETE',
+                                                                headers: { 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' }
+                                                            })
+                                                            .then(() => { redirects = redirects.filter(x => x.id !== r.id); })
+                                                        "
+                                                        class="text-xs text-red-500 hover:text-red-700"
+                                                    >Delete</button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
+                    </x-ui.card>
+                </div>
+            @endif
         @endif
 
         {{-- INFRASTRUCTURE TAB --}}
@@ -323,19 +522,84 @@
                 {{-- Security Headers --}}
                 <x-ui.card>
                     <h3 class="text-sm font-medium text-gray-900 mb-3">Security Headers</h3>
-                    @php $headers = $infra['security_headers'] ?? []; @endphp
-                    <div class="space-y-2">
-                        @foreach(['hsts' => 'HSTS (Strict-Transport-Security)', 'x_frame_options' => 'X-Frame-Options', 'x_content_type_options' => 'X-Content-Type-Options', 'csp' => 'Content-Security-Policy'] as $key => $label)
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-gray-600">{{ $label }}</span>
-                                @if(!empty($headers[$key]))
-                                    <span class="text-green-600 font-medium">&#10003;</span>
-                                @else
-                                    <span class="text-red-500 font-medium">&#10007;</span>
+                    @php
+                        $headers = $infra['security_headers'] ?? [];
+                        $headerInfo = [
+                            'hsts' => [
+                                'label' => 'HSTS (Strict-Transport-Security)',
+                                'desc' => 'Forces browsers to use HTTPS, preventing protocol downgrade attacks and cookie hijacking.',
+                                'fix' => 'Add to your web server (Nginx/Apache) or WordPress .htaccess:',
+                                'code' => 'Strict-Transport-Security: max-age=31536000; includeSubDomains; preload',
+                                'nginx' => 'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;',
+                                'apache' => 'Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"',
+                            ],
+                            'x_frame_options' => [
+                                'label' => 'X-Frame-Options',
+                                'desc' => 'Prevents your site from being loaded in iframes, protecting against clickjacking attacks.',
+                                'fix' => 'Add to your web server config:',
+                                'code' => 'X-Frame-Options: SAMEORIGIN',
+                                'nginx' => 'add_header X-Frame-Options "SAMEORIGIN" always;',
+                                'apache' => 'Header always set X-Frame-Options "SAMEORIGIN"',
+                            ],
+                            'x_content_type_options' => [
+                                'label' => 'X-Content-Type-Options',
+                                'desc' => 'Prevents browsers from MIME-sniffing, reducing drive-by download attacks.',
+                                'fix' => 'Add to your web server config:',
+                                'code' => 'X-Content-Type-Options: nosniff',
+                                'nginx' => 'add_header X-Content-Type-Options "nosniff" always;',
+                                'apache' => 'Header always set X-Content-Type-Options "nosniff"',
+                            ],
+                            'csp' => [
+                                'label' => 'Content-Security-Policy',
+                                'desc' => 'Controls which resources can be loaded, mitigating XSS and data injection attacks.',
+                                'fix' => 'Start with a permissive policy and tighten as needed:',
+                                'code' => "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+                                'nginx' => "add_header Content-Security-Policy \"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;\" always;",
+                                'apache' => "Header always set Content-Security-Policy \"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;\"",
+                            ],
+                        ];
+                        $missingCount = collect($headerInfo)->filter(fn($h, $k) => empty($headers[$k]))->count();
+                    @endphp
+                    <div class="space-y-3">
+                        @foreach($headerInfo as $key => $info)
+                            @php $present = !empty($headers[$key]); @endphp
+                            <div class="{{ !$present ? 'rounded-lg border border-red-100 bg-red-50/30 p-3' : '' }}">
+                                <div class="flex items-center justify-between text-sm">
+                                    <div class="flex items-center gap-2">
+                                        @if($present)
+                                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-600"><svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></span>
+                                        @else
+                                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-red-500"><svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg></span>
+                                        @endif
+                                        <span class="font-medium {{ $present ? 'text-gray-700' : 'text-red-700' }}">{{ $info['label'] }}</span>
+                                    </div>
+                                    <x-ui.badge :variant="$present ? 'green' : 'red'">{{ $present ? 'Present' : 'Missing' }}</x-ui.badge>
+                                </div>
+                                @if(!$present)
+                                    <div class="mt-2 ml-7 space-y-1.5">
+                                        <p class="text-xs text-gray-500">{{ $info['desc'] }}</p>
+                                        <p class="text-xs font-medium text-gray-600">{{ $info['fix'] }}</p>
+                                        <div class="rounded bg-gray-800 px-3 py-2 text-xs font-mono text-green-400 overflow-x-auto">{{ $info['code'] }}</div>
+                                        <details class="text-xs">
+                                            <summary class="cursor-pointer text-accent-600 hover:text-accent-700 font-medium">Server config examples</summary>
+                                            <div class="mt-1 space-y-1">
+                                                <p class="text-gray-500 font-medium">Nginx:</p>
+                                                <div class="rounded bg-gray-800 px-2 py-1 text-xs font-mono text-green-400 overflow-x-auto">{{ $info['nginx'] }}</div>
+                                                <p class="text-gray-500 font-medium">Apache / .htaccess:</p>
+                                                <div class="rounded bg-gray-800 px-2 py-1 text-xs font-mono text-green-400 overflow-x-auto">{{ $info['apache'] }}</div>
+                                            </div>
+                                        </details>
+                                    </div>
                                 @endif
                             </div>
                         @endforeach
                     </div>
+                    @if($missingCount > 0)
+                        <div class="mt-3 rounded-md bg-amber-50 p-2.5 text-xs text-amber-700">
+                            <span class="font-medium">{{ $missingCount }} missing header{{ $missingCount > 1 ? 's' : '' }}.</span>
+                            You can also add these via a WordPress plugin like <strong>HTTP Headers</strong> or <strong>Really Simple SSL Pro</strong>.
+                        </div>
+                    @endif
                 </x-ui.card>
 
                 {{-- SSL Certificate --}}
@@ -480,6 +744,16 @@
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Audit Interval</label><select wire:model="settingsInterval" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"><option value="10080">Weekly</option><option value="20160">Biweekly</option><option value="43200">Monthly</option></select></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label><input wire:model="settingsPreferredTime" type="time" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"><p class="mt-1 text-xs text-gray-400">Audit will run at this time (server timezone)</p></div>
             @endif
+            <div class="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Daily broken resource check</p>
+                    <p class="text-xs text-gray-400">Re-check broken links and images daily without a full re-crawl</p>
+                </div>
+                <label class="relative inline-flex cursor-pointer items-center">
+                    <input type="checkbox" wire:model="settingsCrawlEnabled" class="peer sr-only">
+                    <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-300"></div>
+                </label>
+            </div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Max Pages</label><input wire:model="settingsMaxPages" type="number" min="10" max="1000" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Sitemap URL (optional)</label><input wire:model="settingsSitemapUrl" type="url" placeholder="https://example.com/sitemap.xml" class="w-full rounded-lg border-gray-300 text-sm shadow-sm"></div>
             <div class="flex justify-end gap-3 pt-2"><x-ui.button variant="secondary" @click="$dispatch('close-modal-seo-settings')">Cancel</x-ui.button><x-ui.button wire:click="updateSettings">Save</x-ui.button></div>

@@ -8,6 +8,7 @@ use App\Enums\SeoAuditStatus;
 use App\Enums\SeoIssueCategory;
 use App\Enums\SeoIssueSeverity;
 use App\Models\SeoAudit;
+use App\Models\SeoImage;
 use App\Models\SeoIssue;
 use App\Models\SeoLink;
 use App\Models\Site;
@@ -50,6 +51,7 @@ class AnalyzeSeoPages implements ShouldQueue
         $this->checkHeadings($okPages);
         $this->checkContent($okPages);
         $this->checkImages($okPages);
+        $this->checkBrokenImages();
         $this->checkLinks($pages);
         $this->checkIndexability($pages);
         $this->checkCanonicals($okPages);
@@ -164,6 +166,15 @@ class AnalyzeSeoPages implements ShouldQueue
         }
     }
 
+    private function checkBrokenImages(): void
+    {
+        $brokenImages = SeoImage::where('seo_audit_id', $this->audit->id)->where('is_broken', true)->count();
+        if ($brokenImages > 0) {
+            $sev = $brokenImages > 10 ? SeoIssueSeverity::High : SeoIssueSeverity::Medium;
+            $this->addIssue(SeoIssueCategory::Images, $sev, 'Broken images', "{$brokenImages} image(s) return HTTP errors.", null, 'Fix or replace broken image URLs.');
+        }
+    }
+
     private function checkLinks($allPages): void
     {
         foreach ($allPages as $p) {
@@ -218,18 +229,19 @@ class AnalyzeSeoPages implements ShouldQueue
 
     private function checkMobile($pages): void
     {
-        $missing = $pages->filter(fn($p) => !$p->has_viewport_meta)->count();
-        if ($missing > 0) {
-            $this->addIssue(SeoIssueCategory::Mobile, $missing > 1 ? SeoIssueSeverity::Critical : SeoIssueSeverity::High, 'Missing viewport meta', "{$missing} page(s) missing viewport meta tag.", null, 'Add <meta name="viewport" content="width=device-width, initial-scale=1">.');
+        foreach ($pages->filter(fn ($p) => ! $p->has_viewport_meta) as $p) {
+            $this->addIssue(SeoIssueCategory::Mobile, SeoIssueSeverity::High, 'Missing viewport meta', 'Page is missing the viewport meta tag.', $p->url, 'Add <meta name="viewport" content="width=device-width, initial-scale=1">.');
         }
     }
 
     private function checkSocialMeta($pages): void
     {
-        $missingOg = $pages->filter(fn($p) => empty($p->og_tags) || !isset($p->og_tags['og:title']))->count();
-        if ($missingOg > 0 && $pages->count() > 0) {
-            $pct = (int) round(($missingOg / $pages->count()) * 100);
-            $this->addIssue(SeoIssueCategory::Social, $pct > 50 ? SeoIssueSeverity::Medium : SeoIssueSeverity::Low, 'Missing Open Graph tags', "{$missingOg} pages ({$pct}%) lack og:title.", null, 'Add OG meta tags for better social sharing.');
+        $missing = $pages->filter(fn ($p) => empty($p->og_tags) || ! isset($p->og_tags['og:title']));
+        $pct = $pages->count() > 0 ? (int) round(($missing->count() / $pages->count()) * 100) : 0;
+        $sev = $pct > 50 ? SeoIssueSeverity::Medium : SeoIssueSeverity::Low;
+
+        foreach ($missing as $p) {
+            $this->addIssue(SeoIssueCategory::Social, $sev, 'Missing Open Graph tags', 'Page lacks og:title tag.', $p->url, 'Add OG meta tags for better social sharing.');
         }
     }
 
@@ -244,18 +256,19 @@ class AnalyzeSeoPages implements ShouldQueue
     private function checkUrlStructure($pages): void
     {
         $maxLen = (int) config('seo.analysis.url_max_length');
-        $long = 0; $underscores = 0; $uppercase = 0;
 
         foreach ($pages as $p) {
             $path = parse_url($p->url, PHP_URL_PATH) ?? '';
-            if (strlen($p->url) > $maxLen) $long++;
-            if (str_contains($path, '_')) $underscores++;
-            if ($path !== strtolower($path)) $uppercase++;
+            if (strlen($p->url) > $maxLen) {
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Long URLs', 'URL exceeds ' . $maxLen . ' characters (' . strlen($p->url) . ' chars).', $p->url, 'Shorten the URL.');
+            }
+            if (str_contains($path, '_')) {
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Info, 'URLs with underscores', 'URL path contains underscores.', $p->url, 'Use hyphens (-) instead of underscores in URLs.');
+            }
+            if ($path !== strtolower($path)) {
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Uppercase URLs', 'URL path contains uppercase characters.', $p->url, 'Use lowercase URLs to avoid duplicate content.');
+            }
         }
-
-        if ($long > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Long URLs', "{$long} URL(s) exceed {$maxLen} chars.", null, 'Shorten URLs.');
-        if ($underscores > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Info, 'URLs with underscores', "{$underscores} URL(s) use underscores instead of hyphens.", null, 'Use hyphens (-) in URLs.');
-        if ($uppercase > 0) $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Uppercase URLs', "{$uppercase} URL(s) have uppercase characters.", null, 'Use lowercase URLs.');
     }
 
     private function checkSchemaMarkup($pages): void
@@ -281,16 +294,14 @@ class AnalyzeSeoPages implements ShouldQueue
 
     private function checkImageOptimization($pages): void
     {
-        $totalMissingLazy = $pages->sum(fn ($p) => $p->meta['images_without_lazy'] ?? 0);
-        $pagesWithoutLazy = $pages->filter(fn ($p) => ($p->meta['images_without_lazy'] ?? 0) > 3)->count();
-
-        if ($pagesWithoutLazy > 0) {
-            $this->addIssue(SeoIssueCategory::Performance, SeoIssueSeverity::Medium, 'Images without lazy loading', "{$pagesWithoutLazy} page(s) have images without lazy loading.", null, 'Add loading="lazy" to offscreen images to improve page load speed.');
+        foreach ($pages->filter(fn ($p) => ($p->meta['images_without_lazy'] ?? 0) > 3) as $p) {
+            $count = $p->meta['images_without_lazy'] ?? 0;
+            $this->addIssue(SeoIssueCategory::Performance, SeoIssueSeverity::Medium, 'Images without lazy loading', "{$count} images on this page lack lazy loading.", $p->url, 'Add loading="lazy" to offscreen images to improve page load speed.');
         }
 
-        $totalMissingAlt = $pages->sum('images_without_alt');
-        if ($totalMissingAlt > 10) {
-            $this->addIssue(SeoIssueCategory::Images, SeoIssueSeverity::High, 'Missing alt text (site-wide)', "{$totalMissingAlt} images across the site lack alt text.", null, 'Add descriptive alt text to all images for accessibility and SEO.');
+        foreach ($pages->filter(fn ($p) => $p->images_without_alt > 0) as $p) {
+            $sev = $p->images_without_alt > 5 ? SeoIssueSeverity::High : SeoIssueSeverity::Medium;
+            $this->addIssue(SeoIssueCategory::Images, $sev, 'Missing alt text (site-wide)', "{$p->images_without_alt} image(s) missing alt text.", $p->url, 'Add descriptive alt text to all images for accessibility and SEO.');
         }
     }
 
@@ -307,15 +318,12 @@ class AnalyzeSeoPages implements ShouldQueue
             return;
         }
 
-        $inSitemap = $allPages->filter(fn ($p) => $p->in_sitemap);
-        $errorInSitemap = $inSitemap->filter(fn ($p) => $p->status_code >= 400)->count();
-        if ($errorInSitemap > 0) {
-            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::High, 'Error pages in sitemap', "{$errorInSitemap} page(s) in sitemap return HTTP errors.", null, 'Remove error pages from sitemap or fix the pages.');
+        foreach ($allPages->filter(fn ($p) => $p->in_sitemap && $p->status_code >= 400) as $p) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::High, 'Error pages in sitemap', "Page returns HTTP {$p->status_code} but is included in the sitemap.", $p->url, 'Remove this page from the sitemap or fix the HTTP error.');
         }
 
-        $indexableNotInSitemap = $allPages->filter(fn ($p) => $p->is_indexable && ! $p->in_sitemap && $p->status_code === 200)->count();
-        if ($indexableNotInSitemap > 5) {
-            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Indexable pages not in sitemap', "{$indexableNotInSitemap} indexable page(s) are not in the sitemap.", null, 'Add important indexable pages to the sitemap.');
+        foreach ($allPages->filter(fn ($p) => $p->is_indexable && ! $p->in_sitemap && $p->status_code === 200) as $p) {
+            $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Indexable pages not in sitemap', 'Indexable page is not included in the sitemap.', $p->url, 'Add this page to the XML sitemap.');
         }
     }
 
@@ -339,19 +347,16 @@ class AnalyzeSeoPages implements ShouldQueue
 
     private function checkInternalLinking($pages): void
     {
-        $deepPages = $pages->filter(fn ($p) => $p->depth > 3 && $p->status_code === 200)->count();
-        if ($deepPages > 0) {
-            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Deep pages', "{$deepPages} page(s) are more than 3 clicks from homepage.", null, 'Improve internal linking to reduce click depth for important pages.');
+        foreach ($pages->filter(fn ($p) => $p->depth > 3 && $p->status_code === 200) as $p) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Deep pages', "Page is {$p->depth} clicks from homepage (recommended: max 3).", $p->url, 'Add internal links from higher-level pages to reduce click depth.');
         }
 
-        $deadEnds = $pages->filter(fn ($p) => $p->internal_link_count === 0 && $p->status_code === 200 && $p->depth > 0)->count();
-        if ($deadEnds > 0) {
-            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Medium, 'Dead-end pages', "{$deadEnds} page(s) have no outbound internal links.", null, 'Add internal links to guide users and distribute link equity.');
+        foreach ($pages->filter(fn ($p) => $p->internal_link_count === 0 && $p->status_code === 200 && $p->depth > 0) as $p) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Medium, 'Dead-end pages', 'Page has no outbound internal links.', $p->url, 'Add internal links to guide users and distribute link equity.');
         }
 
-        $diluted = $pages->filter(fn ($p) => $p->internal_link_count > 100 && $p->status_code === 200)->count();
-        if ($diluted > 0) {
-            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Link dilution', "{$diluted} page(s) have over 100 outbound links.", null, 'Consider reducing the number of links on these pages.');
+        foreach ($pages->filter(fn ($p) => $p->internal_link_count > 100 && $p->status_code === 200) as $p) {
+            $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Link dilution', "Page has {$p->internal_link_count} outbound links (recommended: under 100).", $p->url, 'Reduce the number of links on this page to concentrate link equity.');
         }
     }
 

@@ -1,4 +1,28 @@
 # syntax=docker/dockerfile:1.7
+# ── Assets stage ──────────────────────────────────────────────────────────────
+# Builds frontend assets (Vite + Tailwind) in a Node container.
+# The npm install layer is cached when package.json/lock don't change.
+FROM node:20-alpine AS assets
+
+WORKDIR /app
+
+# 1. Dependency manifests first — npm install is cached when these don't change
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+
+# 2. Build config
+COPY vite.config.js postcss.config.js tailwind.config.js ./
+
+# 3. Source files needed by Vite + Tailwind content scanning
+COPY resources/ ./resources/
+COPY public/ ./public/
+COPY app/Livewire/ ./app/Livewire/
+COPY app/View/ ./app/View/
+
+# 4. Build production assets
+RUN npm run build
+
 # ── Builder stage ──────────────────────────────────────────────────────────────
 # Installs build-time deps (headers, PECL, Composer) then discards them.
 # The final `app` stage copies only compiled .so files and vendor/.
@@ -59,18 +83,21 @@ COPY --chown=appuser:appuser composer.json composer.lock ./
 
 USER appuser
 
-# Install production Composer dependencies
-RUN composer install \
+# Install production Composer dependencies (cache mount keeps download cache between builds)
+RUN --mount=type=cache,target=/home/appuser/.composer/cache,uid=1000,gid=1000 \
+    composer install \
         --no-dev \
         --no-scripts \
         --no-interaction \
         --no-progress \
-        --optimize-autoloader \
-    && rm -rf /home/appuser/.composer/cache
+        --optimize-autoloader
 
 # Copy the rest of the application code AFTER vendor/ is installed
 USER root
 COPY --chown=appuser:appuser . /var/www/html
+
+# Overlay built frontend assets from the assets stage
+COPY --from=assets --chown=appuser:appuser /app/public/build /var/www/html/public/build
 
 # Run post-install scripts now that the full app is present
 USER appuser

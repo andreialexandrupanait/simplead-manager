@@ -7,8 +7,10 @@ namespace App\Dispatchers;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
+use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
 use App\Models\BackupConfig;
+use App\Services\ActivityLogger;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\Log;
 
@@ -119,28 +121,126 @@ class BackupDispatcher
     }
 
     /**
-     * Mark in_progress backups older than 35 minutes as failed.
-     * These are likely jobs that were killed mid-execution (e.g. container restart).
+     * Detect stuck in_progress backups and auto-retry or mark as failed.
+     *
+     * Two-tier detection:
+     * - Tier 1: No progress update (updated_at) in 10 minutes → worker likely killed
+     * - Tier 2: Started over 60 minutes ago → absolute safety net
+     *
+     * Auto-retries up to 2 times before marking as permanently failed.
      */
     protected function recoverStuckBackups(): void
     {
+        $maxAutoRetries = 2;
+        $heartbeatMinutes = 10;
+        $absoluteMinutes = 60;
+
         $stuck = Backup::where('status', BackupStatus::InProgress)
-            ->where('started_at', '<', now()->subMinutes(50))
+            ->where(function ($query) use ($heartbeatMinutes, $absoluteMinutes) {
+                $query->where('updated_at', '<', now()->subMinutes($heartbeatMinutes))
+                    ->orWhere('started_at', '<', now()->subMinutes($absoluteMinutes));
+            })
+            ->with('site')
             ->get();
 
         foreach ($stuck as $backup) {
-            Log::warning("Recovering stuck backup #{$backup->id} for site #{$backup->site_id} (started {$backup->started_at})");
-            $backup->update([
-                'status' => BackupStatus::Failed,
-                'stage' => 'failed',
-                'progress_message' => 'Backup timed out (stuck recovery)',
-                'error_message' => 'Backup was in progress for over 50 minutes and appears stuck. It may have been interrupted by a server restart.',
-                'completed_at' => now(),
-                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
-            ]);
+            if ($backup->auto_retry_count < $maxAutoRetries) {
+                $this->autoRetryBackup($backup);
+            } else {
+                $this->markBackupFailed($backup);
+            }
+        }
+    }
 
-            CreateBackup::releaseUniqueLock($backup->site_id);
-            CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
+    /**
+     * Auto-retry a stuck backup by resetting it and dispatching a fresh job.
+     */
+    protected function autoRetryBackup(Backup $backup): void
+    {
+        $attempt = $backup->auto_retry_count + 1;
+
+        Log::warning("Auto-retrying stuck backup #{$backup->id} for site #{$backup->site_id} (attempt {$attempt})", [
+            'started_at' => $backup->started_at,
+            'updated_at' => $backup->updated_at,
+            'stage' => $backup->stage,
+            'auto_retry_count' => $backup->auto_retry_count,
+        ]);
+
+        $backup->update([
+            'status' => BackupStatus::Pending,
+            'stage' => 'queued',
+            'progress_percent' => 0,
+            'progress_message' => "Auto-retrying (attempt {$attempt})...",
+            'error_message' => null,
+            'auto_retry_count' => $attempt,
+            'started_at' => now(),
+            'completed_at' => null,
+            'duration_seconds' => null,
+        ]);
+
+        CreateBackup::releaseUniqueLock($backup->site_id);
+        CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
+
+        $site = $backup->site;
+        if (! $site) {
+            Log::error("Auto-retry: site not found for backup #{$backup->id}");
+            $this->markBackupFailed($backup);
+
+            return;
+        }
+
+        if ($backup->type === 'incremental') {
+            CreateIncrementalBackup::dispatch(
+                $site,
+                $backup->trigger,
+                $backup->storage_destination_id,
+                $backup->id,
+            );
+        } else {
+            CreateBackup::dispatch(
+                $site,
+                $backup->type,
+                $backup->trigger,
+                $backup->storage_destination_id,
+                $backup->id,
+            );
+        }
+    }
+
+    /**
+     * Mark a stuck backup as permanently failed (auto-retries exhausted).
+     */
+    protected function markBackupFailed(Backup $backup): void
+    {
+        $retryInfo = $backup->auto_retry_count > 0
+            ? " Auto-retried {$backup->auto_retry_count} time(s)."
+            : '';
+
+        Log::warning("Marking stuck backup #{$backup->id} as failed for site #{$backup->site_id} (started {$backup->started_at}).{$retryInfo}");
+
+        $errorMessage = "Backup appears stuck and could not be recovered.{$retryInfo} It may have been interrupted by a server restart.";
+
+        $backup->update([
+            'status' => BackupStatus::Failed,
+            'stage' => 'failed',
+            'progress_message' => 'Backup timed out (stuck recovery)',
+            'error_message' => $errorMessage,
+            'completed_at' => now(),
+            'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
+        ]);
+
+        CreateBackup::releaseUniqueLock($backup->site_id);
+        CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
+
+        $site = $backup->site;
+        if ($site) {
+            $site->update(['backup_ok' => false]);
+            $config = $site->backupConfig;
+            if ($config) {
+                $config->update(['last_backup_status' => 'failed']);
+            }
+            NotifyBackupFailed::dispatch($site, $backup, $errorMessage);
+            ActivityLogger::backupFailed($site, $errorMessage);
         }
     }
 }

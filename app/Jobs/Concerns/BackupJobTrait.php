@@ -53,7 +53,7 @@ trait BackupJobTrait
 
         if ($this->backup) {
             $this->backup->refresh();
-            if ($this->backup->status === BackupStatus::Cancelled) {
+            if (in_array($this->backup->status, [BackupStatus::Cancelled, BackupStatus::Pending])) {
                 return;
             }
             $this->backup->update([
@@ -146,7 +146,7 @@ trait BackupJobTrait
         $exceptionClass = $exception ? get_class($exception) : 'Unknown';
 
         $backup = $this->backupId ? Backup::find($this->backupId) : null;
-        if ($backup && ! in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled])) {
+        if ($backup && ! in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled, BackupStatus::Pending])) {
             $backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
