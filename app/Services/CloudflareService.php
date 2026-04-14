@@ -263,14 +263,17 @@ class CloudflareService
         $endIso = $end->toIso8601String();
 
         // Use daily groups for 7d+, hourly otherwise
+        // Both use datetime_geq/datetime_lt for filtering; the dimension field differs.
         if ($minutes >= 10080) {
             $timeseriesNode = 'httpRequests1dGroups';
             $timeDim = 'date';
             $timeFilter = "date_geq: \"{$start->toDateString()}\", date_leq: \"{$end->toDateString()}\"";
+            $orderBy = 'date_ASC';
         } else {
             $timeseriesNode = 'httpRequests1hGroups';
-            $timeDim = 'datetimeHour';
-            $timeFilter = "datetimeHour_geq: \"{$startIso}\", datetimeHour_lt: \"{$endIso}\"";
+            $timeDim = 'datetime';
+            $timeFilter = "datetime_geq: \"{$startIso}\", datetime_lt: \"{$endIso}\"";
+            $orderBy = 'datetime_ASC';
         }
 
         $query = <<<GRAPHQL
@@ -279,7 +282,7 @@ class CloudflareService
             zones(filter: {zoneTag: "{$zoneId}"}) {
               timeseries: {$timeseriesNode}(
                 filter: {{$timeFilter}}
-                orderBy: [{$timeDim}_ASC]
+                orderBy: [{$orderBy}]
                 limit: 1000
               ) {
                 sum { requests cachedRequests bytes cachedBytes threats pageViews }
