@@ -267,7 +267,7 @@
                         <div class="flex items-center gap-2">
                             <x-ui.badge variant="purple">{{ $change->record_type }}</x-ui.badge>
                             @if($change->monitor?->site)
-                                <a href="{{ route('sites.overview', $change->monitor->site) }}" class="text-sm text-accent-600 hover:underline" wire:navigate>{{ $change->monitor->domain }}</a>
+                                <a href="{{ $change->monitor->site->siteCloudflare ? route('sites.cloudflare', $change->monitor->site) : route('sites.overview', $change->monitor->site) }}" class="text-sm text-accent-600 hover:underline" wire:navigate>{{ $change->monitor->domain }}</a>
                             @else
                                 <span class="text-sm text-gray-900 dark:text-white">{{ $change->monitor?->domain ?? '—' }}</span>
                             @endif

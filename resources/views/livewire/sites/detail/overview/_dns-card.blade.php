@@ -11,7 +11,7 @@
             </div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">DNS</h3>
         </div>
-        <a href="{{ route('dns.index') }}" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
+        <a href="{{ $site->siteCloudflare ? route('sites.cloudflare', $site) : route('sites.settings', $site) }}" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
             Details →
         </a>
     </div>
@@ -59,7 +59,7 @@
         @else
             <div class="py-2 text-center">
                 <p class="text-sm text-gray-500 dark:text-gray-400">Not monitored</p>
-                <a href="{{ route('dns.index') }}" class="mt-1 inline-block text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
+                <a href="{{ route('sites.settings', $site) }}" class="mt-1 inline-block text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
                     Enable DNS Monitor →
                 </a>
             </div>

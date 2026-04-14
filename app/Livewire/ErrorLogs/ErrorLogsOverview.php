@@ -6,6 +6,7 @@ namespace App\Livewire\ErrorLogs;
 
 use App\Models\PhpErrorLog;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -16,6 +17,9 @@ class ErrorLogsOverview extends Component
     public string $filter = 'all';
 
     public string $search = '';
+
+    #[Url]
+    public ?int $site = null;
 
     #[Computed]
     public function stats(): array
@@ -49,6 +53,7 @@ class ErrorLogsOverview extends Component
     public function render()
     {
         $errors = PhpErrorLog::with('site')
+            ->when($this->site, fn ($q) => $q->where('site_id', $this->site))
             ->when($this->filter === 'fatal', fn ($q) => $q->fatal())
             ->when($this->filter === 'warning', fn ($q) => $q->where('level', 'warning'))
             ->when($this->filter === 'unresolved', fn ($q) => $q->unresolved())

@@ -11,7 +11,7 @@
             </div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Error Logs</h3>
         </div>
-        <a href="{{ route('error-logs.index') }}" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
+        <a href="{{ route('error-logs.index', ['site' => $site->id]) }}" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
             Details →
         </a>
     </div>
@@ -38,7 +38,7 @@
 
         @if($errorLog['total'] > 0)
             <div class="mt-3 border-t border-gray-100 dark:border-gray-700 pt-2">
-                <a href="{{ route('error-logs.index') }}" class="block text-center text-xs font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
+                <a href="{{ route('error-logs.index', ['site' => $site->id]) }}" class="block text-center text-xs font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">
                     View All Errors →
                 </a>
             </div>
