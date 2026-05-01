@@ -53,6 +53,13 @@ Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-disp
 // Daily broken links/images re-check (lightweight, no re-crawl)
 Schedule::call(new BrokenResourceDispatcher)->dailyAt('02:00')->name('broken-resource-dispatcher')->withoutOverlapping()->onOneServer();
 
+// Daily keyword ranking fetch from Search Console
+Schedule::call(function () {
+    \App\Models\Site::query()
+        ->whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
+        ->each(fn ($site) => \App\Jobs\FetchKeywordRankings::dispatch($site)->delay(now()->addSeconds(rand(0, 60))));
+})->dailyAt('04:00')->name('keyword-rankings-fetch')->onOneServer();
+
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();
 

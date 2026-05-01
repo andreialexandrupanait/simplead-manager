@@ -192,6 +192,12 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                     'og_tags' => !empty($pageData['og_tags']) ? $pageData['og_tags'] : null,
                     'twitter_tags' => !empty($pageData['twitter_tags']) ? $pageData['twitter_tags'] : null,
                     'has_viewport_meta' => $pageData['has_viewport_meta'],
+                    'meta' => array_filter([
+                        'images_without_lazy' => $pageData['images_without_lazy'] > 0 ? $pageData['images_without_lazy'] : null,
+                        'content_hash' => $pageData['content_hash'],
+                        'hreflang' => ! empty($pageData['hreflang']) ? $pageData['hreflang'] : null,
+                        'structured_data_raw' => ! empty($pageData['structured_data_raw']) ? $pageData['structured_data_raw'] : null,
+                    ]),
                 ]);
 
                 // Store links and images
@@ -332,6 +338,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             'image_urls' => [], 'internal_links' => [], 'external_links' => [],
             'structured_data_types' => [], 'og_tags' => [], 'twitter_tags' => [],
             'has_viewport_meta' => false,
+            'content_hash' => null, 'hreflang' => [], 'structured_data_raw' => [],
         ];
 
         libxml_use_internal_errors(true);
@@ -361,12 +368,21 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             if (str_starts_with($name, 'twitter:') || str_starts_with($property, 'twitter:')) { $data['twitter_tags'][$name ?: $property] = $content; }
         }
 
-        // Canonical
+        // Canonical + hreflang
         foreach ($doc->getElementsByTagName('link') as $link) {
-            if ($link instanceof DOMElement && strtolower($link->getAttribute('rel')) === 'canonical') {
+            if (! ($link instanceof DOMElement)) {
+                continue;
+            }
+            $rel = strtolower($link->getAttribute('rel'));
+            if ($rel === 'canonical' && ! $data['canonical_url']) {
                 $data['canonical_url'] = $link->getAttribute('href');
                 $data['is_self_canonical'] = UrlNormalizerService::areEqual($data['canonical_url'], $url);
-                break;
+            }
+            if ($rel === 'alternate' && $link->getAttribute('hreflang')) {
+                $data['hreflang'][] = [
+                    'lang' => $link->getAttribute('hreflang'),
+                    'href' => $link->getAttribute('href'),
+                ];
             }
         }
 
@@ -430,18 +446,23 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // Word count
+        // Word count + content hash for duplicate detection
         $bodyTag = $doc->getElementsByTagName('body');
         if ($bodyTag->length > 0) {
-            $text = preg_replace('/\s+/', ' ', $bodyTag->item(0)->textContent);
-            $data['word_count'] = str_word_count(trim($text ?? ''));
+            $text = trim(preg_replace('/\s+/', ' ', $bodyTag->item(0)->textContent) ?? '');
+            $data['word_count'] = str_word_count($text);
+            if (mb_strlen($text) > 100) {
+                $data['content_hash'] = md5($text);
+            }
         }
 
         // Structured data (JSON-LD)
         foreach ($doc->getElementsByTagName('script') as $script) {
             if ($script instanceof DOMElement && strtolower($script->getAttribute('type')) === 'application/ld+json') {
-                $json = json_decode(trim($script->textContent), true);
+                $raw = trim($script->textContent);
+                $json = json_decode($raw, true);
                 if (is_array($json)) {
+                    $data['structured_data_raw'][] = $json;
                     if (isset($json['@type'])) {
                         $types = is_array($json['@type']) ? $json['@type'] : [$json['@type']];
                         array_push($data['structured_data_types'], ...$types);
@@ -454,6 +475,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                             }
                         }
                     }
+                } else {
+                    $data['structured_data_raw'][] = ['_invalid' => true, '_error' => json_last_error_msg()];
                 }
             }
         }

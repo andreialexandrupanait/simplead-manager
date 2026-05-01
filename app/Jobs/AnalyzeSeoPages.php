@@ -65,6 +65,11 @@ class AnalyzeSeoPages implements ShouldQueue
         $this->checkSitemap($pages);
         $this->checkRobotsTxt();
         $this->checkInternalLinking($okPages);
+        $this->checkDuplicateContent($okPages);
+        $this->checkCanonicalChains($okPages);
+        $this->checkHreflang($okPages);
+        $this->checkSchemaValidation($okPages);
+        $this->checkOrphanPages($okPages);
 
         JobTracker::progress($trackerId, 80, 'Checking security headers...');
         $this->checkSecurityHeaders();
@@ -298,11 +303,6 @@ class AnalyzeSeoPages implements ShouldQueue
             $count = $p->meta['images_without_lazy'] ?? 0;
             $this->addIssue(SeoIssueCategory::Performance, SeoIssueSeverity::Medium, 'Images without lazy loading', "{$count} images on this page lack lazy loading.", $p->url, 'Add loading="lazy" to offscreen images to improve page load speed.');
         }
-
-        foreach ($pages->filter(fn ($p) => $p->images_without_alt > 0) as $p) {
-            $sev = $p->images_without_alt > 5 ? SeoIssueSeverity::High : SeoIssueSeverity::Medium;
-            $this->addIssue(SeoIssueCategory::Images, $sev, 'Missing alt text (site-wide)', "{$p->images_without_alt} image(s) missing alt text.", $p->url, 'Add descriptive alt text to all images for accessibility and SEO.');
-        }
     }
 
     private function checkSitemap($allPages): void
@@ -357,6 +357,185 @@ class AnalyzeSeoPages implements ShouldQueue
 
         foreach ($pages->filter(fn ($p) => $p->internal_link_count > 100 && $p->status_code === 200) as $p) {
             $this->addIssue(SeoIssueCategory::Links, SeoIssueSeverity::Low, 'Link dilution', "Page has {$p->internal_link_count} outbound links (recommended: under 100).", $p->url, 'Reduce the number of links on this page to concentrate link equity.');
+        }
+    }
+
+    private function checkDuplicateContent($pages): void
+    {
+        $hashMap = [];
+        foreach ($pages as $p) {
+            $hash = $p->meta['content_hash'] ?? null;
+            if ($hash) {
+                $hashMap[$hash][] = $p;
+            }
+        }
+
+        foreach ($hashMap as $hash => $group) {
+            if (count($group) < 2) {
+                continue;
+            }
+            $urls = collect($group)->pluck('url')->toArray();
+            $urlList = implode(', ', array_map(fn ($u) => mb_substr(parse_url($u, PHP_URL_PATH) ?: $u, 0, 60), array_slice($urls, 0, 5)));
+            foreach ($group as $p) {
+                $this->addIssue(
+                    SeoIssueCategory::OnPage,
+                    SeoIssueSeverity::High,
+                    'Duplicate content',
+                    'This page has identical body content as ' . (count($urls) - 1) . ' other page(s): ' . $urlList,
+                    $p->url,
+                    'Consolidate duplicate pages using canonical tags, 301 redirects, or by making content unique.'
+                );
+            }
+        }
+    }
+
+    private function checkCanonicalChains($pages): void
+    {
+        $canonicalMap = [];
+        foreach ($pages as $p) {
+            if ($p->canonical_url && ! $p->is_self_canonical) {
+                $canonicalMap[$p->url] = $p->canonical_url;
+            }
+        }
+
+        foreach ($canonicalMap as $pageUrl => $canonicalUrl) {
+            $target = $canonicalMap[$canonicalUrl] ?? null;
+            if ($target) {
+                $chain = $pageUrl . ' → ' . $canonicalUrl . ' → ' . $target;
+                $this->addIssue(
+                    SeoIssueCategory::Indexability,
+                    SeoIssueSeverity::High,
+                    'Canonical chain detected',
+                    'Canonical tag points to a page that itself has a different canonical: ' . $chain,
+                    $pageUrl,
+                    'Set the canonical directly to the final target URL to avoid chains.'
+                );
+            }
+        }
+    }
+
+    private function checkHreflang($pages): void
+    {
+        foreach ($pages as $p) {
+            $hreflang = $p->meta['hreflang'] ?? [];
+            if (empty($hreflang)) {
+                continue;
+            }
+
+            $langs = collect($hreflang)->pluck('lang')->toArray();
+
+            // Check for x-default
+            if (! in_array('x-default', $langs, true)) {
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Medium, 'Hreflang missing x-default', 'Page has hreflang tags but no x-default fallback.', $p->url, 'Add <link rel="alternate" hreflang="x-default" href="..."> for the default language version.');
+            }
+
+            // Check for self-reference
+            $selfRef = collect($hreflang)->contains(fn ($h) => UrlNormalizerService::areEqual($h['href'], $p->url));
+            if (! $selfRef) {
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Medium, 'Hreflang missing self-reference', 'Page hreflang set does not include a self-referencing entry.', $p->url, 'Each page with hreflang should include itself in the hreflang set.');
+            }
+
+            // Check for empty hrefs
+            foreach ($hreflang as $h) {
+                if (empty($h['href'])) {
+                    $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::High, 'Hreflang with empty href', "Hreflang tag for '{$h['lang']}' has an empty href attribute.", $p->url, 'Fix the hreflang href to point to the correct alternate URL.');
+                }
+            }
+        }
+    }
+
+    private function checkSchemaValidation($pages): void
+    {
+        $requiredFields = [
+            'Article' => ['headline', 'author', 'datePublished'],
+            'Product' => ['name', 'description'],
+            'LocalBusiness' => ['name', 'address'],
+            'Organization' => ['name', 'url'],
+            'WebSite' => ['name', 'url'],
+            'BreadcrumbList' => ['itemListElement'],
+            'FAQPage' => ['mainEntity'],
+            'HowTo' => ['name', 'step'],
+            'Recipe' => ['name', 'recipeIngredient'],
+            'Event' => ['name', 'startDate', 'location'],
+            'Person' => ['name'],
+            'VideoObject' => ['name', 'description', 'thumbnailUrl', 'uploadDate'],
+        ];
+
+        foreach ($pages as $p) {
+            $rawSchemas = $p->meta['structured_data_raw'] ?? [];
+
+            foreach ($rawSchemas as $schema) {
+                if (! empty($schema['_invalid'])) {
+                    $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::High, 'Invalid JSON-LD', 'Structured data contains invalid JSON: ' . ($schema['_error'] ?? 'parse error'), $p->url, 'Fix the JSON syntax in the JSON-LD script tag.');
+                    continue;
+                }
+
+                $items = [];
+                if (isset($schema['@graph'])) {
+                    $items = $schema['@graph'];
+                } elseif (isset($schema['@type'])) {
+                    $items = [$schema];
+                }
+
+                foreach ($items as $item) {
+                    $type = $item['@type'] ?? null;
+                    if (! $type || is_array($type)) {
+                        continue;
+                    }
+                    $required = $requiredFields[$type] ?? null;
+                    if (! $required) {
+                        continue;
+                    }
+
+                    $missing = [];
+                    foreach ($required as $field) {
+                        if (empty($item[$field])) {
+                            $missing[] = $field;
+                        }
+                    }
+                    if (! empty($missing)) {
+                        $fieldList = implode(', ', $missing);
+                        $this->addIssue(
+                            SeoIssueCategory::StructuredData,
+                            SeoIssueSeverity::Medium,
+                            "Incomplete {$type} schema",
+                            "{$type} schema is missing required fields: {$fieldList}",
+                            $p->url,
+                            "Add the missing fields ({$fieldList}) to pass Google's Rich Results validation."
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    private function checkOrphanPages($pages): void
+    {
+        $orphans = $pages->filter(fn ($p) => $p->inbound_internal_links === 0 && $p->depth > 0 && $p->status_code === 200);
+
+        foreach ($orphans as $p) {
+            $reasons = [];
+            if (! $p->in_sitemap) {
+                $reasons[] = 'not in sitemap';
+            }
+            if ($p->inbound_internal_links === 0) {
+                $reasons[] = 'no internal links pointing to it';
+            }
+
+            $suggestion = 'Add internal links from related pages';
+            if (! $p->in_sitemap) {
+                $suggestion .= ' and include this page in the XML sitemap';
+            }
+            $suggestion .= '. Consider adding it to the site navigation or linking from high-traffic pages.';
+
+            $this->addIssue(
+                SeoIssueCategory::Links,
+                SeoIssueSeverity::Medium,
+                'Orphan page (deep analysis)',
+                'This page is orphaned: ' . implode(', ', $reasons) . '. It may be hard for search engines and users to discover.',
+                $p->url,
+                $suggestion
+            );
         }
     }
 
@@ -435,7 +614,6 @@ class AnalyzeSeoPages implements ShouldQueue
 
     private function persistIssues(): void
     {
-        $counts = ['critical_count' => 0, 'high_count' => 0, 'medium_count' => 0, 'low_count' => 0, 'info_count' => 0];
         $records = [];
 
         foreach ($this->issues as $i) {
@@ -447,7 +625,14 @@ class AnalyzeSeoPages implements ShouldQueue
                 'recommendation' => $i['recommendation'],
                 'created_at' => now(), 'updated_at' => now(),
             ];
-            $counts[$i['severity']->value . '_count']++;
+        }
+
+        // Count by unique issue groups (title+severity), not by individual records.
+        // This prevents per-page issues from inflating severity counts and destroying scores.
+        $counts = ['critical_count' => 0, 'high_count' => 0, 'medium_count' => 0, 'low_count' => 0, 'info_count' => 0];
+        $grouped = collect($this->issues)->groupBy(fn ($i) => $i['title'] . '||' . $i['severity']->value);
+        foreach ($grouped as $group) {
+            $counts[$group->first()['severity']->value . '_count']++;
         }
 
         foreach (array_chunk($records, 100) as $chunk) {

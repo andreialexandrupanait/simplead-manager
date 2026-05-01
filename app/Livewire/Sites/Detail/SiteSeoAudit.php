@@ -4,9 +4,11 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Enums\SeoIssueCategory;
 use App\Enums\SeoIssueSeverity;
+use App\Jobs\FetchKeywordRankings;
 use App\Jobs\RunSeoAudit;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SeoAudit;
+use App\Models\SeoKeywordRanking;
 use App\Models\Site;
 use App\Services\SeoAudit\SiteAuditService;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,6 +34,8 @@ class SiteSeoAudit extends Component
     public string $settingsSitemapUrl = '';
     public string $settingsPreferredTime = '03:00';
     public bool $settingsCrawlEnabled = false;
+    public string $newKeyword = '';
+    public string $keywordSort = 'position';
 
     public function mount(Site $site): void
     {
@@ -99,6 +103,8 @@ class SiteSeoAudit extends Component
         }
 
         $all = $q->orderByRaw("CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->orderBy('category')
+            ->orderBy('title')
             ->limit(500)
             ->get();
 
@@ -187,6 +193,124 @@ class SiteSeoAudit extends Component
         return $a ? $a->pages()->whereNotNull('redirect_target')->count() : 0;
     }
 
+    #[Computed]
+    public function keywordRankings()
+    {
+        $q = SeoKeywordRanking::where('site_id', $this->site->id)
+            ->where('recorded_date', function ($sub) {
+                $sub->selectRaw('MAX(recorded_date)')
+                    ->from('seo_keyword_rankings')
+                    ->where('site_id', $this->site->id);
+            });
+
+        return match ($this->keywordSort) {
+            'clicks' => $q->orderByDesc('clicks'),
+            'impressions' => $q->orderByDesc('impressions'),
+            'ctr' => $q->orderByDesc('ctr'),
+            default => $q->orderBy('position'),
+        };
+    }
+
+    #[Computed]
+    public function trackedKeywords()
+    {
+        return SeoKeywordRanking::where('site_id', $this->site->id)
+            ->where('is_tracked', true)
+            ->select('keyword', 'keyword_hash')
+            ->distinct('keyword_hash')
+            ->get();
+    }
+
+    #[Computed]
+    public function keywordTrends(): array
+    {
+        $tracked = $this->trackedKeywords;
+        if ($tracked->isEmpty()) {
+            return [];
+        }
+
+        $hashes = $tracked->pluck('keyword_hash')->toArray();
+        $history = SeoKeywordRanking::where('site_id', $this->site->id)
+            ->whereIn('keyword_hash', $hashes)
+            ->where('recorded_date', '>=', now()->subDays(30))
+            ->orderBy('recorded_date')
+            ->get()
+            ->groupBy('keyword_hash');
+
+        $trends = [];
+        foreach ($tracked as $kw) {
+            $records = $history->get($kw->keyword_hash, collect());
+            if ($records->count() < 2) {
+                continue;
+            }
+            $first = $records->first()->position;
+            $last = $records->last()->position;
+            $trends[] = [
+                'keyword' => $kw->keyword,
+                'current' => $last,
+                'previous' => $first,
+                'change' => round($first - $last, 1), // positive = improved
+                'history' => $records->pluck('position')->toArray(),
+                'dates' => $records->pluck('recorded_date')->map(fn ($d) => $d->format('M d'))->toArray(),
+            ];
+        }
+
+        return $trends;
+    }
+
+    public function trackKeyword(): void
+    {
+        $keyword = trim($this->newKeyword);
+        if ($keyword === '') {
+            return;
+        }
+
+        $hash = md5(mb_strtolower($keyword));
+
+        // Mark existing records as tracked
+        SeoKeywordRanking::where('site_id', $this->site->id)
+            ->where('keyword_hash', $hash)
+            ->update(['is_tracked' => true]);
+
+        // If no existing records, create a placeholder
+        $exists = SeoKeywordRanking::where('site_id', $this->site->id)->where('keyword_hash', $hash)->exists();
+        if (! $exists) {
+            SeoKeywordRanking::create([
+                'site_id' => $this->site->id,
+                'keyword' => mb_substr($keyword, 0, 500),
+                'keyword_hash' => $hash,
+                'recorded_date' => now()->format('Y-m-d'),
+                'is_tracked' => true,
+            ]);
+        }
+
+        $this->newKeyword = '';
+        unset($this->trackedKeywords, $this->keywordTrends);
+        $this->dispatch('notify', type: 'success', message: "Keyword '{$keyword}' is now tracked.");
+    }
+
+    public function untrackKeyword(string $hash): void
+    {
+        SeoKeywordRanking::where('site_id', $this->site->id)
+            ->where('keyword_hash', $hash)
+            ->update(['is_tracked' => false]);
+
+        unset($this->trackedKeywords, $this->keywordTrends);
+        $this->dispatch('notify', type: 'success', message: 'Keyword untracked.');
+    }
+
+    public function fetchKeywords(): void
+    {
+        if (! $this->site->searchConsoleConnection?->is_active) {
+            $this->dispatch('notify', type: 'warning', message: 'Search Console not connected.');
+
+            return;
+        }
+
+        FetchKeywordRankings::dispatch($this->site);
+        $this->dispatch('notify', type: 'success', message: 'Fetching keyword rankings...');
+    }
+
     #[Computed] public function categoryScores(): array { return $this->latestCompletedAudit?->category_scores ?? []; }
     #[Computed] public function auditDiff(): ?array { return $this->latestCompletedAudit?->data['diff'] ?? null; }
     #[Computed] public function severityOptions(): array { return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases()); }
@@ -248,6 +372,77 @@ class SiteSeoAudit extends Component
             'Missing canonical' => 'canonical',
             'Missing Open Graph tags' => 'og',
         ];
+    }
+
+    public function bulkFix(string $issueTitle): void
+    {
+        if (! $this->site->is_connected || ($this->site->is_prospect ?? false)) {
+            $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
+
+            return;
+        }
+
+        $fixType = $this->fixableIssueTitles[$issueTitle] ?? null;
+        if (! $fixType) {
+            $this->dispatch('notify', type: 'warning', message: 'This issue type cannot be auto-fixed.');
+
+            return;
+        }
+
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return;
+        }
+
+        $issues = $audit->issues()->where('title', $issueTitle)->whereNotNull('url')->get();
+        $success = 0;
+        $failed = 0;
+
+        foreach ($issues as $issue) {
+            $page = $audit->pages()->where('url', $issue->url)->first();
+            if (! $page) {
+                $failed++;
+
+                continue;
+            }
+
+            try {
+                $payload = match ($fixType) {
+                    'meta' => ['url' => $issue->url, 'meta_title' => $page->title ?? '', 'meta_description' => $page->meta_description ?? ''],
+                    'robots' => ['url' => $issue->url, 'action' => 'index'],
+                    'canonical' => ['url' => $issue->url, 'canonical_url' => $issue->url],
+                    'og' => ['url' => $issue->url, 'og_title' => $page->title ?? '', 'og_description' => $page->meta_description ?? '', 'og_image' => ''],
+                    default => null,
+                };
+
+                if (! $payload) {
+                    continue;
+                }
+
+                $endpoint = match ($fixType) {
+                    'meta' => '/wp-json/simplead/v1/seo/update-meta',
+                    'robots' => '/wp-json/simplead/v1/seo/update-robots',
+                    'canonical' => '/wp-json/simplead/v1/seo/update-canonical',
+                    'og' => '/wp-json/simplead/v1/seo/update-og',
+                };
+
+                $response = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
+                    ->post(rtrim($this->site->url, '/') . $endpoint, $payload);
+
+                if ($response->successful()) {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+            } catch (\Throwable) {
+                $failed++;
+            }
+
+            usleep(200_000); // 200ms between requests
+        }
+
+        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: "Bulk fix: {$success} applied" . ($failed > 0 ? ", {$failed} failed" : '') . '.');
     }
 
     public function runAudit(): void

@@ -91,6 +91,16 @@
                     <option value="">All Categories</option>
                     @foreach($this->categoryOptions as $o)<option value="{{ $o['value'] }}">{{ $o['label'] }}</option>@endforeach
                 </select>
+                @if($activeTab === 'pages')
+                    <input wire:model.live.debounce.300ms="pageSearch" type="text" placeholder="Search pages..." class="rounded-lg border-gray-300 text-sm shadow-sm w-48">
+                @endif
+                @if($activeTab === 'links')
+                    <select wire:model.live="linkTypeFilter" class="rounded-lg border-gray-300 text-sm shadow-sm">
+                        <option value="">All Types</option>
+                        <option value="internal">Internal</option>
+                        <option value="external">External</option>
+                    </select>
+                @endif
                 @php
                     $totalIssueGroups = $this->groupedIssues->count();
                     $fixableMap = $this->fixableIssueTitles;
@@ -108,113 +118,85 @@
 
         {{-- Tabs --}}
         <div class="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-gray-100 p-1">
-            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','images'=>'Broken Images ('.$this->brokenImagesCount.')','redirects'=>'Redirects ('.$this->redirectPagesCount.')','infrastructure'=>'Infrastructure','history'=>'History'] as $tab=>$label)
+            @foreach(['issues'=>'Issues ('.$this->groupedIssues->count().')','pages'=>'Pages','links'=>'Broken Links ('.$this->brokenLinksCount.')','images'=>'Broken Images ('.$this->brokenImagesCount.')','redirects'=>'Redirects ('.$this->redirectPagesCount.')','keywords'=>'Keywords','infrastructure'=>'Infrastructure','history'=>'History'] as $tab=>$label)
                 <button wire:click="$set('activeTab','{{ $tab }}')" class="whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors {{ $activeTab===$tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">{{ $label }}</button>
             @endforeach
         </div>
 
         {{-- ISSUES TAB --}}
         @if($activeTab==='issues')
-            <div class="space-y-2">
-                @forelse($this->groupedIssues as $group)
+            @php
+                $sevBadge = ['critical'=>'bg-red-100 text-red-700','high'=>'bg-orange-100 text-orange-700','medium'=>'bg-yellow-100 text-yellow-700','low'=>'bg-blue-100 text-blue-700','info'=>'bg-gray-100 text-gray-600'];
+            @endphp
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th class="w-24">Severity</x-ui.th>
+                    <x-ui.th>Issue</x-ui.th>
+                    <x-ui.th class="hidden sm:table-cell">Category</x-ui.th>
+                    <x-ui.th class="text-center w-20">Pages</x-ui.th>
+                    <x-ui.th class="text-right w-24">Action</x-ui.th>
+                </x-slot:head>
+                @forelse($this->groupedIssues as $idx => $group)
                     @php
                         $fixType = $fixableMap[$group->title] ?? null;
                         $canFix = $site->is_connected && !($site->is_prospect ?? false) && $fixType !== null;
-                        $sevColors = ['critical'=>'border-l-red-500 bg-white','high'=>'border-l-orange-400 bg-white','medium'=>'border-l-yellow-400 bg-white','low'=>'border-l-blue-400 bg-white','info'=>'border-l-gray-300 bg-white'];
-                        $sevBadge = ['critical'=>'bg-red-100 text-red-700','high'=>'bg-orange-100 text-orange-700','medium'=>'bg-yellow-100 text-yellow-700','low'=>'bg-blue-100 text-blue-700','info'=>'bg-gray-100 text-gray-600'];
                     @endphp
-                    <div class="rounded-lg border border-gray-200 border-l-4 {{ $sevColors[$group->severity->value] ?? 'border-l-gray-300' }}" x-data="{ showUrls: false }">
-                        <div class="px-4 py-3">
-                            {{-- Top row: severity badge + title + meta --}}
-                            <div class="flex flex-wrap items-center gap-2">
+                    <tbody x-data="{ open: false }">
+                        <tr class="hover:bg-gray-50 cursor-pointer" @click="open = !open">
+                            <x-ui.td>
                                 <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold {{ $sevBadge[$group->severity->value] ?? 'bg-gray-100 text-gray-600' }}">{{ $group->severity->label() }}</span>
-                                <h4 class="text-sm font-semibold text-gray-900">{{ $group->title }}</h4>
-                                @if($canFix)
-                                    <span class="inline-flex items-center gap-0.5 rounded bg-accent-50 px-1.5 py-0.5 text-xs font-medium text-accent-700">
-                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                        Auto-fix
-                                    </span>
-                                @endif
-                                <span class="text-xs text-gray-400">{{ $group->category->label() }}</span>
-                                @if($group->affected_count > 1)
-                                    <span class="text-xs font-medium text-gray-500">{{ $group->affected_count }} pages</span>
-                                @endif
-                            </div>
-
-                            {{-- Description --}}
-                            @if($group->description)
-                                <p class="mt-1.5 text-sm text-gray-600">{{ $group->description }}</p>
-                            @endif
-
-                            {{-- Recommendation --}}
-                            @if($group->recommendation)
-                                <div class="mt-2 flex items-start gap-1.5 rounded-md bg-white/60 px-2.5 py-1.5 text-sm">
-                                    <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                                    <span class="text-gray-500">{{ $group->recommendation }}</span>
+                            </x-ui.td>
+                            <x-ui.td>
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    <span class="text-sm font-medium text-gray-900">{{ $group->title }}</span>
                                 </div>
-                            @endif
-
-                            {{-- Affected URLs --}}
-                            @if($group->urls->isNotEmpty())
-                                <div class="mt-2">
-                                    <button @click="showUrls = !showUrls" class="inline-flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700">
-                                        <svg class="h-3 w-3 transition-transform" :class="showUrls && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                        <span x-text="showUrls ? 'Hide URLs' : 'Show {{ $group->urls->count() }} affected URL{{ $group->urls->count() > 1 ? 's' : '' }}'"></span>
+                            </x-ui.td>
+                            <x-ui.td class="hidden sm:table-cell"><span class="text-xs text-gray-500">{{ $group->category->label() }}</span></x-ui.td>
+                            <x-ui.td class="text-center"><span class="text-sm font-medium text-gray-600">{{ $group->affected_count }}</span></x-ui.td>
+                            <x-ui.td class="text-right" @click.stop>
+                                @if($canFix)
+                                    <button wire:click="bulkFix('{{ addslashes($group->title) }}')" wire:confirm="Apply auto-fix to all {{ $group->affected_count }} affected pages?" wire:loading.attr="disabled" class="inline-flex items-center gap-1 rounded bg-accent-50 px-2 py-1 text-xs font-medium text-accent-700 hover:bg-accent-100 transition-colors">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        Fix All
                                     </button>
-                                    <div x-show="showUrls" x-collapse class="mt-2 max-h-64 overflow-y-auto space-y-1 border-l-2 border-gray-200 pl-3">
+                                @endif
+                            </x-ui.td>
+                        </tr>
+                        <tr x-show="open" x-collapse>
+                            <td colspan="5" class="bg-gray-50 px-6 py-4">
+                                @if($group->description)
+                                    <p class="text-sm text-gray-600 mb-2">{{ $group->description }}</p>
+                                @endif
+                                @if($group->recommendation)
+                                    <div class="flex items-start gap-1.5 mb-3 text-sm text-gray-500">
+                                        <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                                        <span>{{ $group->recommendation }}</span>
+                                    </div>
+                                @endif
+                                @if($group->urls->isNotEmpty())
+                                    <div class="max-h-64 overflow-y-auto space-y-1">
                                         @foreach($group->urls as $url)
-                                            <div class="flex items-center gap-2">
-                                                <a href="{{ $url }}" target="_blank" class="block truncate text-xs text-gray-400 hover:text-accent-600 flex-1">{{ Str::limit($url, 70) }}</a>
+                                            <div class="flex items-center gap-3 py-0.5">
+                                                <a href="{{ $url }}" target="_blank" class="truncate text-xs text-gray-400 hover:text-accent-600 flex-1 min-w-0">{{ Str::limit($url, 80) }}</a>
                                                 @if($canFix)
-                                                    @if($fixType === 'meta')
-                                                        <button wire:click="openFixModal('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
-                                                    @elseif($fixType === 'robots')
-                                                        <button wire:click="openRobotsFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
-                                                    @elseif($fixType === 'canonical')
-                                                        <button wire:click="openCanonicalFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
-                                                    @elseif($fixType === 'og')
-                                                        <button wire:click="openOgFix('{{ $url }}')" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
-                                                    @endif
+                                                    <button wire:click="{{ match($fixType) { 'meta' => "openFixModal('{$url}')", 'robots' => "openRobotsFix('{$url}')", 'canonical' => "openCanonicalFix('{$url}')", 'og' => "openOgFix('{$url}')", default => '' } }}" class="shrink-0 rounded bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100">Fix</button>
                                                 @endif
                                             </div>
                                         @endforeach
                                     </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+                                @endif
+                            </td>
+                        </tr>
+                    </tbody>
                 @empty
-                    <x-ui.card><x-ui.empty-state title="No issues found" description="Great job — or adjust your filters." icon="check-circle" /></x-ui.card>
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">No issues found. Great job — or adjust your filters.</td></tr>
                 @endforelse
-            </div>
+            </x-ui.table>
         @endif
 
         {{-- PAGES TAB --}}
         @if($activeTab==='pages')
-            {{-- TTFB Insights --}}
-            @if(!empty($this->ttfbInsights) && !empty($this->ttfbInsights['slowest']))
-                <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <x-ui.card class="!p-3">
-                        <p class="text-xs font-medium text-gray-500 mb-1">Avg TTFB</p>
-                        @php $avg = $this->ttfbInsights['avg_ttfb']; @endphp
-                        <p class="text-lg font-bold {{ $avg < 0.2 ? 'text-green-600' : ($avg < 0.5 ? 'text-yellow-600' : 'text-red-600') }}">{{ number_format($avg * 1000) }}ms</p>
-                    </x-ui.card>
-                    <x-ui.card class="!p-3">
-                        <p class="text-xs font-medium text-gray-500 mb-1">Slowest Pages</p>
-                        @foreach($this->ttfbInsights['slowest'] as $sp)
-                            <p class="text-xs text-red-600 truncate">{{ number_format($sp['ttfb'] * 1000) }}ms — {{ Str::limit(parse_url($sp['url'], PHP_URL_PATH) ?: '/', 30) }}</p>
-                        @endforeach
-                    </x-ui.card>
-                    <x-ui.card class="!p-3">
-                        <p class="text-xs font-medium text-gray-500 mb-1">Largest Pages</p>
-                        @foreach($this->ttfbInsights['largest'] as $lp)
-                            <p class="text-xs text-orange-600 truncate">{{ $lp['size_kb'] }}KB — {{ Str::limit(parse_url($lp['url'], PHP_URL_PATH) ?: '/', 30) }}</p>
-                        @endforeach
-                    </x-ui.card>
-                </div>
-            @endif
-
-            <div class="mb-4"><input wire:model.live.debounce.300ms="pageSearch" type="text" placeholder="Search pages..." class="rounded-lg border-gray-300 text-sm shadow-sm sm:w-80"></div>
             <x-ui.table>
                 <x-slot:head>
                     <x-ui.th>URL</x-ui.th>
@@ -271,14 +253,6 @@
 
         {{-- BROKEN LINKS TAB --}}
         @if($activeTab==='links')
-            <div class="mb-4">
-                <select wire:model.live="linkTypeFilter" class="rounded-lg border-gray-300 text-sm shadow-sm">
-                    <option value="">All Types</option>
-                    <option value="internal">Internal</option>
-                    <option value="external">External</option>
-                </select>
-            </div>
-
             <x-ui.table>
                 <x-slot:head>
                     <x-ui.th>Broken URL</x-ui.th>
@@ -457,6 +431,111 @@
                     </x-ui.card>
                 </div>
             @endif
+        @endif
+
+        {{-- KEYWORDS TAB --}}
+        @if($activeTab==='keywords')
+            {{-- Tracked keywords trend --}}
+            @if(!empty($this->keywordTrends))
+                <x-ui.card class="mb-4">
+                    <h3 class="mb-3 text-sm font-medium text-gray-900">Tracked Keyword Trends (30 days)</h3>
+                    <div class="space-y-3">
+                        @foreach($this->keywordTrends as $trend)
+                            <div class="flex items-center gap-4 rounded-lg border border-gray-100 p-3">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-900 truncate">{{ $trend['keyword'] }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-lg font-bold {{ $trend['current'] <= 10 ? 'text-green-600' : ($trend['current'] <= 30 ? 'text-yellow-600' : 'text-red-600') }}">{{ $trend['current'] }}</span>
+                                    @if($trend['change'] != 0)
+                                        <span class="ml-1 text-xs font-medium {{ $trend['change'] > 0 ? 'text-green-600' : 'text-red-600' }}">{{ $trend['change'] > 0 ? '+' : '' }}{{ $trend['change'] }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+            @endif
+
+            {{-- Add keyword + fetch --}}
+            <div class="mb-4 flex flex-wrap items-end gap-3">
+                <div class="flex-1 min-w-[200px]">
+                    <input wire:model="newKeyword" wire:keydown.enter="trackKeyword" type="text" placeholder="Add keyword to track..." class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
+                </div>
+                <x-ui.button wire:click="trackKeyword" variant="secondary" size="sm">Track</x-ui.button>
+                @if($site->searchConsoleConnection?->is_active)
+                    <x-ui.button wire:click="fetchKeywords" variant="secondary" size="sm">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Fetch from Search Console
+                    </x-ui.button>
+                @endif
+            </div>
+
+            {{-- Tracked keywords list --}}
+            @if($this->trackedKeywords->isNotEmpty())
+                <div class="mb-4 flex flex-wrap gap-2">
+                    @foreach($this->trackedKeywords as $tk)
+                        <span class="inline-flex items-center gap-1 rounded-full bg-accent-50 px-3 py-1 text-xs font-medium text-accent-700">
+                            {{ $tk->keyword }}
+                            <button wire:click="untrackKeyword('{{ $tk->keyword_hash }}')" class="ml-0.5 text-accent-400 hover:text-red-500">&times;</button>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- All keywords table --}}
+            <div class="mb-2 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Sort by:</span>
+                <select wire:model.live="keywordSort" class="rounded-lg border-gray-300 text-xs shadow-sm">
+                    <option value="position">Position</option>
+                    <option value="clicks">Clicks</option>
+                    <option value="impressions">Impressions</option>
+                    <option value="ctr">CTR</option>
+                </select>
+            </div>
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th>Keyword</x-ui.th>
+                    <x-ui.th class="text-center">Position</x-ui.th>
+                    <x-ui.th class="text-center">Clicks</x-ui.th>
+                    <x-ui.th class="text-center hidden sm:table-cell">Impressions</x-ui.th>
+                    <x-ui.th class="text-center hidden sm:table-cell">CTR</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">URL</x-ui.th>
+                    <x-ui.th class="text-right">Track</x-ui.th>
+                </x-slot:head>
+                @forelse($this->keywordRankings->paginate(50, pageName: 'kwPage') as $kw)
+                    <tr class="hover:bg-gray-50 {{ $kw->is_tracked ? 'bg-accent-50/30' : '' }}">
+                        <x-ui.td>
+                            <span class="text-sm font-medium text-gray-900">{{ Str::limit($kw->keyword, 50) }}</span>
+                        </x-ui.td>
+                        <x-ui.td class="text-center">
+                            <span class="text-sm font-bold {{ $kw->position <= 10 ? 'text-green-600' : ($kw->position <= 30 ? 'text-yellow-600' : 'text-red-600') }}">{{ $kw->position ? number_format($kw->position, 1) : '—' }}</span>
+                        </x-ui.td>
+                        <x-ui.td class="text-center"><span class="text-sm text-gray-600">{{ $kw->clicks }}</span></x-ui.td>
+                        <x-ui.td class="text-center hidden sm:table-cell"><span class="text-sm text-gray-600">{{ number_format($kw->impressions) }}</span></x-ui.td>
+                        <x-ui.td class="text-center hidden sm:table-cell"><span class="text-sm text-gray-600">{{ $kw->ctr ? number_format($kw->ctr * 100, 1) . '%' : '—' }}</span></x-ui.td>
+                        <x-ui.td class="hidden lg:table-cell max-w-[200px] truncate text-xs text-gray-400">{{ $kw->url ? Str::limit(parse_url($kw->url, PHP_URL_PATH) ?: $kw->url, 40) : '—' }}</x-ui.td>
+                        <x-ui.td class="text-right">
+                            @if($kw->is_tracked)
+                                <button wire:click="untrackKeyword('{{ $kw->keyword_hash }}')" class="text-xs text-accent-600 hover:text-red-500">Untrack</button>
+                            @else
+                                <button wire:click="$set('newKeyword', '{{ addslashes($kw->keyword) }}');trackKeyword" class="text-xs text-gray-400 hover:text-accent-600">Track</button>
+                            @endif
+                        </x-ui.td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+                        No keyword data yet.
+                        @if($site->searchConsoleConnection?->is_active)
+                            Click "Fetch from Search Console" to load rankings.
+                        @else
+                            Connect Google Search Console to fetch keyword rankings.
+                        @endif
+                    </td></tr>
+                @endforelse
+            </x-ui.table>
+            @php $kwPaginated = $this->keywordRankings->paginate(50, pageName: 'kwPage'); @endphp
+            @if($kwPaginated->hasPages())<div class="mt-4">{{ $kwPaginated->links() }}</div>@endif
         @endif
 
         {{-- INFRASTRUCTURE TAB --}}
@@ -685,38 +764,64 @@
 
         {{-- HISTORY TAB --}}
         @if($activeTab==='history')
-            <div class="space-y-4">
-                @if(!empty($this->trendData))
-                    <x-ui.card>
-                        <h3 class="mb-3 text-sm font-medium text-gray-900">Score Trend (Overall + Categories)</h3>
-                        <x-charts.line-chart
-                            :labels="$this->trendData['labels']"
-                            :datasets="[
-                                ['label' => 'Overall', 'data' => $this->trendData['overall'], 'color' => '#8D5CF5'],
-                                ['label' => 'Technical', 'data' => $this->trendData['technical'], 'color' => '#3b82f6'],
-                                ['label' => 'On-Page', 'data' => $this->trendData['on_page'], 'color' => '#10b981'],
-                                ['label' => 'Performance', 'data' => $this->trendData['performance'], 'color' => '#f59e0b'],
-                            ]"
-                            height="250px"
-                        />
-                    </x-ui.card>
-                @endif
+            @if(!empty($this->trendData))
+                <x-ui.card class="mb-4">
+                    <h3 class="mb-3 text-sm font-medium text-gray-900">Score Trend</h3>
+                    <x-charts.line-chart
+                        :labels="$this->trendData['labels']"
+                        :datasets="[
+                            ['label' => 'Overall', 'data' => $this->trendData['overall'], 'color' => '#8D5CF5'],
+                            ['label' => 'Technical', 'data' => $this->trendData['technical'], 'color' => '#3b82f6'],
+                            ['label' => 'On-Page', 'data' => $this->trendData['on_page'], 'color' => '#10b981'],
+                            ['label' => 'Performance', 'data' => $this->trendData['performance'], 'color' => '#f59e0b'],
+                        ]"
+                        height="250px"
+                    />
+                </x-ui.card>
+            @endif
+            <x-ui.table>
+                <x-slot:head>
+                    <x-ui.th>Date</x-ui.th>
+                    <x-ui.th class="text-center">Score</x-ui.th>
+                    <x-ui.th class="text-center">Change</x-ui.th>
+                    <x-ui.th class="hidden sm:table-cell text-center">Critical</x-ui.th>
+                    <x-ui.th class="hidden sm:table-cell text-center">High</x-ui.th>
+                    <x-ui.th class="hidden sm:table-cell text-center">Medium</x-ui.th>
+                    <x-ui.th class="text-center">Pages</x-ui.th>
+                    <x-ui.th class="hidden lg:table-cell">Duration</x-ui.th>
+                    <x-ui.th class="text-right"></x-ui.th>
+                </x-slot:head>
                 @foreach($this->auditHistory as $h)
-                    <x-ui.card><div class="flex items-center gap-4">
-                        <div class="text-center">
-                            <span class="text-2xl font-bold {{ $h->score>=80?'text-green-600':($h->score>=50?'text-yellow-600':'text-red-600') }}">{{ $h->score }}</span>
+                    <tr class="hover:bg-gray-50">
+                        <x-ui.td><span class="text-sm font-medium text-gray-900">{{ $h->scanned_at?->format('M d, Y H:i') }}</span></x-ui.td>
+                        <x-ui.td class="text-center">
+                            <span class="text-lg font-bold {{ $h->score>=80?'text-green-600':($h->score>=50?'text-yellow-600':'text-red-600') }}">{{ $h->score }}</span>
+                        </x-ui.td>
+                        <x-ui.td class="text-center">
                             @if(!$loop->last)
                                 @php $prev=$this->auditHistory[$loop->index+1]->score; $delta=$h->score-$prev; @endphp
-                                <p class="text-xs {{ $delta>0?'text-green-600':($delta<0?'text-red-600':'text-gray-400') }}">{{ $delta>0?'+':'' }}{{ $delta }}</p>
+                                <span class="text-sm font-medium {{ $delta>0?'text-green-600':($delta<0?'text-red-600':'text-gray-400') }}">{{ $delta>0?'+':'' }}{{ $delta }}</span>
                             @else
-                                <p class="text-xs text-gray-400">Score</p>
+                                <span class="text-gray-300">—</span>
                             @endif
-                        </div>
-                        <div class="flex-1"><p class="text-sm font-medium text-gray-900">{{ $h->scanned_at?->format('M d, Y H:i') }}</p><div class="mt-1 flex flex-wrap gap-2">@if($h->critical_count>0)<x-ui.badge variant="red">{{ $h->critical_count }} critical</x-ui.badge>@endif @if($h->high_count>0)<x-ui.badge variant="orange">{{ $h->high_count }} high</x-ui.badge>@endif<span class="text-xs text-gray-400">{{ $h->pages_crawled }} pages</span></div></div>
-                        <button wire:click="deleteAudit({{ $h->id }})" wire:confirm="Delete this audit?" class="text-gray-300 hover:text-red-500"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
-                    </div></x-ui.card>
+                        </x-ui.td>
+                        <x-ui.td class="hidden sm:table-cell text-center">
+                            @if($h->critical_count > 0)<span class="font-medium text-red-600">{{ $h->critical_count }}</span>@else<span class="text-gray-300">0</span>@endif
+                        </x-ui.td>
+                        <x-ui.td class="hidden sm:table-cell text-center">
+                            @if($h->high_count > 0)<span class="font-medium text-orange-600">{{ $h->high_count }}</span>@else<span class="text-gray-300">0</span>@endif
+                        </x-ui.td>
+                        <x-ui.td class="hidden sm:table-cell text-center">
+                            @if($h->medium_count > 0)<span class="font-medium text-yellow-600">{{ $h->medium_count }}</span>@else<span class="text-gray-300">0</span>@endif
+                        </x-ui.td>
+                        <x-ui.td class="text-center"><span class="text-sm text-gray-600">{{ $h->pages_crawled }}</span></x-ui.td>
+                        <x-ui.td class="hidden lg:table-cell"><span class="text-xs text-gray-400">{{ $h->scan_duration ? gmdate('i:s', $h->scan_duration) : '—' }}</span></x-ui.td>
+                        <x-ui.td class="text-right">
+                            <button wire:click="deleteAudit({{ $h->id }})" wire:confirm="Delete this audit?" class="text-gray-300 hover:text-red-500"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </x-ui.td>
+                    </tr>
                 @endforeach
-            </div>
+            </x-ui.table>
         @endif
     @endif
 
