@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\ReportStatus;
 use App\Mail\ReportGeneratedMail;
 use App\Models\Report;
 use App\Models\ReportRecommendation;
@@ -41,6 +42,8 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 
     public array $backoff = [60, 120];
 
+    public ?int $reportId = null;
+
     public function __construct(
         public Site $site,
         public ReportTemplate $template,
@@ -68,17 +71,46 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
     {
         JobTracker::start($this->trackerKey(), 'Generating report...');
 
-        $report = Report::create([
-            'site_id' => $this->site->id,
-            'report_template_id' => $this->template->id,
-            'report_schedule_id' => $this->schedule?->id,
-            'title' => 'Maintenance Report - '.$this->site->name.' - '.$this->periodEnd->format('d.m.Y'),
-            'period_start' => $this->periodStart,
-            'period_end' => $this->periodEnd,
-            'status' => 'generating',
-            'trigger' => $this->trigger,
-            'view_token' => Str::random(32),
-        ]);
+        // Idempotency: reuse existing report on retry
+        $report = $this->reportId ? Report::find($this->reportId) : null;
+
+        // Dedup check: look for a recent report for this schedule+period
+        if (! $report && $this->schedule) {
+            $report = Report::where('report_schedule_id', $this->schedule->id)
+                ->where('period_start', $this->periodStart->toDateString())
+                ->where('period_end', $this->periodEnd->toDateString())
+                ->whereIn('status', ['generating', 'completed'])
+                ->where('created_at', '>=', now()->subHours(1))
+                ->first();
+        }
+
+        if ($report && $report->status === ReportStatus::Completed && $report->was_sent) {
+            Log::info("Report #{$report->id} already completed and sent, skipping", [
+                'site_id' => $this->site->id,
+                'schedule_id' => $this->schedule?->id,
+            ]);
+            JobTracker::complete($this->trackerKey(), 'Report already generated');
+
+            return;
+        }
+
+        if (! $report) {
+            $report = Report::create([
+                'site_id' => $this->site->id,
+                'report_template_id' => $this->template->id,
+                'report_schedule_id' => $this->schedule?->id,
+                'title' => 'Maintenance Report - '.$this->site->name.' - '.$this->periodEnd->format('d.m.Y'),
+                'period_start' => $this->periodStart,
+                'period_end' => $this->periodEnd,
+                'status' => 'generating',
+                'trigger' => $this->trigger,
+                'view_token' => Str::random(32),
+            ]);
+        } else {
+            $report->update(['status' => 'generating', 'error_message' => null]);
+        }
+
+        $this->reportId = $report->id;
 
         try {
             $service = new ReportGeneratorService(
@@ -143,45 +175,55 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 ]);
             }
 
+            // Verify PDF integrity before sending emails
+            $pdfVerified = $this->verifyPdf($fullPath);
+
             JobTracker::complete($this->trackerKey(), 'Report generated successfully');
 
-            // Send emails (best-effort — don't fail the report if email fails)
-            $recipients = $this->recipientEmails ?? [];
-            if ($this->schedule) {
-                $recipients = array_merge($recipients, $this->schedule->recipient_emails ?? []);
-                if ($this->schedule->send_copy_to_admin) {
-                    $adminEmail = config('mail.from.address');
-                    if ($adminEmail && ! in_array($adminEmail, $recipients)) {
-                        $recipients[] = $adminEmail;
+            // Guard: skip email if already sent (idempotency on retry)
+            if ($report->was_sent) {
+                Log::info("Report #{$report->id} emails already sent, skipping", [
+                    'site_id' => $this->site->id,
+                ]);
+            } else {
+                // Send emails (best-effort — don't fail the report if email fails)
+                $recipients = $this->recipientEmails ?? [];
+                if ($this->schedule) {
+                    $recipients = array_merge($recipients, $this->schedule->recipient_emails ?? []);
+                    if ($this->schedule->send_copy_to_admin) {
+                        $adminEmail = config('mail.from.address');
+                        if ($adminEmail && ! in_array($adminEmail, $recipients)) {
+                            $recipients[] = $adminEmail;
+                        }
                     }
                 }
-            }
 
-            $recipients = array_unique(array_filter($recipients));
+                $recipients = array_unique(array_filter($recipients));
 
-            if (count($recipients) > 0) {
-                try {
-                    foreach ($recipients as $email) {
-                        Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule));
+                if (count($recipients) > 0) {
+                    try {
+                        foreach ($recipients as $email) {
+                            Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule, $pdfVerified));
+                        }
+
+                        $report->update([
+                            'was_sent' => true,
+                            'sent_at' => now(),
+                            'sent_to' => $recipients,
+                        ]);
+
+                        if ($this->schedule) {
+                            $this->schedule->update(['last_sent_at' => now()]);
+                        }
+
+                        ActivityLogger::reportSent($this->site, $report->title, $recipients);
+                    } catch (\Throwable $e) {
+                        Log::warning("Report email failed for site {$this->site->id}, report #{$report->id}", [
+                            'exception' => get_class($e),
+                            'message' => Str::limit($e->getMessage(), 200),
+                            'recipients' => $recipients,
+                        ]);
                     }
-
-                    $report->update([
-                        'was_sent' => true,
-                        'sent_at' => now(),
-                        'sent_to' => $recipients,
-                    ]);
-
-                    if ($this->schedule) {
-                        $this->schedule->update(['last_sent_at' => now()]);
-                    }
-
-                    ActivityLogger::reportSent($this->site, $report->title, $recipients);
-                } catch (\Throwable $e) {
-                    Log::warning("Report email failed for site {$this->site->id}, report #{$report->id}", [
-                        'exception' => get_class($e),
-                        'message' => Str::limit($e->getMessage(), 200),
-                        'recipients' => $recipients,
-                    ]);
                 }
             }
         } catch (\Throwable $e) {
@@ -217,12 +259,16 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 'file' => $e->getFile().':'.$e->getLine(),
             ]);
         } finally {
-            // ALWAYS advance next_run_at to prevent infinite retry loops
+            // Safety net: if next_run_at was not advanced by the dispatcher,
+            // advance it now to prevent infinite dispatch loops.
             if ($this->schedule && $this->schedule->is_active) {
-                $this->schedule->update([
-                    'next_run_at' => $this->schedule->calculateNextRun(),
-                    'reminder_sent_at' => null,
-                ]);
+                $this->schedule->refresh();
+                if ($this->schedule->next_run_at === null || $this->schedule->next_run_at->lte(now())) {
+                    $this->schedule->update([
+                        'next_run_at' => $this->schedule->calculateNextRun(),
+                        'reminder_sent_at' => null,
+                    ]);
+                }
             }
         }
     }
@@ -234,5 +280,45 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
             'exception' => $exception ? get_class($exception) : 'Unknown',
             'code' => $exception?->getCode(),
         ]);
+    }
+
+    /**
+     * Verify the PDF file exists and is valid (magic bytes + minimum size).
+     */
+    protected function verifyPdf(string $fullPath): bool
+    {
+        if (! file_exists($fullPath)) {
+            Log::warning("Report PDF not found at {$fullPath}", ['site_id' => $this->site->id]);
+
+            return false;
+        }
+
+        $size = (int) filesize($fullPath);
+        if ($size < 1024) {
+            Log::warning("Report PDF suspiciously small ({$size} bytes)", [
+                'path' => $fullPath,
+                'site_id' => $this->site->id,
+            ]);
+
+            return false;
+        }
+
+        $handle = fopen($fullPath, 'rb');
+        if (! $handle) {
+            return false;
+        }
+        $header = fread($handle, 5);
+        fclose($handle);
+
+        if ($header !== '%PDF-') {
+            Log::warning('Report PDF has invalid header', [
+                'path' => $fullPath,
+                'site_id' => $this->site->id,
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 }

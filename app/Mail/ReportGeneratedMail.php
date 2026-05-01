@@ -23,6 +23,7 @@ class ReportGeneratedMail extends Mailable
         public Report $report,
         public Site $site,
         public ?ReportSchedule $schedule = null,
+        public bool $pdfVerified = true,
     ) {}
 
     public function envelope(): Envelope
@@ -39,6 +40,8 @@ class ReportGeneratedMail extends Mailable
             ? route('reports.view.public', [$this->report, $this->report->view_token])
             : null;
 
+        $hasAttachment = $this->pdfVerified && ! empty($this->attachments());
+
         return new Content(
             view: 'mail.report-generated',
             with: [
@@ -46,6 +49,7 @@ class ReportGeneratedMail extends Mailable
                 'site' => $this->site,
                 'schedule' => $this->schedule,
                 'viewUrl' => $viewUrl,
+                'pdfAttached' => $hasAttachment,
                 'downloadUrl' => URL::temporarySignedRoute(
                     'reports.download.signed',
                     now()->addDays(7),
@@ -57,7 +61,7 @@ class ReportGeneratedMail extends Mailable
 
     public function attachments(): array
     {
-        if (! $this->report->file_path) {
+        if (! $this->pdfVerified || ! $this->report->file_path) {
             return [];
         }
 

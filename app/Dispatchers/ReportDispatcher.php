@@ -42,6 +42,19 @@ class ReportDispatcher
                     return;
                 }
 
+                // Atomic claim: update next_run_at BEFORE dispatching.
+                // WHERE condition ensures only one dispatcher tick wins per schedule.
+                $claimed = ReportSchedule::where('id', $schedule->id)
+                    ->where(fn ($q) => $q->whereNull('next_run_at')->orWhere('next_run_at', '<=', now()))
+                    ->update([
+                        'next_run_at' => $schedule->calculateNextRun(),
+                        'reminder_sent_at' => null,
+                    ]);
+
+                if ($claimed === 0) {
+                    return;
+                }
+
                 /** @var \App\Models\Site $site */
                 $site = $schedule->site;
                 /** @var \App\Models\ReportTemplate $template */

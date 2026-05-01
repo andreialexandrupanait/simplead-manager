@@ -59,7 +59,11 @@
             </div>
 
             <div style="text-align: center;">
-                <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Raportul PDF este atașat la acest email.</p>
+                @if($pdfAttached)
+                    <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Raportul PDF este atașat la acest email.</p>
+                @else
+                    <p style="font-size: 13px; color: #dc2626; margin-bottom: 12px;">Raportul PDF nu a putut fi atașat. Folosiți linkul de mai jos pentru a-l descărca sau vizualiza online.</p>
+                @endif
                 <a href="{{ $downloadUrl }}" class="action-btn">Descarcă raportul</a>
                 @if($viewUrl)
                     <div style="margin-top: 12px;">
