@@ -61,7 +61,15 @@ class StorageDestinationFormData extends Form
 
         // s3 and S3-compatible providers (b2, hetzner_objectstorage) share the same fields
         if (in_array($this->type, ['s3', 'b2', 'hetzner_objectstorage'], true)) {
-            $rules['s3Bucket'] = 'required|string';
+            // Reject URL-like input in bucket field — common pasting mistake.
+            // Real S3/B2/Hetzner bucket names disallow `://`, slashes, and the host pattern.
+            $rules['s3Bucket'] = [
+                'required',
+                'string',
+                'regex:/^[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]$/i',
+                'not_regex:#://#',
+                'not_regex:#your-objectstorage|backblazeb2|amazonaws#i',
+            ];
             $rules['s3Region'] = 'required|string';
 
             if ($this->isCreating) {
@@ -71,6 +79,17 @@ class StorageDestinationFormData extends Form
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            's3Bucket.regex' => 'Bucket name must contain only letters, numbers, dots, and hyphens (3–63 chars).',
+            's3Bucket.not_regex' => 'Looks like you pasted a URL. Enter just the bucket NAME you created in the provider console (e.g. "simplead-backups"), not the endpoint.',
+        ];
     }
 
     public function setFromDestination($destination): void

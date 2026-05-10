@@ -101,14 +101,23 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Bucket</label>
-                        <x-ui.input wire:model="form.s3Bucket" placeholder="my-backup-bucket" class="mt-1" />
+                        <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
+                        <x-ui.input wire:model.live="form.s3Bucket" placeholder="my-backups" class="mt-1" />
                         @error('form.s3Bucket') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-gray-400">
+                            @if($form->type === 'b2')
+                                The name of the B2 bucket you created in Backblaze (Browse Files → bucket name). Just the name, no URL.
+                            @elseif($form->type === 'hetzner_objectstorage')
+                                The bucket name you created in Hetzner Console → Object Storage. Just the name (e.g. <code class="bg-gray-100 px-1 rounded">simplead-backups</code>), NOT the full URL.
+                            @else
+                                Bucket name only — no URL, no protocol.
+                            @endif
+                        </p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Region</label>
                         @if($isPreset)
-                            <x-ui.select wire:model="form.s3Region" class="mt-1">
+                            <x-ui.select wire:model.live="form.s3Region" class="mt-1">
                                 @foreach($this->regionOptions as $code => $label)
                                     <option value="{{ $code }}">{{ $label }}</option>
                                 @endforeach
@@ -119,6 +128,17 @@
                         @error('form.s3Region') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
+
+                @if($isPreset && $form->s3Bucket)
+                    @php
+                        $endpointInfo = \App\Services\Backup\Storage\StorageFactory::endpointFor($form->type, $form->s3Region);
+                        $previewUrl = ($endpointInfo['endpoint'] ?? '') . '/' . $form->s3Bucket;
+                    @endphp
+                    <div class="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
+                        Files will be uploaded to:
+                        <code class="block mt-1 text-gray-800 font-mono break-all">{{ $previewUrl }}/{{ $form->s3BasePath ?: '...' }}</code>
+                    </div>
+                @endif
 
                 @if(! $isPreset)
                     <div>
