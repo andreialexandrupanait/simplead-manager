@@ -170,43 +170,14 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $deletedFilesPath = $this->tempDir.'/deleted-files.json';
             file_put_contents($deletedFilesPath, json_encode($deletedPaths, JSON_PRETTY_PRINT));
 
-            $useStreaming = (bool) ($this->site->backupConfig?->use_streaming);
+            // v3-zip: single write path (replaces v2-zip + multipart-v3 paths)
+            $this->runV3ZipPipeline($destination, $dbPath, $filesChunkPaths, $deletedFilesPath);
 
-            if ($useStreaming) {
-                $this->runStreamingPipeline($destination, $dbPath, $filesChunkPaths, $deletedFilesPath);
-
-                // Generate new manifest for the next incremental in the chain (non-fatal)
-                try {
-                    $manifestService->generateAndStore($api, $this->backup, $destination);
-                } catch (\Throwable $e) {
-                    Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
-                }
-            } else {
-                [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive(
-                    $dbPath, $filesChunkPaths, $deletedFilesPath
-                );
-                $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
-
-                $integrity = $this->verifyIntegrity($combinedPath, $checksum);
-
-                $uploadSize = FormatHelper::bytes((int) $fileSize);
-                $this->reportProgress('uploading', 75, 'Uploading to storage...');
-                $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
-                $uploadStart = microtime(true);
-                $remotePath = $this->site->domain.'/'.$fileName;
-                $driver = StorageFactory::make($destination);
-                $driver->upload($combinedPath, $remotePath);
-                $uploadDuration = round(microtime(true) - $uploadStart, 1);
-                $this->logStep("Upload complete ({$uploadDuration}s)");
-                $this->reportProgress('finalizing', 90, 'Finalizing...');
-
-                try {
-                    $manifestService->generateAndStore($api, $this->backup, $destination);
-                } catch (\Throwable $e) {
-                    Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
-                }
-
-                $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
+            // Manifest for the next incremental in the chain (non-fatal)
+            try {
+                $manifestService->generateAndStore($api, $this->backup, $destination);
+            } catch (\Throwable $e) {
+                Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
             }
 
         } catch (\Exception $e) {
@@ -336,7 +307,153 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Streaming "multipart-v3" upload path for incremental backups.
+     * v3-zip pipeline for incremental backups: build single .zip with proper WP
+     * structure on local disk, including deleted-files.json for the diff state.
+     *
+     * @param  list<string>  $filesChunkPaths
+     */
+    protected function runV3ZipPipeline(StorageDestination $destination, string $dbPath, array $filesChunkPaths, string $deletedFilesPath): void
+    {
+        $now = now();
+        $fileName = "{$this->site->domain}-incremental-{$now->format('Y-m-d-His')}.zip";
+        $outputPath = $this->tempDir.'/'.$fileName;
+
+        $this->reportProgress('creating_archive', 65, 'Building incremental archive (v3-zip)...');
+        $this->logStep("Building consolidated v3-zip archive: {$fileName}");
+
+        $builder = new \App\Services\Backup\BackupZipBuilder($outputPath);
+        try {
+            $totalChunks = count($filesChunkPaths);
+            foreach ($filesChunkPaths as $i => $chunkPath) {
+                $count = $builder->addEntriesFromZip($chunkPath, 'files/');
+                @unlink($chunkPath);
+                $pct = 65 + (int) (15 * ($i + 1) / max(1, $totalChunks));
+                $this->reportProgress('creating_archive', min(80, $pct),
+                    "Consolidated chunk ".($i + 1)."/{$totalChunks} ({$count} entries)");
+            }
+
+            $builder->addFileFromPath($dbPath, 'database.sql.gz');
+            @unlink($dbPath);
+
+            $builder->addFileFromPath($deletedFilesPath, 'deleted-files.json');
+            @unlink($deletedFilesPath);
+
+            $builder->addString('backup-meta.json', json_encode([
+                'site_id' => $this->site->id,
+                'site_url' => $this->site->url,
+                'site_domain' => $this->site->domain,
+                'site_name' => $this->site->name,
+                'type' => 'incremental',
+                'trigger' => $this->trigger,
+                'created_at' => $now->toIso8601String(),
+                'parent_backup_id' => $this->backup->parent_backup_id,
+                'wp_version' => $this->site->wp_version,
+                'php_version' => $this->site->php_version,
+                'format' => 'v3-zip',
+            ], JSON_PRETTY_PRINT));
+
+            $result = $builder->finish();
+        } catch (\Throwable $e) {
+            $builder->abort();
+            throw $e;
+        }
+
+        // Verify
+        $verifier = app(\App\Services\Backup\IntegrityVerifier::class);
+        $integrity = $verifier->verifyV3Zip($outputPath, $result['sha256']);
+        if (! $integrity['ok']) {
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => $integrity['message'],
+            ]);
+            throw new \App\Exceptions\BackupException(
+                "v3-zip integrity check failed: {$integrity['message']}",
+                site: $this->site
+            );
+        }
+
+        // Upload
+        $uploadSize = FormatHelper::bytes($result['size']);
+        $this->reportProgress('uploading', 82, 'Uploading to storage...');
+        $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+        $remotePath = $this->site->domain.'/'.$fileName;
+        $driver = StorageFactory::make($destination);
+        $driver->upload($outputPath, $remotePath);
+        $this->reportProgress('finalizing', 92, 'Finalizing...');
+
+        // Finalize
+        $this->finalizeV3Zip($destination, $remotePath, $fileName, $result['size'], $result['sha256'], $integrity);
+    }
+
+    /**
+     * @param  array{ok: bool, message: string, checks: array<string, mixed>}  $integrity
+     */
+    protected function finalizeV3Zip(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
+    {
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePath,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
+        $this->backup->update([
+            'status' => BackupStatus::Completed,
+            'stage' => 'completed',
+            'progress_percent' => 100,
+            'progress_message' => 'Incremental backup completed (v3-zip)',
+            'file_path' => $remotePath,
+            'file_name' => $fileName,
+            'file_size' => $fileSize,
+            'checksum' => $checksum,
+            'format' => 'v3-zip',
+            'replicas' => $primaryReplica,
+            'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => $integrity['message'],
+            'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
+        ]);
+
+        ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        try {
+            $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
+            $sidecar['format'] = 'v3-zip';
+            \App\Services\Backup\BackupSidecarMetadata::uploadAlongside(StorageFactory::make($destination), $remotePath, $sidecar);
+        } catch (\Throwable $e) {
+            Log::warning("Sidecar metadata write failed for backup {$this->backupId}: {$e->getMessage()}");
+        }
+
+        $this->site->update([
+            'backup_ok' => true,
+            'last_backup_at' => now(),
+        ]);
+
+        $config = $this->site->backupConfig;
+        if ($config) {
+            $config->update([
+                'last_backup_at' => now(),
+                'last_backup_status' => 'completed',
+            ]);
+        }
+
+        $destination->increment('used_bytes', $fileSize);
+        app(RetentionService::class)->apply($this->site, $destination);
+
+        CircuitBreakerService::recordSuccess($this->site);
+        JobTracker::complete($this->uniqueId(), 'Incremental backup complete');
+
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
+
+        static::releaseUniqueLock($this->site->id);
+    }
+
+    /**
+     * @deprecated Replaced by runV3ZipPipeline. Kept for reference until clean-up.
      *
      * @param  list<string>  $filesChunkPaths
      */

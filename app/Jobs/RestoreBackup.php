@@ -192,7 +192,9 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         /** @var Site $site */
         $site = $this->backup->site;
 
-        if ($this->backup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
+        if ($this->backup->format === 'v3-zip') {
+            $this->materialiseV3ZipBackup($this->backup, $this->tempDir);
+        } elseif ($this->backup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
             $this->materialiseMultipartBackup($this->backup, $this->tempDir);
         } else {
             // Legacy v2-zip path: pull single archive, verify checksum, extract.
@@ -231,6 +233,76 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $api = app(WordPressApiServiceFactory::class)->make($site);
         $this->ensurePluginUpToDate($api);
         $this->doRestore($api, $this->tempDir);
+    }
+
+    /**
+     * Materialise a v3-zip backup into $targetDir in the layout doRestore() expects:
+     * extracts the single .zip and re-packages the `files/` subtree as `files.zip`
+     * (which doRestore sends to WP). The database.sql.gz lands at root naturally.
+     */
+    protected function materialiseV3ZipBackup(Backup $backup, string $targetDir): void
+    {
+        $localPath = $targetDir.'/'.$backup->file_name;
+        $this->reportRestoreProgress('downloading', 15, 'Downloading v3-zip backup...');
+        $this->downloadFromReplica($backup, $localPath);
+
+        $downloadSize = file_exists($localPath) ? FormatHelper::bytes((int) filesize($localPath)) : '0 B';
+        $this->logRestoreStep("Backup downloaded ({$downloadSize})");
+        $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
+
+        if ($backup->checksum) {
+            $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
+            $hash = hash_file('sha256', $localPath);
+            if ($hash !== $backup->checksum) {
+                throw new \RuntimeException('v3-zip checksum verification failed. The file may be corrupted.');
+            }
+            $this->logRestoreStep('Integrity verified');
+        }
+
+        $this->reportRestoreProgress('extracting', 35, 'Extracting backup archive...');
+        $zip = new ZipArchive;
+        if ($zip->open($localPath) !== true) {
+            throw new \RuntimeException('Failed to open v3-zip backup archive.');
+        }
+        $zip->extractTo($targetDir);
+        $zip->close();
+        @unlink($localPath);
+
+        // After extract: $targetDir contains database.sql.gz, backup-meta.json, files/wp-admin/...
+        // Re-package files/ subtree as files.zip with WP paths at root (what doRestore expects)
+        $filesDir = $targetDir.'/files';
+        $filesZip = $targetDir.'/files.zip';
+
+        if (is_dir($filesDir)) {
+            $this->reportRestoreProgress('extracting', 42, 'Re-packaging files for WordPress...');
+            $repack = new ZipArchive;
+            if ($repack->open($filesZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Failed to create files.zip for WP transfer.');
+            }
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($filesDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::LEAVES_ONLY
+            );
+            foreach ($iterator as $file) {
+                if ($file->isFile()) {
+                    $relative = substr($file->getRealPath(), strlen($filesDir) + 1);
+                    $repack->addFile($file->getRealPath(), $relative);
+                }
+            }
+            $repack->close();
+
+            // Remove extracted files/ subtree to free disk
+            $rmIter = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($filesDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($rmIter as $entry) {
+                $entry->isDir() ? @rmdir($entry->getPathname()) : @unlink($entry->getPathname());
+            }
+            @rmdir($filesDir);
+        }
+
+        $this->reportRestoreProgress('extracting', 45, 'Backup ready for restore');
     }
 
     /**
@@ -367,7 +439,10 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $extractDir = $this->tempDir.'/extract_'.$i;
             mkdir($extractDir, 0755, true);
 
-            if ($chainBackup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
+            if ($chainBackup->format === 'v3-zip') {
+                // v3-zip: download single .zip, extract, repackage files/ as files.zip
+                $this->materialiseV3ZipBackup($chainBackup, $extractDir);
+            } elseif ($chainBackup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
                 // Multipart-v3: download files into the extract dir directly (no outer zip)
                 $this->materialiseMultipartBackup($chainBackup, $extractDir);
             } else {

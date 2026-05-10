@@ -14,7 +14,10 @@ class DiskSpaceGuard
     private const ALERT_COOLDOWN_SECONDS = 3600;
 
     public function __construct(
-        private readonly int $minFreeBytes = 5 * 1024 * 1024 * 1024, // 5 GB
+        // 10 GB minimum: v3-zip pipeline peaks at ~1.1x backup size on disk during
+        // build (chunks shrinking as output zip grows). 10 GB headroom covers
+        // sites up to ~9 GB with margin. Lower if you're running on smaller boxes.
+        private readonly int $minFreeBytes = 10 * 1024 * 1024 * 1024,
         private readonly string $checkPath = ''
     ) {}
 

@@ -185,6 +185,127 @@ class IntegrityVerifier
     }
 
     /**
+     * Verify a freshly-built v3-zip archive (Level A — runs at backup creation,
+     * before declaring completed). Checks:
+     *   - SHA256 of file matches expected
+     *   - Outer ZIP opens with CHECKCONS (per-entry CRC validation)
+     *   - database.sql.gz present + parseable via SqlDumpParser
+     *   - backup-meta.json present + parseable
+     *   - At least one entry under files/ (non-empty WP files area, unless DB-only)
+     *
+     * @return array{ok: bool, message: string, checks: array<string, mixed>}
+     */
+    public function verifyV3Zip(string $archivePath, string $expectedSha256): array
+    {
+        $checks = [];
+
+        if (! is_file($archivePath)) {
+            return $this->fail('archive missing', ['archive_path' => $archivePath]);
+        }
+
+        // 1. SHA256
+        $actualSha = hash_file('sha256', $archivePath);
+        $checks['sha256_match'] = ($actualSha === $expectedSha256);
+        if (! $checks['sha256_match']) {
+            return $this->fail("sha256 mismatch (expected {$expectedSha256}, got {$actualSha})", $checks);
+        }
+
+        // 2. Outer ZIP CHECKCONS — validates each entry's CRC at byte level
+        $zip = new ZipArchive;
+        $openResult = $zip->open($archivePath, ZipArchive::CHECKCONS);
+        if ($openResult !== true) {
+            return $this->fail("outer zip CHECKCONS failed (code {$openResult})", $checks);
+        }
+        $checks['outer_zip_consistent'] = true;
+        $checks['entry_count'] = $zip->numFiles;
+
+        // 3. backup-meta.json
+        $metaJson = $zip->getFromName('backup-meta.json');
+        if ($metaJson === false) {
+            $zip->close();
+
+            return $this->fail('backup-meta.json missing', $checks);
+        }
+        $meta = json_decode($metaJson, true);
+        if (! is_array($meta)) {
+            $zip->close();
+
+            return $this->fail('backup-meta.json not parseable', $checks);
+        }
+        $checks['meta_format'] = $meta['format'] ?? null;
+        $checks['meta_type'] = $meta['type'] ?? null;
+
+        // 4. database.sql.gz — extract to temp + run SqlDumpParser
+        $dbCheck = $this->verifyV3ZipDatabase($zip, dirname($archivePath));
+        $checks['database'] = $dbCheck;
+        if (! $dbCheck['ok']) {
+            $zip->close();
+
+            return $this->fail("database dump invalid: {$dbCheck['error']}", $checks);
+        }
+
+        // 5. files/ subtree — at least one entry expected for non-DB-only backups
+        $type = $meta['type'] ?? 'full';
+        if ($type !== 'database') {
+            $hasFiles = false;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                if ($name && str_starts_with($name, 'files/') && ! str_ends_with($name, '/')) {
+                    $hasFiles = true;
+                    break;
+                }
+            }
+            if (! $hasFiles) {
+                $zip->close();
+
+                return $this->fail("no files/* entries in v3-zip (expected for type={$type})", $checks);
+            }
+            $checks['has_files'] = true;
+        }
+
+        $zip->close();
+
+        return [
+            'ok' => true,
+            'message' => sprintf(
+                'v3-zip integrity ok: %d entries, %d tables, %d inserts',
+                $checks['entry_count'],
+                $checks['database']['table_count'] ?? 0,
+                $checks['database']['insert_count'] ?? 0
+            ),
+            'checks' => $checks,
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, error?: string, table_count?: int, insert_count?: int}
+     */
+    private function verifyV3ZipDatabase(ZipArchive $zip, string $tempDirRoot): array
+    {
+        if ($zip->locateName('database.sql.gz') === false) {
+            return ['ok' => false, 'error' => 'database.sql.gz not in archive'];
+        }
+
+        $tempPath = $tempDirRoot.'/verify-db-'.uniqid().'.sql.gz';
+        if ($zip->extractTo($tempDirRoot, 'database.sql.gz') === false) {
+            return ['ok' => false, 'error' => 'failed to extract database.sql.gz'];
+        }
+        $extractedAt = $tempDirRoot.'/database.sql.gz';
+        @rename($extractedAt, $tempPath);
+
+        try {
+            $result = $this->sqlParser->parse($tempPath);
+
+            return $result['ok']
+                ? ['ok' => true, 'table_count' => $result['table_count'], 'insert_count' => $result['insert_count']]
+                : ['ok' => false, 'error' => $result['error'] ?? 'unknown parser failure'];
+        } finally {
+            @unlink($tempPath);
+            @unlink($extractedAt);
+        }
+    }
+
+    /**
      * Level B verification for a multipart-v3 backup. Downloads each file,
      * verifies sha256 against the manifest, and recomputes the composite
      * checksum stored on Backup.checksum.

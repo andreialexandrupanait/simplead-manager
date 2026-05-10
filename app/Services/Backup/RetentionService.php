@@ -116,11 +116,17 @@ class RetentionService
                 $driver = StorageFactory::make($destination);
 
                 // multipart-v3: target['remote_path'] is a prefix containing many files.
-                // Enumerate + delete each. Legacy v2-zip: target is a single file path.
+                // Enumerate + delete each. v2-zip / v3-zip: single file path + sidecar.
                 if ($backup->format === BackupManifestV3::FORMAT) {
                     $this->deleteMultipartPrefix($driver, $target['remote_path']);
                 } else {
                     $driver->delete($target['remote_path']);
+                    // v2-zip & v3-zip have a sidecar metadata.json next to the .zip
+                    try {
+                        $driver->delete($target['remote_path'].\App\Services\Backup\BackupSidecarMetadata::SUFFIX);
+                    } catch (\Throwable $sidecarErr) {
+                        // sidecar may not exist for older v2-zip backups — silently ignore
+                    }
                 }
 
                 $destination->decrement('used_bytes', max(0, $backup->file_size ?? 0));

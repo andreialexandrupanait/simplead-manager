@@ -92,18 +92,9 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
             [$dbPath, $filesChunkPaths] = $this->downloadData();
 
-            $useStreaming = (bool) ($this->site->backupConfig?->use_streaming);
-
-            if ($useStreaming) {
-                $this->runStreamingPipeline($destination, $dbPath, $filesChunkPaths);
-            } else {
-                [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
-
-                $integrity = $this->verifyIntegrity($combinedPath, $checksum);
-
-                $remotePath = $this->upload($destination, $combinedPath, $fileName);
-                $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
-            }
+            // v3-zip is now the single write path for new backups. Old formats
+            // (v2-zip and multipart-v3) are read-only — restore still handles them.
+            $this->runV3ZipPipeline($destination, $dbPath, $filesChunkPaths);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -388,9 +379,186 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Streaming "multipart-v3" upload path: pushes db.sql.gz + each files chunk as
-     * independent objects under a per-backup prefix, deleting each local file as
-     * the upload returns. Manifest is uploaded LAST so a partial backup is detectable.
+     * v3-zip pipeline: build a single .zip with proper WP structure on local disk
+     * (consolidating chunk zips into `files/` subtree), then upload via S3 multipart.
+     * Replaces the old v2-zip and multipart-v3 paths for new backups.
+     *
+     * @param  list<string>  $filesChunkPaths
+     */
+    protected function runV3ZipPipeline(\App\Models\StorageDestination $destination, string $dbPath, array $filesChunkPaths): void
+    {
+        $now = now();
+        $fileName = "{$this->site->domain}-{$this->type}-{$now->format('Y-m-d-His')}.zip";
+        $outputPath = $this->tempDir.'/'.$fileName;
+
+        $this->reportProgress('creating_archive', 60, 'Building backup archive (v3-zip)...');
+        $this->logStep("Building consolidated v3-zip archive: {$fileName}");
+
+        $builder = new \App\Services\Backup\BackupZipBuilder($outputPath);
+        try {
+            // 1. WP files: stream-copy each chunk's entries into output.zip under files/
+            $totalChunks = count($filesChunkPaths);
+            foreach ($filesChunkPaths as $i => $chunkPath) {
+                $count = $builder->addEntriesFromZip($chunkPath, 'files/');
+                @unlink($chunkPath); // free disk immediately as the chunk is consumed
+                $pct = 60 + (int) (15 * ($i + 1) / max(1, $totalChunks));
+                $this->reportProgress('creating_archive', min(75, $pct),
+                    "Consolidated chunk ".($i + 1)."/{$totalChunks} ({$count} entries)");
+            }
+
+            // 2. Database dump (root)
+            $builder->addFileFromPath($dbPath, 'database.sql.gz');
+            @unlink($dbPath);
+
+            // 3. backup-meta.json (root)
+            $builder->addString('backup-meta.json', json_encode([
+                'site_id' => $this->site->id,
+                'site_url' => $this->site->url,
+                'site_domain' => $this->site->domain,
+                'site_name' => $this->site->name,
+                'type' => $this->type,
+                'trigger' => $this->trigger,
+                'created_at' => $now->toIso8601String(),
+                'wp_version' => $this->site->wp_version,
+                'php_version' => $this->site->php_version,
+                'format' => 'v3-zip',
+                'plugins_count' => $this->site->sitePlugins()->count(),
+                'themes_count' => $this->site->siteThemes()->count(),
+            ], JSON_PRETTY_PRINT));
+
+            $result = $builder->finish();
+        } catch (\Throwable $e) {
+            $builder->abort();
+            throw $e;
+        }
+
+        // 4. Verify the freshly-built zip before upload (Faza 1 — Level A)
+        $integrity = $this->verifyV3Zip($outputPath, $result['sha256']);
+
+        // 5. Upload single file (S3 driver handles multipart automatically for >100MB)
+        $remotePath = $this->upload($destination, $outputPath, $fileName);
+
+        // 6. Finalize + sidecar metadata + replication dispatch
+        $this->finalizeV3Zip($destination, $remotePath, $fileName, $result['size'], $result['sha256'], $integrity);
+    }
+
+    /**
+     * Verify a freshly-built v3-zip archive: outer ZIP CHECKCONS + DB dump structure
+     * + presence of expected entries + sha256 match.
+     *
+     * @return array{ok: bool, message: string, checks: array<string, mixed>}
+     */
+    protected function verifyV3Zip(string $outputPath, string $expectedSha256): array
+    {
+        $this->reportProgress('verifying', 76, 'Verifying archive integrity...');
+        $this->logStep('Verifying v3-zip archive integrity...');
+
+        $verifier = app(\App\Services\Backup\IntegrityVerifier::class);
+        $result = $verifier->verifyV3Zip($outputPath, $expectedSha256);
+
+        if (! $result['ok']) {
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => $result['message'],
+            ]);
+            throw new \App\Exceptions\BackupException(
+                "v3-zip integrity check failed: {$result['message']}",
+                site: $this->site
+            );
+        }
+
+        $this->logStep($result['message']);
+
+        return $result;
+    }
+
+    /**
+     * Finalize a v3-zip backup: same accounting as v2-zip finalize but stores
+     * `format = v3-zip`. Single remote file, sidecar metadata, replication dispatch.
+     *
+     * @param  array{ok: bool, message: string, checks: array<string, mixed>}  $integrity
+     */
+    protected function finalizeV3Zip(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
+    {
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePath,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
+        $this->backup->update([
+            'status' => BackupStatus::Completed,
+            'stage' => 'completed',
+            'progress_percent' => 100,
+            'progress_message' => 'Backup completed (v3-zip)',
+            'file_path' => $remotePath,
+            'file_name' => $fileName,
+            'file_size' => $fileSize,
+            'checksum' => $checksum,
+            'format' => 'v3-zip',
+            'replicas' => $primaryReplica,
+            'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => $integrity['message'],
+            'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
+            'is_locked' => $this->trigger === 'pre_update',
+            'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
+        ]);
+
+        ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        // Self-describing sidecar so the backup is reindexable without the Laravel DB
+        try {
+            $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
+            $sidecar['format'] = 'v3-zip'; // override
+            \App\Services\Backup\BackupSidecarMetadata::uploadAlongside(StorageFactory::make($destination), $remotePath, $sidecar);
+        } catch (\Throwable $e) {
+            Log::warning("Sidecar metadata write failed for backup {$this->backupId}: {$e->getMessage()}");
+        }
+
+        // Off-site replication (3-2-1)
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
+
+        // Manifest for incremental support (non-fatal)
+        if ($this->type === 'full') {
+            try {
+                $api = app(WordPressApiServiceFactory::class)->make($this->site);
+                $manifestService = new \App\Services\Backup\ManifestService;
+                $manifestService->generateAndStore($api, $this->backup, $destination, $this->filesSessionToken);
+            } catch (\Throwable $e) {
+                Log::warning("Manifest generation failed for backup {$this->backupId} (non-fatal): {$e->getMessage()}");
+            }
+        }
+
+        $this->site->update([
+            'backup_ok' => true,
+            'last_backup_at' => now(),
+        ]);
+
+        $config = $this->site->backupConfig;
+        if ($config) {
+            $config->update([
+                'last_backup_at' => now(),
+                'last_backup_status' => 'completed',
+                'last_full_backup_at' => $this->type === 'full' ? now() : $config->last_full_backup_at,
+            ]);
+        }
+
+        $destination->increment('used_bytes', $fileSize);
+        app(RetentionService::class)->apply($this->site, $destination);
+
+        CircuitBreakerService::recordSuccess($this->site);
+        JobTracker::complete($this->uniqueId(), 'Backup complete');
+        static::releaseUniqueLock($this->site->id);
+    }
+
+    /**
+     * @deprecated Replaced by runV3ZipPipeline. Kept for reference until clean-up.
      *
      * @param  list<string>  $filesChunkPaths
      */
