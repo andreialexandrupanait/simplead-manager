@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Listeners\TrackScheduledTaskFailures;
 use App\Services\Notifications\NotificationService;
 use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
@@ -108,6 +111,10 @@ class AppServiceProvider extends ServiceProvider
                 // DB may not be available during migrations
             }
         });
+
+        // Schedule failure tracking — alert after consecutive failures of any scheduled task
+        $this->app['events']->listen(ScheduledTaskFailed::class, [TrackScheduledTaskFailures::class, 'handleFailed']);
+        $this->app['events']->listen(ScheduledTaskFinished::class, [TrackScheduledTaskFailures::class, 'handleFinished']);
 
         // Horizon long wait alert
         $this->app['events']->listen(LongWaitDetected::class, function (LongWaitDetected $event) {

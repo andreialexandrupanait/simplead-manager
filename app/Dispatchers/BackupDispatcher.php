@@ -11,6 +11,7 @@ use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Services\ActivityLogger;
+use App\Services\Backup\DiskSpaceGuard;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +27,10 @@ class BackupDispatcher
 
         CircuitBreakerService::checkHalfOpen();
 
+        if (! app(DiskSpaceGuard::class)->canDispatchBackup()) {
+            return;
+        }
+
         BackupConfig::query()
             ->where('is_enabled', true)
             ->where('next_backup_at', '<=', now())
@@ -39,42 +44,55 @@ class BackupDispatcher
             )
             ->with('site')
             ->each(function (BackupConfig $config) {
-                $backupType = $this->determineBackupType($config);
-
-                /** @var \App\Models\Site $site */
-                $site = $config->site;
-
-                if ($backupType === 'incremental') {
-                    CreateIncrementalBackup::dispatch(
-                        $site,
-                        'scheduled',
-                        $config->storage_destination_id
-                    );
-                } else {
-                    CreateBackup::dispatch(
-                        $site,
-                        $backupType,
-                        'scheduled',
-                        $config->storage_destination_id
-                    );
+                try {
+                    $this->dispatchScheduledBackup($config);
+                } catch (\Throwable $e) {
+                    Log::error("BackupDispatcher: failed to dispatch backup for site #{$config->site_id}: {$e->getMessage()}", [
+                        'config_id' => $config->id,
+                        'site_id' => $config->site_id,
+                        'exception' => $e::class,
+                    ]);
                 }
-
-                // Calculate next backup time in the config's timezone, then convert to UTC
-                $tz = $config->timezone ?: 'UTC';
-                $next = match ($config->frequency) {
-                    'daily' => now($tz)->addDay(),
-                    'weekly' => now($tz)->addWeek(),
-                    'monthly' => now($tz)->addMonth(),
-                    default => now($tz)->addDay(),
-                };
-
-                if ($config->time) {
-                    [$hour, $minute] = explode(':', $config->time);
-                    $next->setTime((int) $hour, (int) $minute);
-                }
-
-                $config->update(['next_backup_at' => $next->utc()]);
             });
+    }
+
+    protected function dispatchScheduledBackup(BackupConfig $config): void
+    {
+        $backupType = $this->determineBackupType($config);
+
+        /** @var \App\Models\Site $site */
+        $site = $config->site;
+
+        if ($backupType === 'incremental') {
+            CreateIncrementalBackup::dispatch(
+                $site,
+                'scheduled',
+                $config->storage_destination_id
+            );
+        } else {
+            CreateBackup::dispatch(
+                $site,
+                $backupType,
+                'scheduled',
+                $config->storage_destination_id
+            );
+        }
+
+        // Calculate next backup time in the config's timezone, then convert to UTC
+        $tz = $config->timezone ?: 'UTC';
+        $next = match ($config->frequency) {
+            'daily' => now($tz)->addDay(),
+            'weekly' => now($tz)->addWeek(),
+            'monthly' => now($tz)->addMonth(),
+            default => now($tz)->addDay(),
+        };
+
+        if ($config->time) {
+            [$hour, $minute] = explode(':', $config->time);
+            $next->setTime((int) $hour, (int) $minute);
+        }
+
+        $config->update(['next_backup_at' => $next->utc()]);
     }
 
     /**
@@ -144,10 +162,18 @@ class BackupDispatcher
             ->get();
 
         foreach ($stuck as $backup) {
-            if ($backup->auto_retry_count < $maxAutoRetries) {
-                $this->autoRetryBackup($backup);
-            } else {
-                $this->markBackupFailed($backup);
+            try {
+                if ($backup->auto_retry_count < $maxAutoRetries) {
+                    $this->autoRetryBackup($backup);
+                } else {
+                    $this->markBackupFailed($backup);
+                }
+            } catch (\Throwable $e) {
+                Log::error("recoverStuckBackups: failed to recover backup #{$backup->id}: {$e->getMessage()}", [
+                    'backup_id' => $backup->id,
+                    'site_id' => $backup->site_id,
+                    'exception' => $e::class,
+                ]);
             }
         }
     }

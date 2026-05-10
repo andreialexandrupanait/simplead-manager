@@ -43,6 +43,14 @@ class DashboardService
 
         $backups = $this->getBackupCounts();
 
+        // Sites with backup enabled where last successful backup is older than 36h (or never)
+        $staleBackups = Site::whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true))
+            ->where(fn ($q) => $q
+                ->whereNull('last_backup_at')
+                ->orWhere('last_backup_at', '<', now()->subHours(36))
+            )
+            ->count();
+
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
@@ -53,7 +61,8 @@ class DashboardService
             'pending_theme_updates' => $pendingThemeUpdates,
             'pending_core_updates' => $pendingCoreUpdates,
             'failed_backups' => $backups['failed_backups'],
-            'total_alerts' => $sitesDown + $backups['failed_backups'],
+            'stale_backups' => $staleBackups,
+            'total_alerts' => $sitesDown + $backups['failed_backups'] + $staleBackups,
             'backup_storage_bytes' => $backups['total_storage_bytes'],
             'backups_today' => $backups['backups_today'],
         ];

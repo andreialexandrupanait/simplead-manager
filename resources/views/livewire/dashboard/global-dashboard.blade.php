@@ -97,18 +97,34 @@
         </a>
 
         {{-- Backup Storage --}}
+        @php
+            $hasFailed = $stats['failed_backups'] > 0;
+            $hasStale = ($stats['stale_backups'] ?? 0) > 0;
+            $backupAlert = $hasFailed || $hasStale;
+            $iconBg = $backupAlert ? 'bg-red-50' : 'bg-accent-50';
+            $iconColor = $backupAlert ? 'text-red-500' : 'text-accent-500';
+            $valueColor = $backupAlert ? 'text-red-600' : 'text-accent-600';
+        @endphp
         <a href="{{ route('backups.index') }}" class="block">
             <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50">
-                        <x-icons.hard-drive class="h-5 w-5 text-accent-500" />
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $iconBg }}">
+                        <x-icons.hard-drive class="h-5 w-5 {{ $iconColor }}" />
                     </div>
                     <div class="min-w-0">
-                        <div class="text-base font-semibold text-accent-600">{{ $storageLabel }}</div>
+                        <div class="text-base font-semibold {{ $valueColor }}">{{ $storageLabel }}</div>
                         <div class="text-xs text-gray-500">{{ __('Backup Storage') }}</div>
-                        <div class="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
-                            {{ $stats['failed_backups'] > 0 ? $stats['failed_backups'] . ' ' . __('failed (24h)') : __('all healthy') }}
-                            {{-- Up = more failures = bad (invertColors=true) --}}
+                        <div class="mt-0.5 flex items-center gap-1 text-xs {{ $backupAlert ? 'text-red-500 font-medium' : 'text-gray-400' }}">
+                            @if($backupAlert)
+                                @php
+                                    $parts = [];
+                                    if ($hasFailed) $parts[] = $stats['failed_backups'] . ' ' . __('failed (24h)');
+                                    if ($hasStale) $parts[] = $stats['stale_backups'] . ' ' . __('stale (>36h)');
+                                @endphp
+                                {{ implode(', ', $parts) }}
+                            @else
+                                {{ __('all healthy') }}
+                            @endif
                             {!! $trendArrow($trends['failed_backups']['direction'], true) !!}
                         </div>
                     </div>
@@ -158,6 +174,7 @@
                                     $parts = [];
                                     if ($stats['sites_down'] > 0) $parts[] = $stats['sites_down'] . ' ' . __('down');
                                     if ($stats['failed_backups'] > 0) $parts[] = $stats['failed_backups'] . ' ' . __('backup');
+                                    if (($stats['stale_backups'] ?? 0) > 0) $parts[] = $stats['stale_backups'] . ' ' . __('stale');
                                 @endphp
                                 {{ implode(', ', $parts) }}
                             @endif

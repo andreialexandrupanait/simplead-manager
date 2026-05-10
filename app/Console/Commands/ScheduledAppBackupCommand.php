@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\CreateAppBackup;
 use App\Models\AppBackupConfig;
+use App\Services\Backup\DiskSpaceGuard;
 use Illuminate\Console\Command;
 
 class ScheduledAppBackupCommand extends Command
@@ -16,6 +17,10 @@ class ScheduledAppBackupCommand extends Command
 
     public function handle(): void
     {
+        if (! app(DiskSpaceGuard::class)->canDispatchBackup()) {
+            return;
+        }
+
         $config = AppBackupConfig::query()
             ->where('is_enabled', true)
             ->where('next_backup_at', '<=', now())
