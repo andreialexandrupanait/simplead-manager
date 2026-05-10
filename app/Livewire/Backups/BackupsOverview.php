@@ -146,7 +146,7 @@ class BackupsOverview extends Component
     public function render()
     {
         $backups = Backup::query()
-            ->with(['site', 'storageDestination'])
+            ->with(['site.backupConfig', 'storageDestination'])
             ->when($this->search, function ($q) {
                 $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
                     ->orWhere('url', 'ilike', "%{$this->search}%"));

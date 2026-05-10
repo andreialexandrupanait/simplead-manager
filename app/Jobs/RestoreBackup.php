@@ -101,23 +101,100 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Try downloading a backup archive from any healthy replica, falling back
+     * across destinations on failure. Primary is tried first (most likely warm
+     * + matches existing semantics), then any secondaries from $backup->replicas.
+     *
+     * @throws \RuntimeException if every replica fails
+     */
+    protected function downloadFromReplica(Backup $backup, string $localPath): void
+    {
+        $candidates = $this->collectReplicaCandidates($backup);
+        if ($candidates === []) {
+            throw new \RuntimeException("Backup #{$backup->id} has no available replicas to restore from.");
+        }
+
+        $errors = [];
+        foreach ($candidates as $candidate) {
+            $destination = StorageDestination::find($candidate['destination_id']);
+            if (! $destination || ! $destination->is_active) {
+                $errors[] = "destination #{$candidate['destination_id']} not available";
+
+                continue;
+            }
+
+            try {
+                $driver = StorageFactory::make($destination);
+                $driver->download($candidate['remote_path'], $localPath);
+
+                if (! is_file($localPath) || filesize($localPath) === 0) {
+                    throw new \RuntimeException('downloaded file empty');
+                }
+
+                if ($candidate['is_primary'] === false) {
+                    $this->logRestoreStep("Note: restored from secondary replica ({$destination->name})");
+                }
+
+                return;
+            } catch (\Throwable $e) {
+                $errors[] = "{$destination->name}: {$e->getMessage()}";
+                @unlink($localPath);
+
+                continue;
+            }
+        }
+
+        throw new \RuntimeException(
+            "Backup #{$backup->id} unavailable on all ".count($candidates).' replica(s): '.implode(' | ', $errors)
+        );
+    }
+
+    /**
+     * @return list<array{destination_id: int, remote_path: string, is_primary: bool}>
+     */
+    protected function collectReplicaCandidates(Backup $backup): array
+    {
+        $candidates = [];
+        $seen = [];
+
+        if ($backup->storage_destination_id && $backup->file_path) {
+            $candidates[] = [
+                'destination_id' => (int) $backup->storage_destination_id,
+                'remote_path' => $backup->file_path,
+                'is_primary' => true,
+            ];
+            $seen[(int) $backup->storage_destination_id] = true;
+        }
+
+        foreach ($backup->replicas ?? [] as $r) {
+            $destId = (int) ($r['destination_id'] ?? 0);
+            $path = $r['remote_path'] ?? null;
+            $status = $r['status'] ?? 'completed';
+            if (! $destId || ! $path || $status !== 'completed' || isset($seen[$destId])) {
+                continue;
+            }
+            $candidates[] = [
+                'destination_id' => $destId,
+                'remote_path' => $path,
+                'is_primary' => false,
+            ];
+            $seen[$destId] = true;
+        }
+
+        return $candidates;
+    }
+
+    /**
      * Restore a single (non-incremental) backup — original flow.
      */
     protected function restoreSingleBackup(): void
     {
         /** @var Site $site */
         $site = $this->backup->site;
-        /** @var StorageDestination|null $destination */
-        $destination = $this->backup->storageDestination;
 
-        if (! $destination || ! $this->backup->file_path) {
-            throw new \RuntimeException('Backup storage destination or file path is missing.');
-        }
-
-        // Download from storage
+        // Download from any healthy replica (3-2-1: secondaries are fallback if primary missing)
         $localPath = $this->tempDir.'/'.$this->backup->file_name;
-        $driver = StorageFactory::make($destination);
-        $driver->download($this->backup->file_path, $localPath);
+        $this->downloadFromReplica($this->backup, $localPath);
 
         $downloadSize = file_exists($localPath) ? FormatHelper::bytes((int) filesize($localPath)) : '0 B';
         $this->logRestoreStep("Backup downloaded ({$downloadSize})");
@@ -179,19 +256,13 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $pct = 10 + (int) (($stepNum / $chainLength) * 50); // 10-60%
 
             /** @var StorageDestination|null $destination */
-            $destination = $chainBackup->storageDestination;
-            if (! $destination || ! $chainBackup->file_path) {
-                throw new \RuntimeException("Backup #{$chainBackup->id} in chain has no file path.");
-            }
-
             $this->reportRestoreProgress('downloading', $pct,
                 "Downloading backup {$stepNum}/{$chainLength}...");
             $this->logRestoreStep("Downloading backup {$stepNum}/{$chainLength}...");
 
-            // Download
+            // Download from any healthy replica
             $localPath = $this->tempDir.'/chain_'.$i.'.zip';
-            $driver = StorageFactory::make($destination);
-            $driver->download($chainBackup->file_path, $localPath);
+            $this->downloadFromReplica($chainBackup, $localPath);
 
             // Verify checksum
             if ($chainBackup->checksum) {

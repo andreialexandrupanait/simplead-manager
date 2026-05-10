@@ -167,7 +167,18 @@
                                 </td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ ucfirst($backup->type) }}</td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
-                                <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->storageDestination?->name ?? '—' }}</td>
+                                <td class="px-3 py-3 text-sm text-gray-700">
+                                    {{ $backup->storageDestination?->name ?? '—' }}
+                                    @php
+                                        $replicaCount = is_array($backup->replicas) ? count($backup->replicas) : 0;
+                                        $expectedReplicas = ($backup->site?->backupConfig?->secondary_storage_destination_id) ? 2 : 1;
+                                    @endphp
+                                    @if($replicaCount >= 2)
+                                        <x-ui.badge variant="green" class="ml-1" title="{{ __(':n replicas', ['n' => $replicaCount]) }}">{{ $replicaCount }}×</x-ui.badge>
+                                    @elseif($expectedReplicas === 2 && $backup->status->value === 'completed')
+                                        <x-ui.badge variant="yellow" class="ml-1" title="{{ __('Secondary replica missing') }}">1/2</x-ui.badge>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3">
                                     <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                     @if($backup->is_locked)

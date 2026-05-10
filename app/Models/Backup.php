@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $progress_message
  * @property string|null $error_message
  * @property string|null $file_path
+ * @property array $replicas
  * @property string|null $file_name
  * @property int|null $file_size
  * @property string|null $checksum
@@ -79,6 +80,7 @@ class Backup extends Model
         'progress_message',
         'error_message',
         'file_path',
+        'replicas',
         'file_name',
         'file_size',
         'checksum',
@@ -123,6 +125,7 @@ class Backup extends Model
         'includes_database' => 'boolean',
         'is_locked' => 'boolean',
         'file_size' => 'integer',
+        'replicas' => 'array',
         'plugins_count' => 'integer',
         'themes_count' => 'integer',
         'duration_seconds' => 'integer',

@@ -407,6 +407,13 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
     {
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePath,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
         $this->backup->update([
             'status' => BackupStatus::Completed,
             'stage' => 'completed',
@@ -416,6 +423,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             'file_name' => $fileName,
             'file_size' => $fileSize,
             'checksum' => $checksum,
+            'replicas' => $primaryReplica,
             'completed_at' => now(),
             'verified_at' => now(),
             'verification_status' => 'passed',
@@ -424,6 +432,11 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         ]);
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
 
         $this->site->update([
             'backup_ok' => true,

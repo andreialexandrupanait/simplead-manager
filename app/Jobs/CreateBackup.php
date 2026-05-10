@@ -431,6 +431,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
     {
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePath,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
         $this->backup->update([
             'status' => BackupStatus::Completed,
             'stage' => 'completed',
@@ -440,6 +447,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'file_name' => $fileName,
             'file_size' => $fileSize,
             'checksum' => $checksum,
+            'replicas' => $primaryReplica,
             'completed_at' => now(),
             'verified_at' => now(),
             'verification_status' => 'passed',
@@ -450,6 +458,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         ]);
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        // Dispatch off-site replication if configured (3-2-1 rule). Failure here doesn't
+        // fail the backup — primary upload already succeeded.
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
 
         // Generate manifest for incremental backup support (non-fatal)
         // Uses pre-collected manifest from the backup session if available (avoids re-scanning)

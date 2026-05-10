@@ -30,6 +30,8 @@ class BackupScheduleForm extends Component
 
     public ?int $storage_destination_id = null;
 
+    public ?int $secondary_storage_destination_id = null;
+
     public string $retention_type = 'count';
 
     public int $retention_value = 10;
@@ -55,6 +57,7 @@ class BackupScheduleForm extends Component
             $this->day_of_month = $config->day_of_month ?? 1;
             $this->timezone = $config->timezone;
             $this->storage_destination_id = $config->storage_destination_id;
+            $this->secondary_storage_destination_id = $config->secondary_storage_destination_id;
             $this->retention_type = $config->retention_type;
             $this->retention_value = $config->retention_value;
             $this->backup_before_updates = $config->backup_before_updates;
@@ -74,6 +77,7 @@ class BackupScheduleForm extends Component
             'timezone' => 'required|string',
             'retention_type' => 'required|in:count,days',
             'retention_value' => 'required|integer|min:1|max:365',
+            'secondary_storage_destination_id' => 'nullable|integer|different:storage_destination_id|exists:storage_destinations,id',
         ]);
 
         $nextBackupAt = $this->calculateNextBackup();
@@ -89,6 +93,7 @@ class BackupScheduleForm extends Component
                 'day_of_month' => $this->frequency === 'monthly' ? $this->day_of_month : null,
                 'timezone' => $this->timezone,
                 'storage_destination_id' => $this->storage_destination_id,
+                'secondary_storage_destination_id' => $this->secondary_storage_destination_id,
                 'retention_type' => $this->retention_type,
                 'retention_value' => $this->retention_value,
                 'backup_before_updates' => $this->backup_before_updates,

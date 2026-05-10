@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $timezone
  * @property string $type
  * @property int|null $storage_destination_id
+ * @property int|null $secondary_storage_destination_id
  * @property string $retention_type
  * @property int $retention_value
  * @property bool $backup_before_updates
@@ -47,6 +48,7 @@ class BackupConfig extends Model
         'timezone',
         'type',
         'storage_destination_id',
+        'secondary_storage_destination_id',
         'retention_type',
         'retention_value',
         'backup_before_updates',
@@ -78,5 +80,10 @@ class BackupConfig extends Model
     public function storageDestination(): BelongsTo
     {
         return $this->belongsTo(StorageDestination::class);
+    }
+
+    public function secondaryStorageDestination(): BelongsTo
+    {
+        return $this->belongsTo(StorageDestination::class, 'secondary_storage_destination_id');
     }
 }
