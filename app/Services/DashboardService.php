@@ -51,6 +51,18 @@ class DashboardService
             )
             ->count();
 
+        // Backups completed in the last 30 days that have failed integrity verification
+        // OR have not been verified in the last 14 days. Restore reliability signal.
+        $unverifiedBackups = \App\Models\Backup::query()
+            ->where('status', 'completed')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->where(fn ($q) => $q
+                ->where('verification_status', 'failed')
+                ->orWhere('verification_status', 'never_tested')
+                ->orWhere('verified_at', '<', now()->subDays(14))
+            )
+            ->count();
+
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
@@ -62,6 +74,7 @@ class DashboardService
             'pending_core_updates' => $pendingCoreUpdates,
             'failed_backups' => $backups['failed_backups'],
             'stale_backups' => $staleBackups,
+            'unverified_backups' => $unverifiedBackups,
             'total_alerts' => $sitesDown + $backups['failed_backups'] + $staleBackups,
             'backup_storage_bytes' => $backups['total_storage_bytes'],
             'backups_today' => $backups['backups_today'],

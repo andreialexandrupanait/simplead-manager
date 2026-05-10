@@ -175,6 +175,8 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             );
             $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
 
+            $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+
             // Step 6: Upload
             $uploadSize = FormatHelper::bytes((int) $fileSize);
             $this->reportProgress('uploading', 75, 'Uploading to storage...');
@@ -195,7 +197,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             }
 
             // Step 8: Finalize
-            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
+            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -323,6 +325,33 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         return [$combinedPath, $fileName, $fileSize, $checksum];
     }
 
+    /**
+     * @return array{ok: bool, message: string, checks: array<string, mixed>}
+     */
+    protected function verifyIntegrity(string $combinedPath, string $expectedSha256): array
+    {
+        $this->reportProgress('verifying', 72, 'Verifying archive integrity...');
+        $this->logStep('Verifying archive integrity...');
+
+        $verifier = app(\App\Services\Backup\IntegrityVerifier::class);
+        $result = $verifier->verifyArchive($combinedPath, $expectedSha256);
+
+        if (! $result['ok']) {
+            $msg = "Archive integrity check failed: {$result['message']}";
+
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => $result['message'],
+            ]);
+
+            throw new \App\Exceptions\BackupException($msg, site: $this->site);
+        }
+
+        $this->logStep($result['message']);
+
+        return $result;
+    }
+
     protected function fallbackToFullBackup(StorageDestination $destination): void
     {
         Log::info("Falling back to full backup for site {$this->site->id}");
@@ -373,7 +402,10 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         $this->logStep("Initializing incremental backup for {$this->site->domain}");
     }
 
-    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum): void
+    /**
+     * @param  array{ok: bool, message: string, checks: array<string, mixed>}  $integrity
+     */
+    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
     {
         $this->backup->update([
             'status' => BackupStatus::Completed,
@@ -385,6 +417,9 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             'file_size' => $fileSize,
             'checksum' => $checksum,
             'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => $integrity['message'],
             'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
         ]);
 

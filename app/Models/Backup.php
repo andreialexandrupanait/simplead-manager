@@ -38,6 +38,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $started_at
  * @property \Illuminate\Support\Carbon|null $completed_at
  * @property int|null $duration_seconds
+ * @property \Illuminate\Support\Carbon|null $verified_at
+ * @property string $verification_status
+ * @property string|null $verification_message
  * @property bool $is_locked
  * @property string|null $lock_reason
  * @property \Illuminate\Support\Carbon|null $expires_at
@@ -89,6 +92,9 @@ class Backup extends Model
         'started_at',
         'completed_at',
         'duration_seconds',
+        'verified_at',
+        'verification_status',
+        'verification_message',
         'auto_retry_count',
         'is_locked',
         'lock_reason',
@@ -124,6 +130,7 @@ class Backup extends Model
         'db_size_mb' => 'decimal:2',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'verified_at' => 'datetime',
         'expires_at' => 'datetime',
         'last_restored_at' => 'datetime',
         'restore_progress_percent' => 'integer',

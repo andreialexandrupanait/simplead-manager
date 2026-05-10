@@ -133,6 +133,13 @@ Schedule::command('app:backup-cleanup')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Weekly Level B backup verification — sample 3 recent backups, full integrity re-check
+Schedule::command('backup:verify-restore --count=3')
+    ->weeklyOn(0, '03:00')
+    ->name('backup-verify-restore-weekly')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Horizon health check
 Schedule::command('horizon:health-check')
     ->everyFiveMinutes()

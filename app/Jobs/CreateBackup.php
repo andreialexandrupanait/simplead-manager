@@ -93,8 +93,10 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             [$dbPath, $filesChunkPaths] = $this->downloadData();
             [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
 
+            $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+
             $remotePath = $this->upload($destination, $combinedPath, $fileName);
-            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum);
+            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -378,6 +380,36 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         return [$combinedPath, $fileName, $fileSize, $checksum];
     }
 
+    /**
+     * Validate the freshly-built archive before upload. Catches truncation, CRC corruption,
+     * malformed metadata, empty/broken DB dumps. Throws on failure (handled by handleFailure).
+     *
+     * @return array{ok: bool, message: string, checks: array<string, mixed>}
+     */
+    protected function verifyIntegrity(string $combinedPath, string $expectedSha256): array
+    {
+        $this->reportProgress('verifying', 72, 'Verifying archive integrity...');
+        $this->logStep('Verifying archive integrity...');
+
+        $verifier = app(\App\Services\Backup\IntegrityVerifier::class);
+        $result = $verifier->verifyArchive($combinedPath, $expectedSha256);
+
+        if (! $result['ok']) {
+            $msg = "Archive integrity check failed: {$result['message']}";
+
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => $result['message'],
+            ]);
+
+            throw new \App\Exceptions\BackupException($msg, site: $this->site);
+        }
+
+        $this->logStep($result['message']);
+
+        return $result;
+    }
+
     protected function upload(StorageDestination $destination, string $combinedPath, string $fileName): string
     {
         $uploadSize = FormatHelper::bytes((int) filesize($combinedPath));
@@ -394,7 +426,10 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         return $remotePath;
     }
 
-    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum): void
+    /**
+     * @param  array{ok: bool, message: string, checks: array<string, mixed>}  $integrity
+     */
+    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
     {
         $this->backup->update([
             'status' => BackupStatus::Completed,
@@ -406,6 +441,9 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'file_size' => $fileSize,
             'checksum' => $checksum,
             'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => $integrity['message'],
             'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
             'is_locked' => $this->trigger === 'pre_update',
             'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
