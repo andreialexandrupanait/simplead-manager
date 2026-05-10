@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Services\AppBackup;
 
 use App\Models\AppBackup;
-use App\Models\AppBackupConfig;
 use App\Services\ActivityLogger;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AppBackupRestorer
 {
@@ -34,16 +32,6 @@ class AppBackupRestorer
 
         try {
             $archivePath = $this->backupService->downloadBackup($backup);
-
-            $config = AppBackupConfig::instance();
-            if (Str::endsWith($archivePath, '.enc')) {
-                if (! $config->encryption_password) {
-                    throw new \RuntimeException('Encryption password is required to restore this backup.');
-                }
-                $decryptedPath = $tempDir.'/backup.tar.gz';
-                $this->decryptFile($archivePath, $decryptedPath, $config->encryption_password);
-                $archivePath = $decryptedPath;
-            }
 
             $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 
@@ -111,16 +99,6 @@ class AppBackupRestorer
 
         try {
             $archivePath = $this->backupService->downloadBackup($backup);
-
-            $config = AppBackupConfig::instance();
-            if (Str::endsWith($archivePath, '.enc')) {
-                if (! $config->encryption_password) {
-                    throw new \RuntimeException('Encryption password is required.');
-                }
-                $decryptedPath = $tempDir.'/backup.tar.gz';
-                $this->decryptFile($archivePath, $decryptedPath, $config->encryption_password);
-                $archivePath = $decryptedPath;
-            }
 
             $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 

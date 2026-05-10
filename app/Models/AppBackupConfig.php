@@ -22,8 +22,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $storage_destination_id
  * @property string $retention_type
  * @property int $retention_value
- * @property bool $encrypt_backup
- * @property string|null $encryption_password
  * @property \Illuminate\Support\Carbon|null $last_backup_at
  * @property \Illuminate\Support\Carbon|null $next_backup_at
  * @property string|null $last_backup_status
@@ -47,8 +45,6 @@ class AppBackupConfig extends Model
         'storage_destination_id',
         'retention_type',
         'retention_value',
-        'encrypt_backup',
-        'encryption_password',
         'last_backup_at',
         'next_backup_at',
         'last_backup_status',
@@ -56,7 +52,6 @@ class AppBackupConfig extends Model
 
     protected $casts = [
         'is_enabled' => 'boolean',
-        'encrypt_backup' => 'boolean',
         'components' => 'array',
         'day_of_week' => 'integer',
         'day_of_month' => 'integer',
@@ -81,26 +76,7 @@ class AppBackupConfig extends Model
             'components' => ['database', 'env', 'storage'],
             'retention_type' => 'count',
             'retention_value' => 7,
-            'encrypt_backup' => false,
         ]);
-    }
-
-    public function setEncryptionPasswordAttribute(?string $value): void
-    {
-        $this->attributes['encryption_password'] = $value ? encrypt($value) : null;
-    }
-
-    public function getEncryptionPasswordAttribute(?string $value): ?string
-    {
-        if (! $value) {
-            return null;
-        }
-
-        try {
-            return decrypt($value);
-        } catch (\Exception $e) {
-            return null;
-        }
     }
 
     public function calculateNextBackupAt(): Carbon

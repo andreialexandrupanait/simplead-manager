@@ -360,22 +360,6 @@
                         </div>
                     </div>
 
-                    {{-- Encryption --}}
-                    <div class="border-t pt-4">
-                        <div class="mb-3">
-                            <x-ui.checkbox wire:model.live="encryptBackup" label="{{ __('Encrypt backups (AES-256-CBC)') }}" />
-                        </div>
-
-                        @if($encryptBackup)
-                            <div class="max-w-sm">
-                                <label class="block text-sm font-medium text-gray-700">{{ __('Encryption Password') }}</label>
-                                <x-ui.input wire:model="encryptionPassword" type="password" placeholder="{{ __('Minimum 8 characters') }}" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400">{{ __('Store this password safely. Without it, encrypted backups cannot be restored.') }}</p>
-                                @error('encryptionPassword') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                        @endif
-                    </div>
-
                     <div class="flex justify-end pt-2">
                         <x-ui.button type="submit" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="saveConfig">{{ __('Save Configuration') }}</span>

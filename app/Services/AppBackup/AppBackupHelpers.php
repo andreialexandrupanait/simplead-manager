@@ -38,26 +38,6 @@ trait AppBackupHelpers
         $backup->update(['log' => $log]);
     }
 
-    protected function encryptFile(string $inputPath, string $outputPath, string $password): void
-    {
-        $this->exec(sprintf(
-            'openssl enc -aes-256-cbc -salt -pbkdf2 -in %s -out %s -pass pass:%s',
-            escapeshellarg($inputPath),
-            escapeshellarg($outputPath),
-            escapeshellarg($password)
-        ));
-    }
-
-    protected function decryptFile(string $inputPath, string $outputPath, string $password): void
-    {
-        $this->exec(sprintf(
-            'openssl enc -aes-256-cbc -d -pbkdf2 -in %s -out %s -pass pass:%s',
-            escapeshellarg($inputPath),
-            escapeshellarg($outputPath),
-            escapeshellarg($password)
-        ));
-    }
-
     protected function cleanupDir(string $dir): void
     {
         if (! is_dir($dir)) {

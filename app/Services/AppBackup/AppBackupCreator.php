@@ -119,16 +119,6 @@ class AppBackupCreator
 
             $this->createArchive($tempDir, $archivePath, $components);
 
-            $config = AppBackupConfig::instance();
-            if ($config->encrypt_backup && $config->encryption_password) {
-                $this->log($backup, 'Encrypting backup...');
-                $encryptedPath = $archivePath.'.enc';
-                $this->encryptFile($archivePath, $encryptedPath, $config->encryption_password);
-                unlink($archivePath);
-                $archivePath = $encryptedPath;
-                $fileName .= '.enc';
-            }
-
             $fileSize = filesize($archivePath);
             $checksum = hash_file('sha256', $archivePath);
 

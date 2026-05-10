@@ -44,10 +44,6 @@ class ApplicationBackup extends Component
 
     public int $retentionValue = 7;
 
-    public bool $encryptBackup = false;
-
-    public string $encryptionPassword = '';
-
     // Filter
     public string $statusFilter = 'all';
 
@@ -93,7 +89,6 @@ class ApplicationBackup extends Component
         $this->storageDestinationId = $config->storage_destination_id;
         $this->retentionType = $config->retention_type;
         $this->retentionValue = $config->retention_value;
-        $this->encryptBackup = $config->encrypt_backup;
 
         // Track active backup
         $active = AppBackup::whereIn('status', ['pending', 'in_progress'])->latest()->first();
@@ -161,12 +156,11 @@ class ApplicationBackup extends Component
             'type' => 'required|in:full,database,config,storage',
             'retentionType' => 'required|in:count,days',
             'retentionValue' => 'required|integer|min:1|max:365',
-            'encryptionPassword' => $this->encryptBackup ? 'required|string|min:8' : 'nullable',
         ]);
 
         $config = AppBackupConfig::instance();
 
-        $data = [
+        $config->update([
             'is_enabled' => $this->isEnabled,
             'frequency' => $this->frequency,
             'time' => $this->time,
@@ -178,18 +172,7 @@ class ApplicationBackup extends Component
             'storage_destination_id' => $this->storageDestinationId,
             'retention_type' => $this->retentionType,
             'retention_value' => $this->retentionValue,
-            'encrypt_backup' => $this->encryptBackup,
-        ];
-
-        if ($this->encryptBackup && $this->encryptionPassword) {
-            $data['encryption_password'] = $this->encryptionPassword;
-        }
-
-        if (! $this->encryptBackup) {
-            $data['encryption_password'] = null;
-        }
-
-        $config->update($data);
+        ]);
 
         // Calculate next backup time if enabled
         if ($this->isEnabled) {
@@ -198,7 +181,6 @@ class ApplicationBackup extends Component
             $config->update(['next_backup_at' => null]);
         }
 
-        $this->encryptionPassword = '';
         unset($this->config);
 
         $this->dispatch('notify', type: 'success', message: 'Backup configuration saved.');
