@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Models\Backup;
+use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\Log;
 use ZipArchive;
 
@@ -180,6 +182,112 @@ class IntegrityVerifier
         }
 
         return ['ok' => true, 'entry_count' => count($candidates)];
+    }
+
+    /**
+     * Level B verification for a multipart-v3 backup. Downloads each file,
+     * verifies sha256 against the manifest, and recomputes the composite
+     * checksum stored on Backup.checksum.
+     *
+     * @return array{ok: bool, message: string, checks: array<string, mixed>}
+     */
+    public function verifyMultipart(Backup $backup, string $tempDir): array
+    {
+        if ($backup->format !== BackupManifestV3::FORMAT) {
+            return $this->fail('verifyMultipart called on non-multipart backup', ['format' => $backup->format]);
+        }
+
+        $candidates = [];
+        if ($backup->storage_destination_id) {
+            $candidates[] = $backup->storage_destination_id;
+        }
+        foreach ($backup->replicas ?? [] as $r) {
+            if (! empty($r['destination_id'])) {
+                $candidates[] = (int) $r['destination_id'];
+            }
+        }
+        $candidates = array_unique($candidates);
+
+        if (! $candidates) {
+            return $this->fail('no replica destinations to verify against', []);
+        }
+
+        // Pick first reachable destination
+        $destination = null;
+        foreach ($candidates as $destId) {
+            $d = \App\Models\StorageDestination::find($destId);
+            if ($d && $d->is_active) {
+                $destination = $d;
+                break;
+            }
+        }
+        if (! $destination) {
+            return $this->fail('no active destination among replicas', ['candidates' => $candidates]);
+        }
+
+        $driver = StorageFactory::make($destination);
+        $manifestRemote = $backup->file_path.'/'.BackupManifestV3::MANIFEST_FILENAME;
+        $manifestLocal = $tempDir.'/manifest.json';
+
+        try {
+            $driver->download($manifestRemote, $manifestLocal);
+        } catch (\Throwable $e) {
+            return $this->fail("manifest.json unreadable: {$e->getMessage()}", ['remote' => $manifestRemote]);
+        }
+
+        try {
+            $manifest = BackupManifestV3::decode(file_get_contents($manifestLocal));
+        } catch (\Throwable $e) {
+            return $this->fail($e->getMessage(), []);
+        }
+
+        $checks = [
+            'format_version' => $manifest['format_version'],
+            'file_count' => count($manifest['files']),
+            'destination' => $destination->name,
+        ];
+
+        $shaConcat = '';
+        foreach ($manifest['files'] as $entry) {
+            $remoteName = $entry['name'];
+            $localFile = $tempDir.'/'.basename($remoteName);
+
+            try {
+                $driver->download($backup->file_path.'/'.$remoteName, $localFile);
+            } catch (\Throwable $e) {
+                return $this->fail("file {$remoteName} unreachable: {$e->getMessage()}", $checks);
+            }
+
+            $size = (int) filesize($localFile);
+            if ($size !== (int) ($entry['size'] ?? -1)) {
+                @unlink($localFile);
+
+                return $this->fail("file {$remoteName} size mismatch (expected {$entry['size']}, got {$size})", $checks);
+            }
+
+            $actualSha = hash_file('sha256', $localFile);
+            if ($actualSha !== $entry['sha256']) {
+                @unlink($localFile);
+
+                return $this->fail("file {$remoteName} sha256 mismatch", $checks);
+            }
+
+            $shaConcat .= $entry['sha256'];
+            @unlink($localFile);
+        }
+
+        $compositeChecksum = hash('sha256', $shaConcat);
+        if ($backup->checksum && $compositeChecksum !== $backup->checksum) {
+            return $this->fail("composite checksum mismatch (expected {$backup->checksum}, got {$compositeChecksum})", $checks);
+        }
+
+        @unlink($manifestLocal);
+
+        return [
+            'ok' => true,
+            'message' => sprintf('multipart ok: %d files verified, composite sha256 matches', $checks['file_count']),
+            'checks' => $checks,
+        ];
     }
 
     /**

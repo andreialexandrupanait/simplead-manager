@@ -192,43 +192,147 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         /** @var Site $site */
         $site = $this->backup->site;
 
-        // Download from any healthy replica (3-2-1: secondaries are fallback if primary missing)
-        $localPath = $this->tempDir.'/'.$this->backup->file_name;
-        $this->downloadFromReplica($this->backup, $localPath);
+        if ($this->backup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
+            $this->materialiseMultipartBackup($this->backup, $this->tempDir);
+        } else {
+            // Legacy v2-zip path: pull single archive, verify checksum, extract.
+            $localPath = $this->tempDir.'/'.$this->backup->file_name;
+            $this->downloadFromReplica($this->backup, $localPath);
 
-        $downloadSize = file_exists($localPath) ? FormatHelper::bytes((int) filesize($localPath)) : '0 B';
-        $this->logRestoreStep("Backup downloaded ({$downloadSize})");
-        $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
+            $downloadSize = file_exists($localPath) ? FormatHelper::bytes((int) filesize($localPath)) : '0 B';
+            $this->logRestoreStep("Backup downloaded ({$downloadSize})");
+            $this->reportRestoreProgress('downloading', 25, 'Backup downloaded');
 
-        // Verify checksum
-        if ($this->backup->checksum) {
-            $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
-            $this->logRestoreStep('Verifying backup integrity (SHA256)...');
-            $hash = hash_file('sha256', $localPath);
-            if ($hash !== $this->backup->checksum) {
-                throw new \RuntimeException('Backup checksum verification failed. The file may be corrupted.');
+            if ($this->backup->checksum) {
+                $this->reportRestoreProgress('verifying', 30, 'Verifying backup integrity...');
+                $this->logRestoreStep('Verifying backup integrity (SHA256)...');
+                $hash = hash_file('sha256', $localPath);
+                if ($hash !== $this->backup->checksum) {
+                    throw new \RuntimeException('Backup checksum verification failed. The file may be corrupted.');
+                }
+                $this->logRestoreStep('Integrity verified');
+                $this->reportRestoreProgress('verifying', 35, 'Backup integrity verified');
             }
-            $this->logRestoreStep('Integrity verified');
-            $this->reportRestoreProgress('verifying', 35, 'Backup integrity verified');
-        }
 
-        // Extract zip
-        $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
-        $this->logRestoreStep('Extracting backup archive...');
-        $zip = new ZipArchive;
-        if ($zip->open($localPath) !== true) {
-            throw new \RuntimeException('Failed to open backup archive.');
-        }
-        $zip->extractTo($this->tempDir);
-        $zip->close();
-        @unlink($localPath);
+            $this->reportRestoreProgress('extracting', 40, 'Extracting backup archive...');
+            $this->logRestoreStep('Extracting backup archive...');
+            $zip = new ZipArchive;
+            if ($zip->open($localPath) !== true) {
+                throw new \RuntimeException('Failed to open backup archive.');
+            }
+            $zip->extractTo($this->tempDir);
+            $zip->close();
+            @unlink($localPath);
 
-        $this->logRestoreStep('Backup extracted');
-        $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
+            $this->logRestoreStep('Backup extracted');
+            $this->reportRestoreProgress('extracting', 45, 'Backup extracted');
+        }
 
         $api = app(WordPressApiServiceFactory::class)->make($site);
         $this->ensurePluginUpToDate($api);
         $this->doRestore($api, $this->tempDir);
+    }
+
+    /**
+     * Download a multipart-v3 backup into $targetDir and synthesize the layout
+     * the legacy doRestore() code expects:
+     *   - database.sql.gz   (kept as-is)
+     *   - files_chunk_N.zip (renamed from chunks/N.zip)
+     *   - backup-meta.json  (synthesized from manifest.json with format_version=2)
+     *   - deleted-files.json (incremental only, kept as-is)
+     */
+    protected function materialiseMultipartBackup(Backup $backup, string $targetDir): void
+    {
+        $this->reportRestoreProgress('downloading', 10, 'Reading manifest...');
+        $this->logRestoreStep("Restoring multipart-v3 backup #{$backup->id} from prefix {$backup->file_path}");
+
+        // Pick a healthy replica destination (primary first, then secondaries)
+        $destination = $this->resolveReplicaDestinationForMultipart($backup);
+        $driver = StorageFactory::make($destination);
+
+        $manifestRemote = $backup->file_path.'/'.\App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME;
+        $manifestLocal = $targetDir.'/'.\App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME;
+        $driver->download($manifestRemote, $manifestLocal);
+
+        $manifest = \App\Services\Backup\BackupManifestV3::decode(file_get_contents($manifestLocal));
+        $files = $manifest['files'];
+        $totalFiles = count($files);
+        $this->logRestoreStep("Manifest loaded: {$totalFiles} files to download");
+
+        $chunkFileNames = [];
+        foreach ($files as $i => $entry) {
+            $remoteName = $entry['name'];
+            $remotePath = $backup->file_path.'/'.$remoteName;
+
+            // Map chunks/N.zip → files_chunk_N.zip in local layout
+            $localName = $this->multipartLocalName($remoteName);
+            $localPath = $targetDir.'/'.$localName;
+
+            // Make sure subdirs exist for chunk files
+            @mkdir(dirname($localPath), 0755, true);
+            $driver->download($remotePath, $localPath);
+
+            // Per-file SHA256 verification — multipart-v3 trusts manifest sha256s
+            if (! empty($entry['sha256'])) {
+                $actual = hash_file('sha256', $localPath);
+                if ($actual !== $entry['sha256']) {
+                    throw new \RuntimeException("multipart-v3 file {$remoteName} sha256 mismatch (expected {$entry['sha256']}, got {$actual})");
+                }
+            }
+
+            if (str_starts_with($remoteName, 'chunks/')) {
+                $chunkFileNames[] = $localName;
+            }
+
+            $pct = 10 + (int) (30 * ($i + 1) / $totalFiles);
+            $this->reportRestoreProgress('downloading', min(40, $pct), 'Downloaded '.($i + 1)."/{$totalFiles} files");
+        }
+
+        // Synthesize the v2-style backup-meta.json so doRestore() doesn't need to know
+        $synthMeta = [
+            'site_name' => $manifest['site_name'] ?? null,
+            'site_url' => $manifest['site_url'] ?? null,
+            'type' => $manifest['type'] ?? 'full',
+            'wp_version' => $manifest['wp_version'] ?? null,
+            'php_version' => $manifest['php_version'] ?? null,
+            'created_at' => $manifest['created_at'] ?? null,
+            'trigger' => $manifest['trigger'] ?? 'manual',
+            'format_version' => 2,
+            'chunk_files' => $chunkFileNames,
+        ];
+        file_put_contents($targetDir.'/backup-meta.json', json_encode($synthMeta, JSON_PRETTY_PRINT));
+        @unlink($manifestLocal);
+
+        $this->reportRestoreProgress('extracting', 45, 'Backup ready for restore');
+    }
+
+    /**
+     * Resolve the storage destination to download from for a multipart-v3 backup.
+     * Falls back across replicas if primary is unavailable. Throws if none work.
+     */
+    protected function resolveReplicaDestinationForMultipart(Backup $backup): \App\Models\StorageDestination
+    {
+        $candidates = $this->collectReplicaCandidates($backup);
+        foreach ($candidates as $candidate) {
+            $destination = \App\Models\StorageDestination::find($candidate['destination_id']);
+            if ($destination && $destination->is_active) {
+                return $destination;
+            }
+        }
+        throw new \RuntimeException("Backup #{$backup->id} has no active replica destination available.");
+    }
+
+    /**
+     * Map a multipart-v3 manifest entry name to the local filename layout that
+     * doRestore() / mergeChunkZipsForRestore() expect.
+     */
+    protected function multipartLocalName(string $remoteName): string
+    {
+        if (preg_match('#^chunks/(\d+)\.zip$#', $remoteName, $m)) {
+            return "files_chunk_{$m[1]}.zip";
+        }
+
+        return $remoteName;
     }
 
     /**
@@ -260,29 +364,32 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 "Downloading backup {$stepNum}/{$chainLength}...");
             $this->logRestoreStep("Downloading backup {$stepNum}/{$chainLength}...");
 
-            // Download from any healthy replica
-            $localPath = $this->tempDir.'/chain_'.$i.'.zip';
-            $this->downloadFromReplica($chainBackup, $localPath);
-
-            // Verify checksum
-            if ($chainBackup->checksum) {
-                $hash = hash_file('sha256', $localPath);
-                if ($hash !== $chainBackup->checksum) {
-                    throw new \RuntimeException("Checksum mismatch for backup #{$chainBackup->id} in chain (expected {$chainBackup->checksum}, got {$hash}).");
-                }
-            }
-
-            // Extract to temp dir
             $extractDir = $this->tempDir.'/extract_'.$i;
             mkdir($extractDir, 0755, true);
 
-            $zip = new ZipArchive;
-            if ($zip->open($localPath) !== true) {
-                throw new \RuntimeException("Failed to open backup #{$chainBackup->id} archive.");
+            if ($chainBackup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
+                // Multipart-v3: download files into the extract dir directly (no outer zip)
+                $this->materialiseMultipartBackup($chainBackup, $extractDir);
+            } else {
+                // Legacy v2-zip: download outer archive, verify, extract
+                $localPath = $this->tempDir.'/chain_'.$i.'.zip';
+                $this->downloadFromReplica($chainBackup, $localPath);
+
+                if ($chainBackup->checksum) {
+                    $hash = hash_file('sha256', $localPath);
+                    if ($hash !== $chainBackup->checksum) {
+                        throw new \RuntimeException("Checksum mismatch for backup #{$chainBackup->id} in chain (expected {$chainBackup->checksum}, got {$hash}).");
+                    }
+                }
+
+                $zip = new ZipArchive;
+                if ($zip->open($localPath) !== true) {
+                    throw new \RuntimeException("Failed to open backup #{$chainBackup->id} archive.");
+                }
+                $zip->extractTo($extractDir);
+                $zip->close();
+                @unlink($localPath);
             }
-            $zip->extractTo($extractDir);
-            $zip->close();
-            @unlink($localPath);
 
             if ($i === 0) {
                 // Full backup: check for v2 format (chunk zips) or v1 (single files.zip)

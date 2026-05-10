@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Backup;
+use App\Services\Backup\BackupManifestV3;
 use App\Services\Backup\IntegrityVerifier;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\Notifications\NotificationService;
@@ -62,29 +63,35 @@ class VerifyBackupRestoreCommand extends Command
         foreach ($candidates as $backup) {
             $tempDir = $tempRoot.'/verify-restore-'.uniqid();
             @mkdir($tempDir, 0700, true);
-            $localPath = $tempDir.'/'.$backup->file_name;
 
             try {
-                $destination = $backup->storageDestination;
-                if (! $destination) {
-                    $this->markFailed($backup, 'storage destination missing');
-                    $failed++;
+                if ($backup->format === BackupManifestV3::FORMAT) {
+                    $this->line("  #{$backup->id} (multipart prefix {$backup->file_path}) — verifying...");
+                    $result = $verifier->verifyMultipart($backup, $tempDir);
+                } else {
+                    $localPath = $tempDir.'/'.$backup->file_name;
+                    $destination = $backup->storageDestination;
+                    if (! $destination) {
+                        $this->markFailed($backup, 'storage destination missing');
+                        $failed++;
 
-                    continue;
+                        continue;
+                    }
+
+                    $this->line("  #{$backup->id} ({$backup->file_name}) — downloading from {$destination->type}...");
+                    $driver = StorageFactory::make($destination);
+                    $driver->download($backup->file_path, $localPath);
+
+                    if (! is_file($localPath) || filesize($localPath) === 0) {
+                        $this->markFailed($backup, 'downloaded file empty or missing');
+                        $failed++;
+
+                        continue;
+                    }
+
+                    $result = $verifier->verifyArchive($localPath, $backup->checksum);
                 }
 
-                $this->line("  #{$backup->id} ({$backup->file_name}) — downloading from {$destination->type}...");
-                $driver = StorageFactory::make($destination);
-                $driver->download($backup->file_path, $localPath);
-
-                if (! is_file($localPath) || filesize($localPath) === 0) {
-                    $this->markFailed($backup, 'downloaded file empty or missing');
-                    $failed++;
-
-                    continue;
-                }
-
-                $result = $verifier->verifyArchive($localPath, $backup->checksum);
                 if ($result['ok']) {
                     $backup->update([
                         'verified_at' => now(),

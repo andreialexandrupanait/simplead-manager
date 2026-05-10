@@ -32,6 +32,8 @@ class BackupScheduleForm extends Component
 
     public ?int $secondary_storage_destination_id = null;
 
+    public bool $use_streaming = false;
+
     public string $retention_type = 'count';
 
     public int $retention_value = 10;
@@ -58,6 +60,7 @@ class BackupScheduleForm extends Component
             $this->timezone = $config->timezone;
             $this->storage_destination_id = $config->storage_destination_id;
             $this->secondary_storage_destination_id = $config->secondary_storage_destination_id;
+            $this->use_streaming = (bool) $config->use_streaming;
             $this->retention_type = $config->retention_type;
             $this->retention_value = $config->retention_value;
             $this->backup_before_updates = $config->backup_before_updates;
@@ -94,6 +97,7 @@ class BackupScheduleForm extends Component
                 'timezone' => $this->timezone,
                 'storage_destination_id' => $this->storage_destination_id,
                 'secondary_storage_destination_id' => $this->secondary_storage_destination_id,
+                'use_streaming' => $this->use_streaming,
                 'retention_type' => $this->retention_type,
                 'retention_value' => $this->retention_value,
                 'backup_before_updates' => $this->backup_before_updates,

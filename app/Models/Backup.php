@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $file_name
  * @property int|null $file_size
  * @property string|null $checksum
+ * @property string $format
  * @property string|null $upload_method
  * @property bool $includes_files
  * @property bool $includes_database
@@ -84,6 +85,7 @@ class Backup extends Model
         'file_name',
         'file_size',
         'checksum',
+        'format',
         'includes_files',
         'includes_database',
         'wp_version',

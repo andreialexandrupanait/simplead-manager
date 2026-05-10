@@ -165,7 +165,12 @@
                                     {{ $backup->created_at->format('M d, Y H:i') }}
                                     <div class="text-xs text-gray-400">{{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}</div>
                                 </td>
-                                <td class="px-3 py-3 text-sm text-gray-700">{{ ucfirst($backup->type) }}</td>
+                                <td class="px-3 py-3 text-sm text-gray-700">
+                                    {{ ucfirst($backup->type) }}
+                                    @if($backup->format === 'multipart-v3')
+                                        <x-ui.badge variant="blue" class="ml-1" title="{{ __('Streaming multipart upload') }}">⚡</x-ui.badge>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 text-sm text-gray-700">{{ $backup->file_size_formatted }}</td>
                                 <td class="px-3 py-3 text-sm text-gray-700">
                                     {{ $backup->storageDestination?->name ?? '—' }}

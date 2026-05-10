@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $type
  * @property int|null $storage_destination_id
  * @property int|null $secondary_storage_destination_id
+ * @property bool $use_streaming
  * @property string $retention_type
  * @property int $retention_value
  * @property bool $backup_before_updates
@@ -49,6 +50,7 @@ class BackupConfig extends Model
         'type',
         'storage_destination_id',
         'secondary_storage_destination_id',
+        'use_streaming',
         'retention_type',
         'retention_value',
         'backup_before_updates',
@@ -62,6 +64,7 @@ class BackupConfig extends Model
 
     protected $casts = [
         'is_enabled' => 'boolean',
+        'use_streaming' => 'boolean',
         'backup_before_updates' => 'boolean',
         'day_of_week' => 'integer',
         'day_of_month' => 'integer',

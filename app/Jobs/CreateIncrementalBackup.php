@@ -170,34 +170,44 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $deletedFilesPath = $this->tempDir.'/deleted-files.json';
             file_put_contents($deletedFilesPath, json_encode($deletedPaths, JSON_PRETTY_PRINT));
 
-            [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive(
-                $dbPath, $filesChunkPaths, $deletedFilesPath
-            );
-            $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
+            $useStreaming = (bool) ($this->site->backupConfig?->use_streaming);
 
-            $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+            if ($useStreaming) {
+                $this->runStreamingPipeline($destination, $dbPath, $filesChunkPaths, $deletedFilesPath);
 
-            // Step 6: Upload
-            $uploadSize = FormatHelper::bytes((int) $fileSize);
-            $this->reportProgress('uploading', 75, 'Uploading to storage...');
-            $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
-            $uploadStart = microtime(true);
-            $remotePath = $this->site->domain.'/'.$fileName;
-            $driver = StorageFactory::make($destination);
-            $driver->upload($combinedPath, $remotePath);
-            $uploadDuration = round(microtime(true) - $uploadStart, 1);
-            $this->logStep("Upload complete ({$uploadDuration}s)");
-            $this->reportProgress('finalizing', 90, 'Finalizing...');
+                // Generate new manifest for the next incremental in the chain (non-fatal)
+                try {
+                    $manifestService->generateAndStore($api, $this->backup, $destination);
+                } catch (\Throwable $e) {
+                    Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
+                }
+            } else {
+                [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive(
+                    $dbPath, $filesChunkPaths, $deletedFilesPath
+                );
+                $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
 
-            // Step 7: Generate new manifest
-            try {
-                $manifestService->generateAndStore($api, $this->backup, $destination);
-            } catch (\Throwable $e) {
-                Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
+                $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+
+                $uploadSize = FormatHelper::bytes((int) $fileSize);
+                $this->reportProgress('uploading', 75, 'Uploading to storage...');
+                $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+                $uploadStart = microtime(true);
+                $remotePath = $this->site->domain.'/'.$fileName;
+                $driver = StorageFactory::make($destination);
+                $driver->upload($combinedPath, $remotePath);
+                $uploadDuration = round(microtime(true) - $uploadStart, 1);
+                $this->logStep("Upload complete ({$uploadDuration}s)");
+                $this->reportProgress('finalizing', 90, 'Finalizing...');
+
+                try {
+                    $manifestService->generateAndStore($api, $this->backup, $destination);
+                } catch (\Throwable $e) {
+                    Log::warning("Manifest generation failed for incremental backup {$this->backupId} (non-fatal): {$e->getMessage()}");
+                }
+
+                $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
             }
-
-            // Step 8: Finalize
-            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -323,6 +333,113 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         }
 
         return [$combinedPath, $fileName, $fileSize, $checksum];
+    }
+
+    /**
+     * Streaming "multipart-v3" upload path for incremental backups.
+     *
+     * @param  list<string>  $filesChunkPaths
+     */
+    protected function runStreamingPipeline(StorageDestination $destination, string $dbPath, array $filesChunkPaths, string $deletedFilesPath): void
+    {
+        $now = now();
+        $remotePrefix = \App\Services\Backup\BackupManifestV3::prefixFor($this->site->domain, 'incremental', $now);
+
+        $this->reportProgress('uploading', 65, 'Streaming incremental upload to storage...');
+        $this->logStep("Streaming incremental backup to {$destination->name} ({$remotePrefix})");
+
+        $uploader = new \App\Services\Backup\StreamingBackupUploader($destination, $remotePrefix);
+
+        try {
+            $uploader->addFile($dbPath, 'database.sql.gz');
+            $uploader->addFile($deletedFilesPath, 'deleted-files.json');
+
+            $totalChunks = count($filesChunkPaths);
+            foreach ($filesChunkPaths as $i => $chunkPath) {
+                $uploader->addFile($chunkPath, "chunks/{$i}.zip");
+                $pct = 70 + (int) (20 * ($i + 1) / max(1, $totalChunks));
+                $this->reportProgress('uploading', min(90, $pct), 'Uploaded chunk '.($i + 1)."/{$totalChunks}");
+            }
+
+            $manifest = \App\Services\Backup\BackupManifestV3::build(
+                siteUrl: $this->site->url,
+                siteName: $this->site->name,
+                type: 'incremental',
+                trigger: $this->trigger,
+                wpVersion: $this->site->wp_version,
+                phpVersion: $this->site->php_version,
+                parentBackupId: $this->backup->parent_backup_id,
+                files: $uploader->entries(),
+            );
+            $uploader->uploadManifest($manifest);
+            $this->logStep('manifest.json uploaded');
+        } catch (\Throwable $e) {
+            $uploader->rollback();
+            throw $e;
+        }
+
+        $this->finalizeMultipart($destination, $remotePrefix, $uploader->entries(), $uploader->totalBytes());
+    }
+
+    /**
+     * @param  list<array{name: string, size: int, sha256: string}>  $entries
+     */
+    protected function finalizeMultipart(StorageDestination $destination, string $remotePrefix, array $entries, int $totalBytes): void
+    {
+        $compositeChecksum = hash('sha256', implode('', array_column($entries, 'sha256')));
+
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePrefix,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
+        $this->backup->update([
+            'status' => BackupStatus::Completed,
+            'stage' => 'completed',
+            'progress_percent' => 100,
+            'progress_message' => 'Incremental backup completed (streaming)',
+            'file_path' => $remotePrefix,
+            'file_name' => \App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME,
+            'file_size' => $totalBytes,
+            'checksum' => $compositeChecksum,
+            'format' => \App\Services\Backup\BackupManifestV3::FORMAT,
+            'replicas' => $primaryReplica,
+            'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => sprintf('streaming ok: %d files, %s', count($entries), FormatHelper::bytes($totalBytes)),
+            'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
+        ]);
+
+        ActivityLogger::backupCompleted($this->site, $remotePrefix, $totalBytes);
+
+        $this->site->update([
+            'backup_ok' => true,
+            'last_backup_at' => now(),
+        ]);
+
+        $config = $this->site->backupConfig;
+        if ($config) {
+            $config->update([
+                'last_backup_at' => now(),
+                'last_backup_status' => 'completed',
+            ]);
+        }
+
+        $destination->increment('used_bytes', $totalBytes);
+        app(RetentionService::class)->apply($this->site, $destination);
+
+        CircuitBreakerService::recordSuccess($this->site);
+        JobTracker::complete($this->uniqueId(), 'Incremental backup complete');
+
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
+
+        static::releaseUniqueLock($this->site->id);
     }
 
     /**

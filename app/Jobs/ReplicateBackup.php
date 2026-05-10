@@ -6,7 +6,9 @@ namespace App\Jobs;
 
 use App\Models\Backup;
 use App\Models\StorageDestination;
+use App\Services\Backup\BackupManifestV3;
 use App\Services\Backup\IntegrityVerifier;
+use App\Services\Backup\Storage\StorageDriver;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -87,34 +89,40 @@ class ReplicateBackup implements ShouldBeUnique, ShouldQueue
 
         $tempDir = storage_path('app/temp/replicate-'.uniqid());
         @mkdir($tempDir, 0700, true);
-        $localPath = $tempDir.'/'.$backup->file_name;
 
         try {
-            // 1. Pull from primary
-            Log::info("ReplicateBackup: downloading backup #{$backup->id} from {$primary->type} ({$primary->name})");
             $primaryDriver = StorageFactory::make($primary);
-            $primaryDriver->download($backup->file_path, $localPath);
-
-            if (! is_file($localPath) || filesize($localPath) === 0) {
-                throw new \RuntimeException('downloaded file empty or missing');
-            }
-
-            // 2. Optional integrity check before pushing — cheap insurance
-            if ($backup->checksum) {
-                $verifier = app(IntegrityVerifier::class);
-                $check = $verifier->verifyArchive($localPath, $backup->checksum);
-                if (! $check['ok']) {
-                    throw new \RuntimeException('primary copy failed integrity check before replication: '.$check['message']);
-                }
-            }
-
-            // 3. Push to secondary using same remote_path layout
-            $remotePath = $backup->file_path; // same domain/filename layout works on any provider
-            Log::info("ReplicateBackup: uploading backup #{$backup->id} to {$secondary->type} ({$secondary->name})");
             $secondaryDriver = StorageFactory::make($secondary);
-            $secondaryDriver->upload($localPath, $remotePath);
+            $remotePath = $backup->file_path;
 
-            // 4. Append replica record (atomic via lock on the row)
+            if ($backup->format === BackupManifestV3::FORMAT) {
+                // multipart-v3: copy each file under the prefix individually. Stream
+                // through tempDir; delete each local file after upload.
+                Log::info("ReplicateBackup: copying multipart prefix {$backup->file_path} from {$primary->name} to {$secondary->name}");
+                $this->replicateMultipart($backup, $primaryDriver, $secondaryDriver, $tempDir);
+            } else {
+                // legacy v2-zip: single-file pull-then-push
+                $localPath = $tempDir.'/'.$backup->file_name;
+                Log::info("ReplicateBackup: downloading backup #{$backup->id} from {$primary->type} ({$primary->name})");
+                $primaryDriver->download($backup->file_path, $localPath);
+
+                if (! is_file($localPath) || filesize($localPath) === 0) {
+                    throw new \RuntimeException('downloaded file empty or missing');
+                }
+
+                if ($backup->checksum) {
+                    $verifier = app(IntegrityVerifier::class);
+                    $check = $verifier->verifyArchive($localPath, $backup->checksum);
+                    if (! $check['ok']) {
+                        throw new \RuntimeException('primary copy failed integrity check before replication: '.$check['message']);
+                    }
+                }
+
+                Log::info("ReplicateBackup: uploading backup #{$backup->id} to {$secondary->type} ({$secondary->name})");
+                $secondaryDriver->upload($localPath, $remotePath);
+            }
+
+            // Append replica record (atomic via lock on the row)
             DB::transaction(function () use ($backup, $remotePath) {
                 $fresh = Backup::lockForUpdate()->find($backup->id);
                 if (! $fresh) {
@@ -147,6 +155,44 @@ class ReplicateBackup implements ShouldBeUnique, ShouldQueue
         } finally {
             $this->cleanup($tempDir);
         }
+    }
+
+    /**
+     * Stream-copy every file in a multipart-v3 backup from primary to secondary.
+     * Manifest is uploaded LAST so a partial replica is detectable.
+     */
+    private function replicateMultipart(Backup $backup, StorageDriver $primaryDriver, StorageDriver $secondaryDriver, string $tempDir): void
+    {
+        $manifestRemote = $backup->file_path.'/'.BackupManifestV3::MANIFEST_FILENAME;
+        $manifestLocal = $tempDir.'/manifest.json';
+        $primaryDriver->download($manifestRemote, $manifestLocal);
+
+        $manifest = BackupManifestV3::decode(file_get_contents($manifestLocal));
+
+        foreach ($manifest['files'] as $entry) {
+            $remoteName = $entry['name'];
+            $remoteSrc = $backup->file_path.'/'.$remoteName;
+            $remoteDst = $backup->file_path.'/'.$remoteName;
+            $localFile = $tempDir.'/'.basename($remoteName);
+
+            $primaryDriver->download($remoteSrc, $localFile);
+
+            // sha256 sanity check before pushing — surfaces silent corruption between replicas
+            if (! empty($entry['sha256'])) {
+                $actual = hash_file('sha256', $localFile);
+                if ($actual !== $entry['sha256']) {
+                    @unlink($localFile);
+                    throw new \RuntimeException("multipart-v3 file {$remoteName} sha256 mismatch on primary (expected {$entry['sha256']}, got {$actual})");
+                }
+            }
+
+            $secondaryDriver->upload($localFile, $remoteDst);
+            @unlink($localFile);
+        }
+
+        // Manifest last — same prefix, so secondary mirrors primary
+        $secondaryDriver->upload($manifestLocal, $manifestRemote);
+        @unlink($manifestLocal);
     }
 
     private function cleanup(string $dir): void

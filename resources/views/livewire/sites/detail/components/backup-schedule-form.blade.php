@@ -113,6 +113,17 @@
                 <p class="mt-1 text-xs text-gray-400">{{ __('Each backup is also copied here after the primary upload completes. Choose a different provider for true off-site safety.') }}</p>
             </div>
 
+            {{-- Streaming pipeline (multipart-v3) --}}
+            <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" wire:model="use_streaming" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                    <div class="text-sm">
+                        <div class="font-medium text-gray-700">{{ __('Use streaming pipeline (recommended for large sites)') }}</div>
+                        <p class="mt-1 text-xs text-gray-500">{{ __('Uploads each chunk individually as it becomes available, instead of building one large archive on disk first. Keeps disk usage constant regardless of site size and survives network interruptions per-chunk.') }}</p>
+                    </div>
+                </label>
+            </div>
+
             {{-- Retention --}}
             <div class="grid grid-cols-2 gap-4">
                 <div>

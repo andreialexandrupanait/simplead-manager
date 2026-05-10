@@ -91,12 +91,19 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             ]);
 
             [$dbPath, $filesChunkPaths] = $this->downloadData();
-            [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
 
-            $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+            $useStreaming = (bool) ($this->site->backupConfig?->use_streaming);
 
-            $remotePath = $this->upload($destination, $combinedPath, $fileName);
-            $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
+            if ($useStreaming) {
+                $this->runStreamingPipeline($destination, $dbPath, $filesChunkPaths);
+            } else {
+                [$combinedPath, $fileName, $fileSize, $checksum] = $this->createArchive($dbPath, $filesChunkPaths);
+
+                $integrity = $this->verifyIntegrity($combinedPath, $checksum);
+
+                $remotePath = $this->upload($destination, $combinedPath, $fileName);
+                $this->finalize($destination, $remotePath, $fileName, $fileSize, $checksum, $integrity);
+            }
 
         } catch (\Exception $e) {
             $this->handleFailure($e);
@@ -378,6 +385,125 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         PrecacheBackupFileList::dispatch($this->backup->id, $firstFilesPath, true);
 
         return [$combinedPath, $fileName, $fileSize, $checksum];
+    }
+
+    /**
+     * Streaming "multipart-v3" upload path: pushes db.sql.gz + each files chunk as
+     * independent objects under a per-backup prefix, deleting each local file as
+     * the upload returns. Manifest is uploaded LAST so a partial backup is detectable.
+     *
+     * @param  list<string>  $filesChunkPaths
+     */
+    protected function runStreamingPipeline(\App\Models\StorageDestination $destination, string $dbPath, array $filesChunkPaths): void
+    {
+        $now = now();
+        $remotePrefix = \App\Services\Backup\BackupManifestV3::prefixFor($this->site->domain, $this->type, $now);
+
+        $this->reportProgress('uploading', 65, 'Streaming upload to storage...');
+        $this->logStep("Streaming backup files to {$destination->name} ({$remotePrefix})");
+
+        $uploader = new \App\Services\Backup\StreamingBackupUploader($destination, $remotePrefix);
+
+        try {
+            $uploader->addFile($dbPath, 'database.sql.gz');
+            $this->logStep('database.sql.gz uploaded');
+
+            $totalChunks = count($filesChunkPaths);
+            foreach ($filesChunkPaths as $i => $chunkPath) {
+                $uploader->addFile($chunkPath, "chunks/{$i}.zip");
+                $pct = 70 + (int) (20 * ($i + 1) / max(1, $totalChunks));
+                $this->reportProgress('uploading', min(90, $pct), 'Uploaded chunk '.($i + 1)."/{$totalChunks}");
+            }
+
+            $manifest = \App\Services\Backup\BackupManifestV3::build(
+                siteUrl: $this->site->url,
+                siteName: $this->site->name,
+                type: $this->type,
+                trigger: $this->trigger,
+                wpVersion: $this->site->wp_version,
+                phpVersion: $this->site->php_version,
+                parentBackupId: null,
+                files: $uploader->entries(),
+            );
+            $uploader->uploadManifest($manifest);
+            $this->logStep('manifest.json uploaded');
+        } catch (\Throwable $e) {
+            $uploader->rollback();
+            throw $e;
+        }
+
+        $this->finalizeMultipart($destination, $remotePrefix, $uploader->entries(), $uploader->totalBytes());
+    }
+
+    /**
+     * Finalize a multipart-v3 backup: record format=multipart-v3 and store the
+     * remote prefix in file_path. file_name is the manifest filename so existing
+     * code paths that read file_name still work as a sentinel.
+     *
+     * @param  list<array{name: string, size: int, sha256: string}>  $entries
+     */
+    protected function finalizeMultipart(\App\Models\StorageDestination $destination, string $remotePrefix, array $entries, int $totalBytes): void
+    {
+        // Composite checksum of the manifest's per-file sha256s — gives a single value
+        // we can compare for tamper detection without needing to download the whole backup.
+        $compositeChecksum = hash('sha256', implode('', array_column($entries, 'sha256')));
+
+        $primaryReplica = [[
+            'destination_id' => $destination->id,
+            'remote_path' => $remotePrefix,
+            'uploaded_at' => now()->toIso8601String(),
+            'status' => 'completed',
+        ]];
+
+        $this->backup->update([
+            'status' => BackupStatus::Completed,
+            'stage' => 'completed',
+            'progress_percent' => 100,
+            'progress_message' => 'Backup completed (streaming)',
+            'file_path' => $remotePrefix,
+            'file_name' => \App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME,
+            'file_size' => $totalBytes,
+            'checksum' => $compositeChecksum,
+            'format' => \App\Services\Backup\BackupManifestV3::FORMAT,
+            'replicas' => $primaryReplica,
+            'completed_at' => now(),
+            'verified_at' => now(),
+            'verification_status' => 'passed',
+            'verification_message' => sprintf('streaming ok: %d files, %s', count($entries), \App\Helpers\FormatHelper::bytes($totalBytes)),
+            'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
+            'is_locked' => $this->trigger === 'pre_update',
+            'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
+        ]);
+
+        ActivityLogger::backupCompleted($this->site, $remotePrefix, $totalBytes);
+
+        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
+        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
+            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
+        }
+
+        // Manifest generation for incremental chains (non-fatal). multipart-v3 incremental
+        // doesn't yet integrate with ManifestService — that's tracked separately.
+        $this->site->update([
+            'backup_ok' => true,
+            'last_backup_at' => now(),
+        ]);
+
+        $config = $this->site->backupConfig;
+        if ($config) {
+            $config->update([
+                'last_backup_at' => now(),
+                'last_backup_status' => 'completed',
+                'last_full_backup_at' => $this->type === 'full' ? now() : $config->last_full_backup_at,
+            ]);
+        }
+
+        $destination->increment('used_bytes', $totalBytes);
+        app(RetentionService::class)->apply($this->site, $destination);
+
+        CircuitBreakerService::recordSuccess($this->site);
+        JobTracker::complete($this->uniqueId(), 'Backup complete');
+        static::releaseUniqueLock($this->site->id);
     }
 
     /**

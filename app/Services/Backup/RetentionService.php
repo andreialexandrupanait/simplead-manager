@@ -8,6 +8,7 @@ use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\Storage\StorageDriver;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -113,7 +114,15 @@ class RetentionService
 
             try {
                 $driver = StorageFactory::make($destination);
-                $driver->delete($target['remote_path']);
+
+                // multipart-v3: target['remote_path'] is a prefix containing many files.
+                // Enumerate + delete each. Legacy v2-zip: target is a single file path.
+                if ($backup->format === BackupManifestV3::FORMAT) {
+                    $this->deleteMultipartPrefix($driver, $target['remote_path']);
+                } else {
+                    $driver->delete($target['remote_path']);
+                }
+
                 $destination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
 
                 if ($backup->manifest_path && $target['is_primary']) {
@@ -164,6 +173,52 @@ class RetentionService
     private function dropReplica(array $replicas, int $destinationId): array
     {
         return array_filter($replicas, fn ($r) => (int) ($r['destination_id'] ?? 0) !== $destinationId);
+    }
+
+    /**
+     * Delete every file under a multipart-v3 prefix. Tries the manifest first
+     * (cheap, exact list); falls back to driver->list($prefix) if the manifest
+     * is missing or unreadable.
+     */
+    private function deleteMultipartPrefix(StorageDriver $driver, string $prefix): void
+    {
+        $entries = [];
+        $manifestRemote = $prefix.'/'.BackupManifestV3::MANIFEST_FILENAME;
+
+        // Manifest path: download and read file list
+        try {
+            $tempManifest = tempnam(sys_get_temp_dir(), 'manifest-cleanup-');
+            $driver->download($manifestRemote, $tempManifest);
+            $manifest = BackupManifestV3::decode(file_get_contents($tempManifest));
+            @unlink($tempManifest);
+            foreach ($manifest['files'] as $f) {
+                if (! empty($f['name'])) {
+                    $entries[] = $prefix.'/'.$f['name'];
+                }
+            }
+            $entries[] = $manifestRemote;
+        } catch (\Throwable $e) {
+            // Manifest unavailable — fall back to listing the prefix directly
+            Log::info("RetentionService: manifest unreadable for {$prefix}, falling back to list(): {$e->getMessage()}");
+            try {
+                foreach ($driver->list($prefix) as $file) {
+                    if (! empty($file['path'])) {
+                        $entries[] = $file['path'];
+                    }
+                }
+            } catch (\Throwable $listErr) {
+                Log::warning("RetentionService: list() failed for {$prefix}: {$listErr->getMessage()}");
+                throw $listErr;
+            }
+        }
+
+        foreach ($entries as $remotePath) {
+            try {
+                $driver->delete($remotePath);
+            } catch (\Throwable $e) {
+                Log::warning("RetentionService: failed to delete {$remotePath}: {$e->getMessage()}");
+            }
+        }
     }
 
     /**
