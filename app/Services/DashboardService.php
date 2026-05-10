@@ -63,6 +63,8 @@ class DashboardService
             )
             ->count();
 
+        $backupHealth = app(\App\Services\Backup\BackupHealthService::class)->aggregate(5);
+
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
@@ -75,6 +77,7 @@ class DashboardService
             'failed_backups' => $backups['failed_backups'],
             'stale_backups' => $staleBackups,
             'unverified_backups' => $unverifiedBackups,
+            'backup_health' => $backupHealth,
             'total_alerts' => $sitesDown + $backups['failed_backups'] + $staleBackups,
             'backup_storage_bytes' => $backups['total_storage_bytes'],
             'backups_today' => $backups['backups_today'],

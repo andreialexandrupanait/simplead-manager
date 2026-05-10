@@ -153,10 +153,27 @@
                                 </td>
                                 <td class="px-3 py-3 text-sm">
                                     @if($backup->site)
-                                        <a href="{{ route('sites.backups', $backup->site) }}" class="text-accent-600 hover:text-accent-800 font-medium">
-                                            {{ $backup->site->name }}
-                                        </a>
-                                        <div class="text-xs text-gray-400">{{ $backup->site->domain }}</div>
+                                        @php
+                                            $score = $this->siteHealthScores[$backup->site->id] ?? null;
+                                            $scoreColor = match(true) {
+                                                $score === null => 'bg-gray-100 text-gray-500',
+                                                $score >= 80 => 'bg-green-100 text-green-700',
+                                                $score >= 50 => 'bg-yellow-100 text-yellow-700',
+                                                $score >= 25 => 'bg-orange-100 text-orange-700',
+                                                default => 'bg-red-100 text-red-700',
+                                            };
+                                        @endphp
+                                        <div class="flex items-center gap-2">
+                                            @if($score !== null)
+                                                <span class="inline-flex w-9 shrink-0 justify-center rounded px-1.5 py-0.5 text-xs font-semibold {{ $scoreColor }}" title="{{ __('Backup health score') }}">{{ $score }}</span>
+                                            @endif
+                                            <div class="min-w-0">
+                                                <a href="{{ route('sites.backups', $backup->site) }}" class="text-accent-600 hover:text-accent-800 font-medium">
+                                                    {{ $backup->site->name }}
+                                                </a>
+                                                <div class="text-xs text-gray-400 truncate">{{ $backup->site->domain }}</div>
+                                            </div>
+                                        </div>
                                     @else
                                         <span class="text-gray-400">{{ __('Deleted site') }}</span>
                                     @endif

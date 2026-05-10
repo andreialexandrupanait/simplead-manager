@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Listeners\TrackScheduledTaskFailures;
+use App\Models\Backup;
+use App\Observers\BackupObserver;
 use App\Services\Notifications\NotificationService;
 use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -46,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! app()->isProduction());
+
+        Backup::observe(BackupObserver::class);
 
         RateLimiter::for('login', function (Request $request) {
             $key = $request->input('email', '').'|'.$request->ip();

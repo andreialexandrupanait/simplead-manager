@@ -24,6 +24,20 @@ class BackupsOverview extends Component
 
     protected string $defaultSortDir = 'asc';
 
+    /** Per-row site health score, computed once per render and indexed by site_id. */
+    #[Computed]
+    public function siteHealthScores(): array
+    {
+        $service = app(\App\Services\Backup\BackupHealthService::class);
+        $scores = [];
+        foreach (Site::with('backupConfig')->get() as $site) {
+            $report = $service->scoreForSite($site);
+            $scores[$site->id] = $report['score']; // null if unconfigured
+        }
+
+        return $scores;
+    }
+
     #[Computed]
     public function stats(): array
     {

@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
  */
 class TrackScheduledTaskFailures
 {
-    private const THRESHOLD = 5;
+    private const THRESHOLD = 3;
 
     private const ALERT_COOLDOWN_SECONDS = 3600;
 
