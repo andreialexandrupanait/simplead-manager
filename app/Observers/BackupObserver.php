@@ -15,9 +15,24 @@ use App\Models\Backup;
  * Existing job/dispatcher paths already call NotifyBackupFailed::dispatch, so
  * this observer mostly catches the corner cases. NotificationService dedups by
  * (event, site_id) over a 5-minute window, so double-dispatching is harmless.
+ *
+ * Administrative markers (operator manually flipped status to "failed" to clean
+ * up zombie rows or trigger a redispatch) are detected by an error_message
+ * prefix and silenced — they're not real failures and the operator already
+ * knows what they did.
  */
 class BackupObserver
 {
+    /**
+     * Substrings in error_message that mark this transition as administrative
+     * (an operator wrote it on purpose), not a real failure. Case-sensitive.
+     */
+    private const ADMIN_MARKERS = [
+        'Zombie pending: re-dispatched',
+        'Superseded by a new backup attempt',
+        '[admin]',
+    ];
+
     public function updated(Backup $backup): void
     {
         if (! $backup->wasChanged('status')) {
@@ -35,12 +50,22 @@ class BackupObserver
             return; // already failed before — no transition
         }
 
+        $errorMessage = $backup->error_message ?? '';
+        foreach (self::ADMIN_MARKERS as $marker) {
+            if (str_contains($errorMessage, $marker)) {
+                return; // administrative bookkeeping, not a real failure
+            }
+        }
+
         $site = $backup->site;
         if (! $site) {
             return;
         }
 
-        $errorMessage = $backup->error_message ?: 'Backup transitioned to failed (cause not recorded).';
-        NotifyBackupFailed::dispatch($site, $backup, $errorMessage);
+        NotifyBackupFailed::dispatch(
+            $site,
+            $backup,
+            $errorMessage !== '' ? $errorMessage : 'Backup transitioned to failed (cause not recorded).'
+        );
     }
 }
