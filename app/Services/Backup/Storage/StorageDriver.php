@@ -37,6 +37,17 @@ interface StorageDriver
     public function list(string $directory = ''): array;
 
     /**
+     * Recursively enumerate every file under $directory, returning a flat list
+     * of file entries (not folders). Used by reindex/DR commands that need to
+     * walk the full destination. Driver implementations choose the cheapest
+     * native API (S3 list-objects-v2 with prefix, Dropbox list_folder
+     * recursive=true, Local RecursiveDirectoryIterator).
+     *
+     * @return list<array{name: string, path: string, size: int, is_dir: bool, modified_at: mixed}>
+     */
+    public function listRecursive(string $directory = ''): array;
+
+    /**
      * Upload a file using an absolute remote path (bypasses base path prefix).
      */
     public function uploadToAbsolutePath(string $localPath, string $absoluteRemotePath): void;

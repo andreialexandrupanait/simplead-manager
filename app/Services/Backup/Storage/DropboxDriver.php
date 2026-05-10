@@ -299,6 +299,42 @@ class DropboxDriver implements StorageDriver
         return $files;
     }
 
+    public function listRecursive(string $directory = ''): array
+    {
+        $path = $directory ? $this->fullPath($directory) : $this->basePath;
+
+        $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder', [
+            'json' => ['path' => $path, 'recursive' => true],
+        ]);
+
+        $files = [];
+        $append = function ($entries) use (&$files) {
+            foreach ($entries as $entry) {
+                if (($entry['.tag'] ?? '') !== 'file') {
+                    continue;
+                }
+                $files[] = [
+                    'name' => $entry['name'],
+                    'path' => $entry['path_display'],
+                    'size' => $entry['size'] ?? 0,
+                    'is_dir' => false,
+                    'modified_at' => $entry['server_modified'] ?? null,
+                ];
+            }
+        };
+
+        $append($response['entries'] ?? []);
+
+        while (! empty($response['has_more'])) {
+            $response = $this->apiRequest('https://api.dropboxapi.com/2/files/list_folder/continue', [
+                'json' => ['cursor' => $response['cursor']],
+            ]);
+            $append($response['entries'] ?? []);
+        }
+
+        return $files;
+    }
+
     public function temporaryUrl(string $remotePath, int $expiresInMinutes = 60): ?string
     {
         $response = $this->apiRequest('https://api.dropboxapi.com/2/files/get_temporary_link', [

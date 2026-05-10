@@ -152,6 +152,44 @@ class S3Driver implements StorageDriver
         return $files;
     }
 
+    public function listRecursive(string $directory = ''): array
+    {
+        $prefix = $this->fullPath($directory);
+        if ($prefix) {
+            $prefix = rtrim($prefix, '/').'/';
+        }
+
+        $files = [];
+        $continuationToken = null;
+
+        do {
+            $params = [
+                'Bucket' => $this->bucket,
+                'Prefix' => $prefix,
+                // No Delimiter — that's what makes it recursive
+            ];
+            if ($continuationToken) {
+                $params['ContinuationToken'] = $continuationToken;
+            }
+
+            $result = $this->client->listObjectsV2($params);
+
+            foreach ($result['Contents'] ?? [] as $object) {
+                $files[] = [
+                    'name' => basename($object['Key']),
+                    'path' => $object['Key'],
+                    'size' => $object['Size'],
+                    'is_dir' => false,
+                    'modified_at' => $object['LastModified']->format('Y-m-d H:i:s'),
+                ];
+            }
+
+            $continuationToken = $result['NextContinuationToken'] ?? null;
+        } while ($continuationToken);
+
+        return $files;
+    }
+
     public function listFolders(string $absolutePath = ''): array
     {
         return [];

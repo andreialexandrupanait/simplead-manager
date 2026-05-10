@@ -97,6 +97,37 @@ class LocalDriver implements StorageDriver
         return $files;
     }
 
+    public function listRecursive(string $directory = ''): array
+    {
+        $path = $this->fullPath($directory);
+        if (! is_dir($path)) {
+            return [];
+        }
+
+        $base = rtrim($path, '/');
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($base, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile()) {
+                continue;
+            }
+            $relative = ltrim(substr($file->getPathname(), strlen($base)), '/');
+            $files[] = [
+                'name' => $file->getFilename(),
+                'path' => ($directory ? rtrim($directory, '/').'/' : '').$relative,
+                'size' => $file->getSize(),
+                'is_dir' => false,
+                'modified_at' => $file->getMTime(),
+            ];
+        }
+
+        return $files;
+    }
+
     public function listFolders(string $absolutePath = ''): array
     {
         return [];

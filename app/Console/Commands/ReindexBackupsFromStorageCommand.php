@@ -50,7 +50,7 @@ class ReindexBackupsFromStorageCommand extends Command
         $driver = StorageFactory::make($destination);
 
         try {
-            $allFiles = $this->listAll($driver);
+            $allFiles = $driver->listRecursive('');
         } catch (\Throwable $e) {
             $this->error("Failed to list destination: {$e->getMessage()}");
 
@@ -149,32 +149,6 @@ class ReindexBackupsFromStorageCommand extends Command
 
         return StorageDestination::where('is_default', true)->where('is_active', true)->first()
             ?? StorageDestination::where('is_active', true)->first();
-    }
-
-    /**
-     * Recursively list all files in the destination. Driver->list($path) returns
-     * direct entries; we walk down into directories.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function listAll($driver, string $path = ''): array
-    {
-        $out = [];
-        try {
-            $entries = $driver->list($path);
-        } catch (\Throwable $e) {
-            return [];
-        }
-
-        foreach ($entries as $entry) {
-            if (! empty($entry['is_dir'])) {
-                $out = array_merge($out, $this->listAll($driver, $entry['path'] ?? ''));
-            } else {
-                $out[] = $entry;
-            }
-        }
-
-        return $out;
     }
 
     /**
