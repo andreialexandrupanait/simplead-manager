@@ -12,7 +12,7 @@ class StorageDestinationFormData extends Form
     #[Validate('required|string|max:255')]
     public string $name = '';
 
-    #[Validate('required|in:local,s3,dropbox')]
+    #[Validate('required|in:local,s3,b2,hetzner_objectstorage,dropbox')]
     public string $type = 'local';
 
     public bool $is_default = false;
@@ -52,18 +52,18 @@ class StorageDestinationFormData extends Form
     {
         $rules = [
             'name' => 'required|string|max:255',
-            'type' => 'required|in:local,s3,dropbox',
+            'type' => 'required|in:local,s3,b2,hetzner_objectstorage,dropbox',
         ];
 
         if ($this->type === 'local') {
             $rules['localPath'] = 'required|string';
         }
 
-        if ($this->type === 's3') {
+        // s3 and S3-compatible providers (b2, hetzner_objectstorage) share the same fields
+        if (in_array($this->type, ['s3', 'b2', 'hetzner_objectstorage'], true)) {
             $rules['s3Bucket'] = 'required|string';
             $rules['s3Region'] = 'required|string';
 
-            // Only require key/secret when creating new
             if ($this->isCreating) {
                 $rules['s3Key'] = 'required|string';
                 $rules['s3Secret'] = 'required|string';
@@ -82,7 +82,7 @@ class StorageDestinationFormData extends Form
 
         match ($destination->type) {
             'local' => $this->localPath = $config['path'] ?? '',
-            's3' => (function () use ($config) {
+            's3', 'b2', 'hetzner_objectstorage' => (function () use ($config) {
                 $this->s3Key = '';  // Don't show encrypted values
                 $this->s3Secret = '';
                 $this->s3Bucket = $config['bucket'] ?? '';

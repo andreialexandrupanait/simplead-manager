@@ -306,6 +306,8 @@
                                         'local' => 'bg-gray-100 text-gray-600',
                                         'dropbox' => 'bg-blue-100 text-blue-600',
                                         's3' => 'bg-orange-100 text-orange-600',
+                                        'b2' => 'bg-red-100 text-red-600',
+                                        'hetzner_objectstorage' => 'bg-red-100 text-red-700',
                                         default => 'bg-gray-100 text-gray-600',
                                     } }}">
                                     @if($destination->type === 'local')
@@ -324,7 +326,14 @@
                                         @endif
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        {{ ucfirst($destination->type) }}
+                                        {{ match($destination->type) {
+                                            'local' => 'Local',
+                                            'dropbox' => 'Dropbox',
+                                            's3' => 'S3 / Compatible',
+                                            'b2' => 'Backblaze B2',
+                                            'hetzner_objectstorage' => 'Hetzner Object Storage',
+                                            default => ucfirst($destination->type),
+                                        } }}
                                         @if($destination->last_tested_at)
                                             &middot; {{ __('Tested') }} {{ $destination->last_tested_at->diffForHumans() }}
                                             @if($destination->last_test_passed)

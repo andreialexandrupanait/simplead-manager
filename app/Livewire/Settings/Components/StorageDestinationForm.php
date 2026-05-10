@@ -8,6 +8,7 @@ use App\Livewire\Forms\StorageDestinationFormData;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -59,6 +60,7 @@ class StorageDestinationForm extends Component
         $config = match ($this->form->type) {
             'local' => ['path' => $this->form->localPath],
             's3' => $this->buildS3Config(),
+            'b2', 'hetzner_objectstorage' => $this->buildPresetS3Config($this->form->type),
             'dropbox' => $this->buildDropboxConfig(),
             default => [],
         };
@@ -76,8 +78,8 @@ class StorageDestinationForm extends Component
 
         if ($this->destinationId) {
             $destination = StorageDestination::findOrFail($this->destinationId);
-            // For S3: merge existing encrypted credentials if not re-entered
-            if ($this->form->type === 's3') {
+            // For S3 and S3-compatibles: merge existing encrypted credentials if not re-entered
+            if (in_array($this->form->type, ['s3', 'b2', 'hetzner_objectstorage'], true)) {
                 $existingConfig = $destination->config ?? [];
                 if (empty($this->form->s3Key) && isset($existingConfig['key'])) {
                     $config['key'] = $existingConfig['key'];
@@ -107,6 +109,31 @@ class StorageDestinationForm extends Component
             'bucket' => $this->form->s3Bucket,
             'region' => $this->form->s3Region,
             'endpoint' => $this->form->s3Endpoint,
+            'base_path' => $this->form->s3BasePath,
+        ];
+
+        if (! empty($this->form->s3Key)) {
+            $config['key'] = encrypt($this->form->s3Key);
+        }
+        if (! empty($this->form->s3Secret)) {
+            $config['secret'] = encrypt($this->form->s3Secret);
+        }
+
+        return $config;
+    }
+
+    /**
+     * Build config for S3-compatible providers with auto-computed endpoint based on region.
+     */
+    protected function buildPresetS3Config(string $type): array
+    {
+        $endpointInfo = StorageFactory::endpointFor($type, $this->form->s3Region);
+
+        $config = [
+            'bucket' => $this->form->s3Bucket,
+            'region' => $this->form->s3Region,
+            'endpoint' => $endpointInfo['endpoint'] ?? '',
+            'use_path_style' => $endpointInfo['use_path_style'] ?? true,
             'base_path' => $this->form->s3BasePath,
         ];
 
@@ -213,6 +240,29 @@ class StorageDestinationForm extends Component
             'app_backups_path' => $this->form->dropboxAppBackupsPath = $path,
             default => $this->form->dropboxBasePath = $path,
         };
+    }
+
+    /**
+     * Reset region to a sensible default when the user switches between S3-compatible types,
+     * since region codes differ per provider (us-east-1 isn't valid on B2 or Hetzner).
+     */
+    public function updatedFormType(string $value): void
+    {
+        $this->form->s3Region = match ($value) {
+            'b2' => 'us-west-002',
+            'hetzner_objectstorage' => 'fsn1',
+            's3' => 'us-east-1',
+            default => $this->form->s3Region,
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function regionOptions(): array
+    {
+        return StorageFactory::regionsFor($this->form->type);
     }
 
     public function render()

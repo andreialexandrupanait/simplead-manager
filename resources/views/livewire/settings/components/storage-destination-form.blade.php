@@ -15,7 +15,7 @@
             {{-- Type selector --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Storage Type</label>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
                     <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'local' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
                         <input type="radio" wire:model.live="form.type" value="local" class="sr-only">
                         <div class="text-center w-full">
@@ -34,7 +34,21 @@
                         <input type="radio" wire:model.live="form.type" value="s3" class="sr-only">
                         <div class="text-center w-full">
                             <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 's3' ? 'text-accent-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
-                            <span class="text-xs font-medium {{ $form->type === 's3' ? 'text-accent-700' : 'text-gray-600' }}">S3 / Compatible</span>
+                            <span class="text-xs font-medium {{ $form->type === 's3' ? 'text-accent-700' : 'text-gray-600' }}">S3 / Other</span>
+                        </div>
+                    </label>
+                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'b2' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" wire:model.live="form.type" value="b2" class="sr-only">
+                        <div class="text-center w-full">
+                            <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'b2' ? 'text-red-600' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H7v-2h4v2zm0-4H7V7h4v5zm6 4h-4v-2h4v2zm0-4h-4V7h4v5z"/></svg>
+                            <span class="text-xs font-medium {{ $form->type === 'b2' ? 'text-accent-700' : 'text-gray-600' }}">Backblaze B2</span>
+                        </div>
+                    </label>
+                    <label class="relative flex cursor-pointer rounded-lg border p-3 {{ $form->type === 'hetzner_objectstorage' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50' : 'border-gray-200 hover:border-gray-300' }}">
+                        <input type="radio" wire:model.live="form.type" value="hetzner_objectstorage" class="sr-only">
+                        <div class="text-center w-full">
+                            <svg aria-hidden="true" class="w-6 h-6 mx-auto mb-1 {{ $form->type === 'hetzner_objectstorage' ? 'text-red-600' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z"/></svg>
+                            <span class="text-xs font-medium {{ $form->type === 'hetzner_objectstorage' ? 'text-accent-700' : 'text-gray-600' }}">Hetzner Storage</span>
                         </div>
                     </label>
                 </div>
@@ -50,13 +64,34 @@
                 </div>
             @endif
 
-            {{-- S3 fields --}}
-            @if($form->type === 's3')
+            {{-- S3 / B2 / Hetzner fields (shared) --}}
+            @if(in_array($form->type, ['s3', 'b2', 'hetzner_objectstorage']))
+                @php
+                    $isPreset = in_array($form->type, ['b2', 'hetzner_objectstorage']);
+                    $providerLabel = match($form->type) {
+                        'b2' => 'Backblaze B2',
+                        'hetzner_objectstorage' => 'Hetzner Object Storage',
+                        default => 'S3',
+                    };
+                    $keyHelp = match($form->type) {
+                        'b2' => 'Application key from Backblaze (B2 Cloud Storage → App Keys).',
+                        'hetzner_objectstorage' => 'Access key from Hetzner Console → Object Storage → Credentials.',
+                        default => 'Access key for the S3-compatible service.',
+                    };
+                @endphp
+
+                @if($isPreset)
+                    <div class="rounded-md bg-blue-50 p-3 text-xs text-blue-800">
+                        Using {{ $providerLabel }} preset — endpoint and path style will be configured automatically based on the region you pick below.
+                    </div>
+                @endif
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Access Key</label>
                         <x-ui.input wire:model="form.s3Key" placeholder="{{ $destinationId ? '(unchanged)' : 'AKIAIOSFODNN7EXAMPLE' }}" class="mt-1" />
                         @error('form.s3Key') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        <p class="mt-1 text-xs text-gray-400">{{ $keyHelp }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Secret Key</label>
@@ -72,15 +107,27 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Region</label>
-                        <x-ui.input wire:model="form.s3Region" placeholder="us-east-1" class="mt-1" />
+                        @if($isPreset)
+                            <x-ui.select wire:model="form.s3Region" class="mt-1">
+                                @foreach($this->regionOptions as $code => $label)
+                                    <option value="{{ $code }}">{{ $label }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        @else
+                            <x-ui.input wire:model="form.s3Region" placeholder="us-east-1" class="mt-1" />
+                        @endif
                         @error('form.s3Region') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Custom Endpoint (Optional)</label>
-                    <x-ui.input wire:model="form.s3Endpoint" placeholder="https://nyc3.digitaloceanspaces.com" class="mt-1" />
-                    <p class="mt-1 text-xs text-gray-400">For DigitalOcean Spaces, Backblaze B2, or other S3-compatible services.</p>
-                </div>
+
+                @if(! $isPreset)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Custom Endpoint (Optional)</label>
+                        <x-ui.input wire:model="form.s3Endpoint" placeholder="https://nyc3.digitaloceanspaces.com" class="mt-1" />
+                        <p class="mt-1 text-xs text-gray-400">For DigitalOcean Spaces, Wasabi, MinIO, or other S3-compatible services. Leave empty for AWS.</p>
+                    </div>
+                @endif
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Base Path (Optional)</label>
                     <x-ui.input wire:model="form.s3BasePath" placeholder="backups/" class="mt-1" />
