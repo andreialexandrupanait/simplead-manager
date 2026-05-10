@@ -120,6 +120,20 @@ class ReplicateBackup implements ShouldBeUnique, ShouldQueue
 
                 Log::info("ReplicateBackup: uploading backup #{$backup->id} to {$secondary->type} ({$secondary->name})");
                 $secondaryDriver->upload($localPath, $remotePath);
+
+                // Copy sidecar metadata too if it exists on the primary (best-effort —
+                // older v2-zip backups won't have one, that's fine)
+                try {
+                    $sidecarRemote = \App\Services\Backup\BackupSidecarMetadata::sidecarPathFor($remotePath);
+                    $sidecarLocal = $tempDir.'/sidecar.json';
+                    $primaryDriver->download($sidecarRemote, $sidecarLocal);
+                    if (is_file($sidecarLocal) && filesize($sidecarLocal) > 0) {
+                        $secondaryDriver->upload($sidecarLocal, $sidecarRemote);
+                    }
+                    @unlink($sidecarLocal);
+                } catch (\Throwable $sidecarErr) {
+                    // Sidecar absent or unreadable on primary; not fatal
+                }
             }
 
             // Append replica record (atomic via lock on the row)

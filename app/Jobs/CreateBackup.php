@@ -416,7 +416,9 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             }
 
             $manifest = \App\Services\Backup\BackupManifestV3::build(
+                siteId: $this->site->id,
                 siteUrl: $this->site->url,
+                siteDomain: $this->site->domain,
                 siteName: $this->site->name,
                 type: $this->type,
                 trigger: $this->trigger,
@@ -584,6 +586,15 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         ]);
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        // Self-describing sidecar so the backup is reindexable without the Laravel DB.
+        // Best-effort: failure here is logged but doesn't fail the backup.
+        try {
+            $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
+            \App\Services\Backup\BackupSidecarMetadata::uploadAlongside(StorageFactory::make($destination), $remotePath, $sidecar);
+        } catch (\Throwable $e) {
+            Log::warning("Sidecar metadata write failed for backup {$this->backupId}: {$e->getMessage()}");
+        }
 
         // Dispatch off-site replication if configured (3-2-1 rule). Failure here doesn't
         // fail the backup — primary upload already succeeded.

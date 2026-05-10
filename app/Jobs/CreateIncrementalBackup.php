@@ -362,7 +362,9 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             }
 
             $manifest = \App\Services\Backup\BackupManifestV3::build(
+                siteId: $this->site->id,
                 siteUrl: $this->site->url,
+                siteDomain: $this->site->domain,
                 siteName: $this->site->name,
                 type: 'incremental',
                 trigger: $this->trigger,
@@ -549,6 +551,13 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         ]);
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
+
+        try {
+            $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
+            \App\Services\Backup\BackupSidecarMetadata::uploadAlongside(StorageFactory::make($destination), $remotePath, $sidecar);
+        } catch (\Throwable $e) {
+            Log::warning("Sidecar metadata write failed for backup {$this->backupId}: {$e->getMessage()}");
+        }
 
         $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
         if ($secondaryDestId && $secondaryDestId !== $destination->id) {

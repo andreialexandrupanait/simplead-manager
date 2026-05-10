@@ -51,7 +51,9 @@ final class BackupManifestV3
      * @return array<string, mixed>
      */
     public static function build(
+        ?int $siteId,
         string $siteUrl,
+        string $siteDomain,
         string $siteName,
         string $type,
         string $trigger,
@@ -61,10 +63,13 @@ final class BackupManifestV3
         array $files,
     ): array {
         $totalSize = array_sum(array_column($files, 'size'));
+        $compositeChecksum = hash('sha256', implode('', array_column($files, 'sha256')));
 
         return [
             'format_version' => self::FORMAT_VERSION,
+            'site_id' => $siteId,
             'site_url' => $siteUrl,
+            'site_domain' => $siteDomain,
             'site_name' => $siteName,
             'type' => $type,
             'trigger' => $trigger,
@@ -72,6 +77,9 @@ final class BackupManifestV3
             'wp_version' => $wpVersion,
             'php_version' => $phpVersion,
             'parent_backup_id' => $parentBackupId,
+            'includes_files' => $type !== 'database',
+            'includes_database' => true,
+            'composite_checksum' => $compositeChecksum,
             'files' => $files,
             'total_size' => $totalSize,
         ];
