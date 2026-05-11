@@ -49,11 +49,13 @@
         };
     @endphp
     @php
-        // Smart link for Alerts card
+        // Smart link for Alerts card — route to the page that explains the dominant alert source
         if ($stats['sites_down'] > 0) {
             $alertsLink = route('uptime.index', ['filter' => 'down']);
         } elseif ($stats['failed_backups'] > 0) {
             $alertsLink = route('backups.index', ['filter' => 'failed']);
+        } elseif (($stats['stale_backups'] ?? 0) > 0) {
+            $alertsLink = route('backups.index');
         } else {
             $alertsLink = route('uptime.index');
         }
