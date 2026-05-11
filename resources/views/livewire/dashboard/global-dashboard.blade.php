@@ -55,7 +55,7 @@
         } elseif ($stats['failed_backups'] > 0) {
             $alertsLink = route('backups.index', ['filter' => 'failed']);
         } elseif (($stats['stale_backups'] ?? 0) > 0) {
-            $alertsLink = route('backups.index');
+            $alertsLink = route('backups.index', ['filter' => 'stale']);
         } else {
             $alertsLink = route('uptime.index');
         }

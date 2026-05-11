@@ -42,8 +42,11 @@
 
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
+        @php
+            $staleLabel = __('Stale').($this->stats['stale'] > 0 ? ' ('.$this->stats['stale'].')' : '');
+        @endphp
         <x-ui.filter-tabs
-            :options="['all' => __('All'), 'completed' => __('Completed'), 'failed' => __('Failed'), 'in_progress' => __('In Progress')]"
+            :options="['all' => __('All'), 'completed' => __('Completed'), 'failed' => __('Failed'), 'in_progress' => __('In Progress'), 'stale' => $staleLabel]"
             :selected="$filter"
             wire="filter"
         />
@@ -53,6 +56,92 @@
             class="w-full sm:ml-auto sm:w-64"
         />
     </div>
+
+    {{-- Stale Sites view: site-level health, not backup rows --}}
+    @if($filter === 'stale')
+        <x-ui.card class="overflow-hidden !p-0">
+            @if($this->staleSites->isEmpty())
+                <div class="px-6 py-12 text-center">
+                    <svg class="mx-auto h-10 w-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="mt-3 text-sm font-medium text-gray-700">{{ __('No stale sites — all backups are within the last 36h.') }}</p>
+                </div>
+            @else
+                <div class="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-800">
+                    <strong>{{ $this->staleSites->count() }}</strong>
+                    {{ __('site(s) have backup enabled but no successful backup in the last 36 hours (or ever). Investigate each row below.') }}
+                </div>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            <th class="px-5 py-3">{{ __('Site') }}</th>
+                            <th class="px-5 py-3">{{ __('Last Backup') }}</th>
+                            <th class="px-5 py-3">{{ __('Last Sync') }}</th>
+                            <th class="px-5 py-3">{{ __('Connector') }}</th>
+                            <th class="px-5 py-3">{{ __('Likely Cause') }}</th>
+                            <th class="px-5 py-3 text-right">{{ __('Action') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white text-sm">
+                        @foreach($this->staleSites as $site)
+                            @php
+                                $cause = ! $site->is_connected
+                                    ? __('Plugin disconnected')
+                                    : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored'));
+                                $causeColor = ! $site->is_connected ? 'text-red-600' : 'text-amber-600';
+                            @endphp
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-5 py-3">
+                                    <a href="{{ route('sites.overview', $site) }}" class="font-medium text-accent-700 hover:text-accent-900">{{ $site->name }}</a>
+                                    <div class="text-xs text-gray-400">{{ $site->url }}</div>
+                                </td>
+                                <td class="px-5 py-3 text-gray-700">
+                                    @if($site->last_backup_at)
+                                        <span title="{{ $site->last_backup_at->toDateTimeString() }}">{{ $site->last_backup_at->diffForHumans() }}</span>
+                                    @else
+                                        <span class="text-red-600 font-medium">{{ __('Never') }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3 text-gray-700">
+                                    @if($site->last_synced_at)
+                                        <span title="{{ $site->last_synced_at->toDateTimeString() }}">{{ $site->last_synced_at->diffForHumans() }}</span>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3">
+                                    @if($site->is_connected)
+                                        <x-ui.badge variant="green">{{ __('Connected') }}</x-ui.badge>
+                                    @else
+                                        <x-ui.badge variant="red">{{ __('Disconnected') }}</x-ui.badge>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3 {{ $causeColor }} font-medium">{{ $cause }}</td>
+                                <td class="px-5 py-3 text-right">
+                                    @if($site->is_connected)
+                                        <button
+                                            wire:click="backupStaleSite({{ $site->id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="backupStaleSite({{ $site->id }})"
+                                            class="inline-flex items-center rounded-lg border border-accent-300 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 disabled:opacity-50 transition"
+                                        >
+                                            <span wire:loading.remove wire:target="backupStaleSite({{ $site->id }})">{{ __('Backup Now') }}</span>
+                                            <span wire:loading wire:target="backupStaleSite({{ $site->id }})">{{ __('Queuing...') }}</span>
+                                        </button>
+                                    @else
+                                        <a href="{{ route('sites.overview', $site) }}" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
+                                            {{ __('Fix Connection') }}
+                                        </a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </x-ui.card>
+    @else
 
     {{-- Backups Table --}}
     <x-ui.card class="overflow-hidden !p-0"
@@ -229,4 +318,5 @@
             @endif
         @endif
     </x-ui.card>
+    @endif
 </div>

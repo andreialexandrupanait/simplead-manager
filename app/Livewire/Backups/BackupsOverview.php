@@ -46,7 +46,78 @@ class BackupsOverview extends Component
             'completed' => Backup::where('status', 'completed')->count(),
             'failed' => Backup::where('status', 'failed')->count(),
             'in_progress' => Backup::whereIn('status', ['pending', 'in_progress'])->count(),
+            'stale' => $this->staleSites->count(),
         ];
+    }
+
+    /**
+     * Sites with backup enabled where last successful backup is older than 36h
+     * (or has never run). Same definition as DashboardService::computeStats(),
+     * but eager-loaded with relations the table needs.
+     */
+    #[Computed]
+    public function staleSites()
+    {
+        return Site::query()
+            ->whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true))
+            ->where(fn ($q) => $q
+                ->whereNull('last_backup_at')
+                ->orWhere('last_backup_at', '<', now()->subHours(36))
+            )
+            ->with(['backupConfig.storageDestination'])
+            ->orderByRaw('last_backup_at ASC NULLS FIRST')
+            ->get();
+    }
+
+    public function backupStaleSite(int $siteId): void
+    {
+        $site = Site::with('backupConfig.storageDestination')->find($siteId);
+        if (! $site) {
+            session()->flash('backup-error', 'Site not found.');
+
+            return;
+        }
+
+        if (! $site->is_connected) {
+            session()->flash('backup-error', "{$site->name}: connector not reachable — fix the WordPress plugin connection first.");
+
+            return;
+        }
+
+        $config = $site->backupConfig;
+        if (! $config || ! $config->is_enabled) {
+            session()->flash('backup-error', "{$site->name}: backup is not enabled.");
+
+            return;
+        }
+
+        $destination = $config->storageDestination
+            ?? StorageDestination::where('is_default', true)->where('is_active', true)->first();
+        if (! $destination) {
+            session()->flash('backup-error', "{$site->name}: no storage destination configured.");
+
+            return;
+        }
+
+        $type = $config->type ?? 'full';
+        $backup = Backup::create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $destination->id,
+            'type' => $type,
+            'trigger' => 'manual_stale',
+            'status' => 'pending',
+            'stage' => 'queued',
+            'progress_percent' => 0,
+            'progress_message' => 'Backup queued, waiting to start...',
+            'includes_database' => true,
+            'includes_files' => $type === 'full',
+            'wp_version' => $site->wp_version,
+            'php_version' => $site->php_version,
+            'started_at' => now(),
+        ]);
+
+        CreateBackup::dispatch($site, $type, 'manual_stale', $destination->id, $backup->id);
+        session()->flash('backup-success', "Backup queued for {$site->name}.");
     }
 
     public function backupAllSites(): void
@@ -159,6 +230,13 @@ class BackupsOverview extends Component
 
     public function render()
     {
+        // Stale view is site-level and rendered from $this->staleSites; skip the backups query.
+        if ($this->filter === 'stale') {
+            return view('livewire.backups.backups-overview', [
+                'backups' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25),
+            ])->layout('components.layouts.app', ['title' => 'Backups']);
+        }
+
         $backups = Backup::query()
             ->with(['site.backupConfig', 'storageDestination'])
             ->when($this->search, function ($q) {
