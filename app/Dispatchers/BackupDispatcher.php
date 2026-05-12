@@ -42,6 +42,9 @@ class BackupDispatcher
                 ->where('circuit_state', '!=', 'open')
                 ->where('is_monitoring_disabled', false)
             )
+            ->whereDoesntHave('site.backups', fn ($q) => $q
+                ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])
+            )
             ->with('site')
             ->each(function (BackupConfig $config) {
                 try {
@@ -153,7 +156,7 @@ class BackupDispatcher
         $heartbeatMinutes = 10;
         $absoluteMinutes = 60;
 
-        $stuck = Backup::where('status', BackupStatus::InProgress)
+        $stuck = Backup::whereIn('status', [BackupStatus::InProgress, BackupStatus::Pending])
             ->where(function ($query) use ($heartbeatMinutes, $absoluteMinutes) {
                 $query->where('updated_at', '<', now()->subMinutes($heartbeatMinutes))
                     ->orWhere('started_at', '<', now()->subMinutes($absoluteMinutes));

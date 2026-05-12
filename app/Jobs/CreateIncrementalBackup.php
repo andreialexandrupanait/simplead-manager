@@ -615,6 +615,18 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
                 'parent_backup_id' => $parentBackup->id,
             ]);
         } else {
+            // Clean up any orphaned incremental backup from a previous failed attempt
+            Backup::where('site_id', $this->site->id)
+                ->where('type', 'incremental')
+                ->where('trigger', $this->trigger)
+                ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])
+                ->update([
+                    'status' => BackupStatus::Failed,
+                    'stage' => 'failed',
+                    'error_message' => 'Superseded by a new backup attempt',
+                    'completed_at' => now(),
+                ]);
+
             $this->backup = Backup::create([
                 'site_id' => $this->site->id,
                 'storage_destination_id' => $destination->id,
