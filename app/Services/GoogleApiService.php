@@ -60,7 +60,7 @@ class GoogleApiService
     {
         return Http::timeout(30)
             ->withToken($this->accessToken)
-            ->retry(3, 2000, function (\Exception $exception, \Illuminate\Http\Client\Request $request): bool {
+            ->retry(3, 2000, function (\Throwable $exception, \Illuminate\Http\Client\Request $request): bool {
                 if (! $exception instanceof \Illuminate\Http\Client\RequestException) {
                     return false;
                 }
