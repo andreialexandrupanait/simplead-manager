@@ -20,9 +20,9 @@ class BackupsOverview extends Component
 {
     use WithSorting, WithTableFilters;
 
-    protected string $defaultSortBy = 'site';
+    protected string $defaultSortBy = 'created_at';
 
-    protected string $defaultSortDir = 'asc';
+    protected string $defaultSortDir = 'desc';
 
     /** Per-row site health score, computed once per render and indexed by site_id. */
     #[Computed]
@@ -170,7 +170,8 @@ class BackupsOverview extends Component
                 'started_at' => now(),
             ]);
 
-            CreateBackup::dispatch($site, $config->type ?? 'full', 'manual_bulk', $destination->id, $backup->id);
+            CreateBackup::dispatch($site, $config->type ?? 'full', 'manual_bulk', $destination->id, $backup->id)
+                ->delay(now()->addSeconds($queued * 180));
             $queued++;
         }
 

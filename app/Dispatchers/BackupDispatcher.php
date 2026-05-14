@@ -31,7 +31,7 @@ class BackupDispatcher
             return;
         }
 
-        BackupConfig::query()
+        $configs = BackupConfig::query()
             ->where('is_enabled', true)
             ->where('next_backup_at', '<=', now())
             ->whereHas('site', fn ($q) => $q
@@ -46,39 +46,51 @@ class BackupDispatcher
                 ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])
             )
             ->with('site')
-            ->each(function (BackupConfig $config) {
-                try {
-                    $this->dispatchScheduledBackup($config);
-                } catch (\Throwable $e) {
-                    Log::error("BackupDispatcher: failed to dispatch backup for site #{$config->site_id}: {$e->getMessage()}", [
-                        'config_id' => $config->id,
-                        'site_id' => $config->site_id,
-                        'exception' => $e::class,
-                    ]);
-                }
-            });
+            ->get();
+
+        foreach ($configs->values() as $index => $config) {
+            try {
+                $this->dispatchScheduledBackup($config, delaySeconds: $index * 180);
+            } catch (\Throwable $e) {
+                Log::error("BackupDispatcher: failed to dispatch backup for site #{$config->site_id}: {$e->getMessage()}", [
+                    'config_id' => $config->id,
+                    'site_id' => $config->site_id,
+                    'exception' => $e::class,
+                ]);
+            }
+        }
     }
 
-    protected function dispatchScheduledBackup(BackupConfig $config): void
+    protected function dispatchScheduledBackup(BackupConfig $config, int $delaySeconds = 0): void
     {
         $backupType = $this->determineBackupType($config);
 
         /** @var \App\Models\Site $site */
         $site = $config->site;
 
+        if ($delaySeconds > 0) {
+            Log::info("BackupDispatcher: staggering site #{$site->id} ({$site->domain}) by {$delaySeconds}s");
+        }
+
         if ($backupType === 'incremental') {
-            CreateIncrementalBackup::dispatch(
+            $pending = CreateIncrementalBackup::dispatch(
                 $site,
                 'scheduled',
                 $config->storage_destination_id
             );
+            if ($delaySeconds > 0) {
+                $pending->delay(now()->addSeconds($delaySeconds));
+            }
         } else {
-            CreateBackup::dispatch(
+            $pending = CreateBackup::dispatch(
                 $site,
                 $backupType,
                 'scheduled',
                 $config->storage_destination_id
             );
+            if ($delaySeconds > 0) {
+                $pending->delay(now()->addSeconds($delaySeconds));
+            }
         }
 
         // Calculate next backup time in the config's timezone, then convert to UTC
@@ -142,27 +154,34 @@ class BackupDispatcher
     }
 
     /**
-     * Detect stuck in_progress backups and auto-retry or mark as failed.
+     * Detect stuck backups and auto-retry or mark as failed.
      *
-     * Two-tier detection:
-     * - Tier 1: No progress update (updated_at) in 10 minutes → worker likely killed
-     * - Tier 2: Started over 60 minutes ago → absolute safety net
+     * Separate detection for InProgress vs Pending to avoid false positives:
+     * - InProgress: heartbeat 20 min OR absolute 60 min — worker likely killed
+     * - Pending: absolute 45 min only (no heartbeat) — job never started
      *
      * Auto-retries up to 2 times before marking as permanently failed.
      */
     protected function recoverStuckBackups(): void
     {
         $maxAutoRetries = 2;
-        $heartbeatMinutes = 10;
-        $absoluteMinutes = 60;
 
-        $stuck = Backup::whereIn('status', [BackupStatus::InProgress, BackupStatus::Pending])
-            ->where(function ($query) use ($heartbeatMinutes, $absoluteMinutes) {
-                $query->where('updated_at', '<', now()->subMinutes($heartbeatMinutes))
-                    ->orWhere('started_at', '<', now()->subMinutes($absoluteMinutes));
+        // InProgress: worker should be updating updated_at regularly
+        $stuckInProgress = Backup::where('status', BackupStatus::InProgress)
+            ->where(function ($query) {
+                $query->where('updated_at', '<', now()->subMinutes(20))
+                    ->orWhere('started_at', '<', now()->subMinutes(60));
             })
             ->with('site')
             ->get();
+
+        // Pending: job is queued but never picked up — only use absolute timeout
+        $stuckPending = Backup::where('status', BackupStatus::Pending)
+            ->where('started_at', '<', now()->subMinutes(45))
+            ->with('site')
+            ->get();
+
+        $stuck = $stuckInProgress->merge($stuckPending);
 
         foreach ($stuck as $backup) {
             try {

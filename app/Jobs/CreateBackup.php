@@ -492,6 +492,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Backup completed (v3-zip)',
+            'error_message' => null,
             'file_path' => $remotePath,
             'file_name' => $fileName,
             'file_size' => $fileSize,
@@ -510,6 +511,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
 
         // Self-describing sidecar so the backup is reindexable without the Laravel DB
+        $this->touchHeartbeat();
         try {
             $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
             $sidecar['format'] = 'v3-zip'; // override
@@ -526,6 +528,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
         // Manifest for incremental support (non-fatal)
         if ($this->type === 'full') {
+            $this->touchHeartbeat();
             try {
                 $api = app(WordPressApiServiceFactory::class)->make($this->site);
                 $manifestService = new \App\Services\Backup\ManifestService;
@@ -630,6 +633,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Backup completed (streaming)',
+            'error_message' => null,
             'file_path' => $remotePrefix,
             'file_name' => \App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME,
             'file_size' => $totalBytes,
@@ -711,6 +715,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $uploadSize = FormatHelper::bytes((int) filesize($combinedPath));
         $this->reportProgress('uploading', 75, 'Uploading to storage...');
         $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+        $this->touchHeartbeat();
         $uploadStart = microtime(true);
         $remotePath = $this->site->domain.'/'.$fileName;
         $driver = StorageFactory::make($destination);
@@ -739,6 +744,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Backup completed successfully',
+            'error_message' => null,
             'file_path' => $remotePath,
             'file_name' => $fileName,
             'file_size' => $fileSize,

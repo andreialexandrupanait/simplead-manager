@@ -89,6 +89,13 @@ trait BackupJobTrait
         JobTracker::appendLog($this->uniqueId(), $message);
     }
 
+    protected function touchHeartbeat(): void
+    {
+        if ($this->backup) {
+            $this->backup->update(['updated_at' => now()]);
+        }
+    }
+
     protected function reportProgress(string $stage, int $percent, string $message): void
     {
         if ($this->backup) {

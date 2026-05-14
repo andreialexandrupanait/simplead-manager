@@ -376,6 +376,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
         $uploadSize = FormatHelper::bytes($result['size']);
         $this->reportProgress('uploading', 82, 'Uploading to storage...');
         $this->logStep("Uploading to {$destination->name} ({$uploadSize})...");
+        $this->touchHeartbeat();
         $remotePath = $this->site->domain.'/'.$fileName;
         $driver = StorageFactory::make($destination);
         $driver->upload($outputPath, $remotePath);
@@ -402,6 +403,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Incremental backup completed (v3-zip)',
+            'error_message' => null,
             'file_path' => $remotePath,
             'file_name' => $fileName,
             'file_size' => $fileSize,
@@ -417,6 +419,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
         ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
 
+        $this->touchHeartbeat();
         try {
             $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
             $sidecar['format'] = 'v3-zip';
@@ -519,6 +522,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Incremental backup completed (streaming)',
+            'error_message' => null,
             'file_path' => $remotePrefix,
             'file_name' => \App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME,
             'file_size' => $totalBytes,
@@ -667,6 +671,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             'stage' => 'completed',
             'progress_percent' => 100,
             'progress_message' => 'Incremental backup completed successfully',
+            'error_message' => null,
             'file_path' => $remotePath,
             'file_name' => $fileName,
             'file_size' => $fileSize,
