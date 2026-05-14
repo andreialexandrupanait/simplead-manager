@@ -1,2 +1,715 @@
 parameters:
-    ignoreErrors: []
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupManifestV3\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ReindexBackupsFromStorageCommand.php
+
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupSidecarMetadata\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ReindexBackupsFromStorageCommand.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:seoAudits\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Dispatchers/BrokenResourceDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\CheckBrokenResources constructor expects App\\Models\\Site in App\\Jobs\\CheckBrokenResources\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/BrokenResourceDispatcher.php
+
+		-
+			message: '#^Parameter \#1 \$site of job class App\\Jobs\\RunSeoAudit constructor expects App\\Models\\Site in App\\Jobs\\RunSeoAudit\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Dispatchers/SeoAuditDispatcher.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\Backup\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Backup\>\:\:update\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/BackupCallbackController.php
+
+		-
+			message: '#^Parameter \#1 \$backup of static method App\\Http\\Controllers\\Api\\BackupCallbackController\:\:generateToken\(\) expects App\\Models\\Backup, App\\Models\\Backup\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Backup\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/BackupCallbackController.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:update\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/TwoFactorChallengeController.php
+
+		-
+			message: '#^Parameter \#2 \$key of method PragmaRX\\Google2FA\\Google2FA\:\:verifyKey\(\) expects string, int\<48, 57\>\|int\<256, max\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/TwoFactorChallengeController.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Http\\Controllers\\Auth\\TwoFactorChallengeController\:\:loginUser\(\) expects App\\Models\\User, App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Auth/TwoFactorChallengeController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Http\\RedirectResponse\|Illuminate\\Routing\\Redirector\:\:with\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Controllers/GoogleAuthController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Parameter \$description of static method App\\Services\\ActivityLogger\:\:log\(\) expects string\|null, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Part \$source \(array\<string, string\>\|string\|null\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 2
+			path: app/Http/Controllers/WebhookController.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/AnalyzeSeoPages.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/AnalyzeSeoPages.php
+
+		-
+			message: '#^Method App\\Jobs\\CheckDns\:\:normalizeForComparison\(\) should return string but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Jobs/CheckDns.php
+
+		-
+			message: '#^Parameter \#1 \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckDns.php
+
+		-
+			message: '#^Parameter \$site of static method App\\Services\\ActivityLogger\:\:log\(\) expects App\\Models\\Site\|null, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CheckDns.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_starts_with expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#1 \$path of function pathinfo expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#2 \$base of static method App\\Services\\SeoAudit\\UrlNormalizerService\:\:isSameDomain\(\) expects string, string\|false\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#2 \$baseDomain of method App\\Jobs\\CrawlSitePages\:\:shouldSkipUrl\(\) expects string, string\|false\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#3 \$baseDomain of method App\\Jobs\\CrawlSitePages\:\:parseHtml\(\) expects string, string\|false\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CrawlSitePages.php
+
+		-
+			message: '#^Parameter \#2 \$content of method App\\Services\\Backup\\BackupZipBuilder\:\:addString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CreateBackup.php
+
+		-
+			message: '#^Parameter \#2 \$content of method ZipArchive\:\:addFromString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CreateBackup.php
+
+		-
+			message: '#^Anonymous function has an unused use \$dbStart\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Jobs/CreateIncrementalBackup.php
+
+		-
+			message: '#^Parameter \#2 \$content of method App\\Services\\Backup\\BackupZipBuilder\:\:addString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CreateIncrementalBackup.php
+
+		-
+			message: '#^Parameter \#2 \$content of method ZipArchive\:\:addFromString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CreateIncrementalBackup.php
+
+		-
+			message: '#^Parameter \#3 \$filesChunkPaths of method App\\Jobs\\CreateIncrementalBackup\:\:runV3ZipPipeline\(\) expects list\<string\>, array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/CreateIncrementalBackup.php
+
+		-
+			message: '#^Call to an undefined method App\\Contracts\\WordPressApiServiceInterface\:\:bulkDeleteUsers\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Jobs/DeleteSpamUsersJob.php
+
+		-
+			message: '#^Call to an undefined method App\\Contracts\\WordPressApiServiceInterface\:\:getErrorLogs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Jobs/FetchPhpErrorLogs.php
+
+		-
+			message: '#^Method App\\Jobs\\FetchSiteFavicon\:\:normalizeToPng\(\) should return string\|null but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Jobs/FetchSiteFavicon.php
+
+		-
+			message: '#^Parameter \#4 \$color of function imagefill expects int, int\<0, max\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/FetchSiteFavicon.php
+
+		-
+			message: '#^Parameter \#1 \$channel of job class App\\Jobs\\SendNotificationJob constructor expects App\\Models\\NotificationChannel in App\\Jobs\\SendNotificationJob\:\:dispatch\(\), App\\Models\\NotificationChannel\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\NotificationChannel\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessNotificationBatch.php
+
+		-
+			message: '#^Parameter \#1 \$channel of method App\\Jobs\\ProcessNotificationBatch\:\:dispatchGrouped\(\) expects App\\Models\\NotificationChannel, App\\Models\\NotificationChannel\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\NotificationChannel\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessNotificationBatch.php
+
+		-
+			message: '#^Parameter \#2 \$site of job class App\\Jobs\\SendNotificationJob constructor expects App\\Models\\Site\|null in App\\Jobs\\SendNotificationJob\:\:dispatch\(\), App\\Models\\Site\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Site\>\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ProcessNotificationBatch.php
+
+		-
+			message: '#^Method App\\Jobs\\PushConnectorPlugin\:\:buildPluginZipHash\(\) should return string\|null but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Jobs/PushConnectorPlugin.php
+
+		-
+			message: '#^Possibly invalid array key type App\\Enums\\SecurityCategory\|string\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Jobs/PushSecuritySettings.php
+
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupManifestV3\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/ReplicateBackup.php
+
+		-
+			message: '#^Parameter \#1 \$json of function json_decode expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupManifestV3\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$name of method ZipArchive\:\:addFromString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fread expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Parameter \#2 \$content of method ZipArchive\:\:addFromString\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RestoreBackup.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\StorageDestination\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StorageDestination\>\:\:decrement\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Jobs/RetentionCleanup.php
+
+		-
+			message: '#^Parameter \#1 \$destination of static method App\\Services\\Backup\\Storage\\StorageFactory\:\:make\(\) expects App\\Models\\StorageDestination, App\\Models\\StorageDestination\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StorageDestination\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RetentionCleanup.php
+
+		-
+			message: '#^Parameter \#2 \$contents of method Illuminate\\Filesystem\\FilesystemAdapter\:\:put\(\) expects Illuminate\\Http\\File\|Illuminate\\Http\\UploadedFile\|Psr\\Http\\Message\\StreamInterface\|resource\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Parameter \#2 \$height of function imagecreatetruecolor expects int\<1, max\>, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/RunPerformanceTest.php
+
+		-
+			message: '#^Variable \$u in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Jobs/RunSeoAudit.php
+
+		-
+			message: '#^Method App\\Models\\ReportTemplate\:\:getSectionDescription\(\) should return string\|null but returns array\|string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/ReportTemplate.php
+
+		-
+			message: '#^Method App\\Models\\Site\:\:getDomainAttribute\(\) should return string but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Site.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Site.php
+
+		-
+			message: '#^Cannot access offset ''events'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$bytes of method App\\Services\\AppBackup\\AppBackupCreator\:\:formatBytes\(\) expects int, int\<0, max\>\|false given\.$#'
+			identifier: argument.type
+			count: 6
+			path: app/Services/AppBackup/AppBackupCreator.php
+
+		-
+			message: '#^Parameter \#2 \$amount of method App\\Models\\StorageDestination\:\:increment\(\) expects float\|int, int\<0, max\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/AppBackup/AppBackupCreator.php
+
+		-
+			message: '#^Parameter \#2 \$fileSize of static method App\\Services\\ActivityLogger\:\:appBackupCompleted\(\) expects int, int\<0, max\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/AppBackup/AppBackupCreator.php
+
+		-
+			message: '#^Undefined variable\: \$config$#'
+			identifier: variable.undefined
+			count: 3
+			path: app/Services/AppBackup/AppBackupCreator.php
+
+		-
+			message: '#^Parameter \#1 \$value of function decrypt expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/AppBackup/AppBackupRestorer.php
+
+		-
+			message: '#^Cannot access offset ''name'' on array\{name\: string, index\: int, crc\: int, size\: int, mtime\: int, comp_size\: int, comp_method\: int, encryption_method\: int\}\|false\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Cannot access offset ''size'' on array\{name\: string, index\: int, crc\: int, size\: int, mtime\: int, comp_size\: int, comp_method\: int, encryption_method\: int\}\|false\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fread expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, list\<string\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/BackupBrowserService.php
+
+		-
+			message: '#^Method App\\Services\\Backup\\BackupManifestV3\:\:encode\(\) should return string but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Backup/BackupManifestV3.php
+
+		-
+			message: '#^Offset ''error'' might not exist on array\{ok\: false, error\?\: string, entry_count\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Backup/IntegrityVerifier.php
+
+		-
+			message: '#^Offset ''error'' might not exist on array\{ok\: false, error\?\: string, table_count\?\: int, insert_count\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Services/Backup/IntegrityVerifier.php
+
+		-
+			message: '#^Offset ''insert_count'' might not exist on array\{ok\: bool, error\?\: string, table_count\?\: int, insert_count\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Backup/IntegrityVerifier.php
+
+		-
+			message: '#^Offset ''table_count'' might not exist on array\{ok\: bool, error\?\: string, table_count\?\: int, insert_count\?\: int\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Backup/IntegrityVerifier.php
+
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupManifestV3\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/IntegrityVerifier.php
+
+		-
+			message: '#^Parameter \#1 \$data of function gzdecode expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/ManifestService.php
+
+		-
+			message: '#^Parameter \#1 \$data of function gzencode expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/ManifestService.php
+
+		-
+			message: '#^Parameter \#1 \$json of static method App\\Services\\Backup\\BackupManifestV3\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/RetentionService.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/Storage/DropboxDriver.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fread expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Backup/Storage/DropboxDriver.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Backup/Storage/DropboxDriver.php
+
+		-
+			message: '#^Parameter \#2 \$length of function fread expects int\<1, max\>, int\<min, 8388608\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Backup/Storage/DropboxDriver.php
+
+		-
+			message: '#^Method App\\Services\\Backup\\Storage\\LocalDriver\:\:size\(\) should return int but returns int\<0, max\>\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Backup/Storage/LocalDriver.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/IncidentResponse/AiAgentService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/IncidentResponse/Playbooks/SiteDownPlaybook.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_map expects array, array\<mixed\>\|Redis given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/JobTracker.php
+
+		-
+			message: '#^Parameter \#2 \$start of static method Redis\:\:ltrim\(\) expects int, float\|int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/JobTracker.php
+
+		-
+			message: '#^Parameter \#1 \$mailable of method Illuminate\\Mail\\PendingMail\:\:queue\(\) expects Illuminate\\Contracts\\Mail\\Mailable, object given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notifications/EmailNotificationSender.php
+
+		-
+			message: '#^Parameter \#1 \$userId of static method App\\Services\\Notifications\\NotificationService\:\:isEventEnabledForChannel\(\) expects int, int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notifications/NotificationService.php
+
+		-
+			message: '#^Parameter \#2 \$data of function hash_hmac expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Notifications/WebhookNotificationSender.php
+
+		-
+			message: '#^Method App\\Services\\PluginRiskAssessmentService\:\:assess\(\) should return array\{score\: int, level\: string, reasons\: array, recommendation\: string\} but returns non\-empty\-array\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/PluginRiskAssessmentService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function base64_encode expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 5
+			path: app/Services/ReportLogoService.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ReportLogoService.php
+
+		-
+			message: '#^Binary operation "%%" between float\|int\<60, max\>\|string and 60 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Reports/BaseReportSectionGatherer.php
+
+		-
+			message: '#^Parameter \#1 \$bytes of static method App\\Helpers\\FormatHelper\:\:bytes\(\) expects int, float\|int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Reports/BaseReportSectionGatherer.php
+
+		-
+			message: '#^Parameter \#1 \$num1 of function intdiv expects int, float\|int\<60, max\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Reports/BaseReportSectionGatherer.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\ReportChartService\:\:renderLineChart\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Reports/Sections/SeoGatherer.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:completed\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Services/Reports/Sections/SeoGatherer.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:broken\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/SeoAudit/ExcelExportService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:running\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/SeoAudit/SiteAuditService.php
+
+		-
+			message: '#^Method App\\Services\\SettingsService\:\:serializeValue\(\) should return string\|null but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SettingsService.php
+
+		-
+			message: '#^Offset ''type'' might not exist on array\{_null\: true\}\|array\{value\: string\|null, type\: string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/SettingsService.php
+
+		-
+			message: '#^Offset ''value'' might not exist on array\{_null\: true\}\|array\{value\: string\|null, type\: string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/SettingsService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WordPress/WordPressHttpClient.php
+
+		-
+			message: '#^Parameter \#3 \$body of method App\\Services\\WordPress\\WordPressHttpClient\:\:curlDownloadWithRetry\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WordPress/WordPressHttpClient.php
+
+		-
+			message: '#^Parameter \#4 \$body of method App\\Services\\WordPress\\WordPressHttpClient\:\:httpRequestWithRetry\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/WordPress/WordPressHttpClient.php
+
+		-
+			message: '#^Parameter \#2 \$options of function curl_setopt_array expects array\{47\: bool, 10015\: array\|string, 19913\: bool, 10023\: array\<int, string\>, 13\: int, 78\: int, 52\: bool, 64\: bool\}, array\{47\: true, 10015\: non\-empty\-string\|false, 19913\: true, 10023\: array, 13\: 300, 78\: 30, 52\: true, 64\: true\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WordPressBackupDownloader.php
+
+		-
+			message: '#^Parameter \#3 \$body of method App\\Services\\WordPress\\WordPressHttpClient\:\:buildAuthHeaders\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/WordPressBackupDownloader.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\WordPressEolService\:\:extractBranch\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Services/WordPressEolService.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\WordPressEolService\:\:majorVersionsBehind\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Services/WordPressEolService.php
+
+		-
+			message: '#^Unsafe call to private method App\\Services\\WordPressEolService\:\:notify\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Services/WordPressEolService.php
+
+		-
+			message: '#^Parameter \#1 \$userId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\InAppNotification\>\:\:forUser\(\) expects int, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Livewire/Components/NotificationDropdown.php
+
+		-
+			message: '#^Parameter \#1 \$userId of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\InAppNotification\>\:\:forUser\(\) expects int, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 5
+			path: app/Livewire/Notifications/NotificationCenter.php
+
+		-
+			message: '#^Job class App\\Jobs\\GenerateReport constructor invoked with 2 parameters in App\\Jobs\\GenerateReport\:\:dispatch\(\), 4\-8 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Livewire/Reports/ReportsOverview.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:running\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Seo/SeoQuickAudit.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:completed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Seo/SeoQuickAudit.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:(issues|pages|links)\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Livewire/Seo/SeoQuickAudit.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\SitePlugins\:\:performUpdate\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Parameter \#1 \$plugin of method App\\Services\\PluginRiskAssessmentService\:\:assess\(\) expects#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SitePlugins.php
+
+		-
+			message: '#^Method App\\Livewire\\Sites\\Detail\\SiteSeoAudit\:\:latestAudit\(\) should return App\\Models\\SeoAudit\|null but returns#'
+			identifier: return.type
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSeoAudit.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:completed?\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Livewire/Sites/Detail/SiteSeoAudit.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isRunning\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/Sites/Detail/SiteSeoAudit.php

@@ -86,7 +86,7 @@ class ChannelFormData extends Form
             'webhook' => (function () use ($channel) {
                 $this->webhookUrl = $channel->config['url'] ?? '';
                 $this->webhookMethod = $channel->config['method'] ?? 'POST';
-                $this->webhookHeaders = isset($channel->config['headers']) ? json_encode($channel->config['headers'], JSON_PRETTY_PRINT) : '';
+                $this->webhookHeaders = isset($channel->config['headers']) ? (json_encode($channel->config['headers'], JSON_PRETTY_PRINT) ?: '') : '';
                 $this->webhookSigningSecret = $channel->config['signing_secret'] ?? '';
             })(),
             default => null,
