@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Backup;
 
 use App\Services\Backup\IntegrityVerifier;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 use ZipArchive;
 
 class IntegrityVerifierTest extends TestCase
