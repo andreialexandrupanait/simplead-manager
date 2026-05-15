@@ -39,8 +39,21 @@ jobs:
           app/Jobs app/Listeners app/Mail app/Dispatchers
           app/Console app/Http
 
-      - name: 'PHPStan: Livewire'
-        run: vendor/bin/phpstan analyse --memory-limit=6G --debug app/Livewire
+      - name: 'PHPStan: Livewire (Sites & Traits)'
+        run: >-
+          vendor/bin/phpstan analyse --memory-limit=6G --debug
+          app/Livewire/Sites app/Livewire/Traits
+
+      - name: 'PHPStan: Livewire (rest)'
+        run: >-
+          vendor/bin/phpstan analyse --memory-limit=6G --debug
+          app/Livewire/Activity app/Livewire/Backups app/Livewire/Clients
+          app/Livewire/Components app/Livewire/Dashboard app/Livewire/Dns
+          app/Livewire/ErrorLogs app/Livewire/Forms app/Livewire/Notifications
+          app/Livewire/Performance app/Livewire/Reports app/Livewire/Security
+          app/Livewire/Seo app/Livewire/Settings app/Livewire/StatusPages
+          app/Livewire/Updates app/Livewire/Uptime
+          app/Livewire/MaintenancePlans.php
 
       - name: 'PHPStan: Services'
         run: vendor/bin/phpstan analyse --memory-limit=6G --debug app/Services
