@@ -26,12 +26,12 @@ jobs:
       - name: Run Pint
         run: vendor/bin/pint --test
 
-      - name: Create swap for PHPStan
+      - name: Extend swap for PHPStan
         run: |
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo fallocate -l 8G /swapfile2
+          sudo chmod 600 /swapfile2
+          sudo mkswap /swapfile2
+          sudo swapon /swapfile2
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --memory-limit=-1 --debug
