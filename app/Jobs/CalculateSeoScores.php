@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Enums\SeoAuditStatus;
@@ -19,12 +21,21 @@ use Illuminate\Queue\SerializesModels;
 class CalculateSeoScores implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    public int $tries = 2; public int $timeout = 120;
-    public function __construct(public Site $site, public SeoAudit $audit) { $this->onQueue('performance'); }
+
+    public int $tries = 2;
+
+    public int $timeout = 120;
+
+    public function __construct(public Site $site, public SeoAudit $audit)
+    {
+        $this->onQueue('performance');
+    }
+
     public function handle(ScoringService $ss, AuditDiffService $ds): void
     {
         $tid = 'seo-audit-'.$this->site->id;
-        $this->audit->markAs(SeoAuditStatus::Scoring); JobTracker::progress($tid, 92, 'Calculating scores...');
+        $this->audit->markAs(SeoAuditStatus::Scoring);
+        JobTracker::progress($tid, 92, 'Calculating scores...');
         $scores = $ss->calculateScores($this->audit);
         $this->audit->update([
             'score' => $scores['overall'],
@@ -36,7 +47,9 @@ class CalculateSeoScores implements ShouldQueue
             'redirect_pages_count' => $this->audit->pages()->whereNotNull('redirect_target')->count(),
         ]);
         $prev = SeoAudit::where('site_id', $this->site->id)->where('id', '!=', $this->audit->id)->completed()->latest('scanned_at')->first();
-        if ($prev) { $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['diff' => $ds->diff($this->audit, $prev)])]); }
+        if ($prev) {
+            $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['diff' => $ds->diff($this->audit, $prev)])]);
+        }
         $m = $this->site->seoMonitor;
         if ($m) {
             $next = now()->addMinutes($m->interval_minutes);
@@ -52,9 +65,16 @@ class CalculateSeoScores implements ShouldQueue
         }
         $this->audit->markAs(SeoAuditStatus::Completed);
         CircuitBreakerService::recordSuccess($this->site);
-        $ti = $this->audit->totalIssues(); $sev = $this->audit->critical_count > 0 ? 'critical' : ($this->audit->high_count > 0 ? 'warning' : 'info');
+        $ti = $this->audit->totalIssues();
+        $sev = $this->audit->critical_count > 0 ? 'critical' : ($this->audit->high_count > 0 ? 'warning' : 'info');
         ActivityLogger::log('seo', $sev, "SEO audit — Score: {$scores['overall']}/100", "{$ti} issues ({$this->audit->pages_crawled} pages)", $this->site);
         JobTracker::complete($tid, "SEO audit complete — Score: {$scores['overall']}/100");
     }
-    public function failed(?\Throwable $e): void { $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage()); CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Scoring failed'); JobTracker::fail('seo-audit-'.$this->site->id, 'Scoring failed'); }
+
+    public function failed(?\Throwable $e): void
+    {
+        $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Scoring failed');
+        JobTracker::fail('seo-audit-'.$this->site->id, 'Scoring failed');
+    }
 }

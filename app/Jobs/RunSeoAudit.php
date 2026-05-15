@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Enums\SeoAuditStatus;
@@ -20,12 +22,23 @@ use Illuminate\Support\Facades\Log;
 class RunSeoAudit implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
     public int $tries = 1;
+
     public int $timeout = 60;
+
     public int $uniqueFor = 900;
 
-    public function __construct(public Site $site, public SeoAudit $audit) { $this->onQueue('performance'); }
-    public function uniqueId(): string { return 'seo-audit-'.$this->site->id; }
+    public function __construct(public Site $site, public SeoAudit $audit)
+    {
+        $this->onQueue('performance');
+    }
+
+    public function uniqueId(): string
+    {
+        return 'seo-audit-'.$this->site->id;
+    }
+
     public function handle(): void
     {
         JobTracker::start($this->uniqueId(), 'Initializing SEO audit...');
@@ -55,5 +68,11 @@ class RunSeoAudit implements ShouldBeUnique, ShouldQueue
         }
         Bus::chain([new CrawlSitePages($this->site, $this->audit), new AnalyzeSeoPages($this->site, $this->audit), new CalculateSeoScores($this->site, $this->audit)])->onQueue('performance')->dispatch();
     }
-    public function failed(?\Throwable $e): void { $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage()); CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'SEO audit failed'); JobTracker::fail($this->uniqueId(), 'SEO audit failed'); }
+
+    public function failed(?\Throwable $e): void
+    {
+        $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'SEO audit failed');
+        JobTracker::fail($this->uniqueId(), 'SEO audit failed');
+    }
 }

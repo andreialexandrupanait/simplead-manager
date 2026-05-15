@@ -16,7 +16,7 @@ class AccentColorHelper
         $hsl = self::rgbToHsl($rgb[0], $rgb[1], $rgb[2]);
 
         $shades = [
-            50  => [0.97, 0.30],
+            50 => [0.97, 0.30],
             100 => [0.94, 0.40],
             200 => [0.87, 0.55],
             300 => [0.77, 0.70],
@@ -42,7 +42,7 @@ class AccentColorHelper
         $b = $rgb[2];
         $vars[] = "--accent-light: rgba({$r}, {$g}, {$b}, 0.2)";
 
-        return implode('; ', $vars) . ';';
+        return implode('; ', $vars).';';
     }
 
     private static function hexToRgb(string $hex): array

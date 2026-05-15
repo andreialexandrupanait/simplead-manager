@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
+use App\Helpers\FormatHelper;
 use App\Jobs\Concerns\BackupJobTrait;
 use App\Models\Backup;
 use App\Models\Site;
@@ -16,7 +17,6 @@ use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
-use App\Helpers\FormatHelper;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -403,7 +403,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 @unlink($chunkPath); // free disk immediately as the chunk is consumed
                 $pct = 60 + (int) (15 * ($i + 1) / max(1, $totalChunks));
                 $this->reportProgress('creating_archive', min(75, $pct),
-                    "Consolidated chunk ".($i + 1)."/{$totalChunks} ({$count} entries)");
+                    'Consolidated chunk '.($i + 1)."/{$totalChunks} ({$count} entries)");
             }
 
             // 2. Database dump (root)

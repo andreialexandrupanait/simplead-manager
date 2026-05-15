@@ -28,7 +28,9 @@ class AnalyzeSeoPages implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 300;
+
     public array $backoff = [60];
 
     private array $issues = [];
@@ -40,7 +42,7 @@ class AnalyzeSeoPages implements ShouldQueue
 
     public function handle(): void
     {
-        $trackerId = 'seo-audit-' . $this->site->id;
+        $trackerId = 'seo-audit-'.$this->site->id;
         $this->audit->markAs(SeoAuditStatus::Analyzing);
         JobTracker::progress($trackerId, 65, 'Analyzing pages...');
 
@@ -86,7 +88,7 @@ class AnalyzeSeoPages implements ShouldQueue
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
         CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Analysis failed');
-        JobTracker::fail('seo-audit-' . $this->site->id, 'Analysis failed');
+        JobTracker::fail('seo-audit-'.$this->site->id, 'Analysis failed');
     }
 
     private function checkTitles($pages): void
@@ -96,7 +98,7 @@ class AnalyzeSeoPages implements ShouldQueue
         $titles = [];
 
         foreach ($pages as $p) {
-            if (!$p->title || $p->title === '') {
+            if (! $p->title || $p->title === '') {
                 $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::Critical, 'Missing title tag', 'Page has no title tag.', $p->url, 'Add a unique, descriptive title (30-60 chars).');
             } else {
                 $titles[$p->title][] = $p->url;
@@ -110,7 +112,7 @@ class AnalyzeSeoPages implements ShouldQueue
 
         foreach ($titles as $title => $urls) {
             if (count($urls) > 1) {
-                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::High, 'Duplicate title', count($urls) . ' pages share the same title: "' . mb_substr($title, 0, 50) . '..."', $urls[0], 'Make each page title unique.');
+                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::High, 'Duplicate title', count($urls).' pages share the same title: "'.mb_substr($title, 0, 50).'..."', $urls[0], 'Make each page title unique.');
             }
         }
     }
@@ -122,7 +124,7 @@ class AnalyzeSeoPages implements ShouldQueue
         $descs = [];
 
         foreach ($pages as $p) {
-            if (!$p->meta_description || $p->meta_description === '') {
+            if (! $p->meta_description || $p->meta_description === '') {
                 $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::High, 'Missing meta description', 'Page has no meta description.', $p->url, 'Add a compelling meta description (70-160 chars).');
             } else {
                 $descs[$p->meta_description][] = $p->url;
@@ -135,7 +137,7 @@ class AnalyzeSeoPages implements ShouldQueue
         }
         foreach ($descs as $d => $urls) {
             if (count($urls) > 1) {
-                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::Medium, 'Duplicate meta description', count($urls) . ' pages share the same description.', $urls[0], 'Write unique descriptions.');
+                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::Medium, 'Duplicate meta description', count($urls).' pages share the same description.', $urls[0], 'Write unique descriptions.');
             }
         }
     }
@@ -147,7 +149,7 @@ class AnalyzeSeoPages implements ShouldQueue
             if (empty($h1)) {
                 $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::High, 'Missing H1', 'Page has no H1 heading.', $p->url, 'Add a single H1 tag.');
             } elseif (count($h1) > 1) {
-                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::Medium, 'Multiple H1 tags', 'Page has ' . count($h1) . ' H1 tags.', $p->url, 'Use only one H1 per page.');
+                $this->addIssue(SeoIssueCategory::OnPage, SeoIssueSeverity::Medium, 'Multiple H1 tags', 'Page has '.count($h1).' H1 tags.', $p->url, 'Use only one H1 per page.');
             }
         }
     }
@@ -225,7 +227,7 @@ class AnalyzeSeoPages implements ShouldQueue
     {
         foreach ($pages as $p) {
             if ($p->canonical_url !== null && $p->is_self_canonical === false) {
-                $this->addIssue(SeoIssueCategory::Indexability, SeoIssueSeverity::High, 'Canonical mismatch', 'Canonical points to: ' . mb_substr($p->canonical_url, 0, 80), $p->url, 'Verify canonical is correct.');
+                $this->addIssue(SeoIssueCategory::Indexability, SeoIssueSeverity::High, 'Canonical mismatch', 'Canonical points to: '.mb_substr($p->canonical_url, 0, 80), $p->url, 'Verify canonical is correct.');
             }
             if ($p->canonical_url === null && $p->is_indexable) {
                 $this->addIssue(SeoIssueCategory::Indexability, SeoIssueSeverity::Medium, 'Missing canonical', 'No canonical tag.', $p->url, 'Add a self-referencing canonical.');
@@ -253,7 +255,7 @@ class AnalyzeSeoPages implements ShouldQueue
 
     private function checkStructuredData($pages): void
     {
-        $withSchema = $pages->filter(fn($p) => !empty($p->structured_data_types))->count();
+        $withSchema = $pages->filter(fn ($p) => ! empty($p->structured_data_types))->count();
         if ($withSchema === 0 && $pages->count() > 0) {
             $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::Medium, 'No structured data', 'No pages have JSON-LD markup.', null, 'Add JSON-LD structured data (Organization, WebSite, Article).');
         }
@@ -266,7 +268,7 @@ class AnalyzeSeoPages implements ShouldQueue
         foreach ($pages as $p) {
             $path = parse_url($p->url, PHP_URL_PATH) ?? '';
             if (strlen($p->url) > $maxLen) {
-                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Long URLs', 'URL exceeds ' . $maxLen . ' characters (' . strlen($p->url) . ' chars).', $p->url, 'Shorten the URL.');
+                $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Low, 'Long URLs', 'URL exceeds '.$maxLen.' characters ('.strlen($p->url).' chars).', $p->url, 'Shorten the URL.');
             }
             if (str_contains($path, '_')) {
                 $this->addIssue(SeoIssueCategory::Technical, SeoIssueSeverity::Info, 'URLs with underscores', 'URL path contains underscores.', $p->url, 'Use hyphens (-) instead of underscores in URLs.');
@@ -382,7 +384,7 @@ class AnalyzeSeoPages implements ShouldQueue
                     SeoIssueCategory::OnPage,
                     SeoIssueSeverity::High,
                     'Duplicate content',
-                    'This page has identical body content as ' . (count($urls) - 1) . ' other page(s): ' . $urlList,
+                    'This page has identical body content as '.(count($urls) - 1).' other page(s): '.$urlList,
                     $p->url,
                     'Consolidate duplicate pages using canonical tags, 301 redirects, or by making content unique.'
                 );
@@ -402,12 +404,12 @@ class AnalyzeSeoPages implements ShouldQueue
         foreach ($canonicalMap as $pageUrl => $canonicalUrl) {
             $target = $canonicalMap[$canonicalUrl] ?? null;
             if ($target) {
-                $chain = $pageUrl . ' → ' . $canonicalUrl . ' → ' . $target;
+                $chain = $pageUrl.' → '.$canonicalUrl.' → '.$target;
                 $this->addIssue(
                     SeoIssueCategory::Indexability,
                     SeoIssueSeverity::High,
                     'Canonical chain detected',
-                    'Canonical tag points to a page that itself has a different canonical: ' . $chain,
+                    'Canonical tag points to a page that itself has a different canonical: '.$chain,
                     $pageUrl,
                     'Set the canonical directly to the final target URL to avoid chains.'
                 );
@@ -467,7 +469,8 @@ class AnalyzeSeoPages implements ShouldQueue
 
             foreach ($rawSchemas as $schema) {
                 if (! empty($schema['_invalid'])) {
-                    $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::High, 'Invalid JSON-LD', 'Structured data contains invalid JSON: ' . ($schema['_error'] ?? 'parse error'), $p->url, 'Fix the JSON syntax in the JSON-LD script tag.');
+                    $this->addIssue(SeoIssueCategory::StructuredData, SeoIssueSeverity::High, 'Invalid JSON-LD', 'Structured data contains invalid JSON: '.($schema['_error'] ?? 'parse error'), $p->url, 'Fix the JSON syntax in the JSON-LD script tag.');
+
                     continue;
                 }
 
@@ -533,7 +536,7 @@ class AnalyzeSeoPages implements ShouldQueue
                 SeoIssueCategory::Links,
                 SeoIssueSeverity::Medium,
                 'Orphan page (deep analysis)',
-                'This page is orphaned: ' . implode(', ', $reasons) . '. It may be hard for search engines and users to discover.',
+                'This page is orphaned: '.implode(', ', $reasons).'. It may be hard for search engines and users to discover.',
                 $p->url,
                 $suggestion
             );
@@ -546,16 +549,16 @@ class AnalyzeSeoPages implements ShouldQueue
             $response = Http::timeout(10)->withUserAgent(config('seo.crawler.user_agent'))->withoutVerifying()->head($this->site->url);
             $headers = $response->headers();
 
-            if (!isset($headers['Strict-Transport-Security'])) {
+            if (! isset($headers['Strict-Transport-Security'])) {
                 $this->addIssue(SeoIssueCategory::Security, SeoIssueSeverity::Medium, 'Missing HSTS header', 'Strict-Transport-Security not set.', null, 'Add HSTS header.');
             }
-            if (!isset($headers['X-Frame-Options'])) {
+            if (! isset($headers['X-Frame-Options'])) {
                 $this->addIssue(SeoIssueCategory::Security, SeoIssueSeverity::Medium, 'Missing X-Frame-Options', 'X-Frame-Options not set.', null, 'Add X-Frame-Options: SAMEORIGIN.');
             }
-            if (!isset($headers['X-Content-Type-Options'])) {
+            if (! isset($headers['X-Content-Type-Options'])) {
                 $this->addIssue(SeoIssueCategory::Security, SeoIssueSeverity::Low, 'Missing X-Content-Type-Options', 'Header not set.', null, 'Add X-Content-Type-Options: nosniff.');
             }
-            if (!isset($headers['Content-Security-Policy'])) {
+            if (! isset($headers['Content-Security-Policy'])) {
                 $this->addIssue(SeoIssueCategory::Security, SeoIssueSeverity::Low, 'Missing CSP', 'Content-Security-Policy not set.', null, 'Implement a Content-Security-Policy.');
             }
 
@@ -573,7 +576,9 @@ class AnalyzeSeoPages implements ShouldQueue
     private function checkSsl(): void
     {
         $host = parse_url($this->site->url, PHP_URL_HOST);
-        if (!$host) return;
+        if (! $host) {
+            return;
+        }
 
         try {
             $ctx = stream_context_create(['ssl' => ['capture_peer_cert' => true, 'verify_peer' => false, 'verify_peer_name' => false]]);
@@ -582,15 +587,20 @@ class AnalyzeSeoPages implements ShouldQueue
             if ($socket === false) {
                 $this->addIssue(SeoIssueCategory::Security, SeoIssueSeverity::Critical, 'SSL connection failed', $errstr ?: 'Cannot connect to SSL port.', null, 'Fix SSL certificate.');
                 $this->audit->update(['ssl_info' => ['valid' => false, 'error' => $errstr]]);
+
                 return;
             }
 
             $params = stream_context_get_params($socket);
             fclose($socket);
 
-            if (!isset($params['options']['ssl']['peer_certificate'])) return;
+            if (! isset($params['options']['ssl']['peer_certificate'])) {
+                return;
+            }
             $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate']);
-            if (!$cert) return;
+            if (! $cert) {
+                return;
+            }
 
             $validTo = $cert['validTo_time_t'] ?? 0;
             $daysLeft = (int) round(($validTo - time()) / 86400);
@@ -631,9 +641,9 @@ class AnalyzeSeoPages implements ShouldQueue
         // Count by unique issue groups (title+severity), not by individual records.
         // This prevents per-page issues from inflating severity counts and destroying scores.
         $counts = ['critical_count' => 0, 'high_count' => 0, 'medium_count' => 0, 'low_count' => 0, 'info_count' => 0];
-        $grouped = collect($this->issues)->groupBy(fn ($i) => $i['title'] . '||' . $i['severity']->value);
+        $grouped = collect($this->issues)->groupBy(fn ($i) => $i['title'].'||'.$i['severity']->value);
         foreach ($grouped as $group) {
-            $counts[$group->first()['severity']->value . '_count']++;
+            $counts[$group->first()['severity']->value.'_count']++;
         }
 
         foreach (array_chunk($records, 100) as $chunk) {

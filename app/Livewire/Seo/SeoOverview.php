@@ -17,10 +17,17 @@ use Livewire\Component;
 
 class SeoOverview extends Component
 {
-    #[Url] public string $search = '';
-    #[Url] public string $scoreFilter = '';
-    #[Url] public string $sort = 'manual';
-    #[Url] public string $activeTab = 'portfolio';
+    #[Url]
+    public string $search = '';
+
+    #[Url]
+    public string $scoreFilter = '';
+
+    #[Url]
+    public string $sort = 'manual';
+
+    #[Url]
+    public string $activeTab = 'portfolio';
 
     #[Computed]
     public function sites()

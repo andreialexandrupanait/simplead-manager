@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
-use RuntimeException;
-
 /**
  * Lightweight streaming parser for the database dump produced by the WP connector
  * plugin (see wordpress-plugin/.../class-backup-endpoint.php::php_database_dump).

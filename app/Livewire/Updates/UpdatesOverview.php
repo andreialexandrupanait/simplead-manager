@@ -7,7 +7,6 @@ namespace App\Livewire\Updates;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
-use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
@@ -56,7 +55,7 @@ class UpdatesOverview extends Component
                 ->whereHas('site', fn ($q) => $q->where('is_connected', true))
                 ->with('site')
                 ->when($this->search, function ($q) {
-                    $search = '%' . $this->escapeLike($this->search) . '%';
+                    $search = '%'.$this->escapeLike($this->search).'%';
                     $q->where(function ($sq) use ($search) {
                         $sq->where('name', 'ilike', $search)
                             ->orWhere('slug', 'ilike', $search)
@@ -88,7 +87,7 @@ class UpdatesOverview extends Component
                 ->whereHas('site', fn ($q) => $q->where('is_connected', true))
                 ->with('site')
                 ->when($this->search, function ($q) {
-                    $search = '%' . $this->escapeLike($this->search) . '%';
+                    $search = '%'.$this->escapeLike($this->search).'%';
                     $q->where(function ($sq) use ($search) {
                         $sq->where('name', 'ilike', $search)
                             ->orWhere('slug', 'ilike', $search)
@@ -171,7 +170,7 @@ class UpdatesOverview extends Component
 
     public function updateAllForSite(int $siteId): void
     {
-        $rateLimitKey = "bulk-update-site:{$siteId}:" . auth()->id();
+        $rateLimitKey = "bulk-update-site:{$siteId}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many requests. Please wait.');
 
@@ -218,7 +217,7 @@ class UpdatesOverview extends Component
 
     public function updatePluginAcrossSites(string $slug): void
     {
-        $rateLimitKey = "bulk-update-plugin:{$slug}:" . auth()->id();
+        $rateLimitKey = "bulk-update-plugin:{$slug}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many requests. Please wait.');
 
@@ -245,6 +244,7 @@ class UpdatesOverview extends Component
             $site = $plugin->site;
             if (! $site?->is_connected) {
                 $failed++;
+
                 continue;
             }
 

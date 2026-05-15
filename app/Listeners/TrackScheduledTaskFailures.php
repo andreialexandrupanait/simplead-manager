@@ -38,7 +38,7 @@ class TrackScheduledTaskFailures
         }
 
         $message = $event->exception
-            ? "Last error: ".substr($event->exception->getMessage(), 0, 500)
+            ? 'Last error: '.substr($event->exception->getMessage(), 0, 500)
             : 'No exception details available.';
 
         NotificationService::notifyAppEvent(

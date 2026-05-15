@@ -43,17 +43,17 @@ class PluginRiskAssessmentService
             "Plugin: {$plugin->name} ({$plugin->slug})",
             "Current version: {$plugin->version}",
             "Update version: {$plugin->update_version}",
-            "Active: " . ($plugin->is_active ? 'Yes' : 'No'),
-            "Abandoned: " . ($plugin->is_abandoned ? 'Yes' : 'No'),
-            "Closed on WP.org: " . ($plugin->is_closed ? "Yes ({$plugin->closed_reason})" : 'No'),
+            'Active: '.($plugin->is_active ? 'Yes' : 'No'),
+            'Abandoned: '.($plugin->is_abandoned ? 'Yes' : 'No'),
+            'Closed on WP.org: '.($plugin->is_closed ? "Yes ({$plugin->closed_reason})" : 'No'),
         ];
 
         if ($pluginInfo) {
-            $parts[] = "Active installs: " . ($pluginInfo['active_installs'] ?? 'unknown');
-            $parts[] = "Tested up to WP: " . ($pluginInfo['tested'] ?? 'unknown');
-            $parts[] = "Requires PHP: " . ($pluginInfo['requires_php'] ?? 'unknown');
-            $parts[] = "Last updated: " . ($pluginInfo['last_updated'] ?? 'unknown');
-            $parts[] = "Rating: " . ($pluginInfo['rating'] ?? 'unknown') . '/100';
+            $parts[] = 'Active installs: '.($pluginInfo['active_installs'] ?? 'unknown');
+            $parts[] = 'Tested up to WP: '.($pluginInfo['tested'] ?? 'unknown');
+            $parts[] = 'Requires PHP: '.($pluginInfo['requires_php'] ?? 'unknown');
+            $parts[] = 'Last updated: '.($pluginInfo['last_updated'] ?? 'unknown');
+            $parts[] = 'Rating: '.($pluginInfo['rating'] ?? 'unknown').'/100';
         }
 
         if ($changelog) {

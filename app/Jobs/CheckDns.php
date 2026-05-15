@@ -32,7 +32,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'check-dns-' . $this->monitor->id;
+        return 'check-dns-'.$this->monitor->id;
     }
 
     public function handle(): void

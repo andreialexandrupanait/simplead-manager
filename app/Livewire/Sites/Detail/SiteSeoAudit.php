@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Livewire\Sites\Detail;
 
 use App\Enums\SeoIssueCategory;
@@ -22,19 +24,34 @@ class SiteSeoAudit extends Component
     use WithPagination, WithSiteAuthorization;
 
     public Site $site;
-    #[Url] public string $activeTab = 'issues';
+
+    #[Url]
+    public string $activeTab = 'issues';
+
     public string $severityFilter = '';
+
     public string $categoryFilter = '';
+
     public string $pageSearch = '';
+
     public string $linkTypeFilter = '';
+
     public bool $isRunning = false;
+
     public bool $settingsAutoAudit = false;
+
     public int $settingsInterval = 10080;
+
     public int $settingsMaxPages = 200;
+
     public string $settingsSitemapUrl = '';
+
     public string $settingsPreferredTime = '03:00';
+
     public bool $settingsCrawlEnabled = false;
+
     public string $newKeyword = '';
+
     public string $keywordSort = 'position';
 
     public function mount(Site $site): void
@@ -43,13 +60,39 @@ class SiteSeoAudit extends Component
         $this->site = $site;
         $this->isRunning = app(SiteAuditService::class)->hasRunningAudit($site);
         $monitor = $site->seoMonitor;
-        if ($monitor) { $this->settingsAutoAudit = $monitor->is_active; $this->settingsInterval = $monitor->interval_minutes; $this->settingsMaxPages = $monitor->max_pages ?? 200; $this->settingsSitemapUrl = $monitor->sitemap_url ?? ''; $this->settingsPreferredTime = $monitor->audit_config['preferred_time'] ?? '03:00'; $this->settingsCrawlEnabled = $monitor->crawl_enabled ?? false; }
+        if ($monitor) {
+            $this->settingsAutoAudit = $monitor->is_active;
+            $this->settingsInterval = $monitor->interval_minutes;
+            $this->settingsMaxPages = $monitor->max_pages ?? 200;
+            $this->settingsSitemapUrl = $monitor->sitemap_url ?? '';
+            $this->settingsPreferredTime = $monitor->audit_config['preferred_time'] ?? '03:00';
+            $this->settingsCrawlEnabled = $monitor->crawl_enabled ?? false;
+        }
     }
 
-    #[Computed] public function monitor() { return $this->site->seoMonitor; }
-    #[Computed] public function latestAudit(): ?SeoAudit { return $this->site->seoAudits()->latest('id')->first(); }
-    #[Computed] public function latestCompletedAudit(): ?SeoAudit { return $this->site->seoAudits()->completed()->latest('scanned_at')->first(); }
-    #[Computed] public function auditHistory() { return $this->site->seoAudits()->completed()->latest('scanned_at')->limit(20)->get(['id','score','critical_count','high_count','medium_count','low_count','info_count','pages_crawled','scan_duration','scanned_at','category_scores']); }
+    #[Computed]
+    public function monitor()
+    {
+        return $this->site->seoMonitor;
+    }
+
+    #[Computed]
+    public function latestAudit(): ?SeoAudit
+    {
+        return $this->site->seoAudits()->latest('id')->first();
+    }
+
+    #[Computed]
+    public function latestCompletedAudit(): ?SeoAudit
+    {
+        return $this->site->seoAudits()->completed()->latest('scanned_at')->first();
+    }
+
+    #[Computed]
+    public function auditHistory()
+    {
+        return $this->site->seoAudits()->completed()->latest('scanned_at')->limit(20)->get(['id', 'score', 'critical_count', 'high_count', 'medium_count', 'low_count', 'info_count', 'pages_crawled', 'scan_duration', 'scanned_at', 'category_scores']);
+    }
 
     #[Computed]
     public function trendData(): array
@@ -124,9 +167,15 @@ class SiteSeoAudit extends Component
     #[Computed]
     public function pages()
     {
-        $audit = $this->latestCompletedAudit; if (!$audit) return collect();
+        $audit = $this->latestCompletedAudit;
+        if (! $audit) {
+            return collect();
+        }
         $q = $audit->pages()->whereNotNull('status_code');
-        if ($this->pageSearch !== '') $q->where('url', 'ilike', '%'.$this->pageSearch.'%');
+        if ($this->pageSearch !== '') {
+            $q->where('url', 'ilike', '%'.$this->pageSearch.'%');
+        }
+
         return $q->orderBy('status_code')->paginate(50, pageName: 'pagesPage');
     }
 
@@ -145,7 +194,13 @@ class SiteSeoAudit extends Component
         return $q->paginate(50, pageName: 'linksPage');
     }
 
-    #[Computed] public function brokenLinksCount(): int { $a = $this->latestCompletedAudit; return $a ? $a->links()->broken()->count() : 0; }
+    #[Computed]
+    public function brokenLinksCount(): int
+    {
+        $a = $this->latestCompletedAudit;
+
+        return $a ? $a->links()->broken()->count() : 0;
+    }
 
     #[Computed]
     public function brokenLinksStats(): array
@@ -161,6 +216,7 @@ class SiteSeoAudit extends Component
             'external' => $a->links()->broken()->where('type', 'external')->count(),
         ];
     }
+
     #[Computed]
     public function brokenImages()
     {
@@ -311,10 +367,29 @@ class SiteSeoAudit extends Component
         $this->dispatch('notify', type: 'success', message: 'Fetching keyword rankings...');
     }
 
-    #[Computed] public function categoryScores(): array { return $this->latestCompletedAudit?->category_scores ?? []; }
-    #[Computed] public function auditDiff(): ?array { return $this->latestCompletedAudit?->data['diff'] ?? null; }
-    #[Computed] public function severityOptions(): array { return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases()); }
-    #[Computed] public function categoryOptions(): array { return array_map(fn ($c) => ['value' => $c->value, 'label' => $c->label()], SeoIssueCategory::cases()); }
+    #[Computed]
+    public function categoryScores(): array
+    {
+        return $this->latestCompletedAudit?->category_scores ?? [];
+    }
+
+    #[Computed]
+    public function auditDiff(): ?array
+    {
+        return $this->latestCompletedAudit?->data['diff'] ?? null;
+    }
+
+    #[Computed]
+    public function severityOptions(): array
+    {
+        return array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], SeoIssueSeverity::cases());
+    }
+
+    #[Computed]
+    public function categoryOptions(): array
+    {
+        return array_map(fn ($c) => ['value' => $c->value, 'label' => $c->label()], SeoIssueCategory::cases());
+    }
 
     #[Computed]
     public function infrastructureData(): array
@@ -428,7 +503,7 @@ class SiteSeoAudit extends Component
 
                 $response = \Illuminate\Support\Facades\Http::timeout(15)
                     ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                    ->post(rtrim($this->site->url, '/') . $endpoint, $payload);
+                    ->post(rtrim($this->site->url, '/').$endpoint, $payload);
 
                 if ($response->successful()) {
                     $success++;
@@ -442,13 +517,21 @@ class SiteSeoAudit extends Component
             usleep(200_000); // 200ms between requests
         }
 
-        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: "Bulk fix: {$success} applied" . ($failed > 0 ? ", {$failed} failed" : '') . '.');
+        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: "Bulk fix: {$success} applied".($failed > 0 ? ", {$failed} failed" : '').'.');
     }
 
     public function runAudit(): void
     {
-        if (!RateLimiter::attempt('seo-audit-'.$this->site->id, 1, fn() => true, 60)) { $this->dispatch('notify', type: 'warning', message: 'Please wait.'); return; }
-        if ($this->isRunning) { $this->dispatch('notify', type: 'warning', message: 'Already running.'); return; }
+        if (! RateLimiter::attempt('seo-audit-'.$this->site->id, 1, fn () => true, 60)) {
+            $this->dispatch('notify', type: 'warning', message: 'Please wait.');
+
+            return;
+        }
+        if ($this->isRunning) {
+            $this->dispatch('notify', type: 'warning', message: 'Already running.');
+
+            return;
+        }
         $audit = app(SiteAuditService::class)->startAudit($this->site, 'manual');
         RunSeoAudit::dispatch($this->site, $audit);
         $this->isRunning = true;
@@ -458,7 +541,10 @@ class SiteSeoAudit extends Component
     public function checkProgress(): void
     {
         $l = $this->site->seoAudits()->latest('id')->first();
-        if (!$l || !$l->isRunning()) { $this->isRunning = false; unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->categoryScores, $this->brokenLinks, $this->brokenLinksCount, $this->brokenLinksStats, $this->brokenImages, $this->brokenImagesCount, $this->redirectPages, $this->redirectPagesCount); }
+        if (! $l || ! $l->isRunning()) {
+            $this->isRunning = false;
+            unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->categoryScores, $this->brokenLinks, $this->brokenLinksCount, $this->brokenLinksStats, $this->brokenImages, $this->brokenImagesCount, $this->redirectPages, $this->redirectPagesCount);
+        }
     }
 
     public function updateSettings(): void
@@ -486,18 +572,25 @@ class SiteSeoAudit extends Component
     }
 
     public string $fixUrl = '';
+
     public string $fixTitle = '';
+
     public string $fixDescription = '';
 
     public string $fixRobotsUrl = '';
+
     public string $fixRobotsAction = 'index';
 
     public string $fixCanonicalUrl = '';
+
     public string $fixCanonicalTarget = '';
 
     public string $fixOgUrl = '';
+
     public string $fixOgTitle = '';
+
     public string $fixOgDescription = '';
+
     public string $fixOgImage = '';
 
     public function openFixModal(string $url): void
@@ -679,10 +772,18 @@ class SiteSeoAudit extends Component
     public function deleteAudit(int $id): void
     {
         $a = SeoAudit::where('site_id', $this->site->id)->findOrFail($id);
-        if ($a->isRunning()) { $this->dispatch('notify', type: 'warning', message: 'Cannot delete running audit.'); return; }
-        $a->delete(); unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->brokenLinks, $this->brokenLinksCount);
+        if ($a->isRunning()) {
+            $this->dispatch('notify', type: 'warning', message: 'Cannot delete running audit.');
+
+            return;
+        }
+        $a->delete();
+        unset($this->latestAudit, $this->latestCompletedAudit, $this->auditHistory, $this->groupedIssues, $this->pages, $this->brokenLinks, $this->brokenLinksCount);
         $this->dispatch('notify', type: 'success', message: 'Audit deleted.');
     }
 
-    public function render() { return view('livewire.sites.detail.site-seo-audit')->layout('components.layouts.app', ['siteContext' => $this->site]); }
+    public function render()
+    {
+        return view('livewire.sites.detail.site-seo-audit')->layout('components.layouts.app', ['siteContext' => $this->site]);
+    }
 }

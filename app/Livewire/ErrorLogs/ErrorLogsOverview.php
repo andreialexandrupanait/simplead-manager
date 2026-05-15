@@ -59,7 +59,7 @@ class ErrorLogsOverview extends Component
             ->when($this->filter === 'unresolved', fn ($q) => $q->unresolved())
             ->when($this->filter === 'resolved', fn ($q) => $q->where('is_resolved', true))
             ->when($this->search, function ($q) {
-                $s = '%' . str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search) . '%';
+                $s = '%'.str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search).'%';
                 $q->where(function ($sq) use ($s) {
                     $sq->where('message', 'ilike', $s)
                         ->orWhereHas('site', fn ($site) => $site->where('name', 'ilike', $s));

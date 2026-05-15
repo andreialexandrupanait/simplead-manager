@@ -95,7 +95,7 @@ class ActivityTimeline extends Component
             ->when($this->filter !== 'all', fn ($q) => $q->where('type', $this->filter))
             ->when($this->severity !== 'all', fn ($q) => $q->where('severity', $this->severity))
             ->when($this->search, function ($q) {
-                $search = '%' . str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search) . '%';
+                $search = '%'.str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search).'%';
                 $q->where(function ($sq) use ($search) {
                     $sq->where('title', 'ilike', $search)
                         ->orWhere('description', 'ilike', $search)

@@ -29,11 +29,15 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 900;
+
     public int $uniqueFor = 1080;
+
     public array $backoff = [60, 120];
 
-    private const SKIP_EXTENSIONS = ['pdf','doc','docx','xls','xlsx','zip','rar','jpg','jpeg','png','gif','svg','webp','ico','mp3','mp4','avi','mov','woff','woff2','ttf','eot','css','js','xml','json','map'];
+    private const SKIP_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'mp3', 'mp4', 'avi', 'mov', 'woff', 'woff2', 'ttf', 'eot', 'css', 'js', 'xml', 'json', 'map'];
+
     private const SKIP_PATHS = ['/wp-admin', '/wp-login.php', '/wp-json', '/feed', '/xmlrpc.php', '/wp-cron.php', '/wp-content/uploads'];
 
     public function __construct(public Site $site, public SeoAudit $audit)
@@ -43,12 +47,12 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'seo-crawl-' . $this->site->id;
+        return 'seo-crawl-'.$this->site->id;
     }
 
     public function handle(): void
     {
-        $trackerId = 'seo-audit-' . $this->site->id;
+        $trackerId = 'seo-audit-'.$this->site->id;
         $this->audit->markAs(SeoAuditStatus::Crawling);
 
         $siteUrl = rtrim($this->site->url, '/');
@@ -60,7 +64,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $pageTimeout = (int) config('seo.crawler.timeout_per_page');
 
         $visited = [];
-        $queue = [$siteUrl . '/'];
+        $queue = [$siteUrl.'/'];
         $crawled = 0;
         $inboundCounts = [];
 
@@ -74,7 +78,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         JobTracker::progress($trackerId, 5, 'Starting crawl...');
 
-        while (!empty($queue) && $crawled < $maxPages) {
+        while (! empty($queue) && $crawled < $maxPages) {
             $url = array_shift($queue);
             $urlHash = UrlNormalizerService::hash($url);
 
@@ -127,11 +131,12 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
                     $this->updateProgress($trackerId, $crawled, $maxPages);
                     usleep($delayMs * 1000);
+
                     continue;
                 }
 
                 // Skip non-HTML
-                if ($statusCode === 200 && !str_contains($mimeType, 'text/html')) {
+                if ($statusCode === 200 && ! str_contains($mimeType, 'text/html')) {
                     SeoPage::create([
                         'seo_audit_id' => $this->audit->id,
                         'site_id' => $this->site->id,
@@ -143,6 +148,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                     ]);
                     $this->updateProgress($trackerId, $crawled, $maxPages);
                     usleep($delayMs * 1000);
+
                     continue;
                 }
 
@@ -189,8 +195,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                     'page_size_bytes' => strlen($body),
                     'ttfb_seconds' => round($ttfb, 3),
                     'structured_data_types' => $pageData['structured_data_types'] ?: null,
-                    'og_tags' => !empty($pageData['og_tags']) ? $pageData['og_tags'] : null,
-                    'twitter_tags' => !empty($pageData['twitter_tags']) ? $pageData['twitter_tags'] : null,
+                    'og_tags' => ! empty($pageData['og_tags']) ? $pageData['og_tags'] : null,
+                    'twitter_tags' => ! empty($pageData['twitter_tags']) ? $pageData['twitter_tags'] : null,
                     'has_viewport_meta' => $pageData['has_viewport_meta'],
                     'meta' => array_filter([
                         'images_without_lazy' => $pageData['images_without_lazy'] > 0 ? $pageData['images_without_lazy'] : null,
@@ -213,9 +219,9 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                 // Add discovered internal links to queue
                 foreach ($pageData['internal_links'] as $link) {
                     $resolvedUrl = $this->resolveUrl($link['url'], $url);
-                    if (!$this->shouldSkipUrl($resolvedUrl, $baseDomain)) {
+                    if (! $this->shouldSkipUrl($resolvedUrl, $baseDomain)) {
                         $linkHash = UrlNormalizerService::hash($resolvedUrl);
-                        if (!isset($visited[$linkHash])) {
+                        if (! isset($visited[$linkHash])) {
                             $queue[] = $resolvedUrl;
                         }
                     }
@@ -260,7 +266,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
         CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed');
-        JobTracker::fail('seo-audit-' . $this->site->id, 'Crawl failed');
+        JobTracker::fail('seo-audit-'.$this->site->id, 'Crawl failed');
     }
 
     private function checkBrokenLinks(): void
@@ -333,7 +339,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
             'title' => null, 'title_length' => null,
             'meta_description' => null, 'meta_description_length' => null,
             'meta_robots' => null, 'canonical_url' => null, 'is_self_canonical' => null,
-            'h1_tags' => [], 'heading_structure' => ['h1'=>0,'h2'=>0,'h3'=>0,'h4'=>0,'h5'=>0,'h6'=>0],
+            'h1_tags' => [], 'heading_structure' => ['h1' => 0, 'h2' => 0, 'h3' => 0, 'h4' => 0, 'h5' => 0, 'h6' => 0],
             'word_count' => 0, 'image_count' => 0, 'images_without_alt' => 0, 'images_without_lazy' => 0,
             'image_urls' => [], 'internal_links' => [], 'external_links' => [],
             'structured_data_types' => [], 'og_tags' => [], 'twitter_tags' => [],
@@ -342,8 +348,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         ];
 
         libxml_use_internal_errors(true);
-        $doc = new DOMDocument();
-        $doc->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        $doc = new DOMDocument;
+        $doc->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
         libxml_clear_errors();
 
         // Title
@@ -355,17 +361,28 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         // Meta tags
         foreach ($doc->getElementsByTagName('meta') as $meta) {
-            if (!$meta instanceof DOMElement) continue;
+            if (! $meta instanceof DOMElement) {
+                continue;
+            }
             $name = strtolower($meta->getAttribute('name'));
             $property = strtolower($meta->getAttribute('property'));
             $content = $meta->getAttribute('content');
 
-            if ($name === 'description') { $data['meta_description'] = $content; $data['meta_description_length'] = mb_strlen($content); }
-            elseif ($name === 'robots') { $data['meta_robots'] = $content; }
-            elseif ($name === 'viewport') { $data['has_viewport_meta'] = true; }
+            if ($name === 'description') {
+                $data['meta_description'] = $content;
+                $data['meta_description_length'] = mb_strlen($content);
+            } elseif ($name === 'robots') {
+                $data['meta_robots'] = $content;
+            } elseif ($name === 'viewport') {
+                $data['has_viewport_meta'] = true;
+            }
 
-            if (str_starts_with($property, 'og:')) { $data['og_tags'][$property] = $content; }
-            if (str_starts_with($name, 'twitter:') || str_starts_with($property, 'twitter:')) { $data['twitter_tags'][$name ?: $property] = $content; }
+            if (str_starts_with($property, 'og:')) {
+                $data['og_tags'][$property] = $content;
+            }
+            if (str_starts_with($name, 'twitter:') || str_starts_with($property, 'twitter:')) {
+                $data['twitter_tags'][$name ?: $property] = $content;
+            }
         }
 
         // Canonical + hreflang
@@ -388,13 +405,15 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         // Headings
         for ($level = 1; $level <= 6; $level++) {
-            $tag = 'h' . $level;
+            $tag = 'h'.$level;
             $els = $doc->getElementsByTagName($tag);
             $data['heading_structure'][$tag] = $els->length;
             if ($level === 1) {
                 for ($i = 0; $i < $els->length; $i++) {
                     $text = trim($els->item($i)->textContent);
-                    if ($text !== '') $data['h1_tags'][] = $text;
+                    if ($text !== '') {
+                        $data['h1_tags'][] = $text;
+                    }
                 }
             }
         }
@@ -431,9 +450,13 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         // Links
         foreach ($doc->getElementsByTagName('a') as $a) {
-            if (!$a instanceof DOMElement) continue;
+            if (! $a instanceof DOMElement) {
+                continue;
+            }
             $href = $a->getAttribute('href');
-            if (empty($href) || str_starts_with($href, '#') || str_starts_with($href, 'javascript:') || str_starts_with($href, 'mailto:') || str_starts_with($href, 'tel:')) continue;
+            if (empty($href) || str_starts_with($href, '#') || str_starts_with($href, 'javascript:') || str_starts_with($href, 'mailto:') || str_starts_with($href, 'tel:')) {
+                continue;
+            }
 
             $rel = strtolower($a->getAttribute('rel'));
             $anchor = mb_substr(trim($a->textContent), 0, 500);
@@ -584,32 +607,43 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $scheme = $parsed['scheme'] ?? 'https';
         $host = $parsed['host'] ?? '';
         if (str_starts_with($href, '//')) {
-            return $scheme . ':' . $href;
+            return $scheme.':'.$href;
         }
         if (str_starts_with($href, '/')) {
-            return $scheme . '://' . $host . $href;
+            return $scheme.'://'.$host.$href;
         }
         $basePath = $parsed['path'] ?? '/';
         $baseDir = substr($basePath, 0, (int) strrpos($basePath, '/') + 1);
-        return $scheme . '://' . $host . $baseDir . $href;
+
+        return $scheme.'://'.$host.$baseDir.$href;
     }
 
     private function shouldSkipUrl(string $url, string $baseDomain): bool
     {
-        if (!UrlNormalizerService::isSameDomain($url, $baseDomain)) return true;
+        if (! UrlNormalizerService::isSameDomain($url, $baseDomain)) {
+            return true;
+        }
         $path = parse_url($url, PHP_URL_PATH) ?? '';
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (in_array($ext, self::SKIP_EXTENSIONS, true)) return true;
-        foreach (self::SKIP_PATHS as $skip) {
-            if (str_starts_with($path, $skip)) return true;
+        if (in_array($ext, self::SKIP_EXTENSIONS, true)) {
+            return true;
         }
+        foreach (self::SKIP_PATHS as $skip) {
+            if (str_starts_with($path, $skip)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
     private function calculateDepth(string $url, string $siteUrl): int
     {
         $path = trim(parse_url($url, PHP_URL_PATH) ?? '', '/');
-        if ($path === '') return 0;
+        if ($path === '') {
+            return 0;
+        }
+
         return count(explode('/', $path));
     }
 

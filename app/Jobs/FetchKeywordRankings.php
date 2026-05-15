@@ -30,7 +30,7 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'keyword-rankings-' . $this->site->id;
+        return 'keyword-rankings-'.$this->site->id;
     }
 
     public function handle(): void

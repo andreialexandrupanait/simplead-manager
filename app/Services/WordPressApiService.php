@@ -8,10 +8,10 @@ use App\Contracts\WordPressApiServiceInterface;
 use App\Models\Site;
 use App\Services\WordPress\Concerns\ManagesCron;
 use App\Services\WordPress\Concerns\ManagesDatabase;
-use App\Services\WordPress\Concerns\ManagesPlugins;
-use App\Services\WordPress\Concerns\ManagesSecurity;
 use App\Services\WordPress\Concerns\ManagesErrorLogs;
+use App\Services\WordPress\Concerns\ManagesPlugins;
 use App\Services\WordPress\Concerns\ManagesPosts;
+use App\Services\WordPress\Concerns\ManagesSecurity;
 use App\Services\WordPress\Concerns\ManagesSiteInfo;
 use App\Services\WordPress\Concerns\ManagesThemes;
 use App\Services\WordPress\Concerns\ManagesUsers;
@@ -21,8 +21,8 @@ use Illuminate\Http\Client\Response;
 class WordPressApiService implements WordPressApiServiceInterface
 {
     use ManagesCron;
-    use ManagesErrorLogs;
     use ManagesDatabase;
+    use ManagesErrorLogs;
     use ManagesPlugins;
     use ManagesPosts;
     use ManagesSecurity;

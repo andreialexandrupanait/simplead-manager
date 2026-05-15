@@ -33,7 +33,7 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'fetch-php-errors-' . $this->site->id;
+        return 'fetch-php-errors-'.$this->site->id;
     }
 
     public function handle(): void
@@ -50,7 +50,7 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
             $newFatals = 0;
 
             foreach ($entries as $entry) {
-                $hash = md5(($entry['level'] ?? '') . ($entry['message'] ?? ''));
+                $hash = md5(($entry['level'] ?? '').($entry['message'] ?? ''));
 
                 $existing = PhpErrorLog::where('site_id', $this->site->id)
                     ->where('message_hash', $hash)

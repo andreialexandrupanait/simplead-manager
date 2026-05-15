@@ -113,7 +113,7 @@ class SafeUpdateService
                     $errorParts[] = 'Health check failed';
                 }
                 if (! $visualPassed) {
-                    $errorParts[] = 'Visual regression detected significant changes (' . ($visualResults['diff_percent'] ?? '?') . '% different)';
+                    $errorParts[] = 'Visual regression detected significant changes ('.($visualResults['diff_percent'] ?? '?').'% different)';
                 }
 
                 if ($safeUpdate->auto_rollback) {

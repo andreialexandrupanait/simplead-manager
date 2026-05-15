@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AppBackup;
 
 use App\Models\AppBackup;
-use Illuminate\Support\Facades\Log;
 
 trait AppBackupHelpers
 {

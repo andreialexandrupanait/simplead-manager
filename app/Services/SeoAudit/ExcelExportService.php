@@ -16,19 +16,28 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class ExcelExportService
 {
     private const HEADER_BG = 'FF2D3748';
+
     private const HEADER_FG = 'FFFFFFFF';
+
     private const SECTION_BG = 'FFF3F4F6';
+
     private const CRITICAL_BG = 'FFFEE2E2';
+
     private const HIGH_BG = 'FFFFF7ED';
+
     private const MEDIUM_BG = 'FFFFFBEB';
+
     private const LOW_BG = 'FFEFF6FF';
+
     private const GREEN_FG = 'FF059669';
+
     private const RED_FG = 'FFDC2626';
+
     private const YELLOW_FG = 'FFD97706';
 
     public function export(SeoAudit $audit): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $spreadsheet->removeSheetByIndex(0);
 
         $this->buildSummarySheet($spreadsheet, $audit);
@@ -83,7 +92,7 @@ class ExcelExportService
             ['Scan Date', $audit->scanned_at?->format('M d, Y H:i') ?? 'N/A'],
             ['Duration', $audit->scan_duration ? gmdate('H:i:s', $audit->scan_duration) : 'N/A'],
             ['Pages Crawled', $audit->pages_crawled],
-            ['SEO Plugin', ($audit->seo_plugin ?? 'None detected') . ($audit->seo_plugin_version ? ' v'.$audit->seo_plugin_version : '')],
+            ['SEO Plugin', ($audit->seo_plugin ?? 'None detected').($audit->seo_plugin_version ? ' v'.$audit->seo_plugin_version : '')],
         ];
         foreach ($info as $item) {
             $sheet->setCellValue("A{$row}", $item[0]);
@@ -118,7 +127,7 @@ class ExcelExportService
         if (! empty($diff)) {
             $delta = $diff['score_delta'] ?? 0;
             $sheet->setCellValue("A{$row}", 'vs Previous');
-            $sheet->setCellValue("B{$row}", ($delta > 0 ? '+' : '') . $delta . ' points');
+            $sheet->setCellValue("B{$row}", ($delta > 0 ? '+' : '').$delta.' points');
             $sheet->getStyle("A{$row}")->getFont()->setBold(true);
             $sheet->getStyle("B{$row}")->getFont()->setColor(new Color($delta > 0 ? self::GREEN_FG : ($delta < 0 ? self::RED_FG : 'FF6B7280')));
             $row++;
@@ -689,7 +698,7 @@ class ExcelExportService
         $letter = '';
         while ($num > 0) {
             $num--;
-            $letter = chr(65 + ($num % 26)) . $letter;
+            $letter = chr(65 + ($num % 26)).$letter;
             $num = intdiv($num, 26);
         }
 

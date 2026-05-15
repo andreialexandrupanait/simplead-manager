@@ -216,4 +216,3 @@ Schedule::command('security:maintenance recalculate-scores')
     ->dailyAt('06:00')
     ->name('security-score-recalculation')
     ->onOneServer();
-

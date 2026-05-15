@@ -34,7 +34,7 @@ class CheckBrokenResources implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'broken-resources-' . $this->site->id;
+        return 'broken-resources-'.$this->site->id;
     }
 
     public function handle(): void

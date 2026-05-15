@@ -374,7 +374,7 @@ class SitePlugins extends Component
             $this->riskAssessment = [
                 'score' => 50,
                 'level' => 'unknown',
-                'reasons' => ['Assessment failed: ' . $e->getMessage()],
+                'reasons' => ['Assessment failed: '.$e->getMessage()],
                 'recommendation' => 'Proceed with caution.',
             ];
         }

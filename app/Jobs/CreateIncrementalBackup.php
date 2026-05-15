@@ -7,12 +7,12 @@ namespace App\Jobs;
 use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
+use App\Helpers\FormatHelper;
 use App\Jobs\Concerns\BackupJobTrait;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
-use App\Helpers\FormatHelper;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\RetentionService;
 use App\Services\Backup\Storage\StorageFactory;
@@ -136,7 +136,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $dbPath = $this->tempDir.'/database.sql.gz';
             $dbStart = microtime(true);
             $dbChunkCounter = 0;
-            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) use (&$dbChunkCounter, $dbStart) {
+            $api->chunkedDownload('db', $dbPath, function (int $downloaded, int $total) use (&$dbChunkCounter) {
                 $dbChunkCounter++;
                 $pct = 20 + (int) (($downloaded / max($total, 1)) * 15);
                 $this->reportProgress('downloading_database', $pct, "Downloading database... chunk {$downloaded}/{$total}");
@@ -329,7 +329,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
                 @unlink($chunkPath);
                 $pct = 65 + (int) (15 * ($i + 1) / max(1, $totalChunks));
                 $this->reportProgress('creating_archive', min(80, $pct),
-                    "Consolidated chunk ".($i + 1)."/{$totalChunks} ({$count} entries)");
+                    'Consolidated chunk '.($i + 1)."/{$totalChunks} ({$count} entries)");
             }
 
             $builder->addFileFromPath($dbPath, 'database.sql.gz');

@@ -188,9 +188,15 @@
                     <x-ui.input wire:model="form.alertAfterFailures" id="alertAfterFailures" type="number" min="1" max="10" />
                 </x-ui.form-group>
 
-                <x-ui.form-group :label="__('Dashboard Sites Per Page')" for="dashboardPerPage" :hint="__('Number of sites shown on the dashboard (10-200)')">
-                    <x-ui.input wire:model="form.dashboardPerPage" id="dashboardPerPage" type="number" min="10" max="200" />
-                </x-ui.form-group>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <x-ui.form-group :label="__('Dashboard Sites Per Page')" for="dashboardPerPage" :hint="__('Number of sites shown on the dashboard (10-200)')">
+                        <x-ui.input wire:model="form.dashboardPerPage" id="dashboardPerPage" type="number" min="10" max="200" />
+                    </x-ui.form-group>
+
+                    <x-ui.form-group :label="__('Sites List Per Page')" for="sitesPerPage" :hint="__('Number of sites shown on the Sites page (10-200)')">
+                        <x-ui.input wire:model="form.sitesPerPage" id="sitesPerPage" type="number" min="10" max="200" />
+                    </x-ui.form-group>
+                </div>
             </div>
         </x-ui.card>
 

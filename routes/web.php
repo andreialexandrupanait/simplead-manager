@@ -15,14 +15,14 @@ use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
 use App\Livewire\Dns;
-use App\Livewire\MaintenancePlans;
 use App\Livewire\ErrorLogs;
+use App\Livewire\MaintenancePlans;
 use App\Livewire\Notifications;
 use App\Livewire\Performance;
 use App\Livewire\Reports;
 use App\Livewire\Security;
-use App\Livewire\Settings;
 use App\Livewire\Seo;
+use App\Livewire\Settings;
 use App\Livewire\Sites;
 use App\Livewire\StatusPages;
 use App\Livewire\Updates;
@@ -136,7 +136,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     // SEO
     Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
     Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
-
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');

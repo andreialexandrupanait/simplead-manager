@@ -407,7 +407,7 @@ class SiteOverview extends Component
 
             $this->dispatch('notify', type: 'success', message: 'API keys rotated successfully.');
         } catch (\Throwable $e) {
-            $this->dispatch('notify', type: 'error', message: 'Key rotation failed: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Key rotation failed: '.$e->getMessage());
         }
     }
 

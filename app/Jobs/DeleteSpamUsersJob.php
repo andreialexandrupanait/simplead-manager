@@ -89,7 +89,7 @@ class DeleteSpamUsersJob implements ShouldQueue
             JobTracker::progress(
                 $key,
                 (int) (($this->deletedSoFar + $this->errorsSoFar) / $this->totalOriginal * 100),
-                "Deleting batch of " . count($chunkIds) . " users (" . ($this->deletedSoFar + $this->errorsSoFar) . " of {$this->totalOriginal} processed)..."
+                'Deleting batch of '.count($chunkIds).' users ('.($this->deletedSoFar + $this->errorsSoFar)." of {$this->totalOriginal} processed)..."
             );
 
             $response = $api->bulkDeleteUsers($chunkIds, $this->reassignToWpId);

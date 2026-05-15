@@ -17,7 +17,9 @@ use Livewire\Component;
 class SeoQuickAudit extends Component
 {
     public string $url = '';
+
     public bool $isRunning = false;
+
     public ?int $prospectSiteId = null;
 
     public function mount(): void

@@ -140,6 +140,12 @@ class SAM_Security_Login {
             return;
         }
 
+        // Allow load-styles.php and load-scripts.php (WordPress concatenated CSS/JS)
+        if (strpos($request_path, '/wp-admin/load-styles.php') !== false ||
+            strpos($request_path, '/wp-admin/load-scripts.php') !== false) {
+            return;
+        }
+
         // Allow static assets under /wp-admin/ (CSS/JS/images/fonts for login page)
         if (preg_match('#/wp-admin/(css|js|images|fonts)/#', $request_path)) {
             return;

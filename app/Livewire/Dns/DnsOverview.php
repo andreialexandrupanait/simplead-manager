@@ -92,7 +92,7 @@ class DnsOverview extends Component
         $monitors = DnsMonitor::with('site')
             ->active()
             ->when($this->search, function ($q) {
-                $s = '%' . str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search) . '%';
+                $s = '%'.str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $this->search).'%';
                 $q->where(function ($sq) use ($s) {
                     $sq->where('domain', 'ilike', $s)
                         ->orWhereHas('site', fn ($site) => $site->where('name', 'ilike', $s));

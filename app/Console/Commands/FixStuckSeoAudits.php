@@ -34,7 +34,7 @@ class FixStuckSeoAudits extends Command
                     $audit->markAs(SeoAuditStatus::Failed, 'Orphaned audit — marked failed by cleanup command');
                 }
             }
-            $this->info(($dry ? '[DRY RUN] Would mark' : 'Marked') . " {$stale->count()} audit(s) as failed.");
+            $this->info(($dry ? '[DRY RUN] Would mark' : 'Marked')." {$stale->count()} audit(s) as failed.");
         }
 
         // Reset next_audit_at on affected monitors so dispatcher picks them up
@@ -65,7 +65,7 @@ class FixStuckSeoAudits extends Command
                     ->orWhere('payload', 'like', '%CalculateSeoScores%')
                     ->delete();
             }
-            $this->info(($dry ? '[DRY RUN] Would clear' : 'Cleared') . " {$failedCount} failed SEO job(s).");
+            $this->info(($dry ? '[DRY RUN] Would clear' : 'Cleared')." {$failedCount} failed SEO job(s).");
         } else {
             $this->info('No failed SEO jobs to clear.');
         }

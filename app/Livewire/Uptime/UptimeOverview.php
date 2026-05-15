@@ -15,6 +15,7 @@ use Livewire\WithPagination;
 class UptimeOverview extends Component
 {
     use WithPagination;
+
     public string $search = '';
 
     // Maintenance window modal

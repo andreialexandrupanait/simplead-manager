@@ -10,7 +10,6 @@ use App\Models\DatabaseCleanupConfig;
 use App\Models\DnsMonitor;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
-use App\Models\SeoMonitor;
 use App\Models\SearchConsoleConnection;
 use App\Models\SecurityMonitor;
 use App\Models\Site;
