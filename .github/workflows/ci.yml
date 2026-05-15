@@ -26,15 +26,24 @@ jobs:
       - name: Run Pint
         run: vendor/bin/pint --test
 
-      - name: Extend swap for PHPStan
-        run: |
-          sudo fallocate -l 8G /swapfile2
-          sudo chmod 600 /swapfile2
-          sudo mkswap /swapfile2
-          sudo swapon /swapfile2
+      - name: 'PHPStan: Models, Enums & core'
+        run: >-
+          vendor/bin/phpstan analyse --memory-limit=4G
+          app/Models app/Enums app/DTOs app/Contracts app/Events
+          app/Exceptions app/Helpers app/Observers app/Policies
+          app/Providers app/Rules app/View app/helpers.php
 
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=-1 --debug
+      - name: 'PHPStan: Jobs, Console & HTTP'
+        run: >-
+          vendor/bin/phpstan analyse --memory-limit=4G
+          app/Jobs app/Listeners app/Mail app/Dispatchers
+          app/Console app/Http
+
+      - name: 'PHPStan: Livewire'
+        run: vendor/bin/phpstan analyse --memory-limit=4G app/Livewire
+
+      - name: 'PHPStan: Services'
+        run: vendor/bin/phpstan analyse --memory-limit=4G app/Services
 
   test:
     name: PHPUnit Tests
