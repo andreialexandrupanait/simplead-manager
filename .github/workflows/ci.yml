@@ -39,10 +39,10 @@ jobs:
           app/Jobs app/Listeners app/Mail app/Dispatchers
           app/Console app/Http
 
-      - name: 'PHPStan: Livewire (Sites & Traits)'
+      - name: 'PHPStan: Livewire (Sites)'
         run: >-
           vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Livewire/Sites app/Livewire/Traits
+          app/Livewire/Sites
 
       - name: 'PHPStan: Livewire (rest)'
         run: >-

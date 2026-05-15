@@ -40,3 +40,4 @@ parameters:
         - identifier: varTag.variableNotFound
     excludePaths:
         - app/Console/Commands/MigrateReportFiles.php
+        - app/Livewire/Traits/

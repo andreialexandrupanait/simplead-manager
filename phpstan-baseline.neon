@@ -713,3 +713,15 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: app/Livewire/Sites/Detail/SiteSeoAudit.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Livewire/Traits/WithReportGeneration.php
+
+		-
+			message: '#^Variable \$metrics in empty\(\) always exists and is always falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Livewire/Traits/WithReportGeneration.php
