@@ -42,7 +42,7 @@
                     @endif
                 </div>
                 <div class="flex items-center gap-2">
-                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">{{ __('Change Property') }}</button>
+                    <button wire:click="changeProperty" class="text-xs font-medium text-accent-600 hover:text-accent-500">{{ __('Change Property') }}</button>
                     <span class="text-gray-300">|</span>
                     <button wire:click="disconnectSearchConsole" wire:confirm="{{ __('Disconnect Search Console? Cached data will be removed.') }}" class="text-xs font-medium text-gray-400 hover:text-red-600">{{ __('Disconnect') }}</button>
                 </div>
@@ -146,7 +146,7 @@
                     const d = this.chartData;
                     const datasets = [];
                     if (this.activeMetrics.clicks) datasets.push({
-                        label: 'Clicks', data: d.clicks, borderColor: '#8D5CF5', backgroundColor: '#8D5CF51A',
+                        label: 'Clicks', data: d.clicks, borderColor: '#7B68EE', backgroundColor: '#7B68EE1A',
                         borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, yAxisID: 'y',
                     });
                     if (this.activeMetrics.impressions) datasets.push({
@@ -201,7 +201,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['clicks']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#8D5CF5" />
+                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#7B68EE" />
                             @endif
                         </x-ui.card>
                     </div>

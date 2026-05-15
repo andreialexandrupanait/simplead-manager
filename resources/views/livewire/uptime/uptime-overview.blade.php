@@ -23,23 +23,23 @@
     <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Total') }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900">{{ $this->counts['total'] }}</p>
+            <p class="mt-1 text-2xl font-semibold text-gray-900">{{ $this->counts['total'] }}</p>
         </x-ui.card>
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Up') }}</p>
-            <p class="mt-1 text-2xl font-bold text-green-600">{{ $this->counts['up'] }}</p>
+            <p class="mt-1 text-2xl font-semibold text-green-600">{{ $this->counts['up'] }}</p>
         </x-ui.card>
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Down') }}</p>
-            <p class="mt-1 text-2xl font-bold text-red-600">{{ $this->counts['down'] }}</p>
+            <p class="mt-1 text-2xl font-semibold text-red-600">{{ $this->counts['down'] }}</p>
         </x-ui.card>
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Degraded') }}</p>
-            <p class="mt-1 text-2xl font-bold text-yellow-600">{{ $this->counts['degraded'] }}</p>
+            <p class="mt-1 text-2xl font-semibold text-yellow-600">{{ $this->counts['degraded'] }}</p>
         </x-ui.card>
         <x-ui.card>
             <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Paused') }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-400">{{ $this->counts['paused'] }}</p>
+            <p class="mt-1 text-2xl font-semibold text-gray-400">{{ $this->counts['paused'] }}</p>
         </x-ui.card>
     </div>
 

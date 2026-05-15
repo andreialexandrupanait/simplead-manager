@@ -48,10 +48,10 @@
          x-transition:leave-end="opacity-0 scale-95"
          x-cloak
          @if($sidebarMode)
-             class="fixed left-64 bottom-16 w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-950/5 dark:ring-gray-700 z-50"
+             class="fixed left-64 bottom-16 w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 z-50"
              :class="sidebarOpen ? 'lg:left-64' : 'lg:left-16'"
          @else
-             class="absolute right-0 mt-6 w-[calc(100vw-2rem)] sm:w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-950/5 dark:ring-gray-700 z-50"
+             class="absolute right-0 mt-6 w-[min(24rem,calc(100vw-2rem))] sm:w-96 rounded-xl bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 z-50"
          @endif
     >
         {{-- Header --}}

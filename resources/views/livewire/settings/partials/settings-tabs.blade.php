@@ -1,4 +1,4 @@
-<div class="sticky top-16 z-10 -mx-6 lg:-mx-8 px-6 lg:px-8 mb-6 border-b border-gray-200 bg-gray-50/95 backdrop-blur">
+<div class="sticky top-16 z-10 -mx-6 lg:-mx-8 px-6 lg:px-8 mb-6 border-b border-gray-200 bg-gray-50 dark:bg-gray-900">
     <nav class="-mb-px flex gap-1 overflow-x-auto scrollbar-hide">
         @php
             $tabs = [['route' => 'settings.profile', 'label' => __('Profile')]];

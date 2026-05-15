@@ -70,10 +70,15 @@ class ReportsOverview extends Component
         $this->resetPage();
     }
 
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
+    }
+
     public function render()
     {
         $reports = Report::with(['site.client', 'reportTemplate'])
-            ->when($this->search, fn ($q) => $q->where('title', 'ilike', "%{$this->search}%"))
+            ->when($this->search, fn ($q) => $q->where('title', 'ilike', '%'.$this->escapeLike($this->search).'%'))
             ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
             ->when($this->siteFilter, fn ($q) => $q->where('site_id', $this->siteFilter))
             ->orderBy(

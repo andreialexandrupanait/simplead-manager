@@ -6,8 +6,8 @@
     {{-- Card Header --}}
     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
-                <svg aria-hidden="true" class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-100">
+                <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
             </div>
@@ -129,7 +129,7 @@
                                     $mScore = $perfData['mobile_score'];
                                     $mColor = $mScore === null ? 'text-gray-400' : ($mScore >= 90 ? 'text-green-600' : ($mScore >= 50 ? 'text-yellow-600' : 'text-red-600'));
                                 @endphp
-                                <div class="mt-1 text-2xl font-bold {{ $mColor }}">{{ $mScore ?? '—' }}</div>
+                                <div class="mt-1 text-2xl font-semibold {{ $mColor }}">{{ $mScore ?? '—' }}</div>
                                 <div class="mt-1 text-xs text-gray-400">Click for details</div>
                             </button>
                         </div>
@@ -143,7 +143,7 @@
                                     $dScore = $perfData['desktop_score'];
                                     $dColor = $dScore === null ? 'text-gray-400' : ($dScore >= 90 ? 'text-green-600' : ($dScore >= 50 ? 'text-yellow-600' : 'text-red-600'));
                                 @endphp
-                                <div class="mt-1 text-2xl font-bold {{ $dColor }}">{{ $dScore ?? '—' }}</div>
+                                <div class="mt-1 text-2xl font-semibold {{ $dColor }}">{{ $dScore ?? '—' }}</div>
                                 <div class="mt-1 text-xs text-gray-400">Click for details</div>
                             </button>
                         </div>

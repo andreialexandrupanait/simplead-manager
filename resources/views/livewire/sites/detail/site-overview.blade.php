@@ -32,7 +32,7 @@
                 </button>
             @else
                 <button wire:click="openConnectModal"
-                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition">
+                        class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-accent-500 transition">
                     <svg aria-hidden="true" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                     </svg>
@@ -79,25 +79,25 @@
     {{-- Connect Plugin Modal --}}
     <x-ui.modal name="connect-plugin" maxWidth="lg">
         <div class="p-6">
-            <h2 class="text-lg font-semibold text-gray-900">{{ __('Connect WordPress Plugin') }}</h2>
+            <h2 id="modal-connect-plugin-title" class="text-lg font-semibold text-gray-900">{{ __('Connect WordPress Plugin') }}</h2>
             <p class="mt-1 text-sm text-gray-500">{{ __('Follow these steps to connect your WordPress site.') }}</p>
 
             <div class="mt-4 rounded-lg bg-gray-50 p-4">
                 <ol class="space-y-3 text-sm text-gray-700">
                     <li class="flex gap-3">
-                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">1</span>
-                        <span><a href="{{ route('download.connector-plugin') }}" class="font-medium text-indigo-600 hover:text-indigo-500 underline">{{ __('Download the connector plugin') }}</a> (.zip file)</span>
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">1</span>
+                        <span><a href="{{ route('download.connector-plugin') }}" class="font-medium text-accent-600 hover:text-accent-500 underline">{{ __('Download the connector plugin') }}</a> (.zip file)</span>
                     </li>
                     <li class="flex gap-3">
-                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">2</span>
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">2</span>
                         <span>{{ __('Install & activate it in your WordPress site (Plugins → Add New → Upload)') }}</span>
                     </li>
                     <li class="flex gap-3">
-                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">3</span>
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">3</span>
                         <span>{{ __('Go to') }} <strong>WP Admin &rarr; Settings &rarr; SimpleAD Manager</strong></span>
                     </li>
                     <li class="flex gap-3">
-                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">4</span>
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">4</span>
                         <span>{{ __('Copy the') }} <strong>API Key</strong>, <strong>API Secret</strong>, {{ __('and') }} <strong>API Endpoint</strong> {{ __('into the fields below') }}</span>
                     </li>
                 </ol>
@@ -136,7 +136,7 @@
                     @endif
 
                     <button type="submit"
-                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition">
+                            class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-500 transition">
                         {{ __('Save & Connect') }}
                     </button>
                 </div>

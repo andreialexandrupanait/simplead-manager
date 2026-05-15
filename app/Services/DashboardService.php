@@ -232,7 +232,7 @@ class DashboardService
         $eagerLoads = [
             'client',
             'uptimeMonitor',
-            'uptimeMonitor.incidents',
+            'uptimeMonitor.incidents' => fn ($q) => $q->orderByDesc('started_at')->limit(10),
             'performanceMonitor',
             'backupConfig',
             'latestCompletedBackup',
@@ -257,9 +257,10 @@ class DashboardService
             ]);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('url', 'ilike', "%{$search}%");
+            $escaped = '%'.$this->escapeLike($search).'%';
+            $query->where(function ($q) use ($escaped) {
+                $q->where('name', 'ilike', $escaped)
+                    ->orWhere('url', 'ilike', $escaped);
             });
         }
 
@@ -325,6 +326,11 @@ class DashboardService
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
     private function getBackupCounts(): array

@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-2xl font-bold text-gray-900">Bine ai venit,</h2>
+    <h2 class="text-2xl font-semibold text-gray-900">Bine ai venit,</h2>
     <p class="mt-1 text-sm text-gray-500 mb-8">Introdu detaliile de logare mai jos pentru a accesa contul tau.</p>
 
     @if(session('status'))

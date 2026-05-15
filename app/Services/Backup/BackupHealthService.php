@@ -59,6 +59,19 @@ class BackupHealthService
             ->orderByDesc('created_at')
             ->first();
 
+        return $this->buildReport($config, $latestCompleted, $latestAttempt);
+    }
+
+    /**
+     * Compute only the score integer from pre-fetched data (avoids N+1 in batch contexts).
+     */
+    public function computeScoreFromData(Site $site, ?\App\Models\BackupConfig $config, ?Backup $latestCompleted, ?Backup $latestAttempt): ?int
+    {
+        return $this->buildReport($config, $latestCompleted, $latestAttempt)['score'];
+    }
+
+    private function buildReport(?\App\Models\BackupConfig $config, ?Backup $latestCompleted, ?Backup $latestAttempt): array
+    {
         $reasons = [];
         $score = 0;
 

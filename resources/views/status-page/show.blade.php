@@ -5,7 +5,7 @@
             @if($data['logo_url'])
                 <img src="{{ $data['logo_url'] }}" alt="{{ $data['title'] }}" class="mx-auto mb-4 h-12">
             @endif
-            <h1 class="text-2xl font-bold text-gray-900">{{ $data['title'] }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">{{ $data['title'] }}</h1>
             @if($data['description'])
                 <p class="mt-1 text-sm text-gray-500">{{ $data['description'] }}</p>
             @endif
@@ -96,7 +96,7 @@
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <p class="text-sm text-gray-500">Current Month</p>
-                            <p class="text-3xl font-bold {{ $data['sla']['met'] ? 'text-green-600' : 'text-red-600' }}">
+                            <p class="text-3xl font-semibold {{ $data['sla']['met'] ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $data['sla']['current'] !== null ? number_format($data['sla']['current'], 3) . '%' : 'N/A' }}
                             </p>
                         </div>

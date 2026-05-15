@@ -6,25 +6,25 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Unresolved') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-red-600">{{ $this->stats['fatal'] }}</p>
+                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['fatal'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Fatal Errors') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-yellow-600">{{ $this->stats['warning'] }}</p>
+                <p class="text-2xl font-semibold text-yellow-600">{{ $this->stats['warning'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Warnings') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['sites'] }}</p>
+                <p class="text-2xl font-semibold text-accent-600">{{ $this->stats['sites'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Sites Affected') }}</p>
             </div>
         </x-ui.card>

@@ -210,10 +210,14 @@ class SiteSeoAudit extends Component
             return ['total' => 0, 'internal' => 0, 'external' => 0];
         }
 
+        $counts = $a->links()->broken()
+            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN type = 'internal' THEN 1 ELSE 0 END) as internal, SUM(CASE WHEN type = 'external' THEN 1 ELSE 0 END) as external")
+            ->first();
+
         return [
-            'total' => $a->links()->broken()->count(),
-            'internal' => $a->links()->broken()->where('type', 'internal')->count(),
-            'external' => $a->links()->broken()->where('type', 'external')->count(),
+            'total' => (int) $counts->total,
+            'internal' => (int) $counts->internal,
+            'external' => (int) $counts->external,
         ];
     }
 

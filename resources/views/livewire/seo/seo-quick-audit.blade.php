@@ -50,7 +50,7 @@
                 @php $score=$audit->score; $sc=$score>=80?'text-green-600':($score>=50?'text-yellow-600':'text-red-600'); $rc=$score>=80?'stroke-green-500':($score>=50?'stroke-yellow-500':'stroke-red-500'); @endphp
                 <div class="relative mx-auto h-28 w-28">
                     <svg class="h-28 w-28 -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" class="stroke-gray-200" stroke-width="8"/><circle cx="50" cy="50" r="42" fill="none" class="{{ $rc }}" stroke-width="8" stroke-linecap="round" stroke-dasharray="{{ $score*2.64 }} 264"/></svg>
-                    <div class="absolute inset-0 flex items-center justify-center"><span class="text-3xl font-bold {{ $sc }}">{{ $score }}</span></div>
+                    <div class="absolute inset-0 flex items-center justify-center"><span class="text-3xl font-semibold {{ $sc }}">{{ $score }}</span></div>
                 </div>
                 <p class="mt-2 text-sm font-medium text-gray-500">Overall Score</p>
             </x-ui.card>
@@ -58,7 +58,7 @@
                 @php $cs=$this->categoryScores[$key]??0; $cc=$cs>=80?'text-green-600':($cs>=50?'text-yellow-600':'text-red-600'); $bc=$cs>=80?'bg-green-500':($cs>=50?'bg-yellow-500':'bg-red-500'); @endphp
                 <x-ui.card>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ $label }}</p>
-                    <p class="mt-1 text-2xl font-bold {{ $cc }}">{{ $cs }}</p>
+                    <p class="mt-1 text-2xl font-semibold {{ $cc }}">{{ $cs }}</p>
                     <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200"><div class="h-full rounded-full {{ $bc }}" style="width:{{ $cs }}%"></div></div>
                 </x-ui.card>
             @endforeach

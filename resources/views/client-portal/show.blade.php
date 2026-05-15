@@ -11,7 +11,7 @@
         {{-- Header --}}
         <div class="mb-8 flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">{{ $client->name }}</h1>
+                <h1 class="text-2xl font-semibold text-gray-900">{{ $client->name }}</h1>
                 <p class="text-sm text-gray-500">Site management reports and status overview</p>
             </div>
             @if($client->logo)

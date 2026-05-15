@@ -26,8 +26,8 @@
             let chartDatasets = this.datasets.map(ds => ({
                 label: ds.label,
                 data: ds.data,
-                borderColor: ds.color || '#8D5CF5',
-                backgroundColor: (ds.color || '#8D5CF5') + '1A',
+                borderColor: ds.color || '#7B68EE',
+                backgroundColor: (ds.color || '#7B68EE') + '1A',
                 borderWidth: 2,
                 fill: ds.pointRadius !== undefined ? false : true,
                 tension: 0.3,
@@ -101,11 +101,11 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#2C2C2C' : '#f3f4f6' },
                             ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' },
                         },
                         y: {
-                            grid: { color: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#2C2C2C' : '#f3f4f6' },
                             ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' },
                             beginAtZero: true,
                         },

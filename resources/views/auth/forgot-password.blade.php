@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Forgot password?</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">Forgot password?</h2>
     <p class="text-sm text-gray-500 mb-6">No worries, we'll send you reset instructions.</p>
 
     @if(session('status'))

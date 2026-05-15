@@ -1,7 +1,7 @@
 @props([
     'labels' => [],
     'data' => [],
-    'colors' => ['#22c55e', '#eab308', '#ef4444', '#9ca3af', '#8D5CF5'],
+    'colors' => ['#22c55e', '#eab308', '#ef4444', '#9ca3af', '#7B68EE'],
     'height' => '300px',
     'centerText' => null,
 ])

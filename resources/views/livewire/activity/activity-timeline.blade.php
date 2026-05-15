@@ -8,25 +8,25 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Total Events') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-red-600">{{ $this->stats['critical'] }}</p>
+                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['critical'] }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Critical') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-yellow-600">{{ $this->stats['warning'] }}</p>
+                <p class="text-2xl font-semibold text-yellow-600">{{ $this->stats['warning'] }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Warnings') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-green-600">{{ $this->stats['success'] }}</p>
+                <p class="text-2xl font-semibold text-green-600">{{ $this->stats['success'] }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Success') }}</p>
             </div>
         </x-ui.card>

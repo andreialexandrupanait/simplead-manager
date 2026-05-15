@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Updates;
 
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class UpdatesOverview extends Component
 {
+    use WithSiteAuthorization;
+
     public string $filter = 'all';
 
     public string $search = '';
@@ -140,7 +143,15 @@ class UpdatesOverview extends Component
 
         $site = $item->site;
 
-        if (! $site?->is_connected) {
+        if (! $site) {
+            $this->dispatch('notify', type: 'error', message: 'Site not found.');
+
+            return;
+        }
+
+        $this->authorizeSiteModification($site);
+
+        if (! $site->is_connected) {
             $this->dispatch('notify', type: 'error', message: 'Site is not connected.');
 
             return;
@@ -178,6 +189,7 @@ class UpdatesOverview extends Component
         }
 
         $site = Site::findOrFail($siteId);
+        $this->authorizeSiteModification($site);
         if (! $site->is_connected) {
             $this->dispatch('notify', type: 'error', message: 'Site is not connected.');
 
@@ -217,6 +229,10 @@ class UpdatesOverview extends Component
 
     public function updatePluginAcrossSites(string $slug): void
     {
+        if (auth()->user()->isViewer()) {
+            abort(403, 'Viewers cannot modify sites.');
+        }
+
         $rateLimitKey = "bulk-update-plugin:{$slug}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many requests. Please wait.');

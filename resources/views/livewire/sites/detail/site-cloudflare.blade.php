@@ -234,7 +234,7 @@
                                 <svg aria-hidden="true" class="h-5 w-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                             </div>
                         </div>
-                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($totalReqs) }}</p>
+                        <p class="mt-3 text-2xl font-semibold text-gray-900">{{ number_format($totalReqs) }}</p>
                         <p class="text-xs text-gray-500">{{ __('Total Requests') }}</p>
                         <p class="text-xs text-green-600 mt-1">{{ number_format($cachedReqs) }} {{ __('cached') }} ({{ $cachePercent }}%)</p>
                     </x-ui.card>
@@ -249,7 +249,7 @@
                             $bwFormatted = $totalBw > 1073741824 ? round($totalBw / 1073741824, 2) . ' GB' : round($totalBw / 1048576, 2) . ' MB';
                             $cachedBwFormatted = $cachedBw > 1073741824 ? round($cachedBw / 1073741824, 2) . ' GB' : round($cachedBw / 1048576, 2) . ' MB';
                         @endphp
-                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ $bwFormatted }}</p>
+                        <p class="mt-3 text-2xl font-semibold text-gray-900">{{ $bwFormatted }}</p>
                         <p class="text-xs text-gray-500">{{ __('Bandwidth') }}</p>
                         <p class="text-xs text-green-600 mt-1">{{ $cachedBwFormatted }} {{ __('saved') }} ({{ $bwCachePercent }}%)</p>
                     </x-ui.card>
@@ -260,7 +260,7 @@
                                 <svg aria-hidden="true" class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </div>
                         </div>
-                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
+                        <p class="mt-3 text-2xl font-semibold text-gray-900">{{ number_format($threats['all'] ?? 0) }}</p>
                         <p class="text-xs text-gray-500">{{ __('Threats Blocked') }}</p>
                     </x-ui.card>
 
@@ -270,7 +270,7 @@
                                 <svg aria-hidden="true" class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             </div>
                         </div>
-                        <p class="mt-3 text-2xl font-bold text-gray-900">{{ number_format($uniques['all'] ?? $pageviews['all'] ?? 0) }}</p>
+                        <p class="mt-3 text-2xl font-semibold text-gray-900">{{ number_format($uniques['all'] ?? $pageviews['all'] ?? 0) }}</p>
                         <p class="text-xs text-gray-500">{{ __('Unique Visitors') }}</p>
                         @if(!empty($pageviews['all']))
                             <p class="text-xs text-gray-400 mt-1">{{ number_format($pageviews['all']) }} {{ __('page views') }}</p>

@@ -3,25 +3,25 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-green-600">&euro;{{ number_format($this->summary['mrr'], 2) }}</p>
+                <p class="text-2xl font-semibold text-green-600">&euro;{{ number_format($this->summary['mrr'], 2) }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Monthly Revenue') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-red-600">&euro;{{ number_format($this->summary['monthly_cost'], 2) }}</p>
+                <p class="text-2xl font-semibold text-red-600">&euro;{{ number_format($this->summary['monthly_cost'], 2) }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Monthly Costs') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->summary['monthly_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">&euro;{{ number_format($this->summary['monthly_profit'], 2) }}</p>
+                <p class="text-2xl font-semibold {{ $this->summary['monthly_profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">&euro;{{ number_format($this->summary['monthly_profit'], 2) }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Monthly Profit') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->summary['margin'] >= 30 ? 'text-green-600' : ($this->summary['margin'] >= 0 ? 'text-yellow-600' : 'text-red-600') }}">{{ $this->summary['margin'] }}%</p>
+                <p class="text-2xl font-semibold {{ $this->summary['margin'] >= 30 ? 'text-green-600' : ($this->summary['margin'] >= 0 ? 'text-yellow-600' : 'text-red-600') }}">{{ $this->summary['margin'] }}%</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Profit Margin') }}</p>
             </div>
         </x-ui.card>

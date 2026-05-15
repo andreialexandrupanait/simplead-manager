@@ -261,10 +261,12 @@ class SiteOverview extends Component
     #[Computed]
     public function errorLogStatus(): array
     {
-        $fatal = \App\Models\PhpErrorLog::where('site_id', $this->site->id)->unresolved()->fatal()->count();
-        $total = \App\Models\PhpErrorLog::where('site_id', $this->site->id)->unresolved()->count();
+        $counts = \App\Models\PhpErrorLog::where('site_id', $this->site->id)
+            ->where('is_resolved', false)
+            ->selectRaw("COUNT(*) as total, SUM(CASE WHEN level = 'fatal' THEN 1 ELSE 0 END) as fatal")
+            ->first();
 
-        return ['fatal' => $fatal, 'total' => $total];
+        return ['fatal' => (int) $counts->fatal, 'total' => (int) $counts->total];
     }
 
     public function runBackup(): void

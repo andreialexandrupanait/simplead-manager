@@ -16,28 +16,41 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter var', ...defaultTheme.fontFamily.sans],
+                sans: ['"Inter Variable"', '"Inter"', 'system-ui', 'sans-serif'],
             },
             colors: {
+                // Override Tailwind's cool blue-gray scale with warm neutrals for
+                // 700/800/900 — these are the surfaces used in dark mode (body bg,
+                // cards, hovers). Default Tailwind gray-900 is #111827 (navy-tinted);
+                // we want pure dark gray. Keeps lighter shades (50-600) untouched.
+                gray: {
+                    700: '#3C3C3C',
+                    800: '#232323',
+                    900: '#1A1A1A',
+                },
                 sidebar: {
-                    DEFAULT: '#1A1A2E',
-                    hover: '#232340',
+                    // Theme-aware via CSS variables defined in app.css:
+                    //   light: #1A1A1A (original, looks great against light body)
+                    //   dark:  #0F0F0F (deeper than #1A1A1A body so the rail
+                    //          stands out as a distinct surface)
+                    DEFAULT: 'var(--surface-sidebar)',
+                    hover: 'var(--surface-sidebar-hover)',
                 },
                 accent: {
-                    50: 'var(--accent-50, #f5f0ff)',
-                    100: 'var(--accent-100, #ede5ff)',
-                    200: 'var(--accent-200, #ddd0fe)',
-                    300: 'var(--accent-300, #c4adfd)',
-                    400: 'var(--accent-400, #a87ffb)',
-                    500: 'var(--accent-500, #8D5CF5)',
-                    600: 'var(--accent-600, #7C3AED)',
-                    700: 'var(--accent-700, #6d28d9)',
-                    800: 'var(--accent-800, #5b21b6)',
-                    900: 'var(--accent-900, #4c1d95)',
-                    950: 'var(--accent-950, #2e1065)',
-                    DEFAULT: 'var(--accent-500, #8D5CF5)',
-                    hover: 'var(--accent-600, #7C3AED)',
-                    light: 'var(--accent-light, rgba(141, 92, 245, 0.2))',
+                    50: 'var(--accent-50, #F2F0FF)',
+                    100: 'var(--accent-100, #E6E2FF)',
+                    200: 'var(--accent-200, #CDC5FF)',
+                    300: 'var(--accent-300, #B3A6FF)',
+                    400: 'var(--accent-400, #9787F7)',
+                    500: 'var(--accent-500, #7B68EE)',
+                    600: 'var(--accent-600, #6151D4)',
+                    700: 'var(--accent-700, #4A3FB0)',
+                    800: 'var(--accent-800, #38318A)',
+                    900: 'var(--accent-900, #292568)',
+                    950: 'var(--accent-950, #1A1746)',
+                    DEFAULT: 'var(--accent-500, #7B68EE)',
+                    hover: 'var(--accent-600, #6151D4)',
+                    light: 'var(--accent-light, rgba(123, 104, 238, 0.2))',
                 },
             },
         },

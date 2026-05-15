@@ -77,6 +77,11 @@ class PerformanceOverview extends Component
         session()->flash('perf-success', "Queued performance tests for {$queued} site(s).");
     }
 
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
+    }
+
     public function render()
     {
         $query = PerformanceMonitor::query()
@@ -84,8 +89,9 @@ class PerformanceOverview extends Component
             ->whereHas('site')
             ->with(['site', 'latestMobileTest', 'latestDesktopTest'])
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('url', 'ilike', "%{$this->search}%"));
+                $escaped = '%'.$this->escapeLike($this->search).'%';
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', $escaped)
+                    ->orWhere('url', 'ilike', $escaped));
             });
 
         // Apply sorting

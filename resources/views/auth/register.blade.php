@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-6">Create your account</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-6">Create your account</h2>
 
     <form method="POST" action="{{ route('register') }}" class="space-y-5">
         @csrf

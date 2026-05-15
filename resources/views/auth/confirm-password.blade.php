@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Confirm password</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">Confirm password</h2>
     <p class="text-sm text-gray-500 mb-6">
         This is a secure area of the application. Please confirm your password before continuing.
     </p>

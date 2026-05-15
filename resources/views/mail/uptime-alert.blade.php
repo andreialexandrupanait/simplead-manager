@@ -14,7 +14,7 @@
         .detail-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
         .detail-label { color: #6b7280; font-size: 14px; width: 120px; flex-shrink: 0; }
         .detail-value { color: #1f2937; font-size: 14px; font-weight: 500; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #8D5CF5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
+        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
     </style>
 </head>

@@ -7,7 +7,7 @@
         'security' => ['icon' => 'shield', 'bg' => 'bg-blue-50', 'ring' => 'ring-blue-200', 'text' => 'text-blue-600'],
         'analytics' => ['icon' => 'bar-chart-2', 'bg' => 'bg-accent-50', 'ring' => 'ring-accent-200', 'text' => 'text-accent-600'],
         'activity_logs' => ['icon' => 'file-text', 'bg' => 'bg-gray-100', 'ring' => 'ring-gray-200', 'text' => 'text-gray-600'],
-        'notification_logs' => ['icon' => 'bell', 'bg' => 'bg-indigo-50', 'ring' => 'ring-indigo-200', 'text' => 'text-indigo-600'],
+        'notification_logs' => ['icon' => 'bell', 'bg' => 'bg-accent-50', 'ring' => 'ring-accent-200', 'text' => 'text-accent-600'],
         'system' => ['icon' => 'database', 'bg' => 'bg-yellow-50', 'ring' => 'ring-yellow-200', 'text' => 'text-yellow-600'],
         'security_hardening' => ['icon' => 'shield-check', 'bg' => 'bg-red-50', 'ring' => 'ring-red-200', 'text' => 'text-red-600'],
     ];

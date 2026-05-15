@@ -1,6 +1,6 @@
 @props([
     'data' => [],
-    'color' => '#8D5CF5',
+    'color' => '#7B68EE',
     'height' => 36,
 ])
 

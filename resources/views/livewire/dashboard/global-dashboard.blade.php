@@ -62,8 +62,8 @@
     @endphp
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {{-- Sites --}}
-        <a href="#sites" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
+        <a href="#sites" class="block h-full">
+            <x-ui.card :padding="false" class="p-4 h-full transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['sites_down'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
                         <x-icons.globe class="h-5 w-5 {{ $stats['sites_down'] > 0 ? 'text-red-500' : 'text-green-500' }}" />
@@ -80,8 +80,8 @@
         </a>
 
         {{-- Uptime --}}
-        <a href="{{ route('uptime.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
+        <a href="{{ route('uptime.index') }}" class="block h-full">
+            <x-ui.card :padding="false" class="p-4 h-full transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $uptimeBg }}">
                         <x-icons.trending-up class="h-5 w-5 {{ $uptimeIcon }}" />
@@ -107,8 +107,8 @@
             $iconColor = $backupAlert ? 'text-red-500' : 'text-accent-500';
             $valueColor = $backupAlert ? 'text-red-600' : 'text-accent-600';
         @endphp
-        <a href="{{ route('backups.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
+        <a href="{{ route('backups.index') }}" class="block h-full">
+            <x-ui.card :padding="false" class="p-4 h-full transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $iconBg }}">
                         <x-icons.hard-drive class="h-5 w-5 {{ $iconColor }}" />
@@ -120,8 +120,8 @@
                             @if($backupAlert)
                                 @php
                                     $parts = [];
-                                    if ($hasFailed) $parts[] = $stats['failed_backups'] . ' ' . __('failed (24h)');
-                                    if ($hasStale) $parts[] = $stats['stale_backups'] . ' ' . __('stale (>36h)');
+                                    if ($hasFailed) $parts[] = $stats['failed_backups'] . ' ' . __('failed');
+                                    if ($hasStale) $parts[] = $stats['stale_backups'] . ' ' . __('stale');
                                 @endphp
                                 {{ implode(', ', $parts) }}
                             @else
@@ -135,8 +135,8 @@
         </a>
 
         {{-- Backups Today --}}
-        <a href="{{ route('backups.index') }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
+        <a href="{{ route('backups.index') }}" class="block h-full">
+            <x-ui.card :padding="false" class="p-4 h-full transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                         <x-icons.check-circle class="h-5 w-5 text-blue-500" />
@@ -151,8 +151,8 @@
         </a>
 
         {{-- Alerts --}}
-        <a href="{{ $alertsLink }}" class="block">
-            <x-ui.card :padding="false" class="p-4 transition hover:ring-accent-200">
+        <a href="{{ $alertsLink }}" class="block h-full">
+            <x-ui.card :padding="false" class="p-4 h-full transition hover:ring-accent-200">
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $stats['total_alerts'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
                         @if($stats['total_alerts'] > 0)
@@ -187,70 +187,6 @@
         </a>
     </div>
 
-    {{-- Backup Health (averaged across configured sites + bottom-N for triage) --}}
-    @php $health = $stats['backup_health'] ?? null; @endphp
-    @if($health && $health['sites_count'] > 0)
-        @php
-            $avg = (float) ($health['avg_score'] ?? 0);
-            $avgColor = match(true) {
-                $avg >= 80 => 'text-green-600',
-                $avg >= 50 => 'text-yellow-600',
-                $avg >= 25 => 'text-orange-600',
-                default => 'text-red-600',
-            };
-            $avgBg = match(true) {
-                $avg >= 80 => 'bg-green-50',
-                $avg >= 50 => 'bg-yellow-50',
-                $avg >= 25 => 'bg-orange-50',
-                default => 'bg-red-50',
-            };
-        @endphp
-        <div class="mt-6">
-            <x-ui.card>
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg {{ $avgBg }}">
-                            <span class="text-base font-semibold {{ $avgColor }}">{{ (int) round($avg) }}</span>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-gray-900">{{ __('Backup Health') }}</h3>
-                            <p class="text-xs text-gray-500">{{ __('Average score across :n configured sites', ['n' => $health['sites_count']]) }}</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-green-700"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> {{ $health['excellent'] }} {{ __('excellent') }}</span>
-                        <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-0.5 text-yellow-700"><span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span> {{ $health['ok'] }} {{ __('ok') }}</span>
-                        <span class="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-orange-700"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span> {{ $health['warning'] }} {{ __('warning') }}</span>
-                        <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-red-700"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> {{ $health['critical'] }} {{ __('critical') }}</span>
-                    </div>
-                </div>
-
-                @if(! empty($health['bottom']))
-                    <div class="mt-4 border-t border-gray-100 pt-3">
-                        <div class="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">{{ __('Lowest scores — needs attention') }}</div>
-                        <div class="space-y-1.5">
-                            @foreach($health['bottom'] as $entry)
-                                @php
-                                    $entryColor = match(true) {
-                                        $entry['score'] >= 80 => 'bg-green-100 text-green-700',
-                                        $entry['score'] >= 50 => 'bg-yellow-100 text-yellow-700',
-                                        $entry['score'] >= 25 => 'bg-orange-100 text-orange-700',
-                                        default => 'bg-red-100 text-red-700',
-                                    };
-                                @endphp
-                                <div class="flex items-center gap-2 text-sm">
-                                    <span class="inline-flex w-9 shrink-0 justify-center rounded px-1.5 py-0.5 text-xs font-semibold {{ $entryColor }}">{{ $entry['score'] }}</span>
-                                    <a href="{{ route('sites.backups', $entry['site_id']) }}" class="font-medium text-gray-800 hover:text-accent-600 truncate">{{ $entry['name'] }}</a>
-                                    <span class="truncate text-xs text-gray-500">{{ implode(' · ', $entry['reasons']) }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-            </x-ui.card>
-        </div>
-    @endif
-
     {{-- Section 2: Sites List View --}}
     <div id="sites" class="mt-6">
         <div class="mb-3">
@@ -283,7 +219,7 @@
                             </x-slot:trigger>
                             @foreach($this->siteStatuses as $status)
                                 <button wire:click="bulkSetStatus({{ $status->id }})" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                                    <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                                    <span aria-hidden="true" class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
                                     {{ $status->name }}
                                 </button>
                             @endforeach
@@ -333,8 +269,11 @@
                     </x-ui.button>
 
                     {{-- Deselect all --}}
-                    <button wire:click="clearSelection" class="rounded-lg p-1.5 text-accent-400 transition hover:bg-accent-100 hover:text-accent-600" title="{{ __('Clear selection') }}">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button"
+                            wire:click="clearSelection"
+                            aria-label="{{ __('Clear selection') }}"
+                            class="rounded-lg p-2.5 text-accent-400 transition hover:bg-accent-100 hover:text-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1">
+                        <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
             </div>
@@ -455,11 +394,12 @@
                         @foreach($this->siteStatuses as $status)
                             <button wire:click="setStatusFilter({{ $status->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->statusFilter === $status->id ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
                                 <span class="flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                                    <span aria-hidden="true" class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
                                     {{ $status->name }} ({{ $status->sites_count }})
                                 </span>
                                 @if($this->statusFilter === $status->id)
-                                    <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span class="sr-only">{{ __('(active filter)') }}</span>
                                 @endif
                             </button>
                         @endforeach
@@ -516,7 +456,7 @@
                 <x-ui.empty-state :title="__('No sites yet')" :description="__('Add your first site to get started.')" icon="globe" />
             </x-ui.card>
         @else
-            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5" x-data="sortableList" x-effect="enabled = @js($this->reordering)">
+            <div class="overflow-hidden rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" x-data="sortableList" x-effect="enabled = @js($this->reordering)">
                 <div id="sortable-site-list" x-ref="sortableContainer">
                 @foreach($this->sites as $site)
                     <x-dashboard.site-row
@@ -541,7 +481,7 @@
     {{-- Rename Site Modal --}}
     <x-ui.modal name="rename-site" maxWidth="sm">
         <form wire:submit="renameSite">
-            <h2 class="text-lg font-semibold text-gray-900">{{ __('Rename Site') }}</h2>
+            <h2 id="modal-rename-site-title" class="text-lg font-semibold text-gray-900">{{ __('Rename Site') }}</h2>
             <p class="mt-1 text-sm text-gray-500">{{ __('Enter a new name for this site.') }}</p>
 
             <div class="mt-4">
@@ -564,7 +504,7 @@
     {{-- Delete Site Modal --}}
     <x-ui.modal name="delete-site" maxWidth="sm">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ __('Delete Site') }}</h2>
+            <h2 id="modal-delete-site-title" class="text-lg font-semibold text-gray-900">{{ __('Delete Site') }}</h2>
             <p class="mt-2 text-sm text-gray-600">
                 {{ __('Are you sure you want to delete') }} <span class="font-medium text-gray-900">{{ $deletingSiteName }}</span>? {{ __('This action cannot be undone.') }}
             </p>

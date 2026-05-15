@@ -57,7 +57,7 @@
                                         </span>
                                     @endif
                                     @if($plan->include_tweaks && !empty($plan->tweak_settings))
-                                        <span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+                                        <span class="inline-flex items-center rounded-md bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 ring-1 ring-inset ring-accent-600/20">
                                             {{ __('Tweaks') }} ({{ $this->countEnabledSettings($plan->tweak_settings) }})
                                         </span>
                                     @endif
@@ -393,12 +393,12 @@
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ $group['title'] }}</p>
                                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                     @foreach($group['settings'] as $key => $label)
-                                        <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition {{ ($tweakToggles[$key] ?? false) ? 'bg-indigo-50 border-indigo-200' : '' }}">
+                                        <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition {{ ($tweakToggles[$key] ?? false) ? 'bg-accent-50 border-accent-200' : '' }}">
                                             <input
                                                 type="checkbox"
                                                 wire:click="toggleTweakSetting('{{ $key }}')"
                                                 @checked($tweakToggles[$key] ?? false)
-                                                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
                                             >
                                             <span class="text-sm text-gray-700">{{ $label }}</span>
                                         </label>
@@ -411,7 +411,7 @@
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Frontend') }}</label>
-                                                <select wire:model="heartbeatFrontend" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                <select wire:model="heartbeatFrontend" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                                     <option value="default">{{ __('Default') }}</option>
                                                     <option value="throttle">{{ __('Throttle') }}</option>
                                                     <option value="disable">{{ __('Disable') }}</option>
@@ -419,7 +419,7 @@
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Dashboard') }}</label>
-                                                <select wire:model="heartbeatDashboard" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                <select wire:model="heartbeatDashboard" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                                     <option value="default">{{ __('Default') }}</option>
                                                     <option value="throttle">{{ __('Throttle') }}</option>
                                                     <option value="disable">{{ __('Disable') }}</option>
@@ -427,7 +427,7 @@
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Editor') }}</label>
-                                                <select wire:model="heartbeatEditor" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                <select wire:model="heartbeatEditor" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500">
                                                     <option value="default">{{ __('Default') }}</option>
                                                     <option value="throttle">{{ __('Throttle') }}</option>
                                                     <option value="disable">{{ __('Disable') }}</option>
@@ -435,7 +435,7 @@
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Interval (sec)') }}</label>
-                                                <input type="number" wire:model="heartbeatInterval" min="15" max="300" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                                <input type="number" wire:model="heartbeatInterval" min="15" max="300" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                             </div>
                                         </div>
                                     </div>
@@ -446,7 +446,7 @@
                                     <div class="mt-2 ml-2 bg-gray-50 rounded-lg p-3">
                                         <div class="max-w-xs">
                                             <label class="block text-xs font-medium text-gray-600">{{ __('Max Revisions') }}</label>
-                                            <input type="number" wire:model="revisionsLimit" min="0" max="100" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                            <input type="number" wire:model="revisionsLimit" min="0" max="100" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                         </div>
                                     </div>
                                 @endif
@@ -457,15 +457,15 @@
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Max Width (px)') }}</label>
-                                                <input type="number" wire:model="imageMaxWidth" min="100" max="10000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                                <input type="number" wire:model="imageMaxWidth" min="100" max="10000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('Max Height (px)') }}</label>
-                                                <input type="number" wire:model="imageMaxHeight" min="100" max="10000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                                <input type="number" wire:model="imageMaxHeight" min="100" max="10000" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-600">{{ __('JPEG Quality') }}</label>
-                                                <input type="number" wire:model="jpegQuality" min="10" max="100" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                                <input type="number" wire:model="jpegQuality" min="10" max="100" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-accent-500 focus:ring-accent-500" />
                                             </div>
                                         </div>
                                     </div>

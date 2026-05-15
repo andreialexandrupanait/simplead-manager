@@ -9,19 +9,19 @@
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-accent-600">{{ $this->enabledCount }}</p>
+                <p class="text-2xl font-semibold text-accent-600">{{ $this->enabledCount }}</p>
                 <p class="text-sm text-gray-500">{{ __('Tweaks Enabled') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-green-600">{{ $this->appliedCount }}</p>
+                <p class="text-2xl font-semibold text-green-600">{{ $this->appliedCount }}</p>
                 <p class="text-sm text-gray-500">{{ __('Successfully Applied') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->failedCount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $this->failedCount }}</p>
+                <p class="text-2xl font-semibold {{ $this->failedCount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $this->failedCount }}</p>
                 <p class="text-sm text-gray-500">{{ __('Failed') }}</p>
             </div>
         </x-ui.card>

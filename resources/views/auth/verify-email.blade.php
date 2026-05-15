@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Verify your email</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">Verify your email</h2>
     <p class="text-sm text-gray-500 mb-6">
         Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you?
     </p>

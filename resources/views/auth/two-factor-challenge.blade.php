@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Two-Factor Authentication</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">Two-Factor Authentication</h2>
     <p class="text-sm text-gray-500 mb-6">Enter the 6-digit code from your authenticator app, or use a recovery code.</p>
 
     <form method="POST" action="{{ route('two-factor.store') }}" class="space-y-5">

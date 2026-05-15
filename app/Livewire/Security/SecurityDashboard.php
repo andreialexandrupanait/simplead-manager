@@ -95,9 +95,10 @@ class SecurityDashboard extends Component
             ));
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('url', 'ilike', "%{$this->search}%");
+            $escaped = '%'.$this->escapeLike($this->search).'%';
+            $query->where(function ($q) use ($escaped) {
+                $q->where('name', 'ilike', $escaped)
+                    ->orWhere('url', 'ilike', $escaped);
             });
         }
 
@@ -145,6 +146,11 @@ class SecurityDashboard extends Component
         unset($this->sites, $this->pendingCommandsCount);
 
         session()->flash('dash-success', "Preset '{$preset->name}' applied to {$sites->count()} site(s).");
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
     public function render()

@@ -1,3 +1,97 @@
+/* Inter Variable — latin + latin-ext only, font-display: optional to eliminate FOUT.
+   After first cached load, the font appears instantly; first-time visitors see the
+   system fallback for that single session (acceptable tradeoff for daily-use admins). */
+@font-face {
+    font-family: 'Inter Variable';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: optional;
+    src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Inter Variable';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: optional;
+    src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Design tokens — single source of truth for surfaces, text, borders.
+   Light mode uses Tailwind defaults so variables here mirror them.
+   .dark redefines values for the dark theme (ClickUp warm grays).
+   Future components can reference these directly via `bg-[var(--surface-card)]`.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+    /* Surfaces (warm-neutral) */
+    --surface-app:       #FAFAFA;   /* body bg */
+    --surface-card:      #FFFFFF;   /* cards, raised */
+    --surface-muted:     #F3F4F6;   /* hover, slightly elevated */
+    --surface-elevated:  #E5E7EB;   /* divider-heavy surfaces */
+    --surface-sidebar:        #1A1A1A;   /* nav rail in light mode (looks great on bright body) */
+    --surface-sidebar-hover:  #2C2C2C;
+
+    /* Borders */
+    --border-subtle:     #F3F4F6;   /* gray-100 */
+    --border:            #E5E7EB;   /* gray-200 — default */
+    --border-strong:     #D1D5DB;   /* gray-300 — inputs */
+
+    /* Text */
+    --text-primary:      #111827;   /* gray-900 */
+    --text-strong:       #1F2937;   /* gray-800 */
+    --text-secondary:    #374151;   /* gray-700 */
+    --text-muted:        #4B5563;   /* gray-600 */
+    --text-faint:        #6B7280;   /* gray-500 */
+    --text-disabled:     #9CA3AF;   /* gray-400 */
+    --text-placeholder:  #D1D5DB;   /* gray-300 */
+
+    /* Shadows */
+    --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+
+    /* Status semantic colors (RGB tuples → enable rgba() composition for tinted bg) */
+    --rgb-info:    59, 130, 246;    /* blue-500 */
+    --rgb-success: 34, 197, 94;     /* green-500 */
+    --rgb-warning: 234, 179, 8;     /* yellow-500 */
+    --rgb-danger:  239, 68, 68;     /* red-500 */
+    --rgb-accent:  123, 104, 238;   /* ClickUp #7B68EE */
+}
+
+.dark {
+    /* Surfaces — warm grays (ClickUp-style) */
+    --surface-app:       #1A1A1A;
+    --surface-card:      #232323;
+    --surface-muted:     #2C2C2C;
+    --surface-elevated:  #3C3C3C;
+    --surface-sidebar:        #0F0F0F;  /* deeper than body so rail stays distinct */
+    --surface-sidebar-hover:  #1F1F1F;
+
+    /* Borders — subtle on dark */
+    --border-subtle:     #232323;
+    --border:            #2C2C2C;
+    --border-strong:     #3C3C3C;
+
+    /* Text — readable on warm grays */
+    --text-primary:      #FAFAFA;
+    --text-strong:       #E5E5E5;
+    --text-secondary:    #D4D4D4;
+    --text-muted:        #9CA3AF;
+    --text-faint:        #9CA3AF;
+    --text-disabled:     #787878;
+    --text-placeholder:  #787878;
+
+    /* Shadows — deeper on dark */
+    --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,163 +105,154 @@ html.no-transitions *::after {
     transition-duration: 0s !important;
 }
 
-/* Dark mode: comprehensive overrides */
+/* ─────────────────────────────────────────────────────────────────────────
+   Dark mode Tailwind utility overrides (sourced from variables above).
+   Kept with !important because templates use base utility classes (bg-white,
+   text-gray-900 etc) not dark: variants, and these rules must win the cascade.
+   Tweak any colour by editing the variable in .dark above — all overrides
+   propagate automatically.
+   ───────────────────────────────────────────────────────────────────────── */
 @layer base {
-    /* --- Gray backgrounds --- */
-    .dark .bg-white { background-color: #1f2937 !important; }
-    .dark .bg-gray-50 { background-color: #111827 !important; }
-    .dark .bg-gray-100 { background-color: #374151 !important; }
-    .dark .bg-gray-200 { background-color: #4b5563 !important; }
+    /* Surfaces */
+    .dark .bg-white   { background-color: var(--surface-card) !important; }
+    .dark .bg-gray-50  { background-color: var(--surface-app) !important; }
+    .dark .bg-gray-100 { background-color: var(--surface-muted) !important; }
+    .dark .bg-gray-200 { background-color: var(--surface-elevated) !important; }
 
-    /* --- Gray borders --- */
-    .dark .border-gray-100 { border-color: #1f2937 !important; }
-    .dark .border-gray-200 { border-color: #374151 !important; }
-    .dark .border-gray-300 { border-color: #4b5563 !important; }
+    /* Borders */
+    .dark .border-gray-100 { border-color: var(--border-subtle) !important; }
+    .dark .border-gray-200 { border-color: var(--border) !important; }
+    .dark .border-gray-300 { border-color: var(--border-strong) !important; }
 
-    /* --- Gray text --- */
-    .dark .text-gray-900 { color: #f3f4f6 !important; }
-    .dark .text-gray-800 { color: #e5e7eb !important; }
-    .dark .text-gray-700 { color: #d1d5db !important; }
-    .dark .text-gray-600 { color: #9ca3af !important; }
-    .dark .text-gray-500 { color: #9ca3af !important; }
-    .dark .text-gray-400 { color: #6b7280 !important; }
-    .dark .text-gray-300 { color: #6b7280 !important; }
+    /* Text */
+    .dark .text-gray-900 { color: var(--text-primary) !important; }
+    .dark .text-gray-800 { color: var(--text-strong) !important; }
+    .dark .text-gray-700 { color: var(--text-secondary) !important; }
+    .dark .text-gray-600 { color: var(--text-muted) !important; }
+    .dark .text-gray-500 { color: var(--text-faint) !important; }
+    .dark .text-gray-400 { color: var(--text-disabled) !important; }
+    .dark .text-gray-300 { color: var(--text-placeholder) !important; }
 
-    /* --- Gray dividers --- */
-    .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #374151 !important; }
-    .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1f2937 !important; }
+    /* Dividers */
+    .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+    .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-subtle) !important; }
 
-    /* --- Shadows --- */
-    .dark .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3) !important; }
-    .dark .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4) !important; }
-    .dark .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5) !important; }
+    /* Shadows */
+    .dark .shadow-sm { box-shadow: var(--shadow-sm) !important; }
+    .dark .shadow-md { box-shadow: var(--shadow-md) !important; }
+    .dark .shadow-lg { box-shadow: var(--shadow-lg) !important; }
+    .dark .shadow-xl { box-shadow: var(--shadow-xl) !important; }
 
-    /* --- Rings --- */
-    .dark .ring-gray-950\/5 { --tw-ring-color: rgb(75 85 99 / 0.3) !important; }
-    .dark .ring-black\/5 { --tw-ring-color: rgb(75 85 99 / 0.3) !important; }
+    /* Rings — translucent on warm dark */
+    .dark .ring-gray-950\/5 { --tw-ring-color: rgb(60 60 60 / 0.3) !important; }
+    .dark .ring-black\/5    { --tw-ring-color: rgb(60 60 60 / 0.3) !important; }
+    .dark .ring-gray-700\/30 { --tw-ring-color: rgb(44 44 44 / 0.3) !important; }
 
-    /* --- Form elements (scoped to avoid clashing with editors/custom inputs) --- */
+    /* Form elements (scoped to avoid clashing with editors/custom inputs) */
     .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.ProseMirror *),
     .dark textarea:not(.ProseMirror *),
     .dark select {
-        background-color: #374151 !important;
-        border-color: #4b5563 !important;
-        color: #e5e7eb !important;
+        background-color: var(--surface-muted) !important;
+        border-color: var(--border-strong) !important;
+        color: var(--text-strong) !important;
     }
-    .dark input::placeholder, .dark textarea::placeholder {
-        color: #6b7280 !important;
-    }
+    .dark input::placeholder, .dark textarea::placeholder { color: var(--text-placeholder) !important; }
     .dark input:disabled, .dark textarea:disabled, .dark select:disabled {
-        background-color: #1f2937 !important;
-        color: #6b7280 !important;
+        background-color: var(--surface-card) !important;
+        color: var(--text-placeholder) !important;
     }
 
-    /* --- Colored backgrounds: -50 (alerts, stat cards) --- */
-    .dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
-    .dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.1) !important; }
-    .dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
-    .dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1) !important; }
-    .dark .bg-accent-50 { background-color: rgba(141, 92, 245, 0.1) !important; }
-    .dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
+    /* Colored tints — sourced from RGB tuples for consistent opacity steps */
+    .dark .bg-blue-50    { background-color: rgba(var(--rgb-info),    0.10) !important; }
+    .dark .bg-green-50   { background-color: rgba(var(--rgb-success), 0.10) !important; }
+    .dark .bg-red-50     { background-color: rgba(var(--rgb-danger),  0.10) !important; }
+    .dark .bg-yellow-50  { background-color: rgba(var(--rgb-warning), 0.10) !important; }
+    .dark .bg-orange-50  { background-color: rgba(249, 115, 22,       0.10) !important; }
+    .dark .bg-accent-50  { background-color: rgba(var(--rgb-accent),  0.10) !important; }
 
-    /* --- Colored backgrounds: -100 (badges, progress tracks) --- */
-    .dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15) !important; }
-    .dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.15) !important; }
-    .dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
-    .dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.15) !important; }
-    .dark .bg-accent-100 { background-color: rgba(141, 92, 245, 0.15) !important; }
-    .dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.15) !important; }
+    .dark .bg-blue-100   { background-color: rgba(var(--rgb-info),    0.15) !important; }
+    .dark .bg-green-100  { background-color: rgba(var(--rgb-success), 0.15) !important; }
+    .dark .bg-red-100    { background-color: rgba(var(--rgb-danger),  0.15) !important; }
+    .dark .bg-yellow-100 { background-color: rgba(var(--rgb-warning), 0.15) !important; }
+    .dark .bg-orange-100 { background-color: rgba(249, 115, 22,       0.15) !important; }
+    .dark .bg-accent-100 { background-color: rgba(var(--rgb-accent),  0.15) !important; }
 
-    /* --- Colored borders: -200 (alerts) --- */
-    .dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3) !important; }
-    .dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3) !important; }
-    .dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3) !important; }
-    .dark .border-yellow-200 { border-color: rgba(234, 179, 8, 0.3) !important; }
+    .dark .bg-red-200    { background-color: rgba(var(--rgb-danger),  0.20) !important; }
+    .dark .bg-yellow-200 { background-color: rgba(var(--rgb-warning), 0.20) !important; }
+    .dark .bg-accent-200 { background-color: rgba(var(--rgb-accent),  0.20) !important; }
 
-    /* --- Colored text: -700 (badges, alerts — brighten for contrast) --- */
-    .dark .text-blue-700 { color: #93c5fd !important; }
-    .dark .text-green-700 { color: #86efac !important; }
-    .dark .text-red-700 { color: #fca5a5 !important; }
-    .dark .text-yellow-700 { color: #fde047 !important; }
-    .dark .text-accent-700 { color: #d8b4fe !important; }
-    .dark .text-orange-700 { color: #fdba74 !important; }
+    /* Colored borders */
+    .dark .border-blue-200    { border-color: rgba(var(--rgb-info),    0.30) !important; }
+    .dark .border-green-200   { border-color: rgba(var(--rgb-success), 0.30) !important; }
+    .dark .border-red-200     { border-color: rgba(var(--rgb-danger),  0.30) !important; }
+    .dark .border-yellow-200  { border-color: rgba(var(--rgb-warning), 0.30) !important; }
+    .dark .border-accent-200  { border-color: rgba(var(--rgb-accent),  0.30) !important; }
+    .dark .border-red-300     { border-color: rgba(var(--rgb-danger),  0.40) !important; }
+    .dark .border-yellow-300  { border-color: rgba(var(--rgb-warning), 0.40) !important; }
+    .dark .border-accent-300  { border-color: rgba(var(--rgb-accent),  0.40) !important; }
 
-    /* --- Colored text: -800 (status badges — brighten for contrast) --- */
-    .dark .text-blue-800 { color: #93c5fd !important; }
-    .dark .text-green-800 { color: #86efac !important; }
-    .dark .text-red-800 { color: #fca5a5 !important; }
-    .dark .text-yellow-800 { color: #fde047 !important; }
-    .dark .text-accent-800 { color: #d8b4fe !important; }
-    .dark .text-orange-800 { color: #fdba74 !important; }
+    /* Rings */
+    .dark .ring-accent-200 { --tw-ring-color: rgba(var(--rgb-accent), 0.30) !important; }
 
-    /* --- Colored text: -600 (icons — slightly brighten) --- */
-    .dark .text-blue-600 { color: #60a5fa !important; }
-    .dark .text-green-600 { color: #4ade80 !important; }
-    .dark .text-red-600 { color: #f87171 !important; }
+    /* Colored text — brightened for contrast on warm dark */
+    .dark .text-blue-600,   .dark .text-blue-700,   .dark .text-blue-800,   .dark .text-blue-900   { color: #93c5fd !important; }
+    .dark .text-green-600,  .dark .text-green-700,  .dark .text-green-800,  .dark .text-green-900  { color: #86efac !important; }
+    .dark .text-red-600,    .dark .text-red-700,    .dark .text-red-800,    .dark .text-red-900    { color: #fca5a5 !important; }
+    .dark .text-yellow-600, .dark .text-yellow-700, .dark .text-yellow-800, .dark .text-yellow-900 { color: #fde047 !important; }
+    .dark .text-orange-600, .dark .text-orange-700                                                  { color: #fdba74 !important; }
+    .dark .text-accent-600, .dark .text-accent-700, .dark .text-accent-800, .dark .text-accent-900 { color: #c4b5fd !important; }
+
+    /* Slightly stronger blue/green/red/yellow icons — keep the 600 weight a tad darker */
+    .dark .text-blue-600   { color: #60a5fa !important; }
+    .dark .text-green-600  { color: #4ade80 !important; }
+    .dark .text-red-600    { color: #f87171 !important; }
     .dark .text-yellow-600 { color: #facc15 !important; }
-    .dark .text-accent-600 { color: #c084fc !important; }
     .dark .text-orange-600 { color: #fb923c !important; }
 
-    /* --- Colored text: -900 (banners — brighten for dark bg) --- */
-    .dark .text-blue-900 { color: #93c5fd !important; }
-    .dark .text-green-900 { color: #86efac !important; }
-    .dark .text-red-900 { color: #fca5a5 !important; }
-    .dark .text-yellow-900 { color: #fde047 !important; }
-    .dark .text-accent-900 { color: #d8b4fe !important; }
+    /* Hover states */
+    .dark .hover\:bg-gray-50:hover   { background-color: var(--surface-card) !important; }
+    .dark .hover\:bg-gray-100:hover  { background-color: var(--surface-muted) !important; }
+    .dark .hover\:bg-gray-200:hover  { background-color: var(--surface-elevated) !important; }
+    .dark .hover\:text-gray-700:hover { color: var(--text-secondary) !important; }
+    .dark .hover\:text-gray-900:hover { color: var(--text-primary) !important; }
+    .dark .hover\:border-accent-300:hover { border-color: rgba(var(--rgb-accent), 0.40) !important; }
+    .dark .hover\:bg-accent-50:hover { background-color: rgba(var(--rgb-accent), 0.10) !important; }
 
-    /* --- Colored borders: -300 (circuit breaker banners) --- */
-    .dark .border-red-300 { border-color: rgba(239, 68, 68, 0.4) !important; }
-    .dark .border-yellow-300 { border-color: rgba(234, 179, 8, 0.4) !important; }
-    .dark .border-accent-200 { border-color: rgba(141, 92, 245, 0.3) !important; }
+    /* Focus ring offset (the gap inside ring) */
+    .dark .focus\:ring-offset-2          { --tw-ring-offset-color: var(--surface-card) !important; }
+    .dark .focus-visible\:ring-offset-2  { --tw-ring-offset-color: var(--surface-card) !important; }
+    .dark .focus\:border-accent-500      { border-color: var(--accent-500, #7B68EE) !important; }
+    .dark .focus\:ring-accent-500        { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
+    .dark .focus-visible\:ring-accent-500 { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
 
-    /* --- Colored backgrounds: -200 (icon circles in banners) --- */
-    .dark .bg-red-200 { background-color: rgba(239, 68, 68, 0.2) !important; }
-    .dark .bg-yellow-200 { background-color: rgba(234, 179, 8, 0.2) !important; }
+    /* Table */
+    .dark table thead { background-color: var(--surface-card) !important; }
+    .dark table tbody tr:hover { background-color: rgb(44 44 44 / 0.5); }
 
-    /* --- Accent colors in dark mode --- */
-    .dark .bg-accent-50 { background-color: rgba(141, 92, 245, 0.1) !important; }
-    .dark .bg-accent-100 { background-color: rgba(141, 92, 245, 0.15) !important; }
-    .dark .bg-accent-200 { background-color: rgba(141, 92, 245, 0.2) !important; }
-    .dark .text-accent-600 { color: #c084fc !important; }
-    .dark .text-accent-700 { color: #d8b4fe !important; }
-    .dark .text-accent-800 { color: #d8b4fe !important; }
-    .dark .text-accent-900 { color: #d8b4fe !important; }
-    .dark .border-accent-200 { border-color: rgba(141, 92, 245, 0.3) !important; }
-    .dark .border-accent-300 { border-color: rgba(141, 92, 245, 0.4) !important; }
-    .dark .ring-accent-200 { --tw-ring-color: rgba(141, 92, 245, 0.3) !important; }
+    /* Placeholder text */
+    .dark .placeholder\:text-gray-400::placeholder { color: var(--text-placeholder) !important; }
 
-    /* --- Hover states --- */
-    .dark .hover\:bg-gray-50:hover { background-color: #1f2937 !important; }
-    .dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
-    .dark .hover\:bg-gray-200:hover { background-color: #4b5563 !important; }
-    .dark .hover\:text-gray-700:hover { color: #d1d5db !important; }
-    .dark .hover\:text-gray-900:hover { color: #f3f4f6 !important; }
-    .dark .hover\:border-accent-300:hover { border-color: rgba(141, 92, 245, 0.4) !important; }
-    .dark .hover\:bg-accent-50:hover { background-color: rgba(141, 92, 245, 0.1) !important; }
+    /* Prose (TipTap editor content) */
+    .dark .prose {
+        --tw-prose-body:          var(--text-secondary);
+        --tw-prose-headings:      var(--text-primary);
+        --tw-prose-lead:          var(--text-secondary);
+        --tw-prose-links:         #c4b5fd;
+        --tw-prose-bold:          var(--text-primary);
+        --tw-prose-counters:      var(--text-faint);
+        --tw-prose-bullets:       var(--text-faint);
+        --tw-prose-hr:            var(--border-strong);
+        --tw-prose-quotes:        var(--text-faint);
+        --tw-prose-quote-borders: var(--border-strong);
+        --tw-prose-code:          var(--text-primary);
+        --tw-prose-pre-code:      var(--text-strong);
+        --tw-prose-pre-bg:        var(--surface-muted);
+        --tw-prose-th-borders:    var(--border-strong);
+        --tw-prose-td-borders:    var(--border);
+    }
 
-    /* --- Focus ring offset (dark bg behind ring gap) --- */
-    .dark .focus\:ring-offset-2 { --tw-ring-offset-color: #1f2937 !important; }
-    .dark .focus\:border-accent-500 { border-color: var(--accent-500, #8D5CF5) !important; }
-    .dark .focus\:ring-accent-500 { --tw-ring-color: var(--accent-500, #8D5CF5) !important; }
-
-    /* --- Card component in dark mode --- */
-    .dark .ring-gray-700\/30 { --tw-ring-color: rgb(55 65 81 / 0.3) !important; }
-
-    /* --- Table --- */
-    .dark table thead { background-color: #1f2937 !important; }
-    .dark table tbody tr:hover { background-color: rgba(55, 65, 81, 0.5); }
-
-    /* --- Placeholder text --- */
-    .dark .placeholder\:text-gray-400::placeholder { color: #6b7280 !important; }
-
-    /* --- Border colors for inputs --- */
-    .dark .border-gray-300 { border-color: #4b5563 !important; }
-
-    /* --- Prose (TipTap editor content) --- */
-    .dark .prose { --tw-prose-body: #d1d5db; --tw-prose-headings: #f3f4f6; --tw-prose-lead: #d1d5db; --tw-prose-links: #c084fc; --tw-prose-bold: #f3f4f6; --tw-prose-counters: #9ca3af; --tw-prose-bullets: #9ca3af; --tw-prose-hr: #4b5563; --tw-prose-quotes: #9ca3af; --tw-prose-quote-borders: #4b5563; --tw-prose-code: #f3f4f6; --tw-prose-pre-code: #e5e7eb; --tw-prose-pre-bg: #374151; --tw-prose-th-borders: #4b5563; --tw-prose-td-borders: #374151; }
-
-    /* --- ProseMirror placeholder --- */
-    .dark .ProseMirror p.is-editor-empty:first-child::before { color: #6b7280; }
+    /* ProseMirror placeholder */
+    .dark .ProseMirror p.is-editor-empty:first-child::before { color: var(--text-placeholder); }
 }
 
 /* Reduced motion: respect user preference */
@@ -180,28 +265,24 @@ html.no-transitions *::after {
     }
 }
 
-/* TipTap editor */
+/* TipTap editor placeholder (light mode) */
 .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
-    color: #9ca3af;
+    color: var(--text-faint);
     pointer-events: none;
     height: 0;
 }
 .ProseMirror:focus { outline: none; }
 
-/* Custom scrollbar for sidebar */
+/* Custom scrollbar for sidebar (always dark) */
 @layer utilities {
     .scrollbar-thin {
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.2) transparent;
     }
-    .scrollbar-thin::-webkit-scrollbar {
-        width: 4px;
-    }
-    .scrollbar-thin::-webkit-scrollbar-track {
-        background: transparent;
-    }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb {
         background-color: rgba(255,255,255,0.2);
         border-radius: 4px;

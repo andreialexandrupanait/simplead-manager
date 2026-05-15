@@ -19,7 +19,7 @@
             $hasImages = collect($slideshowSlides ?? [])->contains(fn ($s) => !empty($s['image']));
         @endphp
 
-        <div class="hidden md:flex md:w-1/2 md:flex-col relative overflow-hidden bg-[#1A1A2E] rounded-2xl m-3"
+        <div class="hidden md:flex md:w-1/2 md:flex-col relative overflow-hidden bg-sidebar rounded-2xl m-3"
              x-data="slideshow({{ Js::from($slideshowSlides ?? []) }})">
 
             @if($hasImages)
@@ -58,7 +58,7 @@
                              x-transition:leave="transition ease-in duration-300"
                              x-transition:leave-start="opacity-100 translate-y-0"
                              x-transition:leave-end="opacity-0 -translate-y-4">
-                            <h2 class="text-2xl font-bold text-white mb-2" x-text="slide.title"></h2>
+                            <h2 class="text-2xl font-semibold text-white mb-2" x-text="slide.title"></h2>
                             <p class="text-sm text-white/70 max-w-md" x-text="slide.subtitle"></p>
                         </div>
                     </template>
@@ -68,7 +68,7 @@
                 <div class="flex items-center gap-3">
                     {{-- Play/Pause --}}
                     <button @click="togglePlay()"
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25"
+                            class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
                             :aria-label="playing ? 'Pause slideshow' : 'Play slideshow'">
                         <svg x-show="playing" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
@@ -85,7 +85,7 @@
 
                     {{-- Prev --}}
                     <button @click="prev(); if (playing) _startTimer()"
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25"
+                            class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
                             aria-label="Previous slide">
                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -94,7 +94,7 @@
 
                     {{-- Next --}}
                     <button @click="next(); if (playing) _startTimer()"
-                            class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25"
+                            class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
                             aria-label="Next slide">
                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -144,7 +144,7 @@
                             <g><polygon points="201.669 504.641 201.669 411.26 157.452 411.26 123.126 475.863 201.669 504.641" fill="url(#b)"/><path d="m109.017,411.26h-46.332c-25.588,0-46.332,20.743-46.332,46.332h0c0,20.921,13.87,38.593,32.914,44.347l108.185-90.679h-48.436Z" fill="url(#c)"/><polygon points="16.353 494.089 16.353 587.469 60.56 587.469 94.887 522.867 16.353 494.089" fill="url(#d)"/><path d="m109.006,587.469h46.332c25.588,0,46.332-20.743,46.332-46.332h0c0-20.924-13.874-38.597-32.921-44.35l-108.188,90.681h48.446Z" fill="url(#e)"/></g>
                         </svg>
                     @else
-                        <h1 class="text-xl font-bold text-gray-900">{{ $brandingAppName ?? 'SimpleAd Manager' }}</h1>
+                        <h1 class="text-xl font-semibold text-gray-900">{{ $brandingAppName ?? 'SimpleAd Manager' }}</h1>
                     @endif
                 </div>
 

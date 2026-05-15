@@ -12,29 +12,91 @@
     <x-ui.flash-alert type="success" key="backup-success" />
     <x-ui.flash-alert type="error" key="backup-error" />
 
+    {{-- Backup Health (averaged across configured sites + bottom-N for triage) --}}
+    @php $health = $this->backupHealth; @endphp
+    @if($health && $health['sites_count'] > 0)
+        @php
+            $avg = (float) ($health['avg_score'] ?? 0);
+            $avgColor = match(true) {
+                $avg >= 80 => 'text-green-600',
+                $avg >= 50 => 'text-yellow-600',
+                $avg >= 25 => 'text-orange-600',
+                default => 'text-red-600',
+            };
+            $avgBg = match(true) {
+                $avg >= 80 => 'bg-green-50',
+                $avg >= 50 => 'bg-yellow-50',
+                $avg >= 25 => 'bg-orange-50',
+                default => 'bg-red-50',
+            };
+        @endphp
+        <x-ui.card class="mb-6">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg {{ $avgBg }}">
+                        <span class="text-base font-semibold {{ $avgColor }}">{{ (int) round($avg) }}</span>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Backup Health') }}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Average score across :n configured sites', ['n' => $health['sites_count']]) }}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-green-700"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> {{ $health['excellent'] }} {{ __('excellent') }}</span>
+                    <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-0.5 text-yellow-700"><span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span> {{ $health['ok'] }} {{ __('ok') }}</span>
+                    <span class="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-orange-700"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span> {{ $health['warning'] }} {{ __('warning') }}</span>
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-red-700"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> {{ $health['critical'] }} {{ __('critical') }}</span>
+                </div>
+            </div>
+
+            @if(! empty($health['bottom']))
+                <div class="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">{{ __('Lowest scores — needs attention') }}</div>
+                    <div class="space-y-1.5">
+                        @foreach($health['bottom'] as $entry)
+                            @php
+                                $entryColor = match(true) {
+                                    $entry['score'] >= 80 => 'bg-green-100 text-green-700',
+                                    $entry['score'] >= 50 => 'bg-yellow-100 text-yellow-700',
+                                    $entry['score'] >= 25 => 'bg-orange-100 text-orange-700',
+                                    default => 'bg-red-100 text-red-700',
+                                };
+                            @endphp
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="inline-flex w-9 shrink-0 justify-center rounded px-1.5 py-0.5 text-xs font-semibold {{ $entryColor }}">{{ $entry['score'] }}</span>
+                                <a href="{{ route('sites.backups', $entry['site_id']) }}" class="font-medium text-gray-800 dark:text-gray-100 hover:text-accent-600 dark:hover:text-accent-400 truncate">{{ $entry['name'] }}</a>
+                                <span class="truncate text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $entry['reasons']) }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </x-ui.card>
+    @endif
+
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total'] }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ $this->stats['total'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Total Backups') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-green-600">{{ $this->stats['completed'] }}</p>
+                <p class="text-2xl font-semibold text-green-600">{{ $this->stats['completed'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Completed') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-red-600">{{ $this->stats['failed'] }}</p>
+                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['failed'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Failed') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['in_progress'] }}</p>
+                <p class="text-2xl font-semibold text-accent-600">{{ $this->stats['in_progress'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('In Progress') }}</p>
             </div>
         </x-ui.card>

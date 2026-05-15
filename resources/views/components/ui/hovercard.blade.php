@@ -16,7 +16,7 @@
              x-transition:leave="transition ease-in duration-75"
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
-             class="{{ $width }} rounded-lg bg-white dark:bg-gray-800 p-4 shadow-lg ring-1 ring-gray-950/5 dark:ring-gray-700/30"
+             class="{{ $width }} rounded-lg bg-white dark:bg-gray-800 p-4 shadow-lg border border-gray-200 dark:border-gray-700"
              style="display: none; position: fixed; z-index: 9999;">
             {{ $slot }}
         </div>

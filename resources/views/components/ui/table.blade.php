@@ -1,11 +1,11 @@
-<div class="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:ring-gray-700/30">
-    <table class="min-w-full divide-y divide-gray-200">
+<div class="overflow-x-auto rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         @if(isset($head))
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 dark:bg-gray-900/50">
                 <tr>{{ $head }}</tr>
             </thead>
         @endif
-        <tbody class="divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             {{ $slot }}
         </tbody>
     </table>

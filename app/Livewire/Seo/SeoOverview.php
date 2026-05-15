@@ -6,6 +6,7 @@ namespace App\Livewire\Seo;
 
 use App\Enums\SeoAuditStatus;
 use App\Jobs\RunSeoAudit;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SeoIssue;
 use App\Models\Site;
 use App\Services\SeoAudit\SiteAuditService;
@@ -17,6 +18,8 @@ use Livewire\Component;
 
 class SeoOverview extends Component
 {
+    use WithSiteAuthorization;
+
     #[Url]
     public string $search = '';
 
@@ -36,7 +39,8 @@ class SeoOverview extends Component
             ->with(['seoMonitor', 'latestSeoAudit'])
             ->withCount(['seoAudits as running_audits_count' => fn ($q) => $q->whereIn('status', [SeoAuditStatus::Pending, SeoAuditStatus::Crawling, SeoAuditStatus::Analyzing, SeoAuditStatus::Scoring])]);
         if ($this->search !== '') {
-            $q->where(fn ($q) => $q->where('name', 'ilike', "%{$this->search}%")->orWhere('url', 'ilike', "%{$this->search}%"));
+            $escaped = '%'.$this->escapeLike($this->search).'%';
+            $q->where(fn ($q) => $q->where('name', 'ilike', $escaped)->orWhere('url', 'ilike', $escaped));
         }
         $sites = $q->get();
         if ($this->scoreFilter !== '') {
@@ -156,6 +160,11 @@ class SeoOverview extends Component
             ->get();
     }
 
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
+    }
+
     public function runAudit(int $id): void
     {
         if (! RateLimiter::attempt('seo-audit-'.$id, 1, fn () => true, 60)) {
@@ -164,6 +173,7 @@ class SeoOverview extends Component
             return;
         }
         $site = Site::findOrFail($id);
+        $this->authorizeSiteModification($site);
         if (app(SiteAuditService::class)->hasRunningAudit($site)) {
             $this->dispatch('notify', type: 'warning', message: 'Already running.');
 

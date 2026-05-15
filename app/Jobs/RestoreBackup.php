@@ -58,7 +58,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         ini_set('memory_limit', '1G');
 
         $this->tempDir = storage_path('app/temp/restore-'.uniqid());
-        mkdir($this->tempDir, 0755, true);
+        mkdir($this->tempDir, 0700, true);
 
         try {
             $this->backup->update([
@@ -341,7 +341,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $localPath = $targetDir.'/'.$localName;
 
             // Make sure subdirs exist for chunk files
-            @mkdir(dirname($localPath), 0755, true);
+            @mkdir(dirname($localPath), 0700, true);
             $driver->download($remotePath, $localPath);
 
             // Per-file SHA256 verification — multipart-v3 trusts manifest sha256s
@@ -421,7 +421,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $this->logRestoreStep("Restoring from chain of {$chainLength} backups...");
 
         $mergedDir = $this->tempDir.'/merged';
-        mkdir($mergedDir, 0755, true);
+        mkdir($mergedDir, 0700, true);
 
         $latestDbPath = null;
         $allDeletedPaths = [];
@@ -437,7 +437,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $this->logRestoreStep("Downloading backup {$stepNum}/{$chainLength}...");
 
             $extractDir = $this->tempDir.'/extract_'.$i;
-            mkdir($extractDir, 0755, true);
+            mkdir($extractDir, 0700, true);
 
             if ($chainBackup->format === 'v3-zip') {
                 // v3-zip: download single .zip, extract, repackage files/ as files.zip
@@ -567,7 +567,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         // v2 format: merge chunk zips into a single files.zip for restore
         $filesZip = $baseDir.'/files.zip';
         $extractDir = $baseDir.'/files_extract_'.uniqid();
-        mkdir($extractDir, 0755, true);
+        mkdir($extractDir, 0700, true);
 
         try {
             foreach ($meta['chunk_files'] as $chunkName) {
@@ -729,7 +729,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $source->close();
         } else {
             $extractDir = $this->tempDir.'/selective-extract';
-            mkdir($extractDir, 0755, true);
+            mkdir($extractDir, 0700, true);
 
             $cmd = ['tar', 'xzf', $innerArchivePath, '-C', $extractDir];
             foreach ($this->selectedFiles as $file) {

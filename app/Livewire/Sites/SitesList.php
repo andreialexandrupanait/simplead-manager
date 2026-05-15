@@ -21,10 +21,13 @@ class SitesList extends Component
 
         $sites = Site::query()
             ->when(! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
-            ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('url', 'ilike', "%{$this->search}%");
-            }))
+            ->when($this->search, function ($q) {
+                $escaped = '%'.$this->escapeLike($this->search).'%';
+                $q->where(function ($q) use ($escaped) {
+                    $q->where('name', 'ilike', $escaped)
+                        ->orWhere('url', 'ilike', $escaped);
+                });
+            })
             ->when($this->filter !== 'all', function ($q) {
                 return match ($this->filter) {
                     'healthy' => $q->where('health_score', '>=', 90)->where('is_up', true),

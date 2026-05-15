@@ -11,37 +11,37 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Monitors') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->stats['with_changes'] > 0 ? 'text-yellow-600' : 'text-green-600' }}">{{ $this->stats['with_changes'] }}</p>
+                <p class="text-2xl font-semibold {{ $this->stats['with_changes'] > 0 ? 'text-yellow-600' : 'text-green-600' }}">{{ $this->stats['with_changes'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Changes') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-accent-600">{{ $this->stats['cloudflare'] }}</p>
+                <p class="text-2xl font-semibold text-accent-600">{{ $this->stats['cloudflare'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Cloudflare') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->stats['no_spf'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $this->stats['no_spf'] }}</p>
+                <p class="text-2xl font-semibold {{ $this->stats['no_spf'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $this->stats['no_spf'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Missing SPF') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold {{ $this->stats['no_dmarc'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $this->stats['no_dmarc'] }}</p>
+                <p class="text-2xl font-semibold {{ $this->stats['no_dmarc'] > 0 ? 'text-red-600' : 'text-green-600' }}">{{ $this->stats['no_dmarc'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Missing DMARC') }}</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-blue-600">{{ $this->stats['recent_changes'] }}</p>
+                <p class="text-2xl font-semibold text-blue-600">{{ $this->stats['recent_changes'] }}</p>
                 <p class="text-xs text-gray-500 mt-1">{{ __('Changes (7d)') }}</p>
             </div>
         </x-ui.card>

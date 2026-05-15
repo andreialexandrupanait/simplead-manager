@@ -7,7 +7,7 @@
    @if($active) aria-current="page" @endif
    class="flex items-center gap-3 px-3 rounded-lg py-1.5 text-sm font-medium transition-all duration-200
           {{ $active
-              ? 'bg-sidebar-hover text-white'
+              ? 'bg-accent-500 text-white shadow-sm'
               : ($inactive
                   ? 'text-white/30 hover:text-white/50 hover:bg-white/5'
                   : 'text-white/70 hover:text-white hover:bg-sidebar-hover') }}"

@@ -74,7 +74,7 @@
         $isPublicView = $isPublicView ?? false;
         $clientLogo = $client?->logo_path ? Storage::url($client->logo_path) : null;
     @endphp
-    <header class="sticky top-0 z-20 h-[72px] border-b border-gray-200 bg-white/95 backdrop-blur flex items-center">
+    <header class="sticky top-0 z-20 h-[72px] border-b border-gray-200 bg-white flex items-center">
         <div class="mx-auto w-full max-w-6xl px-4 flex items-center justify-between">
             <div class="flex items-center gap-3 min-w-0">
                 @if($clientLogo)
@@ -86,7 +86,7 @@
                     @if(!$isPublicView && $client?->portal_token)
                         <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-accent-600 hover:text-accent-800 font-medium">&larr; Back to portal</a>
                     @endif
-                    <h1 class="text-base font-bold text-gray-900 truncate">{{ $report->title }}</h1>
+                    <h1 class="text-base font-semibold text-gray-900 truncate">{{ $report->title }}</h1>
                     <p class="text-[11px] text-gray-500">{{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}</p>
                 </div>
             </div>
@@ -151,7 +151,7 @@
             <section id="overview" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.layout-dashboard class="h-5 w-5 text-accent-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Overview</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Overview</h2>
                 </div>
 
                 {{-- Hero row — big numbers --}}
@@ -221,7 +221,7 @@
             <section id="uptime" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.activity class="h-5 w-5 text-green-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Uptime & Availability</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Uptime & Availability</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div class="metric bg-green-50/50"><div><p class="metric-value text-green-600">{{ number_format((float)($ut['uptime_percentage'] ?? 0), 3) }}%</p><p class="metric-label">Uptime</p></div></div>
@@ -236,7 +236,7 @@
                         <div class="chart-wrap">
                             <x-charts.line-chart
                                 :labels="array_map(fn($r) => date('d M', strtotime($r['date'] ?? '')), $ut['response_time_chart'])"
-                                :datasets="[['label' => 'Response Time (ms)', 'data' => array_map(fn($r) => round((float)($r['avg_response_time'] ?? 0)), $ut['response_time_chart']), 'color' => '#8D5CF5']]"
+                                :datasets="[['label' => 'Response Time (ms)', 'data' => array_map(fn($r) => round((float)($r['avg_response_time'] ?? 0)), $ut['response_time_chart']), 'color' => '#7B68EE']]"
                                 height="200px"
                             />
                         </div>
@@ -289,7 +289,7 @@
             <section id="security" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.shield class="h-5 w-5 text-blue-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Security</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Security</h2>
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-6 items-start">
@@ -393,7 +393,7 @@
             <section id="updates" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.refresh-cw class="h-5 w-5 text-blue-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Updates Applied</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Updates Applied</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
                     <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ $upd['total_count'] ?? 0 }}</p><p class="metric-label">Total</p></div></div>
@@ -454,7 +454,7 @@
             <section id="backups" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.hard-drive class="h-5 w-5 text-green-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Backups</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Backups</h2>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-6 items-start">
                     @if($bkSuccess + $bkFailed > 0 && ($sOpts['backups']['show_chart'] ?? true))
@@ -526,7 +526,7 @@
             <section id="analytics" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.bar-chart-2 class="h-5 w-5 text-accent-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Analytics</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Analytics</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div class="metric bg-accent-50/50"><div><p class="metric-value">{{ number_format((int)($an['total_pageviews'] ?? 0)) }}</p><p class="metric-label">Pageviews</p></div></div>
@@ -541,7 +541,7 @@
                         <div class="chart-wrap">
                             <x-charts.line-chart
                                 :labels="array_map(fn($d) => date('d M', strtotime($d['date'] ?? '')), $an['daily_users'])"
-                                :datasets="[['label' => 'Users', 'data' => array_map(fn($d) => (int)($d['users'] ?? 0), $an['daily_users']), 'color' => '#8D5CF5']]"
+                                :datasets="[['label' => 'Users', 'data' => array_map(fn($d) => (int)($d['users'] ?? 0), $an['daily_users']), 'color' => '#7B68EE']]"
                                 height="200px"
                             />
                         </div>
@@ -556,7 +556,7 @@
                                 <x-charts.bar-chart
                                     :labels="array_map(fn($src) => $src['source'] ?? $src['channel'] ?? '', array_slice($an['traffic_sources'], 0, 6))"
                                     :data="array_map(fn($src) => (int)($src['users'] ?? 0), array_slice($an['traffic_sources'], 0, 6))"
-                                    color="#8D5CF5"
+                                    color="#7B68EE"
                                     :horizontal="true"
                                     height="200px"
                                 />
@@ -570,7 +570,7 @@
                                 <x-charts.donut-chart
                                     :labels="array_map(fn($d) => ucfirst($d['device'] ?? ''), $an['devices'])"
                                     :data="array_map(fn($d) => (int)($d['sessions'] ?? $d['users'] ?? 0), $an['devices'])"
-                                    :colors="['#8D5CF5', '#06b6d4', '#f59e0b', '#ef4444', '#10b981']"
+                                    :colors="['#7B68EE', '#06b6d4', '#f59e0b', '#ef4444', '#10b981']"
                                     height="200px"
                                 />
                             </div>
@@ -616,7 +616,7 @@
             <section id="search_console" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.search class="h-5 w-5 text-green-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Search Console</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Search Console</h2>
                 </div>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div class="metric bg-green-50/50"><div><p class="metric-value text-green-600">{{ number_format((int)($scOv['total_clicks'] ?? 0)) }}</p><p class="metric-label">Clicks</p></div></div>
@@ -632,7 +632,7 @@
                             <x-charts.bar-chart
                                 :labels="array_map(fn($q) => \Illuminate\Support\Str::limit($q['query'] ?? '', 30), array_slice($sc['queries'], 0, 8))"
                                 :data="array_map(fn($q) => (int)($q['clicks'] ?? 0), array_slice($sc['queries'], 0, 8))"
-                                color="#8D5CF5"
+                                color="#7B68EE"
                                 :horizontal="true"
                                 height="240px"
                             />
@@ -714,7 +714,7 @@
             <section id="performance" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.zap class="h-5 w-5 text-yellow-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Performance</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Performance</h2>
                 </div>
                 <div class="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 mb-6 py-4">
                     @if($sOpts['performance']['show_mobile'] ?? true)
@@ -753,7 +753,7 @@
                 <section id="plugins" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
                         <x-icons.puzzle class="h-4 w-4 text-accent-500" />
-                        <h2 class="text-base font-bold text-gray-900">Plugins & Themes</h2>
+                        <h2 class="text-base font-semibold text-gray-900">Plugins & Themes</h2>
                     </div>
                     @if(!empty($inv['plugins']))
                         <p class="sub-heading">Plugins ({{ count($inv['plugins']) }})</p>
@@ -839,7 +839,7 @@
                     <section id="database" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
                             <x-icons.database class="h-4 w-4 text-blue-500" />
-                            <h2 class="text-sm font-bold text-gray-900">Database Health</h2>
+                            <h2 class="text-sm font-semibold text-gray-900">Database Health</h2>
                         </div>
                         <div class="space-y-2">
                             <div class="flex justify-between"><span class="text-xs text-gray-500">Size</span><span class="text-sm font-semibold text-gray-900">{{ $dbh['size'] ?? '—' }}</span></div>
@@ -854,7 +854,7 @@
                     <section id="cloudflare" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
                             <x-icons.cloud class="h-4 w-4 text-orange-500" />
-                            <h2 class="text-sm font-bold text-gray-900">Cloudflare / CDN</h2>
+                            <h2 class="text-sm font-semibold text-gray-900">Cloudflare / CDN</h2>
                         </div>
                         <div class="space-y-2">
                             <div class="flex justify-between"><span class="text-xs text-gray-500">Requests</span><span class="text-sm font-semibold text-gray-900">{{ number_format((int)($cf['total_requests'] ?? 0)) }}</span></div>
@@ -869,7 +869,7 @@
                     <section id="email" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                         <div class="flex items-center gap-2 mb-3">
                             <x-icons.mail class="h-4 w-4 text-blue-500" />
-                            <h2 class="text-sm font-bold text-gray-900">Email Health</h2>
+                            <h2 class="text-sm font-semibold text-gray-900">Email Health</h2>
                         </div>
                         <div class="space-y-2">
                             @foreach(['spf' => 'SPF', 'dkim' => 'DKIM', 'dmarc' => 'DMARC'] as $key => $label)
@@ -893,7 +893,7 @@
                 <section id="users" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
                         <x-icons.users class="h-4 w-4 text-accent-500" />
-                        <h2 class="text-base font-bold text-gray-900">WordPress Users</h2>
+                        <h2 class="text-base font-semibold text-gray-900">WordPress Users</h2>
                     </div>
                     {{-- Mobile cards --}}
                     <div class="md:hidden max-h-72 overflow-y-auto space-y-2">
@@ -936,7 +936,7 @@
                 <section class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
                         <x-icons.shield-alert class="h-4 w-4 text-red-500" />
-                        <h2 class="text-base font-bold text-gray-900">Security Checks</h2>
+                        <h2 class="text-base font-semibold text-gray-900">Security Checks</h2>
                     </div>
                     <div class="max-h-80 overflow-y-auto space-y-4">
                         @foreach($schk['categories'] ?? $schk as $cat)
@@ -964,12 +964,12 @@
                 <section id="seo" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
                         <x-icons.search class="h-4 w-4 text-purple-500" />
-                        <h3 class="text-base font-bold text-gray-900">SEO Audit</h3>
+                        <h3 class="text-base font-semibold text-gray-900">SEO Audit</h3>
                     </div>
                     <div class="flex items-center gap-6 mb-4">
                         <div class="text-center">
                             @php $sc = $seo['score']; $scc = $sc >= 80 ? 'text-green-600' : ($sc >= 50 ? 'text-yellow-600' : 'text-red-600'); @endphp
-                            <span class="text-3xl font-bold {{ $scc }}">{{ $sc }}</span>
+                            <span class="text-3xl font-semibold {{ $scc }}">{{ $sc }}</span>
                             <span class="text-sm text-gray-400">/100</span>
                             <p class="text-xs text-gray-500 mt-1">{{ $seo['pages_crawled'] }} pages &middot; {{ $seo['scanned_at'] }}@if($seo['seo_plugin'] ?? null) &middot; {{ $seo['seo_plugin'] }}@endif</p>
                         </div>
@@ -1136,7 +1136,7 @@
             <section id="recommendations" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-6">
                 <div class="flex items-center gap-2 mb-5">
                     <x-icons.check-circle class="h-5 w-5 text-green-600" />
-                    <h2 class="text-lg font-bold text-gray-900">Recommended Actions</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Recommended Actions</h2>
                 </div>
                 <div class="space-y-3">
                     @foreach($flatRecs as $rec)

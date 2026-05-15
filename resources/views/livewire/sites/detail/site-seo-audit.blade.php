@@ -57,7 +57,7 @@
                 @php $score=$audit->score; $sc=$score>=80?'text-green-600':($score>=50?'text-yellow-600':'text-red-600'); $rc=$score>=80?'stroke-green-500':($score>=50?'stroke-yellow-500':'stroke-red-500'); @endphp
                 <div class="relative mx-auto h-28 w-28">
                     <svg class="h-28 w-28 -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" class="stroke-gray-200" stroke-width="8"/><circle cx="50" cy="50" r="42" fill="none" class="{{ $rc }}" stroke-width="8" stroke-linecap="round" stroke-dasharray="{{ $score*2.64 }} 264"/></svg>
-                    <div class="absolute inset-0 flex items-center justify-center"><span class="text-3xl font-bold {{ $sc }}">{{ $score }}</span></div>
+                    <div class="absolute inset-0 flex items-center justify-center"><span class="text-3xl font-semibold {{ $sc }}">{{ $score }}</span></div>
                 </div>
                 <p class="mt-2 text-sm font-medium text-gray-500">Overall Score</p>
                 @if($this->auditDiff) @php $d=$this->auditDiff['score_delta']; @endphp <p class="mt-1 text-xs {{ $d>0?'text-green-600':($d<0?'text-red-600':'text-gray-400') }}">{{ $d>0?'+':'' }}{{ $d }} vs previous</p> @endif
@@ -66,7 +66,7 @@
                 @php $cs=$this->categoryScores[$key]??0; $cc=$cs>=80?'text-green-600':($cs>=50?'text-yellow-600':'text-red-600'); $bc=$cs>=80?'bg-green-500':($cs>=50?'bg-yellow-500':'bg-red-500'); @endphp
                 <x-ui.card>
                     <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ $label }}</p>
-                    <p class="mt-1 text-2xl font-bold {{ $cc }}">{{ $cs }}</p>
+                    <p class="mt-1 text-2xl font-semibold {{ $cc }}">{{ $cs }}</p>
                     <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200"><div class="h-full rounded-full {{ $bc }}" style="width:{{ $cs }}%"></div></div>
                     <p class="mt-1 text-xs text-gray-400">{{ config("seo.scoring.weights.{$key}") }}% weight</p>
                 </x-ui.card>
@@ -770,7 +770,7 @@
                     <x-charts.line-chart
                         :labels="$this->trendData['labels']"
                         :datasets="[
-                            ['label' => 'Overall', 'data' => $this->trendData['overall'], 'color' => '#8D5CF5'],
+                            ['label' => 'Overall', 'data' => $this->trendData['overall'], 'color' => '#7B68EE'],
                             ['label' => 'Technical', 'data' => $this->trendData['technical'], 'color' => '#3b82f6'],
                             ['label' => 'On-Page', 'data' => $this->trendData['on_page'], 'color' => '#10b981'],
                             ['label' => 'Performance', 'data' => $this->trendData['performance'], 'color' => '#f59e0b'],

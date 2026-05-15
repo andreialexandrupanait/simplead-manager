@@ -38,8 +38,7 @@
 @endphp
 
 <div
-    class="group flex items-center gap-3 border-b border-gray-100 border-l-[3px] px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}"
-    style="border-left-color: {{ $site->siteStatus ? $site->siteStatus->color : 'transparent' }}"
+    class="group flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}"
     data-site-id="{{ $site->id }}"
     wire:key="site-{{ $site->id }}"
 >
@@ -64,6 +63,14 @@
 
     {{-- Site Identity --}}
     <div class="min-w-0 flex-1 flex items-center gap-2">
+        @if($site->siteStatus)
+            <x-ui.tooltip :text="$site->siteStatus->name">
+                <span class="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style="background-color: {{ $site->siteStatus->color }}"
+                      role="img"
+                      aria-label="{{ __('Status') }}: {{ $site->siteStatus->name }}"></span>
+            </x-ui.tooltip>
+        @endif
         <a href="{{ route('sites.overview', $site) }}"
            class="truncate text-sm font-medium text-gray-900 hover:opacity-80"
         >{{ $site->domain }}</a>
@@ -194,8 +201,11 @@
     {{-- Three-dot Dropdown --}}
     <x-ui.dropdown align="right" width="48">
         <x-slot:trigger>
-            <button class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+            <button type="button"
+                    aria-label="{{ __('Site actions') }}"
+                    aria-haspopup="menu"
+                    class="rounded p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1">
+                <svg aria-hidden="true" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
             </button>
         </x-slot:trigger>
 
@@ -224,10 +234,11 @@
             <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">Status</div>
             @foreach($siteStatuses as $status)
                 <button wire:click="setSiteStatus({{ $site->id }}, {{ $status->id }})" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
-                    <span class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
+                    <span aria-hidden="true" class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
                     {{ $status->name }}
                     @if($site->site_status_id === $status->id)
-                        <svg class="ml-auto h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <svg aria-hidden="true" class="ml-auto h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span class="sr-only">{{ __('(selected)') }}</span>
                     @endif
                 </button>
             @endforeach

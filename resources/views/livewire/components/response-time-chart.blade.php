@@ -17,7 +17,7 @@
         <x-charts.line-chart
             wire:key="chart-{{ $range }}"
             :labels="$this->chartData['labels']"
-            :datasets="[['label' => 'Response Time (ms)', 'data' => $this->chartData['data'], 'color' => '#8D5CF5']]"
+            :datasets="[['label' => 'Response Time (ms)', 'data' => $this->chartData['data'], 'color' => '#7B68EE']]"
             height="250px"
         />
 

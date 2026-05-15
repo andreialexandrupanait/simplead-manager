@@ -41,7 +41,7 @@
                     @endif
                 </div>
                 <div class="flex items-center gap-2">
-                    <button wire:click="changeProperty" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">{{ __('Change Property') }}</button>
+                    <button wire:click="changeProperty" class="text-xs font-medium text-accent-600 hover:text-accent-500">{{ __('Change Property') }}</button>
                     <span class="text-gray-300">|</span>
                     <button wire:click="disconnectAnalytics" wire:confirm="{{ __('Disconnect Google Analytics? Cached data will be removed.') }}" class="text-xs font-medium text-gray-400 hover:text-red-600">{{ __('Disconnect') }}</button>
                 </div>
@@ -113,21 +113,21 @@
             <div class="grid grid-cols-3 gap-4">
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Users</div>
-                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['total_users']) }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['total_users']) }}</div>
                     @if(count($usersOverTime) > 1)
-                        <x-charts.sparkline :data="collect($usersOverTime)->pluck('users')->toArray()" color="#8D5CF5" />
+                        <x-charts.sparkline :data="collect($usersOverTime)->pluck('users')->toArray()" color="#7B68EE" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Sessions</div>
-                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['sessions']) }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['sessions']) }}</div>
                     @if(count($usersOverTime) > 1)
                         <x-charts.sparkline :data="collect($usersOverTime)->pluck('sessions')->toArray()" color="#10b981" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Pageviews</div>
-                    <div class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($overview['pageviews']) }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['pageviews']) }}</div>
                 </x-ui.card>
             </div>
 
@@ -184,7 +184,7 @@
                         if (this.chart) this.chart.destroy();
                         const d = this.chartData;
                         const datasets = [
-                            { label: 'Users', data: d.users, borderColor: '#8D5CF5', backgroundColor: '#8D5CF51A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
+                            { label: 'Users', data: d.users, borderColor: '#7B68EE', backgroundColor: '#7B68EE1A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                             { label: 'New Users', data: d.newUsers, borderColor: '#06b6d4', backgroundColor: '#06b6d41A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                             { label: 'Sessions', data: d.sessions, borderColor: '#10b981', backgroundColor: '#10b9811A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                         ];

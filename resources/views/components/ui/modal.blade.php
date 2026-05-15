@@ -1,4 +1,4 @@
-@props(['name', 'maxWidth' => 'lg'])
+@props(['name', 'maxWidth' => 'lg', 'title' => null])
 
 @php
 $maxWidthClass = match($maxWidth) {
@@ -9,6 +9,7 @@ $maxWidthClass = match($maxWidth) {
     '2xl' => 'max-w-2xl',
     '3xl' => 'max-w-3xl',
 };
+$titleId = 'modal-' . $name . '-title';
 @endphp
 
 <div x-data="{ open: false }"
@@ -19,7 +20,7 @@ $maxWidthClass = match($maxWidth) {
      x-transition
      role="dialog"
      aria-modal="true"
-     aria-labelledby="modal-{{ $name }}-title"
+     @if($title) aria-label="{{ $title }}" @else aria-labelledby="{{ $titleId }}" @endif
      class="fixed inset-0 z-50 flex items-center justify-center p-4"
      style="display: none;">
 
@@ -30,6 +31,9 @@ $maxWidthClass = match($maxWidth) {
     <div x-show="open" x-transition
          x-trap.inert.noscroll="open"
          class="relative w-full {{ $maxWidthClass }} max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl">
+        @if($title)
+            <span id="{{ $titleId }}" class="sr-only">{{ $title }}</span>
+        @endif
         {{ $slot }}
     </div>
 </div>

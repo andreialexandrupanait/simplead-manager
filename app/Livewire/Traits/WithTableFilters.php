@@ -37,10 +37,17 @@ trait WithTableFilters
             return $query;
         }
 
-        return $query->where(function ($q) use ($columns) {
+        $escaped = '%'.$this->escapeLike($this->search).'%';
+
+        return $query->where(function ($q) use ($columns, $escaped) {
             foreach ($columns as $column) {
-                $q->orWhere($column, 'like', "%{$this->search}%");
+                $q->orWhere($column, 'like', $escaped);
             }
         });
+    }
+
+    protected function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 }

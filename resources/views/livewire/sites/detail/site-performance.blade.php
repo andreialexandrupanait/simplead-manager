@@ -224,7 +224,7 @@
                         <div class="rounded-lg border border-gray-200 p-4">
                             <p class="text-xs font-medium text-gray-500 uppercase">{{ $label }} 30d avg</p>
                             <div class="mt-1 flex items-baseline gap-2">
-                                <span class="text-2xl font-bold text-gray-900">{{ $trend['current'] }}</span>
+                                <span class="text-2xl font-semibold text-gray-900">{{ $trend['current'] }}</span>
                                 @if($trend['change'] !== null)
                                     <span class="text-sm font-medium {{ $trend['change'] > 0 ? 'text-green-600' : ($trend['change'] < 0 ? 'text-red-600' : 'text-gray-400') }}">
                                         {{ $trend['change'] > 0 ? '+' : '' }}{{ $trend['change'] }} vs prev 30d
@@ -374,9 +374,9 @@
                             </div>
                             <div class="mt-2 flex items-center gap-3">
                                 @if($test->performance_score !== null)
-                                    <span class="text-2xl font-bold {{ $scoreColor }}">{{ $test->performance_score }}</span>
+                                    <span class="text-2xl font-semibold {{ $scoreColor }}">{{ $test->performance_score }}</span>
                                 @else
-                                    <span class="text-2xl font-bold text-gray-400">—</span>
+                                    <span class="text-2xl font-semibold text-gray-400">—</span>
                                 @endif
                                 <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-500">
                                     <span>FCP: <span class="font-medium text-gray-700">{{ $test->formatMetric('fcp') }}</span></span>

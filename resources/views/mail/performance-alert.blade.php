@@ -12,7 +12,7 @@
         .score-previous { background-color: #f3f4f6; color: #6b7280; }
         .score-current { background-color: #fef2f2; color: #dc2626; }
         .arrow { font-size: 20px; color: #9ca3af; vertical-align: middle; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #8D5CF5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
+        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
     </style>
 </head>

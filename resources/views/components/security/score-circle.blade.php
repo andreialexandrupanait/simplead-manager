@@ -22,7 +22,7 @@
         @endif
     </svg>
     <div class="absolute inset-0 flex flex-col items-center justify-center">
-        <span class="text-2xl font-bold {{ $score !== null ? 'text-gray-900' : 'text-gray-400' }}">
+        <span class="text-2xl font-semibold {{ $score !== null ? 'text-gray-900' : 'text-gray-400' }}">
             {{ $score ?? '—' }}
         </span>
         <span class="text-xs text-gray-500">/ 100</span>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Uptime;
 
 use App\Jobs\CheckUptime;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 
 class UptimeOverview extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public string $search = '';
 
@@ -58,12 +59,16 @@ class UptimeOverview extends Component
 
     public function pauseMonitor(int $id): void
     {
-        UptimeMonitor::whereHas('site')->findOrFail($id)->update(['status' => 'paused']);
+        $monitor = UptimeMonitor::whereHas('site')->with('site')->findOrFail($id);
+        $this->authorizeSiteModification($monitor->site);
+        $monitor->update(['status' => 'paused']);
     }
 
     public function resumeMonitor(int $id): void
     {
-        UptimeMonitor::whereHas('site')->findOrFail($id)->update([
+        $monitor = UptimeMonitor::whereHas('site')->with('site')->findOrFail($id);
+        $this->authorizeSiteModification($monitor->site);
+        $monitor->update([
             'status' => 'active',
             'next_check_at' => now(),
         ]);
@@ -71,13 +76,16 @@ class UptimeOverview extends Component
 
     public function testMonitor(int $id): void
     {
-        $monitor = UptimeMonitor::whereHas('site')->findOrFail($id);
+        $monitor = UptimeMonitor::whereHas('site')->with('site')->findOrFail($id);
+        $this->authorizeSiteModification($monitor->site);
         CheckUptime::dispatch($monitor);
     }
 
     public function deleteMonitor(int $id): void
     {
-        UptimeMonitor::whereHas('site')->findOrFail($id)->delete();
+        $monitor = UptimeMonitor::whereHas('site')->with('site')->findOrFail($id);
+        $this->authorizeSiteModification($monitor->site);
+        $monitor->delete();
     }
 
     public function openMaintenanceModal(int $id): void
@@ -141,14 +149,20 @@ class UptimeOverview extends Component
         // Livewire will re-render automatically
     }
 
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
+    }
+
     public function render()
     {
         $monitors = UptimeMonitor::query()
             ->whereHas('site')
             ->with('site')
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('url', 'ilike', "%{$this->search}%"));
+                $escaped = '%'.$this->escapeLike($this->search).'%';
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', $escaped)
+                    ->orWhere('url', 'ilike', $escaped));
             })
             ->when($this->filter !== 'all', fn ($q) => match ($this->filter) {
                 'up' => $q->where('current_state', 'up'),

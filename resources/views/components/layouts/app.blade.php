@@ -39,7 +39,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="h-full bg-gray-50 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
+<body class="h-full bg-[#FAFAFA] dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
 
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-accent-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
         Skip to content
@@ -92,7 +92,8 @@
         {{-- Sidebar --}}
         <aside data-sidebar
                aria-label="{{ __('Main navigation') }}"
-               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-[#1A1A2E] overflow-hidden transition-all duration-300 ease-in-out
+               style="will-change: width, transform;"
+               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar overflow-hidden transition-[width,transform] duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -105,9 +106,12 @@
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 flex-1 min-w-0 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
-                        <img src="{{ Storage::url($brandingLogo) }}" alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}" class="w-auto object-contain" style="height: 170px; filter: brightness(0) invert(1);">
+                        <img src="{{ Storage::url($brandingLogo) }}"
+                             alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
+                             class="w-auto object-contain"
+                             style="height: 170px; filter: brightness(0) invert(1);">
                     @else
-                        <span class="text-lg font-bold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
+                        <span class="text-lg font-semibold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
                 </a>
                 <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
@@ -135,10 +139,10 @@
                     <a href="{{ route('settings.general') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-accent-500 text-white shadow-sm' : 'text-white/70 hover:text-white hover:bg-sidebar-hover' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span class="whitespace-nowrap transition-all duration-300"
+                        <span class="whitespace-nowrap transition-opacity duration-200"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                             {{ __('Settings') }}
                         </span>
@@ -149,7 +153,7 @@
                     <a href="{{ route('settings.profile') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-sidebar-hover text-white' : '' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-accent-500 text-white shadow-sm' : 'text-white/70 hover:text-white hover:bg-sidebar-hover' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <div class="h-5 w-5 rounded-full bg-accent-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
                             @if(auth()->user()->avatar_path)
@@ -158,7 +162,7 @@
                                 {{ auth()->user()->initials }}
                             @endif
                         </div>
-                        <span class="whitespace-nowrap transition-all duration-300"
+                        <span class="whitespace-nowrap transition-opacity duration-200"
                               :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
                             {{ __('Profile') }}
                         </span>

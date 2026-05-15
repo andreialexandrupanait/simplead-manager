@@ -81,14 +81,14 @@
                                wire:model.live="form.accentColor"
                                id="accentColor"
                                class="h-10 w-14 cursor-pointer rounded-lg border border-gray-300 p-1"
-                               value="{{ $form->accentColor ?? '#8D5CF5' }}">
+                               value="{{ $form->accentColor ?? '#7B68EE' }}">
                         <input type="text"
                                wire:model.live="form.accentColor"
                                class="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-accent-500 focus:ring-accent-500"
-                               placeholder="#8D5CF5"
+                               placeholder="#7B68EE"
                                maxlength="7">
                         <div class="flex items-center gap-2">
-                            <span class="inline-block h-8 w-8 rounded-lg shadow-sm" style="background-color: {{ $form->accentColor ?? '#8D5CF5' }}"></span>
+                            <span class="inline-block h-8 w-8 rounded-lg shadow-sm" style="background-color: {{ $form->accentColor ?? '#7B68EE' }}"></span>
                             @if($form->accentColor)
                                 <button type="button" wire:click="$set('form.accentColor', null)" class="text-xs text-gray-500 hover:text-red-600">{{ __('Reset') }}</button>
                             @endif

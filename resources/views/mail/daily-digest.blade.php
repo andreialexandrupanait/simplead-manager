@@ -17,8 +17,8 @@
         .stat-value.success { color: #16a34a; }
         .stat-value.danger { color: #dc2626; }
         .stat-value.warning { color: #d97706; }
-        .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #8D5CF5; margin: 24px 0 8px; padding-top: 16px; border-top: 2px solid #f3f4f6; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #8D5CF5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
+        .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #7B68EE; margin: 24px 0 8px; padding-top: 16px; border-top: 2px solid #f3f4f6; }
+        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
     </style>
 </head>

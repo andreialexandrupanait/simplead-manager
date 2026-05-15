@@ -27,7 +27,7 @@
                 :data="array_values($this->scoreDistribution)"
                 :horizontal="false"
                 height="200px"
-                color="#8D5CF5"
+                color="#7B68EE"
             />
         </x-ui.card>
 

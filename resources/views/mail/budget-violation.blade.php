@@ -12,7 +12,7 @@
         .violation-key { color: #6b7280; font-size: 14px; }
         .violation-value { color: #dc2626; font-weight: 600; font-size: 14px; }
         .violation-budget { color: #6b7280; font-size: 13px; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #8D5CF5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
+        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
     </style>
 </head>

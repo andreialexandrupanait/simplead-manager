@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Accept Invitation</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">Accept Invitation</h2>
     <p class="text-sm text-gray-600 mb-6">
         You've been invited by <strong>{{ $invitation->inviter->name }}</strong> as a <strong>{{ $invitation->getRoleEnum()->label() }}</strong>.
     </p>

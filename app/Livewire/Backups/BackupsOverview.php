@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Backups;
 
 use App\Jobs\CreateBackup;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Backup;
@@ -18,7 +19,7 @@ use Livewire\Component;
 
 class BackupsOverview extends Component
 {
-    use WithSorting, WithTableFilters;
+    use WithSiteAuthorization, WithSorting, WithTableFilters;
 
     protected string $defaultSortBy = 'created_at';
 
@@ -28,11 +29,54 @@ class BackupsOverview extends Component
     #[Computed]
     public function siteHealthScores(): array
     {
+        $sites = Site::with('backupConfig')->get();
+
+        if ($sites->isEmpty()) {
+            return [];
+        }
+
+        $siteIds = $sites->pluck('id');
+
+        // Batch-load latest completed backup per site
+        $latestCompleted = Backup::query()
+            ->whereIn('site_id', $siteIds)
+            ->where('status', 'completed')
+            ->orderByDesc('completed_at')
+            ->get()
+            ->unique('site_id')
+            ->keyBy('site_id');
+
+        // Batch-load latest attempt per site
+        $latestAttempt = Backup::query()
+            ->whereIn('site_id', $siteIds)
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique('site_id')
+            ->keyBy('site_id');
+
+        // Sites that have ever had a backup
+        $sitesWithBackups = Backup::whereIn('site_id', $siteIds)
+            ->distinct('site_id')
+            ->pluck('site_id')
+            ->flip();
+
         $service = app(\App\Services\Backup\BackupHealthService::class);
         $scores = [];
-        foreach (Site::with('backupConfig')->get() as $site) {
-            $report = $service->scoreForSite($site);
-            $scores[$site->id] = $report['score']; // null if unconfigured
+
+        foreach ($sites as $site) {
+            $config = $site->backupConfig;
+            $hasEverHadBackup = $sitesWithBackups->has($site->id);
+
+            if (! $config && ! $hasEverHadBackup) {
+                $scores[$site->id] = null;
+
+                continue;
+            }
+
+            $completed = $latestCompleted->get($site->id);
+            $attempt = $latestAttempt->get($site->id);
+
+            $scores[$site->id] = $service->computeScoreFromData($site, $config, $completed, $attempt);
         }
 
         return $scores;
@@ -48,6 +92,16 @@ class BackupsOverview extends Component
             'in_progress' => Backup::whereIn('status', ['pending', 'in_progress'])->count(),
             'stale' => $this->staleSites->count(),
         ];
+    }
+
+    /**
+     * Averaged backup health across configured sites, with bottom-N for triage.
+     * Moved here from dashboard so it lives next to the backup tables it summarises.
+     */
+    #[Computed]
+    public function backupHealth(): ?array
+    {
+        return app(\App\Services\Backup\BackupHealthService::class)->aggregate(5);
     }
 
     /**
@@ -77,6 +131,8 @@ class BackupsOverview extends Component
 
             return;
         }
+
+        $this->authorizeSiteModification($site);
 
         if (! $site->is_connected) {
             session()->flash('backup-error', "{$site->name}: connector not reachable — fix the WordPress plugin connection first.");
@@ -122,6 +178,10 @@ class BackupsOverview extends Component
 
     public function backupAllSites(): void
     {
+        if (auth()->user()->isViewer()) {
+            abort(403, 'Viewers cannot modify sites.');
+        }
+
         $rateLimitKey = 'bulk-backup-all:'.auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many bulk backup requests. Please wait before trying again.');
@@ -241,8 +301,9 @@ class BackupsOverview extends Component
         $backups = Backup::query()
             ->with(['site.backupConfig', 'storageDestination'])
             ->when($this->search, function ($q) {
-                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('url', 'ilike', "%{$this->search}%"));
+                $escaped = '%'.$this->escapeLike($this->search).'%';
+                $q->whereHas('site', fn ($sq) => $sq->where('name', 'ilike', $escaped)
+                    ->orWhere('url', 'ilike', $escaped));
             })
             ->when($this->filter !== 'all', function ($q) {
                 if ($this->filter === 'in_progress') {

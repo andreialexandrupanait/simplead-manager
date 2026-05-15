@@ -2,7 +2,7 @@
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $report->title }}</h1>
+            <h1 class="text-xl font-semibold text-gray-900">{{ $report->title }}</h1>
             <p class="text-sm text-gray-500">
                 {{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}
                 @if($report->file_path)
@@ -40,13 +40,13 @@
                     @if(isset($data['updates']))
                         <x-ui.card>
                             <p class="text-xs text-gray-500">{{ __('Updates Applied') }}</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $data['updates']['count'] ?? 0 }}</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ $data['updates']['count'] ?? 0 }}</p>
                         </x-ui.card>
                     @endif
                     @if(isset($data['uptime']))
                         <x-ui.card>
                             <p class="text-xs text-gray-500">{{ __('Uptime') }}</p>
-                            <p class="text-2xl font-bold {{ ($data['uptime']['percentage'] ?? 0) >= 99 ? 'text-green-600' : 'text-yellow-600' }}">
+                            <p class="text-2xl font-semibold {{ ($data['uptime']['percentage'] ?? 0) >= 99 ? 'text-green-600' : 'text-yellow-600' }}">
                                 {{ number_format($data['uptime']['percentage'] ?? 0, 2) }}%
                             </p>
                         </x-ui.card>
@@ -54,13 +54,13 @@
                     @if(isset($data['backups']))
                         <x-ui.card>
                             <p class="text-xs text-gray-500">{{ __('Backups') }}</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $data['backups']['successful'] ?? 0 }}</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ $data['backups']['successful'] ?? 0 }}</p>
                         </x-ui.card>
                     @endif
                     @if(isset($data['security']))
                         <x-ui.card>
                             <p class="text-xs text-gray-500">{{ __('Security Score') }}</p>
-                            <p class="text-2xl font-bold {{ ($data['security']['score'] ?? 0) >= 80 ? 'text-green-600' : 'text-yellow-600' }}">
+                            <p class="text-2xl font-semibold {{ ($data['security']['score'] ?? 0) >= 80 ? 'text-green-600' : 'text-yellow-600' }}">
                                 {{ $data['security']['score'] ?? 'N/A' }}
                             </p>
                         </x-ui.card>

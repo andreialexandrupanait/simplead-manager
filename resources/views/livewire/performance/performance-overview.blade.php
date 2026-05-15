@@ -15,7 +15,7 @@
     <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900">{{ $this->stats['total'] }}</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ $this->stats['total'] }}</p>
                 <p class="mt-1 text-xs text-gray-500">Sites Monitored</p>
             </div>
         </x-ui.card>
@@ -25,7 +25,7 @@
                     $mobileAvg = $this->stats['avg_mobile'];
                     $mobileColor = $mobileAvg === null ? 'text-gray-400' : ($mobileAvg >= 90 ? 'text-green-600' : ($mobileAvg >= 50 ? 'text-yellow-600' : 'text-red-600'));
                 @endphp
-                <p class="text-2xl font-bold {{ $mobileColor }}">{{ $mobileAvg ?? '—' }}</p>
+                <p class="text-2xl font-semibold {{ $mobileColor }}">{{ $mobileAvg ?? '—' }}</p>
                 <p class="mt-1 text-xs text-gray-500">Avg Mobile</p>
             </div>
         </x-ui.card>
@@ -35,13 +35,13 @@
                     $desktopAvg = $this->stats['avg_desktop'];
                     $desktopColor = $desktopAvg === null ? 'text-gray-400' : ($desktopAvg >= 90 ? 'text-green-600' : ($desktopAvg >= 50 ? 'text-yellow-600' : 'text-red-600'));
                 @endphp
-                <p class="text-2xl font-bold {{ $desktopColor }}">{{ $desktopAvg ?? '—' }}</p>
+                <p class="text-2xl font-semibold {{ $desktopColor }}">{{ $desktopAvg ?? '—' }}</p>
                 <p class="mt-1 text-xs text-gray-500">Avg Desktop</p>
             </div>
         </x-ui.card>
         <x-ui.card>
             <div class="text-center">
-                <p class="text-2xl font-bold text-red-600">{{ $this->stats['poor_count'] }}</p>
+                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['poor_count'] }}</p>
                 <p class="mt-1 text-xs text-gray-500">Poor (&lt;50)</p>
             </div>
         </x-ui.card>

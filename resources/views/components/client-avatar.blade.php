@@ -23,7 +23,7 @@ $colors = [
     'bg-cyan-100 text-cyan-700',
     'bg-sky-100 text-sky-700',
     'bg-blue-100 text-blue-700',
-    'bg-indigo-100 text-indigo-700',
+    'bg-accent-100 text-accent-700',
     'bg-violet-100 text-violet-700',
     'bg-accent-100 text-accent-700',
     'bg-fuchsia-100 text-fuchsia-700',

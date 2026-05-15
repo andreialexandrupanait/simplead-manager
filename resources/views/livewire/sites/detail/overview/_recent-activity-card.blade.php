@@ -5,8 +5,8 @@
 <x-ui.card :padding="false">
     {{-- Card Header --}}
     <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-700">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
-            <svg aria-hidden="true" class="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-100 dark:bg-accent-900/40">
+            <svg aria-hidden="true" class="h-4 w-4 text-accent-600 dark:text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>

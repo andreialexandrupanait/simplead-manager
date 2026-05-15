@@ -117,7 +117,7 @@
 
         {{-- Back button (shows when not on dashboard) --}}
         @if($showBackButton)
-            <a href="{{ $backUrl }}" aria-label="{{ __('Go back') }}" class="mr-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+            <a href="{{ $backUrl }}" aria-label="{{ __('Go back') }}" class="mr-2 rounded-lg p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
                 <x-icons.arrow-left class="h-5 w-5" aria-hidden="true" />
             </a>
         @endif
@@ -125,10 +125,10 @@
         {{-- Title + breadcrumb (left side) --}}
         <div class="flex min-w-0 flex-1 flex-col justify-center">
             @if($isDashboard)
-                <h1 class="text-sm font-bold tracking-wide text-gray-900 truncate leading-tight">{{ $greeting }}</h1>
+                <h1 class="text-sm font-semibold tracking-tight text-gray-900 truncate leading-tight">{{ $greeting }}</h1>
                 <span class="text-xs text-gray-400 mt-0.5">{{ __('Dashboard') }}</span>
             @else
-                <h1 class="text-sm font-bold tracking-wide text-gray-900 uppercase truncate leading-tight">{{ $pageTitle }}</h1>
+                <h1 class="text-sm font-semibold tracking-tight text-gray-900 uppercase truncate leading-tight">{{ $pageTitle }}</h1>
                 @if(count($crumbs) > 0)
                     <nav aria-label="{{ __('Breadcrumb') }}" class="hidden sm:flex items-center gap-1 mt-0.5">
                         @foreach($crumbs as $crumb)
@@ -154,7 +154,7 @@
                 <button @click="mobileSearchOpen = true"
                         type="button"
                         aria-label="{{ __('Open search') }}"
-                        class="sm:hidden rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                        class="sm:hidden rounded-lg p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                     </svg>
@@ -174,7 +174,7 @@
                     <button @click="mobileSearchOpen = false"
                             type="button"
                             aria-label="{{ __('Close search') }}"
-                            class="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                            class="shrink-0 rounded-lg p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -188,9 +188,12 @@
             </div>
 
             {{-- Dark mode toggle --}}
-            <button @click="toggleDarkMode()" title="{{ __('Toggle dark mode') }}" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition">
-                <x-icons.sun x-show="darkMode" x-cloak class="h-5 w-5" />
-                <x-icons.moon x-show="!darkMode" class="h-5 w-5" />
+            <button @click="toggleDarkMode()"
+                    type="button"
+                    aria-label="{{ __('Toggle dark mode') }}"
+                    class="rounded-lg p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
+                <x-icons.sun x-show="darkMode" x-cloak class="h-5 w-5" aria-hidden="true" />
+                <x-icons.moon x-show="!darkMode" class="h-5 w-5" aria-hidden="true" />
             </button>
 
             {{-- Notifications --}}
