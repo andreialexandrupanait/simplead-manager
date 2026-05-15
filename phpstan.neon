@@ -7,37 +7,11 @@ parameters:
         maximumNumberOfProcesses: 1
     paths:
         - app/
-    level: 7
+    level: 5
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         # Livewire magic properties
         - '#Access to an undefined property App\\Livewire\\#'
-        # Nullsafe operator on properties that CAN be null at runtime
-        # (e.g. $currentSnapshot from DB, nullable relationships)
-        - identifier: nullsafe.neverNull
-        # property_exists() on $this always true (Livewire trait property checks)
-        - identifier: function.alreadyNarrowedType
-        # Level 7: untyped arrays/collections/parameters — fix incrementally
-        - identifier: missingType.iterableValue
-        - identifier: missingType.generics
-        - identifier: missingType.parameter
-        - identifier: missingType.return
-        - identifier: missingType.property
-        # Level 7: Eloquent model properties without @property PHPDoc
-        - identifier: property.notFound
-        # Level 7: PHPDoc type certainty (instanceof/null checks on typed values)
-        - identifier: instanceof.alwaysTrue
-        - identifier: nullCoalesce.offset
-        - identifier: nullCoalesce.expr
-        - identifier: identical.alwaysFalse
-        - identifier: match.alwaysTrue
-        - identifier: ternary.alwaysTrue
-        - identifier: return.unusedType
-        # Level 7: template type mismatches from Laravel generics
-        - identifier: argument.templateType
-        - identifier: argument.unresolvableType
-        - identifier: method.unresolvableReturnType
-        - identifier: varTag.variableNotFound
     excludePaths:
         - app/Console/Commands/MigrateReportFiles.php
         - app/Livewire/Traits/

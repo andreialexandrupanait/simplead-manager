@@ -26,41 +26,8 @@ jobs:
       - name: Run Pint
         run: vendor/bin/pint --test
 
-      - name: 'PHPStan: Models, Enums & core'
-        run: >-
-          vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Models app/Enums app/DTOs app/Contracts app/Events
-          app/Exceptions app/Helpers app/Observers app/Policies
-          app/Providers app/Rules app/View app/helpers.php
-
-      - name: 'PHPStan: Jobs, Console & HTTP'
-        run: >-
-          vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Jobs app/Listeners app/Mail app/Dispatchers
-          app/Console app/Http
-
-      - name: 'PHPStan: Livewire (Sites)'
-        run: >-
-          vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Livewire/Sites
-
-      - name: 'PHPStan: Livewire (Settings, Forms, Components)'
-        run: >-
-          vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Livewire/Settings app/Livewire/Forms app/Livewire/Components
-          app/Livewire/Clients
-
-      - name: 'PHPStan: Livewire (remaining)'
-        run: >-
-          vendor/bin/phpstan analyse --memory-limit=6G --debug
-          app/Livewire/Activity app/Livewire/Backups app/Livewire/Dashboard
-          app/Livewire/Dns app/Livewire/ErrorLogs app/Livewire/Notifications
-          app/Livewire/Performance app/Livewire/Reports app/Livewire/Security
-          app/Livewire/Seo app/Livewire/StatusPages app/Livewire/Updates
-          app/Livewire/Uptime app/Livewire/MaintenancePlans.php
-
-      - name: 'PHPStan: Services'
-        run: vendor/bin/phpstan analyse --memory-limit=6G --debug app/Services
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=4G
 
   test:
     name: PHPUnit Tests
