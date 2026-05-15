@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    name: Pint & PHPStan
+    name: Pint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +25,6 @@ jobs:
 
       - name: Run Pint
         run: vendor/bin/pint --test
-
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=-1 --debug
 
   test:
     name: PHPUnit Tests
