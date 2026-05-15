@@ -28,22 +28,22 @@ jobs:
 
       - name: 'PHPStan: Models, Enums & core'
         run: >-
-          vendor/bin/phpstan analyse --memory-limit=4G
+          vendor/bin/phpstan analyse --memory-limit=4G --debug
           app/Models app/Enums app/DTOs app/Contracts app/Events
           app/Exceptions app/Helpers app/Observers app/Policies
           app/Providers app/Rules app/View app/helpers.php
 
       - name: 'PHPStan: Jobs, Console & HTTP'
         run: >-
-          vendor/bin/phpstan analyse --memory-limit=4G
+          vendor/bin/phpstan analyse --memory-limit=4G --debug
           app/Jobs app/Listeners app/Mail app/Dispatchers
           app/Console app/Http
 
       - name: 'PHPStan: Livewire'
-        run: vendor/bin/phpstan analyse --memory-limit=4G app/Livewire
+        run: vendor/bin/phpstan analyse --memory-limit=4G --debug app/Livewire
 
       - name: 'PHPStan: Services'
-        run: vendor/bin/phpstan analyse --memory-limit=4G app/Services
+        run: vendor/bin/phpstan analyse --memory-limit=4G --debug app/Services
 
   test:
     name: PHPUnit Tests
