@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+docker run --rm \
+  -v /var/www/simplead-manager:/var/www/html \
+  --network simplead-manager_simplead \
+  -w /var/www/html \
+  simplead-app:latest \
+  php vendor/bin/pint "$@"
