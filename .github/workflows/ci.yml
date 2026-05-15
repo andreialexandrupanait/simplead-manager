@@ -27,7 +27,7 @@ jobs:
         run: vendor/bin/pint --test
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=4G --debug
+        run: vendor/bin/phpstan analyse --memory-limit=-1 --debug
 
   test:
     name: PHPUnit Tests
