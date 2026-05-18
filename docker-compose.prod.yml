@@ -152,10 +152,6 @@ services:
         cp /etc/nginx/templates/http.conf /etc/nginx/conf.d/app.conf;
         echo "No SSL certificates - HTTP only";
       fi;
-      if [ -f /etc/letsencrypt/live/baza.simplead.ro/fullchain.pem ]; then
-        cp /etc/nginx/templates/pgadmin-proxy.conf /etc/nginx/conf.d/pgadmin-proxy.conf;
-        echo "pgAdmin proxy enabled";
-      fi;
       exec nginx -g "daemon off;"
       '
     networks:
@@ -332,27 +328,6 @@ services:
           memory: 512M
           cpus: "1.0"
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: simplead-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    volumes:
-      - simplead-pgadmin:/var/lib/pgadmin
-      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
-    networks:
-      - simplead
-    depends_on:
-      pgbouncer:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-
 networks:
   simplead:
     driver: bridge
@@ -370,6 +345,3 @@ volumes:
   app-storage:
     external: true
     name: simplead-manager_app-storage
-  simplead-pgadmin:
-    external: true
-    name: simplead-manager_pgadmin_data

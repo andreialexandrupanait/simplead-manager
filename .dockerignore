@@ -43,6 +43,13 @@ phpunit.xml
 *.md
 features/
 
+# Claude Code / local tooling — not application code
+.agents
+.impeccable.md
+skills-lock.json
+bin
+.phpunit.cache
+
 # Docker / deploy tooling — not needed inside the container
 docker-compose*.yml
 deploy.sh
