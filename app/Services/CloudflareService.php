@@ -88,6 +88,39 @@ class CloudflareService
         return $response['result'] ?? [];
     }
 
+    public function discoverDkimSelectors(string $zoneId, string $domain): array
+    {
+        $cacheKey = "cloudflare.dkim_selectors.{$zoneId}.".md5($domain);
+
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($zoneId, $domain) {
+            $records = $this->listDnsRecords($zoneId);
+            $domain = mb_strtolower(trim($domain));
+            $suffix = '._domainkey.'.$domain;
+            $selectors = [];
+
+            foreach ($records as $record) {
+                $type = mb_strtoupper($record['type'] ?? '');
+                if ($type !== 'TXT' && $type !== 'CNAME') {
+                    continue;
+                }
+
+                $name = mb_strtolower($record['name'] ?? '');
+
+                if (! str_ends_with($name, $suffix)) {
+                    continue;
+                }
+
+                $selector = mb_substr($name, 0, -mb_strlen($suffix));
+
+                if ($selector !== '' && preg_match('/^[a-z0-9._-]+$/', $selector)) {
+                    $selectors[] = $selector;
+                }
+            }
+
+            return array_values(array_unique($selectors));
+        });
+    }
+
     public function createDnsRecord(string $zoneId, array $data): array
     {
         $response = $this->request('POST', "/zones/{$zoneId}/dns_records", $data);

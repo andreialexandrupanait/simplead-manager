@@ -247,12 +247,14 @@ class SiteOverview extends Component
         if (! $monitor || ! $monitor->current_records) {
             return ['available' => false];
         }
-        $txt = implode(' ', $monitor->current_records['TXT'] ?? []);
+        $records = $monitor->current_records;
+        $txt = implode(' ', $records['TXT'] ?? []);
 
         return [
             'available' => true,
             'has_spf' => stripos($txt, 'v=spf1') !== false,
-            'has_dmarc' => stripos($txt, 'v=DMARC1') !== false,
+            'has_dmarc' => ! empty($records['DMARC'] ?? []),
+            'has_dkim' => ! empty($records['DKIM'] ?? []),
             'has_changes' => $monitor->has_changes,
             'last_checked' => $monitor->last_checked_at,
         ];

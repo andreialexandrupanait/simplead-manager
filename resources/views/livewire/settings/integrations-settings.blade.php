@@ -14,6 +14,7 @@
         $openApiConnected = (bool) $openApiKey;
         $anthropicConnected = (bool) $anthropicApiKey;
         $openAiConnected = (bool) $openAiApiKey;
+        $postmarkConnected = $this->postmarkConfigured;
     @endphp
 
     {{-- AI Providers Section --}}
@@ -201,6 +202,42 @@
 
             <div class="mt-4 border-t border-gray-100 pt-4">
                 <button @click="$dispatch('open-modal-configure-cloudflare')"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    {{ __('Settings') }}
+                </button>
+            </div>
+        </x-ui.card>
+
+        {{-- Postmark Card --}}
+        <x-ui.card class="{{ $postmarkConnected ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50 shadow-sm ring-1 ring-yellow-200">
+                        <svg aria-hidden="true" class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Postmark</h3>
+                        <p class="text-xs text-gray-500">{{ __('Auto-discover DKIM selectors') }}</p>
+                    </div>
+                </div>
+                @if($postmarkConnected)
+                    <x-ui.badge variant="green">{{ __('Connected') }}</x-ui.badge>
+                @else
+                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
+                @endif
+            </div>
+
+            <div class="mt-3 text-xs text-gray-500">
+                @if($postmarkConnected)
+                    {{ __('DKIM selectors auto-discovered from Postmark domains') }}
+                @else
+                    {{ __('Account Token required for DKIM auto-discovery') }}
+                @endif
+            </div>
+
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <button @click="$dispatch('open-modal-configure-postmark')"
                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
                     <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     {{ __('Settings') }}
@@ -827,6 +864,50 @@
                     <li>{{ __('Create an account or sign in') }}</li>
                     <li>{{ __('Create a new API key') }}</li>
                     <li>{{ __('Paste the API key above and click Save') }}</li>
+                </ol>
+            </div>
+        </div>
+    </x-ui.modal>
+
+    {{-- Postmark Configuration Modal --}}
+    <x-ui.modal name="configure-postmark" maxWidth="lg">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Postmark &mdash; {{ __('Settings') }}</h2>
+
+        <p class="text-sm text-gray-500 mb-4">{{ __('Used to auto-discover DKIM selectors for domains hosted on Postmark. Account-level token only — Server tokens do not have access to domain settings.') }}</p>
+
+        <form wire:submit="savePostmarkToken" class="space-y-3">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Account Token') }}</label>
+                <x-ui.input type="password" wire:model="postmarkAccountToken" placeholder="{{ __('Enter Postmark Account Token') }}" />
+                @error('postmarkAccountToken') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div class="flex items-center justify-between">
+                @if($this->postmarkConfigured)
+                    <button type="button" wire:click="disconnectPostmark" wire:confirm="{{ __('Disconnect Postmark and clear cached DKIM data?') }}"
+                            class="text-sm text-red-500 hover:text-red-700">
+                        {{ __('Disconnect') }}
+                    </button>
+                @else
+                    <span></span>
+                @endif
+                <x-ui.button type="submit" wire:loading.attr="disabled" size="sm">
+                    <span wire:loading.remove wire:target="savePostmarkToken">{{ __('Save & Test') }}</span>
+                    <span wire:loading wire:target="savePostmarkToken">{{ __('Testing...') }}</span>
+                </x-ui.button>
+            </div>
+        </form>
+
+        <div x-data="{ showInstructions: false }" class="mt-4">
+            <button @click="showInstructions = !showInstructions" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <svg aria-hidden="true" class="h-3.5 w-3.5 transition-transform" :class="{ 'rotate-90': showInstructions }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                {{ __('How to obtain a Postmark Account Token') }}
+            </button>
+            <div x-show="showInstructions" x-collapse x-cloak class="rounded-lg bg-blue-50 border border-blue-200 p-4 mt-2">
+                <ol class="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                    <li>{{ __('Go to') }} <a href="https://account.postmarkapp.com/api_tokens" target="_blank" class="font-medium underline hover:text-blue-900">account.postmarkapp.com/api_tokens</a></li>
+                    <li>{{ __('Click "API Tokens" tab (top right user menu → API Tokens)') }}</li>
+                    <li>{{ __('Copy the Account Token (NOT a Server Token)') }}</li>
+                    <li>{{ __('Paste above and click Save & Test') }}</li>
                 </ol>
             </div>
         </div>

@@ -36,17 +36,14 @@ class DnsGatherer extends BaseReportSectionGatherer
 
         $currentRecords = $monitor->current_records ?? [];
 
-        $txtRecords = array_merge(
-            (array) ($currentRecords['TXT'] ?? []),
-        );
+        $txtRecords = (array) ($currentRecords['TXT'] ?? []);
 
         $hasSpf = collect($txtRecords)->contains(
             fn (string $record) => str_contains($record, 'v=spf1')
         );
 
-        $hasDmarc = collect($txtRecords)->contains(
-            fn (string $record) => str_contains($record, 'v=DMARC1')
-        );
+        $hasDmarc = ! empty($currentRecords['DMARC'] ?? []);
+        $hasDkim = ! empty($currentRecords['DKIM'] ?? []);
 
         $topChanges = $changes->take(10)->map(fn (DnsChange $change) => [
             'record_type' => $change->record_type,
@@ -61,6 +58,7 @@ class DnsGatherer extends BaseReportSectionGatherer
             'current_records' => $currentRecords,
             'has_spf' => $hasSpf,
             'has_dmarc' => $hasDmarc,
+            'has_dkim' => $hasDkim,
             'changes_count' => $changes->count(),
             'changes' => $topChanges,
         ];

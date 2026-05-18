@@ -14,7 +14,7 @@ class DnsMonitor extends Model
     protected $fillable = [
         'site_id', 'domain', 'is_active', 'interval_minutes',
         'last_checked_at', 'next_check_at', 'current_records',
-        'previous_records', 'has_changes',
+        'previous_records', 'has_changes', 'dkim_selectors',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class DnsMonitor extends Model
         'has_changes' => 'boolean',
         'current_records' => 'array',
         'previous_records' => 'array',
+        'dkim_selectors' => 'array',
         'last_checked_at' => 'datetime',
         'next_check_at' => 'datetime',
     ];

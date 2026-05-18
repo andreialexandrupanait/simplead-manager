@@ -40,12 +40,22 @@
                     @endif
                 </div>
 
-                {{-- Changes badge --}}
+                {{-- DKIM --}}
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">DKIM</span>
+                    @if($dns['has_dkim'])
+                        <span class="text-sm font-medium text-green-600 dark:text-green-400">Configured</span>
+                    @else
+                        <span class="text-sm font-medium text-red-600 dark:text-red-400">Missing</span>
+                    @endif
+                </div>
+
+                {{-- Recent update indicator --}}
                 @if($dns['has_changes'])
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Changes</span>
-                        <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                            Detected
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Records</span>
+                        <span class="inline-flex items-center rounded-full bg-accent-100 px-2 py-0.5 text-xs font-medium text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                            Updated
                         </span>
                     </div>
                 @endif

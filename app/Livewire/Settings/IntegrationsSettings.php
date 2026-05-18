@@ -10,6 +10,7 @@ use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CloudflareService;
 use App\Services\OpenApiService;
+use App\Services\PostmarkService;
 use App\Services\SettingsService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\RequestException;
@@ -49,6 +50,9 @@ class IntegrationsSettings extends Component
     public string $cfApiToken = '';
 
     public ?int $deletingCfId = null;
+
+    // Postmark
+    public string $postmarkAccountToken = '';
 
     public function mount(): void
     {
@@ -104,6 +108,56 @@ class IntegrationsSettings extends Component
                 $this->openAiApiKey = '';
             }
         }
+
+        $encryptedPostmark = $settings->get('postmark_account_token');
+        if ($encryptedPostmark) {
+            try {
+                $this->postmarkAccountToken = decrypt($encryptedPostmark);
+            } catch (DecryptException $e) {
+                $this->postmarkAccountToken = '';
+            }
+        }
+    }
+
+    #[Computed]
+    public function postmarkConfigured(): bool
+    {
+        return app(PostmarkService::class)->isConfigured();
+    }
+
+    public function savePostmarkToken(): void
+    {
+        $this->validate([
+            'postmarkAccountToken' => 'required|string|min:20',
+        ]);
+
+        $token = trim($this->postmarkAccountToken);
+
+        if (! app(PostmarkService::class)->validateToken($token)) {
+            session()->flash('error', __('Postmark token rejected by API. Check that this is an Account Token (not Server).'));
+
+            return;
+        }
+
+        $settings = app(SettingsService::class);
+        $settings->set('postmark_account_token', encrypt($token), 'integrations');
+
+        app(PostmarkService::class)->clearCache();
+        unset($this->postmarkConfigured);
+
+        session()->flash('success', __('Postmark Account Token saved & verified.'));
+    }
+
+    public function disconnectPostmark(): void
+    {
+        $settings = app(SettingsService::class);
+        $settings->set('postmark_account_token', '', 'integrations');
+
+        app(PostmarkService::class)->clearCache();
+        $this->postmarkAccountToken = '';
+        unset($this->postmarkConfigured);
+
+        session()->flash('success', __('Postmark disconnected.'));
     }
 
     public function saveDropboxCredentials(): void

@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\DnsChange;
 use App\Models\DnsMonitor;
 use App\Services\ActivityLogger;
+use App\Services\DnsSelectorDiscoveryService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -22,7 +23,10 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 60;
+    public int $timeout = 90;
+
+    /** @var array<string, string> map of selector => source ('manual'|'cloudflare'|'postmark'|'fallback') */
+    private array $selectorSources = [];
 
     public function __construct(
         public DnsMonitor $monitor,
@@ -73,17 +77,17 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 NotificationService::notifySiteEvent(
                     $this->monitor->site,
                     'dns_changed',
-                    'DNS Records Changed',
-                    "DNS records changed for {$domain}: {$types}",
-                    ['Domain' => $domain, 'Changed Records' => $types, 'Changes' => count($changes)],
-                    'warning'
+                    'DNS Records Updated',
+                    "DNS records updated for {$domain}: {$types}",
+                    ['Domain' => $domain, 'Updated Records' => $types, 'Updates' => count($changes)],
+                    'info'
                 );
 
                 ActivityLogger::log(
                     type: 'dns',
-                    severity: 'warning',
-                    title: "DNS records changed: {$types}",
-                    description: "DNS change detected for {$domain}",
+                    severity: 'info',
+                    title: "DNS records updated: {$types}",
+                    description: "DNS update detected for {$domain}",
                     site: $this->monitor->site,
                     icon: 'globe',
                 );
@@ -133,7 +137,93 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
             })->filter()->sort()->values()->all();
         }
 
+        $records['DMARC'] = $this->fetchDmarcRecords($domain);
+        $records['DKIM'] = $this->fetchDkimRecords($domain);
+
         return $records;
+    }
+
+    private function fetchDmarcRecords(string $domain): array
+    {
+        $result = @dns_get_record('_dmarc.'.$domain, DNS_TXT);
+
+        if (! is_array($result) || $result === []) {
+            return [];
+        }
+
+        return collect($result)
+            ->map(fn ($r) => $r['txt'] ?? null)
+            ->filter(fn ($txt) => is_string($txt) && stripos($txt, 'v=DMARC1') !== false)
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    private function fetchDkimRecords(string $domain): array
+    {
+        $discovery = app(DnsSelectorDiscoveryService::class);
+        $sources = $discovery->discoverFor($this->monitor);
+        $selectors = $discovery->flatten($sources);
+
+        $found = [];
+        $confirmedSelectors = [];
+
+        foreach ($selectors as $selector) {
+            $result = @dns_get_record($selector.'._domainkey.'.$domain, DNS_TXT);
+
+            if (! is_array($result) || $result === []) {
+                continue;
+            }
+
+            foreach ($result as $r) {
+                $txt = $r['txt'] ?? null;
+
+                if (! is_string($txt) || stripos($txt, 'v=DKIM1') === false) {
+                    continue;
+                }
+
+                $source = $discovery->sourceFor($selector, $sources);
+
+                $found[] = [
+                    'selector' => $selector,
+                    'value' => $txt,
+                    'source' => $source,
+                ];
+
+                $confirmedSelectors[] = $selector;
+            }
+        }
+
+        usort($found, fn ($a, $b) => strcmp($a['selector'], $b['selector']));
+
+        $this->persistDiscoveredSelectors($confirmedSelectors);
+
+        return $found;
+    }
+
+    private function persistDiscoveredSelectors(array $confirmed): void
+    {
+        if ($confirmed === []) {
+            return;
+        }
+
+        $existing = is_array($this->monitor->dkim_selectors) ? $this->monitor->dkim_selectors : [];
+        $merged = array_values(array_unique(array_filter(
+            array_merge($existing, $confirmed),
+            fn ($s) => is_string($s) && $s !== '',
+        )));
+
+        if (count($merged) > 20) {
+            $merged = array_slice($merged, 0, 20);
+        }
+
+        sort($merged);
+        $sortedExisting = $existing;
+        sort($sortedExisting);
+
+        if ($merged !== $sortedExisting) {
+            $this->monitor->dkim_selectors = $merged;
+        }
     }
 
     private function detectChanges(array $old, array $new): array
