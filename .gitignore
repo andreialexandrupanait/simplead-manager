@@ -46,3 +46,11 @@ dispatch_*.php
 Thumbs.db
 *.swp
 *.swo
+
+# Stray screenshots / pasted images at project root
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+/*.bmp
