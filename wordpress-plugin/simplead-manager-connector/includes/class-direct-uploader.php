@@ -58,7 +58,7 @@ class SAM_Direct_Uploader {
     /**
      * Upload a single S3 part with retries.
      */
-    private static function upload_s3_part(string $file_path, string $presigned_url, int $offset, int $length, int $max_retries): string {
+    public static function upload_s3_part(string $file_path, string $presigned_url, int $offset, int $length, int $max_retries): string {
         $last_error = null;
 
         for ($attempt = 1; $attempt <= $max_retries; $attempt++) {

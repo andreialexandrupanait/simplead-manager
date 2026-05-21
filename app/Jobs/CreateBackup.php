@@ -757,40 +757,62 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $partSize = $size > 1_000_000_000_000 ? 200 * 1024 * 1024 : 100 * 1024 * 1024;
         $parts = $driver->generatePresignedPartUrls($remotePath, $uploadId, $size, $partSize);
 
-        $this->logStep("S3 multipart initiated: uploadId=".substr($uploadId, 0, 12)."…, ".count($parts)." parts of ".FormatHelper::bytes($partSize));
+        $totalParts = count($parts);
+        $this->logStep("S3 multipart initiated: uploadId=".substr($uploadId, 0, 12)."…, {$totalParts} parts of ".FormatHelper::bytes($partSize));
 
-        // 4. Tell WP to push
-        $callbackToken = BackupCallbackController::generateToken($this->backup);
-        $callbackUrl = route('api.backup.callback');
-
+        // 4. Tell WP to push, one part per HTTP round-trip. Each call is short
+        // (≤90s) so Cloudflare's gateway timeout doesn't kill us. Older monolithic
+        // /backup/direct-upload path is kept as a fallback only — for plugins that
+        // don't advertise the per-part endpoint yet.
+        $etags = [];
         try {
-            $uploadResponse = $api->request('POST', '/backup/direct-upload', [
-                'strategy' => 's3_multipart',
-                'token' => $token,
-                'parts' => $parts,
-                'callback_url' => $callbackUrl,
-                'callback_token' => $callbackToken,
-                'backup_id' => $this->backup->id,
-            ], [], 3600);
+            foreach ($parts as $idx => $part) {
+                $this->checkCancelled();
+                $partNumber = $part['part_number'];
+                $partLength = $part['end'] - $part['start'];
+
+                $resp = $api->request('POST', '/backup/upload-part', [
+                    'token' => $token,
+                    'part_number' => $partNumber,
+                    'url' => $part['url'],
+                    'offset' => $part['start'],
+                    'length' => $partLength,
+                ], [], 90);
+
+                if (! $resp->successful()) {
+                    throw new BackupException(
+                        "upload-part {$partNumber}/{$totalParts} failed: HTTP {$resp->status()} — "
+                        .substr($resp->body(), 0, 300),
+                        site: $this->site
+                    );
+                }
+
+                $partData = $resp->json();
+                $etag = $partData['etag'] ?? null;
+                if (! $etag) {
+                    throw new BackupException(
+                        "upload-part {$partNumber}/{$totalParts} returned no etag",
+                        site: $this->site
+                    );
+                }
+
+                $etags[] = [
+                    'PartNumber' => $partNumber,
+                    'ETag' => $etag,
+                ];
+
+                $partsDone = $idx + 1;
+                $pct = 30 + (int) (($partsDone / $totalParts) * 60); // 30 → 90 across upload
+                $this->reportProgress('uploading_direct', min($pct, 90),
+                    "Uploading to S3... part {$partsDone}/{$totalParts}");
+                $this->touchHeartbeat();
+            }
         } catch (\Throwable $e) {
-            // WP push failed — abort multipart on our side to release storage
             $this->abortMultipart($driver, $remotePath, $uploadId);
-            throw new BackupException("direct-upload request failed: {$e->getMessage()}", site: $this->site);
-        }
-
-        if (! $uploadResponse->successful()) {
-            $this->abortMultipart($driver, $remotePath, $uploadId);
-            throw new BackupException(
-                "direct-upload returned HTTP {$uploadResponse->status()}: ".substr($uploadResponse->body(), 0, 500),
-                site: $this->site
-            );
-        }
-
-        $uploadData = $uploadResponse->json();
-        $etags = $uploadData['etags'] ?? null;
-        if (! is_array($etags) || $etags === []) {
-            $this->abortMultipart($driver, $remotePath, $uploadId);
-            throw new BackupException('direct-upload returned no etags', site: $this->site);
+            if ($e instanceof BackupException) {
+                throw $e;
+            }
+            throw new BackupException("Per-part upload failed: {$e->getMessage()}", site: $this->site);
         }
 
         // 5. Complete multipart

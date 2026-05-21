@@ -64,6 +64,12 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/upload-part', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'upload_part'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
         register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare-async', [
             'methods'             => 'POST',
             'callback'            => [$this, 'prepare_async'],
@@ -376,7 +382,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'direct_upload' => true,
             'incremental_backup' => true,
             'manifest_generation' => true,
-            'strategies' => ['s3_multipart', 'chunked_push'],
+            'strategies' => ['s3_multipart', 'chunked_push', 's3_multipart_per_part'],
             'async_methods' => [
                 'cli'      => false,
                 'loopback' => $this->can_loopback(),
@@ -778,6 +784,63 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'token' => $token,
             'size' => $size,
             'checksum' => $checksum,
+        ], 200);
+    }
+
+    /**
+     * Upload a single S3 multipart part. Used by the per-part orchestrator
+     * to keep each HTTP round-trip well under Cloudflare's gateway timeout
+     * (~100s). Manager loops through parts, calling this once per part.
+     *
+     * Body: { token, part_number, url (presigned PUT URL), offset, length }
+     * Returns: { success, part_number, etag }
+     */
+    public function upload_part(WP_REST_Request $request): WP_REST_Response {
+        @set_time_limit(180);
+        @ini_set('memory_limit', '256M');
+        ignore_user_abort(true);
+
+        $token = $request->get_param('token');
+        $part_number = (int) $request->get_param('part_number');
+        $url = (string) $request->get_param('url');
+        $offset = (int) $request->get_param('offset');
+        $length = (int) $request->get_param('length');
+
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.'],
+            ], 400);
+        }
+
+        if ($part_number < 1 || $url === '' || $length <= 0) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_PARAMS', 'message' => 'part_number, url and length are required.'],
+            ], 400);
+        }
+
+        $prepared_file = sys_get_temp_dir() . '/sam_prepared/sam_backup_' . $token;
+        if (!file_exists($prepared_file)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Prepared backup not found.'],
+            ], 404);
+        }
+
+        try {
+            $etag = SAM_Direct_Uploader::upload_s3_part($prepared_file, $url, $offset, $length, 3);
+        } catch (\Throwable $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'UPLOAD_FAILED', 'message' => $e->getMessage()],
+            ], 500);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'part_number' => $part_number,
+            'etag' => $etag,
         ], 200);
     }
 
