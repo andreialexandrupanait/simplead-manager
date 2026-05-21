@@ -619,6 +619,11 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
         $prepResponse = $api->request('POST', '/backup/prepare-async', [
             'type' => $this->type,
+            // Always start fresh — if there's a stale lock from a previous orphaned
+            // attempt (loopback killed mid-flight, cron didn't fire), clear it.
+            // Safe because CreateBackup is ShouldBeUnique — no concurrent backups
+            // for the same site can race us here.
+            'force' => true,
         ], [], 60);
 
         if (! $prepResponse->successful()) {
@@ -741,7 +746,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             $this->checkCancelled();
             $this->touchHeartbeat();
 
-            $resp = $api->request('GET', '/backup/prepare-status', [], ['token' => $token], 30);
+            $resp = $api->request('POST', '/backup/prepare-status', ['token' => $token], [], 30);
 
             if (! $resp->successful()) {
                 if ($resp->status() === 404) {
@@ -762,7 +767,8 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                     $lastReportedProgress = $progress;
                 }
 
-                if ($status === 'ready') {
+                // Plugin reports 'done' on success; accept 'ready' too for forward-compat.
+                if ($status === 'done' || $status === 'ready') {
                     return $data;
                 }
                 if ($status === 'failed') {

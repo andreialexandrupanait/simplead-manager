@@ -836,19 +836,35 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         // Check for existing in-progress task
         $lock_key = 'sam_backup_lock';
+        $force = (bool) $request->get_param('force');
         $existing_token = get_transient($lock_key);
         if ($existing_token) {
-            $existing_task = get_transient('sam_backup_task_' . $existing_token);
-            if ($existing_task && $existing_task['status'] === 'working') {
-                return new WP_REST_Response([
-                    'success' => true,
-                    'async' => true,
-                    'token' => $existing_token,
-                    'resumed' => true,
-                ], 200);
+            // Force=true clears the previous lock + task regardless of state.
+            // Manager uses this when the previous attempt was orphaned (loopback
+            // killed mid-flight, cron didn't fire, etc.) and the lock would
+            // otherwise sit stale until the 7200s TTL expires.
+            if ($force) {
+                @unlink(sys_get_temp_dir() . '/sam_prepared/sam_backup_' . $existing_token);
+                @unlink(sys_get_temp_dir() . '/sam_prepared/sam_backup_' . $existing_token . '.meta');
+                $work_dir = sys_get_temp_dir() . '/sam_prepared/sam_work_' . $existing_token;
+                if (is_dir($work_dir)) {
+                    $this->recursive_delete($work_dir);
+                }
+                delete_transient($lock_key);
+                delete_transient('sam_backup_task_' . $existing_token);
+            } else {
+                $existing_task = get_transient('sam_backup_task_' . $existing_token);
+                if ($existing_task && $existing_task['status'] === 'working') {
+                    return new WP_REST_Response([
+                        'success' => true,
+                        'async' => true,
+                        'token' => $existing_token,
+                        'resumed' => true,
+                    ], 200);
+                }
+                delete_transient($lock_key);
+                delete_transient('sam_backup_task_' . $existing_token);
             }
-            delete_transient($lock_key);
-            delete_transient('sam_backup_task_' . $existing_token);
         }
 
         $token = bin2hex(random_bytes(32));
