@@ -617,8 +617,11 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $this->reportProgress('preparing_on_wp', 5, 'Asking WP to prepare archive...');
         $this->logStep('Requesting async prepare on WP...');
 
+        // Plugin expects 'full' | 'db'; manager uses 'full' | 'database'.
+        $wpType = $this->type === 'database' ? 'db' : $this->type;
+
         $prepResponse = $api->request('POST', '/backup/prepare-async', [
-            'type' => $this->type,
+            'type' => $wpType,
             // Always start fresh — if there's a stale lock from a previous orphaned
             // attempt (loopback killed mid-flight, cron didn't fire), clear it.
             // Safe because CreateBackup is ShouldBeUnique — no concurrent backups
@@ -744,13 +747,14 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function kickPrepareExecute(WordPressApiServiceInterface $api, string $token): void
     {
+        $wpType = $this->type === 'database' ? 'db' : $this->type;
         try {
             // Short timeout — we don't want to wait for the full build. Cloudflare
             // would 524 us at ~100s anyway. Manager just needs to deliver the
             // request and disconnect; WP keeps processing.
             $api->request('POST', '/backup/prepare-execute', [
                 'token' => $token,
-                'type' => $this->type,
+                'type' => $wpType,
             ], [], 8);
             $this->logStep('prepare-execute responded fast (work probably already running via loopback)');
         } catch (\Throwable $e) {
