@@ -39,16 +39,8 @@ class NotifyPerformanceDrop implements ShouldQueue
         $site = $this->monitor->site;
         $drop = $this->previousScore - $this->currentScore;
 
-        $title = "PERFORMANCE DROP: {$site->name} ({$this->device})";
-        $message = ucfirst($this->device)." performance score dropped by {$drop} points (from {$this->previousScore} to {$this->currentScore}).";
-
-        $fields = [
-            ['title' => 'Site', 'value' => $site->name, 'short' => true],
-            ['title' => 'Device', 'value' => ucfirst($this->device), 'short' => true],
-            ['title' => 'Previous Score', 'value' => (string) $this->previousScore, 'short' => true],
-            ['title' => 'Current Score', 'value' => (string) $this->currentScore, 'short' => true],
-            ['title' => 'Drop', 'value' => "-{$drop} points", 'short' => true],
-        ];
+        $summary = "\xF0\x9F\x93\x89 *{$site->name}* {$this->device} score {$this->previousScore}\xE2\x86\x92{$this->currentScore} (-{$drop})";
+        $deepLink = '<'.route('sites.performance', $site).'|Open performance →>';
 
         $webhookPayload = [
             'device' => $this->device,
@@ -57,12 +49,11 @@ class NotifyPerformanceDrop implements ShouldQueue
             'drop' => $drop,
         ];
 
-        NotificationService::notifySiteEvent(
+        NotificationService::notifySiteEventSlim(
             site: $site,
             event: 'performance_drop',
-            title: $title,
-            message: $message,
-            fields: $fields,
+            summary: $summary,
+            deepLink: $deepLink,
             severity: 'warning',
             webhookPayload: $webhookPayload,
             mailableClass: PerformanceAlertMail::class,

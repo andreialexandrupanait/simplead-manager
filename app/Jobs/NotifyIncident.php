@@ -38,16 +38,15 @@ class NotifyIncident implements ShouldQueue
         $isDown = $this->type === 'down';
         $event = $isDown ? 'site_down' : 'site_up';
         $severity = $isDown ? 'critical' : 'success';
-        $title = $isDown ? "DOWN: {$site->name}" : "RECOVERED: {$site->name}";
-        $message = $isDown
-            ? "{$site->name} is not responding."
-            : "{$site->name} has recovered.";
 
-        $fields = [
-            ['title' => 'URL', 'value' => $monitor->url, 'short' => true],
-            ['title' => 'Cause', 'value' => $this->incident->cause ?? 'Unknown', 'short' => true],
-            ['title' => 'Duration', 'value' => $this->incident->duration, 'short' => true],
-        ];
+        if ($isDown) {
+            $cause = $this->incident->cause ?? 'unknown cause';
+            $summary = "\xF0\x9F\x94\xB4 Site down · *{$site->name}* — {$cause}";
+            $deepLink = '<'.route('sites.uptime', $site).'|Open uptime →>';
+        } else {
+            $summary = "\xE2\x9C\x85 *{$site->name}* recovered after {$this->incident->duration}";
+            $deepLink = null;
+        }
 
         $webhookPayload = [
             'monitor' => [
@@ -62,18 +61,13 @@ class NotifyIncident implements ShouldQueue
             ],
         ];
 
-        // Use monitor-specific contacts if defined
-        $channelIds = null;
-        if ($monitor->alert_contacts) {
-            $channelIds = $monitor->alert_contacts;
-        }
+        $channelIds = $monitor->alert_contacts ?: null;
 
-        NotificationService::notifySiteEvent(
+        NotificationService::notifySiteEventSlim(
             site: $site,
             event: $event,
-            title: $title,
-            message: $message,
-            fields: $fields,
+            summary: $summary,
+            deepLink: $deepLink,
             severity: $severity,
             webhookPayload: $webhookPayload,
             mailableClass: UptimeAlertMail::class,

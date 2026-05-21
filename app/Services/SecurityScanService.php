@@ -58,13 +58,13 @@ class SecurityScanService
             ->update(['security_scan_id' => $scan->id]);
 
         if ($counts['score'] < 50) {
-            NotificationService::notifySiteEvent(
-                $site,
-                'security_score_critical',
-                'Security Score Critical',
-                "Security score for {$site->name} is {$counts['score']}/100. Immediate attention required.",
-                ['Score' => "{$counts['score']}/100", 'Critical Issues' => $counts['critical'], 'High Issues' => $counts['high']],
-                'critical'
+            $summary = "\xF0\x9F\x9B\xA1\xEF\xB8\x8F Security critical · *{$site->name}* — score {$counts['score']}/100 ({$counts['critical']} critical, {$counts['high']} high)";
+            NotificationService::notifySiteEventSlim(
+                site: $site,
+                event: 'security_score_critical',
+                summary: $summary,
+                deepLink: '<'.route('sites.security', $site).'|Open security →>',
+                severity: 'critical',
             );
         }
 

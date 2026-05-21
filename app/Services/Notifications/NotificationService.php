@@ -87,18 +87,109 @@ class NotificationService
             }
         }
 
-        // Create in-app notification for the site owner
+        // Create in-app notification for the site owner.
+        // When title is empty (slim format), derive a clean in-app title from the message.
         try {
+            [$inAppTitle, $inAppMessage] = static::deriveInAppText($title, $message);
+
             \App\Models\InAppNotification::create([
                 'user_id' => $site->user_id,
                 'type' => $severity,
-                'title' => $title,
-                'message' => $message,
+                'title' => $inAppTitle,
+                'message' => $inAppMessage,
                 'data' => ['event' => $event, 'site_id' => $site->id, 'site_name' => $site->name, 'fields' => $fields],
             ]);
         } catch (\Throwable) {
             // Don't fail the notification if in-app creation fails
         }
+    }
+
+    /**
+     * Strip Slack mrkdwn markers so in-app notifications stay readable.
+     * When the slim format is in use, `$title` is empty and `$message` contains
+     * the full mrkdwn one-liner — split it into a plain title and any deep-link.
+     */
+    protected static function deriveInAppText(string $title, string $message): array
+    {
+        if ($title !== '') {
+            return [$title, $message];
+        }
+
+        $lines = preg_split('/\r?\n/', $message) ?: [];
+        $first = $lines[0] ?? '';
+        $rest = array_slice($lines, 1);
+
+        $plain = static fn (string $s): string => trim(preg_replace(
+            ['/<([^|>]+)\|([^>]+)>/', '/[*_`]/'],
+            ['$2', ''],
+            $s,
+        ) ?? $s);
+
+        return [$plain($first), implode("\n", array_map($plain, $rest))];
+    }
+
+    /**
+     * Slim notification: a single mrkdwn one-liner plus an optional deep-link.
+     * Use this in place of notifySiteEvent() — callers pass pre-formatted text
+     * and the Slack sender renders it without separate title/fields.
+     */
+    public static function notifySiteEventSlim(
+        Site $site,
+        string $event,
+        string $summary,
+        ?string $deepLink = null,
+        string $severity = 'warning',
+        ?array $webhookPayload = null,
+        ?string $mailableClass = null,
+        ?array $mailableArgs = null,
+        ?array $channelIds = null,
+    ): void {
+        $message = $deepLink !== null && $deepLink !== ''
+            ? $summary."\n".$deepLink
+            : $summary;
+
+        static::notifySiteEvent(
+            site: $site,
+            event: $event,
+            title: '',
+            message: $message,
+            fields: [],
+            severity: $severity,
+            webhookPayload: $webhookPayload,
+            mailableClass: $mailableClass,
+            mailableArgs: $mailableArgs,
+            channelIds: $channelIds,
+        );
+    }
+
+    /**
+     * Slim variant of notifyAppEvent — no site context.
+     */
+    public static function notifyAppEventSlim(
+        string $event,
+        string $summary,
+        ?string $deepLink = null,
+        string $severity = 'warning',
+        ?array $webhookPayload = null,
+        ?string $mailableClass = null,
+        ?array $mailableArgs = null,
+        ?array $channelIds = null,
+    ): void {
+        $message = $deepLink !== null && $deepLink !== ''
+            ? $summary."\n".$deepLink
+            : $summary;
+
+        static::notifyAppEvent(
+            event: $event,
+            title: '',
+            message: $message,
+            fields: [],
+            severity: $severity,
+            webhookPayload: $webhookPayload,
+            mailableClass: $mailableClass,
+            mailableArgs: $mailableArgs,
+            channelIds: $channelIds,
+        );
     }
 
     public static function notifyAppEvent(

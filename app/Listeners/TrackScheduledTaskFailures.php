@@ -37,14 +37,13 @@ class TrackScheduledTaskFailures
             return;
         }
 
-        $message = $event->exception
-            ? 'Last error: '.substr($event->exception->getMessage(), 0, 500)
-            : 'No exception details available.';
+        $errorSnippet = ' — '.substr(str_replace(['`', "\n"], ['\'', ' '], $event->exception->getMessage()), 0, 200);
 
-        NotificationService::notifyAppEvent(
+        $summary = "\xE2\x8F\xB1\xEF\xB8\x8F Task failing · `{$name}` — {$count}\xC3\x97 in a row{$errorSnippet}";
+
+        NotificationService::notifyAppEventSlim(
             event: 'scheduled_task_failing',
-            title: "Scheduled task failing: {$name}",
-            message: "[{$name}] failed {$count} times in a row. {$message}",
+            summary: $summary,
             severity: 'critical',
         );
 

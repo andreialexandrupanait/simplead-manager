@@ -34,15 +34,9 @@ class NotifyBackupFailed implements ShouldQueue
 
     public function handle(): void
     {
-        $title = "BACKUP FAILED: {$this->site->name}";
-        $message = "A backup for {$this->site->name} has failed: {$this->errorMessage}";
-
-        $fields = [
-            ['title' => 'Site', 'value' => $this->site->name, 'short' => true],
-            ['title' => 'URL', 'value' => $this->site->url, 'short' => true],
-            ['title' => 'Type', 'value' => $this->backup->type, 'short' => true],
-            ['title' => 'Error', 'value' => $this->errorMessage, 'short' => false],
-        ];
+        $error = str_replace(['`', "\n"], ['\'', ' '], $this->errorMessage);
+        $summary = "\xF0\x9F\x92\xBE\xE2\x9D\x8C Backup failed · *{$this->site->name}* — `{$error}`";
+        $deepLink = '<'.route('sites.backups', $this->site).'|Open backups →>';
 
         $webhookPayload = [
             'backup' => [
@@ -53,12 +47,11 @@ class NotifyBackupFailed implements ShouldQueue
             'error' => $this->errorMessage,
         ];
 
-        NotificationService::notifySiteEvent(
+        NotificationService::notifySiteEventSlim(
             site: $this->site,
             event: 'backup_failed',
-            title: $title,
-            message: $message,
-            fields: $fields,
+            summary: $summary,
+            deepLink: $deepLink,
             severity: 'critical',
             webhookPayload: $webhookPayload,
             mailableClass: BackupAlertMail::class,

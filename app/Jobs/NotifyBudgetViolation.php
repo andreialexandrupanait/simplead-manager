@@ -38,30 +38,27 @@ class NotifyBudgetViolation implements ShouldQueue
         /** @var Site $site */
         $site = $this->monitor->site;
 
-        $violationLines = [];
-        foreach ($this->violations as $v) {
-            $violationLines[] = "{$v['key']}: {$v['actual']} (budget: {$v['budget']})";
+        $count = count($this->violations);
+
+        if ($count === 1) {
+            $v = array_values($this->violations)[0];
+            $summary = "\xE2\x9A\xA0\xEF\xB8\x8F Budget exceeded · *{$site->name}* — {$v['key']} {$v['actual']} (budget {$v['budget']})";
+        } else {
+            $summary = "\xE2\x9A\xA0\xEF\xB8\x8F {$count} budgets exceeded · *{$site->name}*";
         }
 
-        $title = "BUDGET EXCEEDED: {$site->name}";
-        $message = count($this->violations)." performance budget(s) exceeded:\n".implode("\n", $violationLines);
-
-        $fields = [
-            ['title' => 'Site', 'value' => $site->name, 'short' => true],
-            ['title' => 'Violations', 'value' => (string) count($this->violations), 'short' => true],
-        ];
+        $deepLink = '<'.route('sites.performance', $site).'|Open performance →>';
 
         $webhookPayload = [
             'violations' => array_values($this->violations),
             'test_id' => $this->test->id,
         ];
 
-        NotificationService::notifySiteEvent(
+        NotificationService::notifySiteEventSlim(
             site: $site,
             event: 'budget_violation',
-            title: $title,
-            message: $message,
-            fields: $fields,
+            summary: $summary,
+            deepLink: $deepLink,
             severity: 'warning',
             webhookPayload: $webhookPayload,
             mailableClass: BudgetViolationMail::class,

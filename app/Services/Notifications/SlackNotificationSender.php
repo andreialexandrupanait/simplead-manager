@@ -29,20 +29,30 @@ class SlackNotificationSender
             default => '#6B7280',
         };
 
-        $slackFields = array_map(fn ($f) => [
-            'title' => $f['title'] ?? $f['name'] ?? '',
-            'value' => (string) ($f['value'] ?? ''),
-            'short' => $f['short'] ?? true,
-        ], $fields);
+        $parts = array_filter([$title, $message], static fn (string $s): bool => $s !== '');
+        $text = implode("\n", $parts);
+
+        if (! empty($fields)) {
+            $rendered = [];
+            foreach ($fields as $f) {
+                $label = $f['title'] ?? $f['name'] ?? '';
+                $value = (string) ($f['value'] ?? '');
+                if ($value === '') {
+                    continue;
+                }
+                $rendered[] = $label !== '' ? "*{$label}:* {$value}" : $value;
+            }
+            if ($rendered !== []) {
+                $text .= "\n".implode(' · ', $rendered);
+            }
+        }
 
         try {
             $response = Http::timeout(5)->post($webhookUrl, [
                 'attachments' => [[
                     'color' => $color,
-                    'title' => $title,
-                    'text' => $message,
-                    'fields' => $slackFields,
-                    'ts' => now()->timestamp,
+                    'text' => $text,
+                    'mrkdwn_in' => ['text'],
                 ]],
             ]);
 

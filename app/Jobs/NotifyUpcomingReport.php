@@ -32,18 +32,13 @@ class NotifyUpcomingReport implements ShouldQueue
         }
 
         $scheduledDate = $this->schedule->next_run_at?->format('d/m/Y H:i') ?? 'soon';
-        $reviewUrl = url("/sites/{$site->id}/reports");
+        $reviewUrl = route('sites.reports', $site);
 
-        NotificationService::notifySiteEvent(
+        NotificationService::notifySiteEventSlim(
             site: $site,
             event: 'report_reminder',
-            title: 'Upcoming Report: '.$site->name,
-            message: "Report for {$site->name} is scheduled for {$scheduledDate}. Review recommendations before generation.",
-            fields: [
-                'Site' => $site->name,
-                'Scheduled' => $scheduledDate,
-                'Review URL' => $reviewUrl,
-            ],
+            summary: "\xF0\x9F\x93\x84 Upcoming report · *{$site->name}* — {$scheduledDate}",
+            deepLink: "<{$reviewUrl}|Review →>",
             severity: 'info',
         );
     }
