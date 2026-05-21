@@ -37,10 +37,10 @@ class BackupDispatcher
             ->whereHas('site', fn ($q) => $q
                 ->whereNull('deleted_at')
                 ->where('is_connected', true)
-            )
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
+                ->where(fn ($sq) => $sq
+                    ->whereDoesntHave('healthState')
+                    ->orWhereHas('healthState', fn ($hq) => $hq->where('is_monitoring_disabled', false))
+                )
             )
             ->whereDoesntHave('site.backups', fn ($q) => $q
                 ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])

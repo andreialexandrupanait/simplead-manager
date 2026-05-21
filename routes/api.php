@@ -1,7 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\BackupCallbackController;
 use App\Http\Controllers\Api\SecurityAgentController;
 use Illuminate\Support\Facades\Route;
+
+// Backup progress callback from WP plugin during direct-upload. Auth is via HMAC
+// token in X-Backup-Token header (validated inside controller against backup row).
+Route::post('/backup/callback', BackupCallbackController::class)
+    ->middleware('throttle:120,1')
+    ->name('api.backup.callback');
 
 // User API — authenticated via personal access token (Bearer token)
 Route::prefix('v1')

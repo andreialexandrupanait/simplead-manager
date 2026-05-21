@@ -56,6 +56,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int|null $report_template_id
  * @property array|null $backup_capabilities
  * @property \Illuminate\Support\Carbon|null $backup_capabilities_checked_at
+ * @property string $backup_strategy
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -153,6 +154,7 @@ class Site extends Model
         'report_template_id',
         'backup_capabilities',
         'backup_capabilities_checked_at',
+        'backup_strategy',
         'wp_admin_user_id',
         'ai_context',
     ];

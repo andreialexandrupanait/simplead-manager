@@ -43,7 +43,7 @@ class BackupCallbackController extends Controller
             : "Uploading... chunk {$partsDone}/{$partsTotal}";
 
         $backup->update([
-            'stage' => 'uploading',
+            'stage' => 'uploading_direct',
             'progress_percent' => min($overallPercent, 90),
             'progress_message' => $message,
         ]);

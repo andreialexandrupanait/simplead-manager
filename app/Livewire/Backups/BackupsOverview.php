@@ -13,6 +13,7 @@ use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
+use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -118,9 +119,26 @@ class BackupsOverview extends Component
                 ->whereNull('last_backup_at')
                 ->orWhere('last_backup_at', '<', now()->subHours(36))
             )
-            ->with(['backupConfig.storageDestination'])
+            ->with(['backupConfig.storageDestination', 'healthState'])
             ->orderByRaw('last_backup_at ASC NULLS FIRST')
             ->get();
+    }
+
+    public function reEnableMonitoring(int $siteId): void
+    {
+        $site = Site::find($siteId);
+        if (! $site) {
+            session()->flash('backup-error', 'Site not found.');
+
+            return;
+        }
+
+        $this->authorizeSiteModification($site);
+
+        CircuitBreakerService::reEnable($site);
+        unset($this->staleSites);
+
+        session()->flash('backup-success', "Monitoring re-enabled for {$site->name}. Backups will resume on the next scheduler tick.");
     }
 
     public function backupStaleSite(int $siteId): void

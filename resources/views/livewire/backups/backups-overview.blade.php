@@ -139,9 +139,12 @@
                 <div class="md:hidden divide-y divide-gray-200">
                     @foreach($this->staleSites as $site)
                         @php
+                            $monitoringDisabled = $site->healthState?->is_monitoring_disabled === true;
                             $cause = ! $site->is_connected
                                 ? __('Plugin disconnected')
-                                : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored'));
+                                : ($monitoringDisabled
+                                    ? __('Monitoring disabled — needs re-enable')
+                                    : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored')));
                         @endphp
                         <div class="p-4 space-y-2">
                             <div class="flex items-start justify-between gap-3">
@@ -167,9 +170,19 @@
                                     <span class="text-gray-700">{{ $site->last_synced_at?->diffForHumans() ?? '—' }}</span>
                                 </span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-medium {{ $site->is_connected ? 'text-yellow-600' : 'text-red-600' }}">{{ $cause }}</span>
-                                @if($site->is_connected)
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-medium {{ $site->is_connected ? ($monitoringDisabled ? 'text-orange-600' : 'text-yellow-600') : 'text-red-600' }}">{{ $cause }}</span>
+                                @if($site->is_connected && $monitoringDisabled)
+                                    <button
+                                        wire:click="reEnableMonitoring({{ $site->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="reEnableMonitoring({{ $site->id }})"
+                                        class="inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 transition"
+                                    >
+                                        <span wire:loading.remove wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enable monitoring') }}</span>
+                                        <span wire:loading wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enabling...') }}</span>
+                                    </button>
+                                @elseif($site->is_connected)
                                     <button
                                         wire:click="backupStaleSite({{ $site->id }})"
                                         wire:loading.attr="disabled"
@@ -205,9 +218,12 @@
                         <tbody class="divide-y divide-gray-100">
                             @foreach($this->staleSites as $site)
                                 @php
+                                    $monitoringDisabled = $site->healthState?->is_monitoring_disabled === true;
                                     $cause = ! $site->is_connected
                                         ? __('Plugin disconnected')
-                                        : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored'));
+                                        : ($monitoringDisabled
+                                            ? __('Monitoring disabled — needs re-enable')
+                                            : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored')));
                                 @endphp
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-3 py-3 text-sm">
@@ -229,9 +245,19 @@
                                             {{ $site->is_connected ? __('Connected') : __('Disconnected') }}
                                         </x-ui.badge>
                                     </td>
-                                    <td class="px-3 py-3 text-sm font-medium {{ $site->is_connected ? 'text-yellow-600' : 'text-red-600' }}">{{ $cause }}</td>
+                                    <td class="px-3 py-3 text-sm font-medium {{ $site->is_connected ? ($monitoringDisabled ? 'text-orange-600' : 'text-yellow-600') : 'text-red-600' }}">{{ $cause }}</td>
                                     <td class="px-3 py-3 text-right">
-                                        @if($site->is_connected)
+                                        @if($site->is_connected && $monitoringDisabled)
+                                            <button
+                                                wire:click="reEnableMonitoring({{ $site->id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="reEnableMonitoring({{ $site->id }})"
+                                                class="inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 transition"
+                                            >
+                                                <span wire:loading.remove wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enable monitoring') }}</span>
+                                                <span wire:loading wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enabling...') }}</span>
+                                            </button>
+                                        @elseif($site->is_connected)
                                             <button
                                                 wire:click="backupStaleSite({{ $site->id }})"
                                                 wire:loading.attr="disabled"
