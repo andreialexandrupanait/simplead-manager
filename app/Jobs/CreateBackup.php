@@ -639,7 +639,17 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             throw new BackupException('prepare-async returned no token', site: $this->site);
         }
 
-        $this->logStep("Async prepare started, token=".substr($token, 0, 8)."… method={$prepData['method']}");
+        $this->logStep("Async prepare started, token=".substr($token, 0, 8)."… method=".($prepData['method'] ?? 'unknown'));
+
+        // Some hosts have wp-cron and self-loopback blocked by Cloudflare /
+        // WAF / firewall, in which case prepare-async sets up the transient
+        // but the actual work never runs. Fire-and-forget a direct call to
+        // prepare-execute with a short timeout — the WP plugin's handler
+        // sets ignore_user_abort(true) + set_time_limit(3600), so the work
+        // continues even after our connection is closed by the upstream
+        // proxy. If async ran successfully through loopback/cron, this is a
+        // harmless no-op (the lock prevents double-execution).
+        $this->kickPrepareExecute($api, $token);
 
         // 2. Poll until ready
         $status = $this->pollPrepareStatus($api, $token);
@@ -725,6 +735,28 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
         // 8. Finalize Backup row
         $this->finalizeDirectUpload($destination, $remotePath, $fileName, $size, $checksum, $integrity);
+    }
+
+    /**
+     * Fire-and-forget POST to /backup/prepare-execute to ensure the prepare
+     * work actually runs. WP plugin's prepare_execute() sets ignore_user_abort
+     * + set_time_limit(3600) so the work survives our short connection close.
+     */
+    protected function kickPrepareExecute(WordPressApiServiceInterface $api, string $token): void
+    {
+        try {
+            // Short timeout — we don't want to wait for the full build. Cloudflare
+            // would 524 us at ~100s anyway. Manager just needs to deliver the
+            // request and disconnect; WP keeps processing.
+            $api->request('POST', '/backup/prepare-execute', [
+                'token' => $token,
+                'type' => $this->type,
+            ], [], 8);
+            $this->logStep('prepare-execute responded fast (work probably already running via loopback)');
+        } catch (\Throwable $e) {
+            // Timeout is the expected case — WP-side is now running synchronously.
+            $this->logStep('Kicked prepare-execute (timeout expected, work continues on WP)');
+        }
     }
 
     /**
