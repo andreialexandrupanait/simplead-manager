@@ -141,6 +141,46 @@ class BackupsOverview extends Component
         session()->flash('backup-success', "Monitoring re-enabled for {$site->name}. Backups will resume on the next scheduler tick.");
     }
 
+    /**
+     * Cancel an in-flight or pending backup. The running job will detect the
+     * status change at its next checkCancelled() and abort. The WP-side
+     * prepared file is left to expire naturally (7200s transient TTL); we
+     * could call /backup/cleanup here but we don't persist the WP token on
+     * the Backup row, so cleanup is best-effort via the next prepare-async
+     * which would clear stale state.
+     */
+    public function cancelBackup(int $backupId): void
+    {
+        $backup = Backup::with('site')->find($backupId);
+        if (! $backup) {
+            session()->flash('backup-error', 'Backup not found.');
+
+            return;
+        }
+
+        $this->authorizeSiteModification($backup->site);
+
+        if (! in_array($backup->status, [
+            \App\Enums\BackupStatus::Pending,
+            \App\Enums\BackupStatus::InProgress,
+        ], true)) {
+            session()->flash('backup-error', "Backup #{$backup->id} is not running.");
+
+            return;
+        }
+
+        $backup->update([
+            'status' => \App\Enums\BackupStatus::Cancelled,
+            'stage' => 'cancelled',
+            'progress_message' => 'Cancelled by user',
+            'completed_at' => now(),
+        ]);
+
+        CreateBackup::releaseUniqueLock($backup->site_id);
+
+        session()->flash('backup-success', "Backup #{$backup->id} cancelled.");
+    }
+
     public function backupStaleSite(int $siteId): void
     {
         $site = Site::with('backupConfig.storageDestination')->find($siteId);

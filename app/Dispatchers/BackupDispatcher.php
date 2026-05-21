@@ -157,7 +157,12 @@ class BackupDispatcher
      * Detect stuck backups and auto-retry or mark as failed.
      *
      * Separate detection for InProgress vs Pending to avoid false positives:
-     * - InProgress: heartbeat 20 min OR absolute 60 min — worker likely killed
+     * - InProgress: heartbeat-only — updated_at < 20 min ago means the worker
+     *   stopped reporting (was killed, OOM, network died). No absolute timeout
+     *   because legitimate WP-side builds on big sites can take 60+ min and
+     *   would otherwise be wrongly killed mid-flight. The push pipeline's
+     *   pollPrepareStatus + S3 multipart callbacks both touch updated_at on
+     *   every event, so a healthy job is always fresh.
      * - Pending: absolute 45 min only (no heartbeat) — job never started
      *
      * Auto-retries up to 2 times before marking as permanently failed.
@@ -166,12 +171,10 @@ class BackupDispatcher
     {
         $maxAutoRetries = 2;
 
-        // InProgress: worker should be updating updated_at regularly
+        // InProgress: worker should be updating updated_at regularly via
+        // reportProgress(). If no update in 20 min, worker is dead.
         $stuckInProgress = Backup::where('status', BackupStatus::InProgress)
-            ->where(function ($query) {
-                $query->where('updated_at', '<', now()->subMinutes(20))
-                    ->orWhere('started_at', '<', now()->subMinutes(60));
-            })
+            ->where('updated_at', '<', now()->subMinutes(20))
             ->with('site')
             ->get();
 

@@ -47,12 +47,27 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
     protected ?string $filesSessionToken = null;
 
+    /**
+     * Set by prepare() when it detects another in-flight backup for the same
+     * site/type/trigger. handle() short-circuits when true so duplicate
+     * dispatches don't stomp on a legit running backup.
+     */
+    protected bool $abortedAsDuplicate = false;
+
     public function __construct(
         public Site $site,
         public string $type = 'full',
         public string $trigger = 'manual',
         public ?int $storageDestinationId = null,
         public ?int $backupId = null,
+        /**
+         * When true, prepare-async on WP will clear any existing lock + task
+         * transient before starting fresh. Use this only when the user
+         * explicitly requests a fresh attempt (Retry button in UI) — the
+         * default is to let the plugin's lock check decide, so concurrent
+         * legit attempts don't stomp on each other.
+         */
+        public bool $forceFreshPrepare = false,
     ) {
         $this->onQueue('backups');
     }
@@ -81,6 +96,12 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             }
 
             $this->prepare($destination);
+
+            if ($this->abortedAsDuplicate) {
+                JobTracker::complete($this->uniqueId(), 'Skipped — already running');
+
+                return;
+            }
 
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $this->refreshCapabilities($api);
@@ -129,17 +150,44 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 'started_at' => $this->backup->started_at ?? now(),
             ]);
         } else {
-            // Clean up any orphaned backup from a previous failed attempt for this site/type/trigger
-            Backup::where('site_id', $this->site->id)
+            // Strict uniqueness: if another backup for the same site/type/trigger is
+            // already in flight AND fresh (started < 30 min ago AND updated < 5 min
+            // ago), this is a duplicate dispatch. Abort cleanly instead of stomping
+            // on the in-flight attempt (which would invalidate its WP-side token).
+            $existing = Backup::where('site_id', $this->site->id)
                 ->where('type', $this->type)
                 ->where('trigger', $this->trigger)
                 ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])
-                ->update([
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existing) {
+                $isFresh = $existing->started_at?->gt(now()->subMinutes(30))
+                    && $existing->updated_at?->gt(now()->subMinutes(5));
+
+                if ($isFresh) {
+                    Log::warning("CreateBackup: duplicate dispatch dropped (in-flight #{$existing->id} is fresh)", [
+                        'site_id' => $this->site->id,
+                        'existing_backup_id' => $existing->id,
+                        'existing_stage' => $existing->stage,
+                        'existing_started_at' => (string) $existing->started_at,
+                        'existing_updated_at' => (string) $existing->updated_at,
+                    ]);
+                    static::releaseUniqueLock($this->site->id);
+                    $this->abortedAsDuplicate = true;
+
+                    return;
+                }
+
+                // Existing is stale (started > 30 min ago OR no updates in 5 min).
+                // Supersede it — the previous attempt is orphaned.
+                $existing->update([
                     'status' => BackupStatus::Failed,
                     'stage' => 'failed',
-                    'error_message' => 'Superseded by a new backup attempt',
+                    'error_message' => 'Superseded by a new backup attempt (previous was stale)',
                     'completed_at' => now(),
                 ]);
+            }
 
             $this->backup = Backup::create([
                 'site_id' => $this->site->id,
@@ -620,13 +668,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         // Plugin expects 'full' | 'db'; manager uses 'full' | 'database'.
         $wpType = $this->type === 'database' ? 'db' : $this->type;
 
+        // Default: force=false so the plugin's lock check can resume any prior
+        // in-flight task instead of being stomped. We escalate to force=true only
+        // when we detect the resumed task is stale, OR when this job was dispatched
+        // with forceFreshPrepare=true (manual retry from UI).
         $prepResponse = $api->request('POST', '/backup/prepare-async', [
             'type' => $wpType,
-            // Always start fresh — if there's a stale lock from a previous orphaned
-            // attempt (loopback killed mid-flight, cron didn't fire), clear it.
-            // Safe because CreateBackup is ShouldBeUnique — no concurrent backups
-            // for the same site can race us here.
-            'force' => true,
+            'force' => $this->forceFreshPrepare,
         ], [], 60);
 
         if (! $prepResponse->successful()) {
@@ -642,7 +690,36 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             throw new BackupException('prepare-async returned no token', site: $this->site);
         }
 
-        $this->logStep("Async prepare started, token=".substr($token, 0, 8)."… method=".($prepData['method'] ?? 'unknown'));
+        // If resumed: true, the plugin handed us a token from a previous attempt.
+        // Verify the resumed task is actually alive — probe prepare-status once and
+        // if progress=0 with no recent updates, that prior task is stale. Re-prepare
+        // with force=true to clear it.
+        if (! empty($prepData['resumed'])) {
+            $this->logStep("Resumed previous task token=".substr($token, 0, 8)."…, verifying liveness");
+            $probe = $api->request('POST', '/backup/prepare-status', ['token' => $token], [], 15);
+            if ($probe->successful()) {
+                $probeData = $probe->json();
+                $probeProgress = (int) ($probeData['progress'] ?? 0);
+                $probeStatus = $probeData['status'] ?? 'unknown';
+                $probeUpdatedAt = (int) ($probeData['updated_at'] ?? 0);
+                $taskAgeSeconds = $probeUpdatedAt > 0 ? (time() - $probeUpdatedAt) : 99999;
+
+                if ($probeStatus === 'working' && $probeProgress === 0 && $taskAgeSeconds > 60) {
+                    $this->logStep("Resumed task is stale (progress=0, updated {$taskAgeSeconds}s ago), force-restarting");
+                    $forceResponse = $api->request('POST', '/backup/prepare-async', [
+                        'type' => $wpType,
+                        'force' => true,
+                    ], [], 60);
+                    if ($forceResponse->successful()) {
+                        $token = $forceResponse->json()['token'] ?? $token;
+                    }
+                } else {
+                    $this->logStep("Resumed task is alive (status={$probeStatus}, progress={$probeProgress}, age={$taskAgeSeconds}s)");
+                }
+            }
+        }
+
+        $this->logStep("Async prepare ready, token=".substr($token, 0, 8)."… method=".($prepData['method'] ?? 'resumed'));
 
         // Some hosts have wp-cron and self-loopback blocked by Cloudflare /
         // WAF / firewall, in which case prepare-async sets up the transient
@@ -771,11 +848,14 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
      */
     protected function pollPrepareStatus(WordPressApiServiceInterface $api, string $token): array
     {
-        $maxWaitSeconds = 1800; // 30 min — matches prepare_async transient TTL of 7200 with slack
+        $maxWaitSeconds = 3600; // 60 min — big sites with millions of files can legitimately take this long
         $deadline = microtime(true) + $maxWaitSeconds;
-        $delays = [5, 5, 10, 10, 15, 20, 30]; // backoff schedule
+        // Tight at start (2/3/5s) so the user sees activity quickly, then back off
+        // to avoid hammering the WP REST endpoint during long file zip phases.
+        $delays = [2, 3, 5, 5, 8, 10, 15, 20, 30];
         $delayIndex = 0;
 
+        $lastReportedMessage = '';
         $lastReportedProgress = -1;
 
         while (microtime(true) < $deadline) {
@@ -786,7 +866,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
             if (! $resp->successful()) {
                 if ($resp->status() === 404) {
-                    throw new BackupException('prepare-status task expired or not found on WP', site: $this->site);
+                    // Either the transient was force-cleared by a parallel attempt, or
+                    // the plugin/object cache lost it. Either way, we can't continue.
+                    throw new BackupException(
+                        'WP plugin lost backup task state — likely a parallel attempt or object-cache eviction. '
+                        .'Retry from UI (forceFreshPrepare=true) to clear and restart.',
+                        site: $this->site
+                    );
                 }
                 // transient — retry after delay
                 $this->logStep("prepare-status HTTP {$resp->status()}, will retry");
@@ -794,13 +880,21 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 $data = $resp->json();
                 $status = $data['status'] ?? 'unknown';
                 $progress = (int) ($data['progress'] ?? 0);
+                $wpMessage = (string) ($data['message'] ?? '');
 
-                if ($progress !== $lastReportedProgress) {
-                    // Map WP progress 0–100 → manager 5–28% (we reserve 30% for upload start)
+                // Pass WP-side message + percent verbatim so user sees what's
+                // happening ("WP: Archiving files (45%)" not the compressed
+                // manager percent which doesn't move enough to feel like progress).
+                $surfaceMessage = $wpMessage !== ''
+                    ? sprintf('WP: %s (%d%%)', $wpMessage, $progress)
+                    : "WP preparing... {$progress}%";
+
+                if ($progress !== $lastReportedProgress || $surfaceMessage !== $lastReportedMessage) {
+                    // Map WP progress 0–100 → manager 5–28% (reserve 30%+ for upload).
                     $mapped = 5 + (int) ($progress * 0.23);
-                    $msg = $data['message'] ?? "WP preparing... {$progress}%";
-                    $this->reportProgress('preparing_on_wp', $mapped, $msg);
+                    $this->reportProgress('preparing_on_wp', $mapped, $surfaceMessage);
                     $lastReportedProgress = $progress;
+                    $lastReportedMessage = $surfaceMessage;
                 }
 
                 // Plugin reports 'done' on success; accept 'ready' too for forward-compat.

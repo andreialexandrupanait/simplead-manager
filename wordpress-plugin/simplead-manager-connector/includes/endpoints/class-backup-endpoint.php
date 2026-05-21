@@ -1161,6 +1161,8 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'size' => $task['size'],
             'checksum' => $task['checksum'],
             'error' => $task['error'],
+            'started_at' => $task['started_at'] ?? null,
+            'updated_at' => $task['updated_at'] ?? null,
         ], 200);
     }
 
