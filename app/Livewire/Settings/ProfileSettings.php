@@ -89,7 +89,14 @@ class ProfileSettings extends Component
         $user->language = $this->language;
 
         if ($this->avatar) {
-            $path = $this->avatar->storeAs('avatars', uniqid('avatar_').'.'.$this->avatar->getClientOriginalExtension(), 'public');
+            $extension = match ($this->avatar->getMimeType()) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/webp' => 'webp',
+                default => throw new \RuntimeException('Unsupported avatar mime type'),
+            };
+            $path = $this->avatar->storeAs('avatars', uniqid('avatar_').'.'.$extension, 'public');
             $user->avatar_path = $path;
         }
 

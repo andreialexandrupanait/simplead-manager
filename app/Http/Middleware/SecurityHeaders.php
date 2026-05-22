@@ -30,6 +30,7 @@ class SecurityHeaders
         $response->headers->set('X-XSS-Protection', '1; mode=block');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
             // unsafe-eval required by Alpine.js v3 (uses new Function() for x-data expressions).
