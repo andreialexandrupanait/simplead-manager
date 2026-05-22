@@ -29,7 +29,7 @@ class EnforceTwoFactor
         // Allow access to profile settings (where 2FA is configured), logout,
         // and Livewire update endpoint (otherwise the in-page 2FA setup AJAX
         // call is redirected and never completes — user sees only a flicker).
-        if ($request->routeIs('settings.profile', 'logout', 'password.*') || $request->is('livewire/*')) {
+        if ($request->routeIs('settings.profile', 'logout', 'password.*') || $request->is('livewire*')) {
             return $next($request);
         }
 
