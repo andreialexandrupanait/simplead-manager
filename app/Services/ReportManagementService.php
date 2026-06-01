@@ -44,7 +44,12 @@ class ReportManagementService
             $schedule = ReportSchedule::findOrFail($scheduleId);
             $schedule->update($scheduleData);
         } else {
-            $schedule = ReportSchedule::create($scheduleData);
+            // Idempotent: enforce one schedule per (site, template). Re-saving the modal
+            // or replaying bulk-schedule updates the existing row instead of duplicating.
+            $schedule = ReportSchedule::updateOrCreate(
+                ['site_id' => $site->id, 'report_template_id' => $data['template_id']],
+                $scheduleData,
+            );
         }
 
         $schedule->update(['next_run_at' => $schedule->calculateNextRun()]);

@@ -186,7 +186,9 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                     'site_id' => $this->site->id,
                 ]);
             } else {
-                // Send emails (best-effort — don't fail the report if email fails)
+                // Send emails (best-effort — don't fail the report if email fails).
+                // Each recipient (client + admin if send_copy_to_admin) gets a separate
+                // email — like Postmark events: one email per (client, report).
                 $recipients = $this->recipientEmails ?? [];
                 if ($this->schedule) {
                     $recipients = array_merge($recipients, $this->schedule->recipient_emails ?? []);
