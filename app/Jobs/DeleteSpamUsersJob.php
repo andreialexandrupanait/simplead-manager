@@ -94,8 +94,8 @@ class DeleteSpamUsersJob implements ShouldQueue
 
             $response = $api->bulkDeleteUsers($chunkIds, $this->reassignToWpId);
 
-            $deletedList = $response['data']['deleted'] ?? [];
-            $failedList = $response['data']['failed'] ?? [];
+            $deletedList = $response['deleted'] ?? [];
+            $failedList = $response['failed'] ?? [];
 
             foreach ($deletedList as $entry) {
                 $wpUserId = (int) $entry['id'];

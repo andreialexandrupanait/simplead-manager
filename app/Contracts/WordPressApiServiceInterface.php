@@ -66,6 +66,8 @@ interface WordPressApiServiceInterface
 
     public function deleteUser(int $wpUserId, ?int $reassignTo = null): array;
 
+    public function bulkDeleteUsers(array $wpUserIds, ?int $reassignTo = null): array;
+
     // Security
     public function getSecurityCheck(): array;
 
