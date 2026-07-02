@@ -13,6 +13,8 @@ trait WithPerformanceCompetitors
 
     public function addCompetitor(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate(['newCompetitorUrl' => 'required|url|max:255']);
 
         if (! $this->monitor) {
@@ -34,6 +36,8 @@ trait WithPerformanceCompetitors
 
     public function removeCompetitor(int $index): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->monitor) {
             return;
         }

@@ -61,11 +61,15 @@ class SiteUptime extends Component
 
     public function pauseMonitor(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->monitor?->update(['status' => 'paused']);
     }
 
     public function resumeMonitor(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->monitor?->update([
             'status' => 'active',
             'next_check_at' => now(),
@@ -74,6 +78,8 @@ class SiteUptime extends Component
 
     public function testNow(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if ($this->monitor) {
             $rateLimitKey = "uptime-check:{$this->site->id}:".auth()->id();
             if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {

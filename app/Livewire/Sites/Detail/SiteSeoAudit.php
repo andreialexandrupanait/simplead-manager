@@ -320,6 +320,8 @@ class SiteSeoAudit extends Component
 
     public function trackKeyword(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $keyword = trim($this->newKeyword);
         if ($keyword === '') {
             return;
@@ -351,6 +353,8 @@ class SiteSeoAudit extends Component
 
     public function untrackKeyword(string $hash): void
     {
+        $this->authorizeSiteModification($this->site);
+
         SeoKeywordRanking::where('site_id', $this->site->id)
             ->where('keyword_hash', $hash)
             ->update(['is_tracked' => false]);
@@ -361,6 +365,8 @@ class SiteSeoAudit extends Component
 
     public function fetchKeywords(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->searchConsoleConnection?->is_active) {
             $this->dispatch('notify', type: 'warning', message: 'Search Console not connected.');
 
@@ -455,6 +461,8 @@ class SiteSeoAudit extends Component
 
     public function bulkFix(string $issueTitle): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || ($this->site->is_prospect ?? false)) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -526,6 +534,8 @@ class SiteSeoAudit extends Component
 
     public function runAudit(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! RateLimiter::attempt('seo-audit-'.$this->site->id, 1, fn () => true, 60)) {
             $this->dispatch('notify', type: 'warning', message: 'Please wait.');
 
@@ -553,6 +563,8 @@ class SiteSeoAudit extends Component
 
     public function updateSettings(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $m = $this->site->seoMonitor ?? \App\Models\SeoMonitor::create(['site_id' => $this->site->id, 'is_active' => true]);
         $config = $m->audit_config ?? [];
         $config['preferred_time'] = $this->settingsPreferredTime;
@@ -608,6 +620,8 @@ class SiteSeoAudit extends Component
 
     public function pushMetaFix(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || $this->site->is_prospect) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -645,6 +659,8 @@ class SiteSeoAudit extends Component
 
     public function pushRobotsFix(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || $this->site->is_prospect) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -680,6 +696,8 @@ class SiteSeoAudit extends Component
 
     public function pushCanonicalFix(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || $this->site->is_prospect) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -719,6 +737,8 @@ class SiteSeoAudit extends Component
 
     public function pushOgFix(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || $this->site->is_prospect) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -749,6 +769,8 @@ class SiteSeoAudit extends Component
 
     public function toggleSearchVisibility(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->site->is_connected || $this->site->is_prospect) {
             $this->dispatch('notify', type: 'warning', message: 'Site not connected.');
 
@@ -775,6 +797,8 @@ class SiteSeoAudit extends Component
 
     public function deleteAudit(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $a = SeoAudit::where('site_id', $this->site->id)->findOrFail($id);
         if ($a->isRunning()) {
             $this->dispatch('notify', type: 'warning', message: 'Cannot delete running audit.');

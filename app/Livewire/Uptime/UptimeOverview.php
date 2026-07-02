@@ -106,7 +106,9 @@ class UptimeOverview extends Component
             'maintenanceReason' => 'nullable|string|max:255',
         ]);
 
-        UptimeMonitor::findOrFail($this->maintenanceMonitorId)->update([
+        $monitor = UptimeMonitor::findOrFail($this->maintenanceMonitorId);
+        $this->authorizeSiteModification($monitor->site);
+        $monitor->update([
             'maintenance_starts_at' => $this->maintenanceStartsAt,
             'maintenance_ends_at' => $this->maintenanceEndsAt,
             'maintenance_reason' => $this->maintenanceReason ?: null,
@@ -118,7 +120,9 @@ class UptimeOverview extends Component
 
     public function clearMaintenanceWindow(int $id): void
     {
-        UptimeMonitor::findOrFail($id)->clearMaintenanceWindow();
+        $monitor = UptimeMonitor::findOrFail($id);
+        $this->authorizeSiteModification($monitor->site);
+        $monitor->clearMaintenanceWindow();
     }
 
     public function getSitesWithoutMonitorCountProperty(): int
@@ -128,6 +132,8 @@ class UptimeOverview extends Component
 
     public function addMonitorsForAllSites(): void
     {
+        abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot modify sites.');
+
         $sites = Site::whereDoesntHave('uptimeMonitor')->get();
         $created = 0;
 
