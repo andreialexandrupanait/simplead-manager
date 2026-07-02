@@ -45,6 +45,7 @@ Secvență concretă de PR-uri mici, ordonate pe risc și dependențe. Îl parcu
 | 2.7 | ⬜ **PHPStan OOM** — analiza nu se termină nici la 4GB (larastan bootează app-ul și recursează în container). De diagnosticat și de făcut jobul `static` blocant după fix. | M | descoperit de CI (PR #7) |
 | 2.8 | ⬜ **CVE guzzlehttp/psr7 <2.12.1** (CRLF injection, GHSA-vm85-hxw5-5432) — bump; `composer audit` îl semnalează | S | descoperit de CI (PR #7) |
 | 2.9 | ⬜ **`.env.example` lipsă din repo** — de adăugat un exemplu sanitizat (blochează onboarding + build-uri) | S | descoperit de CI (PR #7) |
+| 2.10 | ⬜ **Suita nu e hermetică** — cel puțin un test atârnă în CI (apel de rețea real fără timeout). De izolat rețeaua (fake HTTP) + timeout per test. Blochează facerea jobului `test` obligatoriu. | M | descoperit de CI (PR #7) |
 
 ---
 

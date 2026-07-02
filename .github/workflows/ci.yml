@@ -51,6 +51,9 @@ jobs:
     # green/red state is unknown. Report signal without blocking merges until
     # it is stabilised, then remove this line to make tests required.
     continue-on-error: true
+    # Cap the job: some tests are not hermetic (real network calls with no
+    # timeout) and can hang the runner. Tracked as remediation item 2.10.
+    timeout-minutes: 12
     services:
       postgres:
         image: postgres:16-alpine
