@@ -39,16 +39,20 @@ log "Building new Docker image..."
 DOCKER_BUILDKIT=1 $COMPOSE build app nginx
 
 # ── Step 4: Gracefully stop Horizon (drain in-flight jobs) ───────────────────
-# A restore/backup can run up to 3600s. `docker rm -f` would SIGKILL it and
-# leave a client site half-written, so we signal Horizon to finish current
-# jobs and then `stop -t 3660`, which waits for the running job to complete
-# before any SIGKILL (matches the container stop_grace_period).
+# horizon:terminate signals the master (via Redis) to finish current jobs and
+# exit. We then `stop` with a BOUNDED grace so the deploy can never hang: this
+# host's Horizon does not always exit promptly on SIGTERM even when idle, so an
+# unbounded `-t 3660` blocks the whole deploy for up to 61 minutes. 120s is
+# enough for a normal job to finish; a rare long restore interrupted here is
+# recovered by RestoreBackup::failed() (see remediation item 1.3), not by
+# stalling every deploy. Do not deploy while a restore is knowingly running.
+DRAIN_TIMEOUT="${DEPLOY_DRAIN_TIMEOUT:-120}"
 
 log "Signalling Horizon to finish in-flight jobs..."
 $COMPOSE exec app php artisan horizon:terminate 2>/dev/null || warn "Horizon not running (skipped)"
 
-log "Stopping Horizon and scheduler gracefully (waits up to 3660s for running jobs)..."
-$COMPOSE stop -t 3660 horizon scheduler
+log "Stopping Horizon and scheduler gracefully (waits up to ${DRAIN_TIMEOUT}s, then forces)..."
+$COMPOSE stop -t "$DRAIN_TIMEOUT" horizon scheduler
 
 # ── Step 5: Maintenance mode ─────────────────────────────────────────────────
 
