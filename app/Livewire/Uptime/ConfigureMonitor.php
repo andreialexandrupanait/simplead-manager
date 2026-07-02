@@ -6,6 +6,7 @@ namespace App\Livewire\Uptime;
 
 use App\Jobs\CheckUptime;
 use App\Livewire\Forms\MonitorFormData;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
@@ -13,6 +14,8 @@ use Livewire\Component;
 
 class ConfigureMonitor extends Component
 {
+    use WithSiteAuthorization;
+
     public ?int $monitorId = null;
 
     public ?int $siteId = null;
@@ -51,6 +54,11 @@ class ConfigureMonitor extends Component
                 'siteId' => 'required|exists:sites,id',
             ]);
         }
+
+        $site = $this->monitorId
+            ? UptimeMonitor::findOrFail($this->monitorId)->site
+            : Site::findOrFail($this->siteId);
+        $this->authorizeSiteModification($site);
 
         $data = [
             'url' => $this->form->url,

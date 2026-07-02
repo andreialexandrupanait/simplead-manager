@@ -83,6 +83,8 @@ trait WithPerformanceBudgets
 
     public function saveBudgets(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->monitor) {
             return;
         }

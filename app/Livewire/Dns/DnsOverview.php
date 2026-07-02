@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Dns;
 
 use App\Jobs\CheckDns;
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\DnsChange;
 use App\Models\DnsMonitor;
 use App\Services\DnsSelectorDiscoveryService;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 
 class DnsOverview extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSiteAuthorization;
 
     public string $tab = 'monitors';
 
@@ -73,11 +74,15 @@ class DnsOverview extends Component
 
     public function acknowledge(int $changeId): void
     {
-        DnsChange::findOrFail($changeId)->update(['acknowledged_at' => now()]);
+        $change = DnsChange::with('monitor.site')->findOrFail($changeId);
+        $this->authorizeSiteModification($change->monitor->site);
+        $change->update(['acknowledged_at' => now()]);
     }
 
     public function recheckAll(): void
     {
+        abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot modify sites.');
+
         DnsMonitor::active()->update(['next_check_at' => now()]);
         $this->dispatch('notify', type: 'success', message: 'DNS recheck queued for all monitors.');
     }
@@ -85,6 +90,7 @@ class DnsOverview extends Component
     public function rediscoverSelectors(int $monitorId): void
     {
         $monitor = DnsMonitor::with('site.siteCloudflare.cloudflareConnection')->findOrFail($monitorId);
+        $this->authorizeSiteModification($monitor->site);
 
         $discovery = app(DnsSelectorDiscoveryService::class);
         $sources = $discovery->discoverFor($monitor);
@@ -132,6 +138,7 @@ class DnsOverview extends Component
     public function saveSelectors(int $monitorId): void
     {
         $monitor = DnsMonitor::findOrFail($monitorId);
+        $this->authorizeSiteModification($monitor->site);
 
         $raw = preg_split('/[\s,]+/', mb_strtolower(trim($this->selectorsInput))) ?: [];
         $selectors = [];

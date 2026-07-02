@@ -60,6 +60,8 @@ class PerformanceOverview extends Component
 
     public function testAllSites(): void
     {
+        abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot modify sites.');
+
         $monitors = PerformanceMonitor::where('is_active', true)
             ->whereHas('site')
             ->with('site')

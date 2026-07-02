@@ -26,6 +26,8 @@ trait WithPerformanceSettings
 
     public function updateSettings(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->monitor) {
             return;
         }

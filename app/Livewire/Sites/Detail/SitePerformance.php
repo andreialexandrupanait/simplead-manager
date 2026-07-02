@@ -376,6 +376,8 @@ class SitePerformance extends Component
 
     public function addPage(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'newPageLabel' => 'required|string|max:100',
             'newPageUrl' => 'required|url|max:500',
@@ -402,6 +404,8 @@ class SitePerformance extends Component
 
     public function removePage(int $pageId): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $page = PerformancePage::where('performance_monitor_id', $this->monitor->id)->find($pageId);
         if (! $page) {
             return;
@@ -429,6 +433,8 @@ class SitePerformance extends Component
 
     public function setPrimaryPage(int $pageId): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->monitor) {
             return;
         }
@@ -446,6 +452,8 @@ class SitePerformance extends Component
 
     public function runTest(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $rateLimitKey = "performance-test:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
             session()->flash('error', 'Too many performance test requests. Please wait before trying again.');
@@ -482,6 +490,8 @@ class SitePerformance extends Component
 
     public function toggleActive(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->monitor) {
             return;
         }

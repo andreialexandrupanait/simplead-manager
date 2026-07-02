@@ -21,10 +21,30 @@ class ErrorLogsOverview extends Component
     #[Url]
     public ?int $site = null;
 
+    /**
+     * Base query restricted to error logs for sites the current user may access
+     * (admins see all). Without this, any authenticated user could read and
+     * resolve PHP error logs — file paths, SQL fragments — for every client.
+     */
+    protected function accessibleErrorLogs(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        $query = PhpErrorLog::query();
+
+        if (! $user?->isAdmin()) {
+            $query->whereHas('site', function ($q) use ($user) {
+                $q->where('user_id', $user?->id)
+                    ->orWhereIn('client_id', $user ? $user->assignedClients()->select('clients.id') : []);
+            });
+        }
+
+        return $query;
+    }
+
     #[Computed]
     public function stats(): array
     {
-        $base = PhpErrorLog::unresolved();
+        $base = $this->accessibleErrorLogs()->unresolved();
 
         return [
             'total' => (clone $base)->count(),
@@ -36,7 +56,11 @@ class ErrorLogsOverview extends Component
 
     public function resolve(int $id): void
     {
-        PhpErrorLog::findOrFail($id)->update(['is_resolved' => true]);
+        $log = PhpErrorLog::with('site')->findOrFail($id);
+
+        abort_unless($log->site && auth()->user()?->canAccessSite($log->site), 403);
+
+        $log->update(['is_resolved' => true]);
         unset($this->stats);
     }
 
@@ -52,7 +76,7 @@ class ErrorLogsOverview extends Component
 
     public function render()
     {
-        $errors = PhpErrorLog::with('site')
+        $errors = $this->accessibleErrorLogs()->with('site')
             ->when($this->site, fn ($q) => $q->where('site_id', $this->site))
             ->when($this->filter === 'fatal', fn ($q) => $q->fatal())
             ->when($this->filter === 'warning', fn ($q) => $q->where('level', 'warning'))
