@@ -90,6 +90,8 @@ class SiteDatabaseCleanup extends Component
 
     public function activateModule(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         app(ModuleConfigService::class)->toggleModule($this->site, 'database_cleanup', true);
         unset($this->isModuleActive);
     }
@@ -142,12 +144,16 @@ class SiteDatabaseCleanup extends Component
 
     public function confirmCleanup(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->showConfirmation = true;
         $this->dispatch('open-modal-confirm-cleanup');
     }
 
     public function runCleanup(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $options = [
             'revisions' => $this->cleanRevisions,
             'auto_drafts' => $this->cleanAutoDrafts,
@@ -212,6 +218,8 @@ class SiteDatabaseCleanup extends Component
 
     public function confirmTableAction(string $action, string $tableName): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $skipConfirm = match ($action) {
             'optimize' => $this->skipConfirmOptimize,
             'convert_engine' => $this->skipConfirmConvert,
@@ -233,6 +241,8 @@ class SiteDatabaseCleanup extends Component
 
     public function executeTableAction(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->pendingTableAction || ! $this->pendingTableName) {
             return;
         }

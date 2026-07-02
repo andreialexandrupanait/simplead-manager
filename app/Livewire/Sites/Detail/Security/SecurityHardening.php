@@ -174,6 +174,8 @@ class SecurityHardening extends Component
 
     public function save(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $service = app(SecuritySettingsService::class);
 
         foreach ($this->hardeningToggles as $key => $enabled) {

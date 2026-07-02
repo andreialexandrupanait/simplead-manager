@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\MaintenancePlan;
 use App\Models\Site;
 use App\Services\ModuleConfigService;
@@ -12,12 +13,16 @@ use Livewire\Component;
 
 class SiteSettings extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $site;
 
     public ?int $selectedPlanId = null;
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
+
         $this->site = $site;
         $this->selectedPlanId = $site->maintenance_plan_id;
     }
@@ -68,6 +73,8 @@ class SiteSettings extends Component
 
     public function applyPlan(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->selectedPlanId) {
             $this->dispatch('notify', type: 'error', message: 'Please select a plan.');
 
@@ -85,6 +92,8 @@ class SiteSettings extends Component
 
     public function toggleModule(string $module): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $service = app(ModuleConfigService::class);
         $currentlyActive = $service->isModuleActive($this->site, $module);
         $service->toggleModule($this->site, $module, ! $currentlyActive);
@@ -95,6 +104,8 @@ class SiteSettings extends Component
 
     public function updateInterval(string $module, int $minutes): void
     {
+        $this->authorizeSiteModification($this->site);
+
         app(ModuleConfigService::class)->updateInterval($this->site, $module, $minutes);
 
         $this->site->refresh();

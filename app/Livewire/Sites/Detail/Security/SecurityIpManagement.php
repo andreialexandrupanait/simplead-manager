@@ -88,6 +88,8 @@ class SecurityIpManagement extends Component
 
     public function addIp(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'newIp' => ['required', 'string', 'max:49', function ($attribute, $value, $fail) {
                 if (filter_var($value, FILTER_VALIDATE_IP)) {
@@ -139,6 +141,8 @@ class SecurityIpManagement extends Component
 
     public function removeIp(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         SecurityIpList::where('id', $id)
             ->where('site_id', $this->site->id)
             ->delete();
@@ -150,6 +154,8 @@ class SecurityIpManagement extends Component
 
     public function unbanIp(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         SecurityBannedIp::where('id', $id)
             ->where('site_id', $this->site->id)
             ->delete();
@@ -159,6 +165,8 @@ class SecurityIpManagement extends Component
 
     public function saveFirewallSettings(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'ipHeaderOverride' => 'nullable|string|max:100',
         ]);
