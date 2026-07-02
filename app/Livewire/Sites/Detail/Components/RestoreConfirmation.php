@@ -57,6 +57,7 @@ class RestoreConfirmation extends Component
     public function openModal(int $backupId): void
     {
         $this->backup = Backup::with(['site', 'storageDestination'])->findOrFail($backupId);
+        $this->authorizeRestore();
         $this->confirmed = false;
         $this->backupBeforeRestore = true;
         $this->preRestoreBackupId = null;
@@ -79,6 +80,25 @@ class RestoreConfirmation extends Component
         $this->dispatch('open-modal-restore-confirmation');
     }
 
+    /**
+     * Guard every restore-related entry point: the backup must belong to the
+     * site this component was mounted for (blocks cross-tenant IDOR via a
+     * tampered backup id/model) and the current user must be allowed to
+     * restore it (BackupPolicy denies viewers and non-owners).
+     */
+    protected function authorizeRestore(): void
+    {
+        if (! $this->backup) {
+            abort(404);
+        }
+
+        if ($this->backup->site_id !== $this->site->id) {
+            abort(403, 'This backup does not belong to this site.');
+        }
+
+        $this->authorize('restore', $this->backup);
+    }
+
     public function setRestoreMode(string $mode): void
     {
         $this->restoreMode = $mode;
@@ -96,6 +116,8 @@ class RestoreConfirmation extends Component
         if (! $this->backup || $this->fileListLoaded) {
             return;
         }
+
+        $this->authorizeRestore();
 
         $this->loadingFileList = true;
         $this->fileListError = null;
@@ -230,6 +252,8 @@ class RestoreConfirmation extends Component
 
     protected function startPreRestoreBackup(): void
     {
+        $this->authorizeRestore();
+
         $destination = $this->resolveDestination();
         if (! $destination) {
             session()->flash('backup-error', 'No storage destination configured.');
@@ -267,6 +291,8 @@ class RestoreConfirmation extends Component
         if (! $this->backup) {
             return;
         }
+
+        $this->authorizeRestore();
 
         $restoreDb = $this->restoreMode === 'full' ? true : $this->restoreDatabase;
         $restoreFiles = $this->restoreMode === 'full' ? true : $this->restoreFiles;
