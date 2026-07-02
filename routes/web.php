@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppBackupDownloadController;
 use App\Http\Controllers\BackupDownloadController;
+use App\Http\Controllers\BackupLocalExportDownloadController;
 use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ConnectorPluginDownloadController;
 use App\Http\Controllers\DropboxAuthController;
@@ -126,6 +127,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
 
     // Backup download (signed URL for local storage)
     Route::get('/backups/{backup}/download', BackupDownloadController::class)->name('backups.download')->middleware(['signed', 'throttle:10,1']);
+    Route::get('/backups/{backup}/download-local', BackupLocalExportDownloadController::class)->name('backups.download-local')->middleware(['signed', 'throttle:10,1']);
 
     // Report download & preview (authenticated users)
     Route::get('/reports/{report}/download', ReportDownloadController::class)->name('reports.download')->middleware('throttle:30,1');

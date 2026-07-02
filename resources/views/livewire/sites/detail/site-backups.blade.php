@@ -494,6 +494,26 @@
                                         <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                         {{ __('Download') }}
                                     </button>
+                                    @if($backup->localExportInProgress())
+                                        <span class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-500 cursor-wait" title="{{ __('Preparing Local by Flywheel export…') }}">
+                                            <svg aria-hidden="true" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                            {{ __('Local…') }}
+                                        </span>
+                                    @elseif($backup->localExportReady())
+                                        <button wire:click="downloadBackupForLocal({{ $backup->id }})"
+                                            class="inline-flex items-center gap-1 rounded border border-accent-200 bg-accent-50 px-2 py-1 text-xs text-accent-700 hover:border-accent-300 transition"
+                                            title="{{ __('Download for Local by Flywheel') }}">
+                                            <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25M3 5.25v9.75A1.5 1.5 0 004.5 16.5h15a1.5 1.5 0 001.5-1.5V5.25M3 5.25A1.5 1.5 0 014.5 3.75h15A1.5 1.5 0 0121 5.25M3 5.25h18" /></svg>
+                                            {{ __('Local zip') }}
+                                        </button>
+                                    @else
+                                        <button wire:click="exportBackupForLocal({{ $backup->id }})"
+                                            class="inline-flex items-center gap-1 rounded border {{ $backup->local_export_status === 'failed' ? 'border-red-200 text-red-600 hover:border-red-300' : 'border-gray-200 text-gray-600 hover:text-accent-600 hover:border-accent-300' }} bg-white px-2 py-1 text-xs transition"
+                                            title="{{ $backup->local_export_status === 'failed' ? __('Local export failed — click to retry').($backup->local_export_error ? ': '.\Illuminate\Support\Str::limit($backup->local_export_error, 120) : '') : __('Export for Local by Flywheel') }}">
+                                            <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25M3 5.25v9.75A1.5 1.5 0 004.5 16.5h15a1.5 1.5 0 001.5-1.5V5.25M3 5.25A1.5 1.5 0 014.5 3.75h15A1.5 1.5 0 0121 5.25M3 5.25h18" /></svg>
+                                            {{ $backup->local_export_status === 'failed' ? __('Retry Local') : __('For Local') }}
+                                        </button>
+                                    @endif
                                     <button wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })"
                                         class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-accent-600 hover:border-accent-300 transition"
                                         title="{{ __('Restore') }}">
@@ -651,6 +671,23 @@
                                                 title="{{ __('Download') }}">
                                                 <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                             </button>
+                                            @if($backup->localExportInProgress())
+                                                <span class="p-1 text-gray-400 cursor-wait" title="{{ __('Preparing Local by Flywheel export…') }}">
+                                                    <svg aria-hidden="true" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                                </span>
+                                            @elseif($backup->localExportReady())
+                                                <button wire:click="downloadBackupForLocal({{ $backup->id }})"
+                                                    class="rounded p-1 text-accent-600 hover:text-accent-700 hover:bg-accent-50"
+                                                    title="{{ __('Download for Local by Flywheel') }}">
+                                                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25M3 5.25v9.75A1.5 1.5 0 004.5 16.5h15a1.5 1.5 0 001.5-1.5V5.25M3 5.25A1.5 1.5 0 014.5 3.75h15A1.5 1.5 0 0121 5.25M3 5.25h18" /></svg>
+                                                </button>
+                                            @else
+                                                <button wire:click="exportBackupForLocal({{ $backup->id }})"
+                                                    class="rounded p-1 {{ $backup->local_export_status === 'failed' ? 'text-red-500 hover:text-red-700 hover:bg-red-50' : 'text-gray-400 hover:text-accent-600 hover:bg-accent-50' }}"
+                                                    title="{{ $backup->local_export_status === 'failed' ? __('Local export failed — click to retry').($backup->local_export_error ? ': '.\Illuminate\Support\Str::limit($backup->local_export_error, 120) : '') : __('Export for Local by Flywheel') }}">
+                                                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25M3 5.25v9.75A1.5 1.5 0 004.5 16.5h15a1.5 1.5 0 001.5-1.5V5.25M3 5.25A1.5 1.5 0 014.5 3.75h15A1.5 1.5 0 0121 5.25M3 5.25h18" /></svg>
+                                                </button>
+                                            @endif
                                             <button wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })"
                                                 class="rounded p-1 text-gray-400 hover:text-accent-600 hover:bg-accent-50"
                                                 title="{{ __('Restore') }}">
