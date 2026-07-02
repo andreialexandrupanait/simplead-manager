@@ -87,6 +87,8 @@ class SiteCloudflare extends Component
 
     public function connectToZone(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->selectedConnectionId || ! $this->selectedZoneId) {
             session()->flash('cf-error', 'Please select a connection and zone.');
 
@@ -108,6 +110,8 @@ class SiteCloudflare extends Component
 
     public function disconnectZone(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->site->siteCloudflare?->delete();
         $this->site->load('siteCloudflare');
         unset($this->siteCloudflare);
@@ -155,6 +159,8 @@ class SiteCloudflare extends Component
 
     public function purgeEverything(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $cf = $this->siteCloudflare;
         if (! $cf) {
             return;
@@ -187,6 +193,8 @@ class SiteCloudflare extends Component
 
     public function purgeByUrls(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $urls = array_filter(array_map('trim', explode("\n", $this->purgeUrls)));
 
         if (empty($urls)) {

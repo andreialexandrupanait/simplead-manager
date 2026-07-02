@@ -124,6 +124,8 @@ class SecurityUsers extends Component
 
     public function createUser(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'newUsername' => 'required|min:3|max:60',
             'newEmail' => 'required|email',
@@ -167,6 +169,8 @@ class SecurityUsers extends Component
 
     public function updateUser(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'editEmail' => 'required|email',
             'editRole' => 'required',
@@ -194,6 +198,8 @@ class SecurityUsers extends Component
 
     public function confirmDeleteUser(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $siteUser = SiteUser::where('site_id', $this->site->id)->findOrFail($id);
         $this->deletingUserId = $siteUser->wp_user_id;
         $this->deletingUsername = $siteUser->username;
@@ -203,6 +209,8 @@ class SecurityUsers extends Component
 
     public function deleteUser(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         try {
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->deleteUser($this->deletingUserId, $this->reassignTo);
@@ -268,6 +276,8 @@ class SecurityUsers extends Component
 
     public function deleteSpamUsers(array $wpUserIds): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (empty($wpUserIds)) {
             return;
         }

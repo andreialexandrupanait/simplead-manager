@@ -17,12 +17,16 @@ trait WithThemeManagement
 
     public function updateTheme(int $themeId): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = $this->updateSingleTheme($themeId);
         $this->updateResults['theme_'.$themeId] = $result;
     }
 
     public function updateSingleTheme(int $themeId): array
     {
+        $this->authorizeSiteModification($this->site);
+
         /** @var SiteTheme $theme */
         $theme = $this->site->siteThemes()->findOrFail($themeId);
         $result = $this->performUpdate('theme', $theme->slug, $theme->name, $theme->slug, $theme->version, $theme->update_version);
@@ -43,6 +47,8 @@ trait WithThemeManagement
 
     public function activateTheme(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->activateTheme($this->site, $id);
         $this->updateResults['theme_'.$id] = $result + ['version' => null];
 
@@ -55,6 +61,8 @@ trait WithThemeManagement
 
     public function confirmDeleteTheme(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         /** @var SiteTheme $theme */
         $theme = $this->site->siteThemes()->findOrFail($id);
         $this->confirmingDeleteThemeId = $id;
@@ -71,6 +79,8 @@ trait WithThemeManagement
 
     public function deleteThemeById(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
         $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
         unset($this->themes, $this->themeCounts);
@@ -78,6 +88,8 @@ trait WithThemeManagement
 
     public function deleteTheme(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->confirmingDeleteThemeId) {
             return;
         }
@@ -99,6 +111,8 @@ trait WithThemeManagement
 
     public function deleteThemeDirect(int $id): array
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->deleteTheme($this->site, $id);
 
         if (! $result['success']) {
@@ -112,6 +126,8 @@ trait WithThemeManagement
 
     public function bulkUpdateThemes(array $ids): array
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->runPreUpdateBackup();
         $result = app(PluginManagerService::class)->bulkUpdateThemes($this->site, $ids);
         $this->updateResults = array_merge($this->updateResults, $result['results']);

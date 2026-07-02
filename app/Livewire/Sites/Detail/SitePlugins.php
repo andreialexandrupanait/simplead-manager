@@ -248,6 +248,8 @@ class SitePlugins extends Component
 
     public function updateCore(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->runPreUpdateBackup();
         $result = app(PluginManagerService::class)->updateCore($this->site);
 
@@ -260,6 +262,8 @@ class SitePlugins extends Component
 
     public function toggleAutoUpdate(string $type, int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if ($type === 'plugin') {
             /** @var SitePlugin $item */
             $item = $this->site->sitePlugins()->findOrFail($id);

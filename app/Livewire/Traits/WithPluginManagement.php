@@ -17,12 +17,16 @@ trait WithPluginManagement
 
     public function updatePlugin(int $pluginId): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = $this->updateSinglePlugin($pluginId);
         $this->updateResults['plugin_'.$pluginId] = $result;
     }
 
     public function updateSinglePlugin(int $pluginId): array
     {
+        $this->authorizeSiteModification($this->site);
+
         /** @var SitePlugin $plugin */
         $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
         $result = $this->performUpdate('plugin', $plugin->file, $plugin->name, $plugin->slug, $plugin->version, $plugin->update_version);
@@ -43,6 +47,8 @@ trait WithPluginManagement
 
     public function activatePlugin(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->activatePlugin($this->site, $id);
         $this->updateResults['plugin_'.$id] = $result + ['version' => null];
         $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
@@ -51,6 +57,8 @@ trait WithPluginManagement
 
     public function deactivatePlugin(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->deactivatePlugin($this->site, $id);
         $this->updateResults['plugin_'.$id] = $result + ['version' => null];
         $this->dispatch('notify', type: $result['success'] ? 'success' : 'error', message: $result['message']);
@@ -59,6 +67,8 @@ trait WithPluginManagement
 
     public function confirmDeletePlugin(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         /** @var SitePlugin $plugin */
         $plugin = $this->site->sitePlugins()->findOrFail($id);
         $this->confirmingDeleteId = $id;
@@ -68,6 +78,8 @@ trait WithPluginManagement
 
     public function deletePlugin(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if (! $this->confirmingDeleteId) {
             return;
         }
@@ -88,6 +100,8 @@ trait WithPluginManagement
 
     public function deletePluginDirect(int $id): array
     {
+        $this->authorizeSiteModification($this->site);
+
         $result = app(PluginManagerService::class)->deletePlugin($this->site, $id);
 
         if (! $result['success']) {
@@ -101,6 +115,8 @@ trait WithPluginManagement
 
     public function bulkUpdatePlugins(array $ids): array
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->runPreUpdateBackup();
         $result = app(PluginManagerService::class)->bulkUpdatePlugins($this->site, $ids);
         $this->updateResults = array_merge($this->updateResults, $result['results']);
