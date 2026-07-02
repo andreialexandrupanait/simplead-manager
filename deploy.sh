@@ -38,11 +38,17 @@ git pull --ff-only || fail "git pull failed — resolve conflicts manually"
 log "Building new Docker image..."
 DOCKER_BUILDKIT=1 $COMPOSE build app nginx
 
-# ── Step 4: Gracefully stop Horizon ──────────────────────────────────────────
+# ── Step 4: Gracefully stop Horizon (drain in-flight jobs) ───────────────────
+# A restore/backup can run up to 3600s. `docker rm -f` would SIGKILL it and
+# leave a client site half-written, so we signal Horizon to finish current
+# jobs and then `stop -t 3660`, which waits for the running job to complete
+# before any SIGKILL (matches the container stop_grace_period).
 
-log "Terminating Horizon gracefully..."
+log "Signalling Horizon to finish in-flight jobs..."
 $COMPOSE exec app php artisan horizon:terminate 2>/dev/null || warn "Horizon not running (skipped)"
-sleep 5
+
+log "Stopping Horizon and scheduler gracefully (waits up to 3660s for running jobs)..."
+$COMPOSE stop -t 3660 horizon scheduler
 
 # ── Step 5: Maintenance mode ─────────────────────────────────────────────────
 
@@ -79,6 +85,13 @@ log "App container is ready."
 
 log "Running database migrations..."
 $COMPOSE exec app php artisan migrate --force
+
+# ── Step 7b: Restart PgBouncer after DDL migrations ──────────────────────────
+# PgBouncer (transaction pooling) caches prepared statements; after an ALTER
+# TABLE clients get "cached plan must not change result type" 500s until it is
+# restarted. This bit production before — see docs/audit/26-infrastructure-docker.md.
+log "Restarting PgBouncer (clears cached query plans after DDL)..."
+$COMPOSE restart pgbouncer
 
 # ── Step 8: Cache configuration ──────────────────────────────────────────────
 # Skipped — containers use read_only: true, so bootstrap/cache is immutable.

@@ -61,8 +61,10 @@ services:
       retries: 3
       start_period: 15s
     # Give Horizon workers time to finish in-flight jobs before SIGKILL.
-    # Must exceed longest job timeout (backups: 2700s = 45min).
-    stop_grace_period: 300s
+    # Must exceed the longest job timeout: RestoreBackup/backups run up to
+    # 3600s (see app/Jobs/RestoreBackup.php). A shorter grace lets a deploy
+    # SIGKILL a restore mid-flight and leave a client site half-written.
+    stop_grace_period: 3660s
     volumes:
       - app-storage:/var/www/html/storage
     networks:
