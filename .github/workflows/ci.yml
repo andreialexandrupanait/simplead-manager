@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Pint (code style)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Pint (test mode, no fixes)
+        run: vendor/bin/pint --test
+
+  static:
+    name: PHPStan (static analysis)
+    runs-on: ubuntu-latest
+    # Non-blocking for now: PHPStan currently exhausts >4GB and cannot complete
+    # a full run (larastan boots the app and recurses in the container). Tracked
+    # as a separate remediation item; keep it advisory until that is fixed.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=4G
+
+  test:
+    name: PHPUnit (pgsql + redis)
+    runs-on: ubuntu-latest
+    # Non-blocking for now: the suite was largely deleted in 2026-04 and its
+    # green/red state is unknown. Report signal without blocking merges until
+    # it is stabilised, then remove this line to make tests required.
+    continue-on-error: true
+    # Cap the job: some tests are not hermetic (real network calls with no
+    # timeout) and can hang the runner. Tracked as remediation item 2.10.
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: simplead_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:mjmS7eMvOldHZkbWiIfbfp9VD+ByQ6qANsIE2TouIsw=
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: simplead_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pgsql, pdo_pgsql, redis, gd, zip, bcmath, intl, mbstring, exif
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Migrate test database (uses schema dump)
+        run: php artisan migrate --force --no-interaction
+      - name: PHPUnit
+        run: vendor/bin/phpunit --no-coverage
+
+  audit:
+    name: Composer audit (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Composer audit
+        run: composer audit --no-dev

@@ -8,7 +8,6 @@ use App\Contracts\WordPressApiServiceInterface;
 use App\Enums\BackupStatus;
 use App\Exceptions\BackupException;
 use App\Helpers\FormatHelper;
-use App\Http\Controllers\Api\BackupCallbackController;
 use App\Jobs\Concerns\BackupJobTrait;
 use App\Models\Backup;
 use App\Models\Site;
@@ -695,7 +694,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         // if progress=0 with no recent updates, that prior task is stale. Re-prepare
         // with force=true to clear it.
         if (! empty($prepData['resumed'])) {
-            $this->logStep("Resumed previous task token=".substr($token, 0, 8)."…, verifying liveness");
+            $this->logStep('Resumed previous task token='.substr($token, 0, 8).'…, verifying liveness');
             $probe = $api->request('POST', '/backup/prepare-status', ['token' => $token], [], 15);
             if ($probe->successful()) {
                 $probeData = $probe->json();
@@ -719,7 +718,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        $this->logStep("Async prepare ready, token=".substr($token, 0, 8)."… method=".($prepData['method'] ?? 'resumed'));
+        $this->logStep('Async prepare ready, token='.substr($token, 0, 8).'… method='.($prepData['method'] ?? 'resumed'));
 
         // Some hosts have wp-cron and self-loopback blocked by Cloudflare /
         // WAF / firewall, in which case prepare-async sets up the transient
@@ -739,7 +738,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         if ($size <= 0 || ! $checksum) {
             throw new BackupException('prepare-status returned ready but missing size/checksum', site: $this->site);
         }
-        $this->logStep("WP build complete: ".FormatHelper::bytes($size)." (sha256 ".substr($checksum, 0, 12)."…)");
+        $this->logStep('WP build complete: '.FormatHelper::bytes($size).' (sha256 '.substr($checksum, 0, 12).'…)');
 
         // 3. Initiate S3 multipart
         $this->reportProgress('uploading_direct', 30, 'Initiating S3 multipart upload...');
@@ -758,7 +757,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $parts = $driver->generatePresignedPartUrls($remotePath, $uploadId, $size, $partSize);
 
         $totalParts = count($parts);
-        $this->logStep("S3 multipart initiated: uploadId=".substr($uploadId, 0, 12)."…, {$totalParts} parts of ".FormatHelper::bytes($partSize));
+        $this->logStep('S3 multipart initiated: uploadId='.substr($uploadId, 0, 12)."…, {$totalParts} parts of ".FormatHelper::bytes($partSize));
 
         // 4. Tell WP to push, one part per HTTP round-trip. Each call is short
         // (≤90s) so Cloudflare's gateway timeout doesn't kill us. Older monolithic
