@@ -42,6 +42,9 @@ Secvență concretă de PR-uri mici, ordonate pe risc și dependențe. Îl parcu
 | 2.4 | ⬜ **Test restore end-to-end** cu `FakeWordPressApiService` (arhivă coruptă → abort; eșec chunk → site scos din maintenance) | L | Testing |
 | 2.5 | ⬜ **Test plugin push / safe-update + HMAC connector + token flows publice** | L | Testing |
 | 2.6 | ⬜ **Curăță baseline PHPStan categoria A** (bug-uri reale) + completează `WordPressApiServiceInterface` | S | Testing P1 |
+| 2.7 | ⬜ **PHPStan OOM** — analiza nu se termină nici la 4GB (larastan bootează app-ul și recursează în container). De diagnosticat și de făcut jobul `static` blocant după fix. | M | descoperit de CI (PR #7) |
+| 2.8 | ⬜ **CVE guzzlehttp/psr7 <2.12.1** (CRLF injection, GHSA-vm85-hxw5-5432) — bump; `composer audit` îl semnalează | S | descoperit de CI (PR #7) |
+| 2.9 | ⬜ **`.env.example` lipsă din repo** — de adăugat un exemplu sanitizat (blochează onboarding + build-uri) | S | descoperit de CI (PR #7) |
 
 ---
 
