@@ -39,6 +39,7 @@ class AppBackupCreator
 
         $components = $this->resolveComponents($type, $options);
         $destination = $this->resolveStorageDestination($storageDestinationId);
+        $config = AppBackupConfig::instance();
 
         $backup = AppBackup::create([
             'type' => $type,

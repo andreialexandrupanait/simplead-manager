@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Run the test suite in an isolated environment on the production host.
+#
+# Spins up ephemeral postgres/redis containers bound to 127.0.0.1 (matching
+# the values pinned in phpunit.xml), migrates the test schema, then runs
+# phpunit inside the app image with the project mounted. Never touches the
+# production database or Redis (different containers, different credentials).
+#
+# Usage: bin/test [phpunit args...]   e.g. bin/test --filter=SafeUpdate
+
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PG_NAME=sam-test-pgsql
+REDIS_NAME=sam-test-redis
+
+ensure_container() {
+  local name=$1; shift
+  if [ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null || echo false)" != "true" ]; then
+    docker rm -f "$name" >/dev/null 2>&1 || true
+    docker run -d --name "$name" "$@" >/dev/null
+  fi
+}
+
+ensure_container "$PG_NAME" \
+  -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_DB=simplead_test -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  postgres:16-alpine
+
+ensure_container "$REDIS_NAME" \
+  -p 127.0.0.1:6379:6379 \
+  redis:7-alpine
+
+echo "Waiting for test postgres..."
+for i in $(seq 1 30); do
+  if docker exec "$PG_NAME" pg_isready -U postgres -q 2>/dev/null; then break; fi
+  [ "$i" = 30 ] && { echo "test postgres did not become ready" >&2; exit 1; }
+  sleep 1
+done
+
+run_in_app() {
+  docker run --rm --network host \
+    -u "$(id -u):$(id -g)" --group-add 1002 \
+    -v "$PROJECT_DIR":/var/www/html \
+    -w /var/www/html \
+    -e APP_ENV=testing \
+    -e APP_KEY='base64:mjmS7eMvOldHZkbWiIfbfp9VD+ByQ6qANsIE2TouIsw=' \
+    -e DB_CONNECTION=pgsql -e DB_HOST=127.0.0.1 -e DB_PORT=5432 \
+    -e DB_DATABASE=simplead_test -e DB_USERNAME=postgres -e DB_PASSWORD=postgres \
+    -e REDIS_HOST=127.0.0.1 -e REDIS_PORT=6379 \
+    -e CACHE_STORE=array -e SESSION_DRIVER=array -e QUEUE_CONNECTION=sync \
+    -e MAIL_MAILER=array -e PULSE_ENABLED=false -e TELESCOPE_ENABLED=false \
+    simplead-app:latest "$@"
+}
+
+echo "Migrating test database..."
+run_in_app php artisan migrate --force --no-interaction --quiet
+
+echo "Running phpunit..."
+run_in_app php vendor/bin/phpunit --no-coverage "$@"

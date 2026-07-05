@@ -15,7 +15,7 @@ class AppBackupRestorer
     use AppBackupHelpers;
 
     public function __construct(
-        private AppBackupService $backupService,
+        private AppBackupDownloader $downloader,
     ) {}
 
     public function restoreDatabase(AppBackup $backup): array
@@ -31,7 +31,7 @@ class AppBackupRestorer
         }
 
         try {
-            $archivePath = $this->backupService->downloadBackup($backup);
+            $archivePath = $this->downloader->download($backup);
 
             $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 
@@ -98,7 +98,7 @@ class AppBackupRestorer
         }
 
         try {
-            $archivePath = $this->backupService->downloadBackup($backup);
+            $archivePath = $this->downloader->download($backup);
 
             $this->exec('tar -xzf '.escapeshellarg($archivePath).' -C '.escapeshellarg($tempDir));
 

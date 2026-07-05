@@ -4,7 +4,11 @@ includes:
 
 parameters:
     parallel:
-        maximumNumberOfProcesses: 1
+        # Small jobs + worker recycling keep peak memory bounded (a single
+        # process accumulated >6GB analysing the whole app and never finished).
+        maximumNumberOfProcesses: 2
+        jobSize: 8
+        processTimeout: 600.0
     paths:
         - app/
     level: 5
@@ -12,6 +16,3 @@ parameters:
     ignoreErrors:
         # Livewire magic properties
         - '#Access to an undefined property App\\Livewire\\#'
-    excludePaths:
-        - app/Console/Commands/MigrateReportFiles.php
-        - app/Livewire/Traits/
