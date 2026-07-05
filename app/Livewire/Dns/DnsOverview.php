@@ -75,7 +75,9 @@ class DnsOverview extends Component
     public function acknowledge(int $changeId): void
     {
         $change = DnsChange::with('monitor.site')->findOrFail($changeId);
-        $this->authorizeSiteModification($change->monitor->site);
+        $site = $change->monitor?->site;
+        abort_if($site === null, 404, 'Site no longer exists.');
+        $this->authorizeSiteModification($site);
         $change->update(['acknowledged_at' => now()]);
     }
 
@@ -90,6 +92,7 @@ class DnsOverview extends Component
     public function rediscoverSelectors(int $monitorId): void
     {
         $monitor = DnsMonitor::with('site.siteCloudflare.cloudflareConnection')->findOrFail($monitorId);
+        abort_if($monitor->site === null, 404, 'Site no longer exists.');
         $this->authorizeSiteModification($monitor->site);
 
         $discovery = app(DnsSelectorDiscoveryService::class);
@@ -138,6 +141,7 @@ class DnsOverview extends Component
     public function saveSelectors(int $monitorId): void
     {
         $monitor = DnsMonitor::findOrFail($monitorId);
+        abort_if($monitor->site === null, 404, 'Site no longer exists.');
         $this->authorizeSiteModification($monitor->site);
 
         $raw = preg_split('/[\s,]+/', mb_strtolower(trim($this->selectorsInput))) ?: [];
@@ -205,6 +209,7 @@ class DnsOverview extends Component
                 });
             })
             ->join('sites', 'dns_monitors.site_id', '=', 'sites.id')
+            ->whereNull('sites.deleted_at')
             ->orderByDesc('has_changes')
             ->orderBy('sites.sort_order')
             ->select('dns_monitors.*')

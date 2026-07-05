@@ -29,12 +29,30 @@
              .env and connect to the live pgsql/redis (host "pgsql"): it is
              pinned to a local test target that fails safe if absent. CI
              provides matching ephemeral services on 127.0.0.1. -->
+        <env name="DB_URL" value="" force="true"/>
         <env name="DB_HOST" value="127.0.0.1" force="true"/>
         <env name="DB_PORT" value="5432" force="true"/>
         <env name="DB_USERNAME" value="postgres" force="true"/>
         <env name="DB_PASSWORD" value="postgres" force="true"/>
+        <env name="REDIS_URL" value="" force="true"/>
         <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
         <env name="REDIS_PORT" value="6379" force="true"/>
+        <env name="REDIS_PASSWORD" value="" force="true"/>
+        <!-- Third-party credentials must never leak from a host .env into
+             tests — some tests still make real HTTP calls. Pinned empty. -->
+        <env name="AWS_ACCESS_KEY_ID" value="" force="true"/>
+        <env name="AWS_SECRET_ACCESS_KEY" value="" force="true"/>
+        <env name="RESEND_KEY" value="" force="true"/>
+        <env name="SLACK_BOT_USER_OAUTH_TOKEN" value="" force="true"/>
+        <env name="DROPBOX_APP_KEY" value="" force="true"/>
+        <env name="DROPBOX_APP_SECRET" value="" force="true"/>
+        <env name="GOOGLE_CLIENT_ID" value="" force="true"/>
+        <env name="GOOGLE_CLIENT_SECRET" value="" force="true"/>
+        <env name="ANTHROPIC_API_KEY" value="" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
+        <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
+        <env name="PAGESPEED_API_KEY" value="" force="true"/>
+        <env name="WPSCAN_API_KEY" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

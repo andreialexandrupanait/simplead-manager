@@ -10,7 +10,7 @@ class HealthScoreService
 {
     public static function calculate(Site $site): array
     {
-        $site->loadMissing(['uptimeMonitor', 'securityMonitor', 'performanceMonitor']);
+        $site->loadMissing(['uptimeMonitor', 'performanceMonitor']);
 
         // Uptime component (25 points max)
         $uptimeScore = 0;
@@ -22,8 +22,10 @@ class HealthScoreService
         }
 
         // Security component (25 points max)
+        // The hardening score lives on sites.security_hardening_score;
+        // security_monitors has no such column (D-P1-2).
         $securityScore = 0;
-        $hardeningScore = $site->securityMonitor?->hardening_score ?? null;
+        $hardeningScore = $site->security_hardening_score;
         if ($hardeningScore !== null) {
             $securityScore = (int) round(($hardeningScore / 100) * 25);
         } else {

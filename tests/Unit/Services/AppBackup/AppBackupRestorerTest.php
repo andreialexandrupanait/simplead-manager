@@ -6,15 +6,15 @@ namespace Tests\Unit\Services\AppBackup;
 
 use App\Models\AppBackup;
 use App\Services\AppBackup\AppBackupCreator;
+use App\Services\AppBackup\AppBackupDownloader;
 use App\Services\AppBackup\AppBackupRestorer;
-use App\Services\AppBackup\AppBackupService;
 use Tests\TestCase;
 
 class AppBackupRestorerTest extends TestCase
 {
     public function test_restore_throws_if_database_component_missing(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = $this->createMock(AppBackup::class);
@@ -28,7 +28,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_restore_throws_if_components_null(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = $this->createMock(AppBackup::class);
@@ -42,7 +42,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_view_env_throws_if_env_component_missing(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = $this->createMock(AppBackup::class);
@@ -56,7 +56,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_verify_restore_returns_ok_when_counts_match(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = new AppBackup;
@@ -82,7 +82,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_verify_restore_returns_warning_on_mismatch(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = new AppBackup;
@@ -105,7 +105,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_verify_restore_returns_no_baseline_when_no_counts(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = new AppBackup;
@@ -124,7 +124,7 @@ class AppBackupRestorerTest extends TestCase
 
     public function test_verify_restore_detects_missing_table(): void
     {
-        $service = $this->createMock(AppBackupService::class);
+        $service = $this->createMock(AppBackupDownloader::class);
         $restorer = new AppBackupRestorer($service);
 
         $backup = new AppBackup;

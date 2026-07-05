@@ -28,10 +28,10 @@ jobs:
   static:
     name: PHPStan (static analysis)
     runs-on: ubuntu-latest
-    # Non-blocking for now: PHPStan currently exhausts >4GB and cannot complete
-    # a full run (larastan boots the app and recurses in the container). Tracked
-    # as a separate remediation item; keep it advisory until that is fixed.
-    continue-on-error: true
+    # Blocking since 2026-07: the >4GB blow-up was an infinite container
+    # recursion (AppBackupService <-> AppBackupRestorer circular constructor
+    # dependency, now fixed) and phpstan.neon now recycles workers per 8-file
+    # job, so a full run completes within ~1.5GB per worker.
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -47,13 +47,10 @@ jobs:
   test:
     name: PHPUnit (pgsql + redis)
     runs-on: ubuntu-latest
-    # Non-blocking for now: the suite was largely deleted in 2026-04 and its
-    # green/red state is unknown. Report signal without blocking merges until
-    # it is stabilised, then remove this line to make tests required.
-    continue-on-error: true
+    # Blocking since 2026-07: suite verified green (160 tests) via bin/test.
     # Cap the job: some tests are not hermetic (real network calls with no
     # timeout) and can hang the runner. Tracked as remediation item 2.10.
-    timeout-minutes: 12
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16-alpine

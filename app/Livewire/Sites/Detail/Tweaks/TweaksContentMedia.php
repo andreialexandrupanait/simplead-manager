@@ -178,7 +178,7 @@ class TweaksContentMedia extends Component
     public function verifySettings(): void
     {
         try {
-            $api = new \App\Services\WordPressApiService($this->site);
+            $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/site-tweaks-state');
 
             if (! $response->successful()) {

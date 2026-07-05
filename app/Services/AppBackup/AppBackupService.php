@@ -15,6 +15,7 @@ class AppBackupService
     public function __construct(
         private AppBackupCreator $creator,
         private AppBackupRestorer $restorer,
+        private AppBackupDownloader $downloader,
     ) {}
 
     public function createBackup(
@@ -39,40 +40,7 @@ class AppBackupService
 
     public function downloadBackup(AppBackup $backup): string
     {
-        /** @var StorageDestination|null $destination */
-        $destination = $backup->storageDestination;
-
-        if (! $destination) {
-            $localPath = storage_path('app/backups/application/'.$backup->storage_path);
-            if (! file_exists($localPath)) {
-                throw new \RuntimeException('Backup file not found.');
-            }
-
-            return $localPath;
-        }
-
-        if ($destination->type === 'local') {
-            $config = $destination->config ?? [];
-            $basePath = rtrim($config['path'] ?? storage_path('backups'), '/');
-            $filePath = $basePath.'/'.ltrim($backup->storage_path, '/');
-
-            if (! file_exists($filePath)) {
-                throw new \RuntimeException('Backup file not found.');
-            }
-
-            return $filePath;
-        }
-
-        $tempDir = storage_path('app/temp/app-backup-download-'.$backup->id);
-        if (! is_dir($tempDir)) {
-            mkdir($tempDir, 0755, true);
-        }
-
-        $localPath = $tempDir.'/'.$backup->file_name;
-        $driver = StorageFactory::make($destination);
-        $driver->download($backup->storage_path, $localPath);
-
-        return $localPath;
+        return $this->downloader->download($backup);
     }
 
     public function deleteBackup(AppBackup $backup): void

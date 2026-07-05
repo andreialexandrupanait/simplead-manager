@@ -116,4 +116,17 @@ interface WordPressApiServiceInterface
     public function clearCache(): array;
 
     public function getServerResources(): array;
+
+    // Error logs
+    public function getErrorLogs(int $limit = 100): array;
+
+    // Key management
+    public function rotateApiKeys(): array;
+
+    // Posts
+    public function createPost(array $data): array;
+
+    public function getPostCategories(): array;
+
+    public function getPostTags(): array;
 }
