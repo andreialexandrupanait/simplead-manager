@@ -38,6 +38,10 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
+# The container bind-mounts the prod checkout, so the live .env is visible and
+# Laravel falls back to it for any variable not pinned here. Real environment
+# variables beat .env, so every value that could point tests at production —
+# DB/Redis URLs AND third-party credentials — must be pinned (empty) below.
 run_in_app() {
   docker run --rm --network host \
     -u "$(id -u):$(id -g)" --group-add 1002 \
@@ -45,13 +49,26 @@ run_in_app() {
     -w /var/www/html \
     -e APP_ENV=testing \
     -e APP_KEY='base64:mjmS7eMvOldHZkbWiIfbfp9VD+ByQ6qANsIE2TouIsw=' \
-    -e DB_CONNECTION=pgsql -e DB_HOST=127.0.0.1 -e DB_PORT=5432 \
+    -e DB_CONNECTION=pgsql -e DB_URL= -e DB_HOST=127.0.0.1 -e DB_PORT=5432 \
     -e DB_DATABASE=simplead_test -e DB_USERNAME=postgres -e DB_PASSWORD=postgres \
-    -e REDIS_HOST=127.0.0.1 -e REDIS_PORT=6379 \
+    -e REDIS_URL= -e REDIS_HOST=127.0.0.1 -e REDIS_PORT=6379 -e REDIS_PASSWORD= \
     -e CACHE_STORE=array -e SESSION_DRIVER=array -e QUEUE_CONNECTION=sync \
     -e MAIL_MAILER=array -e PULSE_ENABLED=false -e TELESCOPE_ENABLED=false \
+    -e AWS_ACCESS_KEY_ID= -e AWS_SECRET_ACCESS_KEY= -e AWS_BUCKET= \
+    -e RESEND_KEY= -e SLACK_BOT_USER_OAUTH_TOKEN= \
+    -e DROPBOX_APP_KEY= -e DROPBOX_APP_SECRET= \
+    -e GOOGLE_CLIENT_ID= -e GOOGLE_CLIENT_SECRET= \
+    -e ANTHROPIC_API_KEY= -e OPENAI_API_KEY= \
+    -e CLOUDFLARE_API_TOKEN= -e PAGESPEED_API_KEY= -e WPSCAN_API_KEY= \
     simplead-app:latest "$@"
 }
+
+# A cached config (bootstrap/cache/config.php) would take precedence over ALL
+# env pins above and hand the test run the full production config. Refuse it.
+if [ -f "$PROJECT_DIR/bootstrap/cache/config.php" ]; then
+  echo "Removing bootstrap/cache/config.php — a cached config would override the test env pins." >&2
+  rm -f "$PROJECT_DIR/bootstrap/cache/config.php"
+fi
 
 echo "Migrating test database..."
 run_in_app php artisan migrate --force --no-interaction --quiet

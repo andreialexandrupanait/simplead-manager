@@ -113,7 +113,7 @@ class SecurityHardening extends Component
     public function verifySettings(): void
     {
         try {
-            $api = new \App\Services\WordPressApiService($this->site);
+            $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/security-state');
 
             if (! $response->successful()) {
