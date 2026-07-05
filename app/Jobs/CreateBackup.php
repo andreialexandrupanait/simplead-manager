@@ -14,6 +14,7 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
 use App\Services\Backup\RetentionService;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\Backup\Storage\S3Driver;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
@@ -53,6 +54,8 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
      */
     protected bool $abortedAsDuplicate = false;
 
+    protected ?string $siteLockToken = null;
+
     public function __construct(
         public Site $site,
         public string $type = 'full',
@@ -67,6 +70,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
          * legit attempts don't stomp on each other.
          */
         public bool $forceFreshPrepare = false,
+        /**
+         * SiteOperationLock token owned by a parent operation (e.g. a safe
+         * update or restore running this backup via dispatchSync). When the
+         * parent owns the site lock we proceed under it instead of deadlocking
+         * on re-acquisition.
+         */
+        public ?string $heldLockToken = null,
     ) {
         $this->onQueue('backups');
     }
@@ -83,6 +93,10 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        if (! $this->acquireSiteLock(SiteOperationLock::OPERATION_BACKUP)) {
+            return;
+        }
+
         JobTracker::start($this->uniqueId(), 'Creating backup...');
 
         $this->tempDir = storage_path('app/temp/backup-'.uniqid());
@@ -132,6 +146,7 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             $this->handleFailure($e);
             throw $e;
         } finally {
+            SiteOperationLock::release($this->site->id, $this->siteLockToken);
             $this->cleanup();
         }
     }

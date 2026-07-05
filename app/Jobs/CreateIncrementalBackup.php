@@ -15,6 +15,7 @@ use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\RetentionService;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
@@ -44,11 +45,15 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
     protected ?string $tempDir = null;
 
+    protected ?string $siteLockToken = null;
+
     public function __construct(
         public Site $site,
         public string $trigger = 'manual',
         public ?int $storageDestinationId = null,
         public ?int $backupId = null,
+        /** See CreateBackup::$heldLockToken. */
+        public ?string $heldLockToken = null,
     ) {
         $this->onQueue('backups');
     }
@@ -65,6 +70,10 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        if (! $this->acquireSiteLock(SiteOperationLock::OPERATION_INCREMENTAL_BACKUP)) {
+            return;
+        }
+
         JobTracker::start($this->uniqueId(), 'Creating incremental backup...');
 
         $this->tempDir = storage_path('app/temp/backup-inc-'.uniqid());
@@ -184,6 +193,7 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $this->handleFailure($e);
             throw $e;
         } finally {
+            SiteOperationLock::release($this->site->id, $this->siteLockToken);
             $this->cleanup();
         }
     }

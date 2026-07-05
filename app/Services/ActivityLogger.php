@@ -92,6 +92,20 @@ class ActivityLogger
         );
     }
 
+    public static function restoreFailed(Site $site, string $error): ActivityLog
+    {
+        return static::log(
+            type: 'backup',
+            severity: 'critical',
+            title: "Restore FAILED for {$site->name} — site may be in an inconsistent state",
+            description: $error,
+            site: $site,
+            metadata: ['error' => $error],
+            icon: 'hard-drive',
+            url: route('sites.backups', $site),
+        );
+    }
+
     public static function pluginUpdated(Site $site, string $name, ?string $from, ?string $to): ActivityLog
     {
         return static::log(

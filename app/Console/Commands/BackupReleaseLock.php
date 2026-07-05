@@ -7,17 +7,19 @@ namespace App\Console\Commands;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
+use App\Jobs\RestoreBackup;
 use App\Models\Backup;
 use App\Models\Site;
+use App\Services\Backup\SiteOperationLock;
 use Illuminate\Console\Command;
 
 class BackupReleaseLock extends Command
 {
     protected $signature = 'backup:release-lock
-        {siteId : The site ID to release backup locks for}
-        {--fail-in-progress : Also mark any in-progress backups for this site as failed}';
+        {siteId : The site ID to release backup/restore locks for}
+        {--fail-in-progress : Also mark any in-progress backups AND restores for this site as failed}';
 
-    protected $description = 'Release stuck unique job locks for backup jobs on a given site';
+    protected $description = 'Release stuck unique job locks (backup, restore, safe update) and the site operation lock for a given site';
 
     public function handle(): int
     {
@@ -30,12 +32,27 @@ class BackupReleaseLock extends Command
             return self::FAILURE;
         }
 
-        $this->info("Releasing backup locks for site #{$siteId} ({$site->domain})...");
+        $this->info("Releasing backup/restore locks for site #{$siteId} ({$site->domain})...");
 
         CreateBackup::releaseUniqueLock($siteId);
         CreateIncrementalBackup::releaseUniqueLock($siteId);
 
-        $this->info('Unique job locks released.');
+        // Restore unique locks are per-backup — release any with a live restore state.
+        $restoreBackupIds = Backup::where('site_id', $siteId)
+            ->whereIn('restore_status', [BackupStatus::Pending, BackupStatus::InProgress])
+            ->pluck('id');
+
+        foreach ($restoreBackupIds as $backupId) {
+            RestoreBackup::releaseUniqueLock($backupId);
+        }
+
+        $holder = SiteOperationLock::current($siteId);
+        SiteOperationLock::forceRelease($siteId);
+
+        $this->info('Unique job locks released ('.$restoreBackupIds->count().' restore lock(s)).');
+        $this->info($holder !== null
+            ? "Site operation lock released (was held by: {$holder['operation']} {$holder['ref']} since {$holder['acquired_at']})."
+            : 'Site operation lock was not held.');
 
         if ($this->option('fail-in-progress')) {
             $count = Backup::where('site_id', $siteId)
@@ -48,7 +65,16 @@ class BackupReleaseLock extends Command
                     'completed_at' => now(),
                 ]);
 
-            $this->info("Marked {$count} in-progress backup(s) as failed.");
+            $restoreCount = Backup::where('site_id', $siteId)
+                ->whereIn('restore_status', [BackupStatus::Pending, BackupStatus::InProgress])
+                ->update([
+                    'restore_status' => BackupStatus::Failed,
+                    'restore_stage' => 'failed',
+                    'restore_progress_message' => 'Manually failed via backup:release-lock command',
+                    'restore_error_message' => 'Restore was manually marked as failed to release stuck locks. Verify the site state.',
+                ]);
+
+            $this->info("Marked {$count} in-progress backup(s) and {$restoreCount} restore(s) as failed.");
         }
 
         return self::SUCCESS;

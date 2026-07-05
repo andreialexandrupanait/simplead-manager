@@ -10,8 +10,10 @@ use App\Helpers\FormatHelper;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\ActivityLogger;
 use App\Services\Backup\ManifestService;
 use App\Services\Backup\PostRestoreVerifier;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\JobTracker;
 use App\Services\WordPressApiServiceFactory;
@@ -21,6 +23,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -31,11 +34,29 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 3600;
 
-    public int $tries = 1;
+    /**
+     * Attempts exist only so a restore can politely wait (release/requeue)
+     * while another backup/restore holds the site lock. Real work never
+     * retries: $maxExceptions = 1 fails the job on the first thrown error —
+     * blindly re-running a half-applied restore is exactly the hazard the
+     * site lock exists to prevent.
+     */
+    public int $tries = 4;
+
+    public int $maxExceptions = 1;
+
+    /**
+     * The unique lock must outlive the job timeout but never wedge forever:
+     * a SIGKILLed worker leaves it behind, and without an expiry the Retry
+     * button silently no-ops until someone runs backup:release-lock.
+     */
+    public int $uniqueFor = 7200;
 
     public int $memory = 1024;
 
     protected ?string $tempDir = null;
+
+    protected ?string $siteLockToken = null;
 
     protected bool $pluginWasUpdated = false;
 
@@ -53,9 +74,40 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         return 'restore-'.$this->backup->id;
     }
 
+    public static function releaseUniqueLock(int $backupId): void
+    {
+        Cache::forget('laravel_unique_job:'.static::class.':restore-'.$backupId);
+    }
+
     public function handle(): void
     {
         ini_set('memory_limit', '1G');
+
+        $site = $this->backup->site;
+
+        $this->siteLockToken = SiteOperationLock::acquire(
+            $site->id,
+            SiteOperationLock::OPERATION_RESTORE,
+            'backup:'.$this->backup->id,
+        );
+
+        if ($this->siteLockToken === null) {
+            $holder = SiteOperationLock::current($site->id);
+            $holderLabel = $holder ? $holder['operation'] : 'another operation';
+
+            if ($this->attempts() >= $this->tries) {
+                $this->fail(new \RuntimeException(
+                    "Restore aborted: site is still busy with {$holderLabel} after {$this->attempts()} attempts."
+                ));
+
+                return;
+            }
+
+            $this->logRestoreStep("Site busy ({$holderLabel}); restore requeued for 3 minutes.");
+            $this->release(180);
+
+            return;
+        }
 
         $this->tempDir = storage_path('app/temp/restore-'.uniqid());
         mkdir($this->tempDir, 0700, true);
@@ -96,7 +148,52 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
             throw $e;
         } finally {
+            SiteOperationLock::release($this->backup->site_id, $this->siteLockToken);
             $this->cleanup();
+        }
+    }
+
+    /**
+     * Safety net for deaths handle() cannot catch (timeout, maxExceptions,
+     * fatal after requeue). Must be idempotent — the in-process catch block
+     * usually ran first. A restore that died mid-flight may have left the
+     * site half-restored, so the notification is critical and explicit.
+     */
+    public function failed(?\Throwable $exception): void
+    {
+        $backup = $this->backup->fresh();
+
+        if ($backup && in_array($backup->restore_status, [BackupStatus::InProgress, BackupStatus::Pending], true)) {
+            $message = $exception?->getMessage() ?? 'Restore job died unexpectedly (killed or timed out).';
+            $backup->update([
+                'restore_status' => BackupStatus::Failed,
+                'restore_stage' => 'failed',
+                'restore_progress_message' => 'Restore failed: '.Str::limit($message, 200),
+                'restore_error_message' => $message,
+            ]);
+        }
+
+        JobTracker::fail($this->uniqueId(), 'Restore failed'.($exception ? ': '.get_class($exception) : ''));
+
+        static::releaseUniqueLock($this->backup->id);
+
+        // failed() runs on a fresh deserialized instance, so the runtime
+        // token is gone — release by ref match instead of blind force.
+        $holder = SiteOperationLock::current($this->backup->site_id);
+        if ($holder !== null
+            && $holder['operation'] === SiteOperationLock::OPERATION_RESTORE
+            && $holder['ref'] === 'backup:'.$this->backup->id) {
+            SiteOperationLock::forceRelease($this->backup->site_id);
+        }
+
+        $site = $this->backup->site;
+        if ($site) {
+            ActivityLogger::restoreFailed($site, $exception?->getMessage() ?? 'Restore job died unexpectedly.');
+            NotifyRestoreFailed::dispatch(
+                $site,
+                $this->backup,
+                $exception?->getMessage() ?? 'Restore job died unexpectedly (killed or timed out).'
+            );
         }
     }
 

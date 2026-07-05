@@ -9,6 +9,7 @@ use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use Illuminate\Support\Facades\Cache;
@@ -140,6 +141,56 @@ trait BackupJobTrait
         }
     }
 
+    /**
+     * Serialize against other destructive operations (restore, safe update,
+     * other backup classes) on the same site. Returns true when the job may
+     * proceed — either it acquired the lock, or a parent operation that
+     * dispatched us synchronously already owns it (heldLockToken).
+     *
+     * Returns false when the job should stop: it was either requeued to wait,
+     * or (on its last attempt) marked failed quietly — contention is not an
+     * error worth alerting on, the next scheduled run will retry.
+     */
+    protected function acquireSiteLock(string $operation): bool
+    {
+        if (SiteOperationLock::isOwnedBy($this->site->id, $this->heldLockToken)) {
+            return true;
+        }
+
+        $this->siteLockToken = SiteOperationLock::acquire(
+            $this->site->id,
+            $operation,
+            static::class.':'.($this->backupId ?? 'new'),
+        );
+
+        if ($this->siteLockToken !== null) {
+            return true;
+        }
+
+        $holder = SiteOperationLock::current($this->site->id);
+        $holderLabel = $holder['operation'] ?? 'another operation';
+
+        if ($this->attempts() >= $this->tries) {
+            Log::warning("{$this->backupTypeLabel()} for site #{$this->site->id} skipped: site busy with {$holderLabel} after {$this->attempts()} attempts");
+
+            $backup = $this->backupId ? Backup::find($this->backupId) : null;
+            $backup?->update([
+                'status' => BackupStatus::Failed,
+                'stage' => 'failed',
+                'progress_message' => "Skipped: site was busy with {$holderLabel}.",
+                'error_message' => "Site was busy with {$holderLabel}; backup will run at its next schedule.",
+                'completed_at' => now(),
+            ]);
+            JobTracker::fail($this->uniqueId(), "Skipped: site busy with {$holderLabel}");
+
+            return false;
+        }
+
+        $this->release(120);
+
+        return false;
+    }
+
     public function failed(?\Throwable $exception): void
     {
         $label = $this->backupTypeLabel();
@@ -168,5 +219,13 @@ trait BackupJobTrait
         JobTracker::fail($this->uniqueId(), "{$label} failed: {$exceptionClass}");
 
         static::releaseUniqueLock($this->site->id);
+
+        // failed() runs on a fresh instance (runtime token lost) — release the
+        // site lock only if it's held by THIS job class, never a parent's
+        // (safe update / restore) lock we were running under.
+        $holder = SiteOperationLock::current($this->site->id);
+        if ($holder !== null && str_starts_with($holder['ref'], static::class.':')) {
+            SiteOperationLock::forceRelease($this->site->id);
+        }
     }
 }
