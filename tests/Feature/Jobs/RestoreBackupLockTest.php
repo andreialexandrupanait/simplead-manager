@@ -73,6 +73,39 @@ class RestoreBackupLockTest extends TestCase
         $job->assertFailed();
     }
 
+    public function test_completed_restore_is_not_re_run_on_redelivery(): void
+    {
+        // A SIGKILLed worker is redelivered after the completed restore already
+        // finished; it must skip without re-acquiring the lock or touching the site.
+        $this->backup->update(['restore_status' => BackupStatus::Completed]);
+
+        $job = (new RestoreBackup($this->backup))->withFakeQueueInteractions();
+        $job->handle();
+
+        $this->assertFalse(SiteOperationLock::isHeld($this->site->id));
+        $this->assertSame(BackupStatus::Completed, $this->backup->fresh()->restore_status);
+    }
+
+    public function test_redelivered_in_progress_restore_is_not_auto_rerun(): void
+    {
+        // Predecessor died mid-restore (status still InProgress) and the queue
+        // redelivered the job (attempts > 1); it must fail, not re-run blindly.
+        $this->backup->update(['restore_status' => BackupStatus::InProgress]);
+
+        $job = new class($this->backup) extends RestoreBackup
+        {
+            public function attempts(): int
+            {
+                return 2;
+            }
+        };
+        $job->withFakeQueueInteractions();
+        $job->handle();
+
+        $job->assertFailed();
+        $this->assertFalse(SiteOperationLock::isHeld($this->site->id));
+    }
+
     public function test_failed_marks_restore_failed_releases_locks_and_alerts(): void
     {
         Queue::fake();

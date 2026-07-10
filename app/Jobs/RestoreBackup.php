@@ -89,6 +89,31 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     {
         ini_set('memory_limit', '1G');
 
+        // Re-run guard. A SIGKILLed worker (deploy/OOM) is redelivered by the
+        // queue after retry_after, which coincides with the site lock's TTL —
+        // so the redelivery can find a free lock and blindly re-run the whole
+        // restore on the live site. Refuse that here, independent of lock timing:
+        //   - an already-completed restore must never run again;
+        //   - a redelivered attempt whose predecessor died mid-restore (still
+        //     InProgress from an earlier attempt) is NOT auto-retried — the
+        //     operator inspects the site and re-triggers deliberately.
+        $freshStatus = $this->backup->fresh()?->restore_status;
+
+        if ($freshStatus === BackupStatus::Completed) {
+            Log::info("Restore of backup {$this->backup->id} already completed; skipping redelivered attempt.");
+
+            return;
+        }
+
+        if ($this->attempts() > 1 && $freshStatus === BackupStatus::InProgress) {
+            $this->fail(new \RuntimeException(
+                "Restore of backup {$this->backup->id} was redelivered after a prior attempt "
+                .'died mid-restore; not re-running automatically. Inspect the site and re-trigger manually.'
+            ));
+
+            return;
+        }
+
         $site = $this->backup->site;
 
         $this->siteLockToken = SiteOperationLock::acquire(
