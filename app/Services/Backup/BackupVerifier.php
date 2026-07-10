@@ -46,7 +46,7 @@ class BackupVerifier
                 $result = $this->verifier->verifyArchive($localPath, $backup->checksum);
             }
 
-            if (! ($result['ok'] ?? false)) {
+            if (! $result['ok']) {
                 return $this->fail($backup, $result['message'] ?? 'verification failed');
             }
 
