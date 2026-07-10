@@ -18,16 +18,15 @@ class RedirectSyncService
 
     public function push(Site $site): void
     {
-        $rules = $site->redirects()
-            ->where('is_active', true)
-            ->get()
-            ->map(fn (SiteRedirect $r) => [
+        $rules = [];
+        /** @var SiteRedirect $r */
+        foreach ($site->redirects()->where('is_active', true)->get() as $r) {
+            $rules[] = [
                 'source' => $r->source_path,
                 'target' => $r->target_url,
                 'code' => $r->status_code,
-            ])
-            ->values()
-            ->all();
+            ];
+        }
 
         $this->apiFactory->make($site)->setRedirects($rules);
     }
