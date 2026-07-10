@@ -67,13 +67,11 @@ class SeoGatherer extends BaseReportSectionGatherer
             ->values();
 
         $trendChart = null;
+        $trendChartYLabels = [];
         if ($trendAudits->count() >= 2) {
-            $trendChart = $chartService->renderLineChart(
-                labels: $trendAudits->pluck('scanned_at')->map(fn ($d) => $d?->format('M d'))->toArray(),
-                datasets: [['label' => 'SEO Score', 'data' => $trendAudits->pluck('score')->toArray(), 'color' => '#8D5CF5']],
-                width: 300,
-                height: 120,
-            );
+            $scores = $trendAudits->pluck('score')->map(fn ($s) => (float) $s)->toArray();
+            $trendChart = $chartService->generateLineChartPoints($scores, 300, 120);
+            $trendChartYLabels = $chartService->generateYLabels((float) $trendChart['y_max'], 3);
         }
 
         // Pages with status 200 for stats
@@ -159,6 +157,7 @@ class SeoGatherer extends BaseReportSectionGatherer
                 'issuer' => $ssl['issuer'] ?? null,
             ],
             'trend_chart' => $trendChart,
+            'trend_chart_y_labels' => $trendChartYLabels,
             'previous_score' => $previousAudit?->score,
 
             // New data

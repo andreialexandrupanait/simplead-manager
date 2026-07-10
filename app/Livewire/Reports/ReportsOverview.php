@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Reports;
 
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
 use App\Models\Report;
 use App\Models\Site;
@@ -13,7 +14,7 @@ use Livewire\WithPagination;
 
 class ReportsOverview extends Component
 {
-    use WithPagination, WithSorting;
+    use WithPagination, WithSiteAuthorization, WithSorting;
 
     protected string $defaultSortBy = 'created_at';
 
@@ -62,7 +63,16 @@ class ReportsOverview extends Component
 
     public function deleteReport(int $reportId): void
     {
-        $report = Report::findOrFail($reportId);
+        $report = Report::with('site')->findOrFail($reportId);
+
+        // Block Viewers and scope to sites the user may modify — this is a
+        // global list, so the report can belong to any tenant.
+        $site = $report->site;
+        if (! $site instanceof Site) {
+            abort(404, 'Report has no associated site.');
+        }
+        $this->authorizeSiteModification($site);
+
         if ($report->file_path) {
             \Illuminate\Support\Facades\Storage::disk('local')->delete($report->file_path);
         }

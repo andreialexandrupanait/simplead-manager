@@ -141,7 +141,12 @@
         {{ $lang === 'ro' ? 'Evolutie Scor' : 'Score Trend' }}
     </div>
     <div style="text-align: center;">
-        {!! $seo['trend_chart'] !!}
+        @include('reports.components.chart-line', [
+            'points' => $seo['trend_chart'],
+            'primaryColor' => '#8D5CF5',
+            'areaColor' => '#ede9fe',
+            'yLabels' => $seo['trend_chart_y_labels'] ?? [],
+        ])
     </div>
 </div>
 @endif

@@ -1039,12 +1039,6 @@ parameters:
 			path: app/Services/Reports/Sections/SearchConsoleGatherer.php
 
 		-
-			message: '#^Call to an undefined method App\\Services\\ReportChartService\:\:renderLineChart\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Reports/Sections/SeoGatherer.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:completed\(\)\.$#'
 			identifier: method.notFound
 			count: 3
