@@ -17,10 +17,31 @@ class CircuitBreakerService
     private const MAX_BREAKS_PER_24H = 3;
 
     /**
+     * The shared site-level breaker (circuit_state / is_monitoring_disabled) is a
+     * connector-reachability signal and only these domains may drive it. Every
+     * other domain (analytics, search_console, seo) is isolated in
+     * domain_breakers so a failing third-party API or crawl can never disable a
+     * site's backups or uptime monitoring.
+     */
+    public const DOMAIN_CORE = 'core';
+
+    public const DOMAIN_ANALYTICS = 'analytics';
+
+    public const DOMAIN_SEARCH_CONSOLE = 'search_console';
+
+    public const DOMAIN_SEO = 'seo';
+
+    /**
      * Record a successful job execution for a site.
      */
-    public static function recordSuccess(Site $site): void
+    public static function recordSuccess(Site $site, string $domain = self::DOMAIN_CORE): void
     {
+        if ($domain !== self::DOMAIN_CORE) {
+            static::recordDomainSuccess($site, $domain);
+
+            return;
+        }
+
         $state = static::getOrCreateState($site);
 
         if ($state->isHalfOpen()) {
@@ -42,8 +63,14 @@ class CircuitBreakerService
     /**
      * Record a failed job execution for a site.
      */
-    public static function recordFailure(Site $site, string $reason = ''): void
+    public static function recordFailure(Site $site, string $reason = '', string $domain = self::DOMAIN_CORE): void
     {
+        if ($domain !== self::DOMAIN_CORE) {
+            static::recordDomainFailure($site, $domain, $reason);
+
+            return;
+        }
+
         $state = static::getOrCreateState($site);
 
         // Reset 24h counter if period has elapsed
@@ -128,6 +155,40 @@ class CircuitBreakerService
             'last_failure_at' => null,
             'last_failure_reason' => null,
         ]);
+    }
+
+    /**
+     * Record a per-domain failure without touching the shared site breaker.
+     * Kept purely for observability + future per-domain throttling; it never
+     * opens the circuit or disables monitoring/backups.
+     */
+    protected static function recordDomainFailure(Site $site, string $domain, string $reason): void
+    {
+        $state = static::getOrCreateState($site);
+        $breakers = $state->domain_breakers ?? [];
+        $entry = $breakers[$domain] ?? ['consecutive_failures' => 0];
+
+        $breakers[$domain] = [
+            'consecutive_failures' => ($entry['consecutive_failures'] ?? 0) + 1,
+            'last_failure_at' => now()->toIso8601String(),
+            'last_failure_reason' => mb_substr($reason, 0, 255),
+        ];
+
+        $state->update(['domain_breakers' => $breakers]);
+    }
+
+    /**
+     * Clear a per-domain failure streak on success.
+     */
+    protected static function recordDomainSuccess(Site $site, string $domain): void
+    {
+        $state = static::getOrCreateState($site);
+        $breakers = $state->domain_breakers ?? [];
+
+        if (! empty($breakers[$domain]['consecutive_failures'])) {
+            $breakers[$domain]['consecutive_failures'] = 0;
+            $state->update(['domain_breakers' => $breakers]);
+        }
     }
 
     /**

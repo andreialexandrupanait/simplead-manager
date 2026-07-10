@@ -87,7 +87,7 @@ class AnalyzeSeoPages implements ShouldQueue
     public function failed(?\Throwable $e): void
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
-        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Analysis failed');
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Analysis failed', CircuitBreakerService::DOMAIN_SEO);
         JobTracker::fail('seo-audit-'.$this->site->id, 'Analysis failed');
     }
 

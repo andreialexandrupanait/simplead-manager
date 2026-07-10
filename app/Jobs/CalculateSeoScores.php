@@ -64,7 +64,7 @@ class CalculateSeoScores implements ShouldQueue
             $m->update(['last_audit_at' => now(), 'next_audit_at' => $next]);
         }
         $this->audit->markAs(SeoAuditStatus::Completed);
-        CircuitBreakerService::recordSuccess($this->site);
+        CircuitBreakerService::recordSuccess($this->site, CircuitBreakerService::DOMAIN_SEO);
         $ti = $this->audit->totalIssues();
         $sev = $this->audit->critical_count > 0 ? 'critical' : ($this->audit->high_count > 0 ? 'warning' : 'info');
         ActivityLogger::log('seo', $sev, "SEO audit — Score: {$scores['overall']}/100", "{$ti} issues ({$this->audit->pages_crawled} pages)", $this->site);
@@ -74,7 +74,7 @@ class CalculateSeoScores implements ShouldQueue
     public function failed(?\Throwable $e): void
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
-        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Scoring failed');
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Scoring failed', CircuitBreakerService::DOMAIN_SEO);
         JobTracker::fail('seo-audit-'.$this->site->id, 'Scoring failed');
     }
 }

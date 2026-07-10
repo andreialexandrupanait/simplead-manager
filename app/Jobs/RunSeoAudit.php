@@ -72,7 +72,7 @@ class RunSeoAudit implements ShouldBeUnique, ShouldQueue
     public function failed(?\Throwable $e): void
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
-        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'SEO audit failed');
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'SEO audit failed', CircuitBreakerService::DOMAIN_SEO);
         JobTracker::fail($this->uniqueId(), 'SEO audit failed');
     }
 }

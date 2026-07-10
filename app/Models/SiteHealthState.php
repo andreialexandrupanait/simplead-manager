@@ -39,6 +39,7 @@ class SiteHealthState extends Model
         'circuit_breaks_last_24h',
         'circuit_breaks_reset_at',
         'is_monitoring_disabled',
+        'domain_breakers',
     ];
 
     protected $casts = [
@@ -48,6 +49,7 @@ class SiteHealthState extends Model
         'circuit_breaks_last_24h' => 'integer',
         'circuit_breaks_reset_at' => 'datetime',
         'is_monitoring_disabled' => 'boolean',
+        'domain_breakers' => 'array',
     ];
 
     public function site(): BelongsTo
