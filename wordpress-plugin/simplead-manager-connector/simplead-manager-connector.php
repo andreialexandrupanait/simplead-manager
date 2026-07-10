@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.15.0
+ * Version: 2.16.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.15.0');
+define('SAM_VERSION', '2.16.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -69,6 +69,7 @@ spl_autoload_register(function ($class) {
         'SAM_Diagnostic_Endpoint'   => 'endpoints/class-diagnostic-endpoint.php',
         'SAM_Site_Tweaks_Endpoint'  => 'endpoints/class-site-tweaks-endpoint.php',
         'SAM_SEO_Endpoint'          => 'endpoints/class-seo-endpoint.php',
+        'SAM_Redirects_Endpoint'    => 'endpoints/class-redirects-endpoint.php',
         'SAM_Posts_Endpoint'        => 'endpoints/class-posts-endpoint.php',
         'SAM_Error_Logs_Endpoint'    => 'endpoints/class-error-logs-endpoint.php',
         'SAM_Key_Rotation_Endpoint'  => 'endpoints/class-key-rotation-endpoint.php',
@@ -124,6 +125,9 @@ final class SimpleAd_Manager_Connector {
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('init', [$this, 'handle_login_token']);
 
+        // Front-end redirects managed from SimpleAd (broken-link fixes, etc.)
+        add_action('template_redirect', [$this, 'handle_redirects'], 1);
+
         // Unified admin init — classes loaded via autoloader only when needed
         if (is_admin()) {
             $admin = new SAM_Admin();
@@ -152,6 +156,45 @@ final class SimpleAd_Manager_Connector {
 
         // Hook into various WP actions for audit logging
         SAM_Audit_Logger::register_hooks();
+    }
+
+    /**
+     * Perform a managed front-end redirect if the current request path matches
+     * a stored rule. Exact-path match only, with a loop guard, so this can never
+     * catch a request it was not explicitly configured for.
+     */
+    public function handle_redirects(): void {
+        if (is_admin() || (defined('DOING_CRON') && DOING_CRON) || (defined('REST_REQUEST') && REST_REQUEST)) {
+            return;
+        }
+
+        $redirects = get_option('sam_redirects', []);
+        if (empty($redirects) || ! is_array($redirects)) {
+            return;
+        }
+
+        $request_path = SAM_Redirects_Endpoint::normalize_path($_SERVER['REQUEST_URI'] ?? '/');
+
+        if (! isset($redirects[$request_path])) {
+            return;
+        }
+
+        $rule = $redirects[$request_path];
+        $target = isset($rule['target']) ? (string) $rule['target'] : '';
+        $code = isset($rule['code']) ? (int) $rule['code'] : 301;
+
+        if ($target === '') {
+            return;
+        }
+
+        // Loop guard: never redirect a request onto the same URL.
+        $current = (is_ssl() ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
+        if (untrailingslashit($target) === untrailingslashit($current)) {
+            return;
+        }
+
+        wp_redirect($target, in_array($code, [301, 302], true) ? $code : 301);
+        exit;
     }
 
     /**

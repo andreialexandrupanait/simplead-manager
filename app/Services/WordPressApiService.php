@@ -11,6 +11,7 @@ use App\Services\WordPress\Concerns\ManagesDatabase;
 use App\Services\WordPress\Concerns\ManagesErrorLogs;
 use App\Services\WordPress\Concerns\ManagesPlugins;
 use App\Services\WordPress\Concerns\ManagesPosts;
+use App\Services\WordPress\Concerns\ManagesRedirects;
 use App\Services\WordPress\Concerns\ManagesSecurity;
 use App\Services\WordPress\Concerns\ManagesSiteInfo;
 use App\Services\WordPress\Concerns\ManagesThemes;
@@ -25,6 +26,7 @@ class WordPressApiService implements WordPressApiServiceInterface
     use ManagesErrorLogs;
     use ManagesPlugins;
     use ManagesPosts;
+    use ManagesRedirects;
     use ManagesSecurity;
     use ManagesSiteInfo;
     use ManagesThemes;

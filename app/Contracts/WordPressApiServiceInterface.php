@@ -42,6 +42,11 @@ interface WordPressApiServiceInterface
 
     public function updatePlugins(array $pluginFiles): array;
 
+    /** @param list<array{source: string, target: string, code: int}> $redirects */
+    public function setRedirects(array $redirects): array;
+
+    public function getRedirects(): array;
+
     public function activatePlugin(string $pluginFile): array;
 
     public function deactivatePlugin(string $pluginFile): array;

@@ -79,6 +79,11 @@ trait HasSiteRelationships
         return $this->belongsToMany(\App\Models\Tag::class, 'site_tag');
     }
 
+    public function redirects(): HasMany
+    {
+        return $this->hasMany(\App\Models\SiteRedirect::class);
+    }
+
     public function siteStatus(): BelongsTo
     {
         return $this->belongsTo(SiteStatus::class);

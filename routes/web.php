@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     Route::prefix('/sites/{site}')->group(function () {
         Route::get('/', Sites\Detail\SiteOverview::class)->name('sites.overview');
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
+        Route::get('/redirects', Sites\Detail\SiteRedirects::class)->name('sites.redirects');
         Route::get('/security', Sites\Detail\Security\SecurityOverview::class)->name('sites.security');
         Route::get('/security/hardening', Sites\Detail\Security\SecurityHardening::class)->name('sites.security.hardening');
         Route::get('/security/login', Sites\Detail\Security\SecurityLogin::class)->name('sites.security.login');
