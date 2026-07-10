@@ -162,8 +162,20 @@ class MaintenancePlans extends Component
 
     public function applyPlanToAll(int $planId): void
     {
+        // Pushing module/security/tweak config to sites is destructive. Block
+        // Viewers, and only ever touch sites the acting user may modify — never
+        // every connected site in the database (cross-tenant config push).
+        $user = auth()->user();
+        if (! $user || $user->isViewer()) {
+            abort(403, 'Viewers cannot apply maintenance plans.');
+        }
+
         $plan = \App\Models\MaintenancePlan::findOrFail($planId);
-        $sites = \App\Models\Site::where('is_connected', true)->whereNull('maintenance_plan_id')->get();
+        $sites = \App\Models\Site::where('is_connected', true)
+            ->whereNull('maintenance_plan_id')
+            ->get()
+            ->filter(fn (\App\Models\Site $site) => $user->canAccessSite($site));
+
         foreach ($sites as $site) {
             app(\App\Services\ModuleConfigService::class)->applyPlan($site, $plan);
         }
