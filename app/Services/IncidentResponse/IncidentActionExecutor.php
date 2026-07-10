@@ -185,6 +185,8 @@ class IncidentActionExecutor
         $safeUpdate = $this->safeUpdateService->createSafeUpdate(
             $site, 'plugin', $plugin->slug, $plugin->name,
             $plugin->version, $plugin->update_version,
+            // The connector updates plugins by their file, not their slug.
+            $plugin->file,
         );
         $this->safeUpdateService->runSafeUpdate($safeUpdate);
 
