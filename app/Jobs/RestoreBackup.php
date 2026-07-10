@@ -65,6 +65,12 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         public bool $restoreDatabase = true,
         public bool $restoreFiles = true,
         public array $selectedFiles = [],
+        /**
+         * True when the user explicitly bypassed a FAILED pre-restore safety
+         * backup (typed-confirmation flow). Logged loudly so a later failure
+         * investigation immediately knows there is no safety net.
+         */
+        public bool $safetyBackupSkipped = false,
     ) {
         $this->onQueue('backups');
     }
@@ -121,6 +127,12 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 'restore_error_message' => null,
             ]);
             JobTracker::start($this->uniqueId(), 'Starting restore...');
+            if ($this->safetyBackupSkipped) {
+                $this->logRestoreStep('WARNING: SAFETY BACKUP SKIPPED by user — no pre-restore safety net exists for this restore.');
+                Log::warning("Restore of backup {$this->backup->id} proceeding WITHOUT safety backup (user override)", [
+                    'site_id' => $this->backup->site_id,
+                ]);
+            }
             $this->logRestoreStep('Downloading backup from storage...');
 
             // Check if this is an incremental backup needing chain restore
@@ -882,10 +894,17 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             copy($filePath, $storagePath);
             $downloadUrl = rtrim(config('app.url'), '/').'/restore-download/'.$token;
 
+            // Full file restores use the connector's atomic staged swap
+            // (connector >= 2.15.0; older connectors ignore the flag and
+            // merge in place). Selective restores MUST merge — their archive
+            // holds only the chosen files, and a swap would wipe the rest.
+            $fileMode = empty($this->selectedFiles) ? 'staged' : 'merge';
+
             $result = $api->request('POST', '/backup/restore', [
                 'type' => $type,
                 'download_url' => $downloadUrl,
-            ], [], 1200);
+                'file_mode' => $fileMode,
+            ], [], 1800);
             $result->throw();
         } finally {
             @unlink($storagePath);

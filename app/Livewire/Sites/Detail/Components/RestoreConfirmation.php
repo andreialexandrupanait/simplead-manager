@@ -10,6 +10,7 @@ use App\Jobs\RestoreBackup;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\ActivityLogger;
 use App\Services\Backup\BackupBrowserService;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -22,7 +23,15 @@ class RestoreConfirmation extends Component
 
     public bool $confirmed = false;
 
+    /**
+     * Kept for wire compatibility but no longer user-controllable: a safety
+     * backup ALWAYS runs before a restore. The only bypass is restoreAnyway()
+     * after a FAILED safety backup, gated by typed confirmation.
+     */
     public bool $backupBeforeRestore = true;
+
+    /** Must match the site domain to enable restoreAnyway(). */
+    public string $confirmDangerText = '';
 
     public ?int $preRestoreBackupId = null;
 
@@ -60,6 +69,7 @@ class RestoreConfirmation extends Component
         $this->authorizeRestore();
         $this->confirmed = false;
         $this->backupBeforeRestore = true;
+        $this->confirmDangerText = '';
         $this->preRestoreBackupId = null;
         $this->preRestoreStatus = null;
 
@@ -208,27 +218,62 @@ class RestoreConfirmation extends Component
             return;
         }
 
-        if ($this->backupBeforeRestore && ! $this->preRestoreBackupId) {
+        // The safety backup is mandatory — the checkbox no longer bypasses it.
+        if (! $this->preRestoreBackupId) {
             $this->startPreRestoreBackup();
 
             return;
         }
 
         // If pre-restore backup is still running, don't proceed
-        if ($this->preRestoreBackupId && $this->preRestoreStatus && ! in_array($this->preRestoreStatus, ['completed', 'failed'])) {
+        if ($this->preRestoreStatus && ! in_array($this->preRestoreStatus, ['completed', 'failed'])) {
+            return;
+        }
+
+        if ($this->preRestoreStatus === 'failed') {
+            // A failed safety backup never falls through to a silent restore —
+            // that path is restoreAnyway(), with its own typed confirmation.
             return;
         }
 
         $this->dispatchRestore();
     }
 
+    /**
+     * Explicit, typed-confirmation bypass — ONLY reachable after a safety
+     * backup was attempted and failed. Restoring a live site with no safety
+     * net is the most dangerous action in the product; make it deliberate.
+     */
     public function restoreAnyway(): void
     {
         if (! $this->confirmed || ! $this->backup) {
             return;
         }
 
-        $this->dispatchRestore();
+        $this->authorizeRestore();
+
+        if ($this->preRestoreStatus !== 'failed') {
+            abort(403, 'Restore-anyway is only available after a failed safety backup.');
+        }
+
+        $expected = $this->site->domain;
+        if ($expected === '' || ! hash_equals($expected, trim($this->confirmDangerText))) {
+            $this->addError('confirmDangerText', __('Type the site domain exactly to confirm restoring without a safety backup.'));
+
+            return;
+        }
+
+        ActivityLogger::log(
+            type: 'backup',
+            severity: 'critical',
+            title: "SAFETY BACKUP SKIPPED — restore forced on {$this->site->name}",
+            description: 'User bypassed a failed pre-restore safety backup with typed confirmation.',
+            site: $this->site,
+            metadata: ['backup_id' => $this->backup->id, 'pre_restore_backup_id' => $this->preRestoreBackupId],
+            icon: 'alert-triangle',
+        );
+
+        $this->dispatchRestore(safetyBackupSkipped: true);
     }
 
     public function checkPreRestoreStatus(): void
@@ -262,17 +307,22 @@ class RestoreConfirmation extends Component
             return;
         }
 
+        // A restore that touches files gets a FULL safety backup — a DB-only
+        // snapshot cannot undo overwritten themes/plugins/uploads (B-P0-2).
+        $includesFiles = $this->restoreMode === 'full' || $this->restoreFiles;
+        $safetyType = $includesFiles ? 'full' : 'database';
+
         $preBackup = Backup::create([
             'site_id' => $this->site->id,
             'storage_destination_id' => $destination->id,
-            'type' => 'database',
+            'type' => $safetyType,
             'trigger' => 'pre_restore',
             'status' => 'pending',
             'stage' => 'queued',
             'progress_percent' => 0,
             'progress_message' => 'Creating safety backup before restore...',
             'includes_database' => true,
-            'includes_files' => false,
+            'includes_files' => $includesFiles,
             'wp_version' => $this->site->wp_version,
             'php_version' => $this->site->php_version,
             'is_locked' => true,
@@ -280,13 +330,13 @@ class RestoreConfirmation extends Component
             'started_at' => now(),
         ]);
 
-        CreateBackup::dispatch($this->site, 'database', 'pre_restore', $destination->id, $preBackup->id);
+        CreateBackup::dispatch($this->site, $safetyType, 'pre_restore', $destination->id, $preBackup->id);
 
         $this->preRestoreBackupId = $preBackup->id;
         $this->preRestoreStatus = 'pending';
     }
 
-    protected function dispatchRestore(): void
+    protected function dispatchRestore(bool $safetyBackupSkipped = false): void
     {
         if (! $this->backup) {
             return;
@@ -308,7 +358,7 @@ class RestoreConfirmation extends Component
             'restore_error_message' => null,
         ]);
 
-        RestoreBackup::dispatch($this->backup, $restoreDb, $restoreFiles, $selectedFiles);
+        RestoreBackup::dispatch($this->backup, $restoreDb, $restoreFiles, $selectedFiles, $safetyBackupSkipped);
 
         $this->dispatch('restore-dispatched', backupId: $this->backup->id);
         $this->dispatch('close-modal-restore-confirmation');

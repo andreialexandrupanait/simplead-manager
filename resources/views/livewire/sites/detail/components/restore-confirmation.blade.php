@@ -167,13 +167,13 @@
                 @endif
             @endif
 
-            {{-- Auto-backup toggle --}}
-            <label class="flex items-center gap-2 mb-3">
-                <input type="checkbox" wire:model.live="backupBeforeRestore"
-                    class="rounded border-gray-300 text-accent-600 focus:ring-accent-500"
-                    @if($preRestoreBackupId) disabled @endif>
-                <span class="text-sm text-gray-700">{{ __('Create a safety backup before restoring') }}</span>
-            </label>
+            {{-- Safety backup is mandatory --}}
+            <div class="flex items-center gap-2 mb-3 text-sm text-gray-700">
+                <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <span>{{ __('A safety backup is created automatically before restoring (full backup when files are included).') }}</span>
+            </div>
 
             {{-- Confirmation checkbox --}}
             <label class="flex items-center gap-2 mb-4">
@@ -190,14 +190,29 @@
                             <span class="text-sm text-accent-700">{{ __('Creating safety backup before restore...') }}</span>
                         </div>
                     @elseif($preRestoreStatus === 'failed')
-                        <div class="flex items-center gap-2">
-                            <svg aria-hidden="true" class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            <span class="text-sm text-red-700">{{ __('Pre-restore backup failed.') }}</span>
-                            <button wire:click="restoreAnyway" class="ml-auto text-xs font-medium text-red-600 hover:text-red-800 underline">
-                                {{ __('Restore Anyway') }}
-                            </button>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <svg aria-hidden="true" class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span class="text-sm font-medium text-red-700">{{ __('The safety backup failed.') }}</span>
+                            </div>
+                            <p class="mt-2 text-xs text-red-700">
+                                {{ __('Restoring without a safety backup means a failed restore CANNOT be undone. Fix the backup problem and retry, or — only if you accept losing the current site state — type the site domain below to force the restore.') }}
+                            </p>
+                            <div class="mt-2 flex items-center gap-2">
+                                <input type="text" wire:model.live="confirmDangerText"
+                                    placeholder="{{ $site->domain }}"
+                                    class="flex-1 rounded border-red-300 text-sm focus:border-red-500 focus:ring-red-500" />
+                                <button wire:click="restoreAnyway"
+                                    @if(trim($confirmDangerText) !== $site->domain) disabled @endif
+                                    class="text-xs font-medium text-red-600 hover:text-red-800 underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
+                                    {{ __('Restore WITHOUT safety backup') }}
+                                </button>
+                            </div>
+                            @error('confirmDangerText')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     @endif
                 </div>
