@@ -20,14 +20,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('site_health_states', function (Blueprint $table) {
+        Schema::table('site_health_state', function (Blueprint $table) {
             $table->jsonb('domain_breakers')->nullable()->after('is_monitoring_disabled');
         });
     }
 
     public function down(): void
     {
-        Schema::table('site_health_states', function (Blueprint $table) {
+        Schema::table('site_health_state', function (Blueprint $table) {
             $table->dropColumn('domain_breakers');
         });
     }
