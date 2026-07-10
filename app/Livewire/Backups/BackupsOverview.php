@@ -298,7 +298,15 @@ class BackupsOverview extends Component
 
     public function deleteBackup(int $backupId): void
     {
-        $backup = Backup::findOrFail($backupId);
+        $backup = Backup::with('site')->findOrFail($backupId);
+
+        // Deleting a backup is destructive and irreversible: block Viewers and
+        // scope to sites the user may modify (Admins pass through canAccessSite).
+        $site = $backup->site;
+        if (! $site instanceof Site) {
+            abort(404, 'Backup has no associated site.');
+        }
+        $this->authorizeSiteModification($site);
 
         if ($backup->is_locked) {
             session()->flash('backup-error', 'Cannot delete a locked backup.');
@@ -322,7 +330,22 @@ class BackupsOverview extends Component
 
     public function bulkDelete(array $ids): void
     {
-        $backups = Backup::whereIn('id', $ids)->where('is_locked', false)->get();
+        $user = auth()->user();
+        if (! $user || $user->isViewer()) {
+            abort(403, 'Viewers cannot delete backups.');
+        }
+
+        // Only ever touch backups for sites this user may modify; a Manager
+        // with a mixed selection silently skips the ones they can't access.
+        $backups = Backup::with('site')
+            ->whereIn('id', $ids)
+            ->where('is_locked', false)
+            ->get()
+            ->filter(function (Backup $backup) use ($user) {
+                $site = $backup->site;
+
+                return $site instanceof Site && $user->canAccessSite($site);
+            });
         $count = 0;
 
         foreach ($backups as $backup) {
@@ -342,7 +365,7 @@ class BackupsOverview extends Component
         $skipped = count($ids) - $count;
         $msg = "{$count} backup(s) deleted.";
         if ($skipped > 0) {
-            $msg .= " {$skipped} locked backup(s) skipped.";
+            $msg .= " {$skipped} backup(s) skipped (locked or not accessible).";
         }
         session()->flash('backup-success', $msg);
     }

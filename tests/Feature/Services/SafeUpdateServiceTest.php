@@ -38,6 +38,68 @@ class SafeUpdateServiceTest extends TestCase
         $this->assertDatabaseHas('safe_updates', ['id' => $update->id]);
     }
 
+    public function test_create_safe_update_persists_target(): void
+    {
+        $rollbackService = $this->createMock(RollbackService::class);
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory(), $screenshotService);
+
+        $update = $service->createSafeUpdate(
+            $this->site, 'plugin', 'akismet', 'Akismet', '5.0', '5.1', 'akismet/akismet.php'
+        );
+
+        $this->assertSame('akismet/akismet.php', $update->target);
+        $this->assertDatabaseHas('safe_updates', ['id' => $update->id, 'target' => 'akismet/akismet.php']);
+    }
+
+    public function test_run_safe_update_sends_target_and_fails_when_connector_rejects(): void
+    {
+        // Regression for the P0: a bare slug is rejected by the connector as an
+        // invalid plugin path. The update must send the plugin file, and a
+        // rejected update must be recorded as FAILED — never a false success.
+        $api = $this->createMockApi();
+        $api->expects($this->once())
+            ->method('updatePlugins')
+            ->with(['akismet/akismet.php'])
+            ->willReturn([
+                'results' => [
+                    'akismet/akismet.php' => ['success' => false, 'error' => 'Invalid plugin path.'],
+                ],
+            ]);
+        // The update failed, so no health check or rollback point should happen.
+        $api->expects($this->never())->method('healthCheck');
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $rollbackService->expects($this->never())->method('createRollbackPoint');
+
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'akismet',
+            'target' => 'akismet/akismet.php',
+            'name' => 'Akismet',
+            'from_version' => '5.0',
+            'to_version' => '5.1',
+            'status' => 'pending',
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $safeUpdate->refresh();
+        $this->assertSame('failed', $safeUpdate->status);
+        $this->assertStringContainsString('Invalid plugin path', (string) $safeUpdate->error_message);
+        $this->assertDatabaseHas('update_logs', [
+            'site_id' => $this->site->id,
+            'slug' => 'akismet',
+            'success' => false,
+        ]);
+    }
+
     public function test_run_safe_update_completes_on_healthy(): void
     {
         $api = $this->createMockApi();
