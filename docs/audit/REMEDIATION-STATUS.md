@@ -11,7 +11,7 @@ Valuri: **V0** fundație testare · **V1** P0 restore/safe-update · **V2** auth
 |---|---|---|---|
 | S-01 / B-P1-2 | Restore fără authz + IDOR cross-tenant | — | fixed (PR #6, 2026-07-02) |
 | B-P0-1 / QS-01 | Fără lock per-site pe restore; restore ucis rămâne in_progress | V1 | **fixed 2026-07-05** (PR #14) — SiteOperationLock cross-class, uniqueFor+failed() pe RestoreBackup, recoverStuckRestores fără auto-retry, release-lock extins |
-| B-P0-2 | Restore non-atomic, fără rollback, safety backup doar DB | V1 | in progress — connector 2.15.0 staged restore + safety backup full + restoreAnyway gated |
+| B-P0-2 | Restore non-atomic, fără rollback, safety backup doar DB | V1 | in review (PR #15) — connector 2.15.0 staged restore + safety backup obligatoriu + restoreAnyway gated |
 | PM-P0-1 | SafeUpdateService: slug în loc de file + success hardcodat | V1 | pending |
 | PM-P0-2 | Update-urile UI sincrone, fără backup/health/rollback; RunSafeUpdate mort | V1 | pending |
 
