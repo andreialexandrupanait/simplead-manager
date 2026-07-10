@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Site;
+use App\Models\SiteRedirect;
 
 /**
  * Pushes a site's active redirect rules to the connector, which performs them
@@ -20,7 +21,7 @@ class RedirectSyncService
         $rules = $site->redirects()
             ->where('is_active', true)
             ->get()
-            ->map(fn ($r) => [
+            ->map(fn (SiteRedirect $r) => [
                 'source' => $r->source_path,
                 'target' => $r->target_url,
                 'code' => $r->status_code,
