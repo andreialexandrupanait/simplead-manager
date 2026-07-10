@@ -55,7 +55,7 @@ class IncidentActionExecutor
                 'deactivate_plugin' => $this->deactivatePlugin($site, $parameters),
                 'activate_plugin' => $this->activatePlugin($site, $parameters),
                 'update_plugin' => $this->updatePlugin($site, $response, $parameters),
-                'rollback_plugin' => $this->rollbackPlugin($parameters),
+                'rollback_plugin' => $this->rollbackPlugin($site, $parameters),
                 'create_backup' => $this->createBackup($site, $response),
                 'db_cleanup' => $this->dbCleanup($site),
                 'apply_security_fix' => $this->applySecurityFix($site, $parameters),
@@ -185,6 +185,8 @@ class IncidentActionExecutor
         $safeUpdate = $this->safeUpdateService->createSafeUpdate(
             $site, 'plugin', $plugin->slug, $plugin->name,
             $plugin->version, $plugin->update_version,
+            // The connector updates plugins by their file, not their slug.
+            $plugin->file,
         );
         $this->safeUpdateService->runSafeUpdate($safeUpdate);
 
@@ -195,16 +197,25 @@ class IncidentActionExecutor
         ];
     }
 
-    private function rollbackPlugin(array $parameters): array
+    private function rollbackPlugin(Site $site, array $parameters): array
     {
         $rollbackPointId = $parameters['rollback_point_id'] ?? null;
         if (! $rollbackPointId) {
             return ['success' => false, 'error' => 'Missing rollback_point_id'];
         }
 
-        $point = RollbackPoint::find((int) $rollbackPointId);
+        // The id comes from the AI tool call — scope it to the incident's own
+        // site so a hallucinated/wrong id can never downgrade another tenant's
+        // plugin, and require an available point (not already used/expired).
+        $point = RollbackPoint::where('site_id', $site->id)
+            ->where('id', (int) $rollbackPointId)
+            ->first();
         if (! $point) {
-            return ['success' => false, 'error' => 'Rollback point not found'];
+            return ['success' => false, 'error' => 'Rollback point not found for this site'];
+        }
+
+        if ($point->status !== 'available') {
+            return ['success' => false, 'error' => "Rollback point is not available (status: {$point->status})"];
         }
 
         $rollbackService = app(\App\Services\RollbackService::class);

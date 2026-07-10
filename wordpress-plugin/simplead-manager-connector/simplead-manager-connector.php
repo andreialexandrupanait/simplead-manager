@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.14.0
+ * Version: 2.15.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.14.0');
+define('SAM_VERSION', '2.15.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -137,6 +137,10 @@ final class SimpleAd_Manager_Connector {
 
         // Async backup preparation via WP-Cron fallback
         add_action('sam_async_backup_prepare', [$this, 'run_async_backup_prepare'], 10, 2);
+
+        // Single-shot cleanup of restore staging/trash directories that the
+        // staged file restore could not delete within its time budget
+        add_action('sam_cleanup_restore_trash', [$this, 'cleanup_restore_trash']);
 
         // Daily cleanup of stale backup temp files
         add_action('sam_cleanup_backup_temp', [$this, 'cleanup_backup_temp']);
@@ -299,6 +303,40 @@ final class SimpleAd_Manager_Connector {
         $request->set_param('token', $token);
         $request->set_param('type', $type);
         $endpoint->prepare_execute($request);
+    }
+
+    /**
+     * Remove restore staging/trash directories older than 1 hour.
+     *
+     * Scheduled as a single-shot event when the post-restore cleanup could
+     * not finish within its time budget. Recent directories are kept: a
+     * fresh sam-trash-* dir may hold the only copy of the pre-restore files
+     * after a crashed swap.
+     */
+    public function cleanup_restore_trash(): void {
+        $abspath = rtrim(ABSPATH, '/');
+        $cutoff = time() - 3600;
+
+        $dirs = array_merge(
+            glob($abspath . '/sam-trash-*', GLOB_ONLYDIR) ?: [],
+            glob($abspath . '/sam-staging-*', GLOB_ONLYDIR) ?: []
+        );
+
+        foreach ($dirs as $dir) {
+            $mtime = @filemtime($dir);
+            if ($mtime !== false && $mtime >= $cutoff) {
+                continue;
+            }
+
+            $files = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($files as $file) {
+                $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+            }
+            @rmdir($dir);
+        }
     }
 
     /**

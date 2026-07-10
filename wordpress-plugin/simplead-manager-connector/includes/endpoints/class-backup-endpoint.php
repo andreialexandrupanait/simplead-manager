@@ -382,6 +382,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'direct_upload' => true,
             'incremental_backup' => true,
             'manifest_generation' => true,
+            'staged_restore' => true,
             'strategies' => ['s3_multipart', 'chunked_push', 's3_multipart_per_part'],
             'async_methods' => [
                 'cli'      => false,
@@ -1613,7 +1614,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     // ── Restore endpoint ────────────────────────────────────────────────
 
     public function restore(WP_REST_Request $request): WP_REST_Response {
-        @set_time_limit(600);
+        @set_time_limit(1800);
         @ini_set('memory_limit', '512M');
 
         try {
@@ -1628,6 +1629,17 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         $type = $request->get_param('type');
         $data = $request->get_param('data');
         $download_url = $request->get_param('download_url');
+
+        // 'staged' = atomic staging-dir + journaled rename swap (full restores).
+        // 'merge' = legacy in-place extract (selective restores; also the safe
+        // default for callers that don't know about staging).
+        $file_mode = $request->get_param('file_mode') ?: 'merge';
+        if (!in_array($file_mode, ['merge', 'staged'], true)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => ['code' => 'INVALID_FILE_MODE', 'message' => 'file_mode must be "merge" or "staged".'],
+            ], 400);
+        }
 
         if (!in_array($type, ['database', 'files'], true)) {
             return new WP_REST_Response([
@@ -1712,10 +1724,14 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
                 wp_cache_flush();
 
+                // The pre-restore tables were kept as samold_* through the
+                // swap; drop them now that the restore is confirmed good.
+                $this->drop_orphaned_restore_tables();
+
                 SAM_Audit_Logger::log('restore_db_completed', 'restore', 'database', 'Database restore completed');
             } else {
-                SAM_Audit_Logger::log('restore_files_started', 'restore', 'files', 'File restore initiated via SimpleAd Manager');
-                $this->restore_files($tmp_file);
+                SAM_Audit_Logger::log('restore_files_started', 'restore', 'files', "File restore initiated via SimpleAd Manager (mode: {$file_mode})");
+                $this->restore_files($tmp_file, $file_mode);
                 // Reset OPcache after file restore to prevent stale bytecode
                 if (function_exists('opcache_reset')) {
                     opcache_reset();
@@ -1771,6 +1787,9 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'wp-content/ai1wm-backups',
             'wp-content/uploads/backwpup-*',
             'tmp/sam_*',
+            'sam-staging-*',
+            'sam-trash-*',
+            '.maintenance',
             '.git',
             'node_modules',
             'error_log',
@@ -2420,9 +2439,17 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
     }
 
     /**
-     * Restore database from SQL file (may be gzip-compressed).
+     * Restore database from SQL file (may be gzip-compressed) — staged and atomic.
+     *
+     * Every statement is rewritten to target a samstg_* staging table and
+     * imported with zero error tolerance; the live tables are only replaced
+     * afterwards, by a single (atomic) multi-table RENAME. A failure at any
+     * point before the swap leaves the live database untouched.
      */
     private function restore_database(string $file): void {
+        // Opportunistically drop leftovers from a previous crashed/failed restore.
+        $this->drop_orphaned_restore_tables();
+
         $fh = fopen($file, 'rb');
         $magic = fread($fh, 2);
         fclose($fh);
@@ -2451,39 +2478,330 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
 
         try {
-            $this->php_sql_import($sql_file);
+            $this->php_sql_import_staged($sql_file);
         } finally {
             if ($is_gzip && file_exists($sql_file)) {
                 @unlink($sql_file);
             }
         }
+
+        // Option reads after the swap must hit the restored tables, not
+        // values cached before it (the caller's preservation logic depends
+        // on reading the restored active_plugins list).
+        wp_cache_flush();
     }
 
-    private function restore_files(string $file): void {
+    /**
+     * Restore files from a zip archive — staged and atomic.
+     *
+     * Phase 1 extracts the archive into an ABSPATH-local staging directory
+     * (same filesystem, so rename() swaps are atomic). Phase 2 swaps the
+     * staged entries into place with journaled renames. A failure during
+     * extraction never touches the live tree; a failure during the swap
+     * rolls the completed renames back.
+     */
+    private function restore_files(string $file, string $mode = 'merge'): void {
+        if ($mode === 'staged') {
+            $staging_dir = $this->stage_files_restore($file);
+
+            try {
+                $this->swap_staged_files($staging_dir);
+            } catch (\Exception $e) {
+                $this->recursive_delete($staging_dir);
+                throw $e;
+            }
+
+            return;
+        }
+
+        // 'merge' (legacy): extract over the live tree in place. This is the
+        // required semantic for SELECTIVE restores — the archive holds only
+        // the chosen files, and the staged swap would replace whole
+        // directories with that partial content (mass data loss).
         $fh = fopen($file, 'rb');
         $magic = fread($fh, 2);
         fclose($fh);
 
-        $is_zip = ($magic === "PK");
-
-        if ($is_zip) {
-            if (!class_exists('ZipArchive')) {
-                throw new \RuntimeException('ZipArchive extension not available.');
-            }
-            $zip = new \ZipArchive();
-            if ($zip->open($file) !== true) {
-                throw new \RuntimeException('Failed to open zip archive.');
-            }
-            $this->safe_extract_zip($zip, rtrim(ABSPATH, '/'));
-            $zip->close();
-        } else {
+        if ($magic !== 'PK') {
             throw new \RuntimeException('Unknown archive format. Expected zip.');
+        }
+
+        if (!class_exists('ZipArchive')) {
+            throw new \RuntimeException('ZipArchive extension not available.');
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($file) !== true) {
+            throw new \RuntimeException('Failed to open zip archive.');
+        }
+        $this->safe_extract_zip($zip, rtrim(ABSPATH, '/'));
+        $zip->close();
+    }
+
+    /**
+     * Phase 1 of the staged file restore: validate the archive, verify disk
+     * space, and extract into ABSPATH/sam-staging-{token}/.
+     *
+     * @return string Absolute path of the staging directory.
+     */
+    private function stage_files_restore(string $file): string {
+        $fh = fopen($file, 'rb');
+        $magic = fread($fh, 2);
+        fclose($fh);
+
+        if ($magic !== "PK") {
+            throw new \RuntimeException('Unknown archive format. Expected zip.');
+        }
+
+        if (!class_exists('ZipArchive')) {
+            throw new \RuntimeException('ZipArchive extension not available.');
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($file) !== true) {
+            throw new \RuntimeException('Failed to open zip archive.');
+        }
+
+        // The uncompressed payload plus 100MB headroom must fit on the
+        // ABSPATH filesystem before we extract anything.
+        $required = 104857600;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            if ($stat !== false) {
+                $required += (int) $stat['size'];
+            }
+        }
+
+        $free = @disk_free_space(ABSPATH);
+        if ($free !== false && $free < $required) {
+            $zip->close();
+            $free_mb = round($free / 1048576);
+            $required_mb = round($required / 1048576);
+            throw new \RuntimeException("Insufficient disk space for staged restore: {$free_mb}MB available, {$required_mb}MB required.");
+        }
+
+        // Opportunistically schedule cleanup of debris left by a previous
+        // crashed restore (the cron handler only removes dirs older than 1h,
+        // so this can never touch the directories of a running restore).
+        $abspath = rtrim(ABSPATH, '/');
+        $debris = array_merge(
+            glob($abspath . '/sam-staging-*', GLOB_ONLYDIR) ?: [],
+            glob($abspath . '/sam-trash-*', GLOB_ONLYDIR) ?: []
+        );
+        if (!empty($debris) && !wp_next_scheduled('sam_cleanup_restore_trash')) {
+            wp_schedule_single_event(time() + 3900, 'sam_cleanup_restore_trash');
+        }
+
+        $token = bin2hex(random_bytes(6));
+        $staging_dir = $abspath . '/sam-staging-' . $token;
+
+        if (!@mkdir($staging_dir, 0755)) {
+            $zip->close();
+            throw new \RuntimeException('Failed to create staging directory for restore.');
+        }
+
+        try {
+            $this->safe_extract_zip($zip, $staging_dir);
+        } catch (\Exception $e) {
+            $zip->close();
+            $this->recursive_delete($staging_dir);
+            throw $e;
+        }
+
+        $zip->close();
+
+        return $staging_dir;
+    }
+
+    /**
+     * Phase 2 of the staged file restore: swap staged entries into the live
+     * tree with journaled rename() calls, rolling back on any failure.
+     *
+     * Swap units are the top-level staging entries, except wp-content which
+     * is swapped per child — so live-only directories (e.g. wp-content/cache)
+     * survive when the backup does not contain them.
+     *
+     * wp-config.php is deliberately NEVER swapped: the live DB credentials
+     * must survive a file restore (the archive may predate a credentials
+     * change or come from another environment).
+     */
+    private function swap_staged_files(string $staging_dir): void {
+        $abspath = rtrim(ABSPATH, '/');
+        $token = substr(basename($staging_dir), strlen('sam-staging-'));
+        $trash_dir = $abspath . '/sam-trash-' . $token;
+
+        $units = $this->collect_swap_units($staging_dir);
+        if (empty($units)) {
+            throw new \RuntimeException('Archive contained no restorable files.');
+        }
+
+        if (!@mkdir($trash_dir, 0755)) {
+            throw new \RuntimeException('Failed to create trash directory for restore swap.');
+        }
+
+        // Maintenance mode while the tree is inconsistent. WordPress ignores
+        // a .maintenance file older than 10 minutes, so a crash here cannot
+        // lock the site out permanently.
+        $maintenance_file = $abspath . '/.maintenance';
+        @file_put_contents($maintenance_file, "<?php \$upgrading = " . time() . ";\n");
+
+        $journal = [];
+        $journal_file = $trash_dir . '/journal.json';
+        $failure = null;
+
+        foreach ($units as $unit) {
+            $live = $abspath . '/' . $unit;
+            $staged = $staging_dir . '/' . $unit;
+            $trashed = $trash_dir . '/' . $unit;
+
+            $step = ['unit' => $unit, 'live_in_trash' => false, 'staged_live' => false];
+
+            if (file_exists($live) || is_link($live)) {
+                $trash_parent = dirname($trashed);
+                if (!is_dir($trash_parent)) {
+                    @mkdir($trash_parent, 0755, true);
+                }
+                if (!@rename($live, $trashed)) {
+                    $failure = "could not move live '{$unit}' aside";
+                    break;
+                }
+                $step['live_in_trash'] = true;
+            }
+
+            // Journal the step BEFORE the second rename so a failure between
+            // the two renames is still covered by the reverse walk.
+            $journal[] = $step;
+            $idx = count($journal) - 1;
+            @file_put_contents($journal_file, json_encode($journal));
+
+            // Nested units (wp-content children) need the live parent dir.
+            $live_parent = dirname($live);
+            if (!is_dir($live_parent)) {
+                @mkdir($live_parent, 0755, true);
+            }
+
+            if (!@rename($staged, $live)) {
+                $failure = "could not move staged '{$unit}' into place";
+                break;
+            }
+            $journal[$idx]['staged_live'] = true;
+
+            // Persist after every completed step for crash forensics.
+            @file_put_contents($journal_file, json_encode($journal));
+        }
+
+        if ($failure !== null) {
+            // Reverse walk: restore the pre-swap tree.
+            $rollback_ok = true;
+            for ($i = count($journal) - 1; $i >= 0; $i--) {
+                $step = $journal[$i];
+                $unit = $step['unit'];
+                $live = $abspath . '/' . $unit;
+                if ($step['staged_live'] && !@rename($live, $staging_dir . '/' . $unit)) {
+                    $rollback_ok = false;
+                }
+                if ($step['live_in_trash'] && !@rename($trash_dir . '/' . $unit, $live)) {
+                    $rollback_ok = false;
+                }
+            }
+            @unlink($maintenance_file);
+
+            if (!$rollback_ok) {
+                // NEVER delete the trash here: it may hold the only copy of
+                // live files whose reverse rename failed.
+                throw new \RuntimeException(
+                    "File restore swap failed ({$failure}) and the rollback was incomplete; "
+                    . 'the pre-restore files are preserved in ' . basename($trash_dir)
+                    . ' — manual recovery may be required.'
+                );
+            }
+
+            $this->recursive_delete($trash_dir);
+            throw new \RuntimeException("File restore swap failed ({$failure}); the original files were rolled back.");
+        }
+
+        @unlink($maintenance_file);
+
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+
+        // Staging now only holds skipped entries (e.g. wp-config.php).
+        $this->recursive_delete($staging_dir);
+
+        // Delete the trash within a bounded time budget; hand any leftovers
+        // to a single-shot cron sweep.
+        $this->recursive_delete_budgeted($trash_dir, time() + 30);
+        if (is_dir($trash_dir) && !wp_next_scheduled('sam_cleanup_restore_trash')) {
+            wp_schedule_single_event(time() + 3900, 'sam_cleanup_restore_trash');
         }
     }
 
-    private function php_sql_import(string $sql_file): void {
-        global $wpdb;
+    /**
+     * Determine which staged entries get swapped into the live tree.
+     */
+    private function collect_swap_units(string $staging_dir): array {
+        $units = [];
+        // wp-config.php: never overwrite live DB credentials (see swap_staged_files()).
+        $skip = ['wp-config.php', '.maintenance'];
 
+        $items = new \DirectoryIterator($staging_dir);
+        foreach ($items as $item) {
+            if ($item->isDot()) {
+                continue;
+            }
+            $name = $item->getFilename();
+            if (in_array($name, $skip, true) || preg_match('/^sam-(staging|trash)-/', $name)) {
+                continue;
+            }
+            if ($name === 'wp-content' && $item->isDir()) {
+                $children = new \DirectoryIterator($staging_dir . '/wp-content');
+                foreach ($children as $child) {
+                    if ($child->isDot()) {
+                        continue;
+                    }
+                    $child_name = $child->getFilename();
+                    if (preg_match('/^sam-(staging|trash)-/', $child_name)) {
+                        continue;
+                    }
+                    $units[] = 'wp-content/' . $child_name;
+                }
+                continue;
+            }
+            $units[] = $name;
+        }
+
+        sort($units);
+
+        return $units;
+    }
+
+    /**
+     * Recursive delete that stops once a deadline is reached.
+     */
+    private function recursive_delete_budgeted(string $dir, int $deadline): void {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        $count = 0;
+        foreach ($files as $file) {
+            $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+            if ((++$count % 200) === 0 && time() >= $deadline) {
+                return;
+            }
+        }
+        @rmdir($dir);
+    }
+
+    /**
+     * Import a SQL dump into samstg_* staging tables with ZERO error
+     * tolerance, then atomically swap them over the live tables.
+     */
+    private function php_sql_import_staged(string $sql_file): void {
         $fh = fopen($sql_file, 'r');
         if (!$fh) {
             throw new \RuntimeException('Failed to open SQL file for import.');
@@ -2491,53 +2809,199 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
 
         $query = '';
         $delimiter = ';';
-        $total_queries = 0;
-        $error_count = 0;
-        $ddl_pattern = '/^\s*(DROP|CREATE|ALTER)\s/i';
+        $name_map = []; // original table name => staging table name
 
-        while (($line = fgets($fh)) !== false) {
-            $trimmed = trim($line);
+        try {
+            while (($line = fgets($fh)) !== false) {
+                $trimmed = trim($line);
 
-            if ($trimmed === '' || strpos($trimmed, '--') === 0 || strpos($trimmed, '#') === 0) {
-                continue;
-            }
-
-            if (strpos($trimmed, '/*') === 0 && strpos($trimmed, '*/;') !== false) {
-                continue;
-            }
-
-            $query .= $line;
-
-            if (substr(rtrim($query), -1) === $delimiter) {
-                $result = $wpdb->query($query);
-                $total_queries++;
-
-                if ($result === false && $wpdb->last_error) {
-                    $error_count++;
-                    $is_ddl = preg_match($ddl_pattern, trim($query));
-                    if ($is_ddl) {
-                        fclose($fh);
-                        throw new \RuntimeException('DDL query failed during import: ' . $wpdb->last_error);
-                    }
+                if ($trimmed === '' || strpos($trimmed, '--') === 0 || strpos($trimmed, '#') === 0) {
+                    continue;
                 }
 
-                $query = '';
-            }
-        }
+                if (strpos($trimmed, '/*') === 0 && strpos($trimmed, '*/;') !== false) {
+                    continue;
+                }
 
-        if (trim($query) !== '') {
-            $result = $wpdb->query($query);
-            $total_queries++;
-            if ($result === false && $wpdb->last_error) {
-                $error_count++;
+                $query .= $line;
+
+                if (substr(rtrim($query), -1) === $delimiter) {
+                    $this->run_staged_statement($query, $name_map);
+                    $query = '';
+                }
             }
+
+            if (trim($query) !== '') {
+                $this->run_staged_statement($query, $name_map);
+            }
+        } catch (\Exception $e) {
+            fclose($fh);
+            $this->drop_tables(array_values($name_map));
+            throw $e;
         }
 
         fclose($fh);
 
-        if ($total_queries > 0 && ($error_count / $total_queries) > 0.10) {
-            throw new \RuntimeException("SQL import had too many errors: {$error_count}/{$total_queries} queries failed (>" . '10%)');
+        if (empty($name_map)) {
+            throw new \RuntimeException('SQL dump contained no restorable tables.');
         }
+
+        $this->swap_staged_tables($name_map);
+    }
+
+    /**
+     * Execute one dump statement against its staging table. Any failure
+     * aborts the entire import — no error tolerance.
+     */
+    private function run_staged_statement(string $query, array &$name_map): void {
+        global $wpdb;
+
+        $rewritten = $this->rewrite_statement_table($query, $name_map);
+
+        // Defense in depth: a statement the rewriter did not touch would run
+        // against the LIVE database. Our own dumps only produce rewritable
+        // statements plus SET/UNLOCK/comments — anything else in the archive
+        // (corruption, tampering) aborts the import instead of executing raw.
+        if ($rewritten === $query
+            && !preg_match('/^\s*(SET\s|UNLOCK\s+TABLES|START\s+TRANSACTION|COMMIT|BEGIN|\/\*|--|$)/i', $query)) {
+            $snippet = substr(preg_replace('/\s+/', ' ', trim($query)), 0, 160);
+            throw new \RuntimeException("SQL import aborted: unexpected statement in dump (not rewritable to staging): {$snippet}");
+        }
+
+        $result = $wpdb->query($rewritten);
+
+        if ($result === false) {
+            $error = $wpdb->last_error ?: 'unknown database error';
+            $snippet = substr(preg_replace('/\s+/', ' ', trim($query)), 0, 160);
+            throw new \RuntimeException("SQL import failed: {$error} (statement: {$snippet}...)");
+        }
+    }
+
+    /**
+     * Rewrite the FIRST backtick-quoted table identifier of a dump statement
+     * to its samstg_* staging name. The dumps are self-generated by this
+     * plugin (php_database_dump*), so the statement shapes are known:
+     * DROP TABLE IF EXISTS / CREATE TABLE / INSERT INTO (+ REPLACE INTO,
+     * ALTER TABLE, LOCK TABLES defensively). SET/UNLOCK TABLES and other
+     * statements pass through unchanged.
+     */
+    private function rewrite_statement_table(string $sql, array &$name_map): string {
+        $verbs = 'DROP\s+TABLE\s+IF\s+EXISTS|DROP\s+TABLE|CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS|CREATE\s+TABLE|INSERT\s+INTO|REPLACE\s+INTO|ALTER\s+TABLE|LOCK\s+TABLES';
+        if (!preg_match('/^\s*(' . $verbs . ')\s+`([^`]+)`/i', $sql, $m, PREG_OFFSET_CAPTURE)) {
+            return $sql;
+        }
+
+        $table = $m[2][0];
+        if (!isset($name_map[$table])) {
+            $name_map[$table] = $this->prefixed_table_name($table, 'samstg_');
+        }
+
+        $offset = (int) $m[2][1];
+
+        return substr($sql, 0, $offset) . $name_map[$table] . substr($sql, $offset + strlen($table));
+    }
+
+    /**
+     * Build a prefixed table name, honoring MySQL's 64-char identifier limit.
+     */
+    private function prefixed_table_name(string $table, string $prefix): string {
+        $name = $prefix . $table;
+        if (strlen($name) > 64) {
+            $head = $prefix . substr(md5($table), 0, 8) . '_';
+            $name = $head . substr($table, -(64 - strlen($head)));
+        }
+
+        return $name;
+    }
+
+    /**
+     * Swap staging tables over the live ones with a single multi-table
+     * RENAME TABLE statement (atomic in MySQL/MariaDB). Pre-swap tables are
+     * kept as samold_* until the caller confirms the restore succeeded.
+     */
+    private function swap_staged_tables(array $name_map): void {
+        global $wpdb;
+
+        $live = array_flip($wpdb->get_col('SHOW TABLES'));
+        $pairs = [];
+        $old_map = [];
+
+        foreach ($name_map as $table => $staged) {
+            if (isset($live[$table])) {
+                $old = $this->prefixed_table_name($table, 'samold_');
+                $old_map[$table] = $old;
+                $pairs[] = "`{$table}` TO `{$old}`";
+            }
+            $pairs[] = "`{$staged}` TO `{$table}`";
+        }
+
+        $result = $wpdb->query('RENAME TABLE ' . implode(', ', $pairs));
+        if ($result !== false) {
+            return;
+        }
+
+        $error = $wpdb->last_error ?: 'unknown database error';
+
+        // A failed multi-table RENAME normally moves nothing (it is atomic),
+        // but verify and reverse whatever did move — belt and braces.
+        $after = array_flip($wpdb->get_col('SHOW TABLES'));
+        $reverse = [];
+        foreach ($name_map as $table => $staged) {
+            $old = isset($old_map[$table]) ? $old_map[$table] : null;
+            if ($old === null || !isset($after[$old])) {
+                continue; // this table never moved (or had no live copy)
+            }
+            if (!isset($after[$table])) {
+                // Live copy was moved to samold_*, staging copy not yet in place.
+                $reverse[] = "`{$old}` TO `{$table}`";
+            } elseif (!isset($after[$staged])) {
+                // Staging copy was already renamed over the live slot.
+                $reverse[] = "`{$table}` TO `{$staged}`";
+                $reverse[] = "`{$old}` TO `{$table}`";
+            }
+        }
+
+        if (!empty($reverse)) {
+            $rev = $wpdb->query('RENAME TABLE ' . implode(', ', $reverse));
+            if ($rev === false) {
+                throw new \RuntimeException(
+                    'Database swap failed AND rollback failed: ' . $error
+                    . ' The original tables are preserved under the samold_ prefix;'
+                    . ' manual recovery required (rename samold_* tables back).'
+                );
+            }
+        }
+
+        $this->drop_tables(array_values($name_map));
+        throw new \RuntimeException('Database swap failed; the live database was left untouched: ' . $error);
+    }
+
+    /**
+     * Drop the given tables, ignoring failures (best-effort cleanup).
+     */
+    private function drop_tables(array $tables): void {
+        global $wpdb;
+
+        foreach ($tables as $table) {
+            $wpdb->query("DROP TABLE IF EXISTS `{$table}`");
+        }
+    }
+
+    /**
+     * Drop samstg_ and samold_ leftovers from a previous crashed or completed
+     * restore. Called before a new restore and after a confirmed-good one.
+     */
+    private function drop_orphaned_restore_tables(): void {
+        global $wpdb;
+
+        $orphans = [];
+        foreach ($wpdb->get_col('SHOW TABLES') as $table) {
+            if (strpos($table, 'samstg_') === 0 || strpos($table, 'samold_') === 0) {
+                $orphans[] = $table;
+            }
+        }
+
+        $this->drop_tables($orphans);
     }
 
     private function handle_s3_multipart_upload(WP_REST_Request $request, string $file_path): WP_REST_Response {

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $site_id
  * @property string $type
  * @property string $slug
+ * @property string|null $target
  * @property string $name
  * @property string $from_version
  * @property string $to_version
@@ -39,6 +40,7 @@ class SafeUpdate extends Model
         'site_id',
         'type',
         'slug',
+        'target',
         'name',
         'from_version',
         'to_version',

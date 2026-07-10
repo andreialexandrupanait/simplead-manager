@@ -26,12 +26,16 @@ class SafeUpdateService
         string $slug,
         string $name,
         string $fromVersion,
-        string $toVersion
+        string $toVersion,
+        ?string $target = null
     ): SafeUpdate {
         return SafeUpdate::create([
             'site_id' => $site->id,
             'type' => $type,
             'slug' => $slug,
+            // Plugins update by their plugin FILE, not their slug; the connector
+            // rejects a bare slug as an invalid path. Themes/core fall back to slug.
+            'target' => $target,
             'name' => $name,
             'from_version' => $fromVersion,
             'to_version' => $toVersion,
@@ -57,23 +61,26 @@ class SafeUpdateService
             // Step 2: Pre-update screenshot
             $beforeScreenshot = $this->captureScreenshot($site, $safeUpdate, 'before');
 
-            // Step 3: Update
+            // Step 3: Update. Plugins must be addressed by their plugin file
+            // (e.g. "akismet/akismet.php"); the connector rejects a bare slug
+            // as an invalid path. Themes/core fall back to the slug.
             $safeUpdate->update(['status' => 'updating']);
-            $updateResult = match ($safeUpdate->type) {
-                'plugin' => $api->updatePlugins([$safeUpdate->slug]),
-                'theme' => $api->updateThemes([$safeUpdate->slug]),
+            $identifier = $safeUpdate->target ?: $safeUpdate->slug;
+            $response = match ($safeUpdate->type) {
+                'plugin' => $api->updatePlugins([$identifier]),
+                'theme' => $api->updateThemes([$identifier]),
                 'core' => $api->updateCore(),
                 default => throw new \InvalidArgumentException("Unknown update type: {$safeUpdate->type}"),
             };
 
-            // Step 4: Create rollback point
-            $rollbackPoint = $this->rollbackService->createRollbackPoint(
-                $site,
-                $safeUpdate->type,
-                $safeUpdate->slug,
-                $safeUpdate->from_version,
-                $safeUpdate->to_version
-            );
+            // Per-item result for plugin/theme; core reports at the top level.
+            $updateResult = $safeUpdate->type === 'core'
+                ? $response
+                : ($response['results'][$identifier] ?? []);
+
+            $updateSucceeded = (bool) ($updateResult['success'] ?? false);
+            $appliedFrom = $updateResult['from_version'] ?? $safeUpdate->from_version;
+            $appliedTo = $updateResult['to_version'] ?? $safeUpdate->to_version;
 
             UpdateLog::create([
                 'site_id' => $site->id,
@@ -81,11 +88,35 @@ class SafeUpdateService
                 'type' => $safeUpdate->type,
                 'name' => $safeUpdate->name,
                 'slug' => $safeUpdate->slug,
-                'from_version' => $safeUpdate->from_version,
-                'to_version' => $safeUpdate->to_version,
-                'success' => true,
+                'from_version' => $appliedFrom,
+                'to_version' => $appliedTo,
+                'success' => $updateSucceeded,
+                'error_message' => $this->stringifyUpdateError($updateResult['error'] ?? null),
                 'performed_at' => now(),
             ]);
+
+            // The update itself did not apply — there is nothing to health-check
+            // or roll back to. Record the real failure instead of a false success
+            // so a security remediation is never reported as done when it wasn't.
+            if (! $updateSucceeded) {
+                $safeUpdate->update([
+                    'status' => 'failed',
+                    'error_message' => $this->stringifyUpdateError($updateResult['error'] ?? null)
+                        ?? 'Update did not apply on the target site.',
+                    'completed_at' => now(),
+                ]);
+
+                return;
+            }
+
+            // Step 4: Create rollback point (only after a real, successful update)
+            $rollbackPoint = $this->rollbackService->createRollbackPoint(
+                $site,
+                $safeUpdate->type,
+                $safeUpdate->slug,
+                $safeUpdate->from_version,
+                $safeUpdate->to_version
+            );
 
             // Step 5: Health check
             $safeUpdate->update(['status' => 'health_checking']);
@@ -138,6 +169,25 @@ class SafeUpdateService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * The connector reports a per-item error as a string, but a transport-level
+     * failure can surface as an array; normalise both to a stored message.
+     */
+    private function stringifyUpdateError(mixed $error): ?string
+    {
+        if ($error === null || $error === '') {
+            return null;
+        }
+
+        if (is_string($error)) {
+            return $error;
+        }
+
+        $encoded = json_encode($error);
+
+        return $encoded === false ? null : $encoded;
     }
 
     public function runHealthChecks(\App\Models\Site $site): array
