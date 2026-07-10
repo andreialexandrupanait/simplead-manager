@@ -74,6 +74,11 @@ trait HasSiteRelationships
         return $this->belongsTo(Client::class);
     }
 
+    public function tags(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Tag::class, 'site_tag');
+    }
+
     public function siteStatus(): BelongsTo
     {
         return $this->belongsTo(SiteStatus::class);

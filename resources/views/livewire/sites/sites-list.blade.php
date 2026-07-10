@@ -17,6 +17,15 @@
             :selected="$filter"
             wire="filter"
         />
+        @if($this->availableTags->isNotEmpty())
+            <select wire:model.live="tagId"
+                class="rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500">
+                <option value="">{{ __('All tags') }}</option>
+                @foreach($this->availableTags as $tag)
+                    <option value="{{ $tag->id }}">{{ $tag->name }}</option>
+                @endforeach
+            </select>
+        @endif
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
             placeholder="{{ __('Search sites...') }}"
