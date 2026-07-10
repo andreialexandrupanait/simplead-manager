@@ -10,7 +10,9 @@ class ReportViewController extends Controller
 {
     public function __invoke(Report $report, string $token)
     {
-        if (! $report->view_token || $token !== $report->view_token) {
+        // Constant-time comparison so the token can't be recovered by timing.
+        // Nulling view_token revokes the link (falls through to 404 below).
+        if (! $report->view_token || ! hash_equals($report->view_token, $token)) {
             abort(404);
         }
 

@@ -39,6 +39,15 @@ class ClientProfitability extends Component
         $this->client = $client;
     }
 
+    /** Client financials are sensitive; read-only Viewers must not edit them. */
+    private function authorizeFinancialEdit(): void
+    {
+        $user = auth()->user();
+        if (! $user || $user->isViewer()) {
+            abort(403, 'Viewers cannot edit client financials.');
+        }
+    }
+
     #[Computed]
     public function summary(): array
     {
@@ -69,6 +78,8 @@ class ClientProfitability extends Component
 
     public function addCost(): void
     {
+        $this->authorizeFinancialEdit();
+
         $this->validate([
             'costDescription' => 'required|string|max:255',
             'costAmount' => 'required|numeric|min:0',
@@ -91,6 +102,8 @@ class ClientProfitability extends Component
 
     public function addRevenue(): void
     {
+        $this->authorizeFinancialEdit();
+
         $this->validate([
             'revenueDescription' => 'required|string|max:255',
             'revenueAmount' => 'required|numeric|min:0',
@@ -113,6 +126,8 @@ class ClientProfitability extends Component
 
     public function deleteEntry(string $type, int $id): void
     {
+        $this->authorizeFinancialEdit();
+
         if ($type === 'cost') {
             ClientCost::where('client_id', $this->client->id)->where('id', $id)->delete();
         } else {

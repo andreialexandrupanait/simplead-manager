@@ -63,8 +63,31 @@ trait WithReportScheduling
         $this->showScheduleModal = true;
     }
 
+    /**
+     * editingScheduleId is a client-controllable public property; a Viewer or a
+     * user on another site could point it at any schedule. Block Viewers and
+     * verify the edited schedule actually belongs to the current site.
+     */
+    private function assertScheduleManageable(): void
+    {
+        $user = auth()->user();
+        if (! $user || $user->isViewer()) {
+            abort(403, 'Viewers cannot manage report schedules.');
+        }
+
+        if ($this->editingScheduleId !== null
+            && ! ReportSchedule::where('site_id', $this->site->id)
+                ->whereKey($this->editingScheduleId)
+                ->exists()
+        ) {
+            abort(403, 'That report schedule does not belong to this site.');
+        }
+    }
+
     public function saveSchedule(): void
     {
+        $this->assertScheduleManageable();
+
         $this->validate([
             'scheduleTemplateId' => 'required|exists:report_templates,id',
             'scheduleFrequency' => 'required|in:weekly,monthly',
@@ -93,8 +116,13 @@ trait WithReportScheduling
 
     public function deleteSchedule(): void
     {
+        $this->assertScheduleManageable();
+
         if ($this->editingScheduleId) {
-            ReportSchedule::destroy($this->editingScheduleId);
+            // Scoped delete: only ever remove a schedule owned by this site.
+            ReportSchedule::where('site_id', $this->site->id)
+                ->whereKey($this->editingScheduleId)
+                ->delete();
             $this->editingScheduleId = null;
             $this->showScheduleModal = false;
             session()->flash('report-success', 'Report schedule deleted.');
