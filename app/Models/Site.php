@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $url
  * @property string $status
  * @property int|null $health_score
+ * @property bool $safe_updates_enabled
  * @property \Illuminate\Support\Carbon|null $domain_expires_at
  * @property string|null $domain_registrar
  * @property \App\Enums\DomainStatus|null $domain_status
@@ -129,6 +130,7 @@ class Site extends Model
         'site_status_id',
         'sort_order',
         'health_score',
+        'safe_updates_enabled',
         'domain_expires_at',
         'domain_registrar',
         'domain_status',
@@ -180,6 +182,7 @@ class Site extends Model
         'domain_expires_at' => 'datetime',
         'domain_checked_at' => 'datetime',
         'domain_status' => \App\Enums\DomainStatus::class,
+        'safe_updates_enabled' => 'boolean',
         'sort_order' => 'integer',
         'health_score' => 'integer',
         'security_hardening_score' => 'integer',
