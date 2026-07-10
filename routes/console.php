@@ -147,6 +147,13 @@ Schedule::command('horizon:health-check')
     ->withoutOverlapping()
     ->onOneServer();
 
+// External heartbeat (dead-man's switch) — pings every minute so an external
+// monitor alerts if the scheduler/app goes dark. No-op unless configured.
+Schedule::command('monitoring:heartbeat')
+    ->everyMinute()
+    ->name('scheduler-heartbeat')
+    ->withoutOverlapping();
+
 // PHP error log fetch — every 6 hours across all sites
 Schedule::call(function () {
     \App\Models\Site::where('is_connected', true)->each(function ($site) {

@@ -31,4 +31,15 @@ return [
     |--------------------------------------------------------------------------
     */
     'max_import_records' => env('MAX_IMPORT_RECORDS', 500),
+
+    /*
+    |--------------------------------------------------------------------------
+    | External heartbeat (dead-man's switch)
+    |--------------------------------------------------------------------------
+    | The scheduler pings this URL every minute. If the scheduler (or the whole
+    | app) stops, the external monitor — e.g. healthchecks.io — fires an alert
+    | out-of-band, since the platform cannot be trusted to report its own death.
+    | Leave null to disable.
+    */
+    'heartbeat_url' => env('SCHEDULER_HEARTBEAT_URL'),
 ];
