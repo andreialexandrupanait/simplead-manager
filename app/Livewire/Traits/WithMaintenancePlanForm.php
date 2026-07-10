@@ -187,6 +187,9 @@ trait WithMaintenancePlanForm
 
     public function save(): void
     {
+        if (auth()->user()?->isViewer()) {
+            abort(403, 'Viewers cannot manage maintenance plans.');
+        }
         $this->validate([
             'planName' => 'required|string|max:255',
             'planDescription' => 'nullable|string|max:500',
@@ -272,6 +275,9 @@ trait WithMaintenancePlanForm
 
     public function createFromSite(): void
     {
+        if (auth()->user()?->isViewer()) {
+            abort(403, 'Viewers cannot manage maintenance plans.');
+        }
         $this->validate([
             'sourceSiteId' => 'required|exists:sites,id',
             'snapshotName' => 'required|string|max:255',

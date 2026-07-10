@@ -83,6 +83,7 @@ class SecurityCaptcha extends Component
 
     public function save(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rules = ['provider' => 'required|in:none,recaptcha_v2,recaptcha_v3,hcaptcha,turnstile'];
 
         if ($this->provider !== 'none') {
@@ -140,6 +141,7 @@ class SecurityCaptcha extends Component
 
     public function verifySettings(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/security-state');

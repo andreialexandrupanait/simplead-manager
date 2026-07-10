@@ -78,16 +78,19 @@ class SiteAnalytics extends Component
 
     public function reconnectGoogle(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->redirect(route('google.auth', ['return_url' => route('sites.analytics', $this->site)]));
     }
 
     public function changeProperty(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->connectAnalytics();
     }
 
     public function switchGoogleAccount(int $connectionId): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->selectedGoogleConnectionId = $connectionId;
         $this->connectAnalytics();
     }
@@ -149,6 +152,7 @@ class SiteAnalytics extends Component
 
     public function connectAnalytics(): void
     {
+        $this->authorizeSiteModification($this->site);
         $googleConnection = $this->resolveGoogleConnection();
 
         if (! $googleConnection) {
@@ -171,6 +175,7 @@ class SiteAnalytics extends Component
 
     public function selectProperty(int $index): void
     {
+        $this->authorizeSiteModification($this->site);
         $property = $this->availableProperties[$index] ?? null;
         if (! $property) {
             return;
@@ -220,6 +225,7 @@ class SiteAnalytics extends Component
 
     public function disconnectAnalytics(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->site->analyticsConnection?->delete();
         AnalyticsCache::where('site_id', $this->site->id)->delete();
         $this->site->unsetRelation('analyticsConnection');

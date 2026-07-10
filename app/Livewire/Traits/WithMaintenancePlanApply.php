@@ -40,6 +40,9 @@ trait WithMaintenancePlanApply
 
     public function applyPlan(): void
     {
+        if (auth()->user()?->isViewer()) {
+            abort(403, 'Viewers cannot manage maintenance plans.');
+        }
         if (empty($this->selectedSiteIds)) {
             $this->dispatch('notify', type: 'error', message: 'Please select at least one site.');
 

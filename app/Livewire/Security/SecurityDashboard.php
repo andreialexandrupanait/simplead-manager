@@ -130,6 +130,12 @@ class SecurityDashboard extends Component
 
     public function bulkApplyPreset(array $ids): void
     {
+        // Pushing a security preset to sites is a modification; block Viewers.
+        // Cross-tenant is already prevented by scopedSiteQuery() below.
+        if (auth()->user()?->isViewer()) {
+            abort(403, 'Viewers cannot apply security presets.');
+        }
+
         if (empty($ids) || ! $this->bulkPresetId) {
             return;
         }

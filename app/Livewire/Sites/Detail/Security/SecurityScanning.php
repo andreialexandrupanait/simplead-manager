@@ -72,6 +72,7 @@ class SecurityScanning extends Component
 
     public function scanNow(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "security-scan:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('error', 'Too many scan requests. Please wait before trying again.');
@@ -85,6 +86,7 @@ class SecurityScanning extends Component
 
     public function resolveIssue(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
         $issue = SecurityIssue::find($id);
         if ($issue && $issue->site_id === $this->site->id) {
             app(SecurityScanService::class)->resolveIssue($issue);
@@ -94,6 +96,7 @@ class SecurityScanning extends Component
 
     public function ignoreIssue(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
         $issue = SecurityIssue::find($id);
         if ($issue && $issue->site_id === $this->site->id) {
             app(SecurityScanService::class)->ignoreIssue($issue);
@@ -103,6 +106,7 @@ class SecurityScanning extends Component
 
     public function checkCoreIntegrityNow(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "integrity-check:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('error', 'Too many integrity check requests. Please wait before trying again.');
