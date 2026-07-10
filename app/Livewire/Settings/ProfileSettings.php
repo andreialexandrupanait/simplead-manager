@@ -5,20 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Settings;
 
 use App\Models\PersonalAccessToken;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use PragmaRX\Google2FA\Google2FA;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
@@ -45,20 +39,6 @@ class ProfileSettings extends Component
 
     public string $newPasswordConfirmation = '';
 
-    // 2FA
-    public bool $showingQrCode = false;
-
-    public bool $showingRecoveryCodes = false;
-
-    public string $twoFactorCode = '';
-
-    public ?string $twoFactorQrSvg = null;
-
-    #[Locked]
-    public ?string $pendingTwoFactorSecret = null;
-
-    public array $recoveryCodes = [];
-
     public function mount(): void
     {
         $user = Auth::user();
@@ -66,10 +46,6 @@ class ProfileSettings extends Component
         $this->email = $user->email;
         $this->timezone = $user->timezone ?? 'UTC';
         $this->language = $user->language ?? 'en';
-
-        if ($user->two_factor_enabled) {
-            $this->recoveryCodes = $user->two_factor_recovery_codes ?? [];
-        }
     }
 
     public function saveProfile(): void
@@ -150,104 +126,6 @@ class ProfileSettings extends Component
         session()->regenerateToken();
 
         $this->redirect('/login');
-    }
-
-    public function enableTwoFactor(): void
-    {
-        $google2fa = new Google2FA;
-        $this->pendingTwoFactorSecret = $google2fa->generateSecretKey();
-
-        $qrCodeUrl = $google2fa->getQRCodeUrl(
-            config('app.name'),
-            Auth::user()->email,
-            $this->pendingTwoFactorSecret,
-        );
-
-        $renderer = new ImageRenderer(
-            new RendererStyle(200),
-            new SvgImageBackEnd,
-        );
-        $writer = new Writer($renderer);
-        $svg = $writer->writeString($qrCodeUrl);
-
-        // Sanitize: ensure output is a valid SVG and strip any script elements
-        if (str_contains($svg, '<svg') && ! preg_match('/<script/i', $svg)) {
-            $this->twoFactorQrSvg = $svg;
-        } else {
-            $this->twoFactorQrSvg = null;
-        }
-
-        $this->showingQrCode = true;
-        $this->showingRecoveryCodes = false;
-        $this->twoFactorCode = '';
-    }
-
-    public function confirmTwoFactor(): void
-    {
-        $this->validate([
-            'twoFactorCode' => 'required|digits:6',
-        ]);
-
-        $google2fa = new Google2FA;
-
-        if (! $google2fa->verifyKey($this->pendingTwoFactorSecret, $this->twoFactorCode)) {
-            $this->addError('twoFactorCode', 'The code is invalid. Please try again.');
-
-            return;
-        }
-
-        $codes = collect(range(1, 8))->map(fn () => Str::random(10))->all();
-
-        $user = Auth::user();
-        $user->update([
-            'two_factor_enabled' => true,
-            'two_factor_secret' => $this->pendingTwoFactorSecret,
-            'two_factor_recovery_codes' => $codes,
-        ]);
-
-        $this->recoveryCodes = $codes;
-        $this->showingQrCode = false;
-        $this->showingRecoveryCodes = true;
-        $this->pendingTwoFactorSecret = null;
-        $this->twoFactorQrSvg = null;
-        $this->twoFactorCode = '';
-
-        $this->dispatch('notify', type: 'success', message: 'Two-factor authentication enabled.');
-    }
-
-    public function disableTwoFactor(): void
-    {
-        Auth::user()->update([
-            'two_factor_enabled' => false,
-            'two_factor_secret' => null,
-            'two_factor_recovery_codes' => null,
-        ]);
-
-        $this->showingQrCode = false;
-        $this->showingRecoveryCodes = false;
-        $this->recoveryCodes = [];
-
-        $this->dispatch('notify', type: 'success', message: 'Two-factor authentication disabled.');
-    }
-
-    public function regenerateRecoveryCodes(): void
-    {
-        $codes = collect(range(1, 8))->map(fn () => Str::random(10))->all();
-
-        Auth::user()->update([
-            'two_factor_recovery_codes' => $codes,
-        ]);
-
-        $this->recoveryCodes = $codes;
-        $this->showingRecoveryCodes = true;
-
-        $this->dispatch('notify', type: 'success', message: 'Recovery codes regenerated.');
-    }
-
-    public function showRecoveryCodes(): void
-    {
-        $this->recoveryCodes = Auth::user()->two_factor_recovery_codes ?? [];
-        $this->showingRecoveryCodes = true;
     }
 
     public function exportData(): StreamedResponse|BinaryFileResponse|Response
