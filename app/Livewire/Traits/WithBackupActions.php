@@ -259,6 +259,23 @@ trait WithBackupActions
         $backup->update(['notes' => $notes]);
     }
 
+    /**
+     * On-demand restore test: verify this backup is actually restorable
+     * (download → extract → parse DB dump → check files) without touching the
+     * live site. Result lands on the backup's verification_status.
+     */
+    public function verifyBackupNow(int $backupId): void
+    {
+        $this->authorizeSiteModification($this->site);
+        /** @var Backup $backup */
+        $backup = $this->site->backups()->findOrFail($backupId);
+
+        $backup->update(['verification_status' => 'testing']);
+        \App\Jobs\RunBackupVerification::dispatch($backup);
+
+        session()->flash('backup-success', "Restore test queued for backup #{$backup->id} — the result will show here shortly.");
+    }
+
     public function downloadBackup(int $backupId): mixed
     {
         /** @var Backup $backup */
