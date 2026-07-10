@@ -40,6 +40,7 @@ class SiteRedirects extends Component
     public function brokenLinks()
     {
         // Suggest fixes: distinct broken target URLs from the latest SEO audit.
+        /** @var \App\Models\SeoAudit|null $audit */
         $audit = $this->site->seoAudits()->latest('scanned_at')->first();
         if (! $audit) {
             return collect();
