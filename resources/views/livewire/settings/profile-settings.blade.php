@@ -111,68 +111,6 @@
             </x-ui.card>
         </form>
 
-        {{-- Two-Factor Authentication --}}
-        <x-ui.card>
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg {{ Auth::user()->two_factor_enabled ? 'bg-green-50 ring-1 ring-green-200' : 'bg-gray-100 ring-1 ring-gray-200' }} shadow-sm">
-                        <x-icons.shield-check class="h-5 w-5 {{ Auth::user()->two_factor_enabled ? 'text-green-600' : 'text-gray-600' }}" />
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-gray-900">{{ __('Two-Factor Authentication') }}</h3>
-                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Add an additional layer of security using a TOTP authenticator app.') }}</p>
-                    </div>
-                </div>
-                <x-ui.badge variant="{{ Auth::user()->two_factor_enabled ? 'green' : 'gray' }}">{{ Auth::user()->two_factor_enabled ? __('Enabled') : __('Not enabled') }}</x-ui.badge>
-            </div>
-
-            @if(!Auth::user()->two_factor_enabled && !$showingQrCode)
-                {{-- Not enabled — show enable button --}}
-                <div class="flex items-center gap-3">
-                    <x-ui.button wire:click="enableTwoFactor" variant="secondary" wire:loading.attr="disabled">
-                        <span wire:loading.remove wire:target="enableTwoFactor">{{ __('Enable 2FA') }}</span>
-                        <span wire:loading wire:target="enableTwoFactor">{{ __('Setting up...') }}</span>
-                    </x-ui.button>
-                </div>
-            @elseif($showingQrCode)
-                {{-- QR code setup phase --}}
-                <div class="space-y-4">
-                    <p class="text-sm text-gray-700">{{ __('Scan the QR code below with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code to confirm.') }}</p>
-                    <div class="flex justify-center p-4 bg-white rounded-lg border border-gray-200">
-                        {!! $twoFactorQrSvg !!}
-                    </div>
-                    <x-ui.form-group :label="__('Verification Code')" for="twoFactorCode" error="twoFactorCode" class="max-w-xs">
-                        <x-ui.input wire:model="twoFactorCode" id="twoFactorCode" placeholder="000000" maxlength="6" />
-                    </x-ui.form-group>
-                    <div class="flex items-center gap-3">
-                        <x-ui.button wire:click="confirmTwoFactor">{{ __('Confirm & Enable') }}</x-ui.button>
-                        <x-ui.button wire:click="$set('showingQrCode', false)" variant="secondary">{{ __('Cancel') }}</x-ui.button>
-                    </div>
-                </div>
-            @else
-                {{-- Enabled — show status + actions --}}
-                <div class="space-y-4">
-                    @if($showingRecoveryCodes && !empty($recoveryCodes))
-                        <div>
-                            <p class="text-sm font-medium text-gray-700 mb-2">{{ __('Recovery Codes') }}</p>
-                            <p class="text-xs text-gray-500 mb-3">{{ __('Store these codes in a secure location. Each code can only be used once.') }}</p>
-                            <div class="grid grid-cols-2 gap-2 max-w-sm bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                @foreach($recoveryCodes as $code)
-                                    <code class="text-sm font-mono text-gray-800">{{ $code }}</code>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="flex items-center gap-3">
-                        <x-ui.button wire:click="showRecoveryCodes" variant="secondary">{{ __('Show Recovery Codes') }}</x-ui.button>
-                        <x-ui.button wire:click="regenerateRecoveryCodes" variant="secondary">{{ __('Regenerate Codes') }}</x-ui.button>
-                        <x-ui.button wire:click="disableTwoFactor" variant="danger" wire:confirm="{{ __('Are you sure you want to disable two-factor authentication?') }}">{{ __('Disable 2FA') }}</x-ui.button>
-                    </div>
-                </div>
-            @endif
-        </x-ui.card>
-
         {{-- API Tokens Section --}}
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">

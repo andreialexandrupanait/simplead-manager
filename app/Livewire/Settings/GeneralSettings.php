@@ -28,9 +28,6 @@ class GeneralSettings extends Component
 
     public SiteStatusFormData $statusForm;
 
-    // Security
-    public bool $mfaRequired = false;
-
     // Branding paths (not part of the form -- display-only state)
     public ?string $faviconPath = null;
 
@@ -53,7 +50,6 @@ class GeneralSettings extends Component
         $this->form->accentColor = $settings->get('branding.accent_color');
         $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
-        $this->mfaRequired = (bool) $settings->get('mfa_required', false);
     }
 
     #[Computed]
@@ -98,8 +94,6 @@ class GeneralSettings extends Component
             $this->logoPath = $path;
             $this->form->logo = null;
         }
-
-        $settings->set('mfa_required', $this->mfaRequired, 'security', 'boolean');
 
         $this->dispatch('notify', type: 'success', message: 'Settings saved successfully.');
     }
