@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\DomainStatus;
+use App\Models\SecurityRecommendation;
 use App\Models\Site;
 use App\Models\VulnerabilityAlert;
 
@@ -42,7 +43,7 @@ class SiteTodoService
             );
         }
 
-        $failedHardening = $site->securityRecommendations()->failed()->count();
+        $failedHardening = SecurityRecommendation::where('site_id', $site->id)->where('status', 'failed')->count();
         if ($failedHardening > 0) {
             $items[] = self::item(
                 'security', 'high',
