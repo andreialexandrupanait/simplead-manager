@@ -170,6 +170,20 @@ Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->name('daily-vulnerability-check')
     ->onOneServer();
 
+// Domain-registration expiry (RDAP) — re-check each site weekly, staggered.
+Schedule::call(function () {
+    $queued = 0;
+    \App\Models\Site::query()
+        ->where(fn ($q) => $q->whereNull('domain_checked_at')->orWhere('domain_checked_at', '<', now()->subDays(7)))
+        ->each(function (\App\Models\Site $site) use (&$queued) {
+            \App\Jobs\CheckDomainExpiry::dispatch($site)->delay(now()->addSeconds($queued * 15));
+            $queued++;
+        });
+})->dailyAt('04:30')
+    ->name('domain-expiry-check')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Validate external connections (Google, Cloudflare, Dropbox, WordPress)
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
     ->dailyAt('06:00')
