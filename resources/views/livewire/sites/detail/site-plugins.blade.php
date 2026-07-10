@@ -131,6 +131,11 @@
                 <span wire:loading.remove wire:target="syncNow">{{ __('Sync Now') }}</span>
                 <span wire:loading wire:target="syncNow">{{ __('Syncing...') }}</span>
             </x-ui.button>
+            <x-ui.button variant="secondary" wire:click="toggleSafeUpdates" wire:loading.attr="disabled" wire:target="toggleSafeUpdates"
+                title="{{ __('When on, plugin updates back up, health-check and auto-rollback on failure.') }}">
+                <span class="h-2 w-2 rounded-full {{ $site->safe_updates_enabled ? 'bg-green-500' : 'bg-gray-300' }} mr-1.5 inline-block"></span>
+                {{ $site->safe_updates_enabled ? __('Safe updates: On') : __('Safe updates: Off') }}
+            </x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
     @endif

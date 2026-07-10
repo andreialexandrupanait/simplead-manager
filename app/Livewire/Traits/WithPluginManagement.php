@@ -19,8 +19,51 @@ trait WithPluginManagement
     {
         $this->authorizeSiteModification($this->site);
 
+        // When the site has opted into safe updates, route through the queued
+        // pipeline (backup → update → health check → visual regression →
+        // auto-rollback) instead of updating inline with no safety net.
+        if ($this->site->safe_updates_enabled) {
+            $this->queueSafeUpdate($pluginId);
+
+            return;
+        }
+
         $result = $this->updateSinglePlugin($pluginId);
         $this->updateResults['plugin_'.$pluginId] = $result;
+    }
+
+    public function toggleSafeUpdates(): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        $this->site->update(['safe_updates_enabled' => ! $this->site->safe_updates_enabled]);
+        $this->dispatch('notify', type: 'success', message: $this->site->safe_updates_enabled
+            ? 'Safe updates enabled — plugin updates now back up, health-check and auto-rollback.'
+            : 'Safe updates disabled — plugin updates run inline.');
+    }
+
+    protected function queueSafeUpdate(int $pluginId): void
+    {
+        /** @var SitePlugin $plugin */
+        $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
+
+        if (! $plugin->has_update) {
+            $this->dispatch('notify', type: 'error', message: 'No update available for this plugin.');
+
+            return;
+        }
+
+        $service = app(\App\Services\SafeUpdateService::class);
+        $safeUpdate = $service->createSafeUpdate(
+            $this->site, 'plugin', $plugin->slug, $plugin->name,
+            $plugin->version ?? '', $plugin->update_version ?? '',
+            $plugin->file, // connector identifier (see AUDIT PM-P0-1)
+        );
+
+        \App\Jobs\RunSafeUpdate::dispatch($safeUpdate, auth()->id());
+
+        $this->dispatch('notify', type: 'success',
+            message: "Safe update queued for {$plugin->name} — it will back up, update, health-check and roll back automatically if anything breaks.");
     }
 
     public function updateSinglePlugin(int $pluginId): array
