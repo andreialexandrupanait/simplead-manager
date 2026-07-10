@@ -82,6 +82,7 @@ class SecurityLogin extends Component
 
     public function save(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->validate([
             'maxAttempts' => 'required|integer|min:1|max:100',
             'windowMinutes' => 'required|integer|min:1|max:1440',
@@ -121,6 +122,7 @@ class SecurityLogin extends Component
 
     public function toggleTwoFactor(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->twoFactorEnabled = ! $this->twoFactorEnabled;
 
         app(SecuritySettingsService::class)->applySetting(
@@ -136,6 +138,7 @@ class SecurityLogin extends Component
 
     public function verifySettings(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/security-state');

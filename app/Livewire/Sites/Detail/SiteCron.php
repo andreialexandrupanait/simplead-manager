@@ -80,6 +80,7 @@ class SiteCron extends Component
 
     public function runCron(string $hook, array $args = []): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->runCron($hook, ! empty($args) ? $args : null);
@@ -96,6 +97,7 @@ class SiteCron extends Component
 
     public function disableCron(string $hook): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $api->disableCron($hook);
@@ -119,6 +121,7 @@ class SiteCron extends Component
 
     public function enableCron(): void
     {
+        $this->authorizeSiteModification($this->site);
         if (! $this->enablingHook) {
             return;
         }

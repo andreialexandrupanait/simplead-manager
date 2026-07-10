@@ -146,6 +146,7 @@ class TweaksPerformance extends Component
 
     public function enableRecommended(): void
     {
+        $this->authorizeSiteModification($this->site);
         foreach (self::RECOMMENDED_TOGGLES as $key) {
             $this->toggles[$key] = true;
         }
@@ -179,6 +180,7 @@ class TweaksPerformance extends Component
 
     public function verifySettings(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/site-tweaks-state');
@@ -235,6 +237,7 @@ class TweaksPerformance extends Component
 
     public function save(): void
     {
+        $this->authorizeSiteModification($this->site);
         $service = app(SiteTweaksSettingsService::class);
         $settings = [];
 

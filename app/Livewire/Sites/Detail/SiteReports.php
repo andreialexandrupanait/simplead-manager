@@ -49,11 +49,13 @@ class SiteReports extends Component
 
     public function updateSiteTemplate(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->site->update(['report_template_id' => $this->selectedTemplateId]);
     }
 
     public function deleteReport(int $reportId): void
     {
+        $this->authorizeSiteModification($this->site);
         app(ReportManagementService::class)->deleteReports([$reportId], $this->site);
         session()->flash('report-success', 'Report deleted.');
         $this->resetPage();

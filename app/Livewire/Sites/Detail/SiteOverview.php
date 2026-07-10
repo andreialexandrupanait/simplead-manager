@@ -273,6 +273,7 @@ class SiteOverview extends Component
 
     public function runBackup(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many backup requests. Please wait before trying again.');
@@ -286,6 +287,7 @@ class SiteOverview extends Component
 
     public function syncNow(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "sync:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 10, fn () => true, 3600)) {
             $this->dispatch('notify', type: 'error', message: 'Too many sync requests. Please wait before trying again.');
@@ -328,6 +330,7 @@ class SiteOverview extends Component
 
     public function clearCache(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $result = $api->clearCache();
@@ -354,6 +357,7 @@ class SiteOverview extends Component
 
     public function saveCredentials(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->validate([
             'apiKey' => 'required|min:10',
             'apiSecret' => 'required|min:10',
@@ -374,6 +378,7 @@ class SiteOverview extends Component
 
     public function disconnectSite(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->site->update([
             'api_key' => null,
             'api_secret' => null,
@@ -391,6 +396,7 @@ class SiteOverview extends Component
 
     public function rotateApiKeys(): void
     {
+        $this->authorizeSiteModification($this->site);
         if (! $this->site->is_connected) {
             $this->dispatch('notify', type: 'error', message: 'Site is not connected.');
 
@@ -417,6 +423,7 @@ class SiteOverview extends Component
 
     public function resumeMonitoring(): void
     {
+        $this->authorizeSiteModification($this->site);
         $health = $this->site->healthState;
         if ($health) {
             $health->update([
@@ -430,6 +437,7 @@ class SiteOverview extends Component
 
     public function enableMonitoring(): void
     {
+        $this->authorizeSiteModification($this->site);
         $health = $this->site->healthState;
         if ($health) {
             $health->update([

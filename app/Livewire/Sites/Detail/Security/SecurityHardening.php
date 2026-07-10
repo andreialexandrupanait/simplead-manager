@@ -112,6 +112,7 @@ class SecurityHardening extends Component
 
     public function verifySettings(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/security-state');

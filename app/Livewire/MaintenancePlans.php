@@ -191,6 +191,9 @@ class MaintenancePlans extends Component
 
     public function delete(): void
     {
+        if (auth()->user()?->isViewer()) {
+            abort(403, 'Viewers cannot manage maintenance plans.');
+        }
         if (! $this->confirmDeleteId) {
             return;
         }

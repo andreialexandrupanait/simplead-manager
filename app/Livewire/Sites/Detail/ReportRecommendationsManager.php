@@ -12,6 +12,8 @@ use Livewire\Component;
 
 class ReportRecommendationsManager extends Component
 {
+    use \App\Livewire\Traits\WithSiteAuthorization;
+
     public Site $site;
 
     // New recommendation form
@@ -30,11 +32,13 @@ class ReportRecommendationsManager extends Component
 
     public function mount(Site $site): void
     {
+        $this->authorizeSiteAccess($site);
         $this->site = $site;
     }
 
     public function regenerateSuggestions(): void
     {
+        $this->authorizeSiteModification($this->site);
         // Gather current site data for the recommendation engine
         $reportConfig = $this->site->reportConfig;
         $language = $reportConfig->language ?? 'ro';
@@ -51,6 +55,7 @@ class ReportRecommendationsManager extends Component
 
     public function toggleIncluded(int $recId): void
     {
+        $this->authorizeSiteModification($this->site);
         $rec = ReportRecommendation::where('site_id', $this->site->id)
             ->whereNull('report_id')
             ->findOrFail($recId);
@@ -60,6 +65,7 @@ class ReportRecommendationsManager extends Component
 
     public function updateRec(int $recId, string $field, string $value): void
     {
+        $this->authorizeSiteModification($this->site);
         $allowed = ['title', 'description', 'priority'];
         if (! in_array($field, $allowed)) {
             return;
@@ -74,6 +80,7 @@ class ReportRecommendationsManager extends Component
 
     public function addCustomRecommendation(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->validate([
             'newRecTitle' => 'required|string|max:255',
             'newRecDescription' => 'required|string|max:1000',
@@ -106,6 +113,7 @@ class ReportRecommendationsManager extends Component
 
     public function removeRecommendation(int $recId): void
     {
+        $this->authorizeSiteModification($this->site);
         ReportRecommendation::where('site_id', $this->site->id)
             ->whereNull('report_id')
             ->where('id', $recId)
@@ -116,6 +124,7 @@ class ReportRecommendationsManager extends Component
 
     public function moveUp(int $recId): void
     {
+        $this->authorizeSiteModification($this->site);
         $recs = $this->getDraftRecs();
         $index = $recs->search(fn ($r) => $r->id === $recId);
 
@@ -131,6 +140,7 @@ class ReportRecommendationsManager extends Component
 
     public function moveDown(int $recId): void
     {
+        $this->authorizeSiteModification($this->site);
         $recs = $this->getDraftRecs();
         $index = $recs->search(fn ($r) => $r->id === $recId);
 
@@ -146,6 +156,7 @@ class ReportRecommendationsManager extends Component
 
     public function saveAsTemplate(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->validate([
             'templateName' => 'required|string|max:255',
         ]);
@@ -170,6 +181,7 @@ class ReportRecommendationsManager extends Component
 
     public function loadTemplate(int $templateId): void
     {
+        $this->authorizeSiteModification($this->site);
         $template = RecommendationTemplate::findOrFail($templateId);
 
         // Delete existing drafts
@@ -195,6 +207,7 @@ class ReportRecommendationsManager extends Component
 
     public function deleteTemplate(int $templateId): void
     {
+        $this->authorizeSiteModification($this->site);
         RecommendationTemplate::where('id', $templateId)
             ->where('user_id', auth()->id())
             ->delete();

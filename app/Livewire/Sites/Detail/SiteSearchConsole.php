@@ -79,6 +79,7 @@ class SiteSearchConsole extends Component
 
     public function reconnectGoogle(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->redirect(route('google.auth', ['return_url' => route('sites.search-console', $this->site)]));
     }
 
@@ -168,6 +169,7 @@ class SiteSearchConsole extends Component
 
     public function connectSearchConsole(): void
     {
+        $this->authorizeSiteModification($this->site);
         $googleConnection = $this->resolveGoogleConnection();
 
         if (! $googleConnection) {
@@ -190,6 +192,7 @@ class SiteSearchConsole extends Component
 
     public function selectProperty(int $index): void
     {
+        $this->authorizeSiteModification($this->site);
         $property = $this->availableProperties[$index] ?? null;
         if (! $property) {
             return;
@@ -222,6 +225,7 @@ class SiteSearchConsole extends Component
 
     public function disconnectSearchConsole(): void
     {
+        $this->authorizeSiteModification($this->site);
         $this->site->searchConsoleConnection->delete();
         SearchConsoleCache::where('site_id', $this->site->id)->delete();
         $this->site->unsetRelation('searchConsoleConnection');

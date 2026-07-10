@@ -199,6 +199,7 @@ class TweaksAdminUx extends Component
 
     public function save(): void
     {
+        $this->authorizeSiteModification($this->site);
         $service = app(SiteTweaksSettingsService::class);
         $settings = [];
 
@@ -272,6 +273,7 @@ class TweaksAdminUx extends Component
 
     public function verifySettings(): void
     {
+        $this->authorizeSiteModification($this->site);
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/site-tweaks-state');

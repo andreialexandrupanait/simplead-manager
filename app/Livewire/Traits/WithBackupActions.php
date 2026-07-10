@@ -17,6 +17,7 @@ trait WithBackupActions
 {
     public function backupDatabase(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
@@ -64,6 +65,7 @@ trait WithBackupActions
 
     public function backupFull(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
@@ -111,6 +113,7 @@ trait WithBackupActions
 
     public function backupIncremental(): void
     {
+        $this->authorizeSiteModification($this->site);
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
@@ -169,6 +172,7 @@ trait WithBackupActions
 
     public function toggleLock(int $backupId): void
     {
+        $this->authorizeSiteModification($this->site);
         /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
         $backup->update([
@@ -179,6 +183,7 @@ trait WithBackupActions
 
     public function deleteBackup(int $backupId): void
     {
+        $this->authorizeSiteModification($this->site);
         /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
 
@@ -211,6 +216,7 @@ trait WithBackupActions
 
     public function bulkDelete(array $ids): void
     {
+        $this->authorizeSiteModification($this->site);
         $backups = $this->site->backups()
             ->whereIn('id', $ids)
             ->where('is_locked', false)
@@ -247,6 +253,7 @@ trait WithBackupActions
 
     public function updateNotes(int $backupId, string $notes): void
     {
+        $this->authorizeSiteModification($this->site);
         /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
         $backup->update(['notes' => $notes]);
@@ -285,6 +292,7 @@ trait WithBackupActions
 
     public function cancelBackup(): void
     {
+        $this->authorizeSiteModification($this->site);
         if (! $this->trackingBackupId) {
             return;
         }
