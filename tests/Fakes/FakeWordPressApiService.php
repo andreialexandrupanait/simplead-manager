@@ -236,6 +236,16 @@ class FakeWordPressApiService implements WordPressApiServiceInterface
         return $this->respond('updatePlugins', func_get_args());
     }
 
+    public function setRedirects(array $redirects): array
+    {
+        return $this->respond('setRedirects', func_get_args());
+    }
+
+    public function getRedirects(): array
+    {
+        return $this->respond('getRedirects', func_get_args());
+    }
+
     public function activatePlugin(string $pluginFile): array
     {
         return $this->respond('activatePlugin', func_get_args());

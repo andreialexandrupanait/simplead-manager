@@ -33,6 +33,7 @@ class SAM_REST_API {
             'SAM_Diagnostic_Endpoint',
             'SAM_Site_Tweaks_Endpoint',
             'SAM_SEO_Endpoint',
+            'SAM_Redirects_Endpoint',
             'SAM_Posts_Endpoint',
             'SAM_Error_Logs_Endpoint',
             'SAM_Key_Rotation_Endpoint',
