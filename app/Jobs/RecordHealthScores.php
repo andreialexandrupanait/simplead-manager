@@ -60,6 +60,12 @@ class RecordHealthScores implements ShouldBeUnique, ShouldQueue
                         uniqueBy: ['site_id', 'recorded_at'],
                         update: ['score', 'uptime_score', 'security_score', 'updates_score', 'performance_score'],
                     );
+
+                    // Persist the current score onto the site so the dashboard
+                    // health filter/sort and the /v1 API stop running on NULL.
+                    // updateQuietly avoids firing Site::saved for every site
+                    // (which would stampede the dashboard cache nightly).
+                    $site->updateQuietly(['health_score' => (int) $breakdown['total']]);
                 } catch (\Throwable $e) {
                     Log::warning('RecordHealthScores: failed for site', [
                         'site_id' => $site->id,

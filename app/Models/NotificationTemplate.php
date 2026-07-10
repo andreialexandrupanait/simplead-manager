@@ -47,6 +47,8 @@ class NotificationTemplate extends Model
         'site_recovered' => 'Site Recovered',
         'site_degraded' => 'Site Degraded',
         'backup_failed' => 'Backup Failed',
+        'restore_failed' => 'Restore Failed',
+        'backup_verify_failures' => 'Backup Verification Failed',
         'performance_drop' => 'Performance Drop',
         'budget_violation' => 'Budget Violation',
         'security_score_critical' => 'Security Score Critical',
@@ -62,6 +64,16 @@ class NotificationTemplate extends Model
         'php_fatal_error' => 'PHP Fatal Error Detected',
         'content_stale' => 'Stale Content Detected',
         'connector_update_failed' => 'Connector Update Failed',
+        'theme_files_modified' => 'Theme Files Modified',
+        'wordpress_version_eol' => 'WordPress Version EOL',
+        'app_backup_completed' => 'App Backup Completed',
+        'app_backup_failed' => 'App Backup Failed',
+        'domain_expiring' => 'Domain Expiring',
+        'horizon_stopped' => 'Horizon Stopped',
+        'horizon_long_wait' => 'Horizon Long Wait',
+        'job_failures' => 'Repeated Job Failures',
+        'scheduled_task_failing' => 'Scheduled Task Failing',
+        'test' => 'Test Notification',
     ];
 
     /**

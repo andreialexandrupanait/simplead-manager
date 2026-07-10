@@ -93,20 +93,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Event Subscriptions</label>
                 <p class="text-xs text-gray-400 mb-3">Leave all unchecked to receive all events, or select specific events.</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    @foreach([
-                        'site_down' => 'Site Down',
-                        'site_up' => 'Site Recovered',
-                        'domain_expiring' => 'Domain Expiring',
-                        'backup_failed' => 'Backup Failed',
-                        'performance_drop' => 'Performance Drop',
-                        'budget_violation' => 'Budget Violation',
-                        'app_backup_completed' => 'App Backup Completed',
-                        'app_backup_failed' => 'App Backup Failed',
-                        'horizon_stopped' => 'Horizon Stopped',
-                        'horizon_long_wait' => 'Horizon Long Wait',
-                        'job_failures' => 'Repeated Job Failures',
-                        'test' => 'Test Notification',
-                    ] as $eventKey => $eventLabel)
+                    {{-- Single source of truth: NotificationTemplate::EVENTS, so the
+                         subscription list can never drift from the events actually emitted. --}}
+                    @foreach(\App\Models\NotificationTemplate::EVENTS as $eventKey => $eventLabel)
                         <label class="flex items-center gap-2">
                             <input type="checkbox" wire:model="form.eventSubscriptions" value="{{ $eventKey }}" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             <span class="text-xs text-gray-600">{{ $eventLabel }}</span>
