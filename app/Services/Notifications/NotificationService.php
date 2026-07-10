@@ -201,7 +201,8 @@ class NotificationService
         ?array $webhookPayload = null,
         ?string $mailableClass = null,
         ?array $mailableArgs = null,
-        ?array $channelIds = null
+        ?array $channelIds = null,
+        bool $sync = false
     ): void {
         if ($severity !== 'critical' && static::isQuietHours()) {
             return;
@@ -233,6 +234,14 @@ class NotificationService
             // Only buffer info-level notifications; everything else dispatches immediately
             if ($severity === 'info') {
                 static::buffer($channel, null, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
+            } elseif ($sync) {
+                // Meta-alerts (e.g. "Horizon is down") must not ride the queue
+                // Horizon itself processes — run inline so they send even when
+                // the worker fleet is dead.
+                SendNotificationJob::dispatchSync(
+                    $channel, null, $event, $title, $message,
+                    $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
+                );
             } else {
                 SendNotificationJob::dispatch(
                     $channel, null, $event, $title, $message,

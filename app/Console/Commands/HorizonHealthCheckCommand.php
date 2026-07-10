@@ -30,6 +30,9 @@ class HorizonHealthCheckCommand extends Command
                         title: 'Horizon Is Not Running',
                         message: 'No Horizon supervisor processes were found. Queue jobs are not being processed.',
                         severity: 'critical',
+                        // Send inline from the scheduler: if the alert were queued
+                        // it would sit in the very queue Horizon is not processing.
+                        sync: true,
                     );
                     Cache::put($cacheKey, true, 3600);
                 }
