@@ -27,6 +27,11 @@ use Illuminate\Support\Facades\Storage;
  * @property string $url
  * @property string $status
  * @property int|null $health_score
+ * @property \Illuminate\Support\Carbon|null $domain_expires_at
+ * @property string|null $domain_registrar
+ * @property \App\Enums\DomainStatus|null $domain_status
+ * @property \Illuminate\Support\Carbon|null $domain_checked_at
+ * @property string|null $domain_last_error
  * @property int|null $security_hardening_score
  * @property string|null $custom_login_slug
  * @property string $type
