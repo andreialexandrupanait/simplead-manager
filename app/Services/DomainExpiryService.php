@@ -33,7 +33,7 @@ class DomainExpiryService
         $host = Str::of($host)->lower()->ltrim()->rtrim()->replaceFirst('www.', '')->toString();
 
         if ($host === '' || ! str_contains($host, '.')) {
-            return static::result(DomainStatus::Error, null, null, 'Could not derive a domain from the site URL.');
+            return self::result(DomainStatus::Error, null, null, 'Could not derive a domain from the site URL.');
         }
 
         $labels = explode('.', $host);
@@ -46,7 +46,7 @@ class DomainExpiryService
                     ->withHeaders(['Accept' => 'application/rdap+json'])
                     ->get("https://rdap.org/domain/{$candidate}");
             } catch (\Throwable $e) {
-                return static::result(DomainStatus::Error, null, null, "RDAP request failed: {$e->getMessage()}");
+                return self::result(DomainStatus::Error, null, null, "RDAP request failed: {$e->getMessage()}");
             }
 
             if ($response->status() === 404) {
@@ -54,13 +54,13 @@ class DomainExpiryService
             }
 
             if (! $response->successful()) {
-                return static::result(DomainStatus::Error, null, null, "RDAP returned HTTP {$response->status()} for {$candidate}.");
+                return self::result(DomainStatus::Error, null, null, "RDAP returned HTTP {$response->status()} for {$candidate}.");
             }
 
-            return static::parse($response->json());
+            return self::parse($response->json());
         }
 
-        return static::result(DomainStatus::Error, null, null, "No RDAP registry recognised {$host}.");
+        return self::result(DomainStatus::Error, null, null, "No RDAP registry recognised {$host}.");
     }
 
     /**
@@ -69,7 +69,7 @@ class DomainExpiryService
     private static function parse(mixed $data): array
     {
         if (! is_array($data)) {
-            return static::result(DomainStatus::Error, null, null, 'Malformed RDAP response.');
+            return self::result(DomainStatus::Error, null, null, 'Malformed RDAP response.');
         }
 
         $expiresAt = null;
@@ -97,16 +97,19 @@ class DomainExpiryService
         }
 
         if (! $expiresAt) {
-            return static::result(DomainStatus::Error, null, $registrar, 'RDAP response had no expiration date.');
+            return self::result(DomainStatus::Error, null, $registrar, 'RDAP response had no expiration date.');
         }
 
+        // Carbon 3 diffs are signed; expiry is in the future here (isPast handled
+        // above), so measure now → expiry to get the days remaining.
+        $daysRemaining = now()->diffInDays($expiresAt);
         $status = match (true) {
             $expiresAt->isPast() => DomainStatus::Expired,
-            $expiresAt->diffInDays(now()) <= self::EXPIRING_SOON_DAYS => DomainStatus::ExpiringSoon,
+            $daysRemaining <= self::EXPIRING_SOON_DAYS => DomainStatus::ExpiringSoon,
             default => DomainStatus::Active,
         };
 
-        return static::result($status, $expiresAt, $registrar, null);
+        return self::result($status, $expiresAt, $registrar, null);
     }
 
     /**
