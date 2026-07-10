@@ -87,6 +87,7 @@ class SiteRedirects extends Component
     {
         $this->authorizeSiteModification($this->site);
 
+        /** @var SiteRedirect $redirect */
         $redirect = $this->site->redirects()->whereKey($id)->firstOrFail();
         $redirect->update(['is_active' => ! $redirect->is_active]);
         unset($this->redirects);
