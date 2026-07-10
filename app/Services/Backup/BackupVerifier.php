@@ -47,16 +47,16 @@ class BackupVerifier
             }
 
             if (! $result['ok']) {
-                return $this->fail($backup, $result['message'] ?? 'verification failed');
+                return $this->fail($backup, $result['message']);
             }
 
             $backup->update([
                 'verified_at' => now(),
                 'verification_status' => 'passed',
-                'verification_message' => ($result['message'] ?? 'ok').' (on-demand restore test)',
+                'verification_message' => $result['message'].' (on-demand restore test)',
             ]);
 
-            return ['ok' => true, 'message' => $result['message'] ?? 'ok'];
+            return ['ok' => true, 'message' => $result['message']];
         } catch (\Throwable $e) {
             return $this->fail($backup, 'verify exception: '.$e->getMessage());
         } finally {
