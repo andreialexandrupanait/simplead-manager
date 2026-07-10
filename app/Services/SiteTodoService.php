@@ -72,6 +72,16 @@ class SiteTodoService
             $items[] = self::item('backups', 'high', 'Backup is stale', 'No successful backup in the last 36 hours.', 'sites.backups', $site);
         }
 
+        // A backup that failed its restore test is worse than a stale one — it
+        // exists but may not restore. Surface it prominently.
+        $failedVerify = $site->backups()
+            ->where('status', 'completed')
+            ->where('verification_status', 'failed')
+            ->exists();
+        if ($failedVerify) {
+            $items[] = self::item('backups', 'critical', 'Backup failed restore verification', 'A backup could not be verified as restorable — investigate before relying on it.', 'sites.backups', $site);
+        }
+
         if ($site->domain_status === DomainStatus::Expired) {
             $items[] = self::item('domain', 'critical', 'Domain has expired', 'The domain registration has lapsed — renew immediately.', 'sites.overview', $site);
         } elseif ($site->domain_status === DomainStatus::ExpiringSoon) {
