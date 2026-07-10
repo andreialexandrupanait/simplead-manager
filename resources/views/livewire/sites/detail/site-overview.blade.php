@@ -44,6 +44,10 @@
 
     <x-ui.circuit-breaker-banner :site="$site" />
 
+    <div class="mb-6">
+        <livewire:sites.detail.site-todo-feed :site="$site" :key="'todo-'.$site->id" />
+    </div>
+
     <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
     {{-- Two-column layout --}}
