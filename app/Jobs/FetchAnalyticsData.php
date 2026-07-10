@@ -103,7 +103,7 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 
             JobTracker::progress($this->uniqueId(), 95, 'Saving data...');
 
-            CircuitBreakerService::recordSuccess($this->site);
+            CircuitBreakerService::recordSuccess($this->site, CircuitBreakerService::DOMAIN_ANALYTICS);
             JobTracker::complete($this->uniqueId(), 'Analytics data fetched');
 
         } catch (\Exception $e) {
@@ -114,7 +114,7 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Analytics fetch failed');
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Analytics fetch failed', CircuitBreakerService::DOMAIN_ANALYTICS);
         JobTracker::fail($this->uniqueId(), 'Fetch failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 

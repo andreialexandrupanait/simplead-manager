@@ -105,7 +105,7 @@ class FetchSearchConsoleData implements ShouldBeUnique, ShouldQueue
 
             JobTracker::progress($this->uniqueId(), 95, 'Saving data...');
 
-            CircuitBreakerService::recordSuccess($this->site);
+            CircuitBreakerService::recordSuccess($this->site, CircuitBreakerService::DOMAIN_SEARCH_CONSOLE);
             JobTracker::complete($this->uniqueId(), 'Search Console data fetched');
 
         } catch (\Exception $e) {
@@ -116,7 +116,7 @@ class FetchSearchConsoleData implements ShouldBeUnique, ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Search Console fetch failed');
+        CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'Search Console fetch failed', CircuitBreakerService::DOMAIN_SEARCH_CONSOLE);
         JobTracker::fail($this->uniqueId(), 'Fetch failed: '.($exception?->getMessage() ?? 'Unknown error'));
     }
 

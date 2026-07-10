@@ -265,7 +265,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     public function failed(?\Throwable $e): void
     {
         $this->audit->markAs(SeoAuditStatus::Failed, $e?->getMessage());
-        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed');
+        CircuitBreakerService::recordFailure($this->site, $e?->getMessage() ?? 'Crawl failed', CircuitBreakerService::DOMAIN_SEO);
         JobTracker::fail('seo-audit-'.$this->site->id, 'Crawl failed');
     }
 
