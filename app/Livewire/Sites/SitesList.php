@@ -6,7 +6,10 @@ namespace App\Livewire\Sites;
 
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
+use App\Models\Tag;
 use App\Services\SettingsService;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class SitesList extends Component
@@ -15,12 +18,27 @@ class SitesList extends Component
 
     protected $listeners = ['site-deleted' => '$refresh'];
 
+    #[Url]
+    public ?int $tagId = null;
+
+    #[Computed]
+    public function availableTags()
+    {
+        return Tag::orderBy('name')->get();
+    }
+
+    public function updatedTagId(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $user = auth()->user();
 
         $sites = Site::query()
             ->when(! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
+            ->when($this->tagId, fn ($q) => $q->whereHas('tags', fn ($tq) => $tq->where('tags.id', $this->tagId)))
             ->when($this->search, function ($q) {
                 $escaped = '%'.$this->escapeLike($this->search).'%';
                 $q->where(function ($q) use ($escaped) {
@@ -38,7 +56,7 @@ class SitesList extends Component
                     default => $q,
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection')
+            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection', 'tags')
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
             ->paginate((int) app(SettingsService::class)->get('sites_per_page', 16));
 

@@ -95,5 +95,9 @@
         </x-ui.card>
     </div>
 
+    <div class="mt-6">
+        <livewire:sites.detail.manage-site-tags :site="$site" :key="'tags-'.$site->id" />
+    </div>
+
     <livewire:components.copy-settings-modal :source-site="$site" :show-security-option="false" :show-tweaks-option="false" :show-modules-option="true" />
 </div>
