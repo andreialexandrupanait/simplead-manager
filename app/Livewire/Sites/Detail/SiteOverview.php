@@ -343,8 +343,12 @@ class SiteOverview extends Component
 
     public function openConnectModal(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->apiKey = $this->site->api_key ?? '';
-        $this->apiSecret = $this->site->api_secret ?? '';
+        // Never round-trip the decrypted secret to the browser; the admin
+        // re-pastes it to save. Existing credentials keep working untouched.
+        $this->apiSecret = '';
         $this->apiEndpoint = $this->site->api_endpoint ?? '';
 
         // Auto-fill endpoint from site URL if empty

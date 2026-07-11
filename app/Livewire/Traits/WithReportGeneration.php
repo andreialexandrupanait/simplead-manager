@@ -60,6 +60,8 @@ trait WithReportGeneration
 
     public function proceedToRecommendations(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->generateStep = 2;
         $this->loadingRecommendations = true;
 
@@ -79,6 +81,8 @@ trait WithReportGeneration
 
     public function confirmGenerate(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $template = ReportTemplate::findOrFail($this->selectedTemplateId);
 
         $periodEnd = Carbon::today();
@@ -98,6 +102,8 @@ trait WithReportGeneration
 
     public function toggleRecommendation(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $rec = ReportRecommendation::where('site_id', $this->site->id)
             ->whereNull('report_id')
             ->findOrFail($id);
@@ -108,6 +114,8 @@ trait WithReportGeneration
 
     public function removeRecommendation(int $id): void
     {
+        $this->authorizeSiteModification($this->site);
+
         ReportRecommendation::where('site_id', $this->site->id)
             ->whereNull('report_id')
             ->where('id', $id)
@@ -118,6 +126,8 @@ trait WithReportGeneration
 
     public function addCustomRecommendation(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'newRecTitle' => 'required|string|max:255',
             'newRecDescription' => 'required|string|max:1000',

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
+use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\BulkSettingsCopyService;
 use Livewire\Component;
 
 class CopySettingsModal extends Component
 {
+    use WithSiteAuthorization;
+
     public Site $sourceSite;
 
     public bool $showSecurityOption = false;
@@ -30,6 +33,10 @@ class CopySettingsModal extends Component
 
     public function mount(Site $sourceSite): void
     {
+        // The source site's settings are read and pushed elsewhere — the acting
+        // user must at least be able to access it.
+        $this->authorizeSiteAccess($sourceSite);
+
         // Auto-enable the options that are shown
         $this->copySecuritySettings = $this->showSecurityOption;
         $this->copyTweakSettings = $this->showTweaksOption;
@@ -47,6 +54,11 @@ class CopySettingsModal extends Component
 
     public function apply(): void
     {
+        // Read-only users cannot push settings anywhere.
+        if (auth()->user()->isViewer()) {
+            abort(403, 'Viewers cannot modify sites.');
+        }
+
         if (empty($this->selectedSiteIds)) {
             session()->flash('copy-error', 'Please select at least one target site.');
 
@@ -59,7 +71,17 @@ class CopySettingsModal extends Component
             return;
         }
 
-        $targets = Site::whereIn('id', $this->selectedSiteIds)->get();
+        // Re-scope the target IDs server-side to the sites the acting user may
+        // actually reach — a crafted request cannot push config cross-tenant.
+        $targets = $this->getAvailableSites()
+            ->whereIn('id', $this->selectedSiteIds)
+            ->values();
+
+        if ($targets->isEmpty()) {
+            session()->flash('copy-error', 'Please select at least one target site.');
+
+            return;
+        }
         $service = app(BulkSettingsCopyService::class);
         $pushed = 0;
         $total = $targets->count();

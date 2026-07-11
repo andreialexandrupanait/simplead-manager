@@ -252,14 +252,24 @@ class UpdatesOverview extends Component
             return;
         }
 
+        $user = auth()->user();
         $service = app(PluginManagerService::class);
         $success = 0;
         $failed = 0;
+        $skipped = 0;
 
         foreach ($plugins as $plugin) {
             $site = $plugin->site;
             if (! $site?->is_connected) {
                 $failed++;
+
+                continue;
+            }
+
+            // Enforce per-site access: a non-admin must not mutate sites
+            // outside the clients/sites assigned to them.
+            if (! $user->canAccessSite($site)) {
+                $skipped++;
 
                 continue;
             }
@@ -287,10 +297,15 @@ class UpdatesOverview extends Component
             }
         }
 
+        $message = "{$success} site(s) updated, {$failed} failed for \"{$slug}\".";
+        if ($skipped > 0) {
+            $message .= " {$skipped} skipped (no access).";
+        }
+
         $this->dispatch(
             'notify',
-            type: $failed > 0 ? 'warning' : 'success',
-            message: "{$success} site(s) updated, {$failed} failed for \"{$slug}\".",
+            type: ($failed > 0 || $skipped > 0) ? 'warning' : 'success',
+            message: $message,
         );
 
         unset($this->updates, $this->stats);
