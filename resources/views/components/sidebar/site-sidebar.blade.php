@@ -203,18 +203,10 @@
         <x-sidebar.sidebar-item
             :href="route('sites.security', $site)"
             icon="shield-check"
-            :active="request()->routeIs('sites.security*')"
+            :active="request()->routeIs('sites.security*') || request()->routeIs('sites.tweaks*')"
             :inactive="!$moduleService->isModuleActive($site, 'security')"
         >
-            Security
-        </x-sidebar.sidebar-item>
-
-        <x-sidebar.sidebar-item
-            :href="route('sites.tweaks', $site)"
-            icon="sliders"
-            :active="request()->routeIs('sites.tweaks*')"
-        >
-            Tweaks
+            Security & Tweaks
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item

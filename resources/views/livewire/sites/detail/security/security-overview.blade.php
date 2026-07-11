@@ -1,5 +1,5 @@
 <div>
-    <x-ui.page-header title="{{ __('Security Overview') }}" subtitle="{{ __('Monitor and manage your site\'s security posture') }}" />
+    <x-ui.page-header title="{{ __('Security & Tweaks') }}" subtitle="{{ __('Security posture and WordPress behaviour, managed in one place') }}" />
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
@@ -77,7 +77,8 @@
         </div>
     @endif
 
-    {{-- Category Status Cards — security only, ordered to match the tabs --}}
+    {{-- Security band — score-bearing categories, ordered to match the tabs --}}
+    <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Security') }}</h2>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @php
             $securityCategories = [
@@ -196,8 +197,53 @@
         </a>
     </div>
 
-    <p class="mt-4 text-xs text-gray-400">
-        {{ __('Looking for Performance & Site Control?') }}
-        <a href="{{ route('sites.tweaks', $site) }}" class="text-accent-600 hover:underline" wire:navigate>{{ __('They live in Site Tweaks') }} →</a>
-    </p>
+    {{-- WordPress Tweaks band — same settings pipeline, no score impact --}}
+    <h2 class="mb-3 mt-8 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('WordPress Tweaks') }}</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        @php
+            $tweakCategories = [
+                'performance' => ['label' => __('Performance'), 'route' => 'sites.tweaks.performance'],
+                'site_control' => ['label' => __('Site Control'), 'route' => 'sites.tweaks.site-control'],
+                'admin_ux' => ['label' => __('Admin UX'), 'route' => 'sites.tweaks.admin-ux'],
+                'content_media' => ['label' => __('Content & Media'), 'route' => 'sites.tweaks.content-media'],
+            ];
+        @endphp
+
+        @foreach($tweakCategories as $catKey => $catInfo)
+            @php
+                $catSettings = $this->tweakSettingsByCategory->get($catKey, collect());
+                $enabledCount = $catSettings->where('is_enabled', true)->count();
+                $appliedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Applied)->count();
+                $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
+                $totalCount = $catSettings->count();
+            @endphp
+            <a href="{{ route($catInfo['route'], $site) }}">
+                <x-ui.card class="h-full cursor-pointer hover:border-accent-200 transition-colors">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>
+                            <p class="mt-1 text-xs text-gray-500">
+                                @if($totalCount === 0)
+                                    {{ __('Not configured') }}
+                                @else
+                                    {{ $appliedCount }}/{{ $enabledCount }} {{ __('applied') }}
+                                @endif
+                            </p>
+                        </div>
+                        <div>
+                            @if($failedCount > 0)
+                                <x-ui.badge variant="red">{{ __('Needs Attention') }}</x-ui.badge>
+                            @elseif($appliedCount > 0 && $appliedCount === $enabledCount)
+                                <x-ui.badge variant="green">{{ __('Applied') }}</x-ui.badge>
+                            @elseif($enabledCount > 0)
+                                <x-ui.badge variant="yellow">{{ __('Pending') }}</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="gray">{{ __('Not Configured') }}</x-ui.badge>
+                            @endif
+                        </div>
+                    </div>
+                </x-ui.card>
+            </a>
+        @endforeach
+    </div>
 </div>

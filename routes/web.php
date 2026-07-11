@@ -91,7 +91,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
         Route::get('/security/activity', Sites\Detail\Security\SecurityActivity::class)->name('sites.security.activity');
         Route::get('/security/users', Sites\Detail\Security\SecurityUsers::class)->name('sites.security.users');
         Route::get('/security/ip-management', Sites\Detail\Security\SecurityIpManagement::class)->name('sites.security.ip-management');
-        Route::get('/tweaks', Sites\Detail\Tweaks\TweaksOverview::class)->name('sites.tweaks');
+        // Tweaks merged into the Security & Tweaks hub — keep the name for old links
+        Route::get('/tweaks', fn (Site $site) => redirect()->route('sites.security', $site))->name('sites.tweaks');
         Route::get('/tweaks/performance', Sites\Detail\Tweaks\TweaksPerformance::class)->name('sites.tweaks.performance');
         Route::get('/tweaks/site-control', Sites\Detail\Tweaks\TweaksSiteControl::class)->name('sites.tweaks.site-control');
         Route::get('/tweaks/admin-ux', Sites\Detail\Tweaks\TweaksAdminUx::class)->name('sites.tweaks.admin-ux');
