@@ -5,6 +5,10 @@ declare(strict_types=1);
 return [
     'changelog' => [
         'unreleased' => [
+            'changes' => [],
+        ],
+        '2.17.0' => [
+            'date' => '2026-07-11',
             'changes' => [
                 'Security: Two-factor authentication (email code) for interactive WP logins — role-targeted, 10-min codes, 5-attempt lockout, 30-day trusted devices, configurable fail-open/closed on mail failure',
                 'Security: /security-settings accepts unban_ips — clears the ban option AND the brute-force transient so manager-side unbans actually apply',
