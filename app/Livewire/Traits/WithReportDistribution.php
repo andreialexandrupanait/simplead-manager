@@ -25,6 +25,8 @@ trait WithReportDistribution
 
     public function sendReport(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->validate([
             'sendToEmail' => 'required|email',
         ]);
@@ -41,6 +43,8 @@ trait WithReportDistribution
 
     public function bulkSend(array $ids, string $email): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $this->bulkSendEmail = $email;
 
         $this->validate([
@@ -55,6 +59,8 @@ trait WithReportDistribution
 
     public function bulkDelete(array $ids): void
     {
+        $this->authorizeSiteModification($this->site);
+
         $count = app(ReportManagementService::class)->deleteReports($ids, $this->site);
         session()->flash('report-success', $count.' report(s) deleted.');
         $this->resetPage();

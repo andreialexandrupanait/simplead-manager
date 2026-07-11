@@ -142,6 +142,7 @@ class BackupHealthService
     /**
      * Aggregate health across all sites that have a backup config.
      *
+     * @param  array<int>|null  $siteIds  Restrict to these site IDs (null = all sites).
      * @return array{
      *   avg_score: float|null,
      *   sites_count: int,
@@ -152,9 +153,11 @@ class BackupHealthService
      *   bottom: array<int, array{site_id: int, name: string, score: int, reasons: array<int, string>}>,
      * }
      */
-    public function aggregate(int $bottomLimit = 5): array
+    public function aggregate(int $bottomLimit = 5, ?array $siteIds = null): array
     {
-        $sites = Site::with('backupConfig')->get();
+        $sites = Site::with('backupConfig')
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('id', $siteIds))
+            ->get();
 
         $scores = [];
         $buckets = [

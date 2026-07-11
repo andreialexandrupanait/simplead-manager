@@ -28,9 +28,17 @@ class NotificationDropdown extends Component
     #[Computed]
     public function alerts(): array
     {
-        $all = Cache::remember('global_alerts', 120, fn () => app(DashboardService::class)->getAlerts());
+        // Alerts are tenant-scoped inside DashboardService; the wrapping cache
+        // key must therefore be per-user so one user's alerts never surface to
+        // another.
+        $all = Cache::remember($this->alertsCacheKey(), 120, fn () => app(DashboardService::class)->getAlerts());
 
         return array_values(array_filter($all, fn ($a) => ! in_array($a['key'], $this->dismissedAlerts)));
+    }
+
+    private function alertsCacheKey(): string
+    {
+        return 'user:'.Auth::id().':alerts';
     }
 
     #[Computed]
@@ -84,7 +92,7 @@ class NotificationDropdown extends Component
 
     public function dismissAll(): void
     {
-        Cache::forget('global_alerts');
+        Cache::forget($this->alertsCacheKey());
         $freshAlerts = app(DashboardService::class)->getAlerts();
         $allKeys = collect($freshAlerts)->pluck('key')->toArray();
         $this->dismissedAlerts = array_values(array_unique(array_merge($this->dismissedAlerts, $allKeys)));
@@ -113,7 +121,7 @@ class NotificationDropdown extends Component
         $site = Site::findOrFail($siteId);
         CreateBackup::dispatch($site, 'full', 'manual');
 
-        Cache::forget('global_alerts');
+        Cache::forget($this->alertsCacheKey());
         unset($this->alerts);
         unset($this->count);
 
@@ -134,7 +142,7 @@ class NotificationDropdown extends Component
             CreateBackup::dispatch($site, 'full', 'manual');
         }
 
-        Cache::forget('global_alerts');
+        Cache::forget($this->alertsCacheKey());
         unset($this->alerts);
         unset($this->count);
 

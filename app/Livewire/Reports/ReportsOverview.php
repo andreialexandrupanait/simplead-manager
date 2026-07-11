@@ -46,6 +46,11 @@ class ReportsOverview extends Component
 
     public function generateAllReports(): void
     {
+        // Read-only users cannot trigger fleet-wide report generation.
+        if (! auth()->user()->canManageSites()) {
+            abort(403, 'Viewers cannot generate reports.');
+        }
+
         $sites = Site::where('is_connected', true)->get();
         $template = \App\Models\ReportTemplate::where('is_default', true)->first();
         if (! $template) {
@@ -53,9 +58,21 @@ class ReportsOverview extends Component
 
             return;
         }
+
+        // GenerateReport requires an explicit reporting period — passing it was
+        // missing, which threw ArgumentCountError and queued nothing.
+        $periodEnd = \Carbon\Carbon::today();
+        $periodStart = $periodEnd->copy()->subDays(30);
+
         $queued = 0;
         foreach ($sites as $site) {
-            \App\Jobs\GenerateReport::dispatch($site, $template);
+            \App\Jobs\GenerateReport::dispatch(
+                site: $site,
+                template: $template,
+                periodStart: $periodStart,
+                periodEnd: $periodEnd,
+                trigger: 'manual',
+            );
             $queued++;
         }
         $this->dispatch('notify', type: 'success', message: "Queued reports for {$queued} sites.");

@@ -10,6 +10,8 @@ trait WithWpAdminLogin
 {
     public function openWpAdmin(): void
     {
+        $this->authorizeSiteModification($this->site);
+
         try {
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
             $username = $this->site->wpAdminUser?->username;
@@ -29,6 +31,8 @@ trait WithWpAdminLogin
 
     public function setWpAdminUser(?int $siteUserId): void
     {
+        $this->authorizeSiteModification($this->site);
+
         if ($siteUserId) {
             $exists = $this->site->siteUsers()
                 ->where('id', $siteUserId)
