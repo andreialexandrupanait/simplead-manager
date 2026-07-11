@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 class SendNotificationJob implements ShouldQueue
 {
@@ -39,33 +40,45 @@ class SendNotificationJob implements ShouldQueue
         public ?array $webhookPayload = null,
         public ?string $mailableClass = null,
         public ?array $mailableArgs = null,
+        public bool $isEscalation = false,
     ) {
         $this->onQueue('notifications');
     }
 
     public function handle(): void
     {
+        // Ack token must exist BEFORE sending so the acknowledgement link can be
+        // embedded in the outgoing message (audit N-P1-2: tokens were generated
+        // but never delivered, making acknowledgement impossible).
+        $ackToken = in_array($this->severity, ['critical', 'warning'], true) ? Str::random(64) : null;
+
+        $message = $this->message;
+        $webhookPayload = $this->webhookPayload ?? [];
+
+        if ($ackToken !== null) {
+            $ackUrl = route('notifications.ack', $ackToken);
+            $message .= "\n\nAcknowledge: {$ackUrl}";
+            $webhookPayload['ack_url'] = $ackUrl;
+        }
+
         $result = match ($this->channel->type) {
             'slack' => SlackNotificationSender::send(
-                $this->channel, $this->title, $this->message, $this->fields, $this->severity
+                $this->channel, $this->title, $message, $this->fields, $this->severity
             ),
             'telegram' => TelegramNotificationSender::send(
-                $this->channel, $this->title, $this->message, $this->fields, $this->severity
+                $this->channel, $this->title, $message, $this->fields, $this->severity
             ),
             'discord' => DiscordNotificationSender::send(
-                $this->channel, $this->title, $this->message, $this->fields, $this->severity
+                $this->channel, $this->title, $message, $this->fields, $this->severity
             ),
             'webhook' => WebhookNotificationSender::send(
-                $this->channel, $this->event, $this->site, $this->webhookPayload ?? []
+                $this->channel, $this->event, $this->site, $webhookPayload
             ),
             'email' => $this->mailableClass
                 ? EmailNotificationSender::send($this->channel, $this->mailableClass, $this->mailableArgs ?? [])
                 : ['success' => false, 'response_code' => null, 'error' => 'No mailable class provided'],
             default => ['success' => false, 'response_code' => null, 'error' => "Unknown channel type: {$this->channel->type}"],
         };
-
-        // Log the notification
-        $ackToken = in_array($this->severity, ['critical', 'warning']) ? \Illuminate\Support\Str::random(64) : null;
 
         NotificationLog::create([
             'notification_channel_id' => $this->channel->id,
@@ -78,6 +91,10 @@ class SendNotificationJob implements ShouldQueue
             'response_code' => $result['response_code'] ?? null,
             'severity' => $this->severity,
             'ack_token' => $ackToken,
+            // Escalation-generated notifications are born "escalated" so
+            // ProcessNotificationEscalations never picks them up again —
+            // otherwise an A→B + B→A rule pair loops forever (audit N-P1-2).
+            'escalated' => $this->isEscalation,
             'metadata' => [
                 'title' => $this->title,
                 'severity' => $this->severity,
@@ -93,10 +110,12 @@ class SendNotificationJob implements ShouldQueue
                 'last_error_at' => now(),
             ]);
 
-            // Re-throw to trigger retry
-            if ($this->attempts() < $this->tries) {
-                throw new \RuntimeException('Notification failed: '.($result['error'] ?? 'Unknown error'));
-            }
+            // Always throw: earlier attempts get retried, and the FINAL attempt
+            // marks the job as failed instead of silently succeeding (audit
+            // N-P1-1: a dead channel lost alerts without a trace). The failed
+            // NotificationLog above is still escalated by
+            // ProcessNotificationEscalations, which matches failed sends too.
+            throw new \RuntimeException('Notification failed: '.($result['error'] ?? 'Unknown error'));
         }
     }
 }
