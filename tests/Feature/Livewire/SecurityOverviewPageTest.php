@@ -25,6 +25,15 @@ class SecurityOverviewPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Site::created() dispatches FetchSiteFavicon + plan setup — on the
+        // sync queue in CI that means real HTTP calls per created site (the
+        // 51-site pagination test timed out the whole suite).
+        \Illuminate\Support\Facades\Queue::fake();
+    }
+
     /** @return array{0: Site, 1: User} */
     private function siteWithManager(): array
     {

@@ -16,6 +16,15 @@ class SecurityDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Site::created() dispatches FetchSiteFavicon + plan setup — on the
+        // sync queue in CI that means real HTTP calls per created site (the
+        // 51-site pagination test timed out the whole suite).
+        \Illuminate\Support\Facades\Queue::fake();
+    }
+
     private function failedSetting(Site $site, string $key = 'hide_wp_version'): SecuritySetting
     {
         return SecuritySetting::create([
