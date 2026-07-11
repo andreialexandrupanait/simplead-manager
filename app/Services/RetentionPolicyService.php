@@ -6,6 +6,8 @@ namespace App\Services;
 
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RetentionPolicyService
 {
@@ -87,7 +89,6 @@ class RetentionPolicyService
             'max' => 365,
             'tables' => [
                 ['table' => 'security_activity_logs', 'column' => 'occurred_at', 'col_type' => 'timestamp', 'label' => 'Security activity logs', 'condition' => null],
-                ['table' => 'security_commands', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security commands (completed)', 'condition' => ['status', 'in', ['completed', 'failed', 'cancelled']]],
                 ['table' => 'security_banned_ips', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Security banned IPs', 'condition' => null],
             ],
         ],
@@ -192,21 +193,35 @@ class RetentionPolicyService
         foreach ($config['tables'] as $tableConfig) {
             $table = $tableConfig['table'];
 
-            $estimate = DB::selectOne(
-                'SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = ?',
-                [$table]
-            );
+            // Isolate per-table lookups: a table dropped by a migration (but
+            // still lingering in a stale config) must not blow up the whole
+            // Settings retention stats panel — skip it gracefully instead.
+            try {
+                if (! Schema::hasTable($table)) {
+                    continue;
+                }
 
-            $oldest = DB::selectOne(
-                "SELECT MIN(\"{$tableConfig['column']}\") AS oldest FROM \"{$table}\""
-            );
+                $estimate = DB::selectOne(
+                    'SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = ?',
+                    [$table]
+                );
 
-            $stats[] = [
-                'table' => $table,
-                'label' => $tableConfig['label'],
-                'total_estimate' => $estimate->estimate ?? 0,
-                'oldest' => $oldest->oldest ?? null,
-            ];
+                $oldest = DB::selectOne(
+                    "SELECT MIN(\"{$tableConfig['column']}\") AS oldest FROM \"{$table}\""
+                );
+
+                $stats[] = [
+                    'table' => $table,
+                    'label' => $tableConfig['label'],
+                    'total_estimate' => $estimate->estimate ?? 0,
+                    'oldest' => $oldest->oldest ?? null,
+                ];
+            } catch (\Throwable $e) {
+                Log::warning("Retention stats lookup failed for table {$table}", [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $stats;

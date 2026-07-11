@@ -37,7 +37,9 @@ trait ManagesSiteInfo
 
     public function getThemeIntegrityCheck(string $slug): array
     {
-        $response = $this->request('GET', '/theme-integrity-check', ['slug' => $slug]);
+        // GET args must ride the query string, not the signed body — see
+        // WordPressHttpClient::request() (GET-with-body HMAC mismatch).
+        $response = $this->request('GET', '/theme-integrity-check', [], ['slug' => $slug]);
         $response->throw();
 
         return $response->json();

@@ -7,6 +7,7 @@ namespace App\Services\WordPress;
 use App\Exceptions\WordPressApiException;
 use App\Models\Site;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -250,11 +251,25 @@ class WordPressHttpClient
     {
         [$url, $path] = $this->buildUrl($endpoint);
 
+        // GET requests cannot carry a signed body: PHP's HTTP client sends no
+        // request body on GET, but the HMAC is computed over METHOD|PATH|TS|NONCE|BODY.
+        // If args are placed in the body slot, the connector recomputes the
+        // signature over an empty body and rejects the request as INVALID_SIGNATURE
+        // (401). Fold any GET args into the query string — which the connector
+        // reads via get_param() — and sign an empty body so the signature matches
+        // exactly what is sent over the wire.
+        if (strtoupper($method) === 'GET' && ! empty($data)) {
+            $queryParams = array_merge($queryParams, $data);
+            $data = [];
+        }
+
         $queryParams['_nocache'] = time();
         $url .= '?'.http_build_query($queryParams);
         $body = ! empty($data) ? json_encode($data) : '';
 
         $response = $this->httpRequestWithRetry($method, $url, $path, $body, ['Accept' => 'application/json'], $timeout, $endpoint);
+
+        $this->detectSignatureFailure($response, $endpoint);
 
         if ($response->status() === 403 && str_contains($response->body(), 'Just a moment')) {
             throw new WordPressApiException(
@@ -300,6 +315,42 @@ class WordPressHttpClient
         }
 
         $this->curlDownloadWithRetry($url, $path, '', $saveTo, 1800);
+    }
+
+    /**
+     * Surface INVALID_SIGNATURE (401) responses and raise a fleet-wide warning
+     * when many sites reject our signatures within a short window — the exact
+     * signature of a protocol/signing regression that would otherwise fail
+     * silently (each call is swallowed as a per-site warning).
+     */
+    private function detectSignatureFailure(Response $response, string $endpoint): void
+    {
+        if ($response->status() !== 401 || ! str_contains($response->body(), 'INVALID_SIGNATURE')) {
+            return;
+        }
+
+        Log::warning('Connector rejected request signature (INVALID_SIGNATURE 401)', [
+            'site_id' => $this->site->id,
+            'endpoint' => $endpoint,
+        ]);
+
+        $bucket = 'wp_invalid_signature_'.now()->format('YmdH');
+        $count = (int) Cache::increment($bucket);
+        if ($count === 1) {
+            Cache::put($bucket, 1, now()->addHours(2));
+        }
+
+        $threshold = 25;
+        $alertedKey = $bucket.'_alerted';
+        if ($count >= $threshold && ! Cache::get($alertedKey)) {
+            Cache::put($alertedKey, true, now()->addHours(2));
+            Log::critical('Fleet-wide connector signing failure: many INVALID_SIGNATURE 401s this hour', [
+                'hourly_count' => $count,
+                'threshold' => $threshold,
+                'latest_site_id' => $this->site->id,
+                'latest_endpoint' => $endpoint,
+            ]);
+        }
     }
 
     public function throwIfFailed(Response $response): void
