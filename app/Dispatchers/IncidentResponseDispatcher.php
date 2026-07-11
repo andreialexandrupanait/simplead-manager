@@ -6,6 +6,7 @@ namespace App\Dispatchers;
 
 use App\Enums\IncidentTriggerType;
 use App\Jobs\RunIncidentResponse;
+use App\Models\IncidentResponse;
 use App\Models\SecurityIssue;
 use App\Models\VulnerabilityAlert;
 use App\Services\CircuitBreakerService;
@@ -41,13 +42,16 @@ class IncidentResponseDispatcher
                 ->where('circuit_state', '!=', 'open')
                 ->where('is_monitoring_disabled', false)
             )
-            ->whereDoesntHave('site.incidentResponses', fn ($q) => $q
-                ->where('trigger_type', IncidentTriggerType::Vulnerability)
-                ->where('created_at', '>=', now()->subMinutes(
-                    config('incident-response.safety.cooldown_minutes', 30)
-                ))
-            )
             ->with('site')
+            ->get()
+            // P0-21: suppress re-dispatch when the latest incident for this
+            // (site, trigger) is still running, escalated-and-unacknowledged, in
+            // cooldown, or inside an exponential failure backoff — otherwise a
+            // stuck incident re-runs the whole AI pipeline every tick forever.
+            ->reject(fn (VulnerabilityAlert $alert) => IncidentResponse::isRedispatchSuppressed(
+                $alert->site_id,
+                IncidentTriggerType::Vulnerability,
+            ))
             ->each(function (VulnerabilityAlert $alert) {
                 RunIncidentResponse::dispatch(
                     $alert->site,
@@ -75,13 +79,14 @@ class IncidentResponseDispatcher
                 ->where('circuit_state', '!=', 'open')
                 ->where('is_monitoring_disabled', false)
             )
-            ->whereDoesntHave('site.incidentResponses', fn ($q) => $q
-                ->where('trigger_type', IncidentTriggerType::SecurityCritical)
-                ->where('created_at', '>=', now()->subMinutes(
-                    config('incident-response.safety.cooldown_minutes', 30)
-                ))
-            )
             ->with('site')
+            ->get()
+            // P0-21: see dispatchVulnerabilityResponses — suppress re-dispatch of a
+            // still-active/escalated/backing-off incident for this (site, trigger).
+            ->reject(fn (SecurityIssue $issue) => IncidentResponse::isRedispatchSuppressed(
+                $issue->site_id,
+                IncidentTriggerType::SecurityCritical,
+            ))
             ->each(function (SecurityIssue $issue) {
                 RunIncidentResponse::dispatch(
                     $issue->site,

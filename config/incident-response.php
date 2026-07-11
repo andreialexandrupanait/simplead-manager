@@ -37,6 +37,10 @@ return [
         'max_actions_per_incident' => 10,
         'max_ai_calls_per_incident' => 5,
         'cooldown_minutes' => 30,
+        // Upper bound (minutes) for the exponential per-trigger backoff applied to
+        // persistently-failing incidents so a stuck trigger cannot loop the pipeline
+        // every cooldown window forever (P0-21). Defaults to 24h.
+        'max_backoff_minutes' => 1440,
         'max_incidents_per_site_per_hour' => 3,
         'always_backup_before_destructive' => true,
         'destructive_actions' => [

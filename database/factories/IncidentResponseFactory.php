@@ -35,8 +35,11 @@ class IncidentResponseFactory extends Factory
             'ai_calls_count' => 0,
             'total_tokens_used' => 0,
             'backup_created' => false,
+            'backup_id' => null,
             'resolved_at' => null,
             'escalated_at' => null,
+            'response_attempted_at' => now(),
+            'acknowledged_at' => null,
         ];
     }
 

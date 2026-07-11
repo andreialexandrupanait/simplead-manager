@@ -172,6 +172,10 @@ class IncidentActionExecutorTest extends TestCase
 
     public function test_deactivate_plugin_missing_id_returns_error(): void
     {
+        // deactivate_plugin is destructive (P0-20): give the incident a backup so
+        // the invariant is satisfied and we reach the plugin_id validation.
+        $this->response->update(['backup_created' => true]);
+
         $executor = $this->makeExecutor();
         $result = $executor->execute($this->response, $this->site, 'deactivate_plugin', 'ai_agent', []);
 
