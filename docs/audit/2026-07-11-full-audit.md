@@ -3,6 +3,16 @@
 
 Generated via an exhaustive multi-agent pass: a current-state map, 25 module/cross-cutting deep audits, adversarial verification of every Critical/High finding, and competitor research across the WordPress-management landscape. **265 findings** total; **45 Critical/High** survived adversarial verification (35 confirmed, 10 downgraded, 0 refuted). All claims cite `file:line`; the codebase is the source of truth. Read-only — no code, data, or deploy was touched.
 
+## Post-audit decisions (owner, 2026-07-11)
+
+These decisions were taken after the audit and OVERRIDE the roadmap/wow recommendations where they conflict. Competitor *facts* below are left intact; only SimpleAd's own recommendations are re-scoped.
+
+1. **No billing / subscriptions.** SimpleAd is an **internal tool** — the agency uses it to monitor its own clients, not a product sold per-seat. All Stripe/billing/monetization items are **dropped** (Future Module #5, roadmap Phase 2 item 4, exec-summary wow #2). "Client-facing" shrinks to **flawless white-label reports + status pages** — the surfaces clients actually receive — with no client login/checkout.
+2. **Backups — option B chosen: fix the existing incremental logic AND build the WP-CLI fast path.** Constraint: **no SSH to all clients**, and `shell_exec` is disabled on many target hosts. Therefore WP-CLI is **opportunistic, not universal** — the connector detects at runtime whether the host allows running WP-CLI (`proc_open`/`shell_exec` + a `wp-cli.phar`), uses it as the fast path where available, and falls back to the hardened pure-PHP/REST chunked path everywhere else. The hosting fleet is **mixed** (a meaningful subset has shell), so both paths get built fully with capability detection reported back per-site. See the revised Future Module #2.
+3. **Malware scanning — still pending.** Build-a-scanner vs. integrate-a-feed (Patchstack/WPScan → virtual patching) remains an open decision; virtual patching is the cheaper recommended direction but not yet chosen.
+
+---
+
 ## Table of Contents
 - [Executive Summary](#executive-summary)
 - [Part A — Per-module correctness & stability audit](#part-a--per-module-correctness--stability-audit)
@@ -70,7 +80,7 @@ SimpleAd Manager is a genuinely capable production SaaS: all 25 audited modules 
 
 1. **Safe Updates v2 + disposable staging** — before/after screenshots with pixel-diff thresholds, hold-for-approval with side-by-side diff UI, pre/post Lighthouse deltas (the performance pipeline already exists), and one-click staging built on the existing backup+restore machinery: restore to a sandboxed subdomain, run the safe update there, promote. Merging staging with safe updates is beyond anything WP Umbrella, ManageWP or WPMU DEV ship.
 
-2. **Stripe billing bound to MaintenancePlans + a real client portal** — recurring subscriptions, branded invoices, auto-pause of monitoring/reports (never the site) on non-payment, and monitoring-driven upsell prompts ("3 incidents last month → propose Pro plan"). Closes the monetization loop only WPMU DEV has — and theirs lacks SimpleAd's monitoring depth. The plan and client models are already in place.
+2. **Backup engine overhaul — hardened incrementals + opportunistic WP-CLI fast path** *(chosen 2026-07-11)* — fix the broken incremental chain logic (P0-03/04), then make backups fast and robust: connector-reported file/table deltas on the existing S3+Dropbox pipeline, plus an opportunistic WP-CLI path the connector uses only where the host allows it (no SSH needed), with automatic fallback to the pure-PHP path. Matches WP Umbrella/BlogVault on speed and restore-point density while running on *any* host. *(Billing was considered and dropped — internal tool.)*
 
 3. **Virtual patching + fleet-orchestrated edge WAF** — match the plugin/theme/core inventory SimpleAd already collects against a Patchstack/WPScan CVE feed, then push per-vulnerability virtual patches, geoblocking and bot rules to Cloudflare per site (integration already exists), with a connector fallback ruleset. "Exposed vs patched vs virtually-patched" per client, without building a malware scanner.
 
@@ -931,12 +941,15 @@ WOW: skip the PHP-plugin-firewall arms race and go to the edge — SimpleAd alre
 - **Complexity:** Layer (a) **M**; layer (b) **L**.
 - **Dependencies:** Patchstack/WPScan API license, existing integrity-scan hashes, connector file-shipping endpoint (connector version bump), AI incident-response module, action-items feed (MODULE #6).
 
-### 2. Incremental Backup Engine
-- **Client value:** Hourly/event-triggered restore points with near-zero site load; per-update rollback points become free.
-- **Gap closed:** BlogVault and Jetpack are forever-incremental with real-time event triggers; WP Umbrella ships encrypted incrementals with 50-day retention. SimpleAd only does full chunked backups.
-- **Design:** Connector reports changed files (reuse integrity-scan hashes) + changed tables; manager stores deltas on the existing S3+Dropbox pipeline and builds synthetic fulls server-side. Auto-prove every chain restorable via the existing restore-testing module ("verified restore point" badge). Add S3 Object Lock immutable tiers as a plan upsell.
-- **Complexity:** **XL** (delta format, synthetic-full compaction, chain integrity).
-- **Dependencies:** Connector 2.17+, existing backup/restore jobs, restore-testing module (MODULE #2), S3 lifecycle config. Note: a WP-CLI-based backup path is **not viable** as designed — `shell_exec` is disabled on target hosts (CLAUDE.md constraint); the connector-delta approach replaces it.
+### 2. Backup engine overhaul — hardened incrementals + opportunistic WP-CLI fast path *(CHOSEN — option B, 2026-07-11)*
+- **Client value:** Hourly/event-triggered restore points with near-zero site load; fast, robust backups on large sites; per-update rollback points become free.
+- **Gap closed:** BlogVault and Jetpack are forever-incremental with real-time event triggers; WP Umbrella ships encrypted incrementals with 50-day retention. SimpleAd already has a *partial* incremental path (`CreateIncrementalBackup`, `BackupManifestV3`, chain-aware retention) — but it is **broken** (P0-03 retention destroys valid chains, P0-04 zero-change incrementals fail). This module = fix that first, then make it fast and robust.
+- **Design (two tracks):**
+  1. **Fix + finish the pure-PHP/REST incremental path** (the universal workhorse — runs on ANY host, no shell). Land P0-03/P0-04 first, then: connector reports changed files (reuse integrity-scan hashes) + changed tables; manager stores deltas on the existing S3+Dropbox pipeline and builds synthetic fulls server-side; auto-prove every chain restorable via the existing restore-testing module ("verified restore point" badge).
+  2. **Opportunistic WP-CLI fast path.** The connector detects at runtime whether the host allows WP-CLI (`proc_open`/`shell_exec` available + a `wp-cli.phar` present or fetchable) and reports the capability back per-site into the manager. Where available → use `wp db export` / file streaming via WP-CLI for much faster large-site backups; where not → fall back to the pure-PHP path automatically. **Not SSH-based** — runs inside the WordPress process from the connector, so it needs zero SSH access from the platform. The fleet is mixed, so both paths ship fully.
+- **Complexity:** **XL** (delta format, synthetic-full compaction, chain integrity, connector capability detection + dual backup engines).
+- **Dependencies:** P0-03/P0-04 (fix the broken incremental logic first), connector 2.18+ (capability detection + WP-CLI runner, staged fleet rollout), existing backup/restore jobs, restore-testing module, S3 lifecycle config.
+- **Constraint note:** a "WP-CLI everywhere / SSH-based primary" design is NOT viable — no SSH to all clients and `shell_exec` disabled on many hosts (CLAUDE.md). Hence the capability-detected, connector-embedded, opportunistic approach above.
 
 ### 3. One-Click Staging & Cloning
 - **Client value:** Test updates and changes without risking production; clone sites for new-client spin-up.
@@ -954,19 +967,16 @@ WOW: skip the PHP-plugin-firewall arms race and go to the edge — SimpleAd alre
 
 ## Tier 2 — Revenue & retention differentiators
 
-### 5. Client Billing & Subscriptions (Stripe)
-- **Client value (agency):** Turns SimpleAd from a cost center into the agency's revenue engine — branded invoices, recurring plans, upsells.
-- **Gap closed:** Coverage "None"; WPMU DEV Hub has Stripe billing with 0% fees, sellable packages, and auto-suspension. No billing code exists in the repo.
-- **Design:** Stripe Billing attached to existing MaintenancePlans/Client models; packaged add-ons (extra backups, WAF, extra monitored pages); auto-pause monitoring/reports (never the site) on non-payment; monitoring-driven upsell prompts ("3 incidents last month → propose Pro plan").
-- **Complexity:** **L** (webhooks, dunning, invoice PDFs, VAT for RO/EU).
-- **Dependencies:** MaintenancePlans model, Client Portal v2 (checkout/invoice surface), Stripe account + Cashier.
+### 5. Client Billing & Subscriptions (Stripe) — ~~proposed~~ **DROPPED (2026-07-11)**
+- **Decision:** Not building. SimpleAd is an internal tool for monitoring the agency's own clients, not a per-seat product — there is no monetization loop to close. (Competitor billing capabilities are retained in Part C as *facts*, not as a target.)
+- *Original rationale, for the record:* WPMU DEV Hub has Stripe billing; SimpleAd has none. Superseded by the internal-tool decision.
 
-### 6. Client Portal v2 (White-Label)
-- **Client value:** Clients get a branded live dashboard instead of a throttled report link — the agency looks like it built its own platform.
-- **Gap closed:** WPMU DEV Hub Client offers white-label login on the agency's domain with live health, support requests, and billing. SimpleAd's portal is report-view-only.
-- **Design:** Magic-link login on agency custom domain, live uptime/security/performance widgets, report archive, in-portal recommendation approvals ("approved → done → value delivered"), request inbox. Add DKIM own-domain sending + token library + custom-work line items to the report pipeline as part of this module.
-- **Complexity:** **L**.
-- **Dependencies:** Existing portal/report pipeline, recommendations-approval flow, multi-domain routing + SSL, DKIM/SES setup. Prerequisite surface for Module 5.
+### 6. White-label report & status surface — ~~Client Portal v2 with login~~ **re-scoped (2026-07-11)**
+- **Decision:** No client login portal / billing (internal tool). Keep and polish the **branded report + status surface** clients already receive.
+- **Client value:** Clients get flawless, branded reports and a public status page — the agency looks like it built its own platform — without a login/checkout system to build and secure.
+- **Design (kept):** white-label branding on generated PDFs (logo, agency domain-of-record), DKIM own-domain report sending, in-report recommendation approvals, and Status Pages v2 (below). Dropped: magic-link login, per-client user accounts, request inbox, billing checkout.
+- **Complexity:** **M** (down from L).
+- **Dependencies:** existing report pipeline + recommendations-approval flow, DKIM/SES, CNAME for status pages.
 
 ### 7. Uptime SLA Contracts + Status Pages v2
 - **Client value:** Contractual proof of uptime ("99.9% attained, statement attached") plus a public client-facing status asset.
@@ -1024,9 +1034,9 @@ WOW: skip the PHP-plugin-firewall arms race and go to the edge — SimpleAd alre
 |---|---|---|---|
 | 1 | Vuln feed (Module 1a) | M | Cheapest large-perceived-value win; unblocks WAF virtual patching |
 | 2 | Safe Updates v2 visual regression | M | Fast, high-visibility, reuses existing rollback |
-| 3 | Client Portal v2 | L | Prerequisite for billing; immediate agency-brand value |
-| 4 | Billing & Subscriptions | L | Monetization loop; strongest strategic differentiator vs everyone except WPMU DEV |
-| 5 | Incremental backups | XL | Biggest engineering lift; unlocks staging + emergency restore economics |
+| 3 | White-label report/status polish | M | Agency-brand value; no login/billing (internal tool) |
+| 4 | ~~Billing & Subscriptions~~ | — | **Dropped** — internal tool, no monetization loop |
+| 5 | Backup engine overhaul (Module 2, chosen B) | XL | Biggest lift; unlocks staging + emergency restore economics; efficient full+incremental (see FM2) |
 | 6 | Staging/clone | L | Unique staging+safe-update fusion once 2 and 5 exist |
 | 7 | SLA + status pages v2 | M | Compounds monitoring strength into client-visible assets |
 | 8 | Off-server malware scan (1b) | L | Completes security story |
@@ -1070,24 +1080,23 @@ Three phases, mapped 1:1 to the production-readiness priorities. Each phase is i
 
 ## Phase 2 — Client-Facing Completeness
 
-**Goal:** Everything a paying client or their agency sees is correct, branded, and self-serve: flawless reports, live portal, status pages with SLA proof, and billing so the platform closes the revenue loop.
+**Goal:** Everything a client receives is correct and branded: flawless white-label reports and status pages with SLA proof. **No billing** (internal tool — decision 2026-07-11); "client-facing" here means the report/status surfaces clients are sent, not a login/checkout portal.
 
-**Why now:** Phase 1 makes the *data* trustworthy — Phase 2 is pointless before that (reports currently embed false DNS data, never-written Cloudflare metrics, and stale 28d Google caches; a portal on top of wrong data is a liability). With data integrity fixed, client-visible surfaces become the highest-leverage investment.
+**Why now:** Phase 1 makes the *data* trustworthy — Phase 2 is pointless before that (reports currently embed false DNS data, never-written Cloudflare metrics, and stale 28d Google caches; branded output on top of wrong data is a liability). With data integrity fixed, client-visible surfaces become the highest-leverage investment.
 
 **Included (dependency order):**
 
-1. **Report pipeline correctness cluster** — infrastructure section dead code (P2-01), Cloudflare report snapshot columns never written (P2-02), Google cache staleness/period mismatch (P2-03), recipient validation (P2-04), catch-all Throwable retry defeat (P1-25), monthly-run swallow (P1-26), stuck-generating recovery (P2-05). *Reports must be flawless before the portal advertises them.*
-2. **Portal hardening pre-work** — client CASCADE FK (P1-30), archived-client live portals (P2-06), portal report guard (P2-07), portal test coverage (part of P1-40). Small, but they gate exposing the portal more widely.
-3. **Client Portal v2 (MOD-06)** — white-label domain + magic link, live widgets, recommendation approvals, request inbox, DKIM own-domain sending. *Prerequisite surface for billing.*
-4. **Billing & Subscriptions (MOD-05)** — Stripe/Cashier on MaintenancePlans + Clients; dunning pauses monitoring/reports, never the site.
-5. **SLA contracts + Status Pages v2 (MOD-07)** — attainment statements through the (now-correct) report pipeline, subscriber notifications, maintenance windows. Depends on the notification correctness cluster from Phase 1 (P1-20..24) and the ProcessNotificationEscalations fix.
-6. **SSL-expiry monitoring** (P2-08) — the dead `check_ssl` plumbing exists; a client-visible gap competitors don't have.
+1. **Report pipeline correctness cluster** — infrastructure section dead code (P2-01), Cloudflare report snapshot columns never written (P2-02), Google cache staleness/period mismatch (P2-03), recipient validation (P2-04), catch-all Throwable retry defeat (P1-25), monthly-run swallow (P1-26), stuck-generating recovery (P2-05). *Reports must be flawless before they go out white-labeled.*
+2. **White-label report polish** — client CASCADE FK (P1-30), archived-client stale surfaces (P2-06), report-access guards (P2-07), report test coverage (part of P1-40), branding/logo/domain-of-record on generated PDFs.
+3. **SLA contracts + Status Pages v2 (MOD-07)** — attainment statements through the (now-correct) report pipeline, subscriber notifications, maintenance windows, CNAME custom domain. Depends on the notification correctness cluster from Phase 1 (P1-20..24) and the ProcessNotificationEscalations fix.
+4. **SSL-expiry monitoring** (P2-08) — the dead `check_ssl` plumbing exists; a client-visible gap competitors don't have.
+5. *(Dropped)* ~~Client Portal v2 with login~~ / ~~Billing & Subscriptions~~ — not needed for an internal tool. If clients ever need a live self-serve view later, the read-only token-link report/status surface already exists and can be extended without billing.
 
-**Dependencies:** Phase 1 Waves 1.2–1.3 (correct data + correct alerting); multi-domain routing/SSL and SES/DKIM setup for the portal; Stripe account.
+**Dependencies:** Phase 1 Waves 1.2–1.3 (correct data + correct alerting); SES/DKIM own-domain sending and CNAME routing for status pages.
 
-**Client safety:** all new surfaces are additive and feature-flagged per client; portal v2 ships to one pilot client first. Billing never gates site availability — enforced by design (auto-pause monitoring only).
+**Client safety:** all new surfaces are additive and feature-flagged; nothing here can affect a managed site's availability.
 
-**Rough effort:** ~8–10 engineer-weeks (reports cluster 1.5 wk; portal v2 3–4 wk; billing 2–3 wk; SLA/status 2 wk).
+**Rough effort:** ~4–5 engineer-weeks (reports cluster 1.5 wk; white-label polish 1 wk; SLA/status 2 wk). *(Down from ~8–10 wk with billing + login portal dropped.)*
 
 ---
 
@@ -1227,7 +1236,7 @@ Legend — Type: Fix/Harden/Wow · Effort: S (<½d) / M (1–3d) / L (1–2wk) /
 | P2-08 | SSL-expiry monitoring absent (dead check_ssl/ssl_expires_at plumbing, no UI writer) | Harden | Uptime | P2 | M | Low | — | Expiry checks + threshold alerts + client-visible badge | Client-facing win; plumbing exists |
 | P2-09 | Extend safe-update pipeline to themes, core, and bulk operations | Wow | Updates | P2 | L | Med | P0-07/08 | Themes/core/bulk get backup+verify+rollback | Pilot sites first |
 | P2-10 | MOD-06 Client Portal v2 (white-label domain, live widgets, approvals, DKIM sending) | Wow | Portal | P2 | XL | Med | Phase-1 data fixes, P2-01..07 | Pilot client using branded portal end-to-end | Feature-flag per client; pilot first |
-| P2-11 | MOD-05 Client Billing & Subscriptions (Stripe) | Wow | Billing | P2 | XL | Med | P2-10 | Plan checkout, invoices, dunning pauses monitoring only | Never gates site availability by design |
+| ~~P2-11~~ | ~~MOD-05 Client Billing & Subscriptions (Stripe)~~ — **DROPPED (internal tool, 2026-07-11)** | — | — | — | — | — | — | — | — |
 | P2-12 | MOD-07 Uptime SLA contracts + Status Pages v2 | Wow | Uptime/Status | P2 | L | Low | P1-05, P1-20..24 | Monthly attainment statement in report; subscriber notifications; maintenance posts | Additive surfaces |
 | P2-13 | MOD-01a Vulnerability feed (Patchstack/WPScan inventory matching) | Wow | Security | P2 | M | Low | API license | CVE matches in to-do feed; drives safe-update priority | Read-only layer |
 | P2-14 | MOD-04 Safe Updates v2 — visual regression screenshots | Wow | Updates | P2 | L | Med | P2-09, headless Chrome service | Before/after diff gates auto-rollback vs hold | New Docker service; pilot sites |
@@ -1344,9 +1353,12 @@ Legend — Type: Fix/Harden/Wow · Effort: S (<½d) / M (1–3d) / L (1–2wk) /
 - Live **connector 2.17.0** behaviour on the fleet for the new 2FA / unban / whitelist paths (staging validation still pending per the session notes).
 - External-feed liveness (Wordfence Intelligence, RDAP, Google/Cloudflare quotas) under real rate limits.
 
-### Open questions for the product owner
-- Billing/subscriptions: build in-app, or integrate an external biller? (Blocks the client-facing phase.)
-- Malware scanning: build a signature scanner, or integrate a third-party feed? (Licensing vs. build cost.)
-- Incremental backups vs. the current full-backup model — appetite for the connector-side work?
+### Decisions taken (2026-07-11) — see the "Post-audit decisions" callout at the top
+- **Billing/subscriptions:** ❌ Not building — internal tool.
+- **Backups:** ✅ Option B — fix the broken incremental logic AND build an efficient full+incremental engine with an opportunistic WP-CLI fast path (mixed fleet, no SSH, capability-detected). *Backup architecture is being (re)designed — see the "Backup engine — recommended architecture" note appended to Future Module #2.*
+
+### Still-open questions for the product owner
+- **Malware scanning:** build a signature scanner, or integrate a third-party feed (Patchstack/WPScan → virtual patching)? Recommendation leans to the feed/virtual-patching direction.
+- **Backup delta granularity:** file-level deltas (simpler) vs. block-level deltas (smaller transfer, more complex) — decided during the backup-engine design.
 
 *Generated 2026-07-11. Findings that imply code fixes should each become their own implementation session with tests and a safe-rollout plan — not applied in bulk.*
