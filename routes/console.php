@@ -48,6 +48,22 @@ Schedule::call(new IncidentResponseDispatcher)
     ->withoutOverlapping()
     ->onOneServer();
 
+// Belt-and-braces for SEC-A2-11: a kill -9'd worker never runs failed(), so
+// sweep incidents stuck non-terminal past 2× the job timeout (900s) — they
+// silently extend the cooldown window otherwise.
+Schedule::call(function () {
+    \App\Models\IncidentResponse::whereIn('status', [
+        \App\Enums\IncidentResponseStatus::Pending,
+        \App\Enums\IncidentResponseStatus::Diagnosing,
+        \App\Enums\IncidentResponseStatus::Executing,
+    ])
+        ->where('created_at', '<', now()->subMinutes(30))
+        ->each(fn ($incident) => $incident->markFailed('Stale — worker died without cleanup (auto-swept).'));
+})
+    ->everyFifteenMinutes()
+    ->name('incident-response-stale-sweep')
+    ->onOneServer();
+
 Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping()->onOneServer();
 
 // Daily broken links/images re-check (lightweight, no re-crawl)
