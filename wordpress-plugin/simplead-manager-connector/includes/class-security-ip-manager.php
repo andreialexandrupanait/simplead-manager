@@ -39,15 +39,21 @@ class SAM_Security_IP_Manager {
         $whitelist = $this->settings['whitelist'] ?? [];
         $blocklist = $this->settings['blocklist'] ?? [];
 
-        // If whitelist is not empty, only whitelisted IPs are allowed
-        if (!empty($whitelist)) {
-            if (!$this->ip_matches_list($ip, $whitelist)) {
-                $this->block_request($ip, 'IP not in whitelist');
-            }
+        // Explicitly whitelisted IPs are always trusted — skip all checks.
+        if (!empty($whitelist) && $this->ip_matches_list($ip, $whitelist)) {
             return;
         }
 
-        // Check blocklist
+        // The whitelist restricts AUTHENTICATION surfaces only (wp-login,
+        // wp-admin, XML-RPC, the custom login slug). It used to gate the whole
+        // site, so one admin whitelisting their office IP served 403s to every
+        // public visitor (audit E-43). Public pages stay public; use the
+        // blocklist to block bad actors site-wide.
+        if (!empty($whitelist) && $this->is_protected_path($request_uri)) {
+            $this->block_request($ip, 'IP not in whitelist');
+        }
+
+        // Check blocklist (site-wide)
         if (!empty($blocklist) && $this->ip_matches_list($ip, $blocklist)) {
             $this->block_request($ip, 'IP is blocklisted');
         }
@@ -60,6 +66,39 @@ class SAM_Security_IP_Manager {
                 $this->block_request($ip, 'IP banned: ' . ($ban['reason'] ?? 'brute force'));
             }
         }
+    }
+
+    /**
+     * Authentication surfaces the whitelist protects. Mirrors the allowances
+     * of the custom-login-URL enforcement (admin-ajax/admin-post stay open —
+     * front-end features depend on them).
+     */
+    private function is_protected_path(string $request_uri): bool {
+        $path = (string) wp_parse_url($request_uri, PHP_URL_PATH);
+
+        if (strpos($path, '/wp-login.php') !== false || strpos($path, '/xmlrpc.php') !== false) {
+            return true;
+        }
+
+        if (strpos($path, '/wp-admin') !== false) {
+            // admin-ajax/admin-post serve front-end features for anonymous visitors
+            if (strpos($path, '/wp-admin/admin-ajax.php') !== false ||
+                strpos($path, '/wp-admin/admin-post.php') !== false) {
+                return false;
+            }
+            return true;
+        }
+
+        // Custom login slug (when the login URL feature is active)
+        $login_settings = get_option('sam_security_login', []);
+        $slug = $login_settings['custom_login_url']['slug'] ?? '';
+        if (!empty($login_settings['custom_login_url']['enabled']) && $slug !== '') {
+            if (rtrim($path, '/') === '/' . $slug) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

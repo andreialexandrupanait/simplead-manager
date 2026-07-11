@@ -78,6 +78,8 @@ interface WordPressApiServiceInterface
 
     public function pushSecuritySettings(array $settings): array;
 
+    public function unbanIps(array $ips): array;
+
     public function getSecurityState(): array;
 
     public function applySecurityFix(string $key): array;

@@ -57,9 +57,12 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
                 $results = $response->json('results') ?? [];
                 $this->processResults($results);
 
-                // Sync banned IPs reported by WordPress
-                $bannedIps = $response->json('banned_ips') ?? [];
-                if (! empty($bannedIps)) {
+                // Sync banned IPs reported by WordPress. An empty array is
+                // authoritative ("no bans") — skipping it left a stale local
+                // row after the last IP was unbanned. Only a missing key
+                // (old connector) skips the sync.
+                $bannedIps = $response->json('banned_ips');
+                if (is_array($bannedIps)) {
                     app(SecuritySettingsService::class)->syncBannedIps($this->site, $bannedIps);
                 }
             } else {
