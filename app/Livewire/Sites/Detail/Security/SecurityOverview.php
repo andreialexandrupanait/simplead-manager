@@ -68,19 +68,19 @@ class SecurityOverview extends Component
     #[Computed]
     public function attentionItems(): Collection
     {
-        return collect(self::CATEGORY_LABELS)
-            ->map(function (string $label, string $key) {
-                $settings = $this->settingsByCategory->get($key, collect());
+        $items = [];
 
-                return [
-                    'key' => $key,
-                    'label' => __($label),
-                    'failed' => $settings->where('status', SecuritySettingStatus::Failed)->count(),
-                    'pending' => $settings->where('status', SecuritySettingStatus::Pending)->count(),
-                ];
-            })
-            ->filter(fn (array $item) => $item['failed'] > 0 || $item['pending'] > 0)
-            ->values();
+        foreach (self::CATEGORY_LABELS as $key => $label) {
+            $settings = $this->settingsByCategory->get($key, collect());
+            $failed = (int) $settings->where('status', SecuritySettingStatus::Failed)->count();
+            $pending = (int) $settings->where('status', SecuritySettingStatus::Pending)->count();
+
+            if ($failed > 0 || $pending > 0) {
+                $items[] = ['key' => $key, 'label' => (string) __($label), 'failed' => $failed, 'pending' => $pending];
+            }
+        }
+
+        return collect($items);
     }
 
     /** @return array{lastScanAt: string|null, openCriticalHigh: int} */
