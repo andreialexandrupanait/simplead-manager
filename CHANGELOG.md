@@ -7,6 +7,20 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Audit
+- **Full-application re-audit (2026-07-11).** Exhaustive multi-agent read-only pass:
+  current-state map, 25 module/cross-cutting deep audits, adversarial verification of
+  every Critical/High finding, and grounded competitor research (ManageWP, MainWP,
+  WP Umbrella, WPMU DEV, MalCare/BlogVault, Wordfence, Solid Security, Sucuri, UptimeRobot).
+  Single deliverable: [`docs/audit/2026-07-11-full-audit.md`](docs/audit/2026-07-11-full-audit.md).
+  Overall health **6.5/10** — feature-complete and well-architected, dragged down by a
+  silent-degradation posture and confirmed authz gaps. **265 findings**, **45 Critical/High**
+  verified (35 confirmed, 10 downgraded), a 3-phase go-to-production roadmap (Operational
+  Solidity → Client-facing → Parity + new modules) and a ~50-item P0-first backlog. The
+  2026-07-10 audit is superseded and removed (history in git); the reusable charter is
+  refreshed at `docs/audit/audit-charter.md`.
+
+
 ## [2026-07-11]
 
 ### Security module — design-only features made functional (PRs #43-#47)
