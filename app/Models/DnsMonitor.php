@@ -9,12 +9,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property array|null $current_records
+ * @property array|null $previous_records
+ * @property array|null $pending_records
+ */
 class DnsMonitor extends Model
 {
     protected $fillable = [
         'site_id', 'domain', 'is_active', 'interval_minutes',
         'last_checked_at', 'next_check_at', 'current_records',
-        'previous_records', 'has_changes', 'dkim_selectors',
+        'previous_records', 'pending_records', 'has_changes', 'dkim_selectors',
     ];
 
     protected $casts = [
@@ -22,6 +27,7 @@ class DnsMonitor extends Model
         'has_changes' => 'boolean',
         'current_records' => 'array',
         'previous_records' => 'array',
+        'pending_records' => 'array',
         'dkim_selectors' => 'array',
         'last_checked_at' => 'datetime',
         'next_check_at' => 'datetime',

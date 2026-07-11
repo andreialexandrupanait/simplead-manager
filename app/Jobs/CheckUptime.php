@@ -24,6 +24,12 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * Seconds added on top of the monitor's own request timeout so the worker
+     * is never SIGKILLed mid-check (which would record nothing — a silent gap).
+     */
+    private const TIMEOUT_BUFFER_SECONDS = 15;
+
     public int $tries = 3;
 
     public int $timeout = 30;
@@ -34,6 +40,13 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         public UptimeMonitor $monitor
     ) {
         $this->onQueue('uptime');
+
+        // Derive the job timeout from the monitor's configured request timeout
+        // (user-settable 5–120s) plus a buffer. Without this, a monitor timeout
+        // >= the fixed 30s worker cap gets the process killed before saveCheck()
+        // runs, producing no check row and no down alert. Stays well below the
+        // redis connection retry_after (7200s) so no double-processing.
+        $this->timeout = (int) $this->monitor->timeout + self::TIMEOUT_BUFFER_SECONDS;
     }
 
     public function uniqueId(): string
@@ -84,6 +97,41 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
     public function failed(?\Throwable $exception): void
     {
         JobTracker::fail($this->uniqueId(), 'Uptime check failed: '.($exception?->getMessage() ?? 'Unknown error'));
+
+        // A timed-out or killed worker never reaches handle()'s saveCheck()/state
+        // update, so without this the monitor would record nothing (silent gap)
+        // and — because next_check_at only advances after a successful probe —
+        // the dispatcher would relaunch a failing job every minute. Record a
+        // synthetic failed check and advance next_check_at so neither happens.
+        try {
+            $result = [
+                'is_up' => false,
+                'response_time' => null,
+                'status_code' => null,
+                'failure_reason' => $this->sanitizeErrorMessage(
+                    $exception?->getMessage() ?? 'Check aborted (timeout or worker killed)'
+                ),
+                'keyword_found' => null,
+            ];
+
+            $this->saveCheck($result);
+            $this->updateMonitorState($result);
+            $this->updateUptimeStats();
+            $this->handleFailure($result);
+
+            /** @var Site|null $monitorSite */
+            $monitorSite = $this->monitor->site;
+            if ($monitorSite) {
+                $monitorSite->update([
+                    'is_up' => $this->monitor->current_state === MonitorState::Up,
+                    'uptime_percentage' => $this->monitor->uptime_30d,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error(
+                'Failed to record synthetic uptime failure for monitor '.$this->monitor->id.': '.$e->getMessage()
+            );
+        }
     }
 
     protected function performCheck(): array

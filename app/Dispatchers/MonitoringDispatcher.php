@@ -42,6 +42,12 @@ class MonitoringDispatcher
 
         PerformanceMonitor::query()
             ->where('is_active', true)
+            // Only auto-run monitors on a real recurring cadence. 'manual' (and
+            // any other value) leaves next_test_at null forever, which the due
+            // check below would otherwise treat as "due" every single minute —
+            // a PSI test loop that burns the API quota. Manual monitors run only
+            // when triggered from the UI.
+            ->whereIn('frequency', ['daily', 'weekly'])
             ->where(fn ($q) => $q->whereNull('next_test_at')->orWhere('next_test_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q
                 ->whereNull('deleted_at')
