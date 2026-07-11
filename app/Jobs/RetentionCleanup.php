@@ -16,6 +16,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RetentionCleanup implements ShouldQueue
 {
@@ -75,16 +76,34 @@ class RetentionCleanup implements ShouldQueue
                     break;
                 }
 
-                $deleted = $this->deleteInBatches(
-                    table: $tableConfig['table'],
-                    column: $tableConfig['column'],
-                    colType: $tableConfig['col_type'],
-                    cutoff: $cutoff,
-                    condition: $tableConfig['condition'],
-                    deadline: $deadline,
-                );
+                // Isolate each table: a single bad table (e.g. one dropped by a
+                // migration but still lingering in a stale config) must never
+                // abort the whole nightly run — the later categories still need
+                // to prune. Log and continue instead of throwing.
+                try {
+                    if (! Schema::hasTable($tableConfig['table'])) {
+                        Log::warning("Retention cleanup skipped missing table: {$tableConfig['table']}");
 
-                $categoryDeleted += $deleted;
+                        continue;
+                    }
+
+                    $deleted = $this->deleteInBatches(
+                        table: $tableConfig['table'],
+                        column: $tableConfig['column'],
+                        colType: $tableConfig['col_type'],
+                        cutoff: $cutoff,
+                        condition: $tableConfig['condition'],
+                        deadline: $deadline,
+                    );
+
+                    $categoryDeleted += $deleted;
+                } catch (\Throwable $e) {
+                    Log::error("Retention cleanup failed for table {$tableConfig['table']}", [
+                        'category' => $categoryKey,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                    ]);
+                }
             }
 
             $categoryResults[$categoryKey] = [
