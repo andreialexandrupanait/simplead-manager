@@ -206,6 +206,8 @@ class NotificationEscalationPipelineTest extends TestCase
 
     public function test_ack_endpoint_marks_the_log_acknowledged(): void
     {
+        $this->withoutVite(); // the acknowledged view uses @vite; CI has no built assets
+
         $log = $this->logFor($this->slackChannel(), ['ack_token' => str_repeat('a', 64)]);
 
         $this->get(route('notifications.ack', str_repeat('a', 64)))->assertOk();
