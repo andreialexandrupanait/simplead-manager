@@ -83,6 +83,14 @@ class UpdateConnectorPlugin extends Command
                 $data = $response->json();
                 $old = $data['old_version'] ?? '?';
                 $new = $data['new_version'] ?? '?';
+
+                // Keep the fleet-version column accurate — only the queued
+                // PushConnectorPlugin path used to write it, so CLI pushes
+                // left sites.connector_version stale.
+                if (is_string($data['new_version'] ?? null) && $data['new_version'] !== '') {
+                    $site->update(['connector_version' => $data['new_version']]);
+                }
+
                 $this->info("  ✓ {$label}: {$old} → {$new}");
 
                 return true;
