@@ -237,3 +237,11 @@ Schedule::command('security:maintenance recalculate-scores')
     ->dailyAt('06:00')
     ->name('security-score-recalculation')
     ->onOneServer();
+
+// Recover restores whose worker died without cleanup (audit E-23) — the
+// heartbeat threshold exceeds RestoreBackup's 3600s timeout, so anything it
+// catches is genuinely dead, not slow.
+Schedule::command('backups:recover-stuck-restores')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-restores')
+    ->onOneServer();
