@@ -19,6 +19,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Site Operation Lock Store
+    |--------------------------------------------------------------------------
+    |
+    | Safety locks (SiteOperationLock) must survive cache-store eviction. The
+    | shared Redis runs volatile-lru, where TTL'd keys — locks included — are
+    | eviction candidates under memory pressure (audit E-06), so locks default
+    | to the database store instead.
+    |
+    */
+
+    'site_operation_lock_store' => env('SITE_OPERATION_LOCK_STORE', 'database'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Stores
     |--------------------------------------------------------------------------
     |

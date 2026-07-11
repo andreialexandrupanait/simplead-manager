@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -18,6 +19,11 @@ use Illuminate\Support\Str;
  * Re-entrancy: jobs that run nested operations synchronously (e.g. RunSafeUpdate
  * dispatching CreateBackup via dispatchSync) pass their token down; the callee
  * sees the lock is owned by its caller and proceeds without re-acquiring.
+ *
+ * Storage: locks live on a non-evictable store (database by default, see
+ * cache.site_operation_lock_store). The shared Redis runs volatile-lru, where
+ * a TTL'd lock key is an eviction candidate under memory pressure — an evicted
+ * lock would let a restore run concurrently with a backup (audit E-06).
  */
 class SiteOperationLock
 {
@@ -39,11 +45,11 @@ class SiteOperationLock
     {
         $token = $operation.':'.Str::random(24);
 
-        if (! Cache::add(self::key($siteId), $token, self::TTL_SECONDS)) {
+        if (! self::store()->add(self::key($siteId), $token, self::TTL_SECONDS)) {
             return null;
         }
 
-        Cache::put(self::metaKey($siteId), [
+        self::store()->put(self::metaKey($siteId), [
             'operation' => $operation,
             'ref' => $ref,
             'acquired_at' => now()->toIso8601String(),
@@ -59,27 +65,27 @@ class SiteOperationLock
             return;
         }
 
-        if (Cache::get(self::key($siteId)) === $token) {
-            Cache::forget(self::key($siteId));
-            Cache::forget(self::metaKey($siteId));
+        if (self::store()->get(self::key($siteId)) === $token) {
+            self::store()->forget(self::key($siteId));
+            self::store()->forget(self::metaKey($siteId));
         }
     }
 
     /** Unconditional release — operator tooling (backup:release-lock) only. */
     public static function forceRelease(int $siteId): void
     {
-        Cache::forget(self::key($siteId));
-        Cache::forget(self::metaKey($siteId));
+        self::store()->forget(self::key($siteId));
+        self::store()->forget(self::metaKey($siteId));
     }
 
     public static function isOwnedBy(int $siteId, ?string $token): bool
     {
-        return $token !== null && Cache::get(self::key($siteId)) === $token;
+        return $token !== null && self::store()->get(self::key($siteId)) === $token;
     }
 
     public static function isHeld(int $siteId): bool
     {
-        return Cache::get(self::key($siteId)) !== null;
+        return self::store()->get(self::key($siteId)) !== null;
     }
 
     /** @return array{operation: string, ref: string, acquired_at: string}|null */
@@ -89,7 +95,12 @@ class SiteOperationLock
             return null;
         }
 
-        return Cache::get(self::metaKey($siteId));
+        return self::store()->get(self::metaKey($siteId));
+    }
+
+    private static function store(): Repository
+    {
+        return Cache::store(config('cache.site_operation_lock_store', 'database'));
     }
 
     private static function key(int $siteId): string

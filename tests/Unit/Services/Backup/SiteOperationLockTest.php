@@ -5,10 +5,26 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Backup;
 
 use App\Services\Backup\SiteOperationLock;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class SiteOperationLockTest extends TestCase
 {
+    use RefreshDatabase; // locks live on the database store (audit E-06)
+
+    /** E-06: flushing/evicting the default cache store must not drop the lock. */
+    public function test_lock_survives_a_default_cache_store_flush(): void
+    {
+        $token = SiteOperationLock::acquire(1, SiteOperationLock::OPERATION_RESTORE);
+        $this->assertNotNull($token);
+
+        Cache::flush();
+
+        $this->assertTrue(SiteOperationLock::isHeld(1));
+        $this->assertTrue(SiteOperationLock::isOwnedBy(1, $token));
+    }
+
     public function test_acquire_returns_token_and_blocks_second_acquire(): void
     {
         $token = SiteOperationLock::acquire(1, SiteOperationLock::OPERATION_RESTORE, 'backup:5');
