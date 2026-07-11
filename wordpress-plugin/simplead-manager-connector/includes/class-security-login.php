@@ -283,4 +283,32 @@ class SAM_Security_Login {
     public static function get_banned_ips(): array {
         return get_option('sam_banned_ips', []);
     }
+
+    /**
+     * Unban IPs pushed from the manager. Clears BOTH enforcement points:
+     * the persistent ban option and the brute-force counter transient
+     * (otherwise the next failed attempt re-bans instantly).
+     *
+     * @param string[] $ips
+     * @return string[] IPs that were actually banned and are now removed
+     */
+    public static function unban_ips(array $ips): array {
+        $banned = get_option('sam_banned_ips', []);
+        $removed = [];
+
+        foreach ($ips as $ip) {
+            if (isset($banned[$ip])) {
+                unset($banned[$ip]);
+                $removed[] = $ip;
+            }
+            delete_transient('sam_bf_' . md5($ip));
+        }
+
+        if (!empty($removed)) {
+            update_option('sam_banned_ips', $banned);
+            SAM_Audit_Logger::log('security_ips_unbanned', 'security', 'unban', 'Unbanned IPs: ' . implode(', ', $removed));
+        }
+
+        return $removed;
+    }
 }

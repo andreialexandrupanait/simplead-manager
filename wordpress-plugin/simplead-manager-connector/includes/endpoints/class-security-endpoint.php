@@ -297,6 +297,13 @@ class SAM_Security_Endpoint extends SAM_Endpoint_Base {
             case 'disable_trackbacks':
                 $result = $this->fix_disable_trackbacks();
                 break;
+            case 'disable_directory_listing':
+                // Reuse the tagged-section htaccess writer (atomic write,
+                // self-check, rollback) — its rules map already has this key.
+                $htaccess = new SAM_Security_Htaccess();
+                $r = $htaccess->apply_settings(['disable_directory_listing' => true]);
+                $result = $r['disable_directory_listing'] ?? ['success' => false, 'message' => 'Unknown error.'];
+                break;
             default:
                 $result = ['success' => false, 'message' => 'Unknown fix key.'];
                 break;

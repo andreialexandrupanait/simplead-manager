@@ -120,6 +120,22 @@ class SAM_Security_Settings_Endpoint extends SAM_Endpoint_Base {
             }
         }
 
+        // Unban IPs — clears both enforcement points (banned option + brute-force
+        // transient) so a manager-side unban actually reaches WordPress.
+        if (!empty($params['unban_ips']) && is_array($params['unban_ips'])) {
+            try {
+                $results['unban'] = [
+                    'success' => true,
+                    'removed' => SAM_Security_Login::unban_ips(array_map('strval', $params['unban_ips'])),
+                ];
+            } catch (\Throwable $e) {
+                $results['unban'] = [
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ];
+            }
+        }
+
         // Refresh the MU-plugin so it picks up the new settings on next request
         SAM_MU_Plugin_Manager::install();
 

@@ -31,6 +31,12 @@
     </div>
 
     @if($subTab === 'whitelist' || $subTab === 'blocklist')
+        @if($subTab === 'whitelist')
+            <div class="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                {{ __('The whitelist restricts login, wp-admin and XML-RPC only — public pages remain accessible to everyone. Use the blocklist to block an IP site-wide.') }}
+            </div>
+        @endif
+
         {{-- Add IP Form --}}
         <x-ui.card class="mb-6">
             <h4 class="text-sm font-semibold text-gray-900 mb-3">{{ __('Add to') }} {{ ucfirst($subTab) }}</h4>

@@ -156,11 +156,36 @@ class SecurityIpManagement extends Component
     {
         $this->authorizeSiteModification($this->site);
 
-        SecurityBannedIp::where('id', $id)
+        $banned = SecurityBannedIp::where('id', $id)
             ->where('site_id', $this->site->id)
-            ->delete();
+            ->first();
 
+        if (! $banned) {
+            return;
+        }
+
+        // The ban lives on the WordPress side (option + brute-force transient);
+        // deleting only the local row meant it reappeared on the next sync.
+        try {
+            $response = app(\App\Services\WordPressApiServiceFactory::class)
+                ->make($this->site)
+                ->unbanIps([$banned->ip_address]);
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: 'Could not unban on the site: '.$e->getMessage());
+
+            return;
+        }
+
+        $stillBanned = array_key_exists($banned->ip_address, $response['banned_ips'] ?? []);
+        if (! isset($response['results']['unban']) && $stillBanned) {
+            $this->dispatch('notify', type: 'warning', message: 'The site connector needs updating before IPs can be unbanned remotely.');
+
+            return;
+        }
+
+        $banned->delete();
         unset($this->bannedIps);
+        $this->dispatch('notify', type: 'success', message: "IP {$banned->ip_address} unbanned.");
     }
 
     public function saveFirewallSettings(): void

@@ -22,6 +22,19 @@ trait ManagesSecurity
         return $response->json();
     }
 
+    /**
+     * Unban IPs on the WordPress side (connector >= 2.17: clears the ban
+     * option and the brute-force transient). Returns the full response so
+     * callers can inspect results.unban and the fresh banned_ips list.
+     */
+    public function unbanIps(array $ips): array
+    {
+        $response = $this->request('POST', '/security-settings', ['unban_ips' => $ips]);
+        $this->throwIfFailed($response);
+
+        return $response->json();
+    }
+
     public function getSecurityState(): array
     {
         $response = $this->request('GET', '/security-state');
