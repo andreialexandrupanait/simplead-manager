@@ -661,13 +661,14 @@ class SiteSeoAudit extends Component
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-meta', [
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02).
+            $response = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('POST', '/seo/update-meta', [
                     'url' => $this->fixUrl,
                     'meta_title' => $this->fixTitle,
                     'meta_description' => $this->fixDescription,
-                ]);
+                ], timeout: 15);
 
             if ($response->successful()) {
                 \App\Services\ActivityLogger::log('seo_fix', 'info', 'Meta fix applied', $this->fixUrl, $this->site, ['fix_type' => 'meta', 'url' => $this->fixUrl, 'title' => $this->fixTitle]);
@@ -700,12 +701,13 @@ class SiteSeoAudit extends Component
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-robots', [
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02).
+            $response = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('POST', '/seo/update-robots', [
                     'url' => $this->fixRobotsUrl,
                     'action' => $this->fixRobotsAction,
-                ]);
+                ], timeout: 15);
 
             if ($response->successful()) {
                 \App\Services\ActivityLogger::log('seo_fix', 'info', 'Indexing fix: '.$this->fixRobotsAction, $this->fixRobotsUrl, $this->site, ['fix_type' => 'robots', 'action' => $this->fixRobotsAction, 'url' => $this->fixRobotsUrl]);
@@ -737,12 +739,13 @@ class SiteSeoAudit extends Component
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-canonical', [
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02).
+            $response = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('POST', '/seo/update-canonical', [
                     'url' => $this->fixCanonicalUrl,
                     'canonical_url' => $this->fixCanonicalTarget,
-                ]);
+                ], timeout: 15);
 
             if ($response->successful()) {
                 \App\Services\ActivityLogger::log('seo_fix', 'info', 'Canonical fix applied', $this->fixCanonicalUrl, $this->site, ['fix_type' => 'canonical', 'url' => $this->fixCanonicalUrl, 'canonical' => $this->fixCanonicalTarget]);
@@ -778,14 +781,15 @@ class SiteSeoAudit extends Component
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/update-og', [
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02).
+            $response = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('POST', '/seo/update-og', [
                     'url' => $this->fixOgUrl,
                     'og_title' => $this->fixOgTitle,
                     'og_description' => $this->fixOgDescription,
                     'og_image' => $this->fixOgImage,
-                ]);
+                ], timeout: 15);
 
             if ($response->successful()) {
                 \App\Services\ActivityLogger::log('seo_fix', 'info', 'Open Graph fix applied', $this->fixOgUrl, $this->site, ['fix_type' => 'og', 'url' => $this->fixOgUrl]);
@@ -810,11 +814,12 @@ class SiteSeoAudit extends Component
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                ->post(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/toggle-search-visibility', [
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02).
+            $response = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('POST', '/seo/toggle-search-visibility', [
                     'visible' => true,
-                ]);
+                ], timeout: 15);
 
             if ($response->successful()) {
                 \App\Services\ActivityLogger::log('seo_fix', 'info', 'Search visibility enabled', null, $this->site, ['fix_type' => 'search_visibility']);
