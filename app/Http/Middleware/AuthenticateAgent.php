@@ -19,8 +19,9 @@ class AuthenticateAgent
             return response()->json(['error' => 'Missing site token.'], 401);
         }
 
-        // Find site by API key
-        $site = Site::where('api_key', $siteToken)->first();
+        // Find site by the deterministic hash — api_key itself is encrypted at
+        // rest with a random IV, so a WHERE on it can never match (SC-A2-03).
+        $site = Site::where('api_key_hash', hash('sha256', $siteToken))->first();
 
         if (! $site) {
             return response()->json(['error' => 'Invalid site token.'], 401);

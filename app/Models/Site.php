@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $custom_login_slug
  * @property string $type
  * @property string|null $api_key
+ * @property string|null $api_key_hash
  * @property string|null $api_secret
  * @property string|null $api_endpoint
  * @property bool $is_connected
@@ -206,6 +207,14 @@ class Site extends Model
         static::creating(function (Site $site) {
             if (! $site->sort_order) {
                 $site->sort_order = (static::max('sort_order') ?? 0) + 1;
+            }
+        });
+
+        // Keep the deterministic agent-auth lookup hash in sync with the
+        // encrypted api_key (SC-A2-03) no matter which code path writes it.
+        static::saving(function (Site $site) {
+            if ($site->isDirty('api_key')) {
+                $site->api_key_hash = $site->api_key !== null ? hash('sha256', $site->api_key) : null;
             }
         });
 
