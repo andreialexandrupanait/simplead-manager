@@ -46,4 +46,42 @@ class PerformanceDispatchTest extends TestCase
 
         Queue::assertNotPushed(RunPerformanceTest::class);
     }
+
+    /**
+     * P0-19: a 'manual' monitor leaves next_test_at null forever, which the due
+     * check treated as "due" every minute — an every-minute PSI test loop.
+     * Manual monitors must never auto-run.
+     */
+    public function test_manual_frequency_monitor_is_never_dispatched(): void
+    {
+        Queue::fake();
+
+        $site = Site::factory()->create(['is_connected' => true]);
+        SiteHealthState::create(['site_id' => $site->id]);
+        PerformanceMonitor::create([
+            'site_id' => $site->id,
+            'frequency' => 'manual', // next_test_at null (default)
+        ]);
+
+        (new MonitoringDispatcher)();
+
+        Queue::assertNotPushed(RunPerformanceTest::class);
+    }
+
+    public function test_weekly_frequency_monitor_is_dispatched_when_due(): void
+    {
+        Queue::fake();
+
+        $site = Site::factory()->create(['is_connected' => true]);
+        SiteHealthState::create(['site_id' => $site->id]);
+        PerformanceMonitor::create([
+            'site_id' => $site->id,
+            'frequency' => 'weekly',
+            'next_test_at' => now()->subMinute(),
+        ]);
+
+        (new MonitoringDispatcher)();
+
+        Queue::assertPushed(RunPerformanceTest::class, fn ($job) => $job->monitor->site_id === $site->id);
+    }
 }

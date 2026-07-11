@@ -42,23 +42,78 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
     public function handle(): void
     {
         $domain = $this->monitor->domain;
+        $nextCheckAt = now()->addMinutes($this->monitor->interval_minutes);
 
         try {
-            $records = $this->fetchDnsRecords($domain);
+            [$records, $failedTypes] = $this->fetchDnsRecords($domain);
 
-            $previousRecords = $this->monitor->current_records;
-            $changes = [];
+            $confirmed = $this->monitor->current_records;
 
-            if ($previousRecords !== null) {
-                $changes = $this->detectChanges($previousRecords, $records);
+            // Carry forward the last confirmed value for any record type whose
+            // lookup transiently failed (resolver returned false). This prevents
+            // a DNS blip from being read as "records deleted" — both for change
+            // detection and for the value that flows into client reports.
+            if ($confirmed !== null) {
+                foreach ($failedTypes as $label) {
+                    if (array_key_exists($label, $confirmed)) {
+                        $records[$label] = $confirmed[$label];
+                    }
+                }
             }
 
+            // First-ever check: just record the baseline, never alert.
+            if ($confirmed === null) {
+                $this->monitor->update([
+                    'current_records' => $records,
+                    'pending_records' => null,
+                    'has_changes' => false,
+                    'last_checked_at' => now(),
+                    'next_check_at' => $nextCheckAt,
+                ]);
+
+                return;
+            }
+
+            $changes = $this->detectChanges($confirmed, $records);
+
+            // Stable — matches the confirmed state. Refresh timestamps and clear
+            // any half-observed candidate.
+            if (empty($changes)) {
+                $this->monitor->update([
+                    'current_records' => $records,
+                    'pending_records' => null,
+                    'has_changes' => false,
+                    'last_checked_at' => now(),
+                    'next_check_at' => $nextCheckAt,
+                ]);
+
+                return;
+            }
+
+            // A change vs the confirmed state — require two consecutive identical
+            // observations before acting. On the first sighting, hold it as a
+            // pending candidate and wait for the next check.
+            $pending = $this->monitor->pending_records;
+            $confirmedThisTime = $pending !== null && empty($this->detectChanges($pending, $records));
+
+            if (! $confirmedThisTime) {
+                $this->monitor->update([
+                    'pending_records' => $records,
+                    'last_checked_at' => now(),
+                    'next_check_at' => $nextCheckAt,
+                ]);
+
+                return;
+            }
+
+            // Second consecutive identical observation — commit the change.
             $this->monitor->update([
-                'previous_records' => $previousRecords,
+                'previous_records' => $confirmed,
                 'current_records' => $records,
-                'has_changes' => ! empty($changes),
+                'pending_records' => null,
+                'has_changes' => true,
                 'last_checked_at' => now(),
-                'next_check_at' => now()->addMinutes($this->monitor->interval_minutes),
+                'next_check_at' => $nextCheckAt,
             ]);
 
             foreach ($changes as $change) {
@@ -71,7 +126,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 ]);
             }
 
-            if (! empty($changes) && $this->monitor->site) {
+            if ($this->monitor->site) {
                 $types = implode(', ', array_column($changes, 'type'));
 
                 NotificationService::notifySiteEvent(
@@ -97,14 +152,21 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
             $this->monitor->update([
                 'last_checked_at' => now(),
-                'next_check_at' => now()->addMinutes($this->monitor->interval_minutes),
+                'next_check_at' => $nextCheckAt,
             ]);
         }
     }
 
-    private function fetchDnsRecords(string $domain): array
+    /**
+     * @return array{0: array<string, mixed>, 1: list<string>} the records and the
+     *                                                         list of record-type
+     *                                                         labels whose lookup
+     *                                                         transiently failed
+     */
+    protected function fetchDnsRecords(string $domain): array
     {
         $records = [];
+        $failed = [];
 
         $types = [
             DNS_A => 'A',
@@ -119,7 +181,10 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
             $result = @dns_get_record($domain, $dnsType);
 
             if ($result === false) {
+                // Transient resolver failure — placeholder is overwritten by the
+                // carried-forward value in handle(); flag so it is not compared.
                 $records[$label] = [];
+                $failed[] = $label;
 
                 continue;
             }
@@ -137,28 +202,53 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
             })->filter()->sort()->values()->all();
         }
 
-        $records['DMARC'] = $this->fetchDmarcRecords($domain);
-        $records['DKIM'] = $this->fetchDkimRecords($domain);
+        [$dmarc, $dmarcFailed] = $this->fetchDmarcRecords($domain);
+        $records['DMARC'] = $dmarc;
+        if ($dmarcFailed) {
+            $failed[] = 'DMARC';
+        }
 
-        return $records;
+        [$dkim, $dkimFailed] = $this->fetchDkimRecords($domain);
+        $records['DKIM'] = $dkim;
+        if ($dkimFailed) {
+            $failed[] = 'DKIM';
+        }
+
+        return [$records, $failed];
     }
 
+    /**
+     * @return array{0: list<string>, 1: bool} the DMARC records and whether the
+     *                                         lookup transiently failed
+     */
     private function fetchDmarcRecords(string $domain): array
     {
         $result = @dns_get_record('_dmarc.'.$domain, DNS_TXT);
 
-        if (! is_array($result) || $result === []) {
-            return [];
+        // false = resolver error (transient); [] = genuinely no DMARC record.
+        if ($result === false) {
+            return [[], true];
         }
 
-        return collect($result)
+        if ($result === []) {
+            return [[], false];
+        }
+
+        $records = collect($result)
             ->map(fn ($r) => $r['txt'] ?? null)
             ->filter(fn ($txt) => is_string($txt) && stripos($txt, 'v=DMARC1') !== false)
             ->sort()
             ->values()
             ->all();
+
+        return [$records, false];
     }
 
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: bool} the DKIM records and
+     *                                                       whether a lookup
+     *                                                       transiently failed
+     */
     private function fetchDkimRecords(string $domain): array
     {
         $discovery = app(DnsSelectorDiscoveryService::class);
@@ -167,11 +257,18 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
         $found = [];
         $confirmedSelectors = [];
+        $hadResolverError = false;
 
         foreach ($selectors as $selector) {
             $result = @dns_get_record($selector.'._domainkey.'.$domain, DNS_TXT);
 
-            if (! is_array($result) || $result === []) {
+            if ($result === false) {
+                $hadResolverError = true;
+
+                continue;
+            }
+
+            if ($result === []) {
                 continue;
             }
 
@@ -198,7 +295,9 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
         $this->persistDiscoveredSelectors($confirmedSelectors);
 
-        return $found;
+        // Treat as a transient failure only when a resolver error occurred and
+        // nothing was found — otherwise partial/complete results are trustworthy.
+        return [$found, $hadResolverError && $found === []];
     }
 
     private function persistDiscoveredSelectors(array $confirmed): void

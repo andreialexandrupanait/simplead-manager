@@ -33,7 +33,7 @@ trait WithPerformanceSettings
         }
 
         $this->validate([
-            'settingsFrequency' => 'required|in:daily,weekly,monthly',
+            'settingsFrequency' => 'required|in:manual,daily,weekly',
             'settingsTestTime' => 'required|date_format:H:i',
             'settingsThreshold' => 'required|integer|min:1|max:100',
         ]);

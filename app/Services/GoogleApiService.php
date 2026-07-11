@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\GoogleConnection;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Http;
 
 class GoogleApiService
@@ -30,7 +31,8 @@ class GoogleApiService
 
             $refreshToken = decrypt($this->connection->refresh_token);
         } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-            $this->connection->update(['is_active' => false]);
+            // Corrupt stored token — a permanent error; reconnection is required.
+            $this->deactivate('Stored Google token could not be decrypted; reconnection required.');
             throw new \Exception('Google token encryption is invalid. Please reconnect your Google account in Settings > Integrations.');
         }
 
@@ -42,8 +44,24 @@ class GoogleApiService
         ]);
 
         if ($response->failed()) {
-            $this->connection->update(['is_active' => false]);
-            throw new \Exception('Failed to refresh Google token');
+            $status = $response->status();
+            $error = (string) ($response->json('error') ?? '');
+
+            // Transient failures (rate-limit / Google-side outage) must NOT
+            // deactivate the connection — rethrow so the calling job retries.
+            if ($status === 429 || $status >= 500) {
+                throw new \RuntimeException(
+                    "Google token refresh temporarily failed (HTTP {$status}); will retry."
+                );
+            }
+
+            // Permanent auth failure (invalid_grant / other 4xx) — the refresh
+            // token is dead, so deactivate and notify a human to reconnect.
+            $reason = 'Google token refresh rejected (HTTP '.$status
+                .($error !== '' ? ", {$error}" : '').').';
+            $this->deactivate($reason);
+
+            throw new \Exception('Failed to refresh Google token: '.($error !== '' ? $error : "HTTP {$status}"));
         }
 
         $tokens = $response->json();
@@ -54,6 +72,31 @@ class GoogleApiService
         ]);
 
         $this->accessToken = $tokens['access_token'];
+    }
+
+    /**
+     * Deactivate the connection on a permanent auth failure and notify, once.
+     */
+    protected function deactivate(string $reason): void
+    {
+        // Already deactivated — avoid duplicate notifications on repeated jobs.
+        if (! $this->connection->is_active) {
+            return;
+        }
+
+        $this->connection->update(['is_active' => false]);
+
+        NotificationService::notifyAppEvent(
+            event: 'google_connection_deactivated',
+            title: 'Google Connection Deactivated',
+            message: "The Google connection for {$this->connection->email} was deactivated — "
+                .'Analytics and Search Console sync have stopped. Reconnect it in Settings > Integrations.',
+            fields: [
+                ['name' => 'Account', 'value' => (string) $this->connection->email],
+                ['name' => 'Reason', 'value' => $reason],
+            ],
+            severity: 'warning',
+        );
     }
 
     protected function api(): \Illuminate\Http\Client\PendingRequest

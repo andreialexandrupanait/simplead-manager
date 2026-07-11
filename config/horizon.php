@@ -214,7 +214,11 @@ return [
             'maxJobs' => 0,
             'memory' => 64,
             'tries' => 3,
-            'timeout' => 30,
+            // Fallback worker timeout. CheckUptime overrides this per-job from
+            // the monitor's own timeout (max 120s + 15s buffer = 135s); this
+            // ceiling must stay >= that so the worker never kills a slow probe
+            // before it records a check. Still far below redis retry_after (7200).
+            'timeout' => 150,
             'nice' => 0,
         ],
         'supervisor-sync' => [
