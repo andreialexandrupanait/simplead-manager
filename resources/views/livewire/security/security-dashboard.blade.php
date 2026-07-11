@@ -1,5 +1,13 @@
 <div>
-    <x-ui.page-header title="{{ __('Security Dashboard') }}" subtitle="{{ __('Cross-site security hardening overview') }}" />
+    <x-ui.page-header title="{{ __('Security Dashboard') }}" subtitle="{{ __('Cross-site security hardening overview') }}">
+        @if(auth()->user()->isAdmin())
+            <x-slot:actions>
+                <a href="{{ route('security.presets') }}" wire:navigate>
+                    <x-ui.button variant="secondary" size="sm">{{ __('Manage Presets') }}</x-ui.button>
+                </a>
+            </x-slot:actions>
+        @endif
+    </x-ui.page-header>
 
     <x-ui.flash-alert type="success" key="dash-success" />
 
@@ -8,24 +16,42 @@
         <x-ui.stat-card
             label="{{ __('Average Score') }}"
             :value="$this->avgScore ?? '—'"
-            description="{{ __('Across all configured sites') }}"
+            sublabel="{{ __('Across all configured sites') }}"
+            icon="bar-chart-2"
+            :color="$this->avgScore === null ? 'gray' : \App\Models\SecurityScan::scoreColor((int) $this->avgScore)"
         />
-        <x-ui.stat-card
-            label="{{ __('At-Risk Sites') }}"
-            :value="$this->atRiskSites"
-            description="{{ __('Score below 50 or not configured') }}"
-        />
-        <x-ui.stat-card
-            label="{{ __('Failed Settings') }}"
-            :value="$this->failedSettingsCount"
-            description="{{ __('Could not be applied to the site') }}"
-        />
+        <button type="button" wire:click="$set('scoreFilter', 'at_risk')" class="text-left">
+            <x-ui.stat-card
+                label="{{ __('At-Risk Sites') }}"
+                :value="$this->atRiskSites"
+                sublabel="{{ __('Score below 50 or not configured') }}"
+                icon="alert-triangle"
+                :color="$this->atRiskSites > 0 ? 'red' : 'green'"
+                class="h-full cursor-pointer transition hover:border-accent-300 {{ $scoreFilter === 'at_risk' ? 'ring-2 ring-accent-400' : '' }}"
+            />
+        </button>
+        <button type="button" wire:click="$set('scoreFilter', 'failed')" class="text-left">
+            <x-ui.stat-card
+                label="{{ __('Failed Settings') }}"
+                :value="$this->failedSettingsCount"
+                sublabel="{{ __('Could not be applied') }} · {{ $this->failedSitesCount }} {{ __('site(s)') }}"
+                icon="x-circle"
+                :color="$this->failedSettingsCount > 0 ? 'red' : 'green'"
+                class="h-full cursor-pointer transition hover:border-accent-300 {{ $scoreFilter === 'failed' ? 'ring-2 ring-accent-400' : '' }}"
+            />
+        </button>
     </div>
 
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs
-            :options="['' => __('All'), 'at_risk' => __('At Risk'), 'good' => __('Good'), 'excellent' => __('Excellent')]"
+            :options="[
+                '' => __('All'),
+                'at_risk' => __('At Risk').' ('.$this->atRiskSites.')',
+                'good' => __('Good'),
+                'excellent' => __('Excellent'),
+                'failed' => __('Failed').' ('.$this->failedSitesCount.')',
+            ]"
             :selected="$scoreFilter"
             wire="scoreFilter"
         />
@@ -107,9 +133,10 @@
                                 {{ $site->enabled_settings_count }} {{ __('Settings') }}
                             </span>
                             @if($site->failed_settings_count > 0)
-                                <span class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                                    {{ $site->failed_settings_count }} {{ __('Failed') }}
-                                </span>
+                                <a href="{{ route('sites.security', $site) }}#needs-attention"
+                                   class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                                    {{ $site->failed_settings_count }} {{ __('failed') }}
+                                </a>
                             @endif
                         </div>
                         <p class="mt-1.5 text-xs text-gray-400">
@@ -130,9 +157,8 @@
                             </th>
                             <x-ui.sortable-th column="name" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Site') }}</x-ui.sortable-th>
                             <x-ui.sortable-th column="security_hardening_score" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Score') }}</x-ui.sortable-th>
-                            <th class="px-3 py-2">{{ __('Settings') }}</th>
-                            <th class="px-3 py-2">{{ __('Failed') }}</th>
-                            <th class="px-3 py-2">{{ __('Last Sync') }}</th>
+                            <x-ui.sortable-th column="enabled_settings_count" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Settings') }}</x-ui.sortable-th>
+                            <x-ui.sortable-th column="last_security_sync" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Last Sync') }}</x-ui.sortable-th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -143,13 +169,21 @@
                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                 </td>
                                 <td class="px-3 py-3">
-                                    <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 hover:text-accent-600" wire:navigate>
-                                        <x-site-favicon :site="$site" class="h-5 w-5" />
-                                        <div>
-                                            <p class="font-medium text-gray-900">{{ $site->name }}</p>
-                                            <p class="text-xs text-gray-500">{{ $site->domain }}</p>
-                                        </div>
-                                    </a>
+                                    <div class="flex items-center gap-2">
+                                        <a href="{{ route('sites.security', $site) }}" class="flex items-center gap-2 hover:text-accent-600" wire:navigate>
+                                            <x-site-favicon :site="$site" class="h-5 w-5" />
+                                            <div>
+                                                <p class="font-medium text-gray-900">{{ $site->name }}</p>
+                                                <p class="text-xs text-gray-500">{{ $site->domain }}</p>
+                                            </div>
+                                        </a>
+                                        @if($site->failed_settings_count > 0)
+                                            <a href="{{ route('sites.security', $site) }}#needs-attention"
+                                               class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100">
+                                                {{ $site->failed_settings_count }} {{ __('failed') }}
+                                            </a>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-3 py-3">
                                     @if($site->security_hardening_score !== null)
@@ -166,15 +200,6 @@
                                 </td>
                                 <td class="px-3 py-3 text-xs text-gray-500">
                                     {{ $site->enabled_settings_count }} {{ __('enabled') }}
-                                </td>
-                                <td class="px-3 py-3">
-                                    @if($site->failed_settings_count > 0)
-                                        <span class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                                            {{ $site->failed_settings_count }}
-                                        </span>
-                                    @else
-                                        <span class="text-xs text-gray-400">0</span>
-                                    @endif
                                 </td>
                                 <td class="px-3 py-3 text-xs text-gray-500">
                                     {{ $site->last_security_sync ? \Carbon\Carbon::parse($site->last_security_sync)->diffForHumans() : '—' }}

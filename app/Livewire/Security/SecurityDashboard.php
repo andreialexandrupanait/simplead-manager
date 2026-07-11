@@ -6,6 +6,7 @@ namespace App\Livewire\Security;
 
 use App\Livewire\Traits\WithSorting;
 use App\Models\SecurityPreset;
+use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,6 +34,24 @@ class SecurityDashboard extends Component
             ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
     }
 
+    /**
+     * Single definition of "at risk" — score below 50 OR never configured.
+     * Used by BOTH the stat tile and the at_risk filter so they cannot drift
+     * (they used to disagree: the tile ignored unconfigured sites).
+     */
+    private function applyAtRisk(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('security_hardening_score', '<', 50)
+                ->orWhereNull('security_hardening_score');
+        });
+    }
+
+    private function applyFailed(Builder $query): Builder
+    {
+        return $query->whereHas('securitySettings', fn ($q) => $q->whereNotNull('failed_at'));
+    }
+
     #[Computed]
     public function avgScore(): ?float
     {
@@ -46,10 +65,7 @@ class SecurityDashboard extends Component
     #[Computed]
     public function atRiskSites(): int
     {
-        return $this->scopedSiteQuery()
-            ->whereNotNull('security_hardening_score')
-            ->where('security_hardening_score', '<', 50)
-            ->count();
+        return $this->applyAtRisk($this->scopedSiteQuery())->count();
     }
 
     #[Computed]
@@ -57,9 +73,16 @@ class SecurityDashboard extends Component
     {
         $siteIds = $this->scopedSiteQuery()->pluck('id');
 
-        return \App\Models\SecuritySetting::whereIn('site_id', $siteIds)
+        return SecuritySetting::whereIn('site_id', $siteIds)
             ->whereNotNull('failed_at')
             ->count();
+    }
+
+    /** Sites with at least one failed setting — the "Failed (N)" tab label. */
+    #[Computed]
+    public function failedSitesCount(): int
+    {
+        return $this->applyFailed($this->scopedSiteQuery())->count();
     }
 
     #[Computed]
@@ -82,16 +105,26 @@ class SecurityDashboard extends Component
                 },
             ])
             ->addSelect([
-                'last_security_sync' => \App\Models\SecuritySetting::select('applied_at')
+                'last_security_sync' => SecuritySetting::select('applied_at')
                     ->whereColumn('site_id', 'sites.id')
                     ->whereNotNull('applied_at')
                     ->orderByDesc('applied_at')
                     ->limit(1),
             ])
-            ->when($this->sortBy !== 'sort_order', fn ($q) => $q->reorder(
-                in_array($this->sortBy, ['name', 'security_hardening_score']) ? $this->sortBy : 'sort_order',
-                $this->sortDir
-            ));
+            ->when($this->sortBy !== 'sort_order', function ($q) {
+                if ($this->sortBy === 'last_security_sync') {
+                    $dir = $this->sortDir === 'desc' ? 'desc' : 'asc';
+
+                    return $q->reorder()->orderByRaw("last_security_sync {$dir} NULLS LAST");
+                }
+
+                $sortable = ['name', 'security_hardening_score', 'enabled_settings_count'];
+
+                return $q->reorder(
+                    in_array($this->sortBy, $sortable, true) ? $this->sortBy : 'sort_order',
+                    $this->sortDir
+                );
+            });
 
         if ($this->search) {
             $escaped = '%'.$this->escapeLike($this->search).'%';
@@ -102,15 +135,14 @@ class SecurityDashboard extends Component
         }
 
         if ($this->scoreFilter === 'at_risk') {
-            $query->where(function ($q) {
-                $q->where('security_hardening_score', '<', 50)
-                    ->orWhereNull('security_hardening_score');
-            });
+            $this->applyAtRisk($query);
         } elseif ($this->scoreFilter === 'good') {
             $query->where('security_hardening_score', '>=', 50)
                 ->where('security_hardening_score', '<', 80);
         } elseif ($this->scoreFilter === 'excellent') {
             $query->where('security_hardening_score', '>=', 80);
+        } elseif ($this->scoreFilter === 'failed') {
+            $this->applyFailed($query);
         }
 
         return $query->paginate(50);
@@ -119,11 +151,13 @@ class SecurityDashboard extends Component
     public function updatedSearch(): void
     {
         $this->search = substr(trim($this->search), 0, 100);
+        $this->resetPage();
         unset($this->sites);
     }
 
     public function updatedScoreFilter(): void
     {
+        $this->resetPage();
         unset($this->sites);
     }
 
@@ -148,7 +182,7 @@ class SecurityDashboard extends Component
         app(SecuritySettingsService::class)->applyPreset($preset, $sites);
 
         $this->bulkPresetId = null;
-        unset($this->sites, $this->failedSettingsCount);
+        unset($this->sites, $this->failedSettingsCount, $this->failedSitesCount, $this->atRiskSites);
 
         session()->flash('dash-success', "Preset '{$preset->name}' applied to {$sites->count()} site(s).");
     }
