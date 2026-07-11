@@ -47,39 +47,31 @@ class BackupDispatcherRestoreTest extends TestCase
         return $backup;
     }
 
-    public function test_stuck_in_progress_restore_is_marked_failed_and_alerted_without_retry(): void
+    public function test_dispatcher_never_recovers_stuck_restores(): void
     {
+        // P0-05: the dispatcher runs every minute and a healthy restore is
+        // legitimately row-silent for up to 30 min inside a single HTTP call.
+        // The dispatcher must NOT touch a silent restore or release its lock —
+        // even one silent well past the old 30-min threshold. The single
+        // recovery path is the 75-min ownership-checked command (PR #38).
         $backup = $this->makeStuckRestore(BackupStatus::InProgress, 45);
 
         (new BackupDispatcher)();
 
-        $fresh = $backup->fresh();
-        $this->assertSame(BackupStatus::Failed, $fresh->restore_status);
-        $this->assertStringContainsString('Stuck restore', $fresh->restore_error_message);
-
-        Queue::assertPushed(NotifyRestoreFailed::class);
-        // No blind re-run of a half-applied restore.
+        // Untouched: still in progress, no failure written, no operator alert.
+        $this->assertSame(BackupStatus::InProgress, $backup->fresh()->restore_status);
+        Queue::assertNotPushed(NotifyRestoreFailed::class);
         Queue::assertNotPushed(\App\Jobs\RestoreBackup::class);
     }
 
-    public function test_fresh_in_progress_restore_is_left_alone(): void
-    {
-        $backup = $this->makeStuckRestore(BackupStatus::InProgress, 10);
-
-        (new BackupDispatcher)();
-
-        $this->assertSame(BackupStatus::InProgress, $backup->fresh()->restore_status);
-        Queue::assertNotPushed(NotifyRestoreFailed::class);
-    }
-
-    public function test_stuck_pending_restore_is_cancelled_after_an_hour(): void
+    public function test_dispatcher_leaves_stuck_pending_restore_alone_too(): void
     {
         $backup = $this->makeStuckRestore(BackupStatus::Pending, 90);
 
         (new BackupDispatcher)();
 
-        $this->assertSame(BackupStatus::Failed, $backup->fresh()->restore_status);
-        Queue::assertPushed(NotifyRestoreFailed::class);
+        $this->assertSame(BackupStatus::Pending, $backup->fresh()->restore_status);
+        Queue::assertNotPushed(NotifyRestoreFailed::class);
     }
 
     public function test_scheduled_backup_is_not_dispatched_while_a_restore_is_running(): void

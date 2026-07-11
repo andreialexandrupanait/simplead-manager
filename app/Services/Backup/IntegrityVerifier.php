@@ -244,9 +244,21 @@ class IntegrityVerifier
             return $this->fail("database dump invalid: {$dbCheck['error']}", $checks);
         }
 
-        // 5. files/ subtree — at least one entry expected for non-DB-only backups
+        // 5. files/ subtree — at least one entry expected for non-DB-only backups.
+        //
+        // A zero-change incremental legitimately has NO files/* entries: the only
+        // thing that changed that day is the database, so the delta is DB-only
+        // (P0-04). We must accept it as valid — requiring files here marked every
+        // quiet-site daily incremental as failed. We still REQUIRE files when the
+        // incremental reports changed files (files_changed_count > 0), so a
+        // truncated archive that dropped its files is still caught.
         $type = $meta['type'] ?? 'full';
-        if ($type !== 'database') {
+        $filesChangedCount = $meta['files_changed_count'] ?? null;
+        $isZeroChangeIncremental = ($type === 'incremental')
+            && $filesChangedCount !== null
+            && (int) $filesChangedCount === 0;
+
+        if ($type !== 'database' && ! $isZeroChangeIncremental) {
             $hasFiles = false;
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $name = $zip->getNameIndex($i);
@@ -261,6 +273,9 @@ class IntegrityVerifier
                 return $this->fail("no files/* entries in v3-zip (expected for type={$type})", $checks);
             }
             $checks['has_files'] = true;
+        } elseif ($isZeroChangeIncremental) {
+            $checks['has_files'] = false;
+            $checks['zero_change_incremental'] = true;
         }
 
         $zip->close();

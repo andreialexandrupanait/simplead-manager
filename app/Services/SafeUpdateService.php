@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
+use App\Models\Backup;
 use App\Models\SafeUpdate;
+use App\Models\Site;
 use App\Models\UpdateLog;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
@@ -44,18 +47,42 @@ class SafeUpdateService
         ]);
     }
 
-    public function runSafeUpdate(SafeUpdate $safeUpdate, ?int $userId = null): void
+    /**
+     * @param  string|null  $heldLockToken  SiteOperationLock token owned by the
+     *                                      caller (RunSafeUpdate). Passed down to
+     *                                      the pre-update backup so it runs under
+     *                                      the held lock instead of contending
+     *                                      with it and silently no-opping (P0-07).
+     */
+    public function runSafeUpdate(SafeUpdate $safeUpdate, ?int $userId = null, ?string $heldLockToken = null): void
     {
         /** @var \App\Models\Site $site */
         $site = $safeUpdate->site;
         $api = $this->apiFactory->make($site);
 
         try {
-            // Step 1: Backup
+            // Step 1: Pre-update safety backup. This is the safety net the whole
+            // "safe update" promise rests on — if it does not verifiably complete
+            // we HARD-ABORT rather than update a client site with no way back
+            // (P0-07). It runs under the caller's site lock ($heldLockToken) so it
+            // cannot be silently skipped by lock contention.
             $safeUpdate->update(['status' => 'backing_up']);
             $config = $site->backupConfig;
             if ($config) {
-                CreateBackup::dispatchSync($site, 'database', 'pre_update', $config->storage_destination_id);
+                $preBackup = $this->runPreUpdateBackup($site, $config, $heldLockToken);
+
+                if (! $preBackup || $preBackup->status !== BackupStatus::Completed) {
+                    $reason = 'Pre-update safety backup did not complete (it was skipped or failed); '
+                        .'aborting the update to avoid changing the site with no rollback point.';
+                    $safeUpdate->update([
+                        'status' => 'failed',
+                        'error_message' => $reason,
+                        'completed_at' => now(),
+                    ]);
+                    Log::error("Safe update {$safeUpdate->id} aborted for site {$site->id}: {$reason}");
+
+                    throw new \RuntimeException($reason);
+                }
             }
 
             // Step 2: Pre-update screenshot
@@ -169,6 +196,32 @@ class SafeUpdateService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Run the pre-update DB backup synchronously under the caller's site lock
+     * and return the resulting Backup row (or null if none was produced) so the
+     * caller can verify it actually completed before touching the site.
+     *
+     * Extracted + protected so the hard-abort path (P0-07) is unit-testable
+     * without driving the full CreateBackup pipeline against a live connector.
+     */
+    protected function runPreUpdateBackup(Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?Backup
+    {
+        CreateBackup::dispatchSync(
+            $site,
+            'database',
+            'pre_update',
+            $config->storage_destination_id,
+            null,
+            false,
+            $heldLockToken,
+        );
+
+        return Backup::where('site_id', $site->id)
+            ->where('trigger', 'pre_update')
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**

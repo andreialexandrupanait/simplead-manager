@@ -10,13 +10,24 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageDriver;
 use App\Services\Backup\Storage\StorageFactory;
-use Illuminate\Support\Facades\DB;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class RetentionService
 {
     /**
      * Apply chain-aware retention policy for a site's backups.
+     *
+     * A "chain" is a full backup plus every incremental that descends from it
+     * (orphaned incrementals — parent already gone — form their own single-
+     * member chains). The whole chain is the atomic unit of retention: an
+     * incremental cannot be restored without its base full, so we never delete
+     * a base while a still-in-window incremental descends from it, and we never
+     * delete a chain unless its NEWEST member is itself out of the window.
+     *
+     * Deletes run in log-only (dry-run) mode by default — see
+     * config('backups.retention_dry_run') and P0-03's safe rollout.
      */
     public function apply(Site $site, StorageDestination $destination): void
     {
@@ -25,53 +36,37 @@ class RetentionService
             return;
         }
 
-        // Chain-aware retention: group backups into chains (full + incrementals)
-        $query = Backup::where('site_id', $site->id)
+        $dryRun = (bool) config('backups.retention_dry_run', true);
+
+        // Load ALL completed, unlocked backups. Crucially we do NOT pre-filter
+        // by date for days-mode: a fresh incremental must be visible so its
+        // chain is recognised as still-valid and its base full is protected
+        // (the P0-03 data-loss bug pre-filtered the fresh incremental away,
+        // deleted the base full, then cleanupOrphans destroyed the incremental).
+        $allBackups = Backup::where('site_id', $site->id)
             ->where('status', BackupStatus::Completed)
             ->where('is_locked', false)
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')
+            ->get();
 
-        // For days-based retention, only load backups older than the cutoff
-        $cutoff = null;
-        if ($config->retention_type === 'days') {
-            $cutoff = now()->subDays($config->retention_value);
-            $query->where('created_at', '<', $cutoff);
-        }
+        $chains = $this->buildChains($allBackups);
 
-        $allBackups = $query->get();
+        $cutoff = $config->retention_type === 'days'
+            ? now()->subDays((int) $config->retention_value)
+            : null;
 
-        // Group into chains: full backups (no parent) with their incrementals
-        $chains = [];
-        $fullBackups = $allBackups->whereNull('parent_backup_id');
-        $incrementalByParent = $allBackups->whereNotNull('parent_backup_id')->groupBy('parent_backup_id');
+        // Sort chains by their NEWEST member (most-recent restore point first).
+        usort($chains, fn (Collection $a, Collection $b) => $this->chainNewest($b) <=> $this->chainNewest($a));
 
-        foreach ($fullBackups as $full) {
-            $chain = collect([$full]);
-            if (isset($incrementalByParent[$full->id])) {
-                $chain = $chain->merge($incrementalByParent[$full->id]);
-            }
-            $chains[] = $chain;
-        }
-
-        // Include orphaned incrementals as their own chains
-        $parentIds = $fullBackups->pluck('id')->toArray();
-        foreach ($incrementalByParent as $parentId => $incrementals) {
-            if (! in_array($parentId, $parentIds)) {
-                $chains[] = $incrementals;
-            }
-        }
-
-        // Sort chains by newest backup (descending)
-        usort($chains, fn ($a, $b) => $b->first()->created_at <=> $a->first()->created_at);
-
-        // Determine which chains to delete
         $chainsToDelete = [];
         if ($config->retention_type === 'count') {
-            $chainsToDelete = array_slice($chains, $config->retention_value);
+            // Keep the N chains with the newest restore points; delete the rest.
+            $chainsToDelete = array_slice($chains, (int) $config->retention_value);
         } else {
-            // For days-based with pre-filtered query, all loaded chains are candidates
+            // Days: a chain is deletable ONLY when its newest member is older
+            // than the cutoff. An old full carrying a fresh incremental survives.
             foreach ($chains as $chain) {
-                if ($chain->first()->created_at < $cutoff) {
+                if ($this->chainNewest($chain) < $cutoff) {
                     $chainsToDelete[] = $chain;
                 }
             }
@@ -79,12 +74,67 @@ class RetentionService
 
         foreach ($chainsToDelete as $chain) {
             foreach ($chain as $oldBackup) {
-                $this->deleteBackup($oldBackup);
+                $this->deleteBackup($oldBackup, $dryRun);
             }
         }
 
-        // Clean up orphaned incrementals whose parent was deleted (FK set to NULL)
-        $this->cleanupOrphans($site);
+        // Age-gated orphan sweep (days-mode only). The chain logic above already
+        // removes out-of-window orphan chains atomically; this is a defence-in-
+        // depth pass for orphans created mid-cycle (e.g. a partial replica-delete
+        // that dropped a base but retained a child). It NEVER deletes a recent
+        // restore point: only orphans older than the cutoff are eligible. In
+        // count-mode there is no time window, so the chain logic is the sole path.
+        if ($cutoff !== null) {
+            $this->cleanupOrphans($site, $cutoff, $dryRun);
+        }
+    }
+
+    /**
+     * Group backups into chains: each full (or orphaned incremental) plus the
+     * incrementals that descend from it.
+     *
+     * @param  Collection<int, Backup>  $allBackups
+     * @return list<Collection<int, Backup>>
+     */
+    private function buildChains(Collection $allBackups): array
+    {
+        $chains = [];
+
+        // whereNull('parent_backup_id') captures both true fulls AND orphaned
+        // incrementals whose parent was already removed — each becomes its own
+        // chain root.
+        $roots = $allBackups->whereNull('parent_backup_id');
+        $incrementalByParent = $allBackups->whereNotNull('parent_backup_id')->groupBy('parent_backup_id');
+
+        foreach ($roots as $root) {
+            $chain = collect([$root]);
+            if (isset($incrementalByParent[$root->id])) {
+                $chain = $chain->merge($incrementalByParent[$root->id]);
+            }
+            $chains[] = $chain;
+        }
+
+        // Incrementals whose (non-null) parent is not in the loaded set — e.g.
+        // the parent is locked or failed — form their own chains too.
+        $rootIds = $roots->pluck('id')->all();
+        foreach ($incrementalByParent as $parentId => $incrementals) {
+            if (! in_array($parentId, $rootIds, true)) {
+                $chains[] = $incrementals->values();
+            }
+        }
+
+        return $chains;
+    }
+
+    /**
+     * The timestamp of the newest (most recently created) member of a chain —
+     * the age of the freshest restore point the chain provides.
+     *
+     * @param  Collection<int, Backup>  $chain
+     */
+    private function chainNewest(Collection $chain): CarbonInterface
+    {
+        return $chain->max('created_at');
     }
 
     /**
@@ -93,8 +143,20 @@ class RetentionService
      * can retry. The successfully-deleted destinations are removed from `replicas[]`
      * to avoid double-decrementing used_bytes on retry.
      */
-    private function deleteBackup(Backup $backup): void
+    private function deleteBackup(Backup $backup, bool $dryRun = false): void
     {
+        if ($dryRun) {
+            Log::info("RetentionService[dry-run]: would delete backup {$backup->id}", [
+                'site_id' => $backup->site_id,
+                'type' => $backup->type,
+                'parent_backup_id' => $backup->parent_backup_id,
+                'created_at' => (string) $backup->created_at,
+                'file_size' => $backup->file_size,
+            ]);
+
+            return;
+        }
+
         $targets = $this->collectReplicaTargets($backup);
         $allSucceeded = true;
         $remainingReplicas = $backup->replicas ?? [];
@@ -267,18 +329,23 @@ class RetentionService
      * Clean up orphaned incremental backups whose parent was deleted.
      * When a parent backup is deleted, nullOnDelete sets parent_backup_id to NULL.
      * Incrementals with type='incremental' and NULL parent are definitively orphaned.
+     *
+     * Age-gated: only orphans OLDER than $deletableBefore are removed, so a
+     * recent restore point is never destroyed by this sweep (P0-03).
      */
-    private function cleanupOrphans(Site $site): void
+    private function cleanupOrphans(Site $site, CarbonInterface $deletableBefore, bool $dryRun = false): void
     {
         $orphans = Backup::where('site_id', $site->id)
             ->where('type', 'incremental')
             ->whereNull('parent_backup_id')
             ->where('status', BackupStatus::Completed)
+            ->where('is_locked', false)
+            ->where('created_at', '<', $deletableBefore)
             ->get();
 
         foreach ($orphans as $orphan) {
             Log::info("Cleaning up orphaned incremental backup {$orphan->id} for site {$site->id}");
-            $this->deleteBackup($orphan);
+            $this->deleteBackup($orphan, $dryRun);
         }
     }
 }

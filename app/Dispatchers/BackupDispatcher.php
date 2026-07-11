@@ -8,13 +8,10 @@ use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
 use App\Jobs\NotifyBackupFailed;
-use App\Jobs\NotifyRestoreFailed;
-use App\Jobs\RestoreBackup;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Services\ActivityLogger;
 use App\Services\Backup\DiskSpaceGuard;
-use App\Services\Backup\SiteOperationLock;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +24,14 @@ class BackupDispatcher
     public function __invoke(): void
     {
         $this->recoverStuckBackups();
-        $this->recoverStuckRestores();
+
+        // Stuck-restore recovery is intentionally NOT done here. A healthy
+        // restore is legitimately row-silent for up to 30 min inside a single
+        // sendRestoreData() HTTP call, so a minute-cadence dispatcher sweep
+        // would false-fail a live restore and blind-release the site lock under
+        // it (P0-05). The single recovery path is the ownership-checked,
+        // 75-min-threshold `backups:recover-stuck-restores` command (PR #38),
+        // scheduled in routes/console.php.
 
         CircuitBreakerService::checkHalfOpen();
 
@@ -204,67 +208,6 @@ class BackupDispatcher
                 }
             } catch (\Throwable $e) {
                 Log::error("recoverStuckBackups: failed to recover backup #{$backup->id}: {$e->getMessage()}", [
-                    'backup_id' => $backup->id,
-                    'site_id' => $backup->site_id,
-                    'exception' => $e::class,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Detect restores whose worker died (deploy, OOM, SIGKILL) and mark them
-     * failed. NO auto-retry: a restore died mid-flight may have left the site
-     * half-restored — blindly re-running it is the one thing we must not do.
-     * The operator gets a critical notification and decides.
-     */
-    protected function recoverStuckRestores(): void
-    {
-        // RestoreBackup touches updated_at on every stage via progress
-        // reporting; restores have longer quiet phases than backups (large
-        // downloads/imports), so 30 min of silence — not 20.
-        $stuckInProgress = Backup::where('restore_status', BackupStatus::InProgress)
-            ->where('updated_at', '<', now()->subMinutes(30))
-            ->with('site')
-            ->get();
-
-        // Pending: dispatched but never picked up (queue wedged, lock orphaned).
-        $stuckPending = Backup::where('restore_status', BackupStatus::Pending)
-            ->where('updated_at', '<', now()->subMinutes(60))
-            ->with('site')
-            ->get();
-
-        foreach ($stuckInProgress->merge($stuckPending) as $backup) {
-            try {
-                $wasInProgress = $backup->restore_status === BackupStatus::InProgress;
-
-                $backup->update([
-                    'restore_status' => BackupStatus::Failed,
-                    'restore_stage' => 'failed',
-                    'restore_progress_message' => 'Restore marked failed: worker died or job was never picked up.',
-                    'restore_error_message' => 'Stuck restore recovered by dispatcher (no progress for '
-                        .($wasInProgress ? '30' : '60').'+ minutes).',
-                ]);
-
-                RestoreBackup::releaseUniqueLock($backup->id);
-                SiteOperationLock::forceRelease($backup->site_id);
-
-                Log::error("recoverStuckRestores: restore of backup #{$backup->id} (site #{$backup->site_id}) marked failed", [
-                    'was_in_progress' => $wasInProgress,
-                ]);
-
-                if ($backup->site) {
-                    ActivityLogger::restoreFailed($backup->site, 'Restore worker died mid-flight; marked failed by dispatcher.');
-                    NotifyRestoreFailed::dispatch(
-                        $backup->site,
-                        $backup,
-                        $wasInProgress
-                            ? 'Restore worker died mid-flight (deploy/OOM/kill). The site may be half-restored — verify it now.'
-                            : 'Restore was queued but never started; it has been cancelled.'
-                    );
-                }
-            } catch (\Throwable $e) {
-                Log::error("recoverStuckRestores: failed to recover restore #{$backup->id}: {$e->getMessage()}", [
                     'backup_id' => $backup->id,
                     'site_id' => $backup->site_id,
                     'exception' => $e::class,

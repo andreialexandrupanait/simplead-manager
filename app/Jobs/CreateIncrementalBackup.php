@@ -360,6 +360,11 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
                 'wp_version' => $this->site->wp_version,
                 'php_version' => $this->site->php_version,
                 'format' => 'v3-zip',
+                // Carried so the integrity verifier can tell a legitimate
+                // zero-change incremental (DB-only delta, no files/* entries)
+                // apart from a truncated archive that lost its files (P0-04).
+                'files_changed_count' => (int) ($this->backup->files_changed_count ?? 0),
+                'files_deleted_count' => (int) ($this->backup->files_deleted_count ?? 0),
             ], JSON_PRETTY_PRINT));
 
             $result = $builder->finish();

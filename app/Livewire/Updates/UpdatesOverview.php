@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Updates;
 
+use App\Jobs\CreateBackup;
+use App\Jobs\RunSafeUpdate;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Services\PluginManagerService;
+use App\Services\SafeUpdateService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -157,12 +160,36 @@ class UpdatesOverview extends Component
             return;
         }
 
+        $key = "{$type}_{$id}";
+
+        // Sites that opted into safe updates must go through the queued safety
+        // pipeline (pre-update backup → update → health check → visual
+        // regression → auto-rollback) — the global page used to bypass it
+        // entirely and update with no safety net (P0-08).
+        if ($site->safe_updates_enabled) {
+            $this->queueSafeUpdateForItem($site, $type, $item);
+            $this->updateResults[$key] = [
+                'success' => true,
+                'queued' => true,
+                'message' => "Safe update queued for {$item->name}.",
+                'version' => null,
+            ];
+            $this->dispatch('notify', type: 'success',
+                message: "Safe update queued for {$item->name} — it will back up, health-check and roll back automatically if anything breaks.");
+            unset($this->updates, $this->stats);
+
+            return;
+        }
+
+        // Non-safe sites: take the opt-in pre-update backup before touching the
+        // site, then update inline (unchanged behaviour for flag-off sites).
+        $this->preUpdateBackup($site);
+
         $identifier = $type === 'plugin' ? $item->file : $item->slug;
         $result = app(PluginManagerService::class)->performUpdate(
             $site, $type, $identifier, $item->name, $item->slug, $item->version, $item->update_version
         );
 
-        $key = "{$type}_{$id}";
         $this->updateResults[$key] = $result;
 
         if ($result['success']) {
@@ -198,6 +225,32 @@ class UpdatesOverview extends Component
 
         $plugins = $site->sitePlugins()->where('has_update', true)->get();
         $themes = $site->siteThemes()->where('has_update', true)->get();
+
+        // Safe-update sites: queue every pending item through the safety pipeline
+        // instead of bulk-updating inline with no backup/rollback (P0-08).
+        if ($site->safe_updates_enabled) {
+            $queued = 0;
+            /** @var SitePlugin $plugin */
+            foreach ($plugins as $plugin) {
+                $this->queueSafeUpdateForItem($site, 'plugin', $plugin);
+                $queued++;
+            }
+            /** @var SiteTheme $theme */
+            foreach ($themes as $theme) {
+                $this->queueSafeUpdateForItem($site, 'theme', $theme);
+                $queued++;
+            }
+
+            $this->dispatch('notify', type: 'success',
+                message: "{$queued} safe update(s) queued for {$site->name} — each backs up, health-checks and auto-rolls-back.");
+            unset($this->updates, $this->stats);
+
+            return;
+        }
+
+        // Non-safe sites: one opt-in pre-update backup, then inline updates.
+        $this->preUpdateBackup($site);
+
         $service = app(PluginManagerService::class);
         $success = 0;
         $failed = 0;
@@ -257,6 +310,7 @@ class UpdatesOverview extends Component
         $success = 0;
         $failed = 0;
         $skipped = 0;
+        $queued = 0;
 
         foreach ($plugins as $plugin) {
             $site = $plugin->site;
@@ -266,13 +320,25 @@ class UpdatesOverview extends Component
                 continue;
             }
 
-            // Enforce per-site access: a non-admin must not mutate sites
-            // outside the clients/sites assigned to them.
+            // Enforce per-site access FIRST: a non-admin must not touch sites
+            // outside the clients/sites assigned to them (P0-09).
             if (! $user->canAccessSite($site)) {
                 $skipped++;
 
                 continue;
             }
+
+            // Route safe-update sites through the safety pipeline; the fleet-wide
+            // action used to update every site inline with no backup (P0-08).
+            if ($site->safe_updates_enabled) {
+                $this->queueSafeUpdateForItem($site, 'plugin', $plugin);
+                $queued++;
+
+                continue;
+            }
+
+            // Non-safe sites: opt-in pre-update backup, then inline update.
+            $this->preUpdateBackup($site);
 
             $result = $service->performUpdate(
                 $site,
@@ -298,6 +364,9 @@ class UpdatesOverview extends Component
         }
 
         $message = "{$success} site(s) updated, {$failed} failed for \"{$slug}\".";
+        if ($queued > 0) {
+            $message .= " {$queued} queued as safe update(s).";
+        }
         if ($skipped > 0) {
             $message .= " {$skipped} skipped (no access).";
         }
@@ -314,6 +383,43 @@ class UpdatesOverview extends Component
     public function clearResult(string $key): void
     {
         unset($this->updateResults[$key]);
+    }
+
+    /**
+     * Queue a single plugin/theme through the safe-update pipeline for a site
+     * that has opted into safe updates.
+     */
+    private function queueSafeUpdateForItem(Site $site, string $type, SitePlugin|SiteTheme $item): void
+    {
+        $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
+            $site,
+            $type,
+            $item->slug,
+            $item->name,
+            $item->version ?? '',
+            $item->update_version ?? '',
+            // Plugins address the connector by their plugin FILE; themes/core
+            // fall back to the slug inside SafeUpdateService.
+            $type === 'plugin' ? $item->file : null,
+        );
+
+        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
+    }
+
+    /**
+     * Take the opt-in pre-update DB backup for a non-safe-update site before it
+     * is touched inline. Mirrors WithPluginManagement::runPreUpdateBackup so the
+     * global page respects the same backup_before_updates toggle (P0-08). Sites
+     * that never opted into pre-update backups keep their exact current behaviour.
+     */
+    private function preUpdateBackup(Site $site): void
+    {
+        // loadMissing avoids a lazy-load violation / N+1 when called per-site
+        // inside the fleet-wide update loop.
+        $config = $site->loadMissing('backupConfig')->backupConfig;
+        if ($config?->backup_before_updates) {
+            CreateBackup::dispatch($site, 'database', 'pre_update', $config->storage_destination_id);
+        }
     }
 
     private function escapeLike(string $value): string

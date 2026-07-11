@@ -94,9 +94,15 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         // so the redelivery can find a free lock and blindly re-run the whole
         // restore on the live site. Refuse that here, independent of lock timing:
         //   - an already-completed restore must never run again;
-        //   - a redelivered attempt whose predecessor died mid-restore (still
-        //     InProgress from an earlier attempt) is NOT auto-retried — the
-        //     operator inspects the site and re-triggers deliberately.
+        //   - a redelivered attempt (attempts() > 1) may ONLY proceed when the
+        //     restore is genuinely still Pending (it never actually started —
+        //     e.g. earlier attempts only ever waited on a busy site lock and
+        //     politely requeued). Any other status means a prior attempt already
+        //     began (InProgress) or already terminated (Failed): re-running it
+        //     in full is the exact data-loss hazard the site lock exists to
+        //     prevent — a killed/failed restore that quietly re-applies ~2h
+        //     later against a site an operator may have already hand-repaired
+        //     (P0-06). The operator inspects the site and re-triggers manually.
         $freshStatus = $this->backup->fresh()?->restore_status;
 
         if ($freshStatus === BackupStatus::Completed) {
@@ -105,10 +111,11 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if ($this->attempts() > 1 && $freshStatus === BackupStatus::InProgress) {
+        if ($this->attempts() > 1 && $freshStatus !== BackupStatus::Pending) {
             $this->fail(new \RuntimeException(
-                "Restore of backup {$this->backup->id} was redelivered after a prior attempt "
-                .'died mid-restore; not re-running automatically. Inspect the site and re-trigger manually.'
+                "Restore of backup {$this->backup->id} was redelivered after a prior attempt that did "
+                ."not complete cleanly (status: {$freshStatus?->value}); not re-running automatically. "
+                .'Inspect the site and re-trigger manually.'
             ));
 
             return;

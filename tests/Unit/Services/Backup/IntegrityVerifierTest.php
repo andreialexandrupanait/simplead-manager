@@ -104,6 +104,99 @@ class IntegrityVerifierTest extends TestCase
         $this->assertStringContainsString('database dump invalid', $result['message']);
     }
 
+    public function test_v3zip_zero_change_incremental_passes_with_no_files(): void
+    {
+        // P0-04: a quiet-site daily incremental with zero changed files has no
+        // files/* entries (DB-only delta). It MUST verify as valid, not fail.
+        $archive = $this->buildV3Zip([
+            'format' => 'v3-zip',
+            'type' => 'incremental',
+            'files_changed_count' => 0,
+            'files_deleted_count' => 0,
+        ], includeFiles: false);
+        $sha = hash_file('sha256', $archive);
+
+        $result = $this->verifier->verifyV3Zip($archive, $sha);
+
+        $this->assertTrue($result['ok'], $result['message']);
+        $this->assertTrue($result['checks']['zero_change_incremental'] ?? false);
+    }
+
+    public function test_v3zip_incremental_with_changes_but_no_files_fails(): void
+    {
+        // An incremental that REPORTS changed files but ships none is a truncated
+        // archive — must still be caught.
+        $archive = $this->buildV3Zip([
+            'format' => 'v3-zip',
+            'type' => 'incremental',
+            'files_changed_count' => 5,
+            'files_deleted_count' => 0,
+        ], includeFiles: false);
+        $sha = hash_file('sha256', $archive);
+
+        $result = $this->verifier->verifyV3Zip($archive, $sha);
+
+        $this->assertFalse($result['ok']);
+        $this->assertStringContainsString('no files/* entries', $result['message']);
+    }
+
+    public function test_v3zip_full_without_files_still_fails(): void
+    {
+        // A full backup with no files is broken regardless of the incremental fix.
+        $archive = $this->buildV3Zip([
+            'format' => 'v3-zip',
+            'type' => 'full',
+        ], includeFiles: false);
+        $sha = hash_file('sha256', $archive);
+
+        $result = $this->verifier->verifyV3Zip($archive, $sha);
+
+        $this->assertFalse($result['ok']);
+        $this->assertStringContainsString('no files/* entries', $result['message']);
+    }
+
+    public function test_v3zip_incremental_with_files_passes(): void
+    {
+        $archive = $this->buildV3Zip([
+            'format' => 'v3-zip',
+            'type' => 'incremental',
+            'files_changed_count' => 2,
+            'files_deleted_count' => 0,
+        ], includeFiles: true);
+        $sha = hash_file('sha256', $archive);
+
+        $result = $this->verifier->verifyV3Zip($archive, $sha);
+
+        $this->assertTrue($result['ok'], $result['message']);
+        $this->assertTrue($result['checks']['has_files']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function buildV3Zip(array $meta, bool $includeFiles): string
+    {
+        $dbContent = "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\nCREATE TABLE foo (id int);\nINSERT INTO foo VALUES (1);\nSET FOREIGN_KEY_CHECKS = 1;\n";
+        $dbPath = $this->tmpDir.'/database.sql.gz';
+        $gz = gzopen($dbPath, 'wb');
+        gzwrite($gz, $dbContent);
+        gzclose($gz);
+
+        $archivePath = $this->tmpDir.'/v3-backup-'.uniqid().'.zip';
+        $zip = new ZipArchive;
+        $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFile($dbPath, 'database.sql.gz');
+        $zip->setCompressionName('database.sql.gz', ZipArchive::CM_STORE);
+        if ($includeFiles) {
+            $zip->addFromString('files/wp-config.php', "<?php // wp\n");
+            $zip->addFromString('files/index.php', "<?php // index\n");
+        }
+        $zip->addFromString('backup-meta.json', json_encode($meta));
+        $zip->close();
+
+        return $archivePath;
+    }
+
     private function buildArchive(bool $includeFiles, int $formatVersion = 2, bool $withMeta = true, bool $brokenDb = false): string
     {
         // Build a realistic db dump
