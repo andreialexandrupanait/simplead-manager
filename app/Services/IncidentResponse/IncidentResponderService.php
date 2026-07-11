@@ -50,6 +50,9 @@ class IncidentResponderService
             'trigger_source' => $triggerSource,
             'trigger_source_id' => $triggerSourceId,
             'status' => IncidentResponseStatus::Pending,
+            // P0-21: records when the pipeline last ran for this (site, trigger) so
+            // the dispatcher can apply cooldown/backoff off a real attempt timestamp.
+            'response_attempted_at' => now(),
         ]);
 
         ActivityLogger::log(

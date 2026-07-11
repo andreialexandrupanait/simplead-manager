@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\IncidentResponse;
 
 use App\Contracts\WordPressApiServiceInterface;
+use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
+use App\Models\Backup;
 use App\Models\IncidentResponse;
 use App\Models\IncidentResponseAction;
 use App\Models\RollbackPoint;
@@ -39,7 +41,23 @@ class IncidentActionExecutor
             return ['success' => false, 'error' => 'Action limit reached for this incident'];
         }
 
-        $this->ensureBackupIfDestructive($response, $site, $actionType);
+        // P0-20: a destructive action may only proceed when a completed, verified
+        // backup actually exists. If none can be created (e.g. the site has no
+        // backup capability configured, or the backup did not complete), REFUSE the
+        // action rather than mutate a live site believing in a backup that isn't
+        // there — the safe posture is to escalate to a human.
+        if (! $this->ensureBackupIfDestructive($response, $site, $actionType)) {
+            $error = "Refused '{$actionType}': no verified backup exists for this site — "
+                .'escalating instead of running a destructive action without a recovery point.';
+            Log::warning("Incident action {$actionType} refused for site {$site->id}: backup invariant not satisfied");
+
+            $this->recordAction($response, $actionType, $tier, $parameters, [
+                'success' => false,
+                'error' => $error,
+            ], 'refused', $error, 0);
+
+            return ['success' => false, 'error' => $error];
+        }
 
         $startTime = microtime(true);
         $result = [];
@@ -72,6 +90,21 @@ class IncidentActionExecutor
 
         $durationMs = (int) round((microtime(true) - $startTime) * 1000);
 
+        $this->recordAction($response, $actionType, $tier, $parameters, $result, $status, $errorMessage, $durationMs);
+
+        return $result;
+    }
+
+    private function recordAction(
+        IncidentResponse $response,
+        string $actionType,
+        string $tier,
+        array $parameters,
+        array $result,
+        string $status,
+        ?string $errorMessage,
+        int $durationMs,
+    ): void {
         IncidentResponseAction::create([
             'incident_response_id' => $response->id,
             'action_type' => $actionType,
@@ -85,18 +118,29 @@ class IncidentActionExecutor
         ]);
 
         $response->incrementActionsCount();
-
-        return $result;
     }
 
-    private function ensureBackupIfDestructive(IncidentResponse $response, Site $site, string $actionType): void
+    /**
+     * P0-20: guarantee a real recovery point before a destructive action.
+     * Returns true only when it is safe to proceed — i.e. a verified backup
+     * already exists for this incident, or one was just completed and verified.
+     * Returns false when the invariant cannot be satisfied so the caller refuses.
+     */
+    private function ensureBackupIfDestructive(IncidentResponse $response, Site $site, string $actionType): bool
     {
-        if (! $response->backup_created
-            && config('incident-response.safety.always_backup_before_destructive', true)
-            && in_array($actionType, config('incident-response.safety.destructive_actions', []))
-        ) {
-            $this->createBackup($site, $response);
+        if (! config('incident-response.safety.always_backup_before_destructive', true)) {
+            return true;
         }
+
+        if (! in_array($actionType, config('incident-response.safety.destructive_actions', []), true)) {
+            return true;
+        }
+
+        if ($response->backup_created) {
+            return true;
+        }
+
+        return $this->createBackup($site, $response)['success'] === true;
     }
 
     private function api(Site $site): WordPressApiServiceInterface
@@ -225,19 +269,59 @@ class IncidentActionExecutor
 
     private function createBackup(Site $site, IncidentResponse $response): array
     {
-        try {
-            $config = $site->backupConfig;
-            if ($config) {
-                CreateBackup::dispatchSync($site, 'database', 'incident_response', $config->storage_destination_id);
-            }
-            $response->update(['backup_created' => true]);
+        // No backup capability configured — we cannot create a recovery point, so
+        // never claim one exists. The caller refuses/escalates the destructive work.
+        $config = $site->backupConfig;
+        if (! $config) {
+            Log::warning("Incident response: site {$site->id} has no backup configuration — cannot create a pre-action backup");
 
-            return ['success' => true, 'message' => 'Database backup created'];
+            return ['success' => false, 'error' => 'No backup configuration for this site; cannot create a backup'];
+        }
+
+        try {
+            CreateBackup::dispatchSync($site, 'database', 'incident_response', $config->storage_destination_id);
         } catch (\Throwable $e) {
             Log::warning("Incident response backup failed for site {$site->id}: {$e->getMessage()}");
 
             return ['success' => false, 'error' => $e->getMessage()];
         }
+
+        // The CreateBackup job returns silently when it can't acquire the site lock
+        // or drops a duplicate dispatch — so success is confirmed ONLY by a real
+        // completed + verification-passed Backup row, never by the dispatch itself.
+        $backup = $this->findVerifiedBackup($site, $response);
+        if (! $backup) {
+            Log::warning("Incident response: backup dispatch for site {$site->id} did not yield a completed, verified backup");
+
+            return ['success' => false, 'error' => 'Backup did not complete or failed verification'];
+        }
+
+        $response->update(['backup_created' => true, 'backup_id' => $backup->id]);
+
+        return [
+            'success' => true,
+            'message' => 'Database backup created and verified',
+            'backup_id' => $backup->id,
+        ];
+    }
+
+    /**
+     * A backup satisfies the pre-destructive-action invariant only if it is a
+     * completed + verification-passed backup for this site that is at least as
+     * fresh as the incident itself (a stale week-old backup does not count as a
+     * recovery point for the mutation we are about to perform).
+     */
+    private function findVerifiedBackup(Site $site, IncidentResponse $response): ?Backup
+    {
+        $since = $response->created_at ?? now();
+
+        return Backup::query()
+            ->where('site_id', $site->id)
+            ->where('status', BackupStatus::Completed)
+            ->where('verification_status', 'passed')
+            ->where('completed_at', '>=', $since)
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function dbCleanup(Site $site): array
