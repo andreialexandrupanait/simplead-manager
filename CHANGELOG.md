@@ -9,6 +9,31 @@ WordPress sites.
 
 ## [2026-07-11]
 
+### Security module — design-only features made functional (PRs #43-#47)
+- **PR #43** — incident response queried columns that never existed
+  (`SecurityIssue.status`, `VulnerabilityAlert.plugin_slug`/`cvss_score`, plus a bare
+  `->latest()` on timestamp-less `update_logs`) and crashed with SQLSTATE 42703 the
+  moment `incident-response.enabled` was turned on. Real columns + executed-query
+  contract tests. *(SEC-A2-04.)*
+- **PR #44** — a killed/timed-out incident-response worker left the incident
+  non-terminal forever, silently extending the dispatcher cooldown; `failed()` now
+  marks it failed by natural key + a 15-min stale sweep covers kill -9. *(SEC-A2-11.)*
+- **PR #45** — removed the dead SecurityCommand/agent-pull path (-1052 lines): no
+  WP-side poller ever shipped, so commands only accumulated as pending debris while
+  the real enforcement ran through the signed push; agent routes/controller/middleware
+  gone, "pending commands" UI counters replaced with an honest failed-settings count;
+  dropped `security_commands`; deleted the unrouted SecurityComingSoon component and
+  the decorative "Coming Soon" overview cards.
+- **PR #46** — connector security batch: manager-side IP unbans now actually clear the
+  WordPress ban option AND the brute-force transient (they used to resurrect on the
+  next sync); the "Fix" button for directory listing works (fix key had no handler);
+  the IP whitelist restricts login/wp-admin/XML-RPC only instead of 403-ing the whole
+  public site *(E-43)*; empty `banned_ips` is treated as authoritative.
+- **PR #47** — real two-factor authentication for WordPress logins (email code):
+  role-targeted, hashed 10-minute codes, 5-attempt lockout, 30-day trusted devices,
+  app-password/REST/XML-RPC exempt, configurable fail-open/closed on mail failure —
+  replaces the "Coming Soon" badge and the dead toggle. Connector **2.17.0**.
+
 ### Fixed
 - **PR #32** — deploy migrations now run against direct Postgres (`pgsql_direct`
   connection, `DB_DIRECT_HOST` baked into the prod compose env): PgBouncer transaction
