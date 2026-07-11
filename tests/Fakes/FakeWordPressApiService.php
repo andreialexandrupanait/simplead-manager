@@ -322,6 +322,11 @@ class FakeWordPressApiService implements WordPressApiServiceInterface
         return $this->respond('pushSecuritySettings', func_get_args());
     }
 
+    public function unbanIps(array $ips): array
+    {
+        return $this->respond('unbanIps', func_get_args());
+    }
+
     public function getSecurityState(): array
     {
         return $this->respond('getSecurityState', func_get_args());
