@@ -80,8 +80,9 @@ class ContextGatherer
 
     private function recentUpdates(Site $site): array
     {
+        // update_logs has no created_at — order by its own performed_at.
         return $site->updateLogs()
-            ->latest()
+            ->latest('performed_at')
             ->limit(10)
             ->get(['type', 'name', 'slug', 'from_version', 'to_version', 'success', 'error_message', 'performed_at'])
             ->toArray();
@@ -89,18 +90,22 @@ class ContextGatherer
 
     private function securityIssues(Site $site): array
     {
+        // security_issues tracks open-ness via is_fixed/is_ignored, not a
+        // status column (audit SEC-A2-04 — the old select crashed with 42703).
         return $site->securityIssues()
             ->whereIn('severity', ['critical', 'high'])
-            ->where('status', '!=', 'fixed')
-            ->get(['id', 'type', 'severity', 'title', 'description', 'status'])
+            ->where('is_fixed', false)
+            ->where('is_ignored', false)
+            ->get(['id', 'type', 'severity', 'title', 'description'])
             ->toArray();
     }
 
     private function vulnerabilities(Site $site): array
     {
+        // Columns are software_type/software_slug; there is no cvss_score.
         return $site->vulnerabilityAlerts()
             ->where('status', 'active')
-            ->get(['id', 'plugin_slug', 'title', 'severity', 'cvss_score', 'installed_version', 'fixed_in_version'])
+            ->get(['id', 'software_type', 'software_slug', 'title', 'severity', 'installed_version', 'fixed_in_version'])
             ->toArray();
     }
 

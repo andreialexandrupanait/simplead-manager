@@ -34,6 +34,12 @@ class CriticalSchemaTest extends TestCase
             'app_backup_configs.is_enabled' => ['app_backup_configs', 'is_enabled'],
             'app_backup_configs.next_backup_at' => ['app_backup_configs', 'next_backup_at'],
             'sites.is_connected' => ['sites', 'is_connected'],
+            // read by IncidentResponseDispatcher every 5 minutes (SEC-A2-04:
+            // the dispatcher previously queried columns that never existed)
+            'security_issues.is_fixed' => ['security_issues', 'is_fixed'],
+            'security_issues.is_ignored' => ['security_issues', 'is_ignored'],
+            'vulnerability_alerts.software_slug' => ['vulnerability_alerts', 'software_slug'],
+            'vulnerability_alerts.status' => ['vulnerability_alerts', 'status'],
         ];
     }
 
