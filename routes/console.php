@@ -119,6 +119,15 @@ Schedule::command('db:dump', ['--keep' => 7])
     ->name('database-dump')
     ->onOneServer();
 
+// Push the daily dump off-host so the platform's own DB backup survives loss
+// of the app host. Runs after db:dump; alerts critically if no remote
+// destination is configured or the push cannot be verified.
+Schedule::command('db:dump-offsite')
+    ->dailyAt('02:45')
+    ->name('database-dump-offsite')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // VACUUM ANALYZE — weekly Sunday 3 AM
 Schedule::command('db:vacuum-analyze')
     ->weekly()
@@ -204,6 +213,15 @@ Schedule::call(function () {
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
     ->dailyAt('06:00')
     ->name('validate-external-connections')
+    ->onOneServer();
+
+// Reconnect probe (self-healing) — read-only getInfo() against every site
+// flagged disconnected; a recovered site is flipped back to connected within
+// the hour so a transient sync failure never permanently halts its pipelines.
+Schedule::command('sites:reconnect-probe')
+    ->hourly()
+    ->name('sites-reconnect-probe')
+    ->withoutOverlapping()
     ->onOneServer();
 
 // Process buffered notifications (grouping/batching)

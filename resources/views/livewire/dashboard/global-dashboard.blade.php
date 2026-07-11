@@ -74,6 +74,11 @@
                         <div class="mt-0.5 text-xs font-medium {{ $stats['sites_down'] > 0 ? 'text-red-600' : 'text-green-600' }}">
                             {{ $stats['sites_down'] === 0 ? __('all operational') : $stats['sites_down'] . ' ' . __('down') }}
                         </div>
+                        @if(($stats['disconnected_sites'] ?? 0) > 0)
+                            <div class="mt-0.5 text-xs font-medium text-amber-600">
+                                {{ $stats['disconnected_sites'] . ' ' . __('disconnected') }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </x-ui.card>
