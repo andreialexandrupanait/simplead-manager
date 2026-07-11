@@ -14,10 +14,6 @@ use Illuminate\Support\Collection;
 
 class SecuritySettingsService
 {
-    public function __construct(
-        private SecurityCommandService $commandService,
-    ) {}
-
     public const VALID_SETTING_KEYS = [
         'hardening' => [
             'disable_theme_editor',
@@ -94,12 +90,9 @@ class SecuritySettingsService
             ['setting_value' => $value, 'is_enabled' => $enabled, 'failed_at' => null, 'failure_reason' => null],
         );
 
-        $this->commandService->createCommand($site, $category, $key, [
-            'value' => $value,
-            'enabled' => $enabled,
-        ]);
-
-        // Push settings to the WordPress plugin via REST API
+        // Push settings to the WordPress plugin via REST API — the only
+        // enforcement path (the old SecurityCommand pull-queue had no consumer
+        // and was removed; see the agent-pull removal PR).
         $this->pushToPlugin($site);
 
         return $setting;

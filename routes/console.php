@@ -213,13 +213,6 @@ Schedule::job(new \App\Jobs\SendDailyDigest)
 // Security Hardening
 // ==========================================================================
 
-// Cleanup stale security commands (picked_up >30min)
-Schedule::command('security:maintenance stale-commands')
-    ->everyFifteenMinutes()
-    ->name('security-stale-commands-cleanup')
-    ->withoutOverlapping()
-    ->onOneServer();
-
 // Prune old security activity logs
 Schedule::command('security:maintenance prune-logs')
     ->dailyAt('03:30')

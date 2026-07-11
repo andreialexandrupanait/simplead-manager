@@ -50,12 +50,6 @@ class SecurityOverview extends Component
     }
 
     #[Computed]
-    public function pendingCommandsCount(): int
-    {
-        return $this->site->securityCommands()->where('status', 'pending')->count();
-    }
-
-    #[Computed]
     public function tweakSettingsByCategory(): Collection
     {
         return app(SiteTweaksSettingsService::class)->getSettingsForSite($this->site);

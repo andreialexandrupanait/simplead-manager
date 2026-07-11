@@ -42,11 +42,6 @@
                 </div>
 
                 <div class="flex items-center gap-3 text-sm text-gray-500">
-                    @if($this->pendingCommandsCount > 0)
-                        <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-medium text-yellow-700">
-                            {{ $this->pendingCommandsCount }} {{ __('pending') }}
-                        </span>
-                    @endif
                     @if($this->lastSyncAt)
                         <span>{{ __('Last sync') }}: {{ \Carbon\Carbon::parse($this->lastSyncAt)->diffForHumans() }}</span>
                     @endif
@@ -166,29 +161,6 @@
                                 <x-ui.badge variant="gray">{{ __('Not Configured') }}</x-ui.badge>
                             @endif
                         </div>
-                    </div>
-                </x-ui.card>
-            </a>
-        @endforeach
-
-        {{-- Coming Soon Cards --}}
-        @php
-            $comingSoonCategories = [
-                'admin_ux' => ['label' => __('Admin UX'), 'icon' => 'layout', 'route' => 'sites.tweaks'],
-                'content_media' => ['label' => __('Content & Media'), 'icon' => 'image', 'route' => 'sites.tweaks'],
-                'email' => ['label' => __('Email'), 'icon' => 'mail', 'route' => 'sites.tweaks'],
-            ];
-        @endphp
-
-        @foreach($comingSoonCategories as $catKey => $catInfo)
-            <a href="{{ route($catInfo['route'], $site) }}">
-                <x-ui.card class="cursor-pointer opacity-60 transition-colors">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h4 class="text-sm font-semibold text-gray-400">{{ $catInfo['label'] }}</h4>
-                            <p class="mt-1 text-xs text-gray-400">{{ __('Coming soon') }}</p>
-                        </div>
-                        <x-ui.badge variant="yellow">{{ __('Soon') }}</x-ui.badge>
                     </div>
                 </x-ui.card>
             </a>

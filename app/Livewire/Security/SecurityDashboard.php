@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Security;
 
 use App\Livewire\Traits\WithSorting;
-use App\Models\SecurityCommand;
 use App\Models\SecurityPreset;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
@@ -54,12 +53,12 @@ class SecurityDashboard extends Component
     }
 
     #[Computed]
-    public function pendingCommandsCount(): int
+    public function failedSettingsCount(): int
     {
         $siteIds = $this->scopedSiteQuery()->pluck('id');
 
-        return SecurityCommand::whereIn('site_id', $siteIds)
-            ->where('status', 'pending')
+        return \App\Models\SecuritySetting::whereIn('site_id', $siteIds)
+            ->whereNotNull('failed_at')
             ->count();
     }
 
@@ -78,8 +77,8 @@ class SecurityDashboard extends Component
                 'securitySettings as enabled_settings_count' => function ($q) {
                     $q->where('is_enabled', true);
                 },
-                'securityCommands as pending_commands_count' => function ($q) {
-                    $q->where('status', 'pending');
+                'securitySettings as failed_settings_count' => function ($q) {
+                    $q->whereNotNull('failed_at');
                 },
             ])
             ->addSelect([
@@ -149,7 +148,7 @@ class SecurityDashboard extends Component
         app(SecuritySettingsService::class)->applyPreset($preset, $sites);
 
         $this->bulkPresetId = null;
-        unset($this->sites, $this->pendingCommandsCount);
+        unset($this->sites, $this->failedSettingsCount);
 
         session()->flash('dash-success', "Preset '{$preset->name}' applied to {$sites->count()} site(s).");
     }

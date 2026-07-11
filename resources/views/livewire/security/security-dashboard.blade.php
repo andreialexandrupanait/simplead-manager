@@ -16,9 +16,9 @@
             description="{{ __('Score below 50 or not configured') }}"
         />
         <x-ui.stat-card
-            label="{{ __('Pending Commands') }}"
-            :value="$this->pendingCommandsCount"
-            description="{{ __('Waiting for agents to pick up') }}"
+            label="{{ __('Failed Settings') }}"
+            :value="$this->failedSettingsCount"
+            description="{{ __('Could not be applied to the site') }}"
         />
     </div>
 
@@ -106,9 +106,9 @@
                             <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                                 {{ $site->enabled_settings_count }} {{ __('Settings') }}
                             </span>
-                            @if($site->pending_commands_count > 0)
-                                <span class="inline-flex rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700">
-                                    {{ $site->pending_commands_count }} {{ __('Pending') }}
+                            @if($site->failed_settings_count > 0)
+                                <span class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                                    {{ $site->failed_settings_count }} {{ __('Failed') }}
                                 </span>
                             @endif
                         </div>
@@ -131,7 +131,7 @@
                             <x-ui.sortable-th column="name" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Site') }}</x-ui.sortable-th>
                             <x-ui.sortable-th column="security_hardening_score" :sortBy="$sortBy" :sortDir="$sortDir">{{ __('Score') }}</x-ui.sortable-th>
                             <th class="px-3 py-2">{{ __('Settings') }}</th>
-                            <th class="px-3 py-2">{{ __('Pending') }}</th>
+                            <th class="px-3 py-2">{{ __('Failed') }}</th>
                             <th class="px-3 py-2">{{ __('Last Sync') }}</th>
                         </tr>
                     </thead>
@@ -168,9 +168,9 @@
                                     {{ $site->enabled_settings_count }} {{ __('enabled') }}
                                 </td>
                                 <td class="px-3 py-3">
-                                    @if($site->pending_commands_count > 0)
-                                        <span class="inline-flex rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-700">
-                                            {{ $site->pending_commands_count }}
+                                    @if($site->failed_settings_count > 0)
+                                        <span class="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                                            {{ $site->failed_settings_count }}
                                         </span>
                                     @else
                                         <span class="text-xs text-gray-400">0</span>
