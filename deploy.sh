@@ -33,6 +33,35 @@ docker compose version >/dev/null 2>&1 || fail "docker compose plugin not found"
 log "Pulling latest code..."
 git pull --ff-only || fail "git pull failed — resolve conflicts manually"
 
+# ── Step 1b: CI gate — refuse to ship red code (audit T-A2-01) ───────────────
+# Verifies the required CI checks passed for the exact commit being deployed.
+# Override in an emergency with DEPLOY_SKIP_CI_CHECK=1.
+
+if [ "${DEPLOY_SKIP_CI_CHECK:-0}" != "1" ]; then
+    if command -v gh >/dev/null 2>&1; then
+        DEPLOY_SHA=$(git rev-parse HEAD)
+        log "Checking CI status for ${DEPLOY_SHA:0:8}..."
+        CI_RESULT=$(gh api "repos/{owner}/{repo}/commits/${DEPLOY_SHA}/check-runs" \
+            --jq '[.check_runs[]
+                   | select(.name == "Pint (code style)"
+                         or .name == "PHPStan (static analysis)"
+                         or .name == "PHPUnit (pgsql + redis)")
+                   | .conclusion]
+                  | if length == 0 then "missing"
+                    elif all(. == "success") then "success"
+                    else "failure" end' 2>/dev/null) || CI_RESULT="unknown"
+
+        case "$CI_RESULT" in
+            success) log "CI is green." ;;
+            missing) fail "No CI check runs found for ${DEPLOY_SHA:0:8} — wait for CI or set DEPLOY_SKIP_CI_CHECK=1" ;;
+            failure) fail "CI is NOT green for ${DEPLOY_SHA:0:8} — fix it or set DEPLOY_SKIP_CI_CHECK=1" ;;
+            *)       warn "Could not determine CI status (gh api failed) — continuing" ;;
+        esac
+    else
+        warn "gh CLI not found — skipping CI gate"
+    fi
+fi
+
 # ── Step 2: Build Docker image (includes frontend assets via multi-stage) ────
 
 log "Building new Docker image..."
