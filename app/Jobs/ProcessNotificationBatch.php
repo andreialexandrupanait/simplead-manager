@@ -10,6 +10,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 /**
@@ -47,6 +48,15 @@ class ProcessNotificationBatch implements ShouldQueue
         // Group by channel_id + event
         $groups = [];
         foreach ($items as $item) {
+            // Buffer items written by an older code version (or corrupted JSON)
+            // may lack required keys — skip them instead of crashing the whole
+            // batch (seen in prod: "Undefined array key channel_id").
+            if (! is_array($item) || ! isset($item['channel_id'], $item['event'])) {
+                Log::warning('Skipping malformed notification buffer item', ['item' => $item]);
+
+                continue;
+            }
+
             $key = $item['channel_id'].':'.$item['event'];
             $groups[$key][] = $item;
         }
@@ -68,13 +78,13 @@ class ProcessNotificationBatch implements ShouldQueue
                     $channel,
                     $site,
                     $first['event'],
-                    $first['title'],
-                    $first['message'],
+                    $first['title'] ?? '',
+                    $first['message'] ?? '',
                     $first['fields'] ?? [],
                     $first['severity'] ?? 'warning',
-                    $first['webhook_payload'],
-                    $first['mailable_class'],
-                    $first['mailable_args'],
+                    $first['webhook_payload'] ?? null,
+                    $first['mailable_class'] ?? null,
+                    $first['mailable_args'] ?? null,
                 );
             } else {
                 // Multiple notifications — send grouped summary

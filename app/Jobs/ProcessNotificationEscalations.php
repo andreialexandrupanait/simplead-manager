@@ -41,9 +41,11 @@ class ProcessNotificationEscalations implements ShouldQueue
         // Find unacknowledged, non-escalated notifications for this source channel
         $cutoff = now()->subMinutes($rule->delay_minutes);
 
+        // Failed sends escalate too — a dead primary channel must not
+        // swallow alerts silently (audit N-P1-1).
         $pending = NotificationLog::where('notification_channel_id', $rule->source_channel_id)
             ->where('severity', $rule->severity)
-            ->where('status', 'sent')
+            ->whereIn('status', ['sent', 'failed'])
             ->where('escalated', false)
             ->whereNull('acknowledged_at')
             ->where('created_at', '<=', $cutoff)
@@ -53,15 +55,22 @@ class ProcessNotificationEscalations implements ShouldQueue
 
         foreach ($pending as $log) {
             try {
-                // Send escalation to the escalation channel
+                $reason = $log->status === 'failed'
+                    ? 'Delivery to the primary channel FAILED'
+                    : 'Not acknowledged';
+
+                // Send escalation to the escalation channel. isEscalation marks
+                // the resulting NotificationLog as already-escalated so rule
+                // pairs (A→B, B→A) cannot loop.
                 SendNotificationJob::dispatch(
                     channel: $rule->escalationChannel,
                     site: $log->site,
                     event: $log->event,
                     title: '[ESCALATION] '.($log->metadata['title'] ?? $log->event),
-                    message: ($log->message ?? 'No details').' — Not acknowledged after '.$rule->delay_minutes.' minutes.',
+                    message: ($log->message ?? 'No details')." — {$reason} after {$rule->delay_minutes} minutes.",
                     fields: [],
                     severity: $log->severity ?? 'critical',
+                    isEscalation: true,
                 );
 
                 $log->update(['escalated' => true]);

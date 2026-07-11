@@ -60,7 +60,9 @@ class GoogleApiService
     {
         return Http::timeout(30)
             ->withToken($this->accessToken)
-            ->retry(3, 2000, function (\Throwable $exception, \Illuminate\Http\Client\Request $request): bool {
+            // Second param is the PendingRequest — typing it as Request caused a
+            // TypeError in prod whenever a retry decision was evaluated.
+            ->retry(3, 2000, function (\Throwable $exception, \Illuminate\Http\Client\PendingRequest $request): bool {
                 if (! $exception instanceof \Illuminate\Http\Client\RequestException) {
                     return false;
                 }
