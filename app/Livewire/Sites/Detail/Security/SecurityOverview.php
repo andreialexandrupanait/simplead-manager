@@ -9,6 +9,7 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\ModuleConfigService;
 use App\Services\SecuritySettingsService;
+use App\Services\SiteTweaksSettingsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -49,7 +50,7 @@ class SecurityOverview extends Component
         return app(SecuritySettingsService::class)->getSettingsForSite($this->site);
     }
 
-    /** Security categories only — Site Tweaks live on their own page. */
+    /** Security categories (the score-bearing half of the hub). */
     private const CATEGORY_LABELS = [
         'hardening' => 'WordPress Hardening',
         'htaccess' => '.htaccess Rules',
@@ -57,6 +58,14 @@ class SecurityOverview extends Component
         'captcha' => 'CAPTCHA',
         'ip_management' => 'IP Management',
         'activity_log' => 'Activity Log',
+    ];
+
+    /** WordPress Tweaks categories — same settings store, no score impact. */
+    private const TWEAK_CATEGORY_LABELS = [
+        'performance' => 'Performance',
+        'site_control' => 'Site Control',
+        'admin_ux' => 'Admin UX',
+        'content_media' => 'Content & Media',
     ];
 
     /**
@@ -70,17 +79,30 @@ class SecurityOverview extends Component
     {
         $items = [];
 
-        foreach (self::CATEGORY_LABELS as $key => $label) {
-            $settings = $this->settingsByCategory->get($key, collect());
-            $failed = (int) $settings->where('status', SecuritySettingStatus::Failed)->count();
-            $pending = (int) $settings->where('status', SecuritySettingStatus::Pending)->count();
+        $categories = [
+            [self::CATEGORY_LABELS, $this->settingsByCategory],
+            [self::TWEAK_CATEGORY_LABELS, $this->tweakSettingsByCategory],
+        ];
 
-            if ($failed > 0 || $pending > 0) {
-                $items[] = ['key' => $key, 'label' => (string) __($label), 'failed' => $failed, 'pending' => $pending];
+        foreach ($categories as [$labels, $grouped]) {
+            foreach ($labels as $key => $label) {
+                $settings = $grouped->get($key, collect());
+                $failed = (int) $settings->where('status', SecuritySettingStatus::Failed)->count();
+                $pending = (int) $settings->where('status', SecuritySettingStatus::Pending)->count();
+
+                if ($failed > 0 || $pending > 0) {
+                    $items[] = ['key' => $key, 'label' => (string) __($label), 'failed' => $failed, 'pending' => $pending];
+                }
             }
         }
 
         return collect($items);
+    }
+
+    #[Computed]
+    public function tweakSettingsByCategory(): Collection
+    {
+        return app(SiteTweaksSettingsService::class)->getSettingsForSite($this->site);
     }
 
     /** @return array{lastScanAt: string|null, openCriticalHigh: int} */
@@ -122,7 +144,7 @@ class SecurityOverview extends Component
         return view('livewire.sites.detail.security.security-overview')
             ->layout('components.layouts.app', [
                 'siteContext' => $this->site,
-                'title' => $this->site->name.' — Security',
+                'title' => $this->site->name.' — Security & Tweaks',
             ]);
     }
 }

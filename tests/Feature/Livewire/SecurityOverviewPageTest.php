@@ -25,6 +25,15 @@ class SecurityOverviewPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Site::created() dispatches FetchSiteFavicon + plan setup — on the
+        // sync queue in CI that means real HTTP calls per created site (the
+        // 51-site pagination test timed out the whole suite).
+        \Illuminate\Support\Facades\Queue::fake();
+    }
+
     /** @return array{0: Site, 1: User} */
     private function siteWithManager(): array
     {
@@ -34,15 +43,27 @@ class SecurityOverviewPageTest extends TestCase
         return [$site, $manager];
     }
 
-    public function test_tweaks_cards_are_gone_but_discoverability_link_remains(): void
+    public function test_hub_renders_the_wordpress_tweaks_band_with_all_leaf_links(): void
     {
         [$site, $manager] = $this->siteWithManager();
 
         Livewire::actingAs($manager)
             ->test(SecurityOverview::class, ['site' => $site])
-            ->assertDontSee(route('sites.tweaks.performance', $site))
-            ->assertDontSee(route('sites.tweaks.site-control', $site))
-            ->assertSee(route('sites.tweaks', $site));
+            ->assertSee('WordPress Tweaks')
+            ->assertSee(route('sites.tweaks.performance', $site))
+            ->assertSee(route('sites.tweaks.site-control', $site))
+            ->assertSee(route('sites.tweaks.admin-ux', $site))
+            ->assertSee(route('sites.tweaks.content-media', $site))
+            ->assertDontSee('Looking for Performance & Site Control?');
+    }
+
+    public function test_old_tweaks_overview_url_redirects_to_the_hub(): void
+    {
+        [$site, $manager] = $this->siteWithManager();
+
+        $this->actingAs($manager)
+            ->get(route('sites.tweaks', $site))
+            ->assertRedirect(route('sites.security', $site));
     }
 
     public function test_scanning_card_counts_open_critical_and_high_issues_only(): void
@@ -86,6 +107,10 @@ class SecurityOverviewPageTest extends TestCase
             'site_id' => $site->id, 'category' => 'login', 'setting_key' => 'brute_force_protection',
             'setting_value' => [], 'is_enabled' => true, // no applied_at, no failed_at => pending
         ]);
+        SecuritySetting::create([
+            'site_id' => $site->id, 'category' => 'performance', 'setting_key' => 'disable_emojis',
+            'setting_value' => [], 'is_enabled' => true, 'failed_at' => now(), 'failure_reason' => 'x',
+        ]);
 
         $items = Livewire::actingAs($manager)
             ->test(SecurityOverview::class, ['site' => $site])
@@ -93,9 +118,11 @@ class SecurityOverviewPageTest extends TestCase
 
         $hardening = $items->firstWhere('key', 'hardening');
         $login = $items->firstWhere('key', 'login');
+        $performance = $items->firstWhere('key', 'performance');
 
         $this->assertSame(1, $hardening['failed']);
         $this->assertSame(1, $login['pending']);
+        $this->assertSame(1, $performance['failed']);
     }
 
     public function test_cards_render_in_tab_order(): void
@@ -113,6 +140,11 @@ class SecurityOverviewPageTest extends TestCase
                 'Scanning',
                 'Activity Log',
                 'Users',
+                'WordPress Tweaks',
+                'Performance',
+                'Site Control',
+                'Admin UX',
+                'Content & Media',
             ]);
     }
 }
