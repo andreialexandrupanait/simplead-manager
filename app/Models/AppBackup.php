@@ -111,6 +111,7 @@ class AppBackup extends Model
             'completed' => 'green',
             'in_progress' => 'purple',
             'pending' => 'yellow',
+            'degraded' => 'amber',
             'failed' => 'red',
             default => 'gray',
         };

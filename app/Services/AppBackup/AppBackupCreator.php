@@ -128,6 +128,11 @@ class AppBackupCreator
 
             $remotePath = 'application-backups/'.$fileName;
 
+            // Tracks whether the backup actually left the host. A degraded
+            // backup (local-only fallback) is NOT a disaster-recovery-grade
+            // backup and must never be reported as a completed off-site upload.
+            $degraded = false;
+
             if ($destination) {
                 $driver = StorageFactory::make($destination);
                 $appBackupsPath = $destination->config['app_backups_path'] ?? null;
@@ -138,9 +143,25 @@ class AppBackupCreator
                     $remotePath = $absoluteRemotePath;
                 } else {
                     $driver->upload($archivePath, $remotePath);
+
+                    // Verify the remote destination actually received the file.
+                    // A silent upload() that did not persist must fail loudly
+                    // rather than be recorded as a successful off-site backup.
+                    // (Only run for base-path uploads, whose exists() semantics
+                    // are consistent across drivers.)
+                    if (! $driver->exists($remotePath)) {
+                        throw new \RuntimeException(
+                            "Off-site upload unverified: remote destination did not confirm {$remotePath}."
+                        );
+                    }
                 }
                 $destination->increment('used_bytes', $fileSize);
             } else {
+                // No remote destination resolved — keep a local copy (better
+                // than nothing) but flag the backup DEGRADED and alert loudly.
+                // The platform's own DR is unproven when backups never leave
+                // the host, so this must not masquerade as a clean success.
+                $degraded = true;
                 $fallbackDir = storage_path('app/backups/application');
                 if (! is_dir($fallbackDir)) {
                     mkdir($fallbackDir, 0755, true);
@@ -155,7 +176,7 @@ class AppBackupCreator
             }
 
             $backup->update([
-                'status' => 'completed',
+                'status' => $degraded ? 'degraded' : 'completed',
                 'progress' => 100,
                 'storage_path' => $remotePath,
                 'file_name' => $fileName,
@@ -167,14 +188,34 @@ class AppBackupCreator
                 'expires_at' => $expiresAt,
             ]);
 
+            $config->update([
+                'last_backup_at' => now(),
+                'last_backup_status' => $degraded ? 'degraded' : 'completed',
+            ]);
+
+            if ($degraded) {
+                $this->log($backup, "DEGRADED: backup completed LOCALLY ONLY — no remote destination configured. This backup did not leave the host ({$this->formatBytes($fileSize)}).");
+
+                ActivityLogger::appBackupFailed('Degraded: local-only backup (no remote destination)');
+
+                NotificationService::notifyAppEvent(
+                    'app_backup_degraded',
+                    'Application Backup Degraded (Local-Only)',
+                    "Application backup completed but stayed on the host — no remote storage destination is configured. Disaster recovery is NOT protected. File: {$fileName} ({$this->formatBytes($fileSize)}).",
+                    [
+                        'Type' => $type,
+                        'Size' => $this->formatBytes($fileSize),
+                        'Location' => 'Local host only (no off-site copy)',
+                    ],
+                    'critical',
+                );
+
+                return $backup;
+            }
+
             $this->log($backup, "Backup completed successfully ({$this->formatBytes($fileSize)})");
 
             ActivityLogger::appBackupCompleted($fileName, $fileSize);
-
-            $config->update([
-                'last_backup_at' => now(),
-                'last_backup_status' => 'completed',
-            ]);
 
             NotificationService::notifyAppEvent(
                 'app_backup_completed',

@@ -31,6 +31,10 @@ class DashboardService
         $totalSites = Site::count();
         $sitesDown = Site::where('is_up', false)->count();
 
+        // Sites the connector can no longer reach — their backups, scans,
+        // performance tests and sync are all paused until they reconnect.
+        $disconnectedSites = Site::where('is_connected', false)->count();
+
         $avgUptime = UptimeMonitor::whereHas('site')->whereNotNull('uptime_30d')->avg('uptime_30d');
         $avgResponseTime = UptimeMonitor::whereHas('site')
             ->whereNotNull('avg_response_time')
@@ -68,6 +72,7 @@ class DashboardService
         return [
             'total_sites' => $totalSites,
             'sites_down' => $sitesDown,
+            'disconnected_sites' => $disconnectedSites,
             'avg_uptime' => $avgUptime ? round((float) $avgUptime, 2) : null,
             'avg_response_time' => $avgResponseTime ? (int) round((float) $avgResponseTime) : null,
             'pending_updates' => $pendingPluginUpdates + $pendingThemeUpdates + $pendingCoreUpdates,
@@ -78,7 +83,7 @@ class DashboardService
             'stale_backups' => $staleBackups,
             'unverified_backups' => $unverifiedBackups,
             'backup_health' => $backupHealth,
-            'total_alerts' => $sitesDown + $backups['failed_backups'] + $staleBackups,
+            'total_alerts' => $sitesDown + $disconnectedSites + $backups['failed_backups'] + $staleBackups,
             'backup_storage_bytes' => $backups['total_storage_bytes'],
             'backups_today' => $backups['backups_today'],
         ];

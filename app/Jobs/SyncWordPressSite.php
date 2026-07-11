@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\WordPressApiException;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
+use App\Services\Notifications\NotificationService;
 use App\Services\PluginConflictService;
 use App\Services\SecurityRecommendationService;
 use App\Services\WordPressApiServiceFactory;
@@ -20,6 +22,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 {
@@ -244,11 +247,12 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             JobTracker::complete($this->uniqueId(), 'Site sync complete');
 
         } catch (\Exception $e) {
+            // Do NOT flip is_connected here. A transient blip (timeout, 5xx,
+            // connection reset) must not permanently disable this site's
+            // backups/scans/sync. Retries + backoff run first; the connection
+            // flag is only touched in failed() and only on a genuine auth/4xx
+            // failure once all tries are exhausted.
             Log::warning("WordPress sync failed for site {$this->site->id}: {$e->getMessage()}");
-
-            $this->site->update([
-                'is_connected' => false,
-            ]);
 
             throw $e;
         }
@@ -258,5 +262,72 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
     {
         CircuitBreakerService::recordFailure($this->site, $exception?->getMessage() ?? 'WP sync failed');
         JobTracker::fail($this->uniqueId(), 'Sync failed: '.($exception?->getMessage() ?? 'Unknown error'));
+
+        // Only a genuine auth/permission (4xx) failure means the connector is
+        // no longer usable. Transient failures (connection errors, timeouts,
+        // 5xx, rate limits) leave is_connected untrue so the hourly reconnect
+        // probe and normal pipelines keep running.
+        if (! $this->isGenuineDisconnect($exception)) {
+            return;
+        }
+
+        // Reload current state — avoid re-notifying a site that is already
+        // flagged disconnected.
+        $this->site->refresh();
+
+        if (! $this->site->is_connected) {
+            return;
+        }
+
+        $this->site->update(['is_connected' => false]);
+
+        Log::warning(
+            "Site {$this->site->id} ({$this->site->name}) marked disconnected after auth/4xx failure: "
+            .($exception?->getMessage() ?? 'unknown')
+        );
+
+        NotificationService::notifySiteEvent(
+            $this->site,
+            'site_disconnected',
+            'Site Disconnected',
+            "SimpleAd can no longer reach {$this->site->name}. Backups, security scans, performance tests and sync are paused for this site until the connection is restored.",
+            [
+                'Site' => $this->site->name,
+                'URL' => $this->site->url,
+                'Reason' => Str::limit($exception?->getMessage() ?? 'Authentication failed', 200),
+            ],
+            'critical',
+        );
+    }
+
+    /**
+     * A genuine disconnect is a 4xx (auth/permission/not-found) response — the
+     * connector rejected us and retrying will not help. Rate-limit (429) and
+     * request-timeout (408) are transient and explicitly excluded. Anything
+     * without an HTTP status (connection reset, DNS failure, read timeout, 5xx)
+     * is transient by definition.
+     */
+    private function isGenuineDisconnect(?\Throwable $exception): bool
+    {
+        $status = $this->httpStatusOf($exception);
+
+        if ($status === null) {
+            return false;
+        }
+
+        return $status >= 400 && $status < 500 && ! in_array($status, [408, 429], true);
+    }
+
+    private function httpStatusOf(?\Throwable $exception): ?int
+    {
+        if ($exception instanceof WordPressApiException) {
+            return $exception->httpStatus;
+        }
+
+        if ($exception instanceof RequestException) {
+            return $exception->response->status();
+        }
+
+        return null;
     }
 }
