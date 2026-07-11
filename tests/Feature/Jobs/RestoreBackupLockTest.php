@@ -106,6 +106,53 @@ class RestoreBackupLockTest extends TestCase
         $this->assertFalse(SiteOperationLock::isHeld($this->site->id));
     }
 
+    public function test_redelivered_failed_restore_is_not_auto_rerun(): void
+    {
+        // P0-06: a prior attempt died mid-restore and was marked Failed (by
+        // failed() or the recovery command). ~2h later the queue redelivers the
+        // job (attempts > 1). It must NOT silently re-run the whole restore
+        // against a site an operator may have already hand-repaired — it fails
+        // and waits for a deliberate manual re-trigger.
+        $this->backup->update(['restore_status' => BackupStatus::Failed]);
+
+        $job = new class($this->backup) extends RestoreBackup
+        {
+            public function attempts(): int
+            {
+                return 2;
+            }
+        };
+        $job->withFakeQueueInteractions();
+        $job->handle();
+
+        $job->assertFailed();
+        $this->assertFalse(SiteOperationLock::isHeld($this->site->id));
+    }
+
+    public function test_requeued_pending_restore_still_proceeds_on_later_attempt(): void
+    {
+        // The guard must not over-reach: a restore that only ever waited on a
+        // busy site lock stays Pending across polite requeues, so a later
+        // attempt (attempts > 1) must still be allowed to acquire the lock and
+        // run once the site frees up.
+        SiteOperationLock::acquire($this->site->id, SiteOperationLock::OPERATION_BACKUP);
+        $this->backup->update(['restore_status' => BackupStatus::Pending]);
+
+        $job = new class($this->backup) extends RestoreBackup
+        {
+            public function attempts(): int
+            {
+                return 2;
+            }
+        };
+        $job->withFakeQueueInteractions();
+        $job->handle();
+
+        // It did not blindly fail — it politely requeued because the site is busy.
+        $job->assertReleased(180);
+        $this->assertSame(BackupStatus::Pending, $this->backup->fresh()->restore_status);
+    }
+
     public function test_failed_marks_restore_failed_releases_locks_and_alerts(): void
     {
         Queue::fake();

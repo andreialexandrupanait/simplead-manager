@@ -241,6 +241,94 @@ class SafeUpdateServiceTest extends TestCase
         }
     }
 
+    public function test_run_safe_update_hard_aborts_when_pre_update_backup_does_not_complete(): void
+    {
+        // P0-07: the pre-update safety backup was skipped/failed (e.g. lock
+        // contention). The service must HARD-ABORT — never update a client site
+        // with no rollback point — and never call the update endpoint.
+        $api = $this->createMockApi();
+        $api->expects($this->never())->method('updatePlugins');
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $screenshotService = $this->createMock(ScreenshotService::class);
+
+        $site = $this->site;
+        \App\Models\BackupConfig::factory()->create(['site_id' => $site->id]);
+
+        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService) extends SafeUpdateService
+        {
+            protected function runPreUpdateBackup(\App\Models\Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?\App\Models\Backup
+            {
+                return null; // simulate a skipped / failed pre-update backup
+            }
+        };
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'target' => 'wordpress-seo/wp-seo.php',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+
+        try {
+            $service->runSafeUpdate($safeUpdate);
+        } finally {
+            $safeUpdate->refresh();
+            $this->assertSame('failed', $safeUpdate->status);
+            $this->assertStringContainsString('Pre-update safety backup did not complete', (string) $safeUpdate->error_message);
+        }
+    }
+
+    public function test_run_safe_update_proceeds_when_pre_update_backup_completes(): void
+    {
+        // The mirror case: a verified-completed pre-update backup lets the
+        // update proceed normally.
+        $api = $this->createMockApi();
+        $api->expects($this->once())->method('updatePlugins')->willReturn([
+            'results' => ['wordpress-seo/wp-seo.php' => ['success' => true, 'to_version' => '21.0']],
+        ]);
+        $api->method('healthCheck')->willReturn(['status' => 'ok', 'checks' => []]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $rollbackService->method('createRollbackPoint')->willReturn(
+            \App\Models\RollbackPoint::factory()->make(['id' => 1])
+        );
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $site = $this->site;
+        \App\Models\BackupConfig::factory()->create(['site_id' => $site->id]);
+
+        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService) extends SafeUpdateService
+        {
+            protected function runPreUpdateBackup(\App\Models\Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?\App\Models\Backup
+            {
+                return \App\Models\Backup::factory()->make(['status' => \App\Enums\BackupStatus::Completed]);
+            }
+        };
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'target' => 'wordpress-seo/wp-seo.php',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $this->assertSame('completed', $safeUpdate->fresh()->status);
+    }
+
     public function test_run_health_checks_returns_false_on_exception(): void
     {
         $api = $this->createMockApi();

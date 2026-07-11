@@ -27,6 +27,11 @@ class RetentionServiceTest extends TestCase
         parent::setUp();
         $this->service = new RetentionService;
 
+        // These assertions verify real deletion behaviour, so disable the
+        // safe-rollout log-only guard (default TRUE). A dedicated test below
+        // covers the dry-run path itself.
+        config(['backups.retention_dry_run' => false]);
+
         $this->destination = StorageDestination::factory()->local()->create([
             'config' => ['path' => sys_get_temp_dir().'/test-retention-'.uniqid()],
             'used_bytes' => 0,
@@ -132,20 +137,125 @@ class RetentionServiceTest extends TestCase
         $this->assertDatabaseMissing('backups', ['id' => $oldIncremental->id]);
     }
 
-    public function test_orphaned_incrementals_are_cleaned_up(): void
+    public function test_out_of_count_orphaned_incremental_is_removed_by_chain_policy(): void
     {
-        $this->createBackupConfig('count', 10);
+        // An orphaned incremental (parent gone) forms its own single-member
+        // chain. Under count=1 with a newer full present, that old orphan chain
+        // is beyond the retention count and is pruned.
+        $this->createBackupConfig('count', 1);
 
-        // Orphaned incremental: type=incremental, parent_backup_id=null
+        $newFull = $this->createBackup(['type' => 'full', 'created_at' => now()->subDay()]);
         $orphan = $this->createBackup([
             'type' => 'incremental',
             'parent_backup_id' => null,
-            'created_at' => now()->subDays(5),
+            'created_at' => now()->subDays(20),
         ]);
 
         $this->service->apply($this->site, $this->destination);
 
+        $this->assertDatabaseHas('backups', ['id' => $newFull->id]);
         $this->assertDatabaseMissing('backups', ['id' => $orphan->id]);
+    }
+
+    public function test_recent_orphaned_incremental_is_protected_in_days_mode(): void
+    {
+        // P0-03: the age-gated orphan sweep must NEVER destroy a recent restore
+        // point. A fresh orphan (within the window) survives; an old one is swept.
+        $this->createBackupConfig('days', 7);
+
+        $freshOrphan = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => null,
+            'created_at' => now()->subDay(),
+        ]);
+        $oldOrphan = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => null,
+            'created_at' => now()->subDays(20),
+        ]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $freshOrphan->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $oldOrphan->id]);
+    }
+
+    public function test_days_mode_old_full_with_fresh_incremental_both_survive(): void
+    {
+        // THE P0-03 data-loss regression: weekly full + daily incrementals with
+        // 7-day retention. The base full has crossed the cutoff but a fresh
+        // incremental still descends from it — BOTH must survive, because the
+        // chain's newest member is inside the window.
+        $this->createBackupConfig('days', 7);
+
+        $oldFull = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(9)]);
+        $freshIncremental = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => $oldFull->id,
+            'created_at' => now()->subDay(),
+        ]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $oldFull->id]);
+        $this->assertDatabaseHas('backups', ['id' => $freshIncremental->id]);
+    }
+
+    public function test_count_mode_old_full_with_fresh_incremental_both_survive(): void
+    {
+        // Same data-loss shape in count mode: the chain sorts by its newest
+        // member (the fresh incremental), so it stays within the kept count and
+        // its base full is not stripped out from under it.
+        $this->createBackupConfig('count', 1);
+
+        $oldFull = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(30)]);
+        $freshIncremental = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => $oldFull->id,
+            'created_at' => now()->subDay(),
+        ]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $oldFull->id]);
+        $this->assertDatabaseHas('backups', ['id' => $freshIncremental->id]);
+    }
+
+    public function test_days_mode_fully_expired_chain_is_deleted(): void
+    {
+        // Control: when the NEWEST member is also outside the window, the whole
+        // chain is correctly deleted.
+        $this->createBackupConfig('days', 7);
+
+        $oldFull = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(30)]);
+        $oldIncremental = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => $oldFull->id,
+            'created_at' => now()->subDays(20),
+        ]);
+        $fresh = $this->createBackup(['type' => 'full', 'created_at' => now()->subDay()]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseMissing('backups', ['id' => $oldFull->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $oldIncremental->id]);
+        $this->assertDatabaseHas('backups', ['id' => $fresh->id]);
+    }
+
+    public function test_dry_run_deletes_nothing(): void
+    {
+        // Safe-rollout guard: with the log-only flag on, an over-count chain that
+        // WOULD be deleted is left fully intact.
+        config(['backups.retention_dry_run' => true]);
+        $this->createBackupConfig('count', 1);
+
+        $old = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(10)]);
+        $new = $this->createBackup(['type' => 'full', 'created_at' => now()->subDay()]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $old->id]);
+        $this->assertDatabaseHas('backups', ['id' => $new->id]);
     }
 
     public function test_failed_backups_are_not_affected(): void

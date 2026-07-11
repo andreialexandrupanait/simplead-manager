@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\SafeUpdate;
 use App\Models\Site;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\Notifications\NotificationService;
 use App\Services\SafeUpdateService;
 use Illuminate\Bus\Queueable;
@@ -35,7 +36,34 @@ class RunSafeUpdate implements ShouldBeUnique, ShouldQueue
 
     public function handle(SafeUpdateService $safeUpdateService): void
     {
-        $safeUpdateService->runSafeUpdate($this->safeUpdate, $this->userId);
+        /** @var Site $site */
+        $site = $this->safeUpdate->site;
+
+        // Serialize against restores / backups / other safe updates on this site.
+        // Without this a safe update could run concurrently with a live restore
+        // (P0-07). The token is passed down so the nested pre-update backup runs
+        // under this lock rather than contending with it and silently skipping.
+        $token = SiteOperationLock::acquire(
+            $site->id,
+            SiteOperationLock::OPERATION_SAFE_UPDATE,
+            'safe-update:'.$this->safeUpdate->id,
+        );
+
+        if ($token === null) {
+            $holder = SiteOperationLock::current($site->id);
+            $holderLabel = $holder['operation'] ?? 'another operation';
+
+            throw new \RuntimeException(
+                "Safe update aborted: site #{$site->id} is busy with {$holderLabel}. "
+                .'Refusing to update concurrently with another destructive operation.'
+            );
+        }
+
+        try {
+            $safeUpdateService->runSafeUpdate($this->safeUpdate, $this->userId, $token);
+        } finally {
+            SiteOperationLock::release($site->id, $token);
+        }
     }
 
     public function failed(?\Throwable $exception): void
