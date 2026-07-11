@@ -331,106 +331,14 @@
             </x-ui.table>
             @if($this->redirectPages instanceof \Illuminate\Pagination\LengthAwarePaginator && $this->redirectPages->hasPages())<div class="mt-4">{{ $this->redirectPages->links() }}</div>@endif
 
-            {{-- Redirect Management (connected sites only) --}}
-            @if($site->is_connected && !($site->is_prospect ?? false))
-                <div class="mt-6" x-data="{ redirects: [], loading: true, plugin: '', newSource: '', newTarget: '', newType: 301, saving: false }" x-init="
-                    fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects', { headers: { 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' } })
-                        .then(r => r.json())
-                        .then(data => { redirects = data.redirects || []; plugin = data.plugin || ''; loading = false; })
-                        .catch(() => { loading = false; })
-                ">
-                    <x-ui.card>
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-gray-900">Redirect Management</h3>
-                            <template x-if="plugin">
-                                <x-ui.badge variant="blue"><span x-text="'via ' + plugin"></span></x-ui.badge>
-                            </template>
-                        </div>
-
-                        {{-- Create redirect form --}}
-                        <div class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 p-3">
-                            <div class="flex-1 min-w-[180px]">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Source Path</label>
-                                <input x-model="newSource" type="text" placeholder="/old-page" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                            </div>
-                            <div class="flex-1 min-w-[180px]">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Target URL</label>
-                                <input x-model="newTarget" type="text" placeholder="/new-page" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                            </div>
-                            <div class="w-24">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
-                                <select x-model="newType" class="w-full rounded-lg border-gray-300 text-sm shadow-sm">
-                                    <option value="301">301</option>
-                                    <option value="302">302</option>
-                                    <option value="307">307</option>
-                                    <option value="410">410</option>
-                                </select>
-                            </div>
-                            <button
-                                @click="
-                                    if (!newSource || !newTarget) return;
-                                    saving = true;
-                                    fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' },
-                                        body: JSON.stringify({ source: newSource, target: newTarget, type: parseInt(newType) })
-                                    })
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        if (data.redirect_id) { redirects.unshift({ id: data.redirect_id, source: newSource, target: newTarget, type: parseInt(newType) }); newSource = ''; newTarget = ''; }
-                                        saving = false;
-                                    })
-                                    .catch(() => { saving = false; })
-                                "
-                                :disabled="saving || !newSource || !newTarget"
-                                class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 disabled:opacity-50"
-                            >
-                                <span x-show="!saving">Add</span>
-                                <span x-show="saving">...</span>
-                            </button>
-                        </div>
-
-                        {{-- Existing redirects table --}}
-                        <template x-if="loading">
-                            <div class="py-4 text-center text-sm text-gray-400">Loading redirects...</div>
-                        </template>
-                        <template x-if="!loading && redirects.length === 0">
-                            <div class="py-4 text-center text-sm text-gray-400">No managed redirects found.</div>
-                        </template>
-                        <template x-if="!loading && redirects.length > 0">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm">
-                                    <thead><tr class="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                                        <th class="px-3 py-2">Source</th><th class="px-3 py-2">Target</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Action</th>
-                                    </tr></thead>
-                                    <tbody>
-                                        <template x-for="r in redirects" :key="r.id">
-                                            <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                                <td class="px-3 py-2 text-gray-700" x-text="r.source"></td>
-                                                <td class="px-3 py-2 text-gray-600" x-text="r.target"></td>
-                                                <td class="px-3 py-2"><span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium" x-text="r.type"></span></td>
-                                                <td class="px-3 py-2 text-right">
-                                                    <button
-                                                        @click="
-                                                            if (!confirm('Delete this redirect?')) return;
-                                                            fetch('{{ rtrim($site->url, '/') }}/wp-json/simplead/v1/seo/redirects/' + r.id, {
-                                                                method: 'DELETE',
-                                                                headers: { 'X-SAM-API-Key': '{{ $site->api_key ?? '' }}' }
-                                                            })
-                                                            .then(() => { redirects = redirects.filter(x => x.id !== r.id); })
-                                                        "
-                                                        class="text-xs text-red-500 hover:text-red-700"
-                                                    >Delete</button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </template>
-                    </x-ui.card>
-                </div>
-            @endif
+            {{--
+                Redirect Management lives in the dedicated SiteRedirects Livewire
+                component (server-side, signed connector client). The former
+                browser-side Alpine panel here was removed: it embedded the
+                decrypted api_key in the DOM (audit P0-15/F-SEO-01) and was dead
+                anyway — it signed with X-SAM-API-Key, a header the connector
+                never reads (audit F-SEO-02), so every fetch 401'd.
+            --}}
         @endif
 
         {{-- KEYWORDS TAB --}}

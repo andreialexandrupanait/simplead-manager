@@ -9,6 +9,7 @@ use App\Models\SeoAudit;
 use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,7 +17,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class RunSeoAudit implements ShouldBeUnique, ShouldQueue
@@ -43,7 +43,11 @@ class RunSeoAudit implements ShouldBeUnique, ShouldQueue
     {
         JobTracker::start($this->uniqueId(), 'Initializing SEO audit...');
         try {
-            $r = Http::timeout(15)->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])->get(rtrim($this->site->url, '/').'/wp-json/simplead/v1/seo/analysis');
+            // Signed HMAC client — a raw X-SAM-API-Key header is never read by
+            // the connector and 401s on every request (audit P1-03/F-SEO-02),
+            // which silently starved seo_plugin/search_visibility/redirect_info.
+            $r = app(WordPressApiServiceFactory::class)->make($this->site)
+                ->request('GET', '/seo/analysis', timeout: 15);
             if ($r->successful()) {
                 $d = $r->json('data', []);
                 $u = [];
