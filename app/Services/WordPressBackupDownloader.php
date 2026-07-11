@@ -376,13 +376,23 @@ class WordPressBackupDownloader
                     'length' => $length,
                 ], 120);
 
-                $chunk = $chunkResponse->body();
-                $written = fwrite($fh, $chunk);
-                if ($written === false) {
-                    throw new \RuntimeException("Failed to write chunk at offset {$offset}");
+                // Stream the chunk to disk instead of ->body(): materialising
+                // the response as a string killed workers with a PHP memory
+                // fatal when a connector returned far more than the requested
+                // length (seen in prod 2026-07-11, 256M limit exhausted). The
+                // cap turns a misbehaving connector into a clear failed job
+                // instead of a SIGKILLed worker + orphaned reserved job.
+                $written = self::copyStreamCapped(
+                    $chunkResponse->toPsrResponse()->getBody(),
+                    $fh,
+                    $length + (1024 * 1024),
+                );
+
+                if ($written === 0) {
+                    throw new \RuntimeException("Empty chunk at offset {$offset}");
                 }
 
-                $offset += strlen($chunk);
+                $offset += $written;
 
                 if ($onProgress) {
                     $onProgress($offset, $totalSize);
@@ -403,6 +413,40 @@ class WordPressBackupDownloader
         } catch (RequestException|\RuntimeException) {
             // Best effort
         }
+    }
+
+    /**
+     * Copy a PSR stream to a file handle in 1MB slices with a hard size cap.
+     * Keeps peak memory flat regardless of response size; throws when the
+     * remote sends more than expected rather than exhausting the worker.
+     *
+     * @param  resource  $fh
+     * @return int bytes written
+     */
+    public static function copyStreamCapped(\Psr\Http\Message\StreamInterface $stream, $fh, int $cap): int
+    {
+        $written = 0;
+
+        while (! $stream->eof()) {
+            $buffer = $stream->read(1024 * 1024);
+            if ($buffer === '') {
+                break;
+            }
+
+            if ($written + strlen($buffer) > $cap) {
+                throw new \RuntimeException(
+                    "Response exceeded the expected chunk size (cap {$cap} bytes) — connector returned more data than requested"
+                );
+            }
+
+            if (fwrite($fh, $buffer) === false) {
+                throw new \RuntimeException('Failed to write chunk to disk');
+            }
+
+            $written += strlen($buffer);
+        }
+
+        return $written;
     }
 
     /**
