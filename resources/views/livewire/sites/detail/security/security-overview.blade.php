@@ -51,52 +51,17 @@
     </div>
 
     {{-- Needs Attention Alert --}}
-    @php
-        $attentionItems = collect();
-
-        // Collect from security categories
-        foreach (['hardening', 'htaccess', 'login', 'captcha', 'ip_management', 'activity_log'] as $catKey) {
-            $catSettings = $this->settingsByCategory->get($catKey, collect());
-            $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
-            $pendingCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Pending)->count();
-            if ($failedCount > 0 || $pendingCount > 0) {
-                $attentionItems->push(['key' => $catKey, 'failed' => $failedCount, 'pending' => $pendingCount]);
-            }
-        }
-
-        // Collect from tweaks categories
-        foreach (['performance', 'site_control'] as $catKey) {
-            $catSettings = $this->tweakSettingsByCategory->get($catKey, collect());
-            $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
-            $pendingCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Pending)->count();
-            if ($failedCount > 0 || $pendingCount > 0) {
-                $attentionItems->push(['key' => $catKey, 'failed' => $failedCount, 'pending' => $pendingCount]);
-            }
-        }
-
-        $categoryLabels = [
-            'hardening' => __('WordPress Hardening'),
-            'htaccess' => '.htaccess Rules',
-            'login' => __('Login Protection'),
-            'captcha' => 'CAPTCHA',
-            'ip_management' => __('IP Management'),
-            'activity_log' => __('Activity Log'),
-            'performance' => __('Performance'),
-            'site_control' => __('Site Control'),
-        ];
-    @endphp
-
-    @if($attentionItems->isNotEmpty())
-        <div class="mb-6">
+    @if($this->attentionItems->isNotEmpty())
+        <div class="mb-6" id="needs-attention">
             <x-ui.card>
                 <div class="flex items-start gap-3">
                     <x-icons.alert-triangle class="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900">{{ __('Needs Attention') }}</h3>
                         <div class="mt-2 space-y-1.5">
-                            @foreach($attentionItems as $item)
+                            @foreach($this->attentionItems as $item)
                                 <div class="flex items-center gap-2 text-sm text-gray-600">
-                                    <span>{{ $categoryLabels[$item['key']] ?? $item['key'] }}</span>
+                                    <span>{{ $item['label'] }}</span>
                                     @if($item['failed'] > 0)
                                         <x-ui.badge variant="red">{{ $item['failed'] }} {{ __('failed') }}</x-ui.badge>
                                     @endif
@@ -112,33 +77,28 @@
         </div>
     @endif
 
-    {{-- Unified Category Status Cards --}}
+    {{-- Category Status Cards — security only, ordered to match the tabs --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @php
-            $allCategories = [
-                'hardening' => ['label' => __('WordPress Hardening'), 'icon' => 'shield', 'route' => 'sites.security.hardening', 'source' => 'security'],
-                'htaccess' => ['label' => '.htaccess Rules', 'icon' => 'lock', 'route' => 'sites.security.hardening', 'source' => 'security'],
-                'login' => ['label' => __('Login Protection'), 'icon' => 'lock', 'route' => 'sites.security.login', 'source' => 'security'],
-                'captcha' => ['label' => 'CAPTCHA', 'icon' => 'shield-alert', 'route' => 'sites.security.captcha', 'source' => 'security'],
-                'ip_management' => ['label' => __('IP Management'), 'icon' => 'globe', 'route' => 'sites.security.ip-management', 'source' => 'security'],
-                'activity_log' => ['label' => __('Activity Log'), 'icon' => 'activity', 'route' => 'sites.security.activity', 'source' => 'security'],
-                'performance' => ['label' => __('Performance'), 'icon' => 'zap', 'route' => 'sites.tweaks.performance', 'source' => 'tweaks'],
-                'site_control' => ['label' => __('Site Control'), 'icon' => 'sliders', 'route' => 'sites.tweaks.site-control', 'source' => 'tweaks'],
+            $securityCategories = [
+                'hardening' => ['label' => __('WordPress Hardening'), 'route' => 'sites.security.hardening'],
+                'htaccess' => ['label' => '.htaccess Rules', 'route' => 'sites.security.hardening'],
+                'login' => ['label' => __('Login Protection'), 'route' => 'sites.security.login'],
+                'captcha' => ['label' => 'CAPTCHA', 'route' => 'sites.security.captcha'],
+                'ip_management' => ['label' => __('IP Management'), 'route' => 'sites.security.ip-management'],
             ];
         @endphp
 
-        @foreach($allCategories as $catKey => $catInfo)
+        @foreach($securityCategories as $catKey => $catInfo)
             @php
-                $catSettings = $catInfo['source'] === 'security'
-                    ? $this->settingsByCategory->get($catKey, collect())
-                    : $this->tweakSettingsByCategory->get($catKey, collect());
+                $catSettings = $this->settingsByCategory->get($catKey, collect());
                 $enabledCount = $catSettings->where('is_enabled', true)->count();
                 $appliedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Applied)->count();
                 $failedCount = $catSettings->where('status', \App\Enums\SecuritySettingStatus::Failed)->count();
                 $totalCount = $catSettings->count();
             @endphp
             <a href="{{ route($catInfo['route'], $site) }}">
-                <x-ui.card class="cursor-pointer hover:border-accent-200 transition-colors">
+                <x-ui.card class="h-full cursor-pointer hover:border-accent-200 transition-colors">
                     <div class="flex items-start justify-between">
                         <div>
                             <h4 class="text-sm font-semibold text-gray-900">{{ $catInfo['label'] }}</h4>
@@ -165,5 +125,79 @@
                 </x-ui.card>
             </a>
         @endforeach
+
+        {{-- Scanning — open issues + last scan --}}
+        <a href="{{ route('sites.security.scanning', $site) }}">
+            <x-ui.card class="h-full cursor-pointer hover:border-accent-200 transition-colors">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900">{{ __('Scanning') }}</h4>
+                        <p class="mt-1 text-xs text-gray-500">
+                            @if($this->scanSummary['lastScanAt'])
+                                {{ __('Last scan') }} {{ \Carbon\Carbon::parse($this->scanSummary['lastScanAt'])->diffForHumans() }}
+                            @else
+                                {{ __('Never scanned') }}
+                            @endif
+                        </p>
+                    </div>
+                    <div>
+                        @if($this->scanSummary['openCriticalHigh'] > 0)
+                            <x-ui.badge variant="red">{{ $this->scanSummary['openCriticalHigh'] }} {{ __('open issues') }}</x-ui.badge>
+                        @elseif($this->scanSummary['lastScanAt'])
+                            <x-ui.badge variant="green">{{ __('No open issues') }}</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="gray">{{ __('Not Configured') }}</x-ui.badge>
+                        @endif
+                    </div>
+                </div>
+            </x-ui.card>
+        </a>
+
+        {{-- Activity Log --}}
+        @php
+            $activitySettings = $this->settingsByCategory->get('activity_log', collect());
+            $activityEnabled = $activitySettings->where('is_enabled', true)->count();
+        @endphp
+        <a href="{{ route('sites.security.activity', $site) }}">
+            <x-ui.card class="h-full cursor-pointer hover:border-accent-200 transition-colors">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900">{{ __('Activity Log') }}</h4>
+                        <p class="mt-1 text-xs text-gray-500">
+                            {{ $activityEnabled > 0 ? __('Capturing site events') : __('Not configured') }}
+                        </p>
+                    </div>
+                    <div>
+                        @if($activityEnabled > 0)
+                            <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="gray">{{ __('Not Configured') }}</x-ui.badge>
+                        @endif
+                    </div>
+                </div>
+            </x-ui.card>
+        </a>
+
+        {{-- Users --}}
+        <a href="{{ route('sites.security.users', $site) }}">
+            <x-ui.card class="h-full cursor-pointer hover:border-accent-200 transition-colors">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900">{{ __('Users') }}</h4>
+                        <p class="mt-1 text-xs text-gray-500">
+                            {{ $this->usersSummary['total'] }} {{ __('users') }} · {{ $this->usersSummary['admins'] }} {{ __('admins') }}
+                        </p>
+                    </div>
+                    <div>
+                        <x-ui.badge variant="gray">{{ __('Synced') }}</x-ui.badge>
+                    </div>
+                </div>
+            </x-ui.card>
+        </a>
     </div>
+
+    <p class="mt-4 text-xs text-gray-400">
+        {{ __('Looking for Performance & Site Control?') }}
+        <a href="{{ route('sites.tweaks', $site) }}" class="text-accent-600 hover:underline" wire:navigate>{{ __('They live in Site Tweaks') }} →</a>
+    </p>
 </div>
