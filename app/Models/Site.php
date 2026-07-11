@@ -109,7 +109,6 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteMonthlySnapshot> $monthlySnapshots
  * @property-read \App\Models\SiteReportConfig|null $reportConfig
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecuritySetting> $securitySettings
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityCommand> $securityCommands
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityPreset> $securityPresets
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityActivityLog> $securityActivityLogs
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityIpList> $securityIpLists

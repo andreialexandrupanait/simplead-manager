@@ -28,7 +28,6 @@ use App\Models\SearchConsoleCache;
 use App\Models\SearchConsoleConnection;
 use App\Models\SecurityActivityLog;
 use App\Models\SecurityBannedIp;
-use App\Models\SecurityCommand;
 use App\Models\SecurityIpList;
 use App\Models\SecurityIssue;
 use App\Models\SecurityMonitor;
@@ -294,11 +293,6 @@ trait HasSiteRelationships
     public function securitySettings(): HasMany
     {
         return $this->hasMany(SecuritySetting::class);
-    }
-
-    public function securityCommands(): HasMany
-    {
-        return $this->hasMany(SecurityCommand::class);
     }
 
     public function securityPresets(): BelongsToMany
