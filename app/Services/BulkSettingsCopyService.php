@@ -23,10 +23,16 @@ class BulkSettingsCopyService
      */
     public function copySecuritySettings(Site $source, Collection $targets): array
     {
-        $categories = array_keys(SecuritySettingsService::VALID_SETTING_KEYS);
+        // Only bulk-safe categories/keys may cross sites — never copy the
+        // source's login URL, 2FA, CAPTCHA secret, or firewall config.
+        $categories = array_keys(SecuritySettingsService::BULK_SAFE_SETTING_KEYS);
         $settings = $source->securitySettings()
             ->whereIn('category', $categories)
-            ->get();
+            ->get()
+            ->filter(fn (SecuritySetting $s) => $this->securityService->isBulkSafeSetting( // @phpstan-ignore argument.type
+                $s->category->value ?? $s->category,
+                $s->setting_key,
+            ));
 
         if ($settings->isEmpty()) {
             return ['total' => 0, 'pushed' => 0];
@@ -93,7 +99,9 @@ class BulkSettingsCopyService
      */
     public function applySecurityPreset(SecurityPreset $preset, Collection $targets): array
     {
-        $settings = $preset->settings;
+        // Filter on read: existing presets may still carry dangerous keys —
+        // never push a site-specific/credential setting to another site.
+        $settings = $this->securityService->filterBulkSafeSettings($preset->settings ?? []);
 
         if (empty($settings)) {
             return ['total' => 0, 'pushed' => 0];

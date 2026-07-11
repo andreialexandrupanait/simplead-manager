@@ -417,7 +417,9 @@ trait WithMaintenancePlanForm
                 $this->securityToggles[$key] = false;
             }
         }
-        // Login: only bulk-safe settings (exclude site-specific custom_login_url, two_factor_auth)
+        // Login: only bulk-safe settings (exclude site-specific custom_login_url,
+        // two_factor_auth). Canonical whitelist enforced service-side at snapshot
+        // and apply time: SecuritySettingsService::BULK_SAFE_SETTING_KEYS.
         $this->securityToggles['brute_force_protection'] = false;
     }
 

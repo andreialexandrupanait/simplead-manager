@@ -47,6 +47,46 @@ class SecuritySettingsService
         ],
     ];
 
+    /**
+     * Bulk-safe whitelist — the SINGLE source of truth for which security
+     * settings may be replicated across sites (plan snapshots, presets, bulk
+     * copy). Enforced at BOTH snapshot time and apply time.
+     *
+     * Site-specific and credential-bearing settings are deliberately EXCLUDED
+     * so a snapshot built from one site can never overwrite another site's:
+     *   - login.custom_login_url       (per-site login slug)
+     *   - login.two_factor_auth        (per-site / per-user 2FA config)
+     *   - captcha.captcha_config        (holds the encrypted CAPTCHA secret key)
+     *   - ip_management.firewall_config (per-site firewall + IP lists)
+     *
+     * Existing plans/presets that already contain excluded keys are filtered
+     * on read at apply time — there is NO plan-JSON migration.
+     */
+    public const BULK_SAFE_SETTING_KEYS = [
+        'hardening' => [
+            'disable_theme_editor',
+            'disable_user_enumeration',
+            'hide_wp_version',
+            'restrict_xmlrpc',
+            'security_headers',
+            'block_application_passwords',
+            'restrict_rest_api',
+        ],
+        'htaccess' => [
+            'block_default_files',
+            'block_readme_access',
+            'block_debug_log',
+            'disable_directory_listing',
+            'firewall_enabled',
+        ],
+        'login' => [
+            'brute_force_protection',
+        ],
+        'activity_log' => [
+            'activity_log_config',
+        ],
+    ];
+
     public const SCORE_WEIGHTS = [
         'brute_force_protection' => 15,
         'disable_theme_editor' => 10,
@@ -79,6 +119,43 @@ class SecuritySettingsService
             && in_array($key, self::VALID_SETTING_KEYS[$category], true);
     }
 
+    /**
+     * Whether a setting is safe to replicate across sites via a plan snapshot,
+     * preset, or bulk copy. See self::BULK_SAFE_SETTING_KEYS.
+     */
+    public function isBulkSafeSetting(string $category, string $key): bool
+    {
+        return isset(self::BULK_SAFE_SETTING_KEYS[$category])
+            && in_array($key, self::BULK_SAFE_SETTING_KEYS[$category], true);
+    }
+
+    /**
+     * Filter a plan/preset settings blob (category => key => config) down to
+     * only bulk-safe entries. Applied on read so existing plans/presets that
+     * already contain site-specific or credential keys stop propagating them.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, array<string, mixed>>
+     */
+    public function filterBulkSafeSettings(array $settings): array
+    {
+        $filtered = [];
+
+        foreach ($settings as $category => $categorySettings) {
+            if (! is_array($categorySettings)) {
+                continue;
+            }
+
+            foreach ($categorySettings as $key => $config) {
+                if ($this->isBulkSafeSetting((string) $category, (string) $key)) {
+                    $filtered[(string) $category][(string) $key] = $config;
+                }
+            }
+        }
+
+        return $filtered;
+    }
+
     public function applySetting(Site $site, string $category, string $key, mixed $value, bool $enabled): SecuritySetting
     {
         if (! $this->isValidSetting($category, $key)) {
@@ -100,7 +177,10 @@ class SecuritySettingsService
 
     public function applyPreset(SecurityPreset $preset, Collection $sites): void
     {
-        $settings = $preset->settings;
+        // Filter on read: never apply site-specific/credential keys that an
+        // older preset may still carry (custom login URL, 2FA, CAPTCHA secret,
+        // firewall config). Single source of truth: BULK_SAFE_SETTING_KEYS.
+        $settings = $this->filterBulkSafeSettings($preset->settings ?? []);
 
         foreach ($sites as $site) {
             foreach ($settings as $category => $categorySettings) {

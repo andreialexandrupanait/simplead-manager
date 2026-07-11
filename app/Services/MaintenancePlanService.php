@@ -99,12 +99,18 @@ class MaintenancePlanService
      */
     private function snapshotSecuritySettings(Site $site): array
     {
-        $categories = array_keys(SecuritySettingsService::VALID_SETTING_KEYS);
+        // Only bulk-safe categories/keys may be captured — never snapshot a
+        // site's login URL, 2FA, CAPTCHA secret, or firewall config into a plan.
+        $categories = array_keys(SecuritySettingsService::BULK_SAFE_SETTING_KEYS);
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, SecuritySetting> $settings */
         $settings = $site->securitySettings()
             ->whereIn('category', $categories)
-            ->get();
+            ->get()
+            ->filter(fn (SecuritySetting $s) => $this->securityService->isBulkSafeSetting( // @phpstan-ignore argument.type
+                $s->category->value ?? $s->category,
+                $s->setting_key,
+            ));
 
         return $settings
             ->groupBy(fn (SecuritySetting $s) => $s->category->value ?? $s->category)
@@ -186,6 +192,10 @@ class MaintenancePlanService
      */
     private function applySecuritySettings(array $settings, Site $site): void
     {
+        // Filter on read: existing plans may still hold dangerous keys — never
+        // overwrite the target site's login URL / 2FA / CAPTCHA secret / firewall.
+        $settings = $this->securityService->filterBulkSafeSettings($settings);
+
         foreach ($settings as $category => $categorySettings) {
             foreach ($categorySettings as $key => $config) {
                 SecuritySetting::updateOrCreate(

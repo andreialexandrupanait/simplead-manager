@@ -31,7 +31,16 @@ class SecurityPresetService
         $siteSettings = SecuritySetting::where('site_id', $site->id)->get();
 
         foreach ($siteSettings as $setting) {
-            $settings[$setting->category->value][$setting->setting_key] = [
+            $category = $setting->category->value;
+
+            // Only bulk-safe settings may be captured — never snapshot this
+            // site's encrypted CAPTCHA secret, login URL, 2FA, or firewall
+            // config into a preset that is pushed to other sites (P1-63/P0-11).
+            if (! $this->settingsService->isBulkSafeSetting($category, $setting->setting_key)) {
+                continue;
+            }
+
+            $settings[$category][$setting->setting_key] = [
                 'value' => $setting->setting_value,
                 'enabled' => $setting->is_enabled,
             ];
