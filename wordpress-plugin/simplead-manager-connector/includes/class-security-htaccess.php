@@ -17,6 +17,19 @@ class SAM_Security_Htaccess {
     /** @var string */
     private $htaccess_path;
 
+    /**
+     * Whether a multi-setting batch apply is in progress.
+     *
+     * During a batch, the pristine .htaccess is snapshotted exactly once up
+     * front, so the per-helper backups (add_section / remove_section) are
+     * suppressed — otherwise they would overwrite the pristine snapshot with
+     * already-modified running content and a failed batch could only roll back
+     * to a partial state (P0-12).
+     *
+     * @var bool
+     */
+    private $in_batch = false;
+
     public function __construct() {
         $this->htaccess_path = ABSPATH . '.htaccess';
     }
@@ -31,36 +44,56 @@ class SAM_Security_Htaccess {
         $results = [];
         $rules_map = $this->get_rules_map();
 
-        foreach ($settings as $key => $enabled) {
-            if (!isset($rules_map[$key])) {
-                $results[$key] = ['success' => false, 'message' => 'Unknown setting.'];
-                continue;
-            }
+        // Snapshot the pristine .htaccess exactly ONCE, before ANY modification.
+        // A push sends all htaccess keys in a single batch, so we must be able to
+        // roll back to the true pre-batch original — never to a partially-modified
+        // intermediate produced mid-loop (P0-12).
+        $snapshot_taken = $this->snapshot_original();
 
-            if ($enabled) {
-                $success = $this->add_section($key, $rules_map[$key]);
-            } else {
-                $success = $this->remove_section($key);
-            }
+        // Suppress the per-helper backups for the duration of the batch so they
+        // cannot clobber the pristine snapshot with already-modified content.
+        $this->in_batch = true;
 
-            $results[$key] = [
-                'success' => $success,
-                'message' => $success
-                    ? ($enabled ? 'Rule added.' : 'Rule removed.')
-                    : 'Failed to modify .htaccess.',
-            ];
-        }
-
-        // Self-check: verify site isn't broken
-        if (!$this->self_check()) {
-            // Rollback all changes
-            $this->restore_backup();
-            foreach ($results as $key => &$result) {
-                if ($result['success']) {
-                    $result['success'] = false;
-                    $result['message'] = 'Rolled back: site returned error after changes.';
+        try {
+            foreach ($settings as $key => $enabled) {
+                if (!isset($rules_map[$key])) {
+                    $results[$key] = ['success' => false, 'message' => 'Unknown setting.'];
+                    continue;
                 }
+
+                if ($enabled) {
+                    $success = $this->add_section($key, $rules_map[$key]);
+                } else {
+                    $success = $this->remove_section($key);
+                }
+
+                $results[$key] = [
+                    'success' => $success,
+                    'message' => $success
+                        ? ($enabled ? 'Rule added.' : 'Rule removed.')
+                        : 'Failed to modify .htaccess.',
+                ];
             }
+
+            // Self-check: verify site isn't broken
+            if (!$this->self_check()) {
+                // Roll back to the pristine pre-batch snapshot (not a partial state).
+                if ($snapshot_taken) {
+                    $this->restore_backup();
+                }
+                foreach ($results as $key => &$result) {
+                    if ($result['success']) {
+                        $result['success'] = false;
+                        $result['message'] = 'Rolled back: site returned error after changes.';
+                    }
+                }
+                unset($result);
+            } elseif ($snapshot_taken) {
+                // Batch verified healthy — the pristine snapshot is no longer needed.
+                $this->delete_backup();
+            }
+        } finally {
+            $this->in_batch = false;
         }
 
         return $results;
@@ -79,8 +112,10 @@ class SAM_Security_Htaccess {
             return false;
         }
 
-        // Create backup
-        $this->create_backup($contents);
+        // Create backup (skipped during a batch apply, which snapshots once up front)
+        if (!$this->in_batch) {
+            $this->create_backup($contents);
+        }
 
         // Remove existing section if present
         $contents = $this->strip_section($contents, $tag);
@@ -117,7 +152,10 @@ class SAM_Security_Htaccess {
             return false;
         }
 
-        $this->create_backup($contents);
+        // Skipped during a batch apply, which snapshots the pristine file once up front.
+        if (!$this->in_batch) {
+            $this->create_backup($contents);
+        }
         $new_contents = $this->strip_section($contents, $tag);
 
         if ($new_contents === $contents) {
@@ -204,6 +242,27 @@ class SAM_Security_Htaccess {
     }
 
     /**
+     * Snapshot the current on-disk .htaccess into the backup file, once.
+     *
+     * Reads the pristine file straight from disk before any modification, so the
+     * batch rollback target is the true original. Returns false when there is no
+     * file to snapshot (nothing to roll back to).
+     */
+    private function snapshot_original(): bool {
+        if (!file_exists($this->htaccess_path)) {
+            return false;
+        }
+
+        $contents = file_get_contents($this->htaccess_path);
+        if ($contents === false) {
+            return false;
+        }
+
+        $this->create_backup($contents);
+        return true;
+    }
+
+    /**
      * Create a backup of the current .htaccess.
      */
     private function create_backup(string $contents): void {
@@ -219,6 +278,16 @@ class SAM_Security_Htaccess {
             return rename($bak_path, $this->htaccess_path);
         }
         return false;
+    }
+
+    /**
+     * Delete the backup file (called once a batch apply verifies healthy).
+     */
+    private function delete_backup(): void {
+        $bak_path = $this->htaccess_path . '.sam-bak';
+        if (file_exists($bak_path)) {
+            @unlink($bak_path);
+        }
     }
 
     /**
