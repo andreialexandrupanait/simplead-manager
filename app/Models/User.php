@@ -23,9 +23,6 @@ use Illuminate\Notifications\Notifiable;
  * @property string $timezone
  * @property string $date_format
  * @property string $language
- * @property bool $two_factor_enabled
- * @property string|null $two_factor_secret
- * @property array|null $two_factor_recovery_codes
  * @property string|null $avatar_path
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -54,9 +51,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'date_format',
         'language',
         'theme',
-        'two_factor_enabled',
-        'two_factor_secret',
-        'two_factor_recovery_codes',
         'avatar_path',
         'google_id',
     ];
@@ -69,8 +63,6 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_secret',
-        'two_factor_recovery_codes',
     ];
 
     /**
@@ -83,11 +75,8 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'two_factor_enabled' => 'boolean',
             'is_admin' => 'boolean',
             'role' => UserRole::class,
-            'two_factor_secret' => 'encrypted',
-            'two_factor_recovery_codes' => 'encrypted:array',
         ];
     }
 

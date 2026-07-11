@@ -37,7 +37,6 @@ class UserFactory extends Factory
             'timezone' => fake()->timezone(),
             'date_format' => 'Y-m-d',
             'language' => 'en',
-            'two_factor_enabled' => false,
             'remember_token' => Str::random(10),
         ];
     }
@@ -82,18 +81,6 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Viewer,
             'is_admin' => false,
-        ]);
-    }
-
-    /**
-     * Indicate the user has two-factor authentication enabled.
-     */
-    public function withTwoFactor(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'two_factor_enabled' => true,
-            'two_factor_secret' => Str::random(32),
-            'two_factor_recovery_codes' => [Str::random(10), Str::random(10), Str::random(10)],
         ]);
     }
 }

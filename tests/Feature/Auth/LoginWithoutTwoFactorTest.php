@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 /**
  * App-level two-factor authentication was removed; login must go straight
- * through, including for users who still carry the legacy two_factor flag.
+ * through. The legacy users.two_factor_* columns were dropped as well.
  */
 class LoginWithoutTwoFactorTest extends TestCase
 {
@@ -19,16 +19,6 @@ class LoginWithoutTwoFactorTest extends TestCase
     public function test_login_redirects_straight_to_dashboard(): void
     {
         $user = User::factory()->create();
-
-        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
-            ->assertRedirect(route('dashboard', absolute: false));
-
-        $this->assertAuthenticatedAs($user);
-    }
-
-    public function test_legacy_two_factor_flag_does_not_block_login(): void
-    {
-        $user = User::factory()->create(['two_factor_enabled' => true]);
 
         $this->post('/login', ['email' => $user->email, 'password' => 'password'])
             ->assertRedirect(route('dashboard', absolute: false));
