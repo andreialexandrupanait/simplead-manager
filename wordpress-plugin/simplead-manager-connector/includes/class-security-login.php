@@ -267,6 +267,14 @@ class SAM_Security_Login {
     public static function update_settings(array $settings): void {
         $existing = get_option('sam_security_login', []);
         $merged = array_replace_recursive($existing, $settings);
+
+        // List-valued settings must be REPLACED, not index-merged —
+        // array_replace_recursive can never shrink a list (removing a role
+        // from two_factor_auth.roles would silently keep the old entry).
+        if (isset($settings['two_factor_auth'])) {
+            $merged['two_factor_auth'] = $settings['two_factor_auth'];
+        }
+
         update_option('sam_security_login', $merged);
     }
 

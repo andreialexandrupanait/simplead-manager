@@ -30,6 +30,11 @@ class SecurityLogin extends Component
     // 2FA
     public bool $twoFactorEnabled = false;
 
+    /** @var array<int, string> */
+    public array $twoFactorRoles = ['administrator', 'editor'];
+
+    public string $twoFactorFailMode = 'open';
+
     public bool $isDirty = false;
 
     public function mount(Site $site): void
@@ -59,6 +64,8 @@ class SecurityLogin extends Component
 
         if ($twofa = $settings->get('two_factor_auth')) {
             $this->twoFactorEnabled = $twofa->is_enabled;
+            $this->twoFactorRoles = $twofa->setting_value['roles'] ?? ['administrator', 'editor'];
+            $this->twoFactorFailMode = $twofa->setting_value['fail_mode'] ?? 'open';
         }
     }
 
@@ -125,11 +132,32 @@ class SecurityLogin extends Component
         $this->authorizeSiteModification($this->site);
         $this->twoFactorEnabled = ! $this->twoFactorEnabled;
 
+        $this->pushTwoFactorSetting();
+    }
+
+    public function saveTwoFactorOptions(): void
+    {
+        $this->authorizeSiteModification($this->site);
+        $this->validate([
+            'twoFactorRoles' => 'array|min:1',
+            'twoFactorRoles.*' => 'string|in:administrator,editor,author,shop_manager',
+            'twoFactorFailMode' => 'in:open,closed',
+        ]);
+
+        $this->pushTwoFactorSetting();
+    }
+
+    private function pushTwoFactorSetting(): void
+    {
         app(SecuritySettingsService::class)->applySetting(
             $this->site,
             'login',
             'two_factor_auth',
-            ['enabled' => $this->twoFactorEnabled],
+            [
+                'enabled' => $this->twoFactorEnabled,
+                'roles' => array_values($this->twoFactorRoles),
+                'fail_mode' => $this->twoFactorFailMode,
+            ],
             $this->twoFactorEnabled,
         );
 

@@ -50,12 +50,37 @@
         <div class="flex items-center justify-between">
             <div>
                 <h3 class="text-base font-semibold text-gray-900">{{ __('Two-Factor Authentication') }}</h3>
-                <p class="mt-1 text-sm text-gray-500">{{ __('Require 2FA for administrator accounts on the WordPress site.') }}</p>
+                <p class="mt-1 text-sm text-gray-500">{{ __('Email a 6-digit verification code on login for the selected roles. Trusted devices skip the code for 30 days.') }}</p>
             </div>
-            <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                {{ __('Coming Soon') }}
-            </span>
+            <x-ui.toggle
+                :enabled="$twoFactorEnabled"
+                wire:click="toggleTwoFactor"
+            />
         </div>
+
+        @if($twoFactorEnabled)
+            <div class="mt-4 grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
+                <x-ui.form-group label="{{ __('Required for roles') }}" for="twoFactorRoles">
+                    <div class="space-y-1.5">
+                        @foreach(['administrator' => __('Administrators'), 'editor' => __('Editors'), 'author' => __('Authors'), 'shop_manager' => __('Shop managers')] as $role => $label)
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" value="{{ $role }}" wire:model="twoFactorRoles" wire:change="saveTwoFactorOptions"
+                                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
+                </x-ui.form-group>
+                <x-ui.form-group label="{{ __('If the code email fails') }}" for="twoFactorFailMode">
+                    <select id="twoFactorFailMode" wire:model="twoFactorFailMode" wire:change="saveTwoFactorOptions"
+                            class="w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500">
+                        <option value="open">{{ __('Allow the login (fail-open, recommended)') }}</option>
+                        <option value="closed">{{ __('Block the login (fail-closed)') }}</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">{{ __('Fail-closed can lock everyone out if the site cannot send email.') }}</p>
+                </x-ui.form-group>
+            </div>
+        @endif
     </x-ui.card>
 
     {{-- Sticky Save Bar --}}

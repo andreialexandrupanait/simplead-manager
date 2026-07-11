@@ -6,6 +6,7 @@ return [
     'changelog' => [
         'unreleased' => [
             'changes' => [
+                'Security: Two-factor authentication (email code) for interactive WP logins — role-targeted, 10-min codes, 5-attempt lockout, 30-day trusted devices, configurable fail-open/closed on mail failure',
                 'Feature: Per-table management — optimize individual tables, convert MyISAM to InnoDB, delete non-core tables',
                 'Feature: Plugin ownership detection — shows which plugin created each table and its status (active/inactive/not installed)',
                 'Enhanced database health response with collation and core table detection',
