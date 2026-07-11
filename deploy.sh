@@ -85,10 +85,15 @@ until $COMPOSE exec app php -r 'echo "ok";' 2>/dev/null | grep -q ok; do
 done
 log "App container is ready."
 
-# ── Step 7: Run migrations ───────────────────────────────────────────────────
+# ── Step 7: Run migrations (direct Postgres, bypassing PgBouncer) ────────────
+# PgBouncer transaction pooling breaks Laravel's prepared-statement protocol on
+# multi-statement DDL (confirmed 2026-07-10: create_tags_tables failed with
+# SQLSTATE[25P02]). The pgsql_direct connection (config/database.php) points at
+# the pgsql service directly via DB_DIRECT_HOST set in docker-compose.prod.yml.
+# Env overrides via `exec -e` do NOT work — config is cached at container start.
 
-log "Running database migrations..."
-$COMPOSE exec app php artisan migrate --force
+log "Running database migrations (direct Postgres)..."
+$COMPOSE exec app php artisan migrate --force --database=pgsql_direct
 
 # ── Step 7b: Restart PgBouncer after DDL migrations ──────────────────────────
 # PgBouncer (transaction pooling) caches prepared statements; after an ALTER

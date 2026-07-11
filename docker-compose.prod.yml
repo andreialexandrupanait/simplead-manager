@@ -11,6 +11,11 @@ services:
     command: ["php-fpm"]
     env_file:
       - .env
+    environment:
+      # Direct Postgres (bypasses PgBouncer) — used only by the pgsql_direct
+      # connection for migrations/DDL. See config/database.php + deploy.sh.
+      DB_DIRECT_HOST: pgsql
+      DB_DIRECT_PORT: "5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1"]
