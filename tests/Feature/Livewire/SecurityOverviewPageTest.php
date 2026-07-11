@@ -125,6 +125,69 @@ class SecurityOverviewPageTest extends TestCase
         $this->assertSame(1, $performance['failed']);
     }
 
+    public function test_next_actions_surface_the_heaviest_unapplied_settings_first(): void
+    {
+        [$site, $manager] = $this->siteWithManager();
+
+        $component = Livewire::actingAs($manager)->test(SecurityOverview::class, ['site' => $site]);
+        $actions = $component->instance()->nextActions();
+
+        $this->assertSame('brute_force_protection', $actions[0]['key']);
+        $this->assertSame(15, $actions[0]['weight']);
+        $this->assertCount(3, $actions);
+
+        // Apply brute force → the next heaviest (a 10-pointer) takes the lead.
+        SecuritySetting::create([
+            'site_id' => $site->id, 'category' => 'login', 'setting_key' => 'brute_force_protection',
+            'setting_value' => [], 'is_enabled' => true, 'applied_at' => now(),
+        ]);
+
+        $fresh = Livewire::actingAs($manager)->test(SecurityOverview::class, ['site' => $site]);
+        $this->assertSame(10, $fresh->instance()->nextActions()[0]['weight']);
+        $component->assertSee('Boost your score');
+    }
+
+    public function test_repush_settings_queues_both_push_jobs(): void
+    {
+        [$site, $manager] = $this->siteWithManager();
+
+        Livewire::actingAs($manager)
+            ->test(SecurityOverview::class, ['site' => $site])
+            ->call('repushSettings');
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\PushSecuritySettings::class);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\PushSiteTweaksSettings::class);
+    }
+
+    public function test_viewer_cannot_repush_settings(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $site = Site::factory()->create(['user_id' => $viewer->id, 'is_connected' => true]);
+
+        Livewire::actingAs($viewer)
+            ->test(SecurityOverview::class, ['site' => $site])
+            ->call('repushSettings')
+            ->assertForbidden();
+
+        \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\PushSecuritySettings::class);
+    }
+
+    public function test_attention_items_link_to_their_category_page(): void
+    {
+        [$site, $manager] = $this->siteWithManager();
+
+        SecuritySetting::create([
+            'site_id' => $site->id, 'category' => 'hardening', 'setting_key' => 'hide_wp_version',
+            'setting_value' => [], 'is_enabled' => true, 'failed_at' => now(), 'failure_reason' => 'x',
+        ]);
+
+        $items = Livewire::actingAs($manager)
+            ->test(SecurityOverview::class, ['site' => $site])
+            ->instance()->attentionItems();
+
+        $this->assertSame('sites.security.hardening', $items->firstWhere('key', 'hardening')['route']);
+    }
+
     public function test_cards_render_in_tab_order(): void
     {
         [$site, $manager] = $this->siteWithManager();
