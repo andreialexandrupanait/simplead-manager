@@ -5,7 +5,9 @@ declare(strict_types=1);
 return [
     'changelog' => [
         'unreleased' => [
-            'changes' => [],
+            'changes' => [
+                'Fix: .htaccess multi-setting apply now snapshots the pristine file exactly once before any change and, if the post-write self-check fails, rolls back to that true original instead of a partially-modified intermediate — a failed batch can no longer leave a client site 500ing (P0-12)',
+            ],
         ],
         '2.17.0' => [
             'date' => '2026-07-11',
