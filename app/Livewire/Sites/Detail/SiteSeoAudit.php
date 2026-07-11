@@ -12,7 +12,9 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SeoAudit;
 use App\Models\SeoKeywordRanking;
 use App\Models\Site;
+use App\Services\ActivityLogger;
 use App\Services\SeoAudit\SiteAuditService;
+use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -444,6 +446,11 @@ class SiteSeoAudit extends Component
     #[Computed]
     public function fixableIssueTitles(): array
     {
+        // Deliberately NOT bulk-fixable (audit E-10): 'Page set to noindex' /
+        // 'Noindex page in sitemap'. The only automatic "fix" would be to flip
+        // pages to index en masse — but pages are often noindexed on purpose
+        // (staging leftovers, thank-you pages, filters). Those need a per-page
+        // decision, not a bulk action.
         return [
             'Missing title tag' => 'meta',
             'Title too short' => 'meta',
@@ -451,8 +458,6 @@ class SiteSeoAudit extends Component
             'Missing meta description' => 'meta',
             'Meta description too short' => 'meta',
             'Meta description too long' => 'meta',
-            'Page set to noindex' => 'robots',
-            'Noindex page in sitemap' => 'robots',
             'Canonical mismatch' => 'canonical',
             'Missing canonical' => 'canonical',
             'Missing Open Graph tags' => 'og',
@@ -484,6 +489,10 @@ class SiteSeoAudit extends Component
         $issues = $audit->issues()->where('title', $issueTitle)->whereNotNull('url')->get();
         $success = 0;
         $failed = 0;
+        $skipped = 0;
+        $applied = [];
+
+        $api = app(WordPressApiServiceFactory::class)->make($this->site);
 
         foreach ($issues as $issue) {
             $page = $audit->pages()->where('url', $issue->url)->first();
@@ -493,32 +502,37 @@ class SiteSeoAudit extends Component
                 continue;
             }
 
+            // Never push scraped-empty values — that would blank real content
+            // on the WP side (e.g. overwrite post_title with '') (audit E-10).
+            [$payload, $endpoint] = match ($fixType) {
+                'meta' => [array_filter([
+                    'meta_title' => $page->title,
+                    'meta_description' => $page->meta_description,
+                ], fn (?string $v): bool => $v !== null && $v !== ''), '/seo/update-meta'],
+                'canonical' => [['canonical_url' => $issue->url], '/seo/update-canonical'],
+                'og' => [array_filter([
+                    'og_title' => $page->title,
+                    'og_description' => $page->meta_description,
+                ], fn (?string $v): bool => $v !== null && $v !== ''), '/seo/update-og'],
+                default => [[], null],
+            };
+
+            if ($payload === [] || $endpoint === null) {
+                $skipped++;
+
+                continue;
+            }
+
+            $payload['url'] = $issue->url;
+
             try {
-                $payload = match ($fixType) {
-                    'meta' => ['url' => $issue->url, 'meta_title' => $page->title ?? '', 'meta_description' => $page->meta_description ?? ''],
-                    'robots' => ['url' => $issue->url, 'action' => 'index'],
-                    'canonical' => ['url' => $issue->url, 'canonical_url' => $issue->url],
-                    'og' => ['url' => $issue->url, 'og_title' => $page->title ?? '', 'og_description' => $page->meta_description ?? '', 'og_image' => ''],
-                    default => null,
-                };
-
-                if (! $payload) {
-                    continue;
-                }
-
-                $endpoint = match ($fixType) {
-                    'meta' => '/wp-json/simplead/v1/seo/update-meta',
-                    'robots' => '/wp-json/simplead/v1/seo/update-robots',
-                    'canonical' => '/wp-json/simplead/v1/seo/update-canonical',
-                    'og' => '/wp-json/simplead/v1/seo/update-og',
-                };
-
-                $response = \Illuminate\Support\Facades\Http::timeout(15)
-                    ->withHeaders(['X-SAM-API-Key' => $this->site->api_key ?? ''])
-                    ->post(rtrim($this->site->url, '/').$endpoint, $payload);
+                // Signed HMAC client — the previous raw X-SAM-API-Key call was
+                // rejected by the connector (401) on every request (audit E-34).
+                $response = $api->request('POST', $endpoint, $payload, timeout: 15);
 
                 if ($response->successful()) {
                     $success++;
+                    $applied[] = ['url' => $issue->url, 'endpoint' => $endpoint, 'payload' => $payload];
                 } else {
                     $failed++;
                 }
@@ -529,7 +543,25 @@ class SiteSeoAudit extends Component
             usleep(200_000); // 200ms between requests
         }
 
-        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: "Bulk fix: {$success} applied".($failed > 0 ? ", {$failed} failed" : '').'.');
+        if ($applied !== []) {
+            ActivityLogger::log(
+                type: 'seo',
+                severity: 'info',
+                title: "SEO bulk fix \"{$issueTitle}\": {$success} applied on {$this->site->name}",
+                description: $skipped > 0 ? "{$skipped} pages skipped (no safe value to write)." : null,
+                site: $this->site,
+                metadata: ['issue' => $issueTitle, 'changes' => $applied],
+            );
+        }
+
+        $parts = ["{$success} applied"];
+        if ($skipped > 0) {
+            $parts[] = "{$skipped} skipped (nothing safe to write)";
+        }
+        if ($failed > 0) {
+            $parts[] = "{$failed} failed";
+        }
+        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: 'Bulk fix: '.implode(', ', $parts).'.');
     }
 
     public function runAudit(): void
