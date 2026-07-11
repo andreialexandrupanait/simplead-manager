@@ -7,6 +7,52 @@ WordPress sites.
 
 ## [Unreleased]
 
+## [2026-07-11]
+
+### Fixed
+- **PR #32** — deploy migrations now run against direct Postgres (`pgsql_direct`
+  connection, `DB_DIRECT_HOST` baked into the prod compose env): PgBouncer transaction
+  pooling broke Laravel's prepared-statement protocol on multi-statement DDL, which
+  failed the 2026-07-10 deploy and required manual psql surgery.
+- **PR #33** — notification pipeline (audit N-P1-1/N-P1-2, backlog E-32/E-33):
+  acknowledgement links are now actually delivered in critical/warning messages
+  (tokens existed but were never sent → escalation was unconditional); escalation-
+  generated sends are born `escalated` so A→B/B→A rule pairs cannot loop; a dead
+  channel's final attempt now throws instead of silently succeeding, and failed
+  sends still escalate; `ProcessNotificationBatch` skips malformed buffer items;
+  `GoogleApiService` retry callback typehint fixed (`PendingRequest`). Root-caused
+  the `failed_jobs` flood: orphaned reserved jobs from the 2026-07-10 broken-deploy
+  window recycling every `retry_after`=7200s — self-drained after the restart.
+- **PR #36** — agent auth was structurally dead (audit SC-A2-03): the middleware
+  matched plaintext tokens against the `encrypted`-cast `api_key` column (random IV ⇒
+  never equal). Added deterministic indexed `sites.api_key_hash` (+ backfill, + model
+  sync hook); lookup now works while keys stay encrypted at rest.
+- **PR #37** — `SiteOperationLock` moved off the evictable Redis cache (audit E-06):
+  volatile-lru could evict TTL'd lock keys under memory pressure, allowing a restore
+  to run concurrently with a backup. Locks now live on the database store
+  (`cache.site_operation_lock_store`), with new `cache`/`cache_locks` tables.
+- **PR #39** — SEO `bulkFix` made non-destructive and its auth fixed (audit E-10 +
+  E-34/ARH-01): no bulk noindex→index flips, scraped-empty values are never pushed
+  over real content, every applied change is activity-logged, and writes go through
+  the signed HMAC client (the raw `X-SAM-API-Key` path 401'd on every request).
+- **PR #40** — backup chunk downloads stream to disk with a hard size cap: reading
+  the response into a string killed workers with 256M memory fatals when a connector
+  returned more than requested, orphaning reserved jobs (ghost
+  `MaxAttemptsExceededException` failures 2h later).
+
+### Added
+- **PR #35** — `deploy.sh` CI gate (audit T-A2-01): refuses to ship when the deployed
+  commit's Pint/PHPStan/PHPUnit checks are missing or red (`DEPLOY_SKIP_CI_CHECK=1`
+  emergency override).
+- **PR #38** — `backups:recover-stuck-restores` (audit E-23): scheduled every 15
+  minutes; fails restores silent past 75 min (heartbeat = `backups.updated_at`,
+  threshold > the 3600s job timeout), releases the site lock ownership-checked, and
+  alerts via the activity log + `NotifyRestoreFailed`.
+
+### Removed
+- **PR #34** — 2FA leftovers from PR #31: dropped `users.two_factor_*` columns and
+  removed `pragmarx/google2fa-laravel` + `bacon/bacon-qr-code` (and transitives).
+
 ### Audit
 - **Full-application re-audit (2026-07-10).** Read-only pass against the current tree
   (branch `fix/atomic-restore` = `main` + in-review PR #15). 17 module/cross-cutting
