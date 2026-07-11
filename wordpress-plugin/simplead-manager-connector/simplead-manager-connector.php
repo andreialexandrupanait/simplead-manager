@@ -29,6 +29,7 @@ require_once SAM_PLUGIN_DIR . 'includes/class-audit-logger.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-login-handler.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-hardening.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-login.php';
+require_once SAM_PLUGIN_DIR . 'includes/class-security-two-factor.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-captcha.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-security-ip-manager.php';
 require_once SAM_PLUGIN_DIR . 'includes/class-performance-tweaks.php';
@@ -114,6 +115,7 @@ final class SimpleAd_Manager_Connector {
         add_action('plugins_loaded', [$this, 'init_security_hardening'], 1);
         add_action('plugins_loaded', [$this, 'init_security_ip_manager'], 2);
         add_action('init', [$this, 'init_security_login'], 1);
+        add_action('init', [$this, 'init_security_two_factor'], 1);
         add_action('init', [$this, 'init_security_captcha'], 2);
 
         // Site tweaks enforcement
@@ -246,6 +248,10 @@ final class SimpleAd_Manager_Connector {
 
     public function init_security_login(): void {
         new SAM_Security_Login();
+    }
+
+    public function init_security_two_factor(): void {
+        new SAM_Security_Two_Factor();
     }
 
     public function init_security_captcha(): void {

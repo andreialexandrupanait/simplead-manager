@@ -6,6 +6,7 @@ return [
     'changelog' => [
         'unreleased' => [
             'changes' => [
+                'Security: Two-factor authentication (email code) for interactive WP logins — role-targeted, 10-min codes, 5-attempt lockout, 30-day trusted devices, configurable fail-open/closed on mail failure',
                 'Security: /security-settings accepts unban_ips — clears the ban option AND the brute-force transient so manager-side unbans actually apply',
                 'Security: security-fix now handles disable_directory_listing (was advertised as fixable but always failed)',
                 'Security: IP whitelist restricts login/wp-admin/XML-RPC only — a non-empty whitelist no longer serves 403s to public visitors (blocklist stays site-wide)',
