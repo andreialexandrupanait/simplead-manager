@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Security;
 
+use App\Enums\SecuritySettingStatus;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\ModuleConfigService;
 use App\Services\SecuritySettingsService;
-use App\Services\SiteTweaksSettingsService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -49,10 +49,66 @@ class SecurityOverview extends Component
         return app(SecuritySettingsService::class)->getSettingsForSite($this->site);
     }
 
+    /** Security categories only — Site Tweaks live on their own page. */
+    private const CATEGORY_LABELS = [
+        'hardening' => 'WordPress Hardening',
+        'htaccess' => '.htaccess Rules',
+        'login' => 'Login Protection',
+        'captcha' => 'CAPTCHA',
+        'ip_management' => 'IP Management',
+        'activity_log' => 'Activity Log',
+    ];
+
+    /**
+     * Per-category failed/pending counts for the Needs Attention card
+     * (previously assembled in @php blocks inside the blade).
+     *
+     * @return Collection<int, array{key: string, label: string, failed: int, pending: int}>
+     */
     #[Computed]
-    public function tweakSettingsByCategory(): Collection
+    public function attentionItems(): Collection
     {
-        return app(SiteTweaksSettingsService::class)->getSettingsForSite($this->site);
+        return collect(self::CATEGORY_LABELS)
+            ->map(function (string $label, string $key) {
+                $settings = $this->settingsByCategory->get($key, collect());
+
+                return [
+                    'key' => $key,
+                    'label' => __($label),
+                    'failed' => $settings->where('status', SecuritySettingStatus::Failed)->count(),
+                    'pending' => $settings->where('status', SecuritySettingStatus::Pending)->count(),
+                ];
+            })
+            ->filter(fn (array $item) => $item['failed'] > 0 || $item['pending'] > 0)
+            ->values();
+    }
+
+    /** @return array{lastScanAt: string|null, openCriticalHigh: int} */
+    #[Computed]
+    public function scanSummary(): array
+    {
+        return [
+            'lastScanAt' => $this->site->securityScans()->latest('scanned_at')->value('scanned_at'),
+            'openCriticalHigh' => $this->site->securityIssues()
+                ->whereIn('severity', ['critical', 'high'])
+                ->where('is_fixed', false)
+                ->where('is_ignored', false)
+                ->count(),
+        ];
+    }
+
+    /** @return array{total: int, admins: int} */
+    #[Computed]
+    public function usersSummary(): array
+    {
+        $byRole = $this->site->siteUsers()
+            ->selectRaw("count(*) as total, count(*) filter (where role = 'administrator') as admins")
+            ->first();
+
+        return [
+            'total' => (int) ($byRole->total ?? 0),
+            'admins' => (int) ($byRole->admins ?? 0),
+        ];
     }
 
     #[Computed]
