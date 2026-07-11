@@ -63,8 +63,10 @@ class IncidentResponseDispatcher
     {
         SecurityIssue::query()
             ->whereIn('severity', ['critical', 'high'])
-            ->where('status', '!=', 'fixed')
-            ->where('status', '!=', 'ignored')
+            // security_issues has no status column — open issues are tracked
+            // via is_fixed/is_ignored (audit SEC-A2-04: the old status WHERE
+            // threw SQLSTATE 42703 and killed the whole dispatch path)
+            ->active()
             ->whereHas('site', fn ($q) => $q
                 ->whereNull('deleted_at')
                 ->where('is_connected', true)
