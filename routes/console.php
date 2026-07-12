@@ -7,7 +7,29 @@ use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
 use App\Dispatchers\SeoAuditDispatcher;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Schedule;
+
+// ==========================================================================
+// P1-36: scheduled-task failure alerting
+// ==========================================================================
+// Critical scheduled tasks (db:dump, backup verification, app backups, retention,
+// vulnerability scan, monthly aggregation) previously failed SILENTLY — a non-zero
+// exit or thrown exception only reached the log, never an operator. `criticalFailureAlert`
+// returns an ->onFailure() callback that fires a critical app-event notification.
+// The dedup key is namespaced per task so simultaneous failures of different tasks
+// are not collapsed into a single alert (NotificationService::isDuplicate keys on event).
+$criticalFailureAlert = static function (string $task): Closure {
+    return static function () use ($task): void {
+        NotificationService::notifyAppEvent(
+            event: 'scheduled_task_failed:'.$task,
+            title: 'Scheduled task failed',
+            message: "The critical scheduled task \"{$task}\" failed (non-zero exit / exception). Check the scheduler logs.",
+            fields: ['task' => $task],
+            severity: 'critical',
+        );
+    };
+};
 
 // ==========================================================================
 // Core Dispatchers (4)
@@ -93,7 +115,8 @@ Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-h
 Schedule::job(new \App\Jobs\AggregateMonthlySnapshots)
     ->monthlyOn(1, '02:00')
     ->name('monthly-aggregation')
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('monthly-aggregation'));
 
 // ==========================================================================
 // Retention Cleanup
@@ -102,7 +125,8 @@ Schedule::job(new \App\Jobs\AggregateMonthlySnapshots)
 Schedule::job(new \App\Jobs\RetentionCleanup)
     ->dailyAt('03:00')
     ->name('retention-cleanup')
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('retention-cleanup'));
 
 // ==========================================================================
 // Infrastructure
@@ -124,7 +148,8 @@ Schedule::command('backup:cleanup-temp')
 Schedule::command('db:dump', ['--keep' => 7])
     ->dailyAt('02:30')
     ->name('database-dump')
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('database-dump'));
 
 // Push the daily dump off-host so the platform's own DB backup survives loss
 // of the app host. Runs after db:dump; alerts critically if no remote
@@ -133,7 +158,10 @@ Schedule::command('db:dump-offsite')
     ->dailyAt('02:45')
     ->name('database-dump-offsite')
     ->withoutOverlapping()
-    ->onOneServer();
+    ->onOneServer()
+    // Belt-and-braces: the command self-alerts on handled failures, but a hard
+    // crash before its own try/catch (e.g. DI/boot error) would still be silent.
+    ->onFailure($criticalFailureAlert('database-dump-offsite'));
 
 // VACUUM ANALYZE — weekly Sunday 3 AM
 Schedule::command('db:vacuum-analyze')
@@ -156,7 +184,8 @@ Schedule::command('app-backup:schedule-check')
     ->everyFifteenMinutes()
     ->name('scheduled-app-backups')
     ->withoutOverlapping()
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('scheduled-app-backups'));
 
 // Recover app backups whose worker died without cleanup (P1-38) — the
 // heartbeat threshold exceeds CreateAppBackup's 1800s timeout, so anything it
@@ -178,7 +207,8 @@ Schedule::command('backup:verify-restore --count=3')
     ->weeklyOn(0, '03:00')
     ->name('backup-verify-restore-weekly')
     ->withoutOverlapping()
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('backup-verify-restore-weekly'));
 
 // Horizon health check
 Schedule::command('horizon:health-check')
@@ -223,7 +253,8 @@ Schedule::call(function () {
 Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->dailyAt('05:00')
     ->name('daily-vulnerability-check')
-    ->onOneServer();
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('daily-vulnerability-check'));
 
 // Domain-registration expiry (RDAP) — re-check each site weekly, staggered.
 Schedule::call(function () {

@@ -182,6 +182,15 @@ services:
         cp /etc/nginx/templates/http.conf /etc/nginx/conf.d/app.conf;
         echo "No SSL certificates - HTTP only";
       fi;
+      (
+        while :; do
+          if [ -f /var/www/certbot/.reload-nginx ]; then
+            rm -f /var/www/certbot/.reload-nginx;
+            nginx -s reload && echo "P1-35: nginx reloaded — picked up renewed certificate";
+          fi;
+          sleep 3600;
+        done
+      ) &
       exec nginx -g "daemon off;"
       '
     networks:
@@ -201,8 +210,14 @@ services:
     image: certbot/certbot
     container_name: simplead-certbot
     restart: unless-stopped
+    # P1-35: on a SUCCESSFUL renewal, --deploy-hook drops a sentinel into the
+    # shared certbot volume; the nginx container watches for it and runs
+    # `nginx -s reload`, so a freshly renewed cert is served without waiting for
+    # the next unrelated deploy. Cross-container reload without exposing the
+    # Docker socket (keeps certbot least-privileged). The hook only fires when a
+    # cert actually changes, so no spurious reloads between renewals.
     entrypoint: >
-      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet --deploy-hook 'touch /var/www/certbot/.reload-nginx'; sleep 12h & wait $${!}; done"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - simplead-certbot:/var/www/certbot
