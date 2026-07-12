@@ -89,26 +89,24 @@ services:
     deploy:
       resources:
         limits:
-          # P1-06: the container hard limit must exceed the summed per-worker
-          # memory *restart thresholds* (config/horizon.php) — those are graceful
-          # self-restart hints, NOT caps, so real RSS can reach their sum before
-          # any worker recycles. Below that sum a burst of concurrent large jobs
-          # trips a cgroup OOM SIGKILL mid-backup/restore (the exact failure
-          # stop_grace_period was added to prevent).
-          #
-          # Production sum (maxProcesses x memory):
-          #   uptime            2 x 64   =  128
-          #   sync              3 x 256  =  768
-          #   backups           3 x 1024 = 3072
-          #   notifications     3 x 64   =  192
-          #   general           3 x 512  = 1536
-          #   incident-response 2 x 512  = 1024
-          #   subtotal                   = 6720
-          #   + master (memory_limit 64) = 6784 MB
-          # 8192M leaves ~1.4G headroom. If worker counts (HORIZON_*_WORKERS) or
-          # per-worker `memory` change, revisit this. Confirm the host has the
-          # RAM before applying (see PR safe-rollout note).
-          memory: 8192M
+          # P1-06: the container hard limit was 1024M while a backup burst could
+          # push real RSS well past it → cgroup OOM SIGKILL mid-backup/restore.
+          # The `memory` values in config/horizon.php are graceful self-restart
+          # HINTS, not caps, so the theoretical worst case (sum of maxProcesses x
+          # threshold) is ~6.7G — but this host only has 7.7G total and other
+          # containers already reserve ~3.9G (pgsql 2G, app/gotenberg 512M each,
+          # redis 320M, scheduler 256M, ...). We therefore CANNOT give Horizon
+          # 6.7G. Instead:
+          #   - cap raised 1024M -> 3072M (fits the host: 3.9G others + 3G = ~6.9G
+          #     of 7.7G, ~0.8G + 3G swap headroom), ~3.6x current real usage (~0.85G)
+          #   - HORIZON_BACKUP_WORKERS default reduced 3 -> 2 (backups are the only
+          #     real memory hog, and they now STREAM to disk since PR #40, so real
+          #     per-worker RSS is far below the 1024M threshold)
+          #   - MonitorHorizonMemory (this PR) alerts before the cap is reached, so
+          #     if a real workload approaches 3072M we retune from data.
+          # Practical concurrent ceiling with 2 backup workers streaming is well
+          # under 3072M. Confirm host free RAM before applying; revert = one value.
+          memory: 3072M
           cpus: "1.0"
 
   scheduler:

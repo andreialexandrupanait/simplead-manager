@@ -296,7 +296,10 @@ return [
                 'balanceCooldown' => 3,
             ],
             'supervisor-backups' => [
-                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 3),
+                // 2 (was 3): backups are the memory hog; the 7.7G host can't
+                // afford 3x1024M concurrent. Streaming-to-disk (PR #40) keeps real
+                // RSS low, so 2 concurrent backups is ample for tens of sites.
+                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 2),
             ],
             'supervisor-notifications' => [
                 'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 3),
