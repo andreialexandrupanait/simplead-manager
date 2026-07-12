@@ -34,7 +34,7 @@ class ReportDownloadController extends Controller
 
         $cacheHeaders = [
             'Cache-Control' => 'private, max-age=86400',
-            'ETag' => '"report-'.$report->id.'-'.($report->generated_at->timestamp ?? 0).'"',
+            'ETag' => '"report-'.$report->id.'-'.($report->generated_at?->timestamp ?? 0).'"',
         ];
 
         // Preview mode: display inline in browser

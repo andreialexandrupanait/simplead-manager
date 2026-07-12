@@ -31,7 +31,15 @@ class BulkReportDownloadController extends Controller
 
         abort_if($reports->isEmpty(), 404);
 
-        $zipPath = storage_path('app/temp/reports-'.uniqid().'.zip');
+        // Ensure the temp directory exists — it is not tracked in git and may be
+        // absent on a fresh deploy/CI checkout, in which case ZipArchive can
+        // neither create the archive nor its own temp file (bulk download 500s).
+        $tempDir = storage_path('app/temp');
+        if (! is_dir($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
+
+        $zipPath = $tempDir.'/reports-'.uniqid().'.zip';
 
         $zip = new ZipArchive;
         abort_unless($zip->open($zipPath, ZipArchive::CREATE) === true, 500);
