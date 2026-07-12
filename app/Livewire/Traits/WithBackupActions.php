@@ -199,17 +199,9 @@ trait WithBackupActions
             return;
         }
 
-        try {
-            if ($backup->storageDestination && $backup->file_path) {
-                $driver = StorageFactory::make($backup->storageDestination);
-                $driver->delete($backup->file_path);
-                $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
-            }
-        } catch (\Exception $e) {
-            // Continue with deletion even if storage removal fails
-        }
-
-        $backup->delete();
+        // P1-28: remove ALL artifacts (primary + replicas + sidecar + manifest +
+        // multipart prefix) across every destination, not just the primary file.
+        app(\App\Services\Backup\RetentionService::class)->purge($backup);
         session()->flash('backup-success', 'Backup deleted.');
         $this->resetPage();
     }
@@ -223,22 +215,15 @@ trait WithBackupActions
             ->get();
 
         $count = 0;
+        $retention = app(\App\Services\Backup\RetentionService::class);
         /** @var \App\Models\Backup $backup */
         foreach ($backups as $backup) {
             if ($backup->incrementals()->exists()) {
                 continue;
             }
 
-            try {
-                if ($backup->storageDestination && $backup->file_path) {
-                    $driver = StorageFactory::make($backup->storageDestination);
-                    $driver->delete($backup->file_path);
-                    $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
-                }
-            } catch (\Exception) {
-                // Continue
-            }
-            $backup->delete();
+            // P1-28: full artifact cleanup across every destination.
+            $retention->purge($backup);
             $count++;
         }
 
@@ -314,7 +299,11 @@ trait WithBackupActions
             return;
         }
 
-        $backup = Backup::find($this->trackingBackupId);
+        // P1-29: $trackingBackupId is a client-hydrated Livewire property.
+        // Scope the lookup to THIS site's backups so a tampered id pointing at
+        // another tenant's backup resolves to null and cannot be cancelled.
+        /** @var Backup|null $backup */
+        $backup = $this->site->backups()->find($this->trackingBackupId);
         if ($backup && in_array($backup->status, [BackupStatus::Pending, BackupStatus::InProgress])) {
             $backup->update([
                 'status' => BackupStatus::Cancelled,

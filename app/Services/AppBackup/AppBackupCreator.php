@@ -28,6 +28,14 @@ class AppBackupCreator
         array $options = [],
         ?string $notes = null,
     ): AppBackup {
+        // P1-38: self-heal a wedged queue before the in-progress guard. A worker
+        // killed mid-run (timeout/OOM/deploy) leaves the row in_progress forever,
+        // permanently blocking all future app backups. Fail any row whose
+        // heartbeat is older than the recovery threshold so a fresh attempt is
+        // never blocked by a dead one (the scheduled app-backups:recover-stuck
+        // command is the background counterpart).
+        $this->failStuckAppBackups();
+
         if (AppBackup::where('status', 'in_progress')->exists()) {
             throw new \RuntimeException('An application backup is already in progress.');
         }
@@ -264,6 +272,28 @@ class AppBackupCreator
             } catch (\RuntimeException $e) {
                 Log::warning("Failed to cleanup temp dir: {$e->getMessage()}");
             }
+        }
+    }
+
+    /**
+     * P1-38: mark app backups stuck in_progress past the recovery threshold as
+     * failed, so a dead worker's row can never permanently wedge the queue.
+     */
+    protected function failStuckAppBackups(): void
+    {
+        $stale = AppBackup::where('status', 'in_progress')
+            ->where('updated_at', '<', now()->subMinutes(\App\Console\Commands\RecoverStuckAppBackups::STALE_AFTER_MINUTES))
+            ->get();
+
+        foreach ($stale as $backup) {
+            $ageMinutes = (int) $backup->updated_at->diffInMinutes(now());
+            $backup->update([
+                'status' => 'failed',
+                'error_message' => "App backup worker died without cleanup — no progress for {$ageMinutes} minutes (auto-recovered before a new run).",
+                'completed_at' => now(),
+                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
+            ]);
+            Log::warning("AppBackupCreator: recovered stuck app backup {$backup->id} ({$ageMinutes}m silent) before starting a new one");
         }
     }
 

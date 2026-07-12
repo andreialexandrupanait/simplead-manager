@@ -41,6 +41,17 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 2700;
 
+    /**
+     * P1-27: how long a backup row's heartbeat (updated_at — every stage writes
+     * progress to it) may go silent before an in-flight row is treated as dead
+     * and superseded. Set ABOVE the job timeout (2700s): a worker that is still
+     * alive is killed at $timeout, so a heartbeat older than this cannot belong
+     * to a live backup — while a long-but-healthy upload (whose single silent
+     * span is still bounded by $timeout) is never mistaken for "stuck" and
+     * duplicated. Previously a 5-minute window falsely superseded long uploads.
+     */
+    public const STALE_HEARTBEAT_SECONDS = 3000;
+
     protected ?Backup $backup = null;
 
     protected ?string $tempDir = null;
@@ -158,16 +169,31 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
             if ($this->backup->status === BackupStatus::Cancelled) {
                 throw new \RuntimeException('Backup cancelled by user');
             }
+            // P1-27: a redelivered attempt (tries=2) of an already-COMPLETED row
+            // must never re-run — flipping a Completed backup back to InProgress
+            // and re-uploading is the stuck-retry double-run. Failed rows still
+            // fall through so a genuine retry can reset and re-attempt.
+            if ($this->backup->status === BackupStatus::Completed) {
+                Log::info("CreateBackup: backup #{$this->backupId} already completed; skipping redelivered run");
+                $this->abortedAsDuplicate = true;
+
+                return;
+            }
             $this->backup->update([
                 'status' => BackupStatus::InProgress,
                 'stage' => 'initializing',
                 'started_at' => $this->backup->started_at ?? now(),
             ]);
         } else {
-            // Strict uniqueness: if another backup for the same site/type/trigger is
-            // already in flight AND fresh (started < 30 min ago AND updated < 5 min
-            // ago), this is a duplicate dispatch. Abort cleanly instead of stomping
-            // on the in-flight attempt (which would invalidate its WP-side token).
+            // Strict uniqueness: if another backup for the same site/type/trigger
+            // is already in flight, decide whether it's a live attempt (drop this
+            // duplicate dispatch) or a genuinely dead row (supersede it) purely by
+            // its heartbeat. P1-27: the previous "updated < 5 min ago AND started <
+            // 30 min ago" window falsely flagged healthy long uploads as stuck and
+            // spawned a duplicate backup — a large-site upload can legitimately run
+            // for tens of minutes and go several minutes between heartbeat writes.
+            // A row whose heartbeat is within STALE_HEARTBEAT_SECONDS (> the job
+            // timeout) still belongs to a live worker, so it's a duplicate to drop.
             $existing = Backup::where('site_id', $this->site->id)
                 ->where('type', $this->type)
                 ->where('trigger', $this->trigger)
@@ -176,11 +202,10 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 ->first();
 
             if ($existing) {
-                $isFresh = $existing->started_at?->gt(now()->subMinutes(30))
-                    && $existing->updated_at?->gt(now()->subMinutes(5));
+                $isFresh = $existing->updated_at?->gt(now()->subSeconds(self::STALE_HEARTBEAT_SECONDS));
 
                 if ($isFresh) {
-                    Log::warning("CreateBackup: duplicate dispatch dropped (in-flight #{$existing->id} is fresh)", [
+                    Log::warning("CreateBackup: duplicate dispatch dropped (in-flight #{$existing->id} heartbeat is fresh)", [
                         'site_id' => $this->site->id,
                         'existing_backup_id' => $existing->id,
                         'existing_stage' => $existing->stage,
@@ -193,8 +218,8 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                     return;
                 }
 
-                // Existing is stale (started > 30 min ago OR no updates in 5 min).
-                // Supersede it — the previous attempt is orphaned.
+                // Heartbeat older than the job timeout — the worker is dead (it
+                // would have been killed at $timeout). Supersede the orphan.
                 $existing->update([
                     'status' => BackupStatus::Failed,
                     'stage' => 'failed',

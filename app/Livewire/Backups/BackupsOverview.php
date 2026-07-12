@@ -12,7 +12,6 @@ use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
-use App\Services\Backup\Storage\StorageFactory;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
@@ -314,17 +313,17 @@ class BackupsOverview extends Component
             return;
         }
 
-        try {
-            if ($backup->storageDestination && $backup->file_path) {
-                $driver = StorageFactory::make($backup->storageDestination);
-                $driver->delete($backup->file_path);
-                $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
-            }
-        } catch (\Exception) {
-            // Continue with deletion even if storage removal fails
+        // Chain guard (P1-28): deleting a base full still carrying incrementals
+        // orphans them — they cannot be restored without their base.
+        if ($backup->incrementals()->exists()) {
+            session()->flash('backup-error', 'Cannot delete a full backup that has incremental backups. Delete the incrementals first.');
+
+            return;
         }
 
-        $backup->delete();
+        // P1-28: remove ALL artifacts (primary + replicas + sidecar + manifest +
+        // multipart prefix) across every destination, not just the primary file.
+        app(\App\Services\Backup\RetentionService::class)->purge($backup);
         session()->flash('backup-success', 'Backup deleted.');
     }
 
@@ -347,25 +346,22 @@ class BackupsOverview extends Component
                 return $site instanceof Site && $user->canAccessSite($site);
             });
         $count = 0;
+        $retention = app(\App\Services\Backup\RetentionService::class);
 
         foreach ($backups as $backup) {
-            try {
-                if ($backup->storageDestination && $backup->file_path) {
-                    $driver = StorageFactory::make($backup->storageDestination);
-                    $driver->delete($backup->file_path);
-                    $backup->storageDestination->decrement('used_bytes', max(0, $backup->file_size ?? 0));
-                }
-            } catch (\Exception) {
-                // Continue
+            // Skip base fulls that still carry incrementals (chain guard, P1-28).
+            if ($backup->incrementals()->exists()) {
+                continue;
             }
-            $backup->delete();
+            // Remove ALL artifacts across every destination (P1-28).
+            $retention->purge($backup);
             $count++;
         }
 
         $skipped = count($ids) - $count;
         $msg = "{$count} backup(s) deleted.";
         if ($skipped > 0) {
-            $msg .= " {$skipped} backup(s) skipped (locked or not accessible).";
+            $msg .= " {$skipped} backup(s) skipped (locked, has incrementals, or not accessible).";
         }
         session()->flash('backup-success', $msg);
     }

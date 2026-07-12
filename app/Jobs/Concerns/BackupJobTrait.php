@@ -20,10 +20,25 @@ trait BackupJobTrait
 {
     abstract protected function backupTypeLabel(): string;
 
+    /**
+     * Release Laravel's ShouldBeUnique lock for this site's backup job.
+     *
+     * P1-08: the unique lock is ACQUIRED by the framework via
+     * `$cache->lock($key)->get()` (Illuminate\Bus\UniqueLock), which — on the
+     * redis cache store — lives on the store's `lock_connection` (redis DB 0),
+     * NOT its data `connection` (redis DB 1). `Cache::forget()` targets the
+     * data connection, so it silently deleted nothing and a cancelled/failed
+     * backup left the lock behind until its `uniqueFor` TTL expired (up to
+     * 45 min), blocking every new backup for that site in the meantime.
+     *
+     * Release through the SAME lock primitive the framework acquires with, so
+     * we hit the lock_connection. The key mirrors UniqueLock::getKey()
+     * (`laravel_unique_job:<class>:<uniqueId>`) exactly.
+     */
     public static function releaseUniqueLock(int $siteId): void
     {
-        $cacheKey = 'laravel_unique_job:'.static::class.':backup-'.$siteId;
-        Cache::forget($cacheKey);
+        $key = 'laravel_unique_job:'.static::class.':backup-'.$siteId;
+        Cache::lock($key)->forceRelease();
     }
 
     protected function checkCancelled(): void

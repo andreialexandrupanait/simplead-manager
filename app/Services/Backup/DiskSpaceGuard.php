@@ -23,7 +23,7 @@ class DiskSpaceGuard
 
     public function canDispatchBackup(): bool
     {
-        $path = $this->checkPath !== '' ? $this->checkPath : storage_path('app/temp');
+        $path = $this->resolvePath();
         $free = @disk_free_space($path);
 
         if ($free === false) {
@@ -37,6 +37,38 @@ class DiskSpaceGuard
         $this->alertOnce($path, (int) $free);
 
         return false;
+    }
+
+    /**
+     * Free bytes on the working volume, or null when it cannot be measured.
+     */
+    public function freeBytes(): ?int
+    {
+        $free = @disk_free_space($this->resolvePath());
+
+        return $free === false ? null : (int) $free;
+    }
+
+    /**
+     * Whether at least $requiredBytes of headroom is available on the working
+     * volume. Fails OPEN (true) when free space cannot be measured — the caller
+     * decides how strict to be, and we never block on a bad reading.
+     *
+     * P1-39: restore (chain restores amplify disk 3-4x the site size) and
+     * replication both stage large temp files on the app volume. A mid-flight
+     * ENOSPC fails at the worst possible moment and can pause backups
+     * fleet-wide, so callers pre-flight with this before staging anything.
+     */
+    public function hasSpaceFor(int $requiredBytes): bool
+    {
+        $free = $this->freeBytes();
+
+        return $free === null || $free >= $requiredBytes;
+    }
+
+    private function resolvePath(): string
+    {
+        return $this->checkPath !== '' ? $this->checkPath : storage_path('app/temp');
     }
 
     private function alertOnce(string $path, int $freeBytes): void

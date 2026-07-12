@@ -80,9 +80,15 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         return 'restore-'.$this->backup->id;
     }
 
+    /**
+     * Release the ShouldBeUnique lock (P1-08). Must go through the lock
+     * primitive — same as Illuminate\Bus\UniqueLock — so it targets the
+     * cache store's lock_connection, not the data connection that
+     * Cache::forget() would (silently) hit on the redis store.
+     */
     public static function releaseUniqueLock(int $backupId): void
     {
-        Cache::forget('laravel_unique_job:'.static::class.':restore-'.$backupId);
+        Cache::lock('laravel_unique_job:'.static::class.':restore-'.$backupId)->forceRelease();
     }
 
     public function handle(): void
@@ -151,6 +157,14 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         mkdir($this->tempDir, 0700, true);
 
         try {
+            // P1-39: pre-flight disk-space check. A restore extracts the archive,
+            // and a chain restore keeps per-chain extract dirs + a merged tree + a
+            // re-zipped files.zip + a copy for the download endpoint — peaking at
+            // several times the (compressed) archive size. Refuse up front rather
+            // than fill the disk mid-restore and pause fleet-wide backups.
+            // (Inside the try so the lock is released and the row marked failed.)
+            $this->assertDiskSpaceForRestore();
+
             $this->backup->update([
                 'restore_status' => BackupStatus::InProgress,
                 'restore_stage' => 'downloading',
@@ -564,7 +578,11 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         $mergedDir = $this->tempDir.'/merged';
         mkdir($mergedDir, 0700, true);
 
-        $latestDbPath = null;
+        // P1-39: copy the latest DB dump to a stable path as we go so each
+        // chain member's extract dir can be freed immediately after it is
+        // merged — otherwise every per-chain extract accumulates on disk for
+        // the whole chain and amplifies peak usage 3-4x the site size.
+        $finalDbPath = $this->tempDir.'/database.sql.gz';
         $allDeletedPaths = [];
 
         // Process each backup in the chain
@@ -645,11 +663,16 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 }
             }
 
-            // Always use the latest database dump
+            // Always use the latest database dump — copy it out immediately so
+            // this extract dir can be freed before the next chain member.
             $dbFile = $extractDir.'/database.sql.gz';
             if (file_exists($dbFile)) {
-                $latestDbPath = $dbFile;
+                copy($dbFile, $finalDbPath);
             }
+
+            // Free this chain member's extract dir now that its files are merged
+            // and its DB (if any) has been copied out (P1-39).
+            $this->deleteDir($extractDir);
         }
 
         $this->logRestoreStep('Merging incremental chain...');
@@ -674,11 +697,8 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // Copy latest DB to expected location
-        $finalDbPath = $this->tempDir.'/database.sql.gz';
-        if ($latestDbPath && file_exists($latestDbPath)) {
-            copy($latestDbPath, $finalDbPath);
-        }
+        // Latest DB dump was already copied to $finalDbPath as the chain was
+        // processed (P1-39), so nothing to move here.
 
         $this->logRestoreStep('Merged files ready');
         $this->reportRestoreProgress('restoring', 70, 'Sending restored data to WordPress...');
@@ -1006,6 +1026,50 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             'restore_progress_percent' => $percent,
             'restore_progress_message' => $message,
         ]);
+    }
+
+    /**
+     * P1-39: refuse a restore that clearly cannot fit on the working volume.
+     * Estimate peak temp usage at 4x the (compressed) archive — chain restores
+     * hold per-chain extracts + a merged tree + a re-zipped files.zip + the
+     * download-endpoint copy simultaneously. Floors at 2 GB so a tiny archive
+     * still demands sane headroom. Fails open when free space is unmeasurable.
+     */
+    protected function assertDiskSpaceForRestore(): void
+    {
+        $archiveBytes = (int) ($this->backup->file_size ?? 0);
+        $required = max(2 * 1024 * 1024 * 1024, $archiveBytes * 4);
+
+        $guard = app(\App\Services\Backup\DiskSpaceGuard::class);
+        if ($guard->hasSpaceFor($required)) {
+            return;
+        }
+
+        $free = $guard->freeBytes();
+        throw new \RuntimeException(sprintf(
+            'Insufficient disk space to restore backup #%d safely: need ~%s free, have %s. Free up space and retry.',
+            $this->backup->id,
+            FormatHelper::bytes($required),
+            $free === null ? 'unknown' : FormatHelper::bytes($free),
+        ));
+    }
+
+    /**
+     * Recursively remove a directory (P1-39 incremental temp cleanup).
+     */
+    protected function deleteDir(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $file) {
+            $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+        }
+        @rmdir($dir);
     }
 
     protected function cleanup(): void

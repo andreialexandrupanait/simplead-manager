@@ -47,6 +47,9 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
 
     protected ?string $siteLockToken = null;
 
+    /** Set by prepare() when a redelivered attempt hits an already-completed row (P1-27). */
+    protected bool $abortedAsDuplicate = false;
+
     public function __construct(
         public Site $site,
         public string $trigger = 'manual',
@@ -98,6 +101,12 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             }
 
             $this->prepare($destination, $parentBackup);
+
+            if ($this->abortedAsDuplicate) {
+                JobTracker::complete($this->uniqueId(), 'Skipped — already completed');
+
+                return;
+            }
 
             $api = app(WordPressApiServiceFactory::class)->make($this->site);
 
@@ -516,6 +525,14 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
             $this->backup = Backup::findOrFail($this->backupId);
             if ($this->backup->status === BackupStatus::Cancelled) {
                 throw new \RuntimeException('Backup cancelled by user');
+            }
+            // P1-27: never re-run a redelivered attempt of an already-completed
+            // row (stuck-retry double-run). Failed falls through so retries work.
+            if ($this->backup->status === BackupStatus::Completed) {
+                Log::info("CreateIncrementalBackup: backup #{$this->backupId} already completed; skipping redelivered run");
+                $this->abortedAsDuplicate = true;
+
+                return;
             }
             $this->backup->update([
                 'status' => BackupStatus::InProgress,
