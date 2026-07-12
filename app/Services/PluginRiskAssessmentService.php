@@ -79,7 +79,7 @@ class PluginRiskAssessmentService
                 'anthropic-version' => '2023-06-01',
                 'content-type' => 'application/json',
             ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-                'model' => config('incident-response.ai.model', 'claude-sonnet-4-20250514'),
+                'model' => config('incident-response.ai.model', 'claude-sonnet-4-5-20250929'),
                 'max_tokens' => 1024,
                 'temperature' => 0.1,
                 'system' => 'You are a WordPress plugin update risk analyst. Analyze the plugin update context and return a JSON object with exactly these fields: score (0-100 where 0=safe, 100=very risky), level ("safe" if score<30, "caution" if 30-70, "risky" if >70), reasons (array of 2-4 short reason strings), recommendation (one sentence). Consider: breaking changes in changelog, plugin popularity, maintenance activity, PHP/WP compatibility, whether the update is a major version bump. Return ONLY valid JSON, no markdown.',

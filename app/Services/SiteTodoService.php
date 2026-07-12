@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\DomainStatus;
+use App\Enums\IncidentResponseStatus;
+use App\Models\IncidentResponse;
 use App\Models\SecurityRecommendation;
 use App\Models\Site;
 use App\Models\VulnerabilityAlert;
@@ -80,6 +82,23 @@ class SiteTodoService
             ->exists();
         if ($failedVerify) {
             $items[] = self::item('backups', 'critical', 'Backup failed restore verification', 'A backup could not be verified as restorable — investigate before relying on it.', 'sites.backups', $site);
+        }
+
+        // P1-44: automated incident responses that escalated or failed have no
+        // other operator-facing surface outside the settings page. Surface any
+        // unacknowledged ones here so a human actually sees them. Read-only:
+        // deep-links to the site overview where the incident context lives.
+        $openIncidents = IncidentResponse::where('site_id', $site->id)
+            ->whereIn('status', [IncidentResponseStatus::Escalated, IncidentResponseStatus::Failed])
+            ->whereNull('acknowledged_at')
+            ->count();
+        if ($openIncidents > 0) {
+            $items[] = self::item(
+                'incident', 'critical',
+                'Incident response needs a human',
+                "{$openIncidents} automated incident ".self::plural($openIncidents, 'response', 'responses').' escalated or failed and is awaiting review.',
+                'sites.overview', $site, $openIncidents,
+            );
         }
 
         if ($site->domain_status === DomainStatus::Expired) {

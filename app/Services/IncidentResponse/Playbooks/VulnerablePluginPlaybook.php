@@ -23,6 +23,11 @@ class VulnerablePluginPlaybook implements PlaybookInterface
         return $trigger === IncidentTriggerType::Vulnerability;
     }
 
+    public function allowedActions(): array
+    {
+        return ['update_plugin'];
+    }
+
     public function execute(IncidentResponse $response, Site $site, IncidentActionExecutor $executor, array $context): bool
     {
         $alertId = $context['vulnerability_alert_id'] ?? null;

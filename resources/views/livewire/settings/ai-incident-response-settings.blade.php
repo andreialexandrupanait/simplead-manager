@@ -74,8 +74,8 @@
 
                 <x-ui.form-group :label="__('Model')" for="model" error="model">
                     <x-ui.select wire:model="model" id="model">
-                        <option value="claude-sonnet-4-20250514">Claude Sonnet 4 ({{ __('Recommended — fast & cost-effective') }})</option>
-                        <option value="claude-opus-4-20250514">Claude Opus 4 ({{ __('Most capable — higher cost') }})</option>
+                        <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5 ({{ __('Recommended — fast & cost-effective') }})</option>
+                        <option value="claude-opus-4-1-20250805">Claude Opus 4.1 ({{ __('Most capable — higher cost') }})</option>
                         <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 ({{ __('Fastest — lowest cost') }})</option>
                     </x-ui.select>
                 </x-ui.form-group>

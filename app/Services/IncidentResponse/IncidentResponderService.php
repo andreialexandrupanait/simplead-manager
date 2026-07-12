@@ -86,6 +86,14 @@ class IncidentResponderService
     ): void {
         $response->markDiagnosing();
 
+        // P1-46: constrain every executor mutating action for this incident to the
+        // triggering playbook's allowlist (or the conservative default when no
+        // playbook matches). This bounds the AI agent — attacker-controlled site
+        // content can't steer it into an out-of-scope state change.
+        $this->executor->setAllowedActions(
+            $this->playbookRunner->allowedActionsFor($trigger, $context),
+        );
+
         // Tier 1: Playbook
         if (config('incident-response.routing.playbook_first', true)) {
             $resolved = $this->playbookRunner->run($response, $site, $trigger, $this->executor, $context);

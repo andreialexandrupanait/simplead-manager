@@ -7,6 +7,7 @@ namespace App\Livewire\Settings;
 use App\Services\SettingsService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class AiIncidentResponseSettings extends Component
@@ -17,7 +18,7 @@ class AiIncidentResponseSettings extends Component
     // AI Configuration
     public string $apiKey = '';
 
-    public string $model = 'claude-sonnet-4-20250514';
+    public string $model = 'claude-sonnet-4-5-20250929';
 
     // Safety Guardrails
     public int $maxActionsPerIncident = 10;
@@ -41,7 +42,8 @@ class AiIncidentResponseSettings extends Component
         $settings = app(SettingsService::class);
 
         $this->enabled = (bool) $settings->get('ir_enabled', false);
-        $this->model = $settings->get('ir_model') ?? 'claude-sonnet-4-20250514';
+        $this->model = $settings->get('ir_model')
+            ?? config('incident-response.ai.model', 'claude-sonnet-4-5-20250929');
 
         $encrypted = $settings->get('ir_api_key');
         if ($encrypted) {
@@ -64,7 +66,7 @@ class AiIncidentResponseSettings extends Component
     {
         $this->validate([
             'apiKey' => 'nullable|string|min:10',
-            'model' => 'required|string|in:claude-sonnet-4-20250514,claude-opus-4-20250514,claude-haiku-4-5-20251001',
+            'model' => ['required', 'string', Rule::in(config('incident-response.ai.allowed_models', []))],
             'maxActionsPerIncident' => 'required|integer|min:1|max:50',
             'maxAiCallsPerIncident' => 'required|integer|min:1|max:20',
             'cooldownMinutes' => 'required|integer|min:5|max:1440',

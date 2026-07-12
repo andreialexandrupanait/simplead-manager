@@ -23,6 +23,11 @@ class SecurityCriticalPlaybook implements PlaybookInterface
         return $trigger === IncidentTriggerType::SecurityCritical;
     }
 
+    public function allowedActions(): array
+    {
+        return ['apply_security_fix'];
+    }
+
     public function execute(IncidentResponse $response, Site $site, IncidentActionExecutor $executor, array $context): bool
     {
         $issueId = $context['security_issue_id'] ?? null;

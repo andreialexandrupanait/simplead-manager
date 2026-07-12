@@ -22,6 +22,11 @@ class DatabaseCriticalPlaybook implements PlaybookInterface
         return $trigger === IncidentTriggerType::DatabaseCritical;
     }
 
+    public function allowedActions(): array
+    {
+        return ['db_cleanup'];
+    }
+
     public function execute(IncidentResponse $response, Site $site, IncidentActionExecutor $executor, array $context): bool
     {
         $response->update(['diagnosis' => ['trigger' => 'Database health critical']]);
