@@ -3,8 +3,7 @@
         @if($view === 'list' && auth()->user()->isAdmin())
             <x-slot:actions>
                 @if($this->plans->isNotEmpty())
-                    @php $defaultPlan = $this->plans->firstWhere('is_default', true) ?? $this->plans->first(); @endphp
-                    <button wire:click="applyPlanToAll({{ $defaultPlan->id }})"
+                    <button wire:click="applyPlanToAll"
                             wire:confirm="{{ __('Apply the default plan to all connected sites that have no plan assigned?') }}"
                             wire:loading.attr="disabled"
                             wire:target="applyPlanToAll"

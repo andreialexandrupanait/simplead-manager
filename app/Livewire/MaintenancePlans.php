@@ -160,7 +160,7 @@ class MaintenancePlans extends Component
 
     // --- Bulk Apply ---
 
-    public function applyPlanToAll(int $planId): void
+    public function applyPlanToAll(): void
     {
         // Pushing module/security/tweak config to sites is destructive. Block
         // Viewers, and only ever touch sites the acting user may modify — never
@@ -170,11 +170,21 @@ class MaintenancePlans extends Component
             abort(403, 'Viewers cannot apply maintenance plans.');
         }
 
-        $plan = \App\Models\MaintenancePlan::with('planModules')->findOrFail($planId);
-        $sites = \App\Models\Site::where('is_connected', true)
+        // P2-38: "Apply to Unassigned" must use the plan explicitly marked as
+        // default. Previously the view fell back to an arbitrary plan when no
+        // default existed, silently applying a random plan to every unassigned
+        // site while the confirm dialog claimed it was "the default plan".
+        $plan = MaintenancePlan::with('planModules')->where('is_default', true)->first();
+        if (! $plan) {
+            $this->dispatch('notify', type: 'error', message: 'No default plan set. Mark a plan as default before applying to unassigned sites.');
+
+            return;
+        }
+
+        $sites = Site::where('is_connected', true)
             ->whereNull('maintenance_plan_id')
             ->get()
-            ->filter(fn (\App\Models\Site $site) => $user->canAccessSite($site));
+            ->filter(fn (Site $site) => $user->canAccessSite($site));
 
         // P1-58/P1-60: funnel through the same canonical per-site operation as
         // every other apply path, and queue it so the request returns fast.

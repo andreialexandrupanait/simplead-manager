@@ -41,6 +41,13 @@ class PerformanceMonitor extends Model
 {
     use HasFactory;
 
+    /**
+     * Floor for the recurring test cadence (mirrors ModuleConfigService's
+     * performance minimum) so a misconfigured plan can't schedule a PSI test
+     * loop that burns the API quota.
+     */
+    public const MIN_INTERVAL_MINUTES = 360;
+
     protected $fillable = [
         'site_id',
         'is_active',
@@ -75,6 +82,39 @@ class PerformanceMonitor extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * Compute the next due time for this monitor's recurring test (P2-16).
+     *
+     * The plan writes a per-site `interval_minutes`, but the scheduler used to
+     * recompute `next_test_at` purely from the coarse daily/weekly bucket — so a
+     * custom interval was a dead knob and was silently ignored. `interval_minutes`
+     * is now the source of truth for the cadence; `frequency` only distinguishes a
+     * recurring monitor from a manual one (which never auto-runs → null).
+     */
+    public function calculateNextTestAt(): ?\Illuminate\Support\Carbon
+    {
+        // 'manual' (and any non-recurring value) leaves next_test_at null so the
+        // dispatcher never auto-runs it — tests only fire when triggered by hand.
+        if (! in_array($this->frequency, ['daily', 'weekly'], true)) {
+            return null;
+        }
+
+        $interval = max((int) $this->interval_minutes, self::MIN_INTERVAL_MINUTES);
+        $next = now()->addMinutes($interval);
+
+        // Keep whole-day cadences anchored to the configured test-time, without
+        // ever pulling the next run earlier than a full interval.
+        if ($this->test_time && $interval % 1440 === 0) {
+            [$hour, $minute] = array_pad(explode(':', $this->test_time), 2, '0');
+            $next->setTime((int) $hour, (int) $minute);
+            if ($next->lessThan(now())) {
+                $next->addDay();
+            }
+        }
+
+        return $next;
     }
 
     public function tests(): HasMany
