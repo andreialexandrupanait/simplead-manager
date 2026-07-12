@@ -138,12 +138,32 @@ class RetentionService
     }
 
     /**
+     * Purge a single backup and ALL of its stored artifacts on demand
+     * (manual delete from the UI). P1-28: manual deletion previously removed
+     * only the primary `file_path` on the primary destination, leaking every
+     * secondary replica, the sidecar metadata files, the incremental manifest,
+     * and — for multipart-v3 — the whole object prefix. This routes manual
+     * deletes through the same complete, replica-aware cleanup that retention
+     * uses, so nothing is orphaned in remote storage.
+     *
+     * Returns true when the backup row was fully removed; false when at least
+     * one artifact could not be deleted (the row is retained, mirroring the
+     * retention semantics, so a later pass / retry can finish the job).
+     */
+    public function purge(Backup $backup): bool
+    {
+        return $this->deleteBackup($backup, dryRun: false);
+    }
+
+    /**
      * Delete a single backup record and its associated storage files in every replica.
      * If ANY replica delete fails, the DB row is preserved so the next retention pass
      * can retry. The successfully-deleted destinations are removed from `replicas[]`
      * to avoid double-decrementing used_bytes on retry.
+     *
+     * Returns true when the row was deleted, false when it was retained for retry.
      */
-    private function deleteBackup(Backup $backup, bool $dryRun = false): void
+    private function deleteBackup(Backup $backup, bool $dryRun = false): bool
     {
         if ($dryRun) {
             Log::info("RetentionService[dry-run]: would delete backup {$backup->id}", [
@@ -154,7 +174,7 @@ class RetentionService
                 'file_size' => $backup->file_size,
             ]);
 
-            return;
+            return false;
         }
 
         $targets = $this->collectReplicaTargets($backup);
@@ -214,14 +234,16 @@ class RetentionService
         if ($allSucceeded) {
             try {
                 $backup->delete();
+
+                return true;
             } catch (\Exception $e) {
                 Log::warning("Failed to delete backup row {$backup->id}", [
                     'exception' => get_class($e),
                     'code' => $e->getCode(),
                 ]);
-            }
 
-            return;
+                return false;
+            }
         }
 
         // Partial success — keep the row but reflect what was successfully purged
@@ -232,6 +254,8 @@ class RetentionService
         }
         $backup->update($update);
         Log::info("Backup {$backup->id} retention partial: row retained, will retry remaining replicas next cycle");
+
+        return false;
     }
 
     /**

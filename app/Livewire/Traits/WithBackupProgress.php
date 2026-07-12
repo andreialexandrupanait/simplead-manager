@@ -22,7 +22,12 @@ trait WithBackupProgress
             return null;
         }
 
-        return Backup::find($this->trackingBackupId);
+        // P1-29: trackingBackupId is client-hydrated. Scope to this site so a
+        // tampered id can't surface another tenant's backup row / progress.
+        /** @var Backup|null $backup */
+        $backup = $this->site->backups()->whereKey($this->trackingBackupId)->first();
+
+        return $backup;
     }
 
     #[Computed]
@@ -32,7 +37,11 @@ trait WithBackupProgress
             return null;
         }
 
-        return Backup::find($this->trackingRestoreBackupId);
+        // P1-29: scope to this site (see activeBackup).
+        /** @var Backup|null $backup */
+        $backup = $this->site->backups()->whereKey($this->trackingRestoreBackupId)->first();
+
+        return $backup;
     }
 
     #[Computed]
@@ -49,6 +58,13 @@ trait WithBackupProgress
     public function restoreProgressLog(): array
     {
         if (! $this->trackingRestoreBackupId) {
+            return [];
+        }
+
+        // P1-29: only expose the restore log if the tracked restore actually
+        // belongs to this site — otherwise a tampered id could read another
+        // tenant's restore progress log.
+        if (! $this->activeRestore) {
             return [];
         }
 

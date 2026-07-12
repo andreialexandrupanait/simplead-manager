@@ -87,6 +87,17 @@ class ReplicateBackup implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        // P1-39: replication pulls the full backup to local temp before pushing
+        // it to the secondary — a large file plus margin. Pre-flight the disk so
+        // an out-of-space replica fails fast (and retries via backoff when space
+        // frees) instead of half-writing temp and tripping the fleet-wide guard.
+        $required = (int) (($backup->file_size ?? 0) * 1.5);
+        if ($required > 0 && ! app(\App\Services\Backup\DiskSpaceGuard::class)->hasSpaceFor($required)) {
+            throw new \RuntimeException(
+                "ReplicateBackup: insufficient local disk to stage backup #{$backup->id} for replication; will retry."
+            );
+        }
+
         $tempDir = storage_path('app/temp/replicate-'.uniqid());
         @mkdir($tempDir, 0700, true);
 

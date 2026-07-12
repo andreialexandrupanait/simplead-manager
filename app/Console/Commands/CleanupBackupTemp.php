@@ -10,10 +10,29 @@ use Illuminate\Support\Facades\Log;
 class CleanupBackupTemp extends Command
 {
     protected $signature = 'backup:cleanup-temp '
-        .'{--hours=24 : Delete backup-* directories older than this many hours} '
+        .'{--hours=24 : Delete orphaned backup/restore/verify temp entries older than this many hours} '
         .'{--php-file-minutes=60 : Delete orphaned PHP temp files (php*) older than this many minutes}';
 
-    protected $description = 'Clean up orphaned backup temp directories and PHP temp files (from killed workers or crashes)';
+    protected $description = 'Clean up orphaned backup temp directories/files and PHP temp files (from killed workers or crashes)';
+
+    /**
+     * Prefixes of every temp entry the backup/restore/verify/app-backup
+     * pipelines stage under storage/app/temp. P1-39: the sweep previously only
+     * matched `backup-*` directories, so `restore-*` (dirs AND the
+     * `restore-{token}` archive copies from sendRestoreData), `verify-*`,
+     * `app-backup-*`, `app-restore-*`, `replicate-*` and `backup-inc-*` debris
+     * from killed workers accumulated forever until DiskSpaceGuard halted
+     * fleet backups. Entries may be directories or files — sweep both.
+     */
+    private const TEMP_PREFIXES = [
+        'backup-',
+        'backup-inc-',
+        'restore-',
+        'verify-',
+        'replicate-',
+        'app-backup-',
+        'app-restore-',
+    ];
 
     public function handle(): int
     {
@@ -25,36 +44,53 @@ class CleanupBackupTemp extends Command
             return self::SUCCESS;
         }
 
-        $dirsCleaned = $this->cleanupBackupDirectories($basePath, (int) $this->option('hours'));
+        $entriesCleaned = $this->cleanupTempEntries($basePath, (int) $this->option('hours'));
         $filesCleaned = $this->cleanupOrphanedPhpFiles($basePath, (int) $this->option('php-file-minutes'));
 
-        $this->info("Cleaned up {$dirsCleaned} backup ".($dirsCleaned === 1 ? 'directory' : 'directories')
+        $this->info("Cleaned up {$entriesCleaned} orphaned backup/restore temp "
+            .($entriesCleaned === 1 ? 'entry' : 'entries')
             ." and {$filesCleaned} orphaned PHP temp ".($filesCleaned === 1 ? 'file' : 'files').'.');
 
         return self::SUCCESS;
     }
 
-    private function cleanupBackupDirectories(string $basePath, int $hours): int
+    private function cleanupTempEntries(string $basePath, int $hours): int
     {
         $cutoff = now()->subHours($hours)->timestamp;
         $cleaned = 0;
 
         foreach (scandir($basePath) as $entry) {
-            if (! str_starts_with($entry, 'backup-')) {
+            if ($entry === '.' || $entry === '..' || ! $this->matchesTempPrefix($entry)) {
                 continue;
             }
 
-            $dirPath = $basePath.'/'.$entry;
-            if (! is_dir($dirPath) || filemtime($dirPath) > $cutoff) {
+            $path = $basePath.'/'.$entry;
+            $mtime = @filemtime($path);
+            if ($mtime === false || $mtime > $cutoff) {
                 continue;
             }
 
-            $this->removeDirectory($dirPath);
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                @unlink($path);
+            }
             $cleaned++;
-            Log::info("CleanupBackupTemp: removed orphaned directory {$entry}");
+            Log::info("CleanupBackupTemp: removed orphaned temp entry {$entry}");
         }
 
         return $cleaned;
+    }
+
+    private function matchesTempPrefix(string $entry): bool
+    {
+        foreach (self::TEMP_PREFIXES as $prefix) {
+            if (str_starts_with($entry, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function cleanupOrphanedPhpFiles(string $basePath, int $minutes): int

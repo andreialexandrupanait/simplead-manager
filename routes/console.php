@@ -151,6 +151,14 @@ Schedule::command('app-backup:schedule-check')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Recover app backups whose worker died without cleanup (P1-38) — the
+// heartbeat threshold exceeds CreateAppBackup's 1800s timeout, so anything it
+// catches is genuinely dead and would otherwise wedge all future app backups.
+Schedule::command('app-backups:recover-stuck')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-app-backups')
+    ->onOneServer();
+
 // App backup cleanup
 Schedule::command('app:backup-cleanup')
     ->dailyAt('04:00')
