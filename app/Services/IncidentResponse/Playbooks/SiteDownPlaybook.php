@@ -23,6 +23,11 @@ class SiteDownPlaybook implements PlaybookInterface
         return $trigger === IncidentTriggerType::SiteDown;
     }
 
+    public function allowedActions(): array
+    {
+        return ['deactivate_plugin', 'fix_elementor'];
+    }
+
     public function execute(IncidentResponse $response, Site $site, IncidentActionExecutor $executor, array $context): bool
     {
         // Step 1: Quick recheck — maybe it recovered already

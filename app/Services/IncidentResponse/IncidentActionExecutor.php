@@ -23,12 +23,33 @@ class IncidentActionExecutor
 {
     private int $sequence = 0;
 
+    /**
+     * P1-46: the mutating actions this incident is permitted to perform, derived
+     * from the triggering playbook. When null, the conservative config default is
+     * used. Mutating actions outside this list are refused/escalated rather than
+     * executed on raw AI whim. Read-only/diagnostic actions are never gated.
+     *
+     * @var list<string>|null
+     */
+    private ?array $allowedMutatingActions = null;
+
     public function __construct(
         private readonly WordPressApiServiceFactory $apiFactory,
         private readonly PluginManagerService $pluginManager,
         private readonly SafeUpdateService $safeUpdateService,
         private readonly DatabaseCleanupService $dbCleanupService,
     ) {}
+
+    /**
+     * Constrain which mutating actions this incident may run (P1-46). Pass the
+     * playbook's allowlist; null restores the conservative config default.
+     *
+     * @param  list<string>|null  $actions
+     */
+    public function setAllowedActions(?array $actions): void
+    {
+        $this->allowedMutatingActions = $actions;
+    }
 
     public function execute(
         IncidentResponse $response,
@@ -39,6 +60,23 @@ class IncidentActionExecutor
     ): array {
         if ($response->hasReachedActionLimit()) {
             return ['success' => false, 'error' => 'Action limit reached for this incident'];
+        }
+
+        // P1-46: a mutating action may only run when the triggering incident's
+        // playbook allowlist permits it. Malicious/attacker-controlled site
+        // content fed to the AI agent must not be able to steer it into an
+        // out-of-scope state change — refuse (escalate to a human) instead.
+        if (! $this->isActionAllowed($actionType)) {
+            $error = "Refused '{$actionType}': not permitted by this incident's playbook allowlist — "
+                .'escalating instead of running an out-of-scope mutating action.';
+            Log::warning("Incident action {$actionType} refused for site {$site->id}: outside playbook allowlist");
+
+            $this->recordAction($response, $actionType, $tier, $parameters, [
+                'success' => false,
+                'error' => $error,
+            ], 'refused', $error, 0);
+
+            return ['success' => false, 'error' => $error];
         }
 
         // P0-20: a destructive action may only proceed when a completed, verified
@@ -143,6 +181,23 @@ class IncidentActionExecutor
         return $this->createBackup($site, $response)['success'] === true;
     }
 
+    /**
+     * P1-46: read-only/diagnostic actions are always allowed; mutating actions
+     * must appear in this incident's playbook allowlist (or the conservative
+     * config default when no playbook set one).
+     */
+    private function isActionAllowed(string $actionType): bool
+    {
+        if (! in_array($actionType, (array) config('incident-response.safety.mutating_actions', []), true)) {
+            return true;
+        }
+
+        $allowed = $this->allowedMutatingActions
+            ?? (array) config('incident-response.safety.default_allowed_actions', []);
+
+        return in_array($actionType, $allowed, true);
+    }
+
     private function api(Site $site): WordPressApiServiceInterface
     {
         return $this->apiFactory->make($site);
@@ -211,6 +266,20 @@ class IncidentActionExecutor
 
     private function updatePlugin(Site $site, IncidentResponse $response, array $parameters): array
     {
+        // P1-45: the per-site safe-updates opt-in gates automated plugin updates.
+        // A site that opted OUT must not have its plugins updated by a
+        // vulnerability/incident-driven action just because it bypasses the manual
+        // UI path — refuse and let the incident escalate to a human instead.
+        if (! $site->safe_updates_enabled) {
+            Log::warning("Incident update_plugin refused for site {$site->id}: safe_updates_enabled is off");
+
+            return [
+                'success' => false,
+                'error' => 'Site has not opted into automated safe updates (safe_updates_enabled=false); '
+                    .'refusing incident-driven plugin update — escalate for manual handling.',
+            ];
+        }
+
         $pluginId = $parameters['plugin_id'] ?? null;
         if (! $pluginId) {
             return ['success' => false, 'error' => 'Missing plugin_id'];

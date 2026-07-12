@@ -78,6 +78,9 @@ class NotificationTemplate extends Model
         'horizon_long_wait' => 'Horizon Long Wait',
         'job_failures' => 'Repeated Job Failures',
         'scheduled_task_failing' => 'Scheduled Task Failing',
+        'incident_response_resolved' => 'Incident Response Resolved',
+        'incident_response_escalated' => 'Incident Response Escalated',
+        'incident_response_failed' => 'Incident Response Failed',
         'test' => 'Test Notification',
     ];
 

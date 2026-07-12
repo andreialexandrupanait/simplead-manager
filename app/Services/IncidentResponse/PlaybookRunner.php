@@ -30,6 +30,24 @@ class PlaybookRunner
         ];
     }
 
+    /**
+     * P1-46: the mutating-action allowlist for an incident, derived from the
+     * triggering playbook. Falls back to the conservative config default when no
+     * playbook matches (AI-only incidents).
+     *
+     * @return list<string>
+     */
+    public function allowedActionsFor(IncidentTriggerType $trigger, array $context): array
+    {
+        $playbook = $this->findPlaybook($trigger, $context);
+
+        if ($playbook) {
+            return $playbook->allowedActions();
+        }
+
+        return (array) config('incident-response.safety.default_allowed_actions', []);
+    }
+
     public function findPlaybook(IncidentTriggerType $trigger, array $context): ?PlaybookInterface
     {
         foreach ($this->playbooks as $playbook) {

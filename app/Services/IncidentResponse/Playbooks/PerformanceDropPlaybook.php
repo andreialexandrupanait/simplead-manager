@@ -22,6 +22,11 @@ class PerformanceDropPlaybook implements PlaybookInterface
         return $trigger === IncidentTriggerType::PerformanceDrop;
     }
 
+    public function allowedActions(): array
+    {
+        return ['db_cleanup'];
+    }
+
     public function execute(IncidentResponse $response, Site $site, IncidentActionExecutor $executor, array $context): bool
     {
         $response->update(['diagnosis' => ['trigger' => 'Performance score below threshold']]);

@@ -64,6 +64,7 @@ class AiAgentServiceTest extends TestCase
     public function test_handles_api_failure_gracefully(): void
     {
         config(['incident-response.ai.api_key' => 'test-key']);
+        config(['incident-response.ai.retry_base_delay_ms' => 0]);
 
         $response = IncidentResponse::factory()->create([
             'site_id' => $this->site->id,
