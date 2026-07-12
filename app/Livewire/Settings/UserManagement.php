@@ -11,6 +11,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class UserManagement extends Component
@@ -21,11 +22,24 @@ class UserManagement extends Component
 
     public ?int $deletingUserId = null;
 
+    /**
+     * Defense-in-depth: every mutation in this component is admin-only. The
+     * route carries `role:admin` middleware, but we re-check inside the
+     * component so a misconfigured / bypassed route cannot let a non-admin
+     * mutate users or roles.
+     */
+    private function authorizeAdmin(): void
+    {
+        abort_unless((bool) auth()->user()?->isAdmin(), 403, 'Only admins can manage users.');
+    }
+
     public function sendInvitation(): void
     {
+        $this->authorizeAdmin();
+
         $this->validate([
             'inviteEmail' => 'required|email|max:255',
-            'inviteRole' => 'required|in:admin,manager,viewer',
+            'inviteRole' => ['required', Rule::enum(UserRole::class)],
         ]);
 
         // Check if user already exists
@@ -63,6 +77,8 @@ class UserManagement extends Component
 
     public function resendInvitation(int $id): void
     {
+        $this->authorizeAdmin();
+
         $invitation = Invitation::findOrFail($id);
 
         if ($invitation->accepted_at) {
@@ -82,12 +98,16 @@ class UserManagement extends Component
 
     public function revokeInvitation(int $id): void
     {
+        $this->authorizeAdmin();
+
         Invitation::findOrFail($id)->delete();
         session()->flash('success', 'Invitation revoked.');
     }
 
     public function confirmDeleteUser(int $id): void
     {
+        $this->authorizeAdmin();
+
         if ($id === auth()->id()) {
             return;
         }
@@ -97,6 +117,8 @@ class UserManagement extends Component
 
     public function deleteUser(): void
     {
+        $this->authorizeAdmin();
+
         if (! $this->deletingUserId || $this->deletingUserId === auth()->id()) {
             return;
         }
@@ -109,16 +131,28 @@ class UserManagement extends Component
 
     public function updateRole(int $userId, string $role): void
     {
+        $this->authorizeAdmin();
+
+        // Never let a user change their own role (self-escalation).
         if ($userId === auth()->id()) {
             return;
         }
 
+        // Reject anything that is not a real UserRole enum case. Without this,
+        // a crafted role string could persist an invalid/privileged value.
+        $validated = validator(
+            ['role' => $role],
+            ['role' => ['required', Rule::enum(UserRole::class)]],
+        )->validate();
+
         $user = User::findOrFail($userId);
-        $user->update(['role' => $role]);
+        $user->update(['role' => $validated['role']]);
     }
 
     public function toggleClientAssignment(int $userId, int $clientId): void
     {
+        $this->authorizeAdmin();
+
         if ($userId === auth()->id()) {
             return;
         }

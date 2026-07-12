@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Notifications;
 
+use App\Exceptions\SsrfException;
 use App\Models\NotificationChannel;
 use App\Models\Site;
+use App\Services\Security\SsrfGuard;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
@@ -21,6 +23,15 @@ class WebhookNotificationSender
         $url = $config['url'] ?? null;
         if (! $url) {
             return ['success' => false, 'response_code' => null, 'error' => 'No webhook URL configured'];
+        }
+
+        // SSRF guard: never fetch a webhook URL that resolves to the internal
+        // network / loopback / metadata endpoint, even if one slipped past
+        // save-time validation (e.g. legacy rows or DNS rebinding).
+        try {
+            app(SsrfGuard::class)->assertPublicUrl($url);
+        } catch (SsrfException $e) {
+            return ['success' => false, 'response_code' => null, 'error' => 'Webhook URL blocked by SSRF protection: '.$e->getMessage()];
         }
 
         $method = strtolower($config['method'] ?? 'POST');

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Uptime;
 
+use App\Exceptions\SsrfException;
 use App\Jobs\CheckUptime;
 use App\Livewire\Forms\MonitorFormData;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
+use App\Services\Security\SsrfGuard;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -48,6 +50,18 @@ class ConfigureMonitor extends Component
     public function save(): void
     {
         $this->form->validate();
+
+        // SSRF guard: the monitored URL is user-supplied and probed
+        // server-side. A legitimate public client domain passes; an internal /
+        // loopback / metadata target is rejected here at save time (the probe
+        // itself stays untouched so Cloudflare-challenge handling is preserved).
+        try {
+            app(SsrfGuard::class)->assertPublicUrl($this->form->url);
+        } catch (SsrfException) {
+            $this->addError('form.url', 'This URL cannot be monitored — it points to a private or internal address.');
+
+            return;
+        }
 
         if (! $this->monitorId) {
             $this->validate([
