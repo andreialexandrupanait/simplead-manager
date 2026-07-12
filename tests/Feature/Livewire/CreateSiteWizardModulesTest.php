@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\Jobs\FetchSiteFavicon;
 use App\Livewire\Sites\CreateSiteWizard;
 use App\Models\MaintenancePlan;
 use App\Models\MaintenancePlanModule;
@@ -45,7 +46,9 @@ class CreateSiteWizardModulesTest extends TestCase
 
     public function test_wizard_creates_dns_monitor_and_plan_modules(): void
     {
-        Queue::fake(); // suppress FetchSiteFavicon on Site::created
+        // Suppress only FetchSiteFavicon (outbound HTTP) — let ApplyPlanToSite
+        // run on the sync test queue so plan modules still materialize (P1-58).
+        Queue::fake([FetchSiteFavicon::class]);
 
         $plan = $this->planWithUptime();
         $admin = User::factory()->admin()->create();

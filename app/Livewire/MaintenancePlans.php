@@ -170,16 +170,18 @@ class MaintenancePlans extends Component
             abort(403, 'Viewers cannot apply maintenance plans.');
         }
 
-        $plan = \App\Models\MaintenancePlan::findOrFail($planId);
+        $plan = \App\Models\MaintenancePlan::with('planModules')->findOrFail($planId);
         $sites = \App\Models\Site::where('is_connected', true)
             ->whereNull('maintenance_plan_id')
             ->get()
             ->filter(fn (\App\Models\Site $site) => $user->canAccessSite($site));
 
+        // P1-58/P1-60: funnel through the same canonical per-site operation as
+        // every other apply path, and queue it so the request returns fast.
         foreach ($sites as $site) {
-            app(\App\Services\ModuleConfigService::class)->applyPlan($site, $plan);
+            \App\Jobs\ApplyPlanToSite::dispatch($site, $plan);
         }
-        $this->dispatch('notify', type: 'success', message: "Applied plan to {$sites->count()} sites.");
+        $this->dispatch('notify', type: 'success', message: "Queued plan apply for {$sites->count()} site(s).");
     }
 
     // --- Delete ---

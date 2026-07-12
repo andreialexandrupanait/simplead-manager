@@ -22,6 +22,36 @@
         @endif
     </x-ui.page-header>
 
+    {{-- Fleet-apply progress (P1-60) --}}
+    @if($applyBatchId)
+        @php $progress = $this->applyProgress(); @endphp
+        @if($progress)
+            <div @if(! $progress['complete']) wire:poll.2s @endif
+                 class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-800 dark:bg-blue-900/30">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="text-blue-800 dark:text-blue-200">
+                        @if($progress['complete'])
+                            {{ __('Applied plan to :done of :total site(s).', ['done' => $progress['done'], 'total' => $progress['total']]) }}
+                        @else
+                            {{ __('Applying plan… :done of :total site(s).', ['done' => $progress['done'], 'total' => $progress['total']]) }}
+                        @endif
+                        @if($progress['failed'] > 0)
+                            <span class="font-semibold text-red-600 dark:text-red-400">
+                                {{ __(':failed failed', ['failed' => $progress['failed']]) }}
+                            </span>
+                        @endif
+                    </div>
+                    @if($progress['complete'])
+                        <button type="button" wire:click="dismissApplyProgress"
+                                class="text-blue-600 hover:text-blue-800 dark:text-blue-300">
+                            {{ __('Dismiss') }}
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @endif
+    @endif
+
     {{-- List View --}}
     @if($view === 'list')
         @if($this->plans->isEmpty())

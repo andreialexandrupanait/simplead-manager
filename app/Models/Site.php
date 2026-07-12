@@ -10,7 +10,6 @@ use App\Models\Traits\HasDomainExtraction;
 use App\Models\Traits\HasSiteRelationships;
 use App\Models\Traits\HasSiteScopes;
 use App\Services\DashboardService;
-use App\Services\ModuleConfigService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -239,13 +238,19 @@ class Site extends Model
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);
 
-            // Apply plan via ModuleConfigService (creates uptime, backup, performance, security monitors etc.)
+            // P1-58: funnel new-site application through the SAME canonical
+            // per-site operation as the bulk UI path (applyPlanToSite), so all
+            // three entry points converge and a managed site can't drift. The
+            // plan's FULL configuration (modules AND security AND tweaks AND
+            // schedule) is applied — not just modules as before.
+            // P1-60: dispatch it as a queued job so site creation stays fast and
+            // never blocks on outbound security/tweak pushes or a slow plan.
             $plan = $site->maintenance_plan_id
                 ? MaintenancePlan::with('planModules')->find($site->maintenance_plan_id)
                 : MaintenancePlan::with('planModules')->where('is_default', true)->first();
 
             if ($plan) {
-                app(ModuleConfigService::class)->applyPlan($site, $plan);
+                \App\Jobs\ApplyPlanToSite::dispatch($site, $plan);
             }
         });
     }
