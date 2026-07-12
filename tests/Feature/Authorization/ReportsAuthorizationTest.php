@@ -56,6 +56,9 @@ class ReportsAuthorizationTest extends TestCase
     {
         $viewer = User::factory()->create(['role' => UserRole::Viewer]);
         $client = Client::factory()->create();
+        // Viewer may VIEW this client (assigned via pivot) but still must not
+        // WRITE financials — P2-39 gates the view; addCost gates the write.
+        $viewer->assignedClients()->attach($client);
 
         Livewire::actingAs($viewer)
             ->test(ClientProfitability::class, ['client' => $client])
@@ -71,6 +74,8 @@ class ReportsAuthorizationTest extends TestCase
     {
         $manager = User::factory()->create(['role' => UserRole::Manager]);
         $client = Client::factory()->create();
+        // Manager may access this client (assigned via pivot) — P2-39 view gate.
+        $manager->assignedClients()->attach($client);
 
         Livewire::actingAs($manager)
             ->test(ClientProfitability::class, ['client' => $client])
