@@ -240,4 +240,26 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
     {
         return 'push-security-'.$this->site->id;
     }
+
+    /**
+     * P1-62: without a failed() handler, enabled-but-unapplied settings sit as
+     * "Pending" forever once retries are exhausted (or the worker is hard-killed
+     * mid-push), and the hardening score stays stale-optimistic. Mark the stuck
+     * settings failed so the security dashboard surfaces the real error state,
+     * and recompute the score so it reflects that the push never landed.
+     */
+    public function failed(?\Throwable $e): void
+    {
+        $reason = $e?->getMessage() ?? 'unknown error';
+
+        Log::error('PushSecuritySettings permanently failed', [
+            'site_id' => $this->site->id,
+            'error' => $reason,
+        ]);
+
+        $this->markAllFailed('Push failed: '.$reason);
+
+        $score = app(SecuritySettingsService::class)->getSecurityScore($this->site);
+        $this->site->update(['security_hardening_score' => $score]);
+    }
 }
