@@ -161,4 +161,22 @@ class PushSiteTweaksSettings implements ShouldBeUnique, ShouldQueue
     {
         return 'push-tweaks-'.$this->site->id;
     }
+
+    /**
+     * P1-62: without a failed() handler, enabled-but-unapplied tweak settings sit
+     * as "Pending" forever once retries are exhausted (or the worker is
+     * hard-killed mid-push). Mark the stuck settings failed so the security
+     * dashboard surfaces the real error state instead of a perpetual pending.
+     */
+    public function failed(?\Throwable $e): void
+    {
+        $reason = $e?->getMessage() ?? 'unknown error';
+
+        Log::error('PushSiteTweaksSettings permanently failed', [
+            'site_id' => $this->site->id,
+            'error' => $reason,
+        ]);
+
+        $this->markAllFailed('Push failed: '.$reason);
+    }
 }
