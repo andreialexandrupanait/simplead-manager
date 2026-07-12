@@ -25,6 +25,8 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 60;
 
+    public int $uniqueFor = 180; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public Site $site,
     ) {

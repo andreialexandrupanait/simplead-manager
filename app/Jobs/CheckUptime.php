@@ -26,13 +26,15 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     /**
      * Seconds added on top of the monitor's own request timeout so the worker
-     * is never SIGKILLed mid-check (which would record nothing — a silent gap).
+     * is never SIGKILLed mid-check (which would record nothing â a silent gap).
      */
     private const TIMEOUT_BUFFER_SECONDS = 15;
 
     public int $tries = 3;
 
     public int $timeout = 30;
+
+    public int $uniqueFor = 90; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
 
     public array $backoff = [30, 60, 120];
 
@@ -42,7 +44,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         $this->onQueue('uptime');
 
         // Derive the job timeout from the monitor's configured request timeout
-        // (user-settable 5–120s) plus a buffer. Without this, a monitor timeout
+        // (user-settable 5â120s) plus a buffer. Without this, a monitor timeout
         // >= the fixed 30s worker cap gets the process killed before saveCheck()
         // runs, producing no check row and no down alert. Stays well below the
         // redis connection retry_after (7200s) so no double-processing.
@@ -100,7 +102,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
         // A timed-out or killed worker never reaches handle()'s saveCheck()/state
         // update, so without this the monitor would record nothing (silent gap)
-        // and — because next_check_at only advances after a successful probe —
+        // and â because next_check_at only advances after a successful probe â
         // the dispatcher would relaunch a failing job every minute. Record a
         // synthetic failed check and advance next_check_at so neither happens.
         try {
@@ -192,7 +194,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             $acceptedCodes = $this->monitor->accepted_status_codes ?? [200, 201, 202, 203, 204, 301, 302];
             $result['is_up'] = in_array($response->status(), $acceptedCodes);
 
-            // Cloudflare JS challenge returns 403 with cf-mitigated header — site is actually up
+            // Cloudflare JS challenge returns 403 with cf-mitigated header â site is actually up
             if (! $result['is_up'] && $response->status() === 403 && $response->header('cf-mitigated') === 'challenge') {
                 $result['is_up'] = true;
             }

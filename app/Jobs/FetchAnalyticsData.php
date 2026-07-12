@@ -24,6 +24,8 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
+    public int $uniqueFor = 360; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public array $backoff = [30, 60];
 
     public function __construct(
@@ -46,14 +48,14 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 
         $connection = $this->site->analyticsConnection;
         if (! $connection || ! $connection->is_active) {
-            JobTracker::complete($this->uniqueId(), 'Skipped — no active connection');
+            JobTracker::complete($this->uniqueId(), 'Skipped â no active connection');
 
             return;
         }
 
         $google = $connection->googleConnection;
         if (! $google || ! $google->is_active) {
-            JobTracker::complete($this->uniqueId(), 'Skipped — no active Google connection');
+            JobTracker::complete($this->uniqueId(), 'Skipped â no active Google connection');
 
             return;
         }

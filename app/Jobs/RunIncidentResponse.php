@@ -26,6 +26,8 @@ class RunIncidentResponse implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 900;
 
+    public int $uniqueFor = 2700; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public Site $site,
         public IncidentTriggerType $triggerType,

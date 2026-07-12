@@ -89,7 +89,24 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
+          # P1-06: the container hard limit was 1024M while a backup burst could
+          # push real RSS well past it → cgroup OOM SIGKILL mid-backup/restore.
+          # The `memory` values in config/horizon.php are graceful self-restart
+          # HINTS, not caps, so the theoretical worst case (sum of maxProcesses x
+          # threshold) is ~6.7G — but this host only has 7.7G total and other
+          # containers already reserve ~3.9G (pgsql 2G, app/gotenberg 512M each,
+          # redis 320M, scheduler 256M, ...). We therefore CANNOT give Horizon
+          # 6.7G. Instead:
+          #   - cap raised 1024M -> 3072M (fits the host: 3.9G others + 3G = ~6.9G
+          #     of 7.7G, ~0.8G + 3G swap headroom), ~3.6x current real usage (~0.85G)
+          #   - HORIZON_BACKUP_WORKERS default reduced 3 -> 2 (backups are the only
+          #     real memory hog, and they now STREAM to disk since PR #40, so real
+          #     per-worker RSS is far below the 1024M threshold)
+          #   - MonitorHorizonMemory (this PR) alerts before the cap is reached, so
+          #     if a real workload approaches 3072M we retune from data.
+          # Practical concurrent ceiling with 2 backup workers streaming is well
+          # under 3072M. Confirm host free RAM before applying; revert = one value.
+          memory: 3072M
           cpus: "1.0"
 
   scheduler:
@@ -100,6 +117,12 @@ services:
     restart: unless-stopped
     entrypoint: ["/var/www/html/docker/php/entrypoint.sh"]
     command: ["php", "artisan", "schedule:work"]
+    # P1-53: let schedule:work finish the current tick and release its overlap
+    # mutexes on SIGTERM instead of being SIGKILL'd after Docker's default 10s.
+    # A killed scheduler that never releases a mutex would wedge that task for the
+    # framework-default 24h; paired with the 10-min mutex TTLs in routes/console.php
+    # this keeps a bad deploy/host-OOM from silently freezing scheduled work.
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD-SHELL", "php -r 'echo 1;'"]
       interval: 60s

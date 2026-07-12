@@ -24,6 +24,8 @@ class RunSafeUpdate implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 600;
 
+    public int $uniqueFor = 1800; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public SafeUpdate $safeUpdate,
         public ?int $userId = null,
@@ -84,7 +86,7 @@ class RunSafeUpdate implements ShouldBeUnique, ShouldQueue
             [
                 'Type' => $this->safeUpdate->type,
                 'Name' => $this->safeUpdate->name,
-                'Version' => "{$this->safeUpdate->from_version} → {$this->safeUpdate->to_version}",
+                'Version' => "{$this->safeUpdate->from_version} â {$this->safeUpdate->to_version}",
             ],
             'critical',
         );

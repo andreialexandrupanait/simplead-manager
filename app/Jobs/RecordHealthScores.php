@@ -23,6 +23,8 @@ class RecordHealthScores implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 300;
 
+    public int $uniqueFor = 900; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct()
     {
         $this->onQueue('default');

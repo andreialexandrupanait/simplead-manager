@@ -23,6 +23,8 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
+    public int $uniqueFor = 360; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(public Site $site)
     {
         $this->onQueue('sync');

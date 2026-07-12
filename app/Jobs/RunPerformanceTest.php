@@ -23,6 +23,8 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 300;
 
+    public int $uniqueFor = 900; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public int $tries = 2;
 
     public array $backoff = [60, 180];
@@ -39,8 +41,41 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
         return 'perf-test-'.$this->monitor->id;
     }
 
+    /**
+     * P1-09: a hard failure (all tries exhausted) must never leave rows stuck in
+     * 'running' — the performance UI polls those forever. A `kill -9` skips this
+     * hook entirely, which is why the scheduled `performance:recover-stuck-tests`
+     * sweeper is the belt-and-braces backstop.
+     */
+    public function failed(\Throwable $e): void
+    {
+        $this->failOrphanedRunningTests('Test run failed: '.$e->getMessage());
+    }
+
+    /**
+     * Mark any lingering 'running' rows for this monitor as failed so the UI
+     * stops polling and no duplicate stuck rows survive. (P1-09)
+     */
+    private function failOrphanedRunningTests(string $reason): void
+    {
+        PerformanceTest::query()
+            ->where('performance_monitor_id', $this->monitor->id)
+            ->where('status', 'running')
+            ->update([
+                'status' => 'failed',
+                'error_message' => $reason,
+                'updated_at' => now(),
+            ]);
+    }
+
     public function handle(PageSpeedService $pageSpeed): void
     {
+        // P1-09: a redelivered/retried run must not accumulate duplicate stuck
+        // rows. ShouldBeUnique guarantees only one RunPerformanceTest per monitor
+        // executes at a time, so any pre-existing 'running' row is necessarily
+        // orphaned by a prior attempt that died without cleanup — fail it first.
+        $this->failOrphanedRunningTests('Superseded by a new test run (orphaned running row).');
+
         /** @var Site $site */
         $site = $this->monitor->site;
 

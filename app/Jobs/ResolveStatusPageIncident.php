@@ -22,6 +22,8 @@ class ResolveStatusPageIncident implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 30;
 
+    public int $uniqueFor = 90; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public array $backoff = [15, 30];
 
     public function __construct(
