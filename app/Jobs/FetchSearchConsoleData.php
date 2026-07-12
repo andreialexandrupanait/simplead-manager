@@ -24,6 +24,8 @@ class FetchSearchConsoleData implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
+    public int $uniqueFor = 360; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public array $backoff = [30, 60];
 
     public function __construct(

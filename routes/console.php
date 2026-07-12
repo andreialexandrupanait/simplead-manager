@@ -14,38 +14,45 @@ use Illuminate\Support\Facades\Schedule;
 // ==========================================================================
 
 // Monitoring: uptime checks, SSL checks, security scans
+//
+// P1-53: high-frequency tasks use a 10-minute mutex TTL instead of the framework
+// default of 24h. A scheduler killed with SIGKILL never releases its mutex, so a
+// bare withoutOverlapping() would silently wedge these dispatchers for a full day
+// (no uptime/security/DNS/backup dispatch) while the heartbeat stays green. The
+// scheduler's stop_grace_period (docker-compose.prod.yml) is the graceful side of
+// the same fix. 10 min comfortably exceeds every dispatch-only task's runtime.
 Schedule::call(new MonitoringDispatcher)
     ->everyMinute()
     ->name('monitoring-dispatcher')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->onOneServer();
 
 // Data Sync: analytics, search console, cloudflare, WP sync
 Schedule::call(new DataSyncDispatcher)
     ->everyMinute()
     ->name('data-sync-dispatcher')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->onOneServer();
 
 // Backups: site backups + app backups
 Schedule::call(new BackupDispatcher)
     ->everyMinute()
     ->name('backup-dispatcher')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->onOneServer();
 
 // Reports: scheduled report generation
 Schedule::call(new ReportDispatcher)
     ->everyFiveMinutes()
     ->name('report-dispatcher')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->onOneServer();
 
 // Incident Response: proactive security/vulnerability detection
 Schedule::call(new IncidentResponseDispatcher)
     ->everyFiveMinutes()
     ->name('incident-response-dispatcher')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->onOneServer();
 
 // Belt-and-braces for SEC-A2-11: a kill -9'd worker never runs failed(), so
@@ -64,7 +71,7 @@ Schedule::call(function () {
     ->name('incident-response-stale-sweep')
     ->onOneServer();
 
-Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping()->onOneServer();
+Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping(10)->onOneServer();
 
 // Daily broken links/images re-check (lightweight, no re-crawl)
 Schedule::call(new BrokenResourceDispatcher)->dailyAt('02:00')->name('broken-resource-dispatcher')->withoutOverlapping()->onOneServer();
@@ -177,7 +184,22 @@ Schedule::command('backup:verify-restore --count=3')
 Schedule::command('horizon:health-check')
     ->everyFiveMinutes()
     ->name('horizon-health-check')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
+    ->onOneServer();
+
+// P1-06: near-limit OOM alert. Runs inside the Horizon container (dispatched to a
+// queue Horizon processes) and reads that container's own cgroup memory usage,
+// alerting before a cgroup OOM SIGKILL can kill a worker mid-backup/restore.
+Schedule::job(new \App\Jobs\MonitorHorizonMemory)
+    ->everyFiveMinutes()
+    ->name('horizon-memory-monitor')
+    ->onOneServer();
+
+// P1-09: recover performance tests stuck in 'running' after a SIGKILL'd worker
+// skipped the job's failed() hook — otherwise the UI polls those rows forever.
+Schedule::command('performance:recover-stuck-tests')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-performance-tests')
     ->onOneServer();
 
 // External heartbeat (dead-man's switch) — pings every minute so an external
@@ -185,7 +207,7 @@ Schedule::command('horizon:health-check')
 Schedule::command('monitoring:heartbeat')
     ->everyMinute()
     ->name('scheduler-heartbeat')
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 // PHP error log fetch — every 6 hours across all sites
 Schedule::call(function () {
@@ -237,20 +259,20 @@ Schedule::job(new \App\Jobs\ProcessNotificationBatch)
     ->everyMinute()
     ->name('process-notification-batch')
     ->onOneServer()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::job(new \App\Jobs\ProcessNotificationEscalations)
     ->everyFiveMinutes()
     ->name('process-notification-escalations')
     ->onOneServer()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 // Release notifications deferred during quiet hours (P1-21) once the window ends.
 Schedule::job(new \App\Jobs\FlushDeferredNotifications)
     ->everyMinute()
     ->name('flush-deferred-notifications')
     ->onOneServer()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 // Daily health digest email
 Schedule::job(new \App\Jobs\SendDailyDigest)

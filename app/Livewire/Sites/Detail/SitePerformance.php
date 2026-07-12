@@ -53,8 +53,12 @@ class SitePerformance extends Component
         // If there are running tests on page load, enable polling
         $monitor = $site->performanceMonitor;
         if ($monitor) {
+            // P1-09: ignore rows older than the sweeper threshold so an orphaned
+            // 'running' row (worker SIGKILL'd before failed() ran) can never make
+            // the UI poll forever before the sweeper resolves it.
             $hasRunning = PerformanceTest::where('performance_monitor_id', $monitor->id)
                 ->whereIn('status', ['running', 'pending'])
+                ->where('created_at', '>=', now()->subMinutes(15))
                 ->exists();
             if ($hasRunning) {
                 $this->isRunning = true;
@@ -180,8 +184,11 @@ class SitePerformance extends Component
             return collect();
         }
 
+        // P1-09: bound by age so an orphaned 'running' row can't keep the poll
+        // loop alive indefinitely (the sweeper marks it failed within 15 min).
         return PerformanceTest::where('performance_monitor_id', $this->monitor->id)
             ->whereIn('status', ['running', 'pending'])
+            ->where('created_at', '>=', now()->subMinutes(15))
             ->get();
     }
 

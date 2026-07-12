@@ -89,7 +89,26 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
+          # P1-06: the container hard limit must exceed the summed per-worker
+          # memory *restart thresholds* (config/horizon.php) — those are graceful
+          # self-restart hints, NOT caps, so real RSS can reach their sum before
+          # any worker recycles. Below that sum a burst of concurrent large jobs
+          # trips a cgroup OOM SIGKILL mid-backup/restore (the exact failure
+          # stop_grace_period was added to prevent).
+          #
+          # Production sum (maxProcesses x memory):
+          #   uptime            2 x 64   =  128
+          #   sync              3 x 256  =  768
+          #   backups           3 x 1024 = 3072
+          #   notifications     3 x 64   =  192
+          #   general           3 x 512  = 1536
+          #   incident-response 2 x 512  = 1024
+          #   subtotal                   = 6720
+          #   + master (memory_limit 64) = 6784 MB
+          # 8192M leaves ~1.4G headroom. If worker counts (HORIZON_*_WORKERS) or
+          # per-worker `memory` change, revisit this. Confirm the host has the
+          # RAM before applying (see PR safe-rollout note).
+          memory: 8192M
           cpus: "1.0"
 
   scheduler:
@@ -100,6 +119,12 @@ services:
     restart: unless-stopped
     entrypoint: ["/var/www/html/docker/php/entrypoint.sh"]
     command: ["php", "artisan", "schedule:work"]
+    # P1-53: let schedule:work finish the current tick and release its overlap
+    # mutexes on SIGTERM instead of being SIGKILL'd after Docker's default 10s.
+    # A killed scheduler that never releases a mutex would wedge that task for the
+    # framework-default 24h; paired with the 10-min mutex TTLs in routes/console.php
+    # this keeps a bad deploy/host-OOM from silently freezing scheduled work.
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD-SHELL", "php -r 'echo 1;'"]
       interval: 60s

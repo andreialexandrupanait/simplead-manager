@@ -32,6 +32,8 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
+    public int $uniqueFor = 360; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public array $backoff = [30, 60, 120];
 
     public function __construct(
@@ -183,7 +185,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                     ->whereNotIn('wp_user_id', $existingWpUserIds)
                     ->delete();
             } catch (RequestException|\RuntimeException $e) {
-                // Users endpoint may not exist on older connector versions — skip silently
+                // Users endpoint may not exist on older connector versions â skip silently
                 Log::info("User sync skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
@@ -271,7 +273,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Reload current state — avoid re-notifying a site that is already
+        // Reload current state â avoid re-notifying a site that is already
         // flagged disconnected.
         $this->site->refresh();
 
@@ -301,7 +303,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * A genuine disconnect is a 4xx (auth/permission/not-found) response — the
+     * A genuine disconnect is a 4xx (auth/permission/not-found) response â the
      * connector rejected us and retrying will not help. Rate-limit (429) and
      * request-timeout (408) are transient and explicitly excluded. Anything
      * without an HTTP status (connection reset, DNS failure, read timeout, 5xx)

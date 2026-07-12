@@ -27,6 +27,8 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 60;
 
+    public int $uniqueFor = 180; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public Site $site,
     ) {
@@ -39,7 +41,7 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
             ->where('is_enabled', true)
             ->get();
 
-        // Activity log is a Laravel-only setting — mark applied immediately
+        // Activity log is a Laravel-only setting â mark applied immediately
         $settings->where('category', \App\Enums\SecurityCategory::ActivityLog)
             ->each(fn ($s) => $s->update(['applied_at' => now(), 'failed_at' => null, 'failure_reason' => null]));
 
@@ -58,7 +60,7 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
                 $this->processResults($results);
 
                 // Sync banned IPs reported by WordPress. An empty array is
-                // authoritative ("no bans") — skipping it left a stale local
+                // authoritative ("no bans") â skipping it left a stale local
                 // row after the last IP was unbanned. Only a missing key
                 // (old connector) skips the sync.
                 $bannedIps = $response->json('banned_ips');
@@ -144,7 +146,7 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
             try {
                 $payload['captcha']['secret_key'] = decrypt($payload['captcha']['secret_key']);
             } catch (\Throwable $e) {
-                // Not encrypted or decryption failed — leave as-is
+                // Not encrypted or decryption failed â leave as-is
             }
         }
 
@@ -184,7 +186,7 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        // Login/captcha/ip_management — simple success flags
+        // Login/captcha/ip_management â simple success flags
         foreach (['login', 'captcha', 'ip_management'] as $cat) {
             if (isset($results[$cat]['success']) && $results[$cat]['success']) {
                 $settings = SecuritySetting::where('site_id', $this->site->id)

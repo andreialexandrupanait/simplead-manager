@@ -25,6 +25,8 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 90;
 
+    public int $uniqueFor = 270; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     /** @var array<string, string> map of selector => source ('manual'|'cloudflare'|'postmark'|'fallback') */
     private array $selectorSources = [];
 
@@ -51,7 +53,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
             // Carry forward the last confirmed value for any record type whose
             // lookup transiently failed (resolver returned false). This prevents
-            // a DNS blip from being read as "records deleted" — both for change
+            // a DNS blip from being read as "records deleted" â both for change
             // detection and for the value that flows into client reports.
             if ($confirmed !== null) {
                 foreach ($failedTypes as $label) {
@@ -76,7 +78,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
             $changes = $this->detectChanges($confirmed, $records);
 
-            // Stable — matches the confirmed state. Refresh timestamps and clear
+            // Stable â matches the confirmed state. Refresh timestamps and clear
             // any half-observed candidate.
             if (empty($changes)) {
                 $this->monitor->update([
@@ -90,7 +92,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
-            // A change vs the confirmed state — require two consecutive identical
+            // A change vs the confirmed state â require two consecutive identical
             // observations before acting. On the first sighting, hold it as a
             // pending candidate and wait for the next check.
             $pending = $this->monitor->pending_records;
@@ -106,7 +108,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
-            // Second consecutive identical observation — commit the change.
+            // Second consecutive identical observation â commit the change.
             $this->monitor->update([
                 'previous_records' => $confirmed,
                 'current_records' => $records,
@@ -181,7 +183,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
             $result = @dns_get_record($domain, $dnsType);
 
             if ($result === false) {
-                // Transient resolver failure — placeholder is overwritten by the
+                // Transient resolver failure â placeholder is overwritten by the
                 // carried-forward value in handle(); flag so it is not compared.
                 $records[$label] = [];
                 $failed[] = $label;
@@ -296,7 +298,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
         $this->persistDiscoveredSelectors($confirmedSelectors);
 
         // Treat as a transient failure only when a resolver error occurred and
-        // nothing was found — otherwise partial/complete results are trustworthy.
+        // nothing was found â otherwise partial/complete results are trustworthy.
         return [$found, $hadResolverError && $found === []];
     }
 

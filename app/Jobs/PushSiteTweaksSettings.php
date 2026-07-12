@@ -26,6 +26,8 @@ class PushSiteTweaksSettings implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 60;
 
+    public int $uniqueFor = 180; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public Site $site,
     ) {
@@ -80,7 +82,7 @@ class PushSiteTweaksSettings implements ShouldBeUnique, ShouldQueue
             $value = $setting->setting_value;
             $enabled = $setting->is_enabled;
 
-            // Build per-category payloads: key → value (or key → false for disabled)
+            // Build per-category payloads: key â value (or key â false for disabled)
             if ($enabled) {
                 $payload[$category][$key] = is_array($value) ? $value : $enabled;
             } else {

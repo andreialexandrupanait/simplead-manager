@@ -32,6 +32,8 @@ class ProbeSiteReconnection implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 30;
 
+    public int $uniqueFor = 90; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
     public function __construct(
         public Site $site,
     ) {
@@ -47,7 +49,7 @@ class ProbeSiteReconnection implements ShouldBeUnique, ShouldQueue
     {
         $this->site->refresh();
 
-        // Already recovered (e.g. a manual "Sync now") — nothing to do.
+        // Already recovered (e.g. a manual "Sync now") â nothing to do.
         if ($this->site->is_connected) {
             return;
         }
@@ -56,7 +58,7 @@ class ProbeSiteReconnection implements ShouldBeUnique, ShouldQueue
             // Strictly read-only: GET /info. No writes to the WP host.
             $factory->make($this->site)->getInfo();
         } catch (\Throwable $e) {
-            Log::info("Reconnect probe: site {$this->site->id} still unreachable — {$e->getMessage()}");
+            Log::info("Reconnect probe: site {$this->site->id} still unreachable â {$e->getMessage()}");
 
             return;
         }
@@ -66,7 +68,7 @@ class ProbeSiteReconnection implements ShouldBeUnique, ShouldQueue
             'last_synced_at' => now(),
         ]);
 
-        Log::info("Reconnect probe: site {$this->site->id} ({$this->site->name}) recovered — reconnected");
+        Log::info("Reconnect probe: site {$this->site->id} ({$this->site->name}) recovered â reconnected");
 
         NotificationService::notifySiteEvent(
             $this->site,
