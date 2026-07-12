@@ -54,11 +54,22 @@ class DataSyncDispatcher
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            // P2-50: skip dead/disconnected Google accounts — an inactive
+            // GoogleConnection can never fetch, so stop re-dispatching for it.
+            ->whereHas('googleConnection', fn ($q) => $q->where('is_active', true))
             ->where($this->healthStateGate())
-            ->with('site')
+            ->with(['site.healthState'])
             ->each(function (AnalyticsConnection $conn) {
                 /** @var \App\Models\Site $site */
                 $site = $conn->site;
+
+                // P2-50: gate on the analytics domain breaker so a repeatedly
+                // failing connection stays skipped until its retry window,
+                // instead of being re-dispatched every minute forever.
+                if (CircuitBreakerService::isDomainTripped($site, CircuitBreakerService::DOMAIN_ANALYTICS)) {
+                    return;
+                }
+
                 FetchAnalyticsData::dispatch($site, '28d');
                 $conn->update(['next_sync_at' => now()->addMinutes($conn->interval_minutes)]);
             });
@@ -70,11 +81,19 @@ class DataSyncDispatcher
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            // P2-50: skip dead/disconnected Google accounts.
+            ->whereHas('googleConnection', fn ($q) => $q->where('is_active', true))
             ->where($this->healthStateGate())
-            ->with('site')
+            ->with(['site.healthState'])
             ->each(function (SearchConsoleConnection $conn) {
                 /** @var \App\Models\Site $site */
                 $site = $conn->site;
+
+                // P2-50: gate on the search-console domain breaker.
+                if (CircuitBreakerService::isDomainTripped($site, CircuitBreakerService::DOMAIN_SEARCH_CONSOLE)) {
+                    return;
+                }
+
                 FetchSearchConsoleData::dispatch($site, '28d');
                 $conn->update(['next_sync_at' => now()->addMinutes($conn->interval_minutes)]);
             });

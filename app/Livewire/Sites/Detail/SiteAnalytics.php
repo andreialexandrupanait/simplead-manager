@@ -268,14 +268,11 @@ class SiteAnalytics extends Component
 
         $curOverview = $current->data['overview'];
 
-        // Get previous period for comparison
-        $previous = AnalyticsCache::where('site_id', $this->site->id)
-            ->where('date_range', '28d')
-            ->where('fetched_at', '<', $current->fetched_at->subDays(7))
-            ->latest('fetched_at')
-            ->first();
-
-        $prevOverview = $previous?->data['overview'] ?? null;
+        // P2-48: the previous-period overview is fetched alongside the current
+        // window and stored on the same cache row. The old code instead looked
+        // for a historical cache row that never existed (updateOrCreate keeps a
+        // single row per site+range), so the comparison was permanently null.
+        $prevOverview = $current->data['overview_previous'] ?? null;
 
         $metrics = ['pageviews', 'total_users', 'sessions', 'bounce_rate'];
         $trends = [];

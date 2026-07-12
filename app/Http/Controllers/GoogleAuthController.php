@@ -101,20 +101,26 @@ class GoogleAuthController extends Controller
                 ->with('error', 'Failed to read your Google account details. Please try again.');
         }
 
-        GoogleConnection::updateOrCreate(
-            ['google_id' => $userInfo['id']],
-            [
-                'email' => $userInfo['email'],
-                'name' => $userInfo['name'] ?? null,
-                'avatar_url' => $userInfo['picture'] ?? null,
-                'access_token' => encrypt($tokens['access_token']),
-                'refresh_token' => encrypt($tokens['refresh_token'] ?? ''),
-                'token_expires_at' => now()->addSeconds($tokens['expires_in']),
-                'scopes' => ['analytics.readonly', 'webmasters.readonly'],
-                'is_active' => true,
-                'last_used_at' => now(),
-            ]
-        );
+        $attributes = [
+            'email' => $userInfo['email'],
+            'name' => $userInfo['name'] ?? null,
+            'avatar_url' => $userInfo['picture'] ?? null,
+            'access_token' => encrypt($tokens['access_token']),
+            'token_expires_at' => now()->addSeconds($tokens['expires_in']),
+            'scopes' => ['analytics.readonly', 'webmasters.readonly'],
+            'is_active' => true,
+            'last_used_at' => now(),
+        ];
+
+        // Google only returns a refresh_token on the first consent; on re-auth it
+        // is often omitted. Never overwrite a previously stored refresh token
+        // with an empty value (P2-49) — that would wipe a working credential.
+        $refreshToken = $tokens['refresh_token'] ?? null;
+        if (is_string($refreshToken) && $refreshToken !== '') {
+            $attributes['refresh_token'] = encrypt($refreshToken);
+        }
+
+        GoogleConnection::updateOrCreate(['google_id' => $userInfo['id']], $attributes);
 
         return redirect(session('google_return_url', route('settings.integrations')))
             ->with('success', "Connected Google account: {$userInfo['email']}");

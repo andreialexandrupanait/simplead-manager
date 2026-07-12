@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\CloudflareConnection;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -19,15 +20,34 @@ class CloudflareService
 
     public function validateToken(): bool
     {
-        // A failed verification (non-2xx / success:false) now throws from
-        // request(); treat any failure as an invalid token rather than letting
-        // it bubble up, preserving the prior validate-or-invalidate behaviour.
+        $baseUrl = config('services.cloudflare.api_url', 'https://api.cloudflare.com/client/v4');
+
         try {
-            $response = $this->request('GET', '/user/tokens/verify');
-            $valid = ($response['success'] ?? false) === true;
-        } catch (\Throwable $e) {
-            $valid = false;
+            $response = Http::withToken($this->connection->api_token)
+                ->baseUrl($baseUrl)
+                ->timeout(30)
+                ->get('/user/tokens/verify');
+        } catch (ConnectionException $e) {
+            // P2-53: a transient network failure (timeout / DNS / connection
+            // reset) must NOT flip is_valid — that silently disables sync for
+            // ~24h until the next validation run. Preserve the stored validity
+            // and rely on the next scheduled check / retry.
+            return $this->connection->is_valid;
         }
+
+        $status = $response->status();
+
+        // P2-53: transient server-side / rate-limit failures also preserve
+        // is_valid. Only a definitive answer from Cloudflare updates it.
+        if ($status === 429 || $status >= 500) {
+            return $this->connection->is_valid;
+        }
+
+        $json = $response->json() ?? [];
+
+        // A genuine auth rejection (401/403) or an explicit success:false is a
+        // real invalid-token signal and DOES flip is_valid.
+        $valid = $response->successful() && ($json['success'] ?? false) === true;
 
         $this->connection->update([
             'is_valid' => $valid,
@@ -294,6 +314,10 @@ class CloudflareService
 
     public function getAnalytics(string $zoneId, string $since): array
     {
+        // P2-51: the zone id is interpolated straight into the GraphQL query,
+        // so validate it before it can manipulate the query.
+        $this->assertValidZoneId($zoneId);
+
         $minutes = abs((int) $since);
         $end = now()->utc();
         $start = $end->copy()->subMinutes($minutes);
@@ -454,8 +478,26 @@ class CloudflareService
         return $json;
     }
 
+    /**
+     * P2-51: Cloudflare zone IDs are exactly 32 lowercase hex chars. Reject
+     * anything else before it is interpolated into a REST path or GraphQL
+     * query (path-manipulation / injection defence).
+     */
+    private function assertValidZoneId(string $zoneId): void
+    {
+        if (preg_match('/^[a-f0-9]{32}$/', $zoneId) !== 1) {
+            throw new \InvalidArgumentException('Invalid Cloudflare zone ID.');
+        }
+    }
+
     private function request(string $method, string $path, array $data = []): array
     {
+        // P2-51: validate any zone id embedded in the request path at this
+        // single choke point — every zone REST call routes through here.
+        if (preg_match('#/zones/([^/?]+)#', $path, $matches) === 1) {
+            $this->assertValidZoneId($matches[1]);
+        }
+
         $rateLimitKey = "cloudflare:{$this->connection->id}";
 
         if (RateLimiter::tooManyAttempts($rateLimitKey, 200)) {

@@ -96,6 +96,13 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
                 $completed++;
             }
 
+            // P2-48: fetch the immediately-preceding window of equal length so
+            // the "previous period" comparison delta actually renders. This was
+            // never requested before, so overview_previous was always missing
+            // and every comparison resolved to null (a dead feature).
+            [$prevStart, $prevEnd] = $this->getPreviousDateRange($startDate, $endDate);
+            $data['overview_previous'] = $service->getOverview($propertyId, $prevStart, $prevEnd);
+
             AnalyticsCache::updateOrCreate(
                 [
                     'site_id' => $this->site->id,
@@ -152,5 +159,24 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
         $startDate = now()->subDays($days + $dataDelay)->format('Y-m-d');
 
         return [$startDate, $endDate];
+    }
+
+    /**
+     * The equal-length window immediately preceding [$startDate, $endDate],
+     * used for the "previous period" comparison (P2-48).
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function getPreviousDateRange(string $startDate, string $endDate): array
+    {
+        $start = \Carbon\Carbon::parse($startDate);
+        $end = \Carbon\Carbon::parse($endDate);
+
+        $lengthDays = $start->diffInDays($end);
+
+        $prevEnd = $start->copy()->subDay();
+        $prevStart = $prevEnd->copy()->subDays($lengthDays);
+
+        return [$prevStart->format('Y-m-d'), $prevEnd->format('Y-m-d')];
     }
 }

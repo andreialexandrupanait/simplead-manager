@@ -53,7 +53,29 @@ class SiteCloudflare extends Component
     #[Computed]
     public function connections()
     {
-        return CloudflareConnection::where('is_valid', true)->orderBy('account_email')->get();
+        $user = auth()->user();
+
+        // P2-52 (tenancy): only surface connections the current user may use —
+        // their own, or all of them for admins. Prevents enumerating a
+        // teammate's Cloudflare connections/zones.
+        return CloudflareConnection::where('is_valid', true)
+            ->when($user && ! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
+            ->orderBy('account_email')
+            ->get();
+    }
+
+    /**
+     * P2-52 (tenancy): a user may only use a Cloudflare connection they own;
+     * admins may use any. Blocks binding a site to — or enumerating zones of —
+     * a connection belonging to another user.
+     */
+    private function authorizeConnectionUse(CloudflareConnection $connection): void
+    {
+        $user = auth()->user();
+
+        if (! $user || (! $user->isAdmin() && $connection->user_id !== $user->id)) {
+            abort(403, 'You do not have access to this Cloudflare connection.');
+        }
     }
 
     public function updatedSelectedConnectionId(): void
@@ -73,6 +95,10 @@ class SiteCloudflare extends Component
         if (! $connection) {
             return [];
         }
+
+        // P2-52: authorize BEFORE the try so the 403 is not swallowed by the
+        // catch below (and before any HTTP zone enumeration is attempted).
+        $this->authorizeConnectionUse($connection);
 
         try {
             $service = new CloudflareService($connection);
@@ -96,6 +122,7 @@ class SiteCloudflare extends Component
         }
 
         $connection = CloudflareConnection::findOrFail($this->selectedConnectionId);
+        $this->authorizeConnectionUse($connection);
         $service = new CloudflareService($connection);
 
         try {

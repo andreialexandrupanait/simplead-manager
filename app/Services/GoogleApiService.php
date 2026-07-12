@@ -6,10 +6,26 @@ namespace App\Services;
 
 use App\Models\GoogleConnection;
 use App\Services\Notifications\NotificationService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class GoogleApiService
 {
+    /**
+     * Treat the access token as expired this many seconds BEFORE its real
+     * expiry, so an in-flight API call started just under the wire does not get
+     * a 401 mid-request (P2-49).
+     */
+    private const EXPIRY_SKEW_SECONDS = 60;
+
+    /**
+     * Seconds a concurrent job waits for the refresh lock before giving up and
+     * reusing whatever the winner stored (P2-49).
+     */
+    private const LOCK_WAIT_SECONDS = 10;
+
     protected GoogleConnection $connection;
 
     protected string $accessToken;
@@ -22,15 +38,74 @@ class GoogleApiService
 
     protected function ensureValidToken(): void
     {
+        if ($this->tokenIsFresh()) {
+            $this->useStoredAccessToken();
+
+            return;
+        }
+
+        // Serialise concurrent refreshes (P2-49): only one job hits Google's
+        // token endpoint at a time; the rest wait for it and reuse the fresh
+        // token, instead of stampeding and invalidating each other's new
+        // access token.
+        $lock = Cache::lock('google-token-refresh:'.$this->connection->id, 30);
+
         try {
-            if ($this->connection->token_expires_at->isFuture()) {
-                $this->accessToken = decrypt($this->connection->access_token);
+            $lock->block(self::LOCK_WAIT_SECONDS);
+        } catch (LockTimeoutException $e) {
+            // Another refresh is taking a long time — trust whatever it stored.
+            $this->connection->refresh();
+            $this->useStoredAccessToken();
+
+            return;
+        }
+
+        try {
+            // A concurrent job may have refreshed while we waited for the lock;
+            // reload from the DB and re-check before spending a refresh call.
+            $this->connection->refresh();
+
+            $expiresAt = $this->connection->token_expires_at;
+            if ($expiresAt !== null && $expiresAt->isAfter(now()->addSeconds(self::EXPIRY_SKEW_SECONDS))) {
+                $this->useStoredAccessToken();
 
                 return;
             }
 
+            $this->refreshAccessToken();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * A token is only "fresh" if it will still be valid after the skew window,
+     * so calls started near the boundary don't 401 in flight.
+     */
+    private function tokenIsFresh(): bool
+    {
+        $expiresAt = $this->connection->token_expires_at;
+
+        return $expiresAt !== null
+            && $expiresAt->isAfter(now()->addSeconds(self::EXPIRY_SKEW_SECONDS));
+    }
+
+    private function useStoredAccessToken(): void
+    {
+        try {
+            $this->accessToken = decrypt($this->connection->access_token);
+        } catch (DecryptException $e) {
+            // Corrupt stored token — a permanent error; reconnection is required.
+            $this->deactivate('Stored Google token could not be decrypted; reconnection required.');
+            throw new \Exception('Google token encryption is invalid. Please reconnect your Google account in Settings > Integrations.');
+        }
+    }
+
+    private function refreshAccessToken(): void
+    {
+        try {
             $refreshToken = decrypt($this->connection->refresh_token);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             // Corrupt stored token — a permanent error; reconnection is required.
             $this->deactivate('Stored Google token could not be decrypted; reconnection required.');
             throw new \Exception('Google token encryption is invalid. Please reconnect your Google account in Settings > Integrations.');
@@ -66,10 +141,20 @@ class GoogleApiService
 
         $tokens = $response->json();
 
-        $this->connection->update([
+        $updates = [
             'access_token' => encrypt($tokens['access_token']),
             'token_expires_at' => now()->addSeconds($tokens['expires_in']),
-        ]);
+        ];
+
+        // Google omits refresh_token on refresh responses; only persist a
+        // rotated one when it is actually present and non-empty (P2-49) — never
+        // overwrite (wipe) the stored refresh token with an empty/null value.
+        $rotated = $tokens['refresh_token'] ?? null;
+        if (is_string($rotated) && $rotated !== '') {
+            $updates['refresh_token'] = encrypt($rotated);
+        }
+
+        $this->connection->update($updates);
 
         $this->accessToken = $tokens['access_token'];
     }

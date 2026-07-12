@@ -9,6 +9,7 @@ use App\Models\GoogleConnection;
 use App\Models\NotificationChannel;
 use App\Services\GoogleApiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -114,5 +115,93 @@ class GoogleApiServiceTest extends TestCase
 
         $this->assertTrue($conn->fresh()->is_active);
         Queue::assertNotPushed(SendNotificationJob::class);
+    }
+
+    /**
+     * P2-49 (skew): a token that is still technically valid but expiring within
+     * the skew window must be refreshed proactively, so an in-flight API call
+     * doesn't 401 mid-request.
+     */
+    public function test_token_within_expiry_skew_is_refreshed_proactively(): void
+    {
+        Queue::fake();
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'fresh-access',
+                'expires_in' => 3600,
+            ], 200),
+        ]);
+
+        // Expires in 30s — still "in the future" but inside the 60s skew window.
+        $conn = GoogleConnection::factory()->create([
+            'is_active' => true,
+            'token_expires_at' => now()->addSeconds(30),
+            'access_token' => encrypt('old-access'),
+            'refresh_token' => encrypt('refresh-token'),
+        ]);
+
+        new GoogleApiService($conn);
+
+        // A refresh was actually performed rather than reusing the stale token.
+        Http::assertSent(fn ($request) => $request->url() === 'https://oauth2.googleapis.com/token');
+        $this->assertTrue($conn->fresh()->token_expires_at->gt(now()->addMinutes(30)));
+    }
+
+    /**
+     * P2-49 (empty refresh_token): Google omits refresh_token on refresh
+     * responses. An empty value must never overwrite the stored one.
+     */
+    public function test_empty_refresh_token_in_response_does_not_wipe_stored_one(): void
+    {
+        Queue::fake();
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'fresh-access',
+                'refresh_token' => '',
+                'expires_in' => 3600,
+            ], 200),
+        ]);
+
+        $conn = GoogleConnection::factory()->create([
+            'is_active' => true,
+            'token_expires_at' => now()->subHour(),
+            'access_token' => encrypt('old-access'),
+            'refresh_token' => encrypt('keep-me'),
+        ]);
+
+        new GoogleApiService($conn);
+
+        // The good refresh token survived the empty-string response.
+        $this->assertSame('keep-me', decrypt($conn->fresh()->refresh_token));
+    }
+
+    /**
+     * P2-49 (concurrency): the refresh must run while holding a per-account
+     * lock, so two jobs cannot stampede and invalidate each other's token.
+     */
+    public function test_refresh_runs_under_a_per_account_lock(): void
+    {
+        Queue::fake();
+
+        $conn = $this->expiredConnection();
+        $lockKey = 'google-token-refresh:'.$conn->id;
+        $heldDuringRefresh = false;
+
+        Http::fake(function () use ($lockKey, &$heldDuringRefresh) {
+            // A fresh, independent lock instance cannot acquire the key while
+            // the service holds it — proving the refresh runs under the lock.
+            $probe = Cache::lock($lockKey, 5);
+            $acquired = $probe->get();
+            $heldDuringRefresh = ! $acquired;
+            if ($acquired) {
+                $probe->release();
+            }
+
+            return Http::response(['access_token' => 'fresh-access', 'expires_in' => 3600], 200);
+        });
+
+        new GoogleApiService($conn);
+
+        $this->assertTrue($heldDuringRefresh, 'Token refresh must run while holding the per-account lock.');
     }
 }
