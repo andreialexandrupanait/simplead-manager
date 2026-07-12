@@ -31,7 +31,7 @@ class IncidentResponseDispatchTest extends TestCase
     private function eligibleSite(): Site
     {
         $site = Site::factory()->create(['is_connected' => true]);
-        SiteHealthState::create(['site_id' => $site->id]); // circuit closed, monitoring enabled
+        SiteHealthState::firstOrCreate(['site_id' => $site->id]); // circuit closed, monitoring enabled
 
         return $site;
     }

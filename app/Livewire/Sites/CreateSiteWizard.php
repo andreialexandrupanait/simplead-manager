@@ -173,13 +173,17 @@ class CreateSiteWizard extends Component
             'status' => 'pending',
         ]);
 
-        // Create health state for circuit breaker
-        SiteHealthState::create([
-            'site_id' => $site->id,
-            'circuit_state' => 'closed',
-            'consecutive_failures' => 0,
-            'circuit_breaks_last_24h' => 0,
-        ]);
+        // Ensure a health state exists for the circuit breaker. Site::created
+        // already guarantees this row (P1-10); firstOrCreate keeps the wizard
+        // idempotent instead of colliding with the unique site_id constraint.
+        SiteHealthState::firstOrCreate(
+            ['site_id' => $site->id],
+            [
+                'circuit_state' => 'closed',
+                'consecutive_failures' => 0,
+                'circuit_breaks_last_24h' => 0,
+            ],
+        );
 
         session()->flash('message', "Site \"{$site->name}\" created successfully.");
         $this->redirect(route('sites.overview', $site), navigate: true);

@@ -13,9 +13,27 @@ use App\Models\SearchConsoleConnection;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
 use App\Services\CircuitBreakerService;
+use Illuminate\Database\Eloquent\Builder;
 
 class DataSyncDispatcher
 {
+    /**
+     * LEFT-JOIN-safe health-state gate (E-28 / P1-10). Includes sites whose
+     * circuit breaker is not open and whose monitoring is not disabled — AND
+     * sites with NO health-state row, which the previous inner-join
+     * `whereHas('site.healthState')` silently dropped from sync forever.
+     */
+    private function healthStateGate(string $relation = 'site.healthState'): \Closure
+    {
+        return function (Builder $query) use ($relation) {
+            $query->whereDoesntHave($relation)
+                ->orWhereHas($relation, function (Builder $q) {
+                    $q->where('circuit_state', '!=', 'open')
+                        ->where('is_monitoring_disabled', false);
+                });
+        };
+    }
+
     /**
      * Dispatch due data sync jobs: analytics, search console, cloudflare, WP sync.
      * Called every minute from the scheduler.
@@ -36,10 +54,7 @@ class DataSyncDispatcher
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate())
             ->with('site')
             ->each(function (AnalyticsConnection $conn) {
                 /** @var \App\Models\Site $site */
@@ -55,10 +70,7 @@ class DataSyncDispatcher
             ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate())
             ->with('site')
             ->each(function (SearchConsoleConnection $conn) {
                 /** @var \App\Models\Site $site */
@@ -86,10 +98,7 @@ class DataSyncDispatcher
             ->where('is_connected', true)
             ->whereNotNull('api_endpoint')
             ->whereNull('deleted_at')
-            ->whereHas('healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate('healthState'))
             ->where(fn ($q) => $q
                 ->whereNull('last_synced_at')
                 ->orWhere('last_synced_at', '<=', now()->subHours(6))

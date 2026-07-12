@@ -26,7 +26,7 @@ class PerformanceDispatchTest extends TestCase
         Queue::fake();
 
         $site = Site::factory()->create(['is_connected' => true]);
-        SiteHealthState::create(['site_id' => $site->id]); // circuit closed, monitoring enabled (defaults)
+        SiteHealthState::firstOrCreate(['site_id' => $site->id]); // circuit closed, monitoring enabled (defaults)
         PerformanceMonitor::create(['site_id' => $site->id]); // is_active, next_test_at null (defaults)
 
         (new MonitoringDispatcher)();
@@ -39,7 +39,7 @@ class PerformanceDispatchTest extends TestCase
         Queue::fake();
 
         $site = Site::factory()->create(['is_connected' => true]);
-        SiteHealthState::create(['site_id' => $site->id]);
+        SiteHealthState::firstOrCreate(['site_id' => $site->id]);
         PerformanceMonitor::create(['site_id' => $site->id, 'is_active' => false]);
 
         (new MonitoringDispatcher)();
@@ -57,7 +57,7 @@ class PerformanceDispatchTest extends TestCase
         Queue::fake();
 
         $site = Site::factory()->create(['is_connected' => true]);
-        SiteHealthState::create(['site_id' => $site->id]);
+        SiteHealthState::firstOrCreate(['site_id' => $site->id]);
         PerformanceMonitor::create([
             'site_id' => $site->id,
             'frequency' => 'manual', // next_test_at null (default)
@@ -73,7 +73,7 @@ class PerformanceDispatchTest extends TestCase
         Queue::fake();
 
         $site = Site::factory()->create(['is_connected' => true]);
-        SiteHealthState::create(['site_id' => $site->id]);
+        SiteHealthState::firstOrCreate(['site_id' => $site->id]);
         PerformanceMonitor::create([
             'site_id' => $site->id,
             'frequency' => 'weekly',

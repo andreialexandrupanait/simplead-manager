@@ -13,9 +13,28 @@ use App\Models\PerformanceMonitor;
 use App\Models\SecurityMonitor;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
+use Illuminate\Database\Eloquent\Builder;
 
 class MonitoringDispatcher
 {
+    /**
+     * LEFT-JOIN-safe health-state gate (E-28 / P1-10). Includes sites whose
+     * circuit breaker is not open and whose monitoring is not disabled — AND
+     * sites that have NO health-state row at all. The previous inner-join
+     * `whereHas('site.healthState')` silently dropped any site lacking that row,
+     * leaving connected sites permanently unmonitored / unsynced.
+     */
+    private function healthStateGate(string $relation = 'site.healthState'): \Closure
+    {
+        return function (Builder $query) use ($relation) {
+            $query->whereDoesntHave($relation)
+                ->orWhereHas($relation, function (Builder $q) {
+                    $q->where('circuit_state', '!=', 'open')
+                        ->where('is_monitoring_disabled', false);
+                });
+        };
+    }
+
     /**
      * Dispatch due uptime checks and security scans.
      * Called every minute from the scheduler.
@@ -53,10 +72,7 @@ class MonitoringDispatcher
                 ->whereNull('deleted_at')
                 ->where('is_connected', true)
             )
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate())
             ->each(function (PerformanceMonitor $monitor) use (&$queued) {
                 RunPerformanceTest::dispatch($monitor, 'both')
                     ->delay(now()->addSeconds($queued * 20));
@@ -70,10 +86,7 @@ class MonitoringDispatcher
             ->where('status', 'active')
             ->where(fn ($q) => $q->whereNull('next_check_at')->orWhere('next_check_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate())
             ->each(fn (UptimeMonitor $monitor) => CheckUptime::dispatch($monitor));
     }
 
@@ -86,10 +99,7 @@ class MonitoringDispatcher
                 ->whereNull('deleted_at')
                 ->where('is_connected', true)
             )
-            ->whereHas('site.healthState', fn ($q) => $q
-                ->where('circuit_state', '!=', 'open')
-                ->where('is_monitoring_disabled', false)
-            )
+            ->where($this->healthStateGate())
             ->each(function (SecurityMonitor $monitor) {
                 /** @var \App\Models\Site $site */
                 $site = $monitor->site;

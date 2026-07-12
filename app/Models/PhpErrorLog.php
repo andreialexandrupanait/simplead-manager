@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $site_id
+ * @property string $level
+ * @property string $message
+ * @property string|null $file
+ * @property int|null $line
+ * @property string $message_hash
+ * @property int $count
+ * @property \Illuminate\Support\Carbon $first_seen_at
+ * @property \Illuminate\Support\Carbon|null $last_seen_at
+ * @property bool $is_resolved
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Site|null $site
+ */
 class PhpErrorLog extends Model
 {
     protected $fillable = [
