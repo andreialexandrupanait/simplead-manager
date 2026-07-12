@@ -195,7 +195,11 @@ class CheckSsl implements ShouldBeUnique, ShouldQueue
             return null;
         }
 
-        return Carbon::createFromTimestampUTC((int) $validTo);
+        // Use the app timezone (not forced UTC) so the stored wall-clock aligns
+        // with every other Carbon the app persists — otherwise ssl_expires_at is
+        // written as a UTC wall-clock but read back through the app-tz cast,
+        // shifting the date by up to a day near midnight (flaky, tz-dependent).
+        return Carbon::createFromTimestamp((int) $validTo);
     }
 
     /**

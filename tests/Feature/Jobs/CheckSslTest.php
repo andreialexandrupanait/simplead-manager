@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\UptimeMonitor;
 use App\Services\SiteTodoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -21,6 +22,21 @@ use Tests\TestCase;
 class CheckSslTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Freeze at a fixed mid-day instant so the now()->addDays()-based expiry
+        // date comparisons can't straddle a midnight boundary (previously flaky
+        // by time-of-day / timezone).
+        Carbon::setTestNow('2026-06-15 12:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
 
     /**
      * @param  array<string, mixed>  $cert
