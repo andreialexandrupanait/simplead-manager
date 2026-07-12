@@ -93,6 +93,15 @@ trait WithReportScheduling
             'scheduleFrequency' => 'required|in:weekly,monthly',
             'scheduleTime' => 'required|date_format:H:i',
             'schedulePeriod' => 'required|in:last_7_days,last_30_days,last_month',
+            // Recipients are entered as a comma-separated string; reject the save
+            // if any address is malformed so a bad entry never reaches the mailer.
+            'scheduleRecipientEmails' => ['nullable', 'string', function (string $attribute, mixed $value, callable $fail): void {
+                foreach (array_filter(array_map('trim', explode(',', (string) $value))) as $email) {
+                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $fail("The recipient list contains an invalid email address: {$email}");
+                    }
+                }
+            }],
         ]);
 
         app(ReportManagementService::class)->saveSchedule($this->site, [

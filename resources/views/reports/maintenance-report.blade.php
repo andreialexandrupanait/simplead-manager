@@ -35,11 +35,12 @@
         </div>
     @endif
 
-    {{-- Infrastructure (SSL, Domain, Email) --}}
+    {{-- Infrastructure (DNS / Email Deliverability + PHP Error Logs) --}}
     @php
-        $hasVisibleInfra = (($data['ssl'] ?? null) && ($sectionOptions['infrastructure']['show_ssl'] ?? true))
-            || (($data['domain'] ?? null) && ($sectionOptions['infrastructure']['show_domain'] ?? true))
-            || (($data['email'] ?? null) && ($sectionOptions['infrastructure']['show_email'] ?? true));
+        $infraDns = $data['dns'] ?? null;
+        $infraErrors = $data['error_logs'] ?? null;
+        $hasVisibleInfra = (($infraDns['available'] ?? false) && ($sectionOptions['infrastructure']['show_dns'] ?? true))
+            || (($infraErrors['available'] ?? false) && ($sectionOptions['infrastructure']['show_error_logs'] ?? true));
     @endphp
     @if($hasVisibleInfra && in_array('infrastructure', $sections))
         @php $sectionNumber++; @endphp

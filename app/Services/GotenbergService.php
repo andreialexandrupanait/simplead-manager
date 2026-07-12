@@ -18,7 +18,7 @@ class GotenbergService
     public function __construct()
     {
         $this->baseUrl = config('services.gotenberg.url', 'http://gotenberg:3000');
-        $this->httpClient = new Client(['timeout' => 120]);
+        $this->httpClient = new Client(['timeout' => (int) config('services.gotenberg.timeout', 120)]);
     }
 
     /**

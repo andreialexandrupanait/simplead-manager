@@ -279,6 +279,18 @@ return [
     'email_configured' => 'Configurat',
     'email_missing' => 'Lipsă',
 
+    // Infrastructure — DNS & jurnale erori
+    'infra_dns_subcard' => 'DNS & Livrabilitate e-mail',
+    'infra_dns_domain' => 'Domeniu monitorizat',
+    'infra_dns_records' => 'Înregistrări DNS urmărite',
+    'infra_dns_changes' => 'Modificări în perioadă',
+    'infra_errors_subcard' => 'Jurnal erori PHP',
+    'infra_errors_total' => 'Total erori',
+    'infra_errors_fatal' => 'Fatale',
+    'infra_errors_warnings' => 'Avertismente',
+    'infra_errors_unresolved' => 'Nerezolvate',
+    'infra_errors_none' => 'Nicio eroare înregistrată în această perioadă',
+
     // Section labels (new)
     'section_label_executive_snapshot' => 'Sinteză executivă',
     'section_label_recommendations' => 'Recomandări',

@@ -32,7 +32,10 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 300;
+    // Sized to the worst-case Gotenberg render budget (~4 × per-call timeout) plus
+    // margin; overridden from config in the constructor. The previous 300s ceiling
+    // was shorter than that budget, so a slow render got SIGKILLed mid-flight.
+    public int $timeout = 540;
 
     public int $memory = 512;
 
@@ -55,6 +58,7 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
         public array $excludedSections = [],
     ) {
         $this->onQueue('reports');
+        $this->timeout = (int) config('services.gotenberg.job_timeout', 540);
     }
 
     public function uniqueId(): string
@@ -203,28 +207,44 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
                 $recipients = array_unique(array_filter($recipients));
 
                 if (count($recipients) > 0) {
-                    try {
-                        foreach ($recipients as $email) {
-                            Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule, $pdfVerified));
+                    // Iterate defensively: one malformed address (or a single failed
+                    // send) must not abort delivery to the rest of the list. Skip
+                    // invalid recipients, log per-recipient failures, and only mark
+                    // the report sent for the addresses that actually succeeded.
+                    $sent = [];
+                    foreach ($recipients as $email) {
+                        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            Log::warning("Skipping invalid report recipient for site {$this->site->id}, report #{$report->id}", [
+                                'email' => $email,
+                            ]);
+
+                            continue;
                         }
 
+                        try {
+                            Mail::to($email)->send(new ReportGeneratedMail($report, $this->site, $this->schedule, $pdfVerified));
+                            $sent[] = $email;
+                        } catch (\Throwable $e) {
+                            Log::warning("Report email failed for site {$this->site->id}, report #{$report->id}", [
+                                'exception' => get_class($e),
+                                'message' => Str::limit($e->getMessage(), 200),
+                                'email' => $email,
+                            ]);
+                        }
+                    }
+
+                    if (count($sent) > 0) {
                         $report->update([
                             'was_sent' => true,
                             'sent_at' => now(),
-                            'sent_to' => $recipients,
+                            'sent_to' => $sent,
                         ]);
 
                         if ($this->schedule) {
                             $this->schedule->update(['last_sent_at' => now()]);
                         }
 
-                        ActivityLogger::reportSent($this->site, $report->title, $recipients);
-                    } catch (\Throwable $e) {
-                        Log::warning("Report email failed for site {$this->site->id}, report #{$report->id}", [
-                            'exception' => get_class($e),
-                            'message' => Str::limit($e->getMessage(), 200),
-                            'recipients' => $recipients,
-                        ]);
+                        ActivityLogger::reportSent($this->site, $report->title, $sent);
                     }
                 }
             }

@@ -21,7 +21,13 @@ class ReportManagementService
     {
         $recipients = [];
         if (! empty($data['recipient_emails_raw'])) {
-            $recipients = array_filter(array_map('trim', explode(',', $data['recipient_emails_raw'])));
+            // Sanitize: keep only syntactically valid addresses. Defence-in-depth
+            // behind the Livewire validation so a bad address can never be persisted
+            // (and later abort delivery) via any code path.
+            $recipients = array_values(array_filter(
+                array_map('trim', explode(',', $data['recipient_emails_raw'])),
+                static fn (string $email): bool => filter_var($email, FILTER_VALIDATE_EMAIL) !== false,
+            ));
         }
 
         $scheduleData = [
@@ -65,17 +71,45 @@ class ReportManagementService
         $site = $report->site;
         $schedule = $report->reportSchedule;
 
+        // Iterate defensively: a single malformed or rejected address must not
+        // abort delivery to the rest of the list. Skip invalid ones, log failures.
+        $sent = [];
         foreach ($emails as $email) {
-            Mail::to(trim($email))->send(new ReportGeneratedMail($report, $site, $schedule));
+            $email = trim((string) $email);
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                Log::warning('Skipping invalid report recipient', [
+                    'report_id' => $report->id,
+                    'site_id' => $site?->id,
+                    'email' => $email,
+                ]);
+
+                continue;
+            }
+
+            try {
+                Mail::to($email)->send(new ReportGeneratedMail($report, $site, $schedule));
+                $sent[] = $email;
+            } catch (\Throwable $e) {
+                Log::warning('Report email failed for a recipient', [
+                    'report_id' => $report->id,
+                    'site_id' => $site?->id,
+                    'email' => $email,
+                    'exception' => get_class($e),
+                ]);
+            }
+        }
+
+        if ($sent === []) {
+            return;
         }
 
         $report->update([
             'was_sent' => true,
             'sent_at' => now(),
-            'sent_to' => array_merge($report->sent_to ?? [], $emails),
+            'sent_to' => array_merge($report->sent_to ?? [], $sent),
         ]);
 
-        ActivityLogger::reportSent($site, $report->title, $emails);
+        ActivityLogger::reportSent($site, $report->title, $sent);
     }
 
     /**
