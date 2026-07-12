@@ -342,7 +342,7 @@ class AppBackupCreator
 
         if ($connection === 'pgsql') {
             $dumpCmd = sprintf(
-                'PGPASSWORD=%s pg_dump --host=%s --port=%s --username=%s --no-owner --no-acl %s > %s',
+                'PGPASSWORD=%s pg_dump --host=%s --port=%s --username=%s --no-owner --no-acl --clean --if-exists %s > %s',
                 escapeshellarg($dbConfig['password']),
                 escapeshellarg($dbConfig['host']),
                 escapeshellarg($dbConfig['port']),

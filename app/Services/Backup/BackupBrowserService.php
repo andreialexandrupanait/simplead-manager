@@ -6,6 +6,7 @@ namespace App\Services\Backup;
 
 use App\Models\Backup;
 use App\Models\StorageDestination;
+use App\Services\Backup\Storage\StorageDriver;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -17,8 +18,16 @@ class BackupBrowserService
 
     protected const CACHE_TTL = 2592000; // 30 days — backup contents never change
 
+    /** Prefix under which the current v3-zip format stores WP files inside the outer zip. */
+    protected const V3_FILES_PREFIX = 'files/';
+
     /**
      * List the contents of a backup archive.
+     *
+     * Dispatches on the stored format so the file browser understands every
+     * write path: v3-zip (the current path — files under a `files/` subtree),
+     * multipart-v3 (BackupManifestV3 — a prefix of `chunks/N.zip`), and the
+     * legacy single-zip-with-inner-files.zip layout.
      *
      * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
      */
@@ -31,22 +40,171 @@ class BackupBrowserService
             return $cached;
         }
 
+        $result = match ($backup->format) {
+            'v3-zip' => $this->listV3ZipContents($backup),
+            BackupManifestV3::FORMAT => $this->listMultipartV3Contents($backup),
+            default => $this->listLegacyContents($backup),
+        };
+
+        Cache::put($cacheKey, $result, self::CACHE_TTL);
+
+        return $result;
+    }
+
+    /**
+     * Assemble the standard listing envelope, applying the MAX_FILES cap.
+     *
+     * @param  array<int, array{path: string, size: int}>  $files
+     * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
+     */
+    protected function envelope(array $files, bool $hasDatabase): array
+    {
+        $truncated = false;
+        if (count($files) > self::MAX_FILES) {
+            $files = array_slice($files, 0, self::MAX_FILES);
+            $truncated = true;
+        }
+
+        return [
+            'has_database' => $hasDatabase,
+            'has_files' => count($files) > 0,
+            'file_count' => count($files),
+            'files' => $files,
+            'truncated' => $truncated,
+        ];
+    }
+
+    protected function makePrimaryDriver(Backup $backup): StorageDriver
+    {
+        /** @var StorageDestination|null $destination */
+        $destination = $backup->storageDestination;
+        if (! $destination || ! $backup->file_path) {
+            throw new \RuntimeException('Backup storage destination or file path is missing.');
+        }
+
+        return StorageFactory::make($destination);
+    }
+
+    /**
+     * v3-zip: single outer zip whose WP files live under the `files/` prefix.
+     * The picker/selective-restore path operates on WP-root-relative paths, so
+     * the `files/` prefix is stripped here to match RestoreBackup's repack.
+     *
+     * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
+     */
+    protected function listV3ZipContents(Backup $backup): array
+    {
         $tempDir = storage_path('app/temp/browse-'.uniqid());
         mkdir($tempDir, 0755, true);
 
         try {
-            /** @var StorageDestination|null $destination */
-            $destination = $backup->storageDestination;
-            if (! $destination || ! $backup->file_path) {
-                throw new \RuntimeException('Backup storage destination or file path is missing.');
-            }
-
-            // Download the outer zip
-            $localPath = $tempDir.'/'.$backup->file_name;
-            $driver = StorageFactory::make($destination);
+            $driver = $this->makePrimaryDriver($backup);
+            $localPath = $tempDir.'/'.($backup->file_name ?: 'backup.zip');
             $driver->download($backup->file_path, $localPath);
 
-            // Open outer zip
+            $zip = new ZipArchive;
+            if ($zip->open($localPath) !== true) {
+                throw new \RuntimeException('Failed to open backup archive.');
+            }
+
+            $hasDatabase = ($zip->locateName('database.sql.gz') !== false);
+            $prefixLen = strlen(self::V3_FILES_PREFIX);
+            $files = [];
+
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                if ($stat === false) {
+                    continue;
+                }
+                $name = $stat['name'];
+
+                if (! str_starts_with($name, self::V3_FILES_PREFIX) || str_ends_with($name, '/')) {
+                    continue;
+                }
+
+                $relative = substr($name, $prefixLen);
+                if ($relative === '') {
+                    continue;
+                }
+
+                $files[] = [
+                    'path' => $relative,
+                    'size' => (int) $stat['size'],
+                ];
+            }
+
+            $zip->close();
+
+            return $this->envelope($files, $hasDatabase);
+        } finally {
+            $this->cleanup($tempDir);
+        }
+    }
+
+    /**
+     * multipart-v3 (BackupManifestV3): a remote prefix containing manifest.json,
+     * database.sql.gz and chunks/N.zip. Files are read by downloading each chunk
+     * and listing its central directory (chunk entries are already WP-root
+     * relative, matching the selective-restore path).
+     *
+     * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
+     */
+    protected function listMultipartV3Contents(Backup $backup): array
+    {
+        $tempDir = storage_path('app/temp/browse-'.uniqid());
+        mkdir($tempDir, 0755, true);
+
+        try {
+            $driver = $this->makePrimaryDriver($backup);
+
+            $manifestLocal = $tempDir.'/'.BackupManifestV3::MANIFEST_FILENAME;
+            $driver->download($backup->file_path.'/'.BackupManifestV3::MANIFEST_FILENAME, $manifestLocal);
+            $manifest = BackupManifestV3::decode((string) file_get_contents($manifestLocal));
+
+            $hasDatabase = (bool) ($manifest['includes_database'] ?? true);
+            $files = [];
+
+            foreach ($manifest['files'] as $entry) {
+                $remoteName = $entry['name'] ?? '';
+                if (! preg_match('#^chunks/\d+\.zip$#', $remoteName)) {
+                    continue;
+                }
+
+                $chunkLocal = $tempDir.'/'.str_replace('/', '_', $remoteName);
+                $driver->download($backup->file_path.'/'.$remoteName, $chunkLocal);
+
+                foreach (self::listZipContents($chunkLocal) as $file) {
+                    $files[] = $file;
+                }
+                @unlink($chunkLocal);
+
+                if (count($files) > self::MAX_FILES) {
+                    break;
+                }
+            }
+
+            return $this->envelope($files, $hasDatabase);
+        } finally {
+            $this->cleanup($tempDir);
+        }
+    }
+
+    /**
+     * Legacy single-zip layout: outer zip contains database.sql.gz and an inner
+     * `files.zip` / `files.tar.gz` archive holding the WP files.
+     *
+     * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
+     */
+    protected function listLegacyContents(Backup $backup): array
+    {
+        $tempDir = storage_path('app/temp/browse-'.uniqid());
+        mkdir($tempDir, 0755, true);
+
+        try {
+            $driver = $this->makePrimaryDriver($backup);
+            $localPath = $tempDir.'/'.($backup->file_name ?: 'backup.zip');
+            $driver->download($backup->file_path, $localPath);
+
             $zip = new ZipArchive;
             if ($zip->open($localPath) !== true) {
                 throw new \RuntimeException('Failed to open backup archive.');
@@ -54,37 +212,18 @@ class BackupBrowserService
 
             $hasDatabase = ($zip->locateName('database.sql.gz') !== false);
             $hasFiles = ($zip->locateName('files.zip') !== false);
-
             $files = [];
-            $truncated = false;
 
             if ($hasFiles) {
-                // Extract only the files archive
                 $innerPath = $tempDir.'/files.zip';
                 $zip->extractTo($tempDir, ['files.zip']);
                 $zip->close();
-
                 $files = self::listArchiveContents($innerPath);
-
-                if (count($files) > self::MAX_FILES) {
-                    $files = array_slice($files, 0, self::MAX_FILES);
-                    $truncated = true;
-                }
             } else {
                 $zip->close();
             }
 
-            $result = [
-                'has_database' => $hasDatabase,
-                'has_files' => $hasFiles,
-                'file_count' => count($files),
-                'files' => $files,
-                'truncated' => $truncated,
-            ];
-
-            Cache::put($cacheKey, $result, self::CACHE_TTL);
-
-            return $result;
+            return $this->envelope($files, $hasDatabase);
         } finally {
             $this->cleanup($tempDir);
         }
