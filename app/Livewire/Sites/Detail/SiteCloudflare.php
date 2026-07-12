@@ -176,7 +176,14 @@ class SiteCloudflare extends Component
         $service = new CloudflareService($cf->cloudflareConnection);
 
         try {
-            $service->purgeEverything($cf->zone_id);
+            // E-59: only record the purge (and report success) when Cloudflare
+            // actually confirmed it — a rejected purge now throws or returns
+            // false and must not leave a false audit trail.
+            if (! $service->purgeEverything($cf->zone_id)) {
+                session()->flash('cf-error', 'Cloudflare rejected the cache purge.');
+
+                return;
+            }
 
             $cf->cachePurges()->create([
                 'type' => 'everything',
@@ -203,6 +210,15 @@ class SiteCloudflare extends Component
             return;
         }
 
+        // E-59: Cloudflare caps purge-by-URL at 30 URLs per request; sending more
+        // is rejected outright. Validate up front rather than logging a phantom
+        // success for a call Cloudflare will never accept.
+        if (count($urls) > 30) {
+            session()->flash('cf-error', 'You can purge at most 30 URLs at a time.');
+
+            return;
+        }
+
         $cf = $this->siteCloudflare;
         if (! $cf) {
             return;
@@ -211,7 +227,12 @@ class SiteCloudflare extends Component
         $service = new CloudflareService($cf->cloudflareConnection);
 
         try {
-            $service->purgeByUrls($cf->zone_id, $urls);
+            // E-59: only record the purge when Cloudflare confirmed it.
+            if (! $service->purgeByUrls($cf->zone_id, $urls)) {
+                session()->flash('cf-error', 'Cloudflare rejected the cache purge.');
+
+                return;
+            }
 
             $cf->cachePurges()->create([
                 'type' => 'urls',

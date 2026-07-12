@@ -19,9 +19,15 @@ class CloudflareService
 
     public function validateToken(): bool
     {
-        $response = $this->request('GET', '/user/tokens/verify');
-
-        $valid = $response['success'] ?? false;
+        // A failed verification (non-2xx / success:false) now throws from
+        // request(); treat any failure as an invalid token rather than letting
+        // it bubble up, preserving the prior validate-or-invalidate behaviour.
+        try {
+            $response = $this->request('GET', '/user/tokens/verify');
+            $valid = ($response['success'] ?? false) === true;
+        } catch (\Throwable $e) {
+            $valid = false;
+        }
 
         $this->connection->update([
             'is_valid' => $valid,
@@ -471,6 +477,22 @@ class CloudflareService
             ? $request->$method($path)
             : $request->$method($path, $data);
 
-        return $response->json() ?? [];
+        $json = $response->json() ?? [];
+
+        // P1-12 / E-59: Cloudflare returns HTTP 200 with `success:false` on many
+        // rejected mutations, and non-2xx on others. Never treat a rejected call
+        // as a success — surface it so callers (cache purge, DNS write, settings
+        // fetch) know the mutation did not apply and do not persist false data.
+        if ($response->failed() || ($json['success'] ?? false) !== true) {
+            $message = $json['errors'][0]['message'] ?? ($response->reason() ?: 'Unknown error');
+            $code = (int) ($json['errors'][0]['code'] ?? $response->status());
+
+            throw new \RuntimeException(
+                "Cloudflare API request failed ({$method} {$path}): {$message}",
+                $code,
+            );
+        }
+
+        return $json;
     }
 }
