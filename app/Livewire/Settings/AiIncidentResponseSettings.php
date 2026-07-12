@@ -15,8 +15,15 @@ class AiIncidentResponseSettings extends Component
     // Master switch
     public bool $enabled = false;
 
-    // AI Configuration
+    // AI Configuration.
+    // P2-57: WRITE-ONLY. The stored key is encrypted at rest and must never be
+    // decrypted back to the browser. This property holds only what the admin
+    // types in — it stays empty on load; an empty submit keeps the existing key.
     public string $apiKey = '';
+
+    // Whether a key is already stored (drives the UI badge/placeholder) without
+    // exposing the secret itself.
+    public bool $apiKeySet = false;
 
     public string $model = 'claude-sonnet-4-5-20250929';
 
@@ -45,14 +52,9 @@ class AiIncidentResponseSettings extends Component
         $this->model = $settings->get('ir_model')
             ?? config('incident-response.ai.model', 'claude-sonnet-4-5-20250929');
 
-        $encrypted = $settings->get('ir_api_key');
-        if ($encrypted) {
-            try {
-                $this->apiKey = decrypt($encrypted);
-            } catch (DecryptException) {
-                $this->apiKey = '';
-            }
-        }
+        // P2-57: only record THAT a key is set — never decrypt it into a public
+        // property that would round-trip the plaintext key to the browser.
+        $this->apiKeySet = (bool) $settings->get('ir_api_key');
 
         $this->maxActionsPerIncident = (int) ($settings->get('ir_max_actions_per_incident') ?? 10);
         $this->maxAiCallsPerIncident = (int) ($settings->get('ir_max_ai_calls_per_incident') ?? 5);
@@ -79,9 +81,18 @@ class AiIncidentResponseSettings extends Component
         $settings->set('ir_enabled', $this->enabled, $group, 'boolean');
         $settings->set('ir_model', $this->model, $group, 'string');
 
-        if ($this->apiKey) {
+        // P2-57: only overwrite the stored key when the admin actually entered a
+        // new value. An empty field on submit preserves the existing encrypted key.
+        if ($this->apiKey !== '') {
             $settings->set('ir_api_key', encrypt($this->apiKey), $group, 'string');
+            // Reflect the new key in the runtime config for this request only.
+            config(['incident-response.ai.api_key' => $this->apiKey]);
+            $this->apiKeySet = true;
         }
+
+        // Never leave the just-typed plaintext key sitting in a dehydrated public
+        // property after save — clear it so it does not round-trip to the browser.
+        $this->apiKey = '';
 
         $settings->set('ir_max_actions_per_incident', $this->maxActionsPerIncident, $group, 'integer');
         $settings->set('ir_max_ai_calls_per_incident', $this->maxAiCallsPerIncident, $group, 'integer');
@@ -90,10 +101,11 @@ class AiIncidentResponseSettings extends Component
         $settings->set('ir_playbook_first', $this->playbookFirst, $group, 'boolean');
         $settings->set('ir_ai_fallback', $this->aiFallback, $group, 'boolean');
 
-        // Update runtime config so changes take effect immediately
+        // Update runtime config so changes take effect immediately. The API key is
+        // handled above (only when a new one was entered) so an empty submit does
+        // not blank the stored/runtime key.
         config([
             'incident-response.enabled' => $this->enabled,
-            'incident-response.ai.api_key' => $this->apiKey,
             'incident-response.ai.model' => $this->model,
             'incident-response.safety.max_actions_per_incident' => $this->maxActionsPerIncident,
             'incident-response.safety.max_ai_calls_per_incident' => $this->maxAiCallsPerIncident,
@@ -108,7 +120,12 @@ class AiIncidentResponseSettings extends Component
 
     public function testConnection(): void
     {
-        if (! $this->apiKey) {
+        // P2-57: prefer a freshly-typed key; otherwise decrypt the stored key
+        // server-side. The plaintext key never leaves this method — it is used
+        // only for the outbound API call, never assigned to a public property.
+        $key = $this->apiKey !== '' ? $this->apiKey : $this->storedApiKey();
+
+        if ($key === '') {
             session()->flash('error', __('Please enter an API key first.'));
 
             return;
@@ -118,7 +135,7 @@ class AiIncidentResponseSettings extends Component
 
         try {
             $response = Http::withHeaders([
-                'x-api-key' => $this->apiKey,
+                'x-api-key' => $key,
                 'anthropic-version' => '2023-06-01',
                 'content-type' => 'application/json',
             ])->timeout(15)->post('https://api.anthropic.com/v1/messages', [
@@ -138,6 +155,25 @@ class AiIncidentResponseSettings extends Component
         }
 
         $this->testingConnection = false;
+    }
+
+    /**
+     * Decrypt the stored Anthropic key server-side for internal use (connection
+     * test). Returns an empty string when no key is stored or it can't be
+     * decrypted. The result is NEVER assigned to a public property (P2-57).
+     */
+    private function storedApiKey(): string
+    {
+        $encrypted = app(SettingsService::class)->get('ir_api_key');
+        if (! $encrypted) {
+            return '';
+        }
+
+        try {
+            return (string) decrypt($encrypted);
+        } catch (DecryptException) {
+            return '';
+        }
     }
 
     public function render()

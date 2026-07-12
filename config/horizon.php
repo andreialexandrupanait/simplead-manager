@@ -280,7 +280,12 @@ return [
             'maxJobs' => 0,
             'memory' => 512,
             'tries' => 1,
-            'timeout' => 900,
+            // P2-56: RunIncidentResponse runs nested SYNC work — CreateBackup
+            // dispatchSync (budget 2700s) and safe-update (another nested backup).
+            // This must be >= the nested backup budget so a large-site backup is
+            // never SIGKILLed mid-operation. Kept in sync with
+            // RunIncidentResponse::$timeout (3000s).
+            'timeout' => 3000,
             'nice' => 0,
         ],
     ],
