@@ -37,7 +37,18 @@ class RollbackService
 
         $result = $api->rollback($point->type, $point->slug, $point->from_version);
 
-        $point->update(['status' => 'used']);
+        // P2-28: validate the connector genuinely rolled back BEFORE consuming the
+        // point or recording success. Previously the point was marked "used" and
+        // the log defaulted to success whenever the payload lacked an explicit
+        // success flag — so a failed/empty rollback still burned the only rollback
+        // point and was recorded as a success, leaving the site stuck on the broken
+        // version with nothing to fall back to. Only a payload that explicitly
+        // reports success is treated as success.
+        $succeeded = ($result['success'] ?? null) === true;
+
+        if ($succeeded) {
+            $point->update(['status' => 'used']);
+        }
 
         UpdateLog::create([
             'site_id' => $site->id,
@@ -47,14 +58,34 @@ class RollbackService
             'slug' => $point->slug,
             'from_version' => $point->to_version,
             'to_version' => $point->from_version,
-            'success' => $result['success'] ?? true,
-            'error_message' => $result['error'] ?? null,
+            'success' => $succeeded,
+            'error_message' => $this->stringifyError($result['error'] ?? null),
             'performed_at' => now(),
         ]);
 
         SyncWordPressSite::dispatch($site);
 
         return $result;
+    }
+
+    /**
+     * The connector reports a rollback error as a string, but a transport-level
+     * failure can surface it as an array; normalise both to a stored message so a
+     * failed rollback never breaks on the text `error_message` column.
+     */
+    private function stringifyError(mixed $error): ?string
+    {
+        if ($error === null || $error === '') {
+            return null;
+        }
+
+        if (is_string($error)) {
+            return $error;
+        }
+
+        $encoded = json_encode($error);
+
+        return $encoded === false ? null : $encoded;
     }
 
     public function cleanExpired(): int

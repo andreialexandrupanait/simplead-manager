@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Services;
 
+use App\Jobs\SyncWordPressSite;
 use App\Models\SafeUpdate;
 use App\Models\Site;
 use App\Services\RollbackService;
@@ -11,6 +12,7 @@ use App\Services\SafeUpdateService;
 use App\Services\ScreenshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class SafeUpdateServiceTest extends TestCase
@@ -124,6 +126,8 @@ class SafeUpdateServiceTest extends TestCase
 
     public function test_run_safe_update_completes_on_healthy(): void
     {
+        Queue::fake();
+
         $api = $this->createMockApi();
         $api->method('updatePlugins')->willReturn([
             'results' => ['yoast-seo' => ['success' => true, 'to_version' => '21.0']],
@@ -311,6 +315,8 @@ class SafeUpdateServiceTest extends TestCase
     {
         // The mirror case: a verified-completed pre-update backup lets the
         // update proceed normally.
+        Queue::fake();
+
         $api = $this->createMockApi();
         $api->expects($this->once())->method('updatePlugins')->willReturn([
             'results' => ['wordpress-seo/wp-seo.php' => ['success' => true, 'to_version' => '21.0']],
@@ -499,6 +505,174 @@ class SafeUpdateServiceTest extends TestCase
             'user_id' => $this->site->user_id,
             'type' => 'critical',
         ]);
+    }
+
+    public function test_successful_update_refreshes_local_plugin_inventory_once(): void
+    {
+        // P2-25: a verified-successful safe update must clear has_update, bump the
+        // local version, decrement pending_updates_count exactly once, and dispatch
+        // an authoritative sync — otherwise the UI keeps offering the update.
+        Queue::fake();
+
+        $this->site->update(['pending_updates_count' => 3]);
+        $plugin = \App\Models\SitePlugin::factory()->create([
+            'site_id' => $this->site->id,
+            'slug' => 'yoast-seo',
+            'file' => 'wordpress-seo/wp-seo.php',
+            'version' => '20.0',
+            'has_update' => true,
+            'update_version' => '21.0',
+            'is_on_wp_org' => true,
+        ]);
+
+        $api = $this->createMockApi();
+        $api->method('updatePlugins')->willReturn([
+            'results' => ['yoast-seo' => ['success' => true, 'to_version' => '21.0']],
+        ]);
+        $api->method('healthCheck')->willReturn(['status' => 'ok', 'checks' => []]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $rollbackService->method('createRollbackPoint')->willReturn(
+            \App\Models\RollbackPoint::factory()->make(['id' => 1])
+        );
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $service = $this->serviceWithCompletedBackup($rollbackService, $api, $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+
+        // First run applies the update.
+        $service->runSafeUpdate($safeUpdate);
+
+        $this->assertSame('completed', $safeUpdate->fresh()->status);
+        $plugin->refresh();
+        $this->assertFalse($plugin->has_update);
+        $this->assertSame('21.0', $plugin->version);
+        $this->assertSame(2, $this->site->fresh()->pending_updates_count);
+        Queue::assertPushed(SyncWordPressSite::class);
+
+        // Idempotency: a re-run against already-refreshed inventory must NOT
+        // decrement the badge a second time.
+        $second = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+        $service->runSafeUpdate($second);
+
+        $this->assertSame(2, $this->site->fresh()->pending_updates_count);
+    }
+
+    public function test_premium_plugin_skips_wp_org_rollback_point_and_falls_back_to_backup(): void
+    {
+        // P2-26: a plugin known NOT to be wordpress.org-hosted must not get a
+        // wp.org reinstall rollback point (it would 404). No point is minted, no
+        // executeRollback is attempted, and the operator is told the recovery path
+        // is the pre-update backup.
+        Queue::fake();
+
+        \App\Models\SitePlugin::factory()->create([
+            'site_id' => $this->site->id,
+            'slug' => 'acf-pro',
+            'file' => 'advanced-custom-fields-pro/acf.php',
+            'version' => '6.0',
+            'has_update' => true,
+            'is_on_wp_org' => false,
+        ]);
+
+        $api = $this->createMockApi();
+        $api->method('updatePlugins')->willReturn([
+            'results' => ['acf-pro' => ['success' => true]],
+        ]);
+        // Health check fails so the rollback branch is exercised.
+        $api->method('healthCheck')->willReturn(['status' => 'error', 'checks' => []]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        // Premium plugin: no wp.org rollback point may be minted, and no rollback attempted.
+        $rollbackService->expects($this->never())->method('createRollbackPoint');
+        $rollbackService->expects($this->never())->method('executeRollback');
+
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $service = $this->serviceWithCompletedBackup($rollbackService, $api, $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'acf-pro',
+            'name' => 'ACF Pro',
+            'from_version' => '6.0',
+            'to_version' => '6.1',
+            'status' => 'pending',
+            'auto_rollback' => true,
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $this->assertSame('failed', $safeUpdate->fresh()->status);
+        $this->assertDatabaseCount('rollback_points', 0);
+        // Operator notified with the backup recovery path.
+        $this->assertDatabaseHas('in_app_notifications', [
+            'user_id' => $this->site->user_id,
+            'type' => 'critical',
+        ]);
+    }
+
+    public function test_wp_org_plugin_still_mints_rollback_point(): void
+    {
+        // P2-26 mirror: a wordpress.org-hosted plugin behaves as before.
+        Queue::fake();
+
+        \App\Models\SitePlugin::factory()->create([
+            'site_id' => $this->site->id,
+            'slug' => 'yoast-seo',
+            'file' => 'wordpress-seo/wp-seo.php',
+            'has_update' => true,
+            'is_on_wp_org' => true,
+        ]);
+
+        $api = $this->createMockApi();
+        $api->method('updatePlugins')->willReturn([
+            'results' => ['yoast-seo' => ['success' => true]],
+        ]);
+        $api->method('healthCheck')->willReturn(['status' => 'ok', 'checks' => []]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $rollbackService->expects($this->once())->method('createRollbackPoint')->willReturn(
+            \App\Models\RollbackPoint::factory()->make(['id' => 1])
+        );
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $service = $this->serviceWithCompletedBackup($rollbackService, $api, $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $this->assertSame('completed', $safeUpdate->fresh()->status);
     }
 
     public function test_run_health_checks_returns_false_on_exception(): void

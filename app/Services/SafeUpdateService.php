@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
+use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
 use App\Models\SafeUpdate;
 use App\Models\Site;
@@ -156,14 +157,31 @@ class SafeUpdateService
                 return;
             }
 
-            // Step 4: Create rollback point (only after a real, successful update)
-            $rollbackPoint = $this->rollbackService->createRollbackPoint(
-                $site,
-                $safeUpdate->type,
-                $safeUpdate->slug,
-                $safeUpdate->from_version,
-                $safeUpdate->to_version
-            );
+            // Step 4: Create rollback point (only after a real, successful update).
+            //
+            // P2-26: the connector's rollback endpoint reinstalls the target from
+            // downloads.wordpress.org, which 404s for premium / custom-hosted
+            // plugins (WooCommerce extensions, ACF Pro, …). Minting a wp.org-style
+            // rollback point for such a plugin gives a false safety net that fails
+            // at rollback time. For anything we positively know is not
+            // wordpress.org-hosted we skip that point and rely on the pre-update
+            // FULL backup already taken as the recovery path, logging clearly.
+            $rollbackPoint = null;
+            if ($this->supportsWpOrgRollback($site, $safeUpdate)) {
+                $rollbackPoint = $this->rollbackService->createRollbackPoint(
+                    $site,
+                    $safeUpdate->type,
+                    $safeUpdate->slug,
+                    $safeUpdate->from_version,
+                    $safeUpdate->to_version
+                );
+            } else {
+                Log::warning(
+                    "Safe update {$safeUpdate->id}: '{$safeUpdate->name}' on site {$site->id} is not "
+                    .'wordpress.org-hosted; skipping the wp.org reinstall rollback point (it would 404). '
+                    .'Recovery path is the pre-update full backup.'
+                );
+            }
 
             // Step 5: Health check
             $safeUpdate->update(['status' => 'health_checking']);
@@ -185,6 +203,12 @@ class SafeUpdateService
                     'visual_regression_results' => $visualResults,
                     'completed_at' => now(),
                 ]);
+
+                // P2-25: the update verifiably succeeded, so reconcile local
+                // inventory — otherwise the UI keeps offering an already-applied
+                // update and a second click reruns the whole pipeline (duplicate
+                // backup/log/rollback point).
+                $this->reconcileAfterSuccessfulUpdate($safeUpdate, $site, $appliedTo);
             } else {
                 $errorParts = [];
                 if (! $healthPassed) {
@@ -196,11 +220,15 @@ class SafeUpdateService
 
                 $errorMessage = implode('. ', $errorParts);
 
+                // P2-26/P2-28: only attempt an automatic wp.org rollback when a
+                // rollback point was actually minted (a premium plugin has none),
+                // and treat the rollback as done ONLY when it genuinely reports
+                // success — never defaulting a missing/false payload to success.
                 $rolledBack = false;
-                if ($safeUpdate->auto_rollback) {
+                if ($safeUpdate->auto_rollback && $rollbackPoint !== null) {
                     $safeUpdate->update(['status' => 'rolling_back']);
                     $rollbackResult = $this->rollbackService->executeRollback($rollbackPoint, $userId);
-                    $rolledBack = (bool) ($rollbackResult['success'] ?? true);
+                    $rolledBack = ($rollbackResult['success'] ?? null) === true;
                 }
 
                 $safeUpdate->update([
@@ -224,12 +252,24 @@ class SafeUpdateService
                         rolledBack: true,
                     );
                 } else {
+                    // Distinguish WHY the site was not rolled back so the operator
+                    // knows the recovery path (P2-26: premium plugins fall back to
+                    // the pre-update backup).
+                    if ($rollbackPoint === null) {
+                        $reasonSuffix = 'Automatic wp.org rollback is not available for this non-wordpress.org '
+                            .'item — restore the pre-update backup to recover.';
+                    } elseif (! $safeUpdate->auto_rollback) {
+                        $reasonSuffix = 'Auto-rollback is off — the site may be unhealthy and was NOT rolled back.';
+                    } else {
+                        $reasonSuffix = 'Automatic rollback was attempted but did not succeed — restore the '
+                            .'pre-update backup to recover.';
+                    }
+
                     $this->notifySafeUpdateOutcome(
                         $safeUpdate,
                         'safe_update_failed',
                         'Safe Update Unhealthy',
-                        "Post-update checks failed for {$safeUpdate->name} on {$site->name} and auto-rollback "
-                            ."is off — the site may be unhealthy and was NOT rolled back. {$errorMessage}.",
+                        "Post-update checks failed for {$safeUpdate->name} on {$site->name}. {$reasonSuffix} {$errorMessage}.",
                         rolledBack: false,
                     );
                 }
@@ -243,6 +283,73 @@ class SafeUpdateService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * P2-26: decide whether the connector's wp.org reinstall rollback endpoint can
+     * recover this target. Core is always served from wordpress.org. For a plugin
+     * we only refuse when local inventory positively marks it as NOT wp.org-hosted
+     * (`is_on_wp_org === false`); unknown/missing inventory and themes keep the
+     * prior behaviour so genuine wp.org items are unaffected.
+     */
+    protected function supportsWpOrgRollback(Site $site, SafeUpdate $safeUpdate): bool
+    {
+        if ($safeUpdate->type !== 'plugin') {
+            return true;
+        }
+
+        /** @var \App\Models\SitePlugin|null $plugin */
+        $plugin = $site->sitePlugins()->where('slug', $safeUpdate->slug)->first();
+
+        return ! ($plugin !== null && $plugin->is_on_wp_org === false);
+    }
+
+    /**
+     * P2-25: after a verified-successful safe update, refresh the local inventory
+     * so the UI stops offering the update and the pending-updates badge is correct
+     * immediately, then dispatch an authoritative sync to confirm. Idempotent: the
+     * badge is only decremented while the local row still shows `has_update = true`,
+     * so a re-run cannot double-decrement.
+     */
+    protected function reconcileAfterSuccessfulUpdate(SafeUpdate $safeUpdate, Site $site, string $newVersion): void
+    {
+        if ($safeUpdate->type === 'plugin') {
+            /** @var \App\Models\SitePlugin|null $plugin */
+            $plugin = $site->sitePlugins()->where('slug', $safeUpdate->slug)->first();
+            if ($plugin && $plugin->has_update) {
+                $plugin->update([
+                    'version' => $newVersion,
+                    'has_update' => false,
+                    'update_version' => null,
+                ]);
+                $this->decrementPendingUpdates($site);
+            }
+        } elseif ($safeUpdate->type === 'theme') {
+            /** @var \App\Models\SiteTheme|null $theme */
+            $theme = $site->siteThemes()->where('slug', $safeUpdate->slug)->first();
+            if ($theme && $theme->has_update) {
+                $theme->update([
+                    'version' => $newVersion,
+                    'has_update' => false,
+                    'update_version' => null,
+                ]);
+                $this->decrementPendingUpdates($site);
+            }
+        }
+
+        // Reconcile authoritative state (covers core, and confirms the lightweight
+        // local update above against the live site).
+        SyncWordPressSite::dispatch($site);
+    }
+
+    private function decrementPendingUpdates(Site $site): void
+    {
+        $current = (int) ($site->pending_updates_count ?? 0);
+        if ($current <= 0) {
+            return;
+        }
+
+        $site->update(['pending_updates_count' => $current - 1]);
     }
 
     /**
