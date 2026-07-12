@@ -22,7 +22,13 @@ class EmailNotificationSender
 
         try {
             $mailable = new $mailableClass(...$mailableArgs);
-            Mail::to($address)->queue($mailable);
+
+            // P1-22: send synchronously (we are already inside the queued
+            // SendNotificationJob) so an SMTP/transport failure surfaces here and
+            // marks the log `failed`. Mail::queue() returned instantly regardless
+            // of delivery, so genuine send failures were invisible and never
+            // escalated.
+            Mail::to($address)->send($mailable);
 
             return ['success' => true, 'response_code' => null, 'error' => null];
         } catch (TransportExceptionInterface|\RuntimeException $e) {

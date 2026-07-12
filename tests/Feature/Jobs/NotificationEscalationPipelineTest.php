@@ -195,23 +195,36 @@ class NotificationEscalationPipelineTest extends TestCase
             'mailable_args' => null,
         ]);
 
-        Redis::shouldReceive('lpop')
-            ->with('notification_buffer')
+        // P1-54: the batch now reliably reserves items onto a processing list via
+        // RPOPLPUSH (recover pass first, then the drain), acking each once handled.
+        Redis::shouldReceive('rpoplpush')
+            ->with('notification_buffer:processing', 'notification_buffer')
+            ->andReturn(false);
+        Redis::shouldReceive('rpoplpush')
+            ->with('notification_buffer', 'notification_buffer:processing')
             ->andReturn(json_encode(['event' => 'orphan-without-channel-id']), '"just-a-string"', $valid, false);
+        Redis::shouldReceive('lrem')->andReturnTrue();
 
         (new ProcessNotificationBatch)->handle();
 
         Queue::assertPushed(SendNotificationJob::class, 1);
     }
 
-    public function test_ack_endpoint_marks_the_log_acknowledged(): void
+    /** P1-23: the ack endpoint must not mutate on GET (crawler-safe); POST acks. */
+    public function test_ack_endpoint_requires_post_to_mutate_and_get_only_confirms(): void
     {
-        $this->withoutVite(); // the acknowledged view uses @vite; CI has no built assets
+        $this->withoutVite(); // the ack views use @vite; CI has no built assets
 
         $log = $this->logFor($this->slackChannel(), ['ack_token' => str_repeat('a', 64)]);
 
-        $this->get(route('notifications.ack', str_repeat('a', 64)))->assertOk();
+        // GET renders a confirm page and does NOT acknowledge.
+        $this->get(route('notifications.ack', str_repeat('a', 64)))
+            ->assertOk()
+            ->assertSee('Acknowledge');
+        $this->assertNull($log->fresh()->acknowledged_at);
 
+        // POST performs the actual acknowledgement.
+        $this->post(route('notifications.ack.confirm', str_repeat('a', 64)))->assertOk();
         $this->assertNotNull($log->fresh()->acknowledged_at);
     }
 }

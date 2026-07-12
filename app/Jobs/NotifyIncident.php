@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Mail\UptimeAlertMail;
 use App\Models\UptimeIncident;
 use App\Services\Notifications\NotificationService;
+use App\Services\SettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,7 +37,22 @@ class NotifyIncident implements ShouldQueue
         $site = $monitor->site;
 
         $isDown = $this->type === 'down';
-        $event = $isDown ? 'site_down' : 'site_up';
+
+        // P1-24: honour the per-install notify_down / notify_recovery toggles.
+        // Defaults preserve the previous behaviour (both on) so nothing that was
+        // alerting before goes quiet after this change.
+        $settings = app(SettingsService::class);
+        $settingKey = $isDown ? 'notify_down' : 'notify_recovery';
+        if (! (bool) $settings->get($settingKey, true)) {
+            return;
+        }
+
+        // P1-05: emit the canonical `site_recovered` event (present in
+        // NotificationTemplate::EVENTS + the subscription UI) instead of the
+        // orphaned `site_up`, which no template/subscription ever matched.
+        // NotificationChannel::subscribedTo() aliases the two so legacy jsonb
+        // subscription rows keep working.
+        $event = $isDown ? 'site_down' : 'site_recovered';
         $severity = $isDown ? 'critical' : 'success';
 
         if ($isDown) {

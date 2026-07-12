@@ -237,6 +237,13 @@ Schedule::job(new \App\Jobs\ProcessNotificationEscalations)
     ->onOneServer()
     ->withoutOverlapping();
 
+// Release notifications deferred during quiet hours (P1-21) once the window ends.
+Schedule::job(new \App\Jobs\FlushDeferredNotifications)
+    ->everyMinute()
+    ->name('flush-deferred-notifications')
+    ->onOneServer()
+    ->withoutOverlapping();
+
 // Daily health digest email
 Schedule::job(new \App\Jobs\SendDailyDigest)
     ->dailyAt('07:00')

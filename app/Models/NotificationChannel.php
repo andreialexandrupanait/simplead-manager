@@ -70,8 +70,25 @@ class NotificationChannel extends Model
     }
 
     /**
+     * Bidirectional event aliases honoured by {@see subscribedTo()}.
+     *
+     * P1-05: recovery alerts were historically emitted as `site_up`, but the
+     * subscription UI and templates only ever knew the canonical
+     * `site_recovered`. The emitter now uses `site_recovered`; this alias keeps
+     * any existing jsonb subscription rows storing `site_up` working during the
+     * transition (and vice-versa) — no bare rename / data migration required.
+     *
+     * @var array<string, string>
+     */
+    public const EVENT_ALIASES = [
+        'site_up' => 'site_recovered',
+        'site_recovered' => 'site_up',
+    ];
+
+    /**
      * Check if this channel is subscribed to a given event.
-     * Returns true if event_subscriptions is null (all events) or contains the event.
+     * Returns true if event_subscriptions is null (all events) or contains the
+     * event (or a recognised alias of it).
      */
     public function subscribedTo(string $event): bool
     {
@@ -79,6 +96,12 @@ class NotificationChannel extends Model
             return true;
         }
 
-        return in_array($event, $this->event_subscriptions);
+        if (in_array($event, $this->event_subscriptions, true)) {
+            return true;
+        }
+
+        $alias = self::EVENT_ALIASES[$event] ?? null;
+
+        return $alias !== null && in_array($alias, $this->event_subscriptions, true);
     }
 }

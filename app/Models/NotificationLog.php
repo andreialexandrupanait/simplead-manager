@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array|null $metadata
  * @property int|null $response_code
  * @property string|null $ack_token
+ * @property string|null $idempotency_key
  * @property \Illuminate\Support\Carbon|null $acknowledged_at
  * @property string|null $severity
  * @property bool $escalated
@@ -44,6 +45,7 @@ class NotificationLog extends Model
         'response_code',
         'severity',
         'ack_token',
+        'idempotency_key',
         'acknowledged_at',
         'escalated',
     ];
