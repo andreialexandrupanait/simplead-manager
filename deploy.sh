@@ -37,26 +37,84 @@ git pull --ff-only || fail "git pull failed — resolve conflicts manually"
 # Verifies the required CI checks passed for the exact commit being deployed.
 # Override in an emergency with DEPLOY_SKIP_CI_CHECK=1.
 
+# P1-37: the CI gate is now FAIL-CLOSED and race-safe. The previous version
+# failed OPEN on a transient gh error ("continuing") and treated a not-yet-
+# registered / still-running merge-commit CI as either a hard "missing" refusal
+# or, on API error, a silent pass. New behaviour:
+#   pending / missing → WAIT and poll (up to DEPLOY_CI_TIMEOUT), never pass or
+#                        refuse just because CI has not finished registering yet;
+#   red (failure)     → refuse immediately (fail-closed);
+#   transient gh error → retry (DEPLOY_CI_API_RETRIES) then keep polling; only a
+#                        FULL timeout of unreachability refuses — it never passes;
+#   green (success)   → proceed.
+# Emergency override remains DEPLOY_SKIP_CI_CHECK=1.
 if [ "${DEPLOY_SKIP_CI_CHECK:-0}" != "1" ]; then
     if command -v gh >/dev/null 2>&1; then
         DEPLOY_SHA=$(git rev-parse HEAD)
-        log "Checking CI status for ${DEPLOY_SHA:0:8}..."
-        CI_RESULT=$(gh api "repos/{owner}/{repo}/commits/${DEPLOY_SHA}/check-runs" \
-            --jq '[.check_runs[]
-                   | select(.name == "Pint (code style)"
-                         or .name == "PHPStan (static analysis)"
-                         or .name == "PHPUnit (pgsql + redis)")
-                   | .conclusion]
-                  | if length == 0 then "missing"
-                    elif all(. == "success") then "success"
-                    else "failure" end' 2>/dev/null) || CI_RESULT="unknown"
+        CI_GATE_TIMEOUT="${DEPLOY_CI_TIMEOUT:-1800}"        # max seconds to wait for CI to finish
+        CI_POLL_INTERVAL="${DEPLOY_CI_POLL_INTERVAL:-20}"   # seconds between polls while pending
+        CI_API_MAX_RETRIES="${DEPLOY_CI_API_RETRIES:-3}"    # transient-error retries per poll
+        CI_GATE_START=$(date +%s)
 
-        case "$CI_RESULT" in
-            success) log "CI is green." ;;
-            missing) fail "No CI check runs found for ${DEPLOY_SHA:0:8} — wait for CI or set DEPLOY_SKIP_CI_CHECK=1" ;;
-            failure) fail "CI is NOT green for ${DEPLOY_SHA:0:8} — fix it or set DEPLOY_SKIP_CI_CHECK=1" ;;
-            *)       warn "Could not determine CI status (gh api failed) — continuing" ;;
-        esac
+        log "Checking CI status for ${DEPLOY_SHA:0:8} (waits up to ${CI_GATE_TIMEOUT}s for pending CI)..."
+
+        query_ci_status() {
+            gh api "repos/{owner}/{repo}/commits/${DEPLOY_SHA}/check-runs" \
+                --jq '[.check_runs[]
+                       | select(.name == "Pint (code style)"
+                             or .name == "PHPStan (static analysis)"
+                             or .name == "PHPUnit (pgsql + redis)")
+                       | {status: .status, conclusion: .conclusion}]
+                      | if length == 0 then "missing"
+                        elif any(.[]; .status != "completed") then "pending"
+                        elif all(.[]; .conclusion == "success") then "success"
+                        else "failure" end'
+        }
+
+        while :; do
+            # Query with transient-error retry — a single flaky gh/network call
+            # must never decide the deploy. Only after CI_API_MAX_RETRIES
+            # consecutive failures do we treat the poll as an api-error.
+            CI_RESULT="api-error"
+            api_attempt=1
+            while [ "$api_attempt" -le "$CI_API_MAX_RETRIES" ]; do
+                if CI_RESULT=$(query_ci_status 2>/dev/null); then
+                    break
+                fi
+                CI_RESULT="api-error"
+                if [ "$api_attempt" -lt "$CI_API_MAX_RETRIES" ]; then sleep 5; fi
+                api_attempt=$((api_attempt + 1))
+            done
+
+            CI_ELAPSED=$(( $(date +%s) - CI_GATE_START ))
+
+            case "$CI_RESULT" in
+                success)
+                    log "CI is green for ${DEPLOY_SHA:0:8}."
+                    break
+                    ;;
+                failure)
+                    fail "CI is RED for ${DEPLOY_SHA:0:8} — deploy refused (fail-closed). Fix CI or override with DEPLOY_SKIP_CI_CHECK=1."
+                    ;;
+                pending|missing)
+                    if [ "$CI_ELAPSED" -ge "$CI_GATE_TIMEOUT" ]; then
+                        fail "CI still '${CI_RESULT}' for ${DEPLOY_SHA:0:8} after ${CI_ELAPSED}s — deploy refused (fail-closed). Wait for CI, or override with DEPLOY_SKIP_CI_CHECK=1."
+                    fi
+                    warn "CI '${CI_RESULT}' for ${DEPLOY_SHA:0:8} — waiting (${CI_ELAPSED}s/${CI_GATE_TIMEOUT}s), re-checking in ${CI_POLL_INTERVAL}s..."
+                    sleep "$CI_POLL_INTERVAL"
+                    ;;
+                api-error)
+                    if [ "$CI_ELAPSED" -ge "$CI_GATE_TIMEOUT" ]; then
+                        fail "CI API unreachable for ${DEPLOY_SHA:0:8} after ${CI_ELAPSED}s of retries — deploy refused (fail-closed). Retry later, or override with DEPLOY_SKIP_CI_CHECK=1."
+                    fi
+                    warn "CI API error for ${DEPLOY_SHA:0:8} (transient) — waiting (${CI_ELAPSED}s/${CI_GATE_TIMEOUT}s), re-checking in ${CI_POLL_INTERVAL}s..."
+                    sleep "$CI_POLL_INTERVAL"
+                    ;;
+                *)
+                    fail "Unexpected CI gate state '${CI_RESULT}' for ${DEPLOY_SHA:0:8} — deploy refused (fail-closed)."
+                    ;;
+            esac
+        done
     else
         warn "gh CLI not found — skipping CI gate"
     fi
@@ -90,13 +148,21 @@ $COMPOSE exec app php artisan down 2>/dev/null || true
 
 # ── Step 6: Recreate containers with new image ───────────────────────────────
 
-log "Cleaning up stale containers..."
-for svc in app horizon scheduler nginx; do
+# P1-34: do NOT touch nginx here. nginx keeps serving the OLD (working) app image
+# throughout the entire app/horizon/scheduler rebuild below, so there is no hard
+# outage while the new image builds and recreates. nginx is swapped LAST, in a
+# single `up -d --force-recreate nginx` (Step 11) — that recreate is the ONLY
+# downtime window, and it is on the order of a second. Tearing nginx down here
+# (the previous behaviour) meant a full outage for the whole rebuild, and a total
+# outage if any later step failed and left the deploy aborted.
+log "Cleaning up stale app/horizon/scheduler containers (nginx left running)..."
+for svc in app horizon scheduler; do
     docker rm -f "simplead-$svc" 2>/dev/null || true
 done
-# Also remove any prefixed orphan containers (e.g. abc123_simplead-horizon)
+# Also remove any prefixed orphan containers (e.g. abc123_simplead-horizon).
+# nginx is deliberately excluded so the running proxy is never collected here.
 docker ps -a --filter "status=created" --filter "status=exited" --format '{{.Names}}' \
-    | grep -E 'simplead-(app|horizon|scheduler|nginx)' \
+    | grep -E 'simplead-(app|horizon|scheduler)' \
     | xargs -r docker rm -f 2>/dev/null || true
 
 log "Recreating containers with new image..."
