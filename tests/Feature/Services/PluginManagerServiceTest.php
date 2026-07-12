@@ -142,6 +142,41 @@ class PluginManagerServiceTest extends TestCase
         $this->assertSame(0, $result['failed']);
     }
 
+    public function test_update_core_reports_success_only_when_connector_confirms(): void
+    {
+        $api = $this->createMockApi();
+        $api->method('updateCore')->willReturn(['success' => true]);
+
+        $service = new PluginManagerService($this->createMockApiFactory($api));
+        $result = $service->updateCore($this->site);
+
+        $this->assertTrue($result['success']);
+        $this->assertDatabaseHas('update_logs', [
+            'site_id' => $this->site->id,
+            'type' => 'core',
+            'success' => true,
+        ]);
+    }
+
+    public function test_update_core_reports_failure_when_connector_reports_failure(): void
+    {
+        // P1-19: the old code returned success => true regardless of the
+        // connector result, hiding real core-update failures.
+        $api = $this->createMockApi();
+        $api->method('updateCore')->willReturn(['success' => false, 'error' => 'Could not create directory.']);
+
+        $service = new PluginManagerService($this->createMockApiFactory($api));
+        $result = $service->updateCore($this->site);
+
+        $this->assertFalse($result['success']);
+        $this->assertStringContainsString('Could not create directory', $result['message']);
+        $this->assertDatabaseHas('update_logs', [
+            'site_id' => $this->site->id,
+            'type' => 'core',
+            'success' => false,
+        ]);
+    }
+
     public function test_delete_plugin_handles_api_failure(): void
     {
         $plugin = SitePlugin::factory()->create(['site_id' => $this->site->id]);

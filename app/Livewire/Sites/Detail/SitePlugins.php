@@ -309,10 +309,13 @@ class SitePlugins extends Component
             'wp_org_last_updated' => $item->wp_org_last_updated?->format('M j, Y'),
             'license_status' => $item instanceof SitePlugin ? $item->license_status : null,
             'license_expires_at' => $item instanceof SitePlugin ? $item->license_expires_at?->format('M j, Y') : null,
+            // Update logs key the plugin by its `slug` column, not `name` (which
+            // holds the display name); matching on `name = slug` never found a row
+            // so the Rollback button never appeared (P1-43).
             'can_rollback' => $item instanceof SitePlugin && UpdateLog::where('site_id', $this->site->id)
-                ->where('type', 'plugin')->where('name', $item->slug)->where('success', true)->exists(),
+                ->where('type', 'plugin')->where('slug', $item->slug)->where('success', true)->exists(),
             'rollback_version' => $item instanceof SitePlugin ? UpdateLog::where('site_id', $this->site->id)
-                ->where('type', 'plugin')->where('name', $item->slug)->where('success', true)
+                ->where('type', 'plugin')->where('slug', $item->slug)->where('success', true)
                 ->orderByDesc('performed_at')->value('from_version') : null,
         ];
 

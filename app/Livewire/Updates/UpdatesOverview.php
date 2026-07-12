@@ -418,7 +418,10 @@ class UpdatesOverview extends Component
         // inside the fleet-wide update loop.
         $config = $site->loadMissing('backupConfig')->backupConfig;
         if ($config?->backup_before_updates) {
-            CreateBackup::dispatch($site, 'database', 'pre_update', $config->storage_destination_id);
+            // Synchronous so the backup completes BEFORE the inline update runs —
+            // dispatching async raced the update and could snapshot post-update
+            // state, giving a useless "pre-update" restore point (P1-18).
+            CreateBackup::dispatchSync($site, 'database', 'pre_update', $config->storage_destination_id);
         }
     }
 

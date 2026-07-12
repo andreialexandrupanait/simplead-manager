@@ -14,6 +14,7 @@ use App\Models\SitePlugin;
 use App\Models\User;
 use App\Services\PluginManagerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -80,9 +81,10 @@ class UpdatesOverviewSafeRouteTest extends TestCase
 
     public function test_global_page_non_safe_site_takes_pre_update_backup_then_updates_inline(): void
     {
-        // P0-08: non-safe sites that opted into pre-update backups get one before
-        // the inline update runs.
-        Queue::fake();
+        // P0-08 + P1-18: non-safe sites that opted into pre-update backups get one
+        // that runs synchronously (dispatchSync) so it COMPLETES before the inline
+        // update — never raced async.
+        Bus::fake();
 
         $this->mock(PluginManagerService::class, function ($mock) {
             $mock->shouldReceive('performUpdate')
@@ -96,8 +98,11 @@ class UpdatesOverviewSafeRouteTest extends TestCase
             ->test(UpdatesOverview::class)
             ->call('updateSingle', 'plugin', $plugin->id);
 
-        Queue::assertNotPushed(RunSafeUpdate::class);
-        Queue::assertPushed(CreateBackup::class, fn ($job) => $job->trigger === 'pre_update' && $job->site->id === $site->id);
+        Bus::assertNotDispatched(RunSafeUpdate::class);
+        Bus::assertDispatchedSync(
+            CreateBackup::class,
+            fn ($job) => $job->trigger === 'pre_update' && $job->site->id === $site->id,
+        );
     }
 
     public function test_update_all_for_site_queues_safe_updates_for_safe_site(): void
