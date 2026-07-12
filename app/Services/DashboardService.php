@@ -354,12 +354,12 @@ class DashboardService
         }
 
         if ($filter === 'healthy') {
-            $query->where('health_score', '>=', 90)->where('is_up', true);
+            $query->where('health_score', '>=', HealthLevel::HEALTHY_THRESHOLD)->where('is_up', true);
         } elseif ($filter === 'warning') {
-            $query->whereBetween('health_score', [70, 89])->where('is_up', true);
+            $query->whereBetween('health_score', [HealthLevel::WARNING_THRESHOLD, HealthLevel::HEALTHY_THRESHOLD - 1])->where('is_up', true);
         } elseif ($filter === 'critical') {
             $query->where(function ($q) {
-                $q->where('health_score', '<', 70)
+                $q->where('health_score', '<', HealthLevel::WARNING_THRESHOLD)
                     ->orWhere('is_up', false);
             });
         }
@@ -500,7 +500,7 @@ class DashboardService
             'client',
         ]), $this->accessibleSiteIds())
             ->where(function ($query) {
-                $query->where('health_score', '<', 70)
+                $query->where('health_score', '<', HealthLevel::WARNING_THRESHOLD)
                     ->orWhere('is_up', false)
                     ->orWhereDoesntHave('latestCompletedBackup')
                     ->orWhereHas('latestCompletedBackup', function ($q) {

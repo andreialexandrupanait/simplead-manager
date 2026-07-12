@@ -33,6 +33,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property bool $keyword_case_sensitive
  * @property bool $check_ssl
  * @property int $ssl_expiry_threshold
+ * @property \Illuminate\Support\Carbon|null $ssl_expires_at
+ * @property string|null $ssl_issuer
+ * @property \Illuminate\Support\Carbon|null $ssl_last_checked_at
+ * @property string|null $ssl_last_error
+ * @property \Illuminate\Support\Carbon|null $next_ssl_check_at
  * @property int $alert_after_failures
  * @property array|null $alert_contacts
  * @property int $consecutive_failures
@@ -96,6 +101,13 @@ class UptimeMonitor extends Model
         'keyword',
         'keyword_type',
         'keyword_case_sensitive',
+        'check_ssl',
+        'ssl_expiry_threshold',
+        'ssl_expires_at',
+        'ssl_issuer',
+        'ssl_last_checked_at',
+        'ssl_last_error',
+        'next_ssl_check_at',
         'alert_after_failures',
         'alert_contacts',
         'consecutive_failures',
@@ -127,6 +139,11 @@ class UptimeMonitor extends Model
         'alert_contacts' => 'array',
         'follow_redirects' => 'boolean',
         'keyword_case_sensitive' => 'boolean',
+        'check_ssl' => 'boolean',
+        'ssl_expiry_threshold' => 'integer',
+        'ssl_expires_at' => 'datetime',
+        'ssl_last_checked_at' => 'datetime',
+        'next_ssl_check_at' => 'datetime',
         'auth_password' => 'encrypted',
         'auth_token' => 'encrypted',
         'last_checked_at' => 'datetime',
@@ -147,6 +164,27 @@ class UptimeMonitor extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * The certificate has already expired.
+     */
+    public function sslIsExpired(): bool
+    {
+        return $this->ssl_expires_at !== null && $this->ssl_expires_at->isPast();
+    }
+
+    /**
+     * The certificate expires within the monitor's configured warning window
+     * (but has not yet expired).
+     */
+    public function sslIsExpiringSoon(): bool
+    {
+        if ($this->ssl_expires_at === null || $this->ssl_expires_at->isPast()) {
+            return false;
+        }
+
+        return $this->ssl_expires_at->lte(now()->addDays($this->ssl_expiry_threshold));
     }
 
     public function isInMaintenanceWindow(): bool

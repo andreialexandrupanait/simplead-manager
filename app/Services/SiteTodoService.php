@@ -101,6 +101,16 @@ class SiteTodoService
             );
         }
 
+        // SSL certificate expiry (P2-08). An expired cert breaks the site for
+        // every visitor; a near-expiry one is a ticking deadline.
+        $uptimeMonitor = $site->uptimeMonitor;
+        if ($uptimeMonitor && $uptimeMonitor->sslIsExpired()) {
+            $items[] = self::item('ssl', 'critical', 'SSL certificate expired', 'The TLS certificate has expired — renew immediately to restore secure access.', 'sites.overview', $site);
+        } elseif ($uptimeMonitor && $uptimeMonitor->sslIsExpiringSoon()) {
+            $when = $uptimeMonitor->ssl_expires_at ? $uptimeMonitor->ssl_expires_at->diffForHumans() : 'soon';
+            $items[] = self::item('ssl', 'medium', 'SSL certificate expiring soon', "The TLS certificate expires {$when} — schedule a renewal.", 'sites.overview', $site);
+        }
+
         if ($site->domain_status === DomainStatus::Expired) {
             $items[] = self::item('domain', 'critical', 'Domain has expired', 'The domain registration has lapsed — renew immediately.', 'sites.overview', $site);
         } elseif ($site->domain_status === DomainStatus::ExpiringSoon) {

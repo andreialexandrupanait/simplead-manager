@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites;
 
+use App\Enums\HealthLevel;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use App\Models\Tag;
@@ -48,10 +49,10 @@ class SitesList extends Component
             })
             ->when($this->filter !== 'all', function ($q) {
                 return match ($this->filter) {
-                    'healthy' => $q->where('health_score', '>=', 90)->where('is_up', true),
-                    'warning' => $q->where('health_score', '>=', 70)->where('health_score', '<', 90)->where('is_up', true),
+                    'healthy' => $q->where('health_score', '>=', HealthLevel::HEALTHY_THRESHOLD)->where('is_up', true),
+                    'warning' => $q->where('health_score', '>=', HealthLevel::WARNING_THRESHOLD)->where('health_score', '<', HealthLevel::HEALTHY_THRESHOLD)->where('is_up', true),
                     'critical' => $q->where(function ($q) {
-                        $q->where('health_score', '<', 70)->orWhere('is_up', false);
+                        $q->where('health_score', '<', HealthLevel::WARNING_THRESHOLD)->orWhere('is_up', false);
                     }),
                     default => $q,
                 };
