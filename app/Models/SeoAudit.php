@@ -49,6 +49,22 @@ class SeoAudit extends Model
         return $query->where('status', SeoAuditStatus::Completed);
     }
 
+    /**
+     * P2-18: the newest COMPLETED audit for a site.
+     *
+     * Ordering plain `scanned_at DESC` in PostgreSQL sorts NULLs FIRST, so a
+     * completed-but-undated audit (or otherwise null scanned_at) would win over
+     * a genuinely newer, finished one — making broken-link suggestions read from
+     * the wrong audit. Force NULLS LAST and tie-break on id so the most recent
+     * finished audit is always selected.
+     */
+    public function scopeLatestCompleted(Builder $query): Builder
+    {
+        return $query->where('status', SeoAuditStatus::Completed)
+            ->orderByRaw('scanned_at DESC NULLS LAST')
+            ->orderByDesc('id');
+    }
+
     public function scopeRunning(Builder $query): Builder
     {
         return $query->whereIn('status', [SeoAuditStatus::Pending, SeoAuditStatus::Crawling, SeoAuditStatus::Analyzing, SeoAuditStatus::Scoring]);

@@ -6,13 +6,13 @@ namespace App\Livewire\Sites\Detail;
 
 use App\Enums\SeoIssueCategory;
 use App\Enums\SeoIssueSeverity;
+use App\Jobs\ApplySeoBulkFix;
 use App\Jobs\FetchKeywordRankings;
 use App\Jobs\RunSeoAudit;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SeoAudit;
 use App\Models\SeoKeywordRanking;
 use App\Models\Site;
-use App\Services\ActivityLogger;
 use App\Services\SeoAudit\SiteAuditService;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Support\Facades\RateLimiter;
@@ -87,13 +87,13 @@ class SiteSeoAudit extends Component
     #[Computed]
     public function latestCompletedAudit(): ?SeoAudit
     {
-        return $this->site->seoAudits()->completed()->latest('scanned_at')->first();
+        return $this->site->seoAudits()->latestCompleted()->first();
     }
 
     #[Computed]
     public function auditHistory()
     {
-        return $this->site->seoAudits()->completed()->latest('scanned_at')->limit(20)->get(['id', 'score', 'critical_count', 'high_count', 'medium_count', 'low_count', 'info_count', 'pages_crawled', 'scan_duration', 'scanned_at', 'category_scores']);
+        return $this->site->seoAudits()->latestCompleted()->limit(20)->get(['id', 'score', 'critical_count', 'high_count', 'medium_count', 'low_count', 'info_count', 'pages_crawled', 'scan_duration', 'scanned_at', 'category_scores']);
     }
 
     #[Computed]
@@ -486,82 +486,15 @@ class SiteSeoAudit extends Component
             return;
         }
 
-        $issues = $audit->issues()->where('title', $issueTitle)->whereNotNull('url')->get();
-        $success = 0;
-        $failed = 0;
-        $skipped = 0;
-        $applied = [];
+        // P2-21: apply the fix out of band. Pushing every page to the live
+        // client site synchronously inside this Livewire request risked a
+        // gateway timeout and let one failed page abort the rest. Queue a job
+        // that authorizes, applies, and logs on its own.
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        ApplySeoBulkFix::dispatch($this->site, $audit, $issueTitle, $fixType, $user);
 
-        $api = app(WordPressApiServiceFactory::class)->make($this->site);
-
-        foreach ($issues as $issue) {
-            $page = $audit->pages()->where('url', $issue->url)->first();
-            if (! $page) {
-                $failed++;
-
-                continue;
-            }
-
-            // Never push scraped-empty values — that would blank real content
-            // on the WP side (e.g. overwrite post_title with '') (audit E-10).
-            [$payload, $endpoint] = match ($fixType) {
-                'meta' => [array_filter([
-                    'meta_title' => $page->title,
-                    'meta_description' => $page->meta_description,
-                ], fn (?string $v): bool => $v !== null && $v !== ''), '/seo/update-meta'],
-                'canonical' => [['canonical_url' => $issue->url], '/seo/update-canonical'],
-                'og' => [array_filter([
-                    'og_title' => $page->title,
-                    'og_description' => $page->meta_description,
-                ], fn (?string $v): bool => $v !== null && $v !== ''), '/seo/update-og'],
-                default => [[], null],
-            };
-
-            if ($payload === [] || $endpoint === null) {
-                $skipped++;
-
-                continue;
-            }
-
-            $payload['url'] = $issue->url;
-
-            try {
-                // Signed HMAC client — the previous raw X-SAM-API-Key call was
-                // rejected by the connector (401) on every request (audit E-34).
-                $response = $api->request('POST', $endpoint, $payload, timeout: 15);
-
-                if ($response->successful()) {
-                    $success++;
-                    $applied[] = ['url' => $issue->url, 'endpoint' => $endpoint, 'payload' => $payload];
-                } else {
-                    $failed++;
-                }
-            } catch (\Throwable) {
-                $failed++;
-            }
-
-            usleep(200_000); // 200ms between requests
-        }
-
-        if ($applied !== []) {
-            ActivityLogger::log(
-                type: 'seo',
-                severity: 'info',
-                title: "SEO bulk fix \"{$issueTitle}\": {$success} applied on {$this->site->name}",
-                description: $skipped > 0 ? "{$skipped} pages skipped (no safe value to write)." : null,
-                site: $this->site,
-                metadata: ['issue' => $issueTitle, 'changes' => $applied],
-            );
-        }
-
-        $parts = ["{$success} applied"];
-        if ($skipped > 0) {
-            $parts[] = "{$skipped} skipped (nothing safe to write)";
-        }
-        if ($failed > 0) {
-            $parts[] = "{$failed} failed";
-        }
-        $this->dispatch('notify', type: $failed > 0 ? 'warning' : 'success', message: 'Bulk fix: '.implode(', ', $parts).'.');
+        $this->dispatch('notify', type: 'success', message: 'Applying "'.$issueTitle.'" fixes in the background — this may take a moment.');
     }
 
     public function runAudit(): void
