@@ -82,7 +82,7 @@ class DnsSelectorDiscoveryService
             }
 
             $siteCloudflare = $site->siteCloudflare;
-            if (! $siteCloudflare || ! $siteCloudflare->is_active || $siteCloudflare->zone_id === null) {
+            if (! $siteCloudflare || ! $siteCloudflare->is_active || $siteCloudflare->zone_id === '') {
                 return [];
             }
 

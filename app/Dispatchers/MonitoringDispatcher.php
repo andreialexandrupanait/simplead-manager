@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Dispatchers;
 
 use App\Jobs\CheckDns;
+use App\Jobs\CheckSsl;
 use App\Jobs\CheckUptime;
 use App\Jobs\RunPerformanceTest;
 use App\Jobs\RunSecurityScan;
@@ -46,7 +47,26 @@ class MonitoringDispatcher
         $this->dispatchUptimeChecks();
         $this->dispatchSecurityScans();
         $this->dispatchDnsChecks();
+        $this->dispatchSslChecks();
         $this->dispatchPerformanceTests();
+    }
+
+    /**
+     * Scheduled TLS certificate-expiry checks (P2-08). Runs on a slow cadence
+     * (config('monitoring.ssl_check_interval_hours')) for active HTTPS monitors
+     * with SSL checking enabled. Gated on next_ssl_check_at so a hung check
+     * isn't relaunched every minute.
+     */
+    private function dispatchSslChecks(): void
+    {
+        UptimeMonitor::query()
+            ->where('status', 'active')
+            ->where('check_ssl', true)
+            ->where('url', 'like', 'https://%')
+            ->where(fn ($q) => $q->whereNull('next_ssl_check_at')->orWhere('next_ssl_check_at', '<=', now()))
+            ->whereHas('site', fn ($q) => $q->whereNull('deleted_at'))
+            ->where($this->healthStateGate())
+            ->each(fn (UptimeMonitor $monitor) => CheckSsl::dispatch($monitor));
     }
 
     /**

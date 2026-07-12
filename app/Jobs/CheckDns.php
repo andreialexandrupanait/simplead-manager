@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CheckDns implements ShouldBeUnique, ShouldQueue
 {
@@ -23,9 +24,29 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
+    /**
+     * Bounded worker timeout. A full check fans out ~10 blocking
+     * dns_get_record() lookups (A/AAAA/MX/NS/CNAME/TXT + DMARC + per-selector
+     * DKIM), each of which can hang on a dead resolver. Capping the job means a
+     * hung check is killed rather than pinning a worker indefinitely — and,
+     * paired with next_check_at being advanced in failed(), a hanging monitor
+     * no longer gets re-dispatched every minute (P2-41, same class as U-01/E-27).
+     */
     public int $timeout = 90;
 
     public int $uniqueFor = 270; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+
+    /**
+     * Consecutive failed checks before a "DNS monitoring is broken" alert fires.
+     */
+    private const ALERT_AFTER_FAILURES = 3;
+
+    /** Fields that reset the persisted failure state on any successful check. */
+    private const CLEARED_ERROR_STATE = [
+        'consecutive_failures' => 0,
+        'last_error' => null,
+        'last_error_at' => null,
+    ];
 
     /** @var array<string, string> map of selector => source ('manual'|'cloudflare'|'postmark'|'fallback') */
     private array $selectorSources = [];
@@ -71,6 +92,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                     'has_changes' => false,
                     'last_checked_at' => now(),
                     'next_check_at' => $nextCheckAt,
+                    ...self::CLEARED_ERROR_STATE,
                 ]);
 
                 return;
@@ -87,6 +109,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                     'has_changes' => false,
                     'last_checked_at' => now(),
                     'next_check_at' => $nextCheckAt,
+                    ...self::CLEARED_ERROR_STATE,
                 ]);
 
                 return;
@@ -103,6 +126,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                     'pending_records' => $records,
                     'last_checked_at' => now(),
                     'next_check_at' => $nextCheckAt,
+                    ...self::CLEARED_ERROR_STATE,
                 ]);
 
                 return;
@@ -116,6 +140,7 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
                 'has_changes' => true,
                 'last_checked_at' => now(),
                 'next_check_at' => $nextCheckAt,
+                ...self::CLEARED_ERROR_STATE,
             ]);
 
             foreach ($changes as $change) {
@@ -152,10 +177,54 @@ class CheckDns implements ShouldBeUnique, ShouldQueue
         } catch (\Throwable $e) {
             Log::warning("DNS check failed for {$domain}: {$e->getMessage()}");
 
-            $this->monitor->update([
-                'last_checked_at' => now(),
-                'next_check_at' => $nextCheckAt,
-            ]);
+            // Record a visible, queryable error state (P2-42) and still advance
+            // next_check_at (P2-41) so a broken monitor is neither invisible nor
+            // re-dispatched every minute. NotificationService is fired via
+            // notifyFailure() only when the failure first crosses the threshold.
+            $this->recordFailure($e->getMessage());
+        }
+    }
+
+    /**
+     * A hard worker timeout / kill never reaches handle()'s catch, so
+     * next_check_at would stay past-due and the dispatcher would relaunch a
+     * hanging check every minute (P2-41). Advance it and record the error state
+     * (P2-42) here too, mirroring CheckUptime::failed().
+     */
+    public function failed(?\Throwable $exception): void
+    {
+        try {
+            $this->recordFailure(
+                $exception?->getMessage() ?? 'DNS check aborted (timeout or worker killed)'
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to record DNS check failure for monitor '.$this->monitor->id.': '.$e->getMessage());
+        }
+    }
+
+    private function recordFailure(string $message): void
+    {
+        $failures = ($this->monitor->consecutive_failures ?? 0) + 1;
+
+        $this->monitor->update([
+            'last_checked_at' => now(),
+            'next_check_at' => now()->addMinutes($this->monitor->interval_minutes),
+            'consecutive_failures' => $failures,
+            'last_error' => Str::limit($message, 250),
+            'last_error_at' => now(),
+        ]);
+
+        // Alert once, when the failure first crosses the threshold, so a
+        // persistently broken DNS monitor becomes visible without spamming.
+        $site = $this->monitor->site;
+        if ($failures === self::ALERT_AFTER_FAILURES && $site !== null) {
+            NotificationService::notifySiteEventSlim(
+                site: $site,
+                event: 'dns_check_failed',
+                summary: "\xF0\x9F\x9B\x91 DNS · *{$site->name}* — DNS checks are failing for {$this->monitor->domain}.",
+                deepLink: '<'.route('sites.overview', $site).'|Open site →>',
+                severity: 'warning',
+            );
         }
     }
 

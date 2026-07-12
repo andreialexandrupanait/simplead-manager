@@ -34,6 +34,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | SSL / TLS certificate-expiry monitoring (P2-08)
+    |--------------------------------------------------------------------------
+    | How often a monitor's certificate expiry is re-checked, and the default
+    | warning window (in days) used when a monitor has no per-monitor override.
+    */
+    'ssl_check_interval_hours' => env('SSL_CHECK_INTERVAL_HOURS', 24),
+    'ssl_expiry_warning_days' => env('SSL_EXPIRY_WARNING_DAYS', 14),
+    'ssl_connect_timeout_seconds' => env('SSL_CONNECT_TIMEOUT_SECONDS', 10),
+
+    /*
+    |--------------------------------------------------------------------------
     | External heartbeat (dead-man's switch)
     |--------------------------------------------------------------------------
     | The scheduler pings this URL every minute. If the scheduler (or the whole

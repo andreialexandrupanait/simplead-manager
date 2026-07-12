@@ -10,9 +10,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property int $id
+ * @property int $site_id
+ * @property string $domain
+ * @property bool $is_active
+ * @property int $interval_minutes
+ * @property \Illuminate\Support\Carbon|null $last_checked_at
+ * @property \Illuminate\Support\Carbon|null $next_check_at
  * @property array|null $current_records
  * @property array|null $previous_records
  * @property array|null $pending_records
+ * @property bool $has_changes
+ * @property array|null $dkim_selectors
+ * @property int $consecutive_failures
+ * @property string|null $last_error
+ * @property \Illuminate\Support\Carbon|null $last_error_at
+ * @property-read \App\Models\Site|null $site
  */
 class DnsMonitor extends Model
 {
@@ -20,6 +33,7 @@ class DnsMonitor extends Model
         'site_id', 'domain', 'is_active', 'interval_minutes',
         'last_checked_at', 'next_check_at', 'current_records',
         'previous_records', 'pending_records', 'has_changes', 'dkim_selectors',
+        'consecutive_failures', 'last_error', 'last_error_at',
     ];
 
     protected $casts = [
@@ -31,6 +45,8 @@ class DnsMonitor extends Model
         'dkim_selectors' => 'array',
         'last_checked_at' => 'datetime',
         'next_check_at' => 'datetime',
+        'consecutive_failures' => 'integer',
+        'last_error_at' => 'datetime',
     ];
 
     public function site(): BelongsTo

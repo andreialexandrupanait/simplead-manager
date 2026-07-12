@@ -187,38 +187,8 @@ parameters:
 			path: app/Jobs/CheckBrokenResources.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$dkim_selectors\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$domain\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$interval_minutes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
 			message: '#^Match arm comparison between ''TXT'' and ''TXT'' is always true\.$#'
 			identifier: match.alwaysTrue
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
-			message: '#^Parameter \#1 \$site of static method App\\Services\\Notifications\\NotificationService\:\:notifySiteEvent\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
-			message: '#^Parameter \$site of static method App\\Services\\ActivityLogger\:\:log\(\) expects App\\Models\\Site\|null, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Jobs/CheckDns.php
 
