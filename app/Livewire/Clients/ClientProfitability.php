@@ -7,11 +7,14 @@ namespace App\Livewire\Clients;
 use App\Models\Client;
 use App\Models\ClientCost;
 use App\Models\ClientRevenue;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class ClientProfitability extends Component
 {
+    use AuthorizesRequests;
+
     public Client $client;
 
     public string $costType = 'hosting';
@@ -36,6 +39,12 @@ class ClientProfitability extends Component
 
     public function mount(Client $client): void
     {
+        // Client financials are sensitive; gate on ClientPolicy so a user can
+        // only ever load the profitability view for a client they may access
+        // (owned-via-site, assigned-via-pivot, or admin). Previously this
+        // component mounted any client with no authorization (P2-39).
+        $this->authorize('view', $client);
+
         $this->client = $client;
     }
 

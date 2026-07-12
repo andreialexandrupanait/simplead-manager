@@ -109,6 +109,41 @@ class Client extends Model
         return $query->where('status', 'active');
     }
 
+    /**
+     * Canonical tenant-visibility scope for clients — the single source of truth
+     * for "which clients may this user see". Mirrors ClientPolicy::view and the
+     * Site visibleTo scope: admins see every client; everyone else sees the
+     * clients they reach through an assigned-client pivot OR by owning a site
+     * under that client. A null/non-user context is denied everything.
+     */
+    public function scopeVisibleTo(Builder $query, ?User $user = null): Builder
+    {
+        $user ??= auth()->user();
+
+        if (! $user instanceof User) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $inner) use ($user) {
+            $inner->whereHas('sites', fn (Builder $sq) => $sq->where('user_id', $user->id))
+                ->orWhereHas('assignedUsers', fn (Builder $uq) => $uq->where('users.id', $user->id));
+        });
+    }
+
+    /**
+     * Restrict to clients whose public portal is genuinely live — the portal
+     * feature is enabled AND the client is active. Archived/inactive clients
+     * must not keep a public portal (P2-06).
+     */
+    public function scopePortalAccessible(Builder $query): Builder
+    {
+        return $query->where('portal_enabled', true)->where('status', 'active');
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
         if (empty($search)) {
