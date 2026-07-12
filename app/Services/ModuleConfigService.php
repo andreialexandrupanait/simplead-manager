@@ -316,11 +316,14 @@ class ModuleConfigService
                 break;
 
             case 'performance':
+                // P2-16: the first run honors the configured interval too, so a
+                // plan's interval_minutes is never a dead knob at materialization.
+                $perfInterval = $interval ?? 10080;
                 $data['is_active'] = $enabled;
-                $data['interval_minutes'] = $interval ?? 10080;
+                $data['interval_minutes'] = $perfInterval;
                 $data['frequency'] = 'daily';
                 $data['test_time'] = '04:00';
-                $data['next_test_at'] = now()->addDay()->setTime(4, 0)->addMinutes($jitter);
+                $data['next_test_at'] = now()->addMinutes($perfInterval + $jitter);
                 break;
 
             case 'security':
@@ -350,7 +353,10 @@ class ModuleConfigService
                 return;
         }
 
-        $config['model']::create($data);
+        // P2-37: key on the unique site_id column so two concurrent applies can
+        // never insert duplicate config rows for the same site — the unique index
+        // is the real guard, and updateOrCreate makes the app rely on it.
+        $config['model']::updateOrCreate(['site_id' => $site->id], $data);
     }
 
     /**

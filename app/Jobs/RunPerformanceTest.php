@@ -310,16 +310,9 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
             ->latest('tested_at')
             ->first();
 
-        $nextTestAt = match ($this->monitor->frequency) {
-            'daily' => now()->addDay(),
-            'weekly' => now()->addWeek(),
-            default => null, // manual
-        };
-
-        if ($nextTestAt && $this->monitor->test_time) {
-            [$hour, $minute] = explode(':', $this->monitor->test_time);
-            $nextTestAt->setTime((int) $hour, (int) $minute);
-        }
+        // P2-16: honor the plan-configured interval instead of the coarse
+        // daily/weekly bucket, which ignored interval_minutes entirely.
+        $nextTestAt = $this->monitor->calculateNextTestAt();
 
         $this->monitor->update([
             'latest_mobile_score' => $latestMobile?->performance_score,

@@ -398,7 +398,36 @@ class MaintenancePlanService
             }
         }
 
+        // P2-36: editing a plan must propagate to the sites already using it,
+        // otherwise their materialized module rows silently drift from the plan
+        // (plan says X, sites still have the old Y). A fresh plan has no assigned
+        // sites, so only an edit triggers the re-apply.
+        if ($editingId) {
+            $this->reapplyToAssignedSites($plan);
+        }
+
         return $plan;
+    }
+
+    /**
+     * Re-apply a plan to every site currently assigned to it (P2-36).
+     *
+     * Each site funnels through the canonical, queued {@see ApplyPlanToSite} job
+     * so the edit propagates in the background (never blocking the save request).
+     * The job is idempotent AND ShouldBeUnique per plan+site, so a re-apply can
+     * neither stampede nor duplicate work; chunking keeps a huge fleet from being
+     * loaded into memory all at once.
+     */
+    private function reapplyToAssignedSites(MaintenancePlan $plan): void
+    {
+        $plan->loadMissing('planModules');
+
+        $plan->sites()->chunkById(200, function (Collection $sites) use ($plan): void {
+            foreach ($sites as $site) {
+                /** @var Site $site */
+                ApplyPlanToSite::dispatch($site, $plan);
+            }
+        });
     }
 
     /**
