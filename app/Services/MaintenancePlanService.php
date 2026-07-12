@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Jobs\ApplyPlanToSite;
 use App\Models\BackupConfig;
 use App\Models\MaintenancePlan;
 use App\Models\MaintenancePlanModule;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class MaintenancePlanService
 {
@@ -51,47 +54,174 @@ class MaintenancePlanService
 
     /**
      * Apply a plan to multiple sites.
+     *
+     * P1-60: a fleet apply no longer runs synchronously inside the web request
+     * (which tied up the worker and could time out mid-way, leaving a partial
+     * apply). Instead we dispatch ONE queued {@see ApplyPlanToSite} job per site
+     * — each funnels through the same canonical {@see self::applyPlanToSite()} —
+     * and return immediately with a batch id the UI can poll for progress.
+     *
+     * @param  array<int, string>  $sections
+     * @return array{total: int, queued: int, batch_id: string}
      */
     public function applyToSites(MaintenancePlan $plan, Collection $sites, array $sections): array
     {
-        $pushed = 0;
         $total = $sites->count();
+        $batchId = (string) Str::uuid();
+
+        $this->initProgress($batchId, $total, $plan->name);
 
         foreach ($sites as $site) {
-            $needsSecurityPush = false;
-            $needsTweaksPush = false;
-
-            if (in_array('modules', $sections) && $plan->include_modules) {
-                $this->moduleConfigService->applyPlan($site, $plan);
-                $this->applyBackupConfigFromPlan($plan, $site);
-            }
-
-            if (in_array('security', $sections) && $plan->include_security && ! empty($plan->security_settings)) {
-                $this->applySecuritySettings($plan->security_settings, $site);
-                $needsSecurityPush = true;
-            }
-
-            if (in_array('tweaks', $sections) && $plan->include_tweaks && ! empty($plan->tweak_settings)) {
-                $this->applyTweakSettings($plan->tweak_settings, $site);
-                $needsTweaksPush = true;
-            }
-
-            if ($site->is_connected) {
-                if ($needsSecurityPush) {
-                    $this->securityService->pushToPlugin($site);
-                }
-                if ($needsTweaksPush) {
-                    $this->tweaksService->pushToPlugin($site);
-                }
-                $pushed++;
-            }
+            ApplyPlanToSite::dispatch($site, $plan, $sections, $batchId);
         }
 
         return [
             'total' => $total,
-            'pushed' => $pushed,
-            'disconnected' => $total - $pushed,
+            'queued' => $total,
+            'batch_id' => $batchId,
         ];
+    }
+
+    /**
+     * Canonical per-site plan application (P1-58).
+     *
+     * This is the SINGLE source of truth for "apply this plan to this site".
+     * The new-site created hook, the bulk UI apply, and the apply-to-unassigned
+     * path all funnel through here so a managed site can never drift depending
+     * on which entry point touched it. It applies modules AND security AND
+     * tweaks AND the backup schedule, honoring the plan's include_* flags and
+     * the bulk-safe security whitelist (enforced inside applySecuritySettings).
+     *
+     * @param  array<int, string>|null  $sections  Sections to apply; null = every section the plan carries.
+     * @return array{connected: bool, pushed: bool}
+     */
+    public function applyPlanToSite(Site $site, MaintenancePlan $plan, ?array $sections = null): array
+    {
+        $sections ??= $this->planSections($plan);
+
+        $needsSecurityPush = false;
+        $needsTweaksPush = false;
+
+        if (in_array('modules', $sections, true) && $plan->include_modules) {
+            // Materializes module rows (uptime/backup/dns/…) incl. the default-on
+            // DNS monitor with jitter, and applies the backup schedule.
+            $this->moduleConfigService->applyPlan($site, $plan);
+            $this->applyBackupConfigFromPlan($plan, $site);
+        }
+
+        if (in_array('security', $sections, true) && $plan->include_security && ! empty($plan->security_settings)) {
+            $this->applySecuritySettings($plan->security_settings, $site);
+            $needsSecurityPush = true;
+        }
+
+        if (in_array('tweaks', $sections, true) && $plan->include_tweaks && ! empty($plan->tweak_settings)) {
+            $this->applyTweakSettings($plan->tweak_settings, $site);
+            $needsTweaksPush = true;
+        }
+
+        $pushed = false;
+        if ($site->is_connected) {
+            if ($needsSecurityPush) {
+                $this->securityService->pushToPlugin($site);
+            }
+            if ($needsTweaksPush) {
+                $this->tweaksService->pushToPlugin($site);
+            }
+            $pushed = true;
+        }
+
+        return [
+            'connected' => (bool) $site->is_connected,
+            'pushed' => $pushed,
+        ];
+    }
+
+    /**
+     * The sections a plan is configured to carry, derived from its include_* flags.
+     *
+     * @return array<int, string>
+     */
+    private function planSections(MaintenancePlan $plan): array
+    {
+        $sections = [];
+
+        if ($plan->include_modules) {
+            $sections[] = 'modules';
+        }
+        if ($plan->include_security) {
+            $sections[] = 'security';
+        }
+        if ($plan->include_tweaks) {
+            $sections[] = 'tweaks';
+        }
+
+        return $sections;
+    }
+
+    // --- Fleet-apply progress (P1-60) ---------------------------------------
+
+    /**
+     * Cache key holding the progress record for a fleet apply batch.
+     */
+    public static function progressKey(string $batchId): string
+    {
+        return "plan-apply-progress:{$batchId}";
+    }
+
+    /**
+     * Cache key holding the last failure reason for a per-site apply.
+     */
+    public static function failureKey(int $planId, int $siteId): string
+    {
+        return "plan-apply-failure:{$planId}:{$siteId}";
+    }
+
+    /**
+     * Read the progress record for a fleet apply batch (or null once expired).
+     *
+     * @return array{total: int, done: int, failed: int, plan: string, complete: bool}|null
+     */
+    public static function progress(string $batchId): ?array
+    {
+        $record = Cache::get(self::progressKey($batchId));
+
+        if (! is_array($record)) {
+            return null;
+        }
+
+        $record['complete'] = ($record['done'] ?? 0) >= ($record['total'] ?? 0);
+
+        return $record;
+    }
+
+    /**
+     * Record a per-site apply outcome against a batch (best-effort progress).
+     */
+    public static function recordProgress(string $batchId, bool $failed): void
+    {
+        $key = self::progressKey($batchId);
+        $record = Cache::get($key);
+
+        if (! is_array($record)) {
+            return;
+        }
+
+        $record['done'] = ($record['done'] ?? 0) + 1;
+        if ($failed) {
+            $record['failed'] = ($record['failed'] ?? 0) + 1;
+        }
+
+        Cache::put($key, $record, now()->addHours(6));
+    }
+
+    private function initProgress(string $batchId, int $total, string $planName): void
+    {
+        Cache::put(self::progressKey($batchId), [
+            'total' => $total,
+            'done' => 0,
+            'failed' => 0,
+            'plan' => $planName,
+        ], now()->addHours(6));
     }
 
     /**

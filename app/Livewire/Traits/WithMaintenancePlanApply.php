@@ -24,6 +24,9 @@ trait WithMaintenancePlanApply
 
     public bool $applyTweaks = true;
 
+    /** Batch id of the most recent fleet apply, for progress polling (P1-60). */
+    public ?string $applyBatchId = null;
+
     public function startApply(int $planId): void
     {
         $plan = MaintenancePlan::with('planModules')->findOrFail($planId);
@@ -83,18 +86,37 @@ trait WithMaintenancePlanApply
             return;
         }
 
+        // P1-60: applying now enqueues one job per site and returns immediately,
+        // so a large fleet can't tie up the web worker or time out mid-apply.
         $result = app(MaintenancePlanService::class)->applyToSites($plan, $targets, $sections);
 
         $this->backToList();
+        $this->applyBatchId = $result['batch_id'];
 
-        $message = "Plan '{$plan->name}' applied to {$result['total']} site(s).";
-        if ($result['pushed'] > 0) {
-            $message .= " Pushing to {$result['pushed']} connected site(s).";
+        $this->dispatch(
+            'notify',
+            type: 'success',
+            message: "Plan '{$plan->name}' queued for {$result['queued']} site(s). Applying in the background…",
+        );
+    }
+
+    /**
+     * Live progress of the most recent fleet apply, for the polling banner.
+     *
+     * @return array{total: int, done: int, failed: int, plan: string, complete: bool}|null
+     */
+    public function applyProgress(): ?array
+    {
+        if (! $this->applyBatchId) {
+            return null;
         }
-        if ($result['disconnected'] > 0) {
-            $message .= " {$result['disconnected']} disconnected site(s) will receive settings when connected.";
-        }
-        $this->dispatch('notify', type: 'success', message: $message);
+
+        return MaintenancePlanService::progress($this->applyBatchId);
+    }
+
+    public function dismissApplyProgress(): void
+    {
+        $this->applyBatchId = null;
     }
 
     public function updatedSelectAll(bool $value): void

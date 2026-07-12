@@ -115,7 +115,9 @@ class BulkSafeWhitelistTest extends TestCase
             ],
         ]);
 
-        app(MaintenancePlanService::class)->applyToSites($plan, collect([$target]), ['security']);
+        // The bulk path now queues one job per site; assert the canonical
+        // per-site operation those jobs invoke still filters dangerous keys.
+        app(MaintenancePlanService::class)->applyPlanToSite($target, $plan, ['security']);
 
         // Safe key applied.
         $this->assertDatabaseHas('security_settings', [
