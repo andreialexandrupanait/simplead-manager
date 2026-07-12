@@ -1,10 +1,10 @@
 @php
-    $domain = $data['domain'] ?? null;
-    $email = $data['email'] ?? null;
+    $dns = $data['dns'] ?? null;
+    $errors = $data['error_logs'] ?? null;
     $lang = $language ?? 'ro';
 
-    $showDomain = $domain && ($sectionOptions['infrastructure']['show_domain'] ?? true);
-    $showEmail = $email && ($sectionOptions['infrastructure']['show_email'] ?? true);
+    $showDns = ($dns['available'] ?? false) && ($sectionOptions['infrastructure']['show_dns'] ?? true);
+    $showErrors = ($errors['available'] ?? false) && ($sectionOptions['infrastructure']['show_error_logs'] ?? true);
 @endphp
 
 @include('reports.components.section-header', [
@@ -13,80 +13,109 @@
 ])
 
 <div class="infra-stack">
-    {{-- Domain Registration --}}
-    @if($showDomain)
+    {{-- DNS & Email Deliverability --}}
+    @if($showDns)
         @php
-            $domDaysColor = ($domain['days_remaining'] ?? 0) > 60 ? '#10b981' : (($domain['days_remaining'] ?? 0) > 14 ? '#f59e0b' : '#ef4444');
+            $dmarcOk = (bool) ($dns['has_dmarc'] ?? false);
+            $recordCount = collect($dns['current_records'] ?? [])->flatten()->count();
         @endphp
         <div class="infra-card">
             <div class="infra-card-header">
-                <span class="infra-card-title">{{ __('report.tech_domain_subcard', [], $lang) }}</span>
+                <span class="infra-card-title">{{ __('report.infra_dns_subcard', [], $lang) }}</span>
             </div>
             <div class="infra-card-body">
                 <div class="infra-fields">
                     <div class="infra-field">
-                        <span class="field-label">{{ __('report.domain_registrar', [], $lang) }}</span>
-                        <span class="field-value">{{ $domain['registrar'] ?? '—' }}</span>
+                        <span class="field-label">{{ __('report.infra_dns_domain', [], $lang) }}</span>
+                        <span class="field-value">{{ $dns['domain'] ?? '—' }}</span>
                     </div>
                     <div class="infra-field">
-                        <span class="field-label">{{ __('report.domain_expires', [], $lang) }}</span>
-                        <span class="field-value">{{ $domain['expires_at'] ?? '—' }}</span>
+                        <span class="field-label">{{ __('report.infra_dns_records', [], $lang) }}</span>
+                        <span class="field-value">{{ $recordCount }}</span>
                     </div>
                     <div class="infra-field">
-                        <span class="field-label">{{ __('report.domain_days_remaining', [], $lang) }}</span>
-                        <span class="field-value" style="color: {{ $domDaysColor }};">{{ $domain['days_remaining'] ?? '—' }}</span>
+                        <span class="field-label">{{ __('report.infra_dns_changes', [], $lang) }}</span>
+                        <span class="field-value">{{ $dns['changes_count'] ?? 0 }}</span>
                     </div>
-                    <div class="infra-field">
-                        <span class="field-label">{{ __('report.domain_dns_provider', [], $lang) }}</span>
-                        <span class="field-value">{{ $domain['dns_provider'] ?? '—' }}</span>
-                    </div>
+                </div>
+
+                <div class="email-check">
+                    <span class="email-indicator {{ ($dns['has_spf'] ?? false) ? 'pass' : 'fail' }}">
+                        {{ ($dns['has_spf'] ?? false) ? '✓' : '✗' }}
+                    </span>
+                    <span>
+                        {{ __('report.email_spf', [], $lang) }}
+                        — <span class="{{ ($dns['has_spf'] ?? false) ? 'email-text-pass' : 'email-text-fail' }}">{{ ($dns['has_spf'] ?? false) ? __('report.email_configured', [], $lang) : __('report.email_missing', [], $lang) }}</span>
+                    </span>
+                </div>
+                <div class="email-check">
+                    <span class="email-indicator {{ ($dns['has_dkim'] ?? false) ? 'pass' : 'fail' }}">
+                        {{ ($dns['has_dkim'] ?? false) ? '✓' : '✗' }}
+                    </span>
+                    <span>
+                        {{ __('report.email_dkim', [], $lang) }}
+                        — <span class="{{ ($dns['has_dkim'] ?? false) ? 'email-text-pass' : 'email-text-fail' }}">{{ ($dns['has_dkim'] ?? false) ? __('report.email_configured', [], $lang) : __('report.email_missing', [], $lang) }}</span>
+                    </span>
+                </div>
+                <div class="email-check">
+                    <span class="email-indicator {{ $dmarcOk ? 'pass' : 'fail' }}">
+                        {{ $dmarcOk ? '✓' : '⚠' }}
+                    </span>
+                    <span>
+                        {{ __('report.email_dmarc', [], $lang) }}
+                        — <span class="{{ $dmarcOk ? 'email-text-pass' : 'email-text-fail' }}">{{ $dmarcOk ? __('report.email_configured', [], $lang) : __('report.email_missing', [], $lang) }}</span>
+                    </span>
                 </div>
             </div>
         </div>
     @endif
 
-    {{-- Email Deliverability --}}
-    @if($showEmail)
+    {{-- PHP Error Log --}}
+    @if($showErrors)
         @php
-            $dmarcIsEffective = ($email['dmarc_exists'] ?? false) && !in_array(strtolower($email['dmarc_policy'] ?? ''), ['none', '']);
+            $errTotal = (int) ($errors['total_count'] ?? 0);
+            $errColor = ($errors['fatal_count'] ?? 0) > 0 ? '#ef4444' : (($errors['unresolved_count'] ?? 0) > 0 ? '#f59e0b' : '#10b981');
         @endphp
         <div class="infra-card">
             <div class="infra-card-header">
-                <span class="infra-card-title">{{ __('report.tech_email_subcard', [], $lang) }}</span>
-                @if(($email['score'] ?? null) !== null)
-                    <span style="font-size: 9pt; font-weight: 700; color: {{ ($email['score'] ?? 0) >= 80 ? '#10b981' : (($email['score'] ?? 0) >= 50 ? '#f59e0b' : '#ef4444') }};">{{ $email['score'] }}/100</span>
-                @endif
+                <span class="infra-card-title">{{ __('report.infra_errors_subcard', [], $lang) }}</span>
+                <span style="font-size: 9pt; font-weight: 700; color: {{ $errColor }};">{{ $errTotal }}</span>
             </div>
             <div class="infra-card-body">
-                <div class="email-check">
-                    <span class="email-indicator {{ ($email['spf_exists'] ?? false) ? 'pass' : 'fail' }}">
-                        {{ ($email['spf_exists'] ?? false) ? '✓' : '✗' }}
-                    </span>
-                    <span>
-                        {{ __('report.email_spf', [], $lang) }}
-                        — <span class="{{ ($email['spf_exists'] ?? false) ? 'email-text-pass' : 'email-text-fail' }}">{{ ($email['spf_exists'] ?? false) ? __('report.email_configured', [], $lang) : __('report.email_missing', [], $lang) }}</span>
-                    </span>
+                <div class="infra-fields">
+                    <div class="infra-field">
+                        <span class="field-label">{{ __('report.infra_errors_total', [], $lang) }}</span>
+                        <span class="field-value">{{ $errTotal }}</span>
+                    </div>
+                    <div class="infra-field">
+                        <span class="field-label">{{ __('report.infra_errors_fatal', [], $lang) }}</span>
+                        <span class="field-value">{{ $errors['fatal_count'] ?? 0 }}</span>
+                    </div>
+                    <div class="infra-field">
+                        <span class="field-label">{{ __('report.infra_errors_warnings', [], $lang) }}</span>
+                        <span class="field-value">{{ $errors['warning_count'] ?? 0 }}</span>
+                    </div>
+                    <div class="infra-field">
+                        <span class="field-label">{{ __('report.infra_errors_unresolved', [], $lang) }}</span>
+                        <span class="field-value">{{ $errors['unresolved_count'] ?? 0 }}</span>
+                    </div>
                 </div>
-                <div class="email-check">
-                    <span class="email-indicator {{ ($email['dkim_exists'] ?? false) ? 'pass' : 'fail' }}">
-                        {{ ($email['dkim_exists'] ?? false) ? '✓' : '✗' }}
-                    </span>
-                    <span>
-                        {{ __('report.email_dkim', [], $lang) }}
-                        — <span class="{{ ($email['dkim_exists'] ?? false) ? 'email-text-pass' : 'email-text-fail' }}">{{ ($email['dkim_exists'] ?? false) ? __('report.email_configured', [], $lang) : __('report.email_missing', [], $lang) }}</span>
-                    </span>
-                </div>
-                <div class="email-check">
-                    <span class="email-indicator {{ $dmarcIsEffective ? 'pass' : 'fail' }}">
-                        {{ $dmarcIsEffective ? '✓' : '⚠' }}
-                    </span>
-                    <span>
-                        {{ __('report.email_dmarc', [], $lang) }}
-                        — <span class="{{ $dmarcIsEffective ? 'email-text-pass' : 'email-text-fail' }}">
-                            {{ ($email['dmarc_exists'] ?? false) ? ($email['dmarc_policy'] ?? __('report.email_configured', [], $lang)) : __('report.email_missing', [], $lang) }}
-                        </span>
-                    </span>
-                </div>
+
+                @if($errTotal === 0)
+                    <div class="email-check">
+                        <span class="email-indicator pass">✓</span>
+                        <span class="email-text-pass">{{ __('report.infra_errors_none', [], $lang) }}</span>
+                    </div>
+                @else
+                    @foreach(($errors['top_errors'] ?? []) as $err)
+                        <div class="email-check">
+                            <span class="email-indicator {{ ($err['level'] ?? '') === 'fatal' ? 'fail' : 'pass' }}">
+                                {{ ($err['level'] ?? '') === 'fatal' ? '✗' : '⚠' }}
+                            </span>
+                            <span>{{ \Illuminate\Support\Str::limit($err['message'] ?? '', 90) }} <strong>×{{ $err['count'] ?? 1 }}</strong></span>
+                        </div>
+                    @endforeach
+                @endif
             </div>
         </div>
     @endif

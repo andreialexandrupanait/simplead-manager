@@ -279,6 +279,18 @@ return [
     'email_configured' => 'Configured',
     'email_missing' => 'Missing',
 
+    // Infrastructure — DNS & error logs
+    'infra_dns_subcard' => 'DNS & Email Deliverability',
+    'infra_dns_domain' => 'Monitored Domain',
+    'infra_dns_records' => 'DNS Records Tracked',
+    'infra_dns_changes' => 'Changes This Period',
+    'infra_errors_subcard' => 'PHP Error Log',
+    'infra_errors_total' => 'Total Errors',
+    'infra_errors_fatal' => 'Fatal',
+    'infra_errors_warnings' => 'Warnings',
+    'infra_errors_unresolved' => 'Unresolved',
+    'infra_errors_none' => 'No errors recorded this period',
+
     // Section labels (new)
     'section_label_executive_snapshot' => 'Executive Snapshot',
     'section_label_recommendations' => 'Recommendations',

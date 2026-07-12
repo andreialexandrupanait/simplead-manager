@@ -359,3 +359,12 @@ Schedule::command('safe-updates:recover-stuck')
     ->everyFifteenMinutes()
     ->name('recover-stuck-safe-updates')
     ->onOneServer();
+
+// P2-05: recover reports whose worker died mid-render without running failed() —
+// an over-budget Gotenberg render that blows the job timeout leaves the row stuck
+// in 'generating' and the UI shows it in progress forever. The 45-min threshold is
+// above GenerateReport's timeout × tries envelope, so anything caught is dead.
+Schedule::command('reports:recover-stuck')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-reports')
+    ->onOneServer();

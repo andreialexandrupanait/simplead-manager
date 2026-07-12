@@ -12,10 +12,12 @@ class ReportDownloadController extends Controller
 {
     public function __invoke(Request $request, Report $report)
     {
-        // For authenticated routes, verify site ownership
+        // For authenticated routes, apply the single canonical rule: a user may
+        // download a report iff they may access its site (admins always; owners and
+        // client-assigned users included). Mirrors the bulk-download path.
         if ($request->routeIs('reports.download')) {
             $site = $report->site;
-            if (! $site || (! $request->user()->isAdmin() && $site->user_id !== $request->user()->id)) {
+            if (! $site || ! $request->user()->canAccessSite($site)) {
                 abort(403, 'Unauthorized.');
             }
         }

@@ -14,7 +14,11 @@ class BulkReportDownloadController extends Controller
 {
     public function __invoke(Request $request, Site $site)
     {
-        abort_unless($site->user_id === $request->user()->id, 403);
+        // Single canonical rule (matches the single-report download path): a user
+        // may download iff they may access the site — admins always, cross-tenant
+        // never. The previous owner-only check wrongly blocked admins and
+        // client-assigned users.
+        abort_unless($request->user()->canAccessSite($site), 403);
 
         $ids = array_filter(explode(',', $request->query('ids', '')));
         abort_if(empty($ids), 404);

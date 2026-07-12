@@ -52,6 +52,14 @@ return [
 
     'gotenberg' => [
         'url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
+        // Per-request HTTP timeout for a single Gotenberg render/merge call.
+        'timeout' => (int) env('GOTENBERG_TIMEOUT', 120),
+        // GenerateReport job timeout. A report performs up to four Gotenberg calls
+        // (cover + body + closing render, then merge), so the worst-case render
+        // budget is ~4 × timeout. This must exceed that budget with margin, yet
+        // stay below the reports supervisor timeout (600s) so the job's own timeout
+        // fires first with a clean failure rather than the worker being SIGKILLed.
+        'job_timeout' => (int) env('REPORT_JOB_TIMEOUT', 540),
     ],
 
     'unsplash' => [

@@ -94,6 +94,32 @@ class ReportDataGatherer
             $this->data['email'] = $result ?: null;
         }
 
+        // Infrastructure section: DNS (domain/email deliverability) + PHP error
+        // logs. These sub-gatherers are keyed 'dns' / 'error_logs' — NOT template
+        // section keys — so they were never invoked by the loop above, leaving the
+        // Infrastructure section permanently empty after SSL/domain monitoring was
+        // removed. Gather them whenever the template includes 'infrastructure'.
+        if (in_array('infrastructure', $sections)) {
+            foreach (['dns', 'error_logs'] as $infraKey) {
+                $infraGatherer = $this->findGatherer($infraKey);
+                if ($infraGatherer === null) {
+                    continue;
+                }
+
+                $result = $infraGatherer->gather(
+                    $this->site,
+                    $this->periodStart,
+                    $this->periodEnd,
+                    $this->currentSnapshot,
+                    $this->previousSnapshot,
+                    $this->chartService,
+                    $this->language,
+                );
+
+                $this->data[$infraKey] = $result ?: null;
+            }
+        }
+
         // Executive snapshot (aggregates already-gathered data; only when overview is included)
         if (in_array('overview', $sections)) {
             $snapshotGatherer = $this->findGatherer('executive_snapshot');
