@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings\Components;
 
+use App\Exceptions\SsrfException;
 use App\Livewire\Forms\ChannelFormData;
 use App\Models\NotificationChannel;
+use App\Services\Security\SsrfGuard;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -34,6 +36,18 @@ class ChannelForm extends Component
     public function save(): void
     {
         $this->form->validate();
+
+        // SSRF guard: reject a custom webhook URL that resolves to the internal
+        // network / loopback / metadata endpoint at save time.
+        if ($this->form->type === 'webhook') {
+            try {
+                app(SsrfGuard::class)->assertPublicUrl($this->form->webhookUrl);
+            } catch (SsrfException) {
+                $this->addError('form.webhookUrl', 'This webhook URL is not allowed — it points to a private or internal address.');
+
+                return;
+            }
+        }
 
         $config = match ($this->form->type) {
             'email' => ['address' => $this->form->emailAddress],

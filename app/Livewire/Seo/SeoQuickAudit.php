@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire\Seo;
 
 use App\Enums\SeoAuditStatus;
+use App\Exceptions\SsrfException;
 use App\Jobs\RunSeoAudit;
 use App\Models\SeoAudit;
 use App\Models\SeoMonitor;
 use App\Models\Site;
+use App\Services\Security\SsrfGuard;
 use App\Services\SeoAudit\SiteAuditService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
@@ -107,6 +109,16 @@ class SeoQuickAudit extends Component
         abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot run audits.');
 
         $this->validate(['url' => 'required|url|max:2048']);
+
+        // SSRF guard: a prospect URL is fully user-supplied and gets crawled
+        // server-side — reject internal / loopback / metadata targets.
+        try {
+            app(SsrfGuard::class)->assertPublicUrl($this->url);
+        } catch (SsrfException) {
+            $this->addError('url', 'This URL cannot be audited — it points to a private or internal address.');
+
+            return;
+        }
 
         if (! RateLimiter::attempt('seo-quick-audit', 1, fn () => true, 30)) {
             $this->dispatch('notify', type: 'warning', message: 'Please wait before running another audit.');
