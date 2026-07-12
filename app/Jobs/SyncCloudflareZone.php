@@ -11,6 +11,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -49,31 +50,36 @@ class SyncCloudflareZone implements ShouldBeUnique, ShouldQueue
 
         $service = new CloudflareService($connection);
 
-        try {
-            $zone = $service->getZoneDetails($this->siteCloudflare->zone_id);
+        // P1-57: do NOT swallow exceptions. A genuine fetch failure must surface
+        // so Laravel's retry (tries/backoff) engages and failed() fires once
+        // attempts are exhausted — instead of the job reporting false success on
+        // the first failed attempt and leaving the data silently stale.
+        $zone = $service->getZoneDetails($this->siteCloudflare->zone_id);
 
-            if (empty($zone)) {
-                return;
-            }
-
-            $this->siteCloudflare->update([
-                'status' => $zone['status'] ?? $this->siteCloudflare->status,
-                'is_paused' => $zone['paused'] ?? $this->siteCloudflare->is_paused,
-                'plan_type' => $zone['plan']['legacy_id'] ?? $zone['plan']['name'] ?? $this->siteCloudflare->plan_type,
-            ]);
-
-            // Fetch SSL mode
-            try {
-                $sslMode = $service->getSslMode($this->siteCloudflare->zone_id);
-                $this->siteCloudflare->update(['ssl_mode' => $sslMode]);
-            } catch (RequestException|\RuntimeException $e) {
-                // Non-critical
-            }
-        } catch (\Exception $e) {
-            if ($this->attempts() >= $this->tries) {
-                throw $e;
-            }
+        if (empty($zone)) {
+            return;
         }
+
+        // P1-61: carry each field forward when Cloudflare omits it; never
+        // overwrite a stored value with a fabricated default from a failed fetch.
+        $updates = [
+            'status' => $zone['status'] ?? $this->siteCloudflare->status,
+            'is_paused' => $zone['paused'] ?? $this->siteCloudflare->is_paused,
+            'plan_type' => $zone['plan']['legacy_id'] ?? $zone['plan']['name'] ?? $this->siteCloudflare->plan_type,
+            'last_sync_at' => now(),
+        ];
+
+        // SSL mode is a non-critical sub-fetch. P1-61: if it fails, keep the last
+        // known ssl_mode (carry-forward) rather than persisting getSslMode()'s
+        // 'off' default, which would falsely report SSL as disabled in the UI and
+        // client reports. The zone update above still commits.
+        try {
+            $updates['ssl_mode'] = $service->getSslMode($this->siteCloudflare->zone_id);
+        } catch (RequestException|\RuntimeException|ConnectionException $e) {
+            // Carry forward the last known ssl_mode.
+        }
+
+        $this->siteCloudflare->update($updates);
     }
 
     public function failed(?\Throwable $exception): void
