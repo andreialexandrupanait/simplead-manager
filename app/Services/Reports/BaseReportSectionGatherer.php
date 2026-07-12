@@ -5,14 +5,59 @@ declare(strict_types=1);
 namespace App\Services\Reports;
 
 use App\Contracts\ReportSectionGathererInterface;
+use Carbon\Carbon;
 
 abstract class BaseReportSectionGatherer implements ReportSectionGathererInterface
 {
+    /**
+     * P2-03: a cached Google dataset older than this (relative to generation time)
+     * is considered stale even if it nominally covers the report period.
+     */
+    protected const GOOGLE_STALE_AFTER_DAYS = 7;
+
     protected string $sectionKey = '';
 
     public function supports(string $sectionKey): bool
     {
         return $this->sectionKey === $sectionKey;
+    }
+
+    // ─── Google Data Freshness (P2-03) ───────────────────────────────
+
+    /**
+     * Describe how well a cached Google (Analytics / Search Console) dataset matches
+     * the report period so the report can label the actual window and flag stale or
+     * wrong-window data, instead of silently presenting a rolling 28-day cache as if
+     * it were the report's real period.
+     *
+     * @return array{data_period_start: ?string, data_period_end: ?string, data_covers_period: bool, data_is_stale: bool, data_fetched_at: ?string}
+     */
+    protected function googleDataMeta(
+        ?Carbon $dataStart,
+        ?Carbon $dataEnd,
+        ?Carbon $fetchedAt,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+    ): array {
+        $coversPeriod = $dataStart !== null
+            && $dataEnd !== null
+            && $dataStart->lessThanOrEqualTo($periodStart)
+            && $dataEnd->greaterThanOrEqualTo($periodEnd);
+
+        // Stale when: the data does not cover the report period, OR it was fetched
+        // before the period ended (so it cannot reflect the full window), OR it is
+        // simply old relative to when the report is being generated.
+        $isStale = ! $coversPeriod
+            || ($fetchedAt !== null && $fetchedAt->lessThan($periodEnd))
+            || ($fetchedAt !== null && $fetchedAt->lessThan(Carbon::now()->subDays(static::GOOGLE_STALE_AFTER_DAYS)));
+
+        return [
+            'data_period_start' => $dataStart?->format('d.m.Y'),
+            'data_period_end' => $dataEnd?->format('d.m.Y'),
+            'data_covers_period' => $coversPeriod,
+            'data_is_stale' => $isStale,
+            'data_fetched_at' => $fetchedAt?->format('d.m.Y H:i'),
+        ];
     }
 
     // ─── Trend Helpers ───────────────────────────────────────────────

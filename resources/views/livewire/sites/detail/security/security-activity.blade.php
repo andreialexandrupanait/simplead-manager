@@ -3,24 +3,31 @@
 
     @include('livewire.sites.detail.security.partials.security-tabs', ['site' => $site])
 
-    {{-- Failed Login Stats --}}
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-ui.stat-card
-            label="{{ __('Failed Logins') }}"
-            :value="$this->failedLoginStats['total']"
-            description="{{ __('Last') }} {{ $filterDays }} {{ __('days') }}"
-        />
-        <x-ui.stat-card
-            label="{{ __('Unique IPs') }}"
-            :value="$this->failedLoginStats['unique_ips']"
-            description="{{ __('Distinct source IPs') }}"
-        />
-        <x-ui.stat-card
-            label="{{ __('Unique Usernames') }}"
-            :value="$this->failedLoginStats['unique_usernames']"
-            description="{{ __('Targeted accounts') }}"
-        />
-    </div>
+    {{-- Failed Login Stats — only when the connector actually reports failed_login
+         events (P2-45). Otherwise the cards would show permanent, misleading zeros. --}}
+    @if($this->failedLoginAvailable)
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <x-ui.stat-card
+                label="{{ __('Failed Logins') }}"
+                :value="$this->failedLoginStats['total']"
+                description="{{ __('Last') }} {{ $filterDays }} {{ __('days') }}"
+            />
+            <x-ui.stat-card
+                label="{{ __('Unique IPs') }}"
+                :value="$this->failedLoginStats['unique_ips']"
+                description="{{ __('Distinct source IPs') }}"
+            />
+            <x-ui.stat-card
+                label="{{ __('Unique Usernames') }}"
+                :value="$this->failedLoginStats['unique_usernames']"
+                description="{{ __('Targeted accounts') }}"
+            />
+        </div>
+    @else
+        <div class="mb-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+            {{ __('Failed-login tracking is not available for this site yet — it requires a newer version of the SimpleAd connector plugin.') }}
+        </div>
+    @endif
 
     {{-- Filters --}}
     <x-ui.card class="mb-6">

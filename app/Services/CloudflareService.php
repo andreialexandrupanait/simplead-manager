@@ -314,13 +314,28 @@ class CloudflareService
 
     public function getAnalytics(string $zoneId, string $since): array
     {
+        $minutes = abs((int) $since);
+        $end = now()->utc();
+        $start = $end->copy()->subMinutes($minutes);
+
+        return $this->getAnalyticsForRange($zoneId, $start, $end);
+    }
+
+    /**
+     * Fetch zone analytics for an explicit [start, end] window. P2-02: the monthly
+     * snapshot aggregator uses this to populate the Cloudflare report columns for a
+     * specific calendar month instead of a now-anchored rolling window.
+     */
+    public function getAnalyticsForRange(string $zoneId, \Carbon\Carbon $start, \Carbon\Carbon $end): array
+    {
         // P2-51: the zone id is interpolated straight into the GraphQL query,
         // so validate it before it can manipulate the query.
         $this->assertValidZoneId($zoneId);
 
-        $minutes = abs((int) $since);
-        $end = now()->utc();
-        $start = $end->copy()->subMinutes($minutes);
+        $start = $start->copy()->utc();
+        $end = $end->copy()->utc();
+
+        $minutes = (int) $start->diffInMinutes($end);
 
         $startIso = $start->toIso8601String();
         $endIso = $end->toIso8601String();

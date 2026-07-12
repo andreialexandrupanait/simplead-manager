@@ -44,6 +44,22 @@ class SecurityActivity extends Component
         return app(SecurityActivityService::class)->getFailedLoginStats($this->site, $this->filterDays);
     }
 
+    /**
+     * P2-45: the connector does not yet emit `failed_login` events, so the stats
+     * panel would otherwise render permanent, misleading zeros. Treat the presence
+     * of ANY failed_login row (ever) as the capability signal: while none exist we
+     * hide the panel and show an explicit "not available" notice instead of fake
+     * data. Once a connector version starts logging failed logins, the panel
+     * appears automatically.
+     */
+    #[Computed]
+    public function failedLoginAvailable(): bool
+    {
+        return SecurityActivityLog::where('site_id', $this->site->id)
+            ->where('event_type', 'failed_login')
+            ->exists();
+    }
+
     #[Computed]
     public function eventTypes(): array
     {

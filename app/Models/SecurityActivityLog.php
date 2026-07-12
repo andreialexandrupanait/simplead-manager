@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array|null $details
  * @property \Illuminate\Support\Carbon $occurred_at
  * @property \Illuminate\Support\Carbon $created_at
+ * @property string|null $dedup_hash
  * @property-read \App\Models\Site|null $site
  */
 class SecurityActivityLog extends Model
@@ -44,6 +45,7 @@ class SecurityActivityLog extends Model
         'details',
         'occurred_at',
         'created_at',
+        'dedup_hash',
     ];
 
     protected $casts = [

@@ -43,16 +43,29 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
         Log::info("Aggregating monthly snapshots for {$this->year}-{$this->month}");
 
-        $this->aggregateUptime($start, $end);
-        $this->aggregateBackups($start, $end);
-        $this->aggregateUpdates($start, $end);
-        $this->aggregateSecurity($start, $end);
-        $this->aggregatePerformance($start, $end);
-        $this->aggregateAnalytics();
-        $this->aggregateSearchConsole();
-        $this->aggregateIncidents($start, $end);
+        // Each section is isolated: one section failing (e.g. a stale query or a
+        // Cloudflare API error) must not abort the whole snapshot build and leave
+        // every other column unpopulated, as a single crash previously did.
+        $this->runStep('uptime', fn () => $this->aggregateUptime($start, $end));
+        $this->runStep('backups', fn () => $this->aggregateBackups($start, $end));
+        $this->runStep('updates', fn () => $this->aggregateUpdates($start, $end));
+        $this->runStep('security', fn () => $this->aggregateSecurity($start, $end));
+        $this->runStep('performance', fn () => $this->aggregatePerformance($start, $end));
+        $this->runStep('analytics', fn () => $this->aggregateAnalytics());
+        $this->runStep('search_console', fn () => $this->aggregateSearchConsole());
+        $this->runStep('cloudflare', fn () => $this->aggregateCloudflare($start, $end));
+        $this->runStep('incidents', fn () => $this->aggregateIncidents($start, $end));
 
         Log::info("Monthly snapshot aggregation complete for {$this->year}-{$this->month}");
+    }
+
+    private function runStep(string $name, callable $step): void
+    {
+        try {
+            $step();
+        } catch (\Throwable $e) {
+            Log::warning("Monthly snapshot aggregation step '{$name}' failed for {$this->year}-{$this->month}: {$e->getMessage()}");
+        }
     }
 
     private function aggregateUptime(Carbon $start, Carbon $end): void
@@ -105,10 +118,14 @@ class AggregateMonthlySnapshots implements ShouldQueue
 
     private function aggregateUpdates(Carbon $start, Carbon $end): void
     {
+        // update_logs has no created_at column ($timestamps = false); the applied
+        // timestamp is performed_at. Using created_at crashed the entire monthly
+        // aggregation before it could write any snapshot columns (incl. the new
+        // Cloudflare ones below), so the report snapshot was never built.
         $rows = DB::select('
             SELECT site_id, COUNT(*) as applied
             FROM update_logs
-            WHERE created_at BETWEEN ? AND ?
+            WHERE performed_at BETWEEN ? AND ?
             GROUP BY site_id
         ', [$start, $end]);
 
@@ -207,6 +224,59 @@ class AggregateMonthlySnapshots implements ShouldQueue
                 'search_console_clicks' => $data['clicks'] ?? null,
                 'search_console_impressions' => $data['impressions'] ?? null,
                 'search_console_avg_position' => $data['position'] ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * P2-02: the Cloudflare report section reads cloudflare_* snapshot columns that
+     * nothing ever populated, so it always rendered "not available". Fill them from
+     * the real zone analytics the app already has access to (requests, bandwidth,
+     * cache hit ratio) for this exact month. Best-effort per site: a zone that fails
+     * or has no data for the window leaves its columns null, which the gatherer
+     * renders gracefully rather than as fake zeros.
+     */
+    private function aggregateCloudflare(Carbon $start, Carbon $end): void
+    {
+        $zones = \App\Models\SiteCloudflare::with('cloudflareConnection')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($zones as $zone) {
+            $connection = $zone->cloudflareConnection;
+
+            if (! $connection || ! $connection->is_valid) {
+                continue;
+            }
+
+            try {
+                $service = new \App\Services\CloudflareService($connection);
+                $analytics = $service->getAnalyticsForRange($zone->zone_id, $start, $end);
+            } catch (\Throwable $e) {
+                Log::warning("Cloudflare snapshot aggregation failed for site {$zone->site_id}: {$e->getMessage()}");
+
+                continue;
+            }
+
+            $totals = $analytics['totals'] ?? [];
+            $requests = (int) ($totals['requests']['all'] ?? 0);
+            $cachedRequests = (int) ($totals['requests']['cached'] ?? 0);
+            $bandwidth = (int) ($totals['bandwidth']['all'] ?? 0);
+
+            // No traffic in the window → nothing meaningful to store; leave null so
+            // the report omits the metrics rather than showing a fabricated zero.
+            if ($requests <= 0 && $bandwidth <= 0) {
+                continue;
+            }
+
+            $cacheHitRatio = $requests > 0
+                ? round($cachedRequests / $requests * 100, 2)
+                : null;
+
+            $this->upsert($zone->site_id, [
+                'cloudflare_requests' => $requests,
+                'cloudflare_bandwidth_bytes' => $bandwidth,
+                'cloudflare_cache_hit_ratio' => $cacheHitRatio,
             ]);
         }
     }
