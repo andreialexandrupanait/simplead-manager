@@ -119,6 +119,13 @@ class NotificationDropdown extends Component
     public function retrySiteBackup(int $siteId): void
     {
         $site = Site::findOrFail($siteId);
+
+        // Dispatching a full backup is a write — block Viewers and scope to
+        // sites the user may actually touch (P1-04).
+        $user = auth()->user();
+        abort_if((bool) $user?->isViewer(), 403, 'Viewers cannot trigger backups.');
+        abort_unless((bool) $user?->canAccessSite($site), 403, 'You do not have access to this site.');
+
         CreateBackup::dispatch($site, 'full', 'manual');
 
         Cache::forget($this->alertsCacheKey());
@@ -130,13 +137,18 @@ class NotificationDropdown extends Component
 
     public function retryFailedBackups(): void
     {
+        $user = auth()->user();
+        abort_if((bool) $user?->isViewer(), 403, 'Viewers cannot trigger backups.');
+
         $failedSiteIds = Backup::whereHas('site')
             ->where('status', 'failed')
             ->where('created_at', '>=', now()->subDay())
             ->pluck('site_id')
             ->unique();
 
-        $sites = Site::whereIn('id', $failedSiteIds)->get();
+        // Only retry sites the user may access — never fan a bulk retry across
+        // other tenants' sites (P1-04).
+        $sites = Site::whereIn('id', $failedSiteIds)->visibleTo($user)->get();
 
         foreach ($sites as $site) {
             CreateBackup::dispatch($site, 'full', 'manual');

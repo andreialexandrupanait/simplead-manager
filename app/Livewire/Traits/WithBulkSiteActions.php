@@ -15,8 +15,7 @@ trait WithBulkSiteActions
     /** @return \Illuminate\Database\Eloquent\Builder<Site> */
     protected function scopedSiteQuery(array $siteIds): \Illuminate\Database\Eloquent\Builder
     {
-        return Site::whereIn('id', $siteIds)
-            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+        return Site::whereIn('id', $siteIds)->visibleTo(auth()->user());
     }
 
     public function bulkMoveToClient(int $clientId): void
@@ -109,8 +108,10 @@ trait WithBulkSiteActions
     public function bulkDelete(): void
     {
         abort_unless(auth()->user()->canDeleteResources(), 403);
-        $count = count($this->selectedSites);
-        Site::whereIn('id', $this->selectedSites)->delete();
+        // Only delete sites the acting user may actually see/modify — the
+        // selection is client-controlled, so an unscoped whereIn would let a
+        // non-admin delete another tenant's sites (canonical visibleTo scope).
+        $count = $this->scopedSiteQuery($this->selectedSites)->delete();
         $this->selectedSites = [];
         unset($this->sites, $this->stats);
         $this->dispatch('notify', type: 'success', message: "{$count} sites deleted.");

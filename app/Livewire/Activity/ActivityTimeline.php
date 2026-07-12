@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Livewire\Activity;
 
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\ActivityLog;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class ActivityTimeline extends Component
 {
-    use WithPagination;
+    use WithPagination, WithVisibleSites;
 
     public string $filter = 'all';
 
@@ -35,10 +37,32 @@ class ActivityTimeline extends Component
         'retention' => 'Cleanup',
     ];
 
+    /**
+     * Restrict the timeline to activity the acting user may see: events on a
+     * visible site (owned or via an assigned client), plus their own app-level
+     * events (no site attached). Admins are unrestricted. Without this, every
+     * tenant's activity leaked onto the global timeline (P1-02).
+     */
+    private function applyVisibility(Builder $query): Builder
+    {
+        $ids = $this->visibleSiteIds();
+
+        if ($ids === null) {
+            return $query;
+        }
+
+        $userId = auth()->id();
+
+        return $query->where(function (Builder $q) use ($ids, $userId) {
+            $q->whereIn('site_id', $ids)
+                ->orWhere(fn (Builder $own) => $own->whereNull('site_id')->where('user_id', $userId));
+        });
+    }
+
     #[Computed]
     public function stats(): array
     {
-        $baseQuery = ActivityLog::query()
+        $baseQuery = $this->applyVisibility(ActivityLog::query())
             ->where('created_at', '>=', $this->dateStart());
 
         return [
@@ -89,7 +113,7 @@ class ActivityTimeline extends Component
 
     public function render()
     {
-        $events = ActivityLog::query()
+        $events = $this->applyVisibility(ActivityLog::query())
             ->with(['site', 'user'])
             ->where('created_at', '>=', $this->dateStart())
             ->when($this->filter !== 'all', fn ($q) => $q->where('type', $this->filter))

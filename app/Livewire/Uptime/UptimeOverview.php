@@ -6,6 +6,7 @@ namespace App\Livewire\Uptime;
 
 use App\Jobs\CheckUptime;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use Livewire\Attributes\On;
@@ -15,7 +16,7 @@ use Livewire\WithPagination;
 
 class UptimeOverview extends Component
 {
-    use WithPagination, WithSiteAuthorization;
+    use WithPagination, WithSiteAuthorization, WithVisibleSites;
 
     public string $search = '';
 
@@ -38,7 +39,10 @@ class UptimeOverview extends Component
 
     public function getCountsProperty(): array
     {
+        $ids = $this->visibleSiteIds();
+
         $counts = UptimeMonitor::whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN current_state = 'up' THEN 1 ELSE 0 END) as up,
@@ -127,14 +131,21 @@ class UptimeOverview extends Component
 
     public function getSitesWithoutMonitorCountProperty(): int
     {
-        return Site::whereDoesntHave('uptimeMonitor')->count();
+        return Site::whereDoesntHave('uptimeMonitor')
+            ->visibleTo(auth()->user())
+            ->count();
     }
 
     public function addMonitorsForAllSites(): void
     {
         abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot modify sites.');
 
-        $sites = Site::whereDoesntHave('uptimeMonitor')->get();
+        // Only create monitors for sites the acting user may modify — the
+        // action previously spun up monitors + probes for every tenant's sites
+        // (P1-04 / U-04). Admins keep fleet-wide reach via visibleTo.
+        $sites = Site::whereDoesntHave('uptimeMonitor')
+            ->visibleTo(auth()->user())
+            ->get();
         $created = 0;
 
         foreach ($sites as $site) {
@@ -162,8 +173,11 @@ class UptimeOverview extends Component
 
     public function render()
     {
+        $ids = $this->visibleSiteIds();
+
         $monitors = UptimeMonitor::query()
             ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('uptime_monitors.site_id', $ids))
             ->with('site')
             ->when($this->search, function ($q) {
                 $escaped = '%'.$this->escapeLike($this->search).'%';

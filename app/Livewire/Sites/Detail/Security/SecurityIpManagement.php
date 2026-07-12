@@ -214,6 +214,10 @@ class SecurityIpManagement extends Component
 
     public function verifySettings(): void
     {
+        // Mutates applied_at/failed_at and can trigger a re-push — a write, so
+        // block Viewers like every sibling action (P1-04).
+        $this->authorizeSiteModification($this->site);
+
         try {
             $api = app(\App\Services\WordPressApiServiceFactory::class)->make($this->site);
             $response = $api->request('GET', '/security-state');

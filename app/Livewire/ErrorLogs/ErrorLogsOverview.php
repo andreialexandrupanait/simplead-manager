@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\ErrorLogs;
 
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\PhpErrorLog;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -12,7 +13,7 @@ use Livewire\WithPagination;
 
 class ErrorLogsOverview extends Component
 {
-    use WithPagination;
+    use WithPagination, WithVisibleSites;
 
     public string $filter = 'all';
 
@@ -28,14 +29,11 @@ class ErrorLogsOverview extends Component
      */
     protected function accessibleErrorLogs(): \Illuminate\Database\Eloquent\Builder
     {
-        $user = auth()->user();
         $query = PhpErrorLog::query();
 
-        if (! $user?->isAdmin()) {
-            $query->whereHas('site', function ($q) use ($user) {
-                $q->where('user_id', $user?->id)
-                    ->orWhereIn('client_id', $user ? $user->assignedClients()->select('clients.id') : []);
-            });
+        $ids = $this->visibleSiteIds();
+        if ($ids !== null) {
+            $query->whereIn('site_id', $ids);
         }
 
         return $query;
@@ -58,7 +56,11 @@ class ErrorLogsOverview extends Component
     {
         $log = PhpErrorLog::with('site')->findOrFail($id);
 
-        abort_unless($log->site && auth()->user()?->canAccessSite($log->site), 403);
+        // Resolving hides a fatal from the unresolved stats + issues feed — a
+        // write. Block Viewers (P1-04) in addition to the cross-tenant check.
+        $user = auth()->user();
+        abort_if((bool) $user?->isViewer(), 403, 'Viewers cannot resolve error logs.');
+        abort_unless($log->site && $user?->canAccessSite($log->site), 403);
 
         $log->update(['is_resolved' => true]);
         unset($this->stats);

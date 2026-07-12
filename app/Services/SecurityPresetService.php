@@ -26,6 +26,12 @@ class SecurityPresetService
 
     public function createFromSite(Site $site, string $name, string $description = ''): SecurityPreset
     {
+        // The source site's config is snapshotted into a (global) preset — a
+        // user must not be able to capture another owner's security settings
+        // by passing an arbitrary site id (P1-59).
+        $user = auth()->user();
+        abort_unless($user && $user->canAccessSite($site), 403, 'You do not have access to this site.');
+
         $settings = [];
 
         $siteSettings = SecuritySetting::where('site_id', $site->id)->get();

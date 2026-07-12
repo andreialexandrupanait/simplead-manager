@@ -8,6 +8,7 @@ use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
 use App\Livewire\Traits\WithTableFilters;
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
@@ -19,7 +20,7 @@ use Livewire\Component;
 
 class BackupsOverview extends Component
 {
-    use WithSiteAuthorization, WithSorting, WithTableFilters;
+    use WithSiteAuthorization, WithSorting, WithTableFilters, WithVisibleSites;
 
     protected string $defaultSortBy = 'created_at';
 
@@ -29,7 +30,7 @@ class BackupsOverview extends Component
     #[Computed]
     public function siteHealthScores(): array
     {
-        $sites = Site::with('backupConfig')->get();
+        $sites = Site::with('backupConfig')->visibleTo(auth()->user())->get();
 
         if ($sites->isEmpty()) {
             return [];
@@ -85,11 +86,16 @@ class BackupsOverview extends Component
     #[Computed]
     public function stats(): array
     {
+        $ids = $this->visibleSiteIds();
+        $scoped = fn () => Backup::query()
+            ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids));
+
         return [
-            'total' => Backup::count(),
-            'completed' => Backup::where('status', 'completed')->count(),
-            'failed' => Backup::where('status', 'failed')->count(),
-            'in_progress' => Backup::whereIn('status', ['pending', 'in_progress'])->count(),
+            'total' => $scoped()->count(),
+            'completed' => $scoped()->where('status', 'completed')->count(),
+            'failed' => $scoped()->where('status', 'failed')->count(),
+            'in_progress' => $scoped()->whereIn('status', ['pending', 'in_progress'])->count(),
             'stale' => $this->staleSites->count(),
         ];
     }
@@ -101,7 +107,14 @@ class BackupsOverview extends Component
     #[Computed]
     public function backupHealth(): ?array
     {
-        return app(\App\Services\Backup\BackupHealthService::class)->aggregate(5);
+        // Non-admins only aggregate over the sites they can see; passing null
+        // for admins keeps the full-fleet average + bottom-N.
+        $user = auth()->user();
+        $siteIds = $user && ! $user->isAdmin()
+            ? Site::query()->visibleTo($user)->pluck('id')->all()
+            : null;
+
+        return app(\App\Services\Backup\BackupHealthService::class)->aggregate(5, $siteIds);
     }
 
     /**
@@ -113,6 +126,7 @@ class BackupsOverview extends Component
     public function staleSites()
     {
         return Site::query()
+            ->visibleTo(auth()->user())
             ->whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true))
             ->where(fn ($q) => $q
                 ->whereNull('last_backup_at')
@@ -246,7 +260,9 @@ class BackupsOverview extends Component
             return;
         }
 
+        $ids = $this->visibleSiteIds();
         $configs = BackupConfig::whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->where('is_enabled', true)
             ->with(['site', 'storageDestination'])
             ->get();
@@ -375,7 +391,10 @@ class BackupsOverview extends Component
             ])->layout('components.layouts.app', ['title' => 'Backups']);
         }
 
+        $ids = $this->visibleSiteIds();
         $backups = Backup::query()
+            ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('backups.site_id', $ids))
             ->with(['site.backupConfig', 'storageDestination'])
             ->when($this->search, function ($q) {
                 $escaped = '%'.$this->escapeLike($this->search).'%';

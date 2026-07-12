@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\ActivityLog;
 use App\Models\Client;
 use App\Models\PhpErrorLog;
@@ -13,6 +14,8 @@ use Livewire\Component;
 
 class GlobalSearch extends Component
 {
+    use WithVisibleSites;
+
     public string $query = '';
 
     public array $results = [];
@@ -35,12 +38,15 @@ class GlobalSearch extends Component
     private function performSearch(string $query): array
     {
         $results = [];
+        $user = auth()->user();
+        $isAdmin = (bool) $user?->isAdmin();
+        $ids = $this->visibleSiteIds();
 
         // Sites
         $sites = Site::where(function ($q) use ($query) {
             $q->where('name', 'ilike', "%{$query}%")
                 ->orWhere('url', 'ilike', "%{$query}%");
-        })->limit(5)->get();
+        })->visibleTo($user)->limit(5)->get();
 
         if ($sites->isNotEmpty()) {
             $results[] = [
@@ -58,7 +64,9 @@ class GlobalSearch extends Component
         $plugins = SitePlugin::where(function ($q) use ($query) {
             $q->where('name', 'ilike', "%{$query}%")
                 ->orWhere('slug', 'ilike', "%{$query}%");
-        })->with('site:id,name')->limit(5)->get();
+        })->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
+            ->with('site:id,name')->limit(5)->get();
 
         if ($plugins->isNotEmpty()) {
             $results[] = [
@@ -72,11 +80,15 @@ class GlobalSearch extends Component
             ];
         }
 
-        // Clients
+        // Clients — non-admins only see clients they're assigned to or that own
+        // a site visible to them.
         $clients = Client::where(function ($q) use ($query) {
             $q->where('name', 'ilike', "%{$query}%")
                 ->orWhere('company', 'ilike', "%{$query}%");
-        })->limit(5)->get();
+        })->when(! $isAdmin, fn ($q) => $q->where(function ($cq) use ($user, $ids) {
+            $cq->whereIn('id', $user ? $user->assignedClients()->select('clients.id') : [])
+                ->orWhereHas('sites', fn ($sq) => $sq->when($ids !== null, fn ($s) => $s->whereIn('sites.id', $ids)));
+        }))->limit(5)->get();
 
         if ($clients->isNotEmpty()) {
             $results[] = [
@@ -92,6 +104,8 @@ class GlobalSearch extends Component
 
         // PHP Error Logs
         $errors = PhpErrorLog::where('message', 'ilike', "%{$query}%")
+            ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->with('site:id,name')
             ->limit(5)
             ->get();
@@ -108,8 +122,9 @@ class GlobalSearch extends Component
             ];
         }
 
-        // Activity Logs
+        // Activity Logs — scope to the acting user's visible sites (admins see all).
         $activity = ActivityLog::where('title', 'ilike', "%{$query}%")
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->with('site:id,name')
             ->orderByDesc('created_at')
             ->limit(5)

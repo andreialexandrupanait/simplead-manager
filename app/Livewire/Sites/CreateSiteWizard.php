@@ -138,6 +138,8 @@ class CreateSiteWizard extends Component
 
     public function createClient(): void
     {
+        abort_unless((bool) auth()->user()?->canManageSites(), 403, 'Viewers cannot create clients.');
+
         $this->form->validateNewClient();
 
         $client = Client::create([
@@ -155,6 +157,10 @@ class CreateSiteWizard extends Component
 
     public function createSite(): void
     {
+        // Site creation spawns monitors/jobs via plan application — a write.
+        // Route has only `auth`; guard the role here (P1-04).
+        abort_unless((bool) auth()->user()?->canManageSites(), 403, 'Viewers cannot create sites.');
+
         $this->form->validate();
 
         $site = Site::create([

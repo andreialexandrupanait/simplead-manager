@@ -6,6 +6,7 @@ namespace App\Livewire\Reports;
 
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\Report;
 use App\Models\Site;
 use Livewire\Attributes\Url;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 
 class ReportsOverview extends Component
 {
-    use WithPagination, WithSiteAuthorization, WithSorting;
+    use WithPagination, WithSiteAuthorization, WithSorting, WithVisibleSites;
 
     protected string $defaultSortBy = 'created_at';
 
@@ -51,7 +52,7 @@ class ReportsOverview extends Component
             abort(403, 'Viewers cannot generate reports.');
         }
 
-        $sites = Site::where('is_connected', true)->get();
+        $sites = Site::where('is_connected', true)->visibleTo(auth()->user())->get();
         $template = \App\Models\ReportTemplate::where('is_default', true)->first();
         if (! $template) {
             $this->dispatch('notify', type: 'error', message: 'No default report template found.');
@@ -104,7 +105,9 @@ class ReportsOverview extends Component
 
     public function render()
     {
+        $ids = $this->visibleSiteIds();
         $reports = Report::with(['site.client', 'reportTemplate'])
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->when($this->search, fn ($q) => $q->where('title', 'ilike', '%'.$this->escapeLike($this->search).'%'))
             ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
             ->when($this->siteFilter, fn ($q) => $q->where('site_id', $this->siteFilter))
@@ -114,7 +117,7 @@ class ReportsOverview extends Component
             )
             ->paginate(20);
 
-        $sites = Site::get(['id', 'name']);
+        $sites = Site::query()->visibleTo(auth()->user())->get(['id', 'name']);
 
         return view('livewire.reports.reports-overview', [
             'reports' => $reports,
