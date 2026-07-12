@@ -60,8 +60,8 @@ class NotificationService
         // dropped) and the in-app record is still written below — nothing is lost.
         $deferChannels = $severity !== 'critical' && static::isQuietHours();
 
-        // Deduplication — skip if same event+site was sent recently
-        if (static::isDuplicate($event, $site->id)) {
+        // Deduplication — skip if same event+site+severity was sent recently
+        if (static::isDuplicate($event, $site->id, $severity)) {
             return;
         }
 
@@ -225,8 +225,8 @@ class NotificationService
         // typically critical and are never deferred.
         $deferChannels = $severity !== 'critical' && ! $sync && static::isQuietHours();
 
-        // Deduplication — skip if same app event was sent recently
-        if (static::isDuplicate($event)) {
+        // Deduplication — skip if same app event+severity was sent recently
+        if (static::isDuplicate($event, null, $severity)) {
             return;
         }
 
@@ -435,20 +435,36 @@ class NotificationService
     }
 
     /**
-     * Check if this event+site combination was already sent within the dedup window.
-     * Returns true if duplicate (should skip), false if new (should send).
+     * Check if this event+site+severity combination was already sent within the
+     * dedup window. Returns true if duplicate (should skip), false if new (send).
+     *
+     * P2-54: the key now includes severity so genuinely DISTINCT alerts (different
+     * site, event or severity) are never collapsed into one another — only a true
+     * duplicate (same event + same site + same severity inside the window) is
+     * suppressed. The check-and-set is ATOMIC via Cache::add() (write-if-absent,
+     * returning whether it wrote), closing the check-then-set race where two
+     * concurrent alerts could both pass a has() probe. Suppressions are logged so
+     * a swallowed alert is never traceless.
      */
-    protected static function isDuplicate(string $event, ?int $siteId = null): bool
+    protected static function isDuplicate(string $event, ?int $siteId = null, string $severity = 'warning'): bool
     {
-        $key = 'notification_dedup:'.$event.':'.($siteId ?? 'app');
+        $key = 'notification_dedup:'.$event.':'.($siteId ?? 'app').':'.$severity;
 
-        if (Cache::has($key)) {
-            return true;
+        // Atomic: add() only writes when the key is absent and returns true iff it
+        // did. A false return means another call already claimed this window — so
+        // THIS call is the duplicate.
+        if (Cache::add($key, true, self::DEDUP_WINDOW)) {
+            return false;
         }
 
-        Cache::put($key, true, self::DEDUP_WINDOW);
+        Log::debug('Suppressed duplicate notification within dedup window', [
+            'event' => $event,
+            'site_id' => $siteId,
+            'severity' => $severity,
+            'window_seconds' => self::DEDUP_WINDOW,
+        ]);
 
-        return false;
+        return true;
     }
 
     protected static function isQuietHours(): bool

@@ -18,9 +18,9 @@
                         <p class="mt-0.5 text-sm text-gray-500">{{ __('Automatically diagnose and fix problems on your WordPress sites.') }}</p>
                     </div>
                 </div>
-                @if($enabled && $apiKey)
+                @if($enabled && $apiKeySet)
                     <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>
-                @elseif($enabled && !$apiKey)
+                @elseif($enabled && !$apiKeySet)
                     <x-ui.badge variant="yellow">{{ __('Playbooks Only') }}</x-ui.badge>
                 @else
                     <x-ui.badge variant="gray">{{ __('Disabled') }}</x-ui.badge>
@@ -57,13 +57,13 @@
                         <p class="mt-0.5 text-sm text-gray-500">{{ __('Configure the Claude API connection for Tier 2 AI-powered diagnosis.') }}</p>
                     </div>
                 </div>
-                <x-ui.badge variant="{{ $apiKey ? 'green' : 'yellow' }}">{{ $apiKey ? __('Connected') : __('No API key') }}</x-ui.badge>
+                <x-ui.badge variant="{{ $apiKeySet ? 'green' : 'yellow' }}">{{ $apiKeySet ? __('Connected') : __('No API key') }}</x-ui.badge>
             </div>
 
             <div class="space-y-4">
                 <x-ui.form-group :label="__('Anthropic API Key')" for="apiKey" error="apiKey">
                     <div class="flex gap-2">
-                        <x-ui.input wire:model="apiKey" id="apiKey" type="password" placeholder="sk-ant-api03-..." class="flex-1" />
+                        <x-ui.input wire:model="apiKey" id="apiKey" type="password" placeholder="{{ $apiKeySet ? '•••••••• ' . __('key is set — leave blank to keep') : 'sk-ant-api03-...' }}" class="flex-1" />
                         <x-ui.button type="button" wire:click="testConnection" wire:loading.attr="disabled" wire:target="testConnection" variant="secondary" class="shrink-0">
                             <span wire:loading.remove wire:target="testConnection">{{ __('Test') }}</span>
                             <span wire:loading wire:target="testConnection">{{ __('Testing...') }}</span>

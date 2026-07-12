@@ -7,7 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * @property int $id
@@ -49,19 +48,19 @@ class NotificationChannel extends Model
         'last_error_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::updated(fn (self $model) => Cache::forget("notification_channel:{$model->id}:config"));
-        static::deleted(fn (self $model) => Cache::forget("notification_channel:{$model->id}:config"));
-    }
-
+    /**
+     * Return the channel's decrypted config (webhook URLs, tokens, addresses).
+     *
+     * P2-55: this MUST NOT cache the decrypted secrets in a shared store like
+     * Redis — anyone with Redis access would then read plaintext webhook URLs and
+     * tokens. The `encrypted:array` cast decrypts in-process and Eloquent memoises
+     * the attribute on the instance, so repeated calls within a single request are
+     * already cheap. Channel sends are infrequent enough to decrypt on demand;
+     * plaintext secrets never leave the PHP process.
+     */
     public function getDecryptedConfig(): array
     {
-        return Cache::remember(
-            "notification_channel:{$this->id}:config",
-            600,
-            fn () => $this->config ?? []
-        );
+        return $this->config ?? [];
     }
 
     public function logs(): HasMany

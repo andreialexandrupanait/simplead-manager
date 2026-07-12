@@ -24,9 +24,20 @@ class RunIncidentResponse implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 900;
+    /**
+     * P2-56: the executor can run nested SYNCHRONOUS work in-band — createBackup()
+     * calls CreateBackup::dispatchSync() (own budget: CreateBackup::$timeout, 2700s)
+     * and runSafeUpdate() dispatchSyncs another backup. If this job's timeout were
+     * below the nested backup budget, the worker would be SIGKILLed mid-backup,
+     * corrupting the recovery point it was creating. So the incident-response job
+     * timeout MUST be >= the nested CreateBackup dispatchSync budget, plus headroom
+     * for the surrounding diagnosis/AI/action bookkeeping. Kept in sync with the
+     * `supervisor-incident-response` supervisor timeout in config/horizon.php and
+     * guarded by a config-consistency test.
+     */
+    public int $timeout = 3000; // >= CreateBackup::$timeout (2700) + 300s headroom
 
-    public int $uniqueFor = 2700; // P1-07: release stale unique lock after a hard kill (≈3× timeout)
+    public int $uniqueFor = 3600; // P1-07: release stale unique lock after a hard kill (> $timeout)
 
     public function __construct(
         public Site $site,
