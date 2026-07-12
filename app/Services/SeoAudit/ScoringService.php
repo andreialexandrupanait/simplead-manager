@@ -11,13 +11,32 @@ class ScoringService
     public function calculateScores(SeoAudit $audit): array
     {
         $weights = config('seo.scoring.weights');
-        $gp = ['technical' => 0, 'on_page' => 0, 'performance' => 0, 'other' => 0];
+
+        // P2-17: per-page penalties must be AVERAGED across the crawled pages,
+        // not summed unbounded. Summing meant a large site accumulated enough
+        // penalty from page count alone to saturate every category to 0 even
+        // when each page was only slightly imperfect. Site-wide issues
+        // (url IS NULL — missing robots.txt, SSL, sitemap, …) occur once and
+        // keep their full penalty; per-page issues are divided by the page
+        // count so the score reflects AVERAGE page quality, independent of how
+        // many pages the site has.
+        $pageCount = max(1, $audit->pages()->count());
+
+        $perPage = ['technical' => 0, 'on_page' => 0, 'performance' => 0, 'other' => 0];
+        $siteWide = ['technical' => 0, 'on_page' => 0, 'performance' => 0, 'other' => 0];
         foreach ($audit->issues()->get() as $issue) {
-            $gp[$issue->category->scoringGroup()] += $issue->severity->penalty();
+            $group = $issue->category->scoringGroup();
+            if ($issue->url === null) {
+                $siteWide[$group] += $issue->severity->penalty();
+            } else {
+                $perPage[$group] += $issue->severity->penalty();
+            }
         }
+
         $cs = [];
-        foreach ($gp as $g => $p) {
-            $cs[$g] = max(0, 100 - $p);
+        foreach ($perPage as $g => $p) {
+            $penalty = ($p / $pageCount) + $siteWide[$g];
+            $cs[$g] = (int) max(0, round(100 - $penalty));
         }
         $pm = $audit->site->performanceMonitor;
         if ($pm) {

@@ -97,6 +97,12 @@ parameters:
 			path: app/Http/Controllers/Auth/GoogleSsoController.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>timestamp" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/ReportDownloadController.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\SeoAudit\:\:\$robots_txt_data\.$#'
 			identifier: property.notFound
 			count: 1
@@ -107,6 +113,24 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 2
 			path: app/Jobs/AnalyzeSeoPages.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$meta_description\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/ApplySeoBulkFix.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Jobs/ApplySeoBulkFix.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Jobs/ApplySeoBulkFix.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\SeoAudit\:\:\$created_at\.$#'
@@ -163,12 +187,6 @@ parameters:
 			path: app/Jobs/CheckBrokenResources.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$current_records\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/CheckDns.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$dkim_selectors\.$#'
 			identifier: property.notFound
 			count: 1
@@ -183,7 +201,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\DnsMonitor\:\:\$interval_minutes\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Jobs/CheckDns.php
 
 		-
@@ -283,12 +301,6 @@ parameters:
 			path: app/Jobs/CrawlSitePages.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/FetchPhpErrorLogs.php
-
-		-
 			message: '#^Variable \$destination in PHPDoc tag @var does not exist\.$#'
 			identifier: varTag.variableNotFound
 			count: 1
@@ -323,24 +335,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Livewire/Clients/ClientProfitability.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$message\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Components/GlobalSearch.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Livewire/Components/GlobalSearch.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\PhpErrorLog\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Livewire/Components/GlobalSearch.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -391,12 +385,6 @@ parameters:
 			path: app/Livewire/ErrorLogs/ErrorLogsOverview.php
 
 		-
-			message: '#^Parameter \#1 \$site of method App\\Models\\User\:\:canAccessSite\(\) expects App\\Models\\Site, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Livewire/ErrorLogs/ErrorLogsOverview.php
-
-		-
 			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Reports\\ReportsOverview\) and ''defaultSortBy'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -405,12 +393,6 @@ parameters:
 		-
 			message: '#^Call to function property_exists\(\) with \$this\(App\\Livewire\\Reports\\ReportsOverview\) and ''defaultSortDir'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Livewire/Reports/ReportsOverview.php
-
-		-
-			message: '#^Job class App\\Jobs\\GenerateReport constructor invoked with 2 parameters in App\\Jobs\\GenerateReport\:\:dispatch\(\), 4\-8 required\.$#'
-			identifier: arguments.count
 			count: 1
 			path: app/Livewire/Reports/ReportsOverview.php
 
@@ -649,7 +631,7 @@ parameters:
 			path: app/Livewire/Sites/Detail/SiteSeoAudit.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:completed\(\)\.$#'
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:latestCompleted\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: app/Livewire/Sites/Detail/SiteSeoAudit.php
@@ -959,36 +941,6 @@ parameters:
 			identifier: argument.unresolvableType
 			count: 1
 			path: app/Services/Reports/Sections/DnsGatherer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Reports/Sections/ErrorLogGatherer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$last_seen_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Reports/Sections/ErrorLogGatherer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$level\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Reports/Sections/ErrorLogGatherer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\PhpErrorLog\:\:\$message\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Reports/Sections/ErrorLogGatherer.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\PhpErrorLog\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/Reports/Sections/ErrorLogGatherer.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>backups_successful" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -1430,6 +1382,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$severity\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/SeoAudit/ScoringService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$url\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/SeoAudit/ScoringService.php

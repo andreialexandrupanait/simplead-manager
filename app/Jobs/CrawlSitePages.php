@@ -30,9 +30,13 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 2;
 
-    public int $timeout = 900;
+    // P2-20: right-sized from config so the timeout can bound the full crawl
+    // budget (crawl loop + broken-link/image checks) rather than SIGKILLing
+    // mid-crawl. Kept as a property (default) with a config override applied in
+    // the constructor.
+    public int $timeout = 1500;
 
-    public int $uniqueFor = 1080;
+    public int $uniqueFor = 1680;
 
     public array $backoff = [60, 120];
 
@@ -43,6 +47,8 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     public function __construct(public Site $site, public SeoAudit $audit)
     {
         $this->onQueue('performance');
+        $this->timeout = (int) config('seo.crawler.job_timeout_seconds', 1500);
+        $this->uniqueFor = $this->timeout + 180;
     }
 
     public function uniqueId(): string
@@ -54,6 +60,14 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
     {
         $trackerId = 'seo-audit-'.$this->site->id;
         $this->audit->markAs(SeoAuditStatus::Crawling);
+
+        // P2-20: make the crawl idempotent. A retry (tries=2) re-runs handle()
+        // and would otherwise re-insert every page/link/image for this audit,
+        // duplicating rows. Clear this audit's prior crawl data first so each
+        // run starts clean.
+        $this->audit->links()->delete();
+        $this->audit->images()->delete();
+        $this->audit->pages()->delete();
 
         $siteUrl = rtrim($this->site->url, '/');
         $baseDomain = UrlNormalizerService::extractHost($siteUrl) ?? parse_url($siteUrl, PHP_URL_HOST);
@@ -68,6 +82,13 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
         $crawled = 0;
         $inboundCounts = [];
 
+        // P2-20: bound the crawl loop to a runtime budget that finishes well
+        // before the job timeout, leaving room for the post-crawl broken-link
+        // and broken-image HEAD checks. Without this the crawl (max_pages ×
+        // per-page timeout + delay) could exceed $timeout and be SIGKILLed
+        // mid-run, leaving a half-written audit.
+        $crawlDeadline = microtime(true) + (int) config('seo.crawler.max_runtime_seconds', 1080);
+
         // Fetch sitemap
         JobTracker::progress($trackerId, 2, 'Fetching sitemap...');
         $sitemapUrls = $this->fetchSitemap($siteUrl, $monitor?->sitemap_url, $userAgent, $pageTimeout);
@@ -78,7 +99,7 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
 
         JobTracker::progress($trackerId, 5, 'Starting crawl...');
 
-        while (! empty($queue) && $crawled < $maxPages) {
+        while (! empty($queue) && $crawled < $maxPages && microtime(true) < $crawlDeadline) {
             $url = array_shift($queue);
             $urlHash = UrlNormalizerService::hash($url);
 

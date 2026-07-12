@@ -46,7 +46,7 @@ class CalculateSeoScores implements ShouldQueue
             'total_images_count' => $this->audit->images()->count(),
             'redirect_pages_count' => $this->audit->pages()->whereNotNull('redirect_target')->count(),
         ]);
-        $prev = SeoAudit::where('site_id', $this->site->id)->where('id', '!=', $this->audit->id)->completed()->latest('scanned_at')->first();
+        $prev = SeoAudit::where('site_id', $this->site->id)->where('id', '!=', $this->audit->id)->latestCompleted()->first();
         if ($prev) {
             $this->audit->update(['data' => array_merge($this->audit->data ?? [], ['diff' => $ds->diff($this->audit, $prev)])]);
         }
