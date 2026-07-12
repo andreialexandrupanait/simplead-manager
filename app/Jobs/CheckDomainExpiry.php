@@ -39,6 +39,21 @@ class CheckDomainExpiry implements ShouldBeUnique, ShouldQueue
     {
         $result = DomainExpiryService::check($this->site);
 
+        // A transient RDAP failure (rate-limit / registry outage) must NOT erase
+        // the last-known expiry with NULLs — that used to silently drop an
+        // "ExpiringSoon" warning for a full week. On error, keep the prior
+        // expires_at/registrar/status and record only the error, and DON'T
+        // advance domain_checked_at: the weekly scheduler gate then re-checks on
+        // the next daily run instead of blocking for 7 days (P1-55). Mirrors the
+        // DNS carry-forward pattern (P0-27).
+        if ($result['status'] === DomainStatus::Error) {
+            $this->site->updateQuietly([
+                'domain_last_error' => $result['error'],
+            ]);
+
+            return;
+        }
+
         // Domain expiry is a third-party (RDAP) signal, not site reachability —
         // deliberately does NOT touch the circuit breaker (see E-13).
         $this->site->updateQuietly([
@@ -46,7 +61,7 @@ class CheckDomainExpiry implements ShouldBeUnique, ShouldQueue
             'domain_expires_at' => $result['expires_at'],
             'domain_registrar' => $result['registrar'],
             'domain_checked_at' => now(),
-            'domain_last_error' => $result['error'],
+            'domain_last_error' => null,
         ]);
 
         if (! in_array($result['status'], [DomainStatus::ExpiringSoon, DomainStatus::Expired], true)) {

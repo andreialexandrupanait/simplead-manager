@@ -270,6 +270,15 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
+// Backfill DNS monitors for any connected site still missing one — a safety net
+// for sites onboarded before DNS was a plan default (P1-56). The command only
+// touches sites with no monitor, so this is idempotent.
+Schedule::command('dns:backfill-monitors')
+    ->dailyAt('04:45')
+    ->name('dns-backfill-monitors')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Validate external connections (Google, Cloudflare, Dropbox, WordPress)
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
     ->dailyAt('06:00')

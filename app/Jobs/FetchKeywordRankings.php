@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
@@ -95,18 +96,25 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
                 ];
             }
 
-            // Delete existing records for today to avoid duplicates
-            SeoKeywordRanking::where('site_id', $this->site->id)
-                ->where('recorded_date', $today)
-                ->delete();
+            // Delete-then-insert must be atomic: a crash between the two used to
+            // wipe the day's placements with no replacement (P1-65). Wrap both in
+            // a transaction so a failed insert rolls the delete back.
+            DB::transaction(function () use ($records, $today) {
+                SeoKeywordRanking::where('site_id', $this->site->id)
+                    ->where('recorded_date', $today)
+                    ->delete();
 
-            foreach (array_chunk($records, 100) as $chunk) {
-                SeoKeywordRanking::insert($chunk);
-            }
+                foreach (array_chunk($records, 100) as $chunk) {
+                    SeoKeywordRanking::insert($chunk);
+                }
+            });
 
             Log::info('Keyword rankings fetched', ['site_id' => $this->site->id, 'keywords' => count($records)]);
         } catch (\Throwable $e) {
+            // Surface the failure instead of swallowing it: swallowing made
+            // tries=2 dead and hid real API errors (P1-65).
             Log::warning('Keyword rankings fetch failed', ['site_id' => $this->site->id, 'error' => $e->getMessage()]);
+            throw $e;
         }
     }
 }

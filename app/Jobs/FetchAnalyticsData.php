@@ -39,7 +39,19 @@ class FetchAnalyticsData implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'analytics-'.$this->site->id;
+        // Include the date range so a user-requested 7d/90d/custom fetch is not
+        // dedup-dropped by an in-flight scheduled 28d job (and vice versa) — the
+        // UI spinner would otherwise never resolve (P1-49).
+        return 'analytics-'.$this->site->id.'-'.$this->rangeKey();
+    }
+
+    private function rangeKey(): string
+    {
+        if ($this->dateRange === 'custom') {
+            return 'custom-'.($this->customStart ?? '').'-'.($this->customEnd ?? '');
+        }
+
+        return $this->dateRange;
     }
 
     public function handle(): void

@@ -59,7 +59,19 @@ class GoogleAuthController extends Controller
                 ->with('error', 'Google authorization was cancelled.');
         }
 
-        abort_unless($request->get('state') === session()->pull('google_oauth_state'), 403);
+        // CSRF protection: reject unless a non-empty session state exists AND
+        // matches the returned state. Fail closed — the previous strict-equality
+        // check passed when BOTH were null, letting a crafted /google/callback
+        // link with no state param bypass it entirely (P1-48).
+        $sessionState = session()->pull('google_oauth_state');
+        $requestState = $request->get('state');
+
+        abort_unless(
+            is_string($sessionState) && $sessionState !== ''
+                && is_string($requestState)
+                && hash_equals($sessionState, $requestState),
+            403,
+        );
 
         $code = $request->get('code');
 
@@ -81,6 +93,13 @@ class GoogleAuthController extends Controller
         $userInfo = Http::withToken($tokens['access_token'])
             ->get('https://www.googleapis.com/oauth2/v2/userinfo')
             ->json();
+
+        // Fail gracefully instead of 500ing if Google returns an unexpected
+        // userinfo payload (P1-48 companion hardening).
+        if (! is_array($userInfo) || empty($userInfo['id']) || empty($userInfo['email'])) {
+            return redirect(session('google_return_url', route('settings.integrations')))
+                ->with('error', 'Failed to read your Google account details. Please try again.');
+        }
 
         GoogleConnection::updateOrCreate(
             ['google_id' => $userInfo['id']],
