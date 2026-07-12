@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http;
 
+use App\Models\GoogleConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -72,5 +73,38 @@ class GoogleOAuthCallbackTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('google_connections', ['email' => 'ga@example.com']);
+    }
+
+    /**
+     * P2-49: on re-auth Google may omit refresh_token. The callback must keep
+     * the previously stored one instead of wiping it with an empty value.
+     */
+    public function test_reauth_without_refresh_token_keeps_existing_one(): void
+    {
+        $existing = GoogleConnection::factory()->create([
+            'google_id' => '1234567890',
+            'email' => 'ga@example.com',
+            'refresh_token' => encrypt('original-refresh'),
+        ]);
+
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'new-access',
+                // No refresh_token returned by Google on re-consent.
+                'expires_in' => 3600,
+            ], 200),
+            'googleapis.com/oauth2/v2/userinfo' => Http::response([
+                'id' => '1234567890',
+                'email' => 'ga@example.com',
+                'name' => 'GA User',
+            ], 200),
+        ]);
+
+        $this->actingAs($this->admin())
+            ->withSession(['google_oauth_state' => 'shared-secret-state'])
+            ->get(route('google.callback', ['code' => 'good-code', 'state' => 'shared-secret-state']))
+            ->assertRedirect();
+
+        $this->assertSame('original-refresh', decrypt($existing->fresh()->refresh_token));
     }
 }

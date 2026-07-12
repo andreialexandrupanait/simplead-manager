@@ -158,6 +158,41 @@ class CircuitBreakerService
     }
 
     /**
+     * Is a per-domain breaker currently "open" (tripped)? Once a domain has hit
+     * the failure threshold, it stays tripped until the retry window elapses,
+     * after which a single probe is allowed (half-open). Dispatchers consult
+     * this to STOP re-dispatching a dead third-party connection every minute
+     * (P2-50) — recording failures now actually gates dispatch.
+     */
+    public static function isDomainTripped(Site $site, string $domain): bool
+    {
+        $state = $site->relationLoaded('healthState')
+            ? $site->healthState
+            : $site->healthState()->first();
+
+        if (! $state) {
+            return false;
+        }
+
+        $entry = ($state->domain_breakers ?? [])[$domain] ?? null;
+
+        if ($entry === null || ($entry['consecutive_failures'] ?? 0) < self::FAILURE_THRESHOLD) {
+            return false;
+        }
+
+        $lastFailureAt = $entry['last_failure_at'] ?? null;
+
+        if ($lastFailureAt === null) {
+            return false;
+        }
+
+        // Tripped until OPEN_DURATION_MINUTES pass since the last failure; after
+        // that, allow one probe so a recovered API resumes syncing on its own.
+        return \Illuminate\Support\Carbon::parse($lastFailureAt)
+            ->isAfter(now()->subMinutes(self::OPEN_DURATION_MINUTES));
+    }
+
+    /**
      * Record a per-domain failure without touching the shared site breaker.
      * Kept purely for observability + future per-domain throttling; it never
      * opens the circuit or disables monitoring/backups.

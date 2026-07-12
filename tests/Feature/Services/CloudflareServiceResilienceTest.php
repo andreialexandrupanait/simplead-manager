@@ -7,6 +7,7 @@ namespace Tests\Feature\Services;
 use App\Models\CloudflareConnection;
 use App\Services\CloudflareService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -93,5 +94,103 @@ class CloudflareServiceResilienceTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         $service->getSslMode(str_repeat('a', 32));
+    }
+
+    // P2-51: zone_id validation before any request.
+
+    public function test_invalid_zone_id_is_rejected_before_any_http_call(): void
+    {
+        $service = $this->service();
+        Http::fake();
+
+        try {
+            $service->getZoneDetails('not-a-valid-zone-id');
+            $this->fail('Expected an invalid zone id to throw.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Invalid Cloudflare zone ID', $e->getMessage());
+        }
+
+        Http::assertNothingSent();
+    }
+
+    public function test_invalid_zone_id_is_rejected_in_graphql_analytics(): void
+    {
+        $service = $this->service();
+        Http::fake();
+
+        // Wrong length / uppercase — a path/GraphQL-manipulation attempt.
+        $this->expectException(\InvalidArgumentException::class);
+
+        try {
+            $service->getAnalytics('ABC123', '-1440');
+        } finally {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_valid_zone_id_passes_validation(): void
+    {
+        $service = $this->service();
+
+        Http::fake([
+            'api.cloudflare.com/*' => Http::response([
+                'success' => true,
+                'result' => ['id' => str_repeat('a', 32), 'name' => 'example.com'],
+            ], 200),
+        ]);
+
+        $zone = $service->getZoneDetails(str_repeat('a', 32));
+
+        $this->assertSame('example.com', $zone['name']);
+    }
+
+    // P2-53: only a genuine auth failure flips is_valid.
+
+    public function test_transient_timeout_does_not_flip_is_valid(): void
+    {
+        $connection = CloudflareConnection::factory()->create(['is_valid' => true]);
+        $service = new CloudflareService($connection);
+
+        Http::fake(function () {
+            throw new ConnectionException('cURL error 28: Operation timed out');
+        });
+
+        $result = $service->validateToken();
+
+        $this->assertTrue($result);
+        $this->assertTrue($connection->fresh()->is_valid, 'A transient timeout must not invalidate the token.');
+    }
+
+    public function test_transient_server_error_does_not_flip_is_valid(): void
+    {
+        $connection = CloudflareConnection::factory()->create(['is_valid' => true]);
+        $service = new CloudflareService($connection);
+
+        Http::fake([
+            'api.cloudflare.com/*' => Http::response('upstream error', 503),
+        ]);
+
+        $result = $service->validateToken();
+
+        $this->assertTrue($result);
+        $this->assertTrue($connection->fresh()->is_valid);
+    }
+
+    public function test_genuine_auth_failure_flips_is_valid_false(): void
+    {
+        $connection = CloudflareConnection::factory()->create(['is_valid' => true]);
+        $service = new CloudflareService($connection);
+
+        Http::fake([
+            'api.cloudflare.com/*' => Http::response([
+                'success' => false,
+                'errors' => [['code' => 1000, 'message' => 'Invalid API Token.']],
+            ], 401),
+        ]);
+
+        $result = $service->validateToken();
+
+        $this->assertFalse($result);
+        $this->assertFalse($connection->fresh()->is_valid, 'A real 401 must invalidate the token.');
     }
 }
