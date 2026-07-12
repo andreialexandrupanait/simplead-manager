@@ -37,7 +37,7 @@ class SitesList extends Component
         $user = auth()->user();
 
         $sites = Site::query()
-            ->when(! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
+            ->visibleTo($user)
             ->when($this->tagId, fn ($q) => $q->whereHas('tags', fn ($tq) => $tq->where('tags.id', $this->tagId)))
             ->when($this->search, function ($q) {
                 $escaped = '%'.$this->escapeLike($this->search).'%';

@@ -30,8 +30,7 @@ class SecurityDashboard extends Component
 
     private function scopedSiteQuery(): Builder
     {
-        return Site::query()
-            ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('user_id', auth()->id()));
+        return Site::query()->visibleTo(auth()->user());
     }
 
     /**

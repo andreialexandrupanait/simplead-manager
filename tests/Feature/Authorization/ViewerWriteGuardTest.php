@@ -6,12 +6,20 @@ namespace Tests\Feature\Authorization;
 
 use App\Enums\UserRole;
 use App\Livewire\Components\CopySettingsModal;
+use App\Livewire\Components\NotificationDropdown;
+use App\Livewire\ErrorLogs\ErrorLogsOverview;
 use App\Livewire\MaintenancePlans;
 use App\Livewire\Reports\ReportsOverview;
+use App\Livewire\Security\PresetManager;
+use App\Livewire\Seo\SeoQuickAudit;
+use App\Livewire\Sites\CreateSiteWizard;
 use App\Livewire\Sites\Detail\ReportRecommendationsManager;
+use App\Livewire\Sites\Detail\Security\SecurityIpManagement;
 use App\Livewire\Sites\Detail\SiteOverview;
 use App\Livewire\Sites\Detail\SiteReports;
 use App\Livewire\Updates\UpdatesOverview;
+use App\Livewire\Uptime\UptimeOverview;
+use App\Models\PhpErrorLog;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\User;
@@ -257,5 +265,133 @@ class ViewerWriteGuardTest extends TestCase
                 ->call($method, ...$args)
                 ->assertForbidden();
         }
+    }
+
+    // ---- P1-04: residual viewer/authz sweep ----
+
+    public function test_viewer_blocked_on_security_ip_verify_settings(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $site = Site::factory()->create(['user_id' => $viewer->id]);
+
+        Livewire::actingAs($viewer)
+            ->test(SecurityIpManagement::class, ['site' => $site])
+            ->call('verifySettings')
+            ->assertForbidden();
+    }
+
+    public function test_viewer_blocked_on_error_log_resolve(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $site = Site::factory()->create(['user_id' => $viewer->id]);
+
+        $log = PhpErrorLog::create([
+            'site_id' => $site->id,
+            'level' => 'fatal',
+            'message' => 'Uncaught Error',
+            'message_hash' => str_repeat('a', 32),
+            'first_seen_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        Livewire::actingAs($viewer)
+            ->test(ErrorLogsOverview::class)
+            ->call('resolve', $log->id)
+            ->assertForbidden();
+
+        $this->assertFalse($log->fresh()->is_resolved);
+    }
+
+    public function test_viewer_blocked_on_seo_quick_audit_actions(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+
+        Livewire::actingAs($viewer)
+            ->test(SeoQuickAudit::class)
+            ->set('url', 'https://example.com')
+            ->call('runQuickAudit')
+            ->assertForbidden();
+
+        Livewire::actingAs($viewer)
+            ->test(SeoQuickAudit::class)
+            ->call('deleteProspect', 1)
+            ->assertForbidden();
+    }
+
+    public function test_viewer_blocked_on_create_site_and_client(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+
+        Livewire::actingAs($viewer)
+            ->test(CreateSiteWizard::class)
+            ->call('createSite')
+            ->assertForbidden();
+
+        Livewire::actingAs($viewer)
+            ->test(CreateSiteWizard::class)
+            ->call('createClient')
+            ->assertForbidden();
+    }
+
+    public function test_viewer_blocked_on_notification_backup_retries(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $site = Site::factory()->create(['user_id' => $viewer->id]);
+
+        Livewire::actingAs($viewer)
+            ->test(NotificationDropdown::class)
+            ->call('retrySiteBackup', $site->id)
+            ->assertForbidden();
+
+        Livewire::actingAs($viewer)
+            ->test(NotificationDropdown::class)
+            ->call('retryFailedBackups')
+            ->assertForbidden();
+    }
+
+    public function test_manager_blocked_from_retrying_backup_on_foreign_site(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $other = User::factory()->create(['role' => UserRole::Manager]);
+        $foreign = Site::factory()->create(['user_id' => $other->id]);
+
+        Livewire::actingAs($manager)
+            ->test(NotificationDropdown::class)
+            ->call('retrySiteBackup', $foreign->id)
+            ->assertForbidden();
+    }
+
+    public function test_add_monitors_for_all_sites_is_scoped_to_visible_sites(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $other = User::factory()->create(['role' => UserRole::Manager]);
+
+        $mine = Site::factory()->create(['user_id' => $manager->id]);
+        $foreign = Site::factory()->create(['user_id' => $other->id]);
+
+        Livewire::actingAs($manager)
+            ->test(UptimeOverview::class)
+            ->call('addMonitorsForAllSites');
+
+        $this->assertDatabaseHas('uptime_monitors', ['site_id' => $mine->id]);
+        $this->assertDatabaseMissing('uptime_monitors', ['site_id' => $foreign->id]);
+    }
+
+    // ---- P1-59: SecurityPresetService::createFromSite cross-tenant snapshot ----
+
+    public function test_manager_cannot_snapshot_preset_from_foreign_site(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $other = User::factory()->create(['role' => UserRole::Manager]);
+        $foreign = Site::factory()->create(['user_id' => $other->id]);
+
+        Livewire::actingAs($manager)
+            ->test(PresetManager::class)
+            ->set('snapshotSiteId', $foreign->id)
+            ->set('snapshotName', 'Stolen config')
+            ->call('createFromSite')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('security_presets', ['name' => 'Stolen config']);
     }
 }

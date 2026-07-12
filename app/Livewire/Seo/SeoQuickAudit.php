@@ -104,6 +104,8 @@ class SeoQuickAudit extends Component
 
     public function runQuickAudit(): void
     {
+        abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot run audits.');
+
         $this->validate(['url' => 'required|url|max:2048']);
 
         if (! RateLimiter::attempt('seo-quick-audit', 1, fn () => true, 30)) {
@@ -179,6 +181,8 @@ class SeoQuickAudit extends Component
 
     public function deleteProspect(int $siteId): void
     {
+        abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot delete prospects.');
+
         $site = Site::where('is_prospect', true)->findOrFail($siteId);
         if (app(SiteAuditService::class)->hasRunningAudit($site)) {
             $this->dispatch('notify', type: 'warning', message: 'Cannot delete while audit is running.');

@@ -7,6 +7,7 @@ namespace App\Livewire\Updates;
 use App\Jobs\CreateBackup;
 use App\Jobs\RunSafeUpdate;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
@@ -18,7 +19,7 @@ use Livewire\Component;
 
 class UpdatesOverview extends Component
 {
-    use WithSiteAuthorization;
+    use WithSiteAuthorization, WithVisibleSites;
 
     public string $filter = 'all';
 
@@ -31,16 +32,21 @@ class UpdatesOverview extends Component
     #[Computed]
     public function stats(): array
     {
+        $ids = $this->visibleSiteIds();
+
         $pluginUpdates = SitePlugin::where('has_update', true)
             ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->count();
 
         $themeUpdates = SiteTheme::where('has_update', true)
             ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->count();
 
         $sitesWithUpdates = Site::where('is_connected', true)
             ->where('pending_updates_count', '>', 0)
+            ->visibleTo(auth()->user())
             ->count();
 
         return [
@@ -54,11 +60,13 @@ class UpdatesOverview extends Component
     #[Computed]
     public function updates(): array
     {
+        $ids = $this->visibleSiteIds();
         $items = collect();
 
         if ($this->filter !== 'themes') {
             $plugins = SitePlugin::where('has_update', true)
                 ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+                ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
                 ->with('site')
                 ->when($this->search, function ($q) {
                     $search = '%'.$this->escapeLike($this->search).'%';
@@ -91,6 +99,7 @@ class UpdatesOverview extends Component
         if ($this->filter !== 'plugins') {
             $themes = SiteTheme::where('has_update', true)
                 ->whereHas('site', fn ($q) => $q->where('is_connected', true))
+                ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
                 ->with('site')
                 ->when($this->search, function ($q) {
                     $search = '%'.$this->escapeLike($this->search).'%';

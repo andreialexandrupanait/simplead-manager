@@ -6,13 +6,14 @@ namespace App\Livewire\Performance;
 
 use App\Jobs\RunPerformanceTest;
 use App\Livewire\Traits\WithSorting;
+use App\Livewire\Traits\WithVisibleSites;
 use App\Models\PerformanceMonitor;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class PerformanceOverview extends Component
 {
-    use WithSorting;
+    use WithSorting, WithVisibleSites;
 
     public string $search = '';
 
@@ -36,8 +37,11 @@ class PerformanceOverview extends Component
     public function stats(): array
     {
         // Single query to get all active monitors with their latest tests
+        $ids = $this->visibleSiteIds();
+
         $monitors = PerformanceMonitor::where('is_active', true)
             ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->with('latestMobileTest')
             ->get();
 
@@ -62,8 +66,11 @@ class PerformanceOverview extends Component
     {
         abort_if((bool) auth()->user()?->isViewer(), 403, 'Viewers cannot modify sites.');
 
+        $ids = $this->visibleSiteIds();
+
         $monitors = PerformanceMonitor::where('is_active', true)
             ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
             ->with('site')
             ->get();
 
@@ -86,9 +93,12 @@ class PerformanceOverview extends Component
 
     public function render()
     {
+        $ids = $this->visibleSiteIds();
+
         $query = PerformanceMonitor::query()
             ->where('is_active', true)
             ->whereHas('site')
+            ->when($ids !== null, fn ($q) => $q->whereIn('performance_monitors.site_id', $ids))
             ->with(['site', 'latestMobileTest', 'latestDesktopTest'])
             ->when($this->search, function ($q) {
                 $escaped = '%'.$this->escapeLike($this->search).'%';

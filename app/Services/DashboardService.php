@@ -39,11 +39,9 @@ class DashboardService
             return null;
         }
 
-        $clientIds = $user->assignedClients()->pluck('clients.id');
-
+        // Canonical scope — same owned-OR-assigned-client rule as every other list.
         return Site::query()
-            ->where('user_id', $user->id)
-            ->when($clientIds->isNotEmpty(), fn ($q) => $q->orWhereIn('client_id', $clientIds))
+            ->visibleTo($user)
             ->pluck('id')
             ->all();
     }

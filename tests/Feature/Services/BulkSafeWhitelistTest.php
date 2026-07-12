@@ -8,6 +8,7 @@ use App\Models\MaintenancePlan;
 use App\Models\SecurityPreset;
 use App\Models\SecuritySetting;
 use App\Models\Site;
+use App\Models\User;
 use App\Services\BulkSettingsCopyService;
 use App\Services\MaintenancePlanService;
 use App\Services\SecurityPresetService;
@@ -139,6 +140,9 @@ class BulkSafeWhitelistTest extends TestCase
 
     public function test_preset_created_from_site_never_captures_captcha_secret(): void
     {
+        // createFromSite now authorizes canAccessSite (P1-59) — act as an admin.
+        $this->actingAs(User::factory()->admin()->create());
+
         $source = Site::factory()->create();
         $this->setting($source, 'hardening', 'restrict_xmlrpc', ['enabled' => true]);
         $this->setting($source, 'captcha', 'captcha_config', ['secret_key' => encrypt('SUPER-SECRET')]);
