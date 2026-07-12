@@ -110,6 +110,52 @@ class RetentionPolicyService
                 ['table' => 'seo_audits', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'SEO audits', 'condition' => ['status', '=', 'completed']],
             ],
         ],
+        // P2-43: previously-unpruned, growing (jsonb-heavy) tables. Gated behind
+        // config('backups.retention_dry_run'): while the flag is on, the nightly
+        // job LOGS how many rows it *would* prune without deleting anything, so
+        // the owner can verify volumes before flipping the flag off.
+        'dns_history' => [
+            'label' => 'DNS Change History',
+            'default' => 90,
+            'min' => 30,
+            'max' => 365,
+            'dry_run' => true,
+            'tables' => [
+                ['table' => 'dns_changes', 'column' => 'detected_at', 'col_type' => 'timestamp', 'label' => 'DNS changes', 'condition' => null],
+            ],
+        ],
+        'php_error_logs' => [
+            'label' => 'PHP Error Logs',
+            'default' => 60,
+            'min' => 14,
+            'max' => 365,
+            'dry_run' => true,
+            'tables' => [
+                ['table' => 'php_error_logs', 'column' => 'last_seen_at', 'col_type' => 'timestamp', 'label' => 'PHP error logs', 'condition' => null],
+            ],
+        ],
+        'in_app_notifications' => [
+            'label' => 'In-App Notifications',
+            'default' => 60,
+            'min' => 14,
+            'max' => 365,
+            'dry_run' => true,
+            'tables' => [
+                ['table' => 'in_app_notifications', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'In-app notifications', 'condition' => null],
+            ],
+        ],
+        'incident_responses' => [
+            'label' => 'Incident Responses',
+            'default' => 180,
+            'min' => 30,
+            'max' => 730,
+            'dry_run' => true,
+            'tables' => [
+                // Only prune terminal incidents; an in-flight response must never
+                // be deleted out from under the runner.
+                ['table' => 'incident_responses', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Incident responses', 'condition' => ['status', 'in', ['resolved', 'failed', 'escalated']]],
+            ],
+        ],
     ];
 
     public function __construct(

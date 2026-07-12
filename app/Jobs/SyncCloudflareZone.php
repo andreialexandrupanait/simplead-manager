@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\CloudflareRateLimitException;
 use App\Models\CloudflareConnection;
 use App\Models\SiteCloudflare;
 use App\Services\CloudflareService;
@@ -50,6 +51,19 @@ class SyncCloudflareZone implements ShouldBeUnique, ShouldQueue
 
         $service = new CloudflareService($connection);
 
+        // P2-65: a rate-limit hit is transient, not a failure. DEFER — release
+        // the job back to the queue to retry after the window frees up — rather
+        // than throwing (which would burn an attempt and eventually mark the job
+        // failed for a condition that resolves itself).
+        try {
+            $this->syncZone($service);
+        } catch (CloudflareRateLimitException $e) {
+            $this->release($e->retryAfter);
+        }
+    }
+
+    private function syncZone(CloudflareService $service): void
+    {
         // P1-57: do NOT swallow exceptions. A genuine fetch failure must surface
         // so Laravel's retry (tries/backoff) engages and failed() fires once
         // attempts are exhausted — instead of the job reporting false success on

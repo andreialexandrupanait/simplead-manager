@@ -28,7 +28,11 @@ class ResolveStatusPageIncident implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public Site $site,
-    ) {}
+    ) {
+        // P2-70: resolving a public status-page incident on recovery is
+        // latency-sensitive — keep it off the low-priority `default` queue.
+        $this->onQueue('notifications');
+    }
 
     public function uniqueId(): string
     {
