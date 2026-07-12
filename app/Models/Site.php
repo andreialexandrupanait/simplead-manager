@@ -226,6 +226,16 @@ class Site extends Model
         });
 
         static::created(function (Site $site) {
+            // E-28 / P1-10: every site must own a health-state row from the
+            // moment it exists. The monitoring/sync dispatchers gate on this row,
+            // so a site without one was silently never uptime-checked or synced.
+            // firstOrCreate keeps this idempotent alongside the wizard / circuit
+            // breaker, which may also ensure the row.
+            SiteHealthState::firstOrCreate(
+                ['site_id' => $site->id],
+                ['circuit_state' => 'closed'],
+            );
+
             // Fetch favicon
             FetchSiteFavicon::dispatch($site);
 

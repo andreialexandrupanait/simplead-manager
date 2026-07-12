@@ -101,14 +101,19 @@ class SAM_Audit_Logger {
         }
     }
 
-    public static function get_logs(?string $since = null, int $limit = 500): array {
+    public static function get_logs(?string $since = null, int $limit = 500, string $order = 'desc'): array {
         global $wpdb;
         $table = $wpdb->prefix . 'sam_audit_logs';
+
+        // Whitelist the direction — it is interpolated, never bound. 'asc' enables
+        // the manager's forward cursor pagination so bursts larger than one page
+        // are not lost (P1-52).
+        $direction = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
 
         if ($since) {
             $results = $wpdb->get_results(
                 $wpdb->prepare(
-                    "SELECT * FROM {$table} WHERE created_at > %s ORDER BY created_at DESC LIMIT %d",
+                    "SELECT * FROM {$table} WHERE created_at > %s ORDER BY created_at {$direction} LIMIT %d",
                     $since,
                     $limit
                 ),
@@ -117,7 +122,7 @@ class SAM_Audit_Logger {
         } else {
             $results = $wpdb->get_results(
                 $wpdb->prepare(
-                    "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d",
+                    "SELECT * FROM {$table} ORDER BY created_at {$direction} LIMIT %d",
                     $limit
                 ),
                 ARRAY_A

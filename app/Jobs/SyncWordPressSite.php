@@ -74,116 +74,156 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 
             // Sync plugins
             $pluginsData = $api->getPlugins();
-            $existingPluginFiles = [];
+            $pluginList = $pluginsData['plugins'] ?? null;
 
-            foreach ($pluginsData['plugins'] ?? [] as $plugin) {
-                $this->site->sitePlugins()->updateOrCreate(
-                    ['file' => $plugin['file']],
-                    [
-                        'slug' => $plugin['slug'] ?? '',
-                        'name' => $plugin['name'] ?? '',
-                        'version' => $plugin['version'] ?? null,
-                        'author' => $plugin['author'] ?? null,
-                        'author_uri' => $plugin['author_uri'] ?? null,
-                        'plugin_uri' => $plugin['plugin_uri'] ?? null,
-                        'description' => $plugin['description'] ?? null,
-                        'is_active' => ($plugin['status'] ?? $plugin['is_active'] ?? '') === 'active',
-                        'has_update' => $plugin['update_available'] ?? $plugin['has_update'] ?? false,
-                        'update_version' => $plugin['new_version'] ?? $plugin['update_version'] ?? null,
-                        'requires_wp' => $plugin['requires_wp'] ?? null,
-                        'requires_php' => $plugin['requires_php'] ?? null,
-                        'auto_update' => $plugin['auto_update'] ?? false,
-                        'is_on_wp_org' => $plugin['is_on_wp_org'] ?? null,
-                    ] + (! empty($plugin['license_key']) ? [
-                        'license_key' => $plugin['license_key'],
-                        'license_status' => $plugin['license_status'] ?? 'active',
-                        'license_expires_at' => ! empty($plugin['license_expires_at']) ? $plugin['license_expires_at'] : null,
-                    ] : [])
-                );
-                $existingPluginFiles[] = $plugin['file'];
+            // P1-50: only reconcile (which deletes local rows the remote no longer
+            // lists) against a valid, populated inventory. A successful-but-empty
+            // or malformed response is NOT evidence the site has zero plugins;
+            // treating it as a full deletion would wipe site_plugins including
+            // stored license keys. On an empty/invalid payload, keep last-known.
+            if (! is_array($pluginList) || $pluginList === []) {
+                Log::warning("Plugin reconcile skipped for site {$this->site->id}: connector returned an empty/invalid plugin inventory");
+            } else {
+                $existingPluginFiles = [];
+
+                foreach ($pluginList as $plugin) {
+                    if (empty($plugin['file'])) {
+                        continue;
+                    }
+
+                    $this->site->sitePlugins()->updateOrCreate(
+                        ['file' => $plugin['file']],
+                        [
+                            'slug' => $plugin['slug'] ?? '',
+                            'name' => $plugin['name'] ?? '',
+                            'version' => $plugin['version'] ?? null,
+                            'author' => $plugin['author'] ?? null,
+                            'author_uri' => $plugin['author_uri'] ?? null,
+                            'plugin_uri' => $plugin['plugin_uri'] ?? null,
+                            'description' => $plugin['description'] ?? null,
+                            'is_active' => ($plugin['status'] ?? $plugin['is_active'] ?? '') === 'active',
+                            'has_update' => $plugin['update_available'] ?? $plugin['has_update'] ?? false,
+                            'update_version' => $plugin['new_version'] ?? $plugin['update_version'] ?? null,
+                            'requires_wp' => $plugin['requires_wp'] ?? null,
+                            'requires_php' => $plugin['requires_php'] ?? null,
+                            'auto_update' => $plugin['auto_update'] ?? false,
+                            'is_on_wp_org' => $plugin['is_on_wp_org'] ?? null,
+                        ] + (! empty($plugin['license_key']) ? [
+                            'license_key' => $plugin['license_key'],
+                            'license_status' => $plugin['license_status'] ?? 'active',
+                            'license_expires_at' => ! empty($plugin['license_expires_at']) ? $plugin['license_expires_at'] : null,
+                        ] : [])
+                    );
+                    $existingPluginFiles[] = $plugin['file'];
+                }
+
+                // Remove plugins that no longer exist on the remote site
+                $this->site->sitePlugins()
+                    ->whereNotIn('file', $existingPluginFiles)
+                    ->delete();
             }
-
-            // Remove plugins that no longer exist on the remote site
-            $this->site->sitePlugins()
-                ->whereNotIn('file', $existingPluginFiles)
-                ->delete();
 
             JobTracker::progress($this->uniqueId(), 35, 'Syncing themes...');
 
             // Sync themes
             $themesData = $api->getThemes();
-            $existingThemeSlugs = [];
+            $themeList = $themesData['themes'] ?? null;
 
-            foreach ($themesData['themes'] ?? [] as $theme) {
-                $this->site->siteThemes()->updateOrCreate(
-                    ['slug' => $theme['slug']],
-                    [
-                        'name' => $theme['name'] ?? '',
-                        'version' => $theme['version'] ?? null,
-                        'author' => $theme['author'] ?? null,
-                        'author_uri' => $theme['author_uri'] ?? null,
-                        'description' => $theme['description'] ?? null,
-                        'is_active' => ($theme['status'] ?? $theme['is_active'] ?? '') === 'active',
-                        'is_child_theme' => ! empty($theme['parent_theme']) || ($theme['is_child_theme'] ?? false),
-                        'parent_theme' => $theme['parent_theme'] ?? null,
-                        'has_update' => $theme['update_available'] ?? $theme['has_update'] ?? false,
-                        'update_version' => $theme['new_version'] ?? $theme['update_version'] ?? null,
-                        'screenshot_url' => $theme['screenshot_url'] ?? null,
-                        'auto_update' => $theme['auto_update'] ?? false,
-                    ]
-                );
-                $existingThemeSlugs[] = $theme['slug'];
+            // P1-50: same wipe guard as plugins — an empty/invalid theme inventory
+            // must never be reconciled as "all themes deleted".
+            if (! is_array($themeList) || $themeList === []) {
+                Log::warning("Theme reconcile skipped for site {$this->site->id}: connector returned an empty/invalid theme inventory");
+            } else {
+                $existingThemeSlugs = [];
+
+                foreach ($themeList as $theme) {
+                    if (empty($theme['slug'])) {
+                        continue;
+                    }
+
+                    $this->site->siteThemes()->updateOrCreate(
+                        ['slug' => $theme['slug']],
+                        [
+                            'name' => $theme['name'] ?? '',
+                            'version' => $theme['version'] ?? null,
+                            'author' => $theme['author'] ?? null,
+                            'author_uri' => $theme['author_uri'] ?? null,
+                            'description' => $theme['description'] ?? null,
+                            'is_active' => ($theme['status'] ?? $theme['is_active'] ?? '') === 'active',
+                            'is_child_theme' => ! empty($theme['parent_theme']) || ($theme['is_child_theme'] ?? false),
+                            'parent_theme' => $theme['parent_theme'] ?? null,
+                            'has_update' => $theme['update_available'] ?? $theme['has_update'] ?? false,
+                            'update_version' => $theme['new_version'] ?? $theme['update_version'] ?? null,
+                            'screenshot_url' => $theme['screenshot_url'] ?? null,
+                            'auto_update' => $theme['auto_update'] ?? false,
+                        ]
+                    );
+                    $existingThemeSlugs[] = $theme['slug'];
+                }
+
+                // Remove themes that no longer exist on the remote site
+                $this->site->siteThemes()
+                    ->whereNotIn('slug', $existingThemeSlugs)
+                    ->delete();
             }
-
-            // Remove themes that no longer exist on the remote site
-            $this->site->siteThemes()
-                ->whereNotIn('slug', $existingThemeSlugs)
-                ->delete();
 
             JobTracker::progress($this->uniqueId(), 55, 'Syncing users...');
 
             // Sync users
             try {
                 $usersData = $api->getUsers();
-                $existingWpUserIds = [];
+                $userList = $usersData['users'] ?? null;
 
-                foreach ($usersData['users'] ?? [] as $user) {
-                    try {
-                        $registered = $user['registered'] ?? null;
-                        $lastLogin = $user['last_login'] ?? null;
-                        // Sanitize invalid dates (e.g. "-0001-11-30") that PostgreSQL rejects
-                        if ($registered && (str_starts_with($registered, '-') || str_starts_with($registered, '0000'))) {
-                            $registered = null;
-                        }
-                        if ($lastLogin && (str_starts_with($lastLogin, '-') || str_starts_with($lastLogin, '0000'))) {
-                            $lastLogin = null;
+                // P1-50: never treat an empty/invalid user inventory as "all users
+                // deleted" — a live WP site always has at least one user, so an
+                // empty payload is a failed/degraded response, not a real wipe.
+                if (! is_array($userList) || $userList === []) {
+                    Log::warning("User reconcile skipped for site {$this->site->id}: connector returned an empty/invalid user inventory");
+                } else {
+                    $existingWpUserIds = [];
+
+                    foreach ($userList as $user) {
+                        if (! isset($user['id'])) {
+                            continue;
                         }
 
-                        $this->site->siteUsers()->updateOrCreate(
-                            ['wp_user_id' => $user['id']],
-                            [
-                                'username' => $user['login'] ?? $user['username'] ?? '',
-                                'email' => $user['email'] ?? null,
-                                'display_name' => $user['display_name'] ?? null,
-                                'role' => $user['roles'][0] ?? $user['role'] ?? null,
-                                'avatar_url' => $user['avatar_url'] ?? null,
-                                'orders_count' => $user['orders_count'] ?? 0,
-                                'posts_count' => $user['posts_count'] ?? 0,
-                                'registered_at' => $registered,
-                                'last_login_at' => $lastLogin,
-                                'synced_at' => now(),
-                            ]
-                        );
-                    } catch (\Exception $e) {
-                        Log::info("User sync failed for wp_user_id {$user['id']} on site {$this->site->id}: {$e->getMessage()}");
+                        try {
+                            $registered = $user['registered'] ?? null;
+                            $lastLogin = $user['last_login'] ?? null;
+                            // Sanitize invalid dates (e.g. "-0001-11-30") that PostgreSQL rejects
+                            if ($registered && (str_starts_with($registered, '-') || str_starts_with($registered, '0000'))) {
+                                $registered = null;
+                            }
+                            if ($lastLogin && (str_starts_with($lastLogin, '-') || str_starts_with($lastLogin, '0000'))) {
+                                $lastLogin = null;
+                            }
+
+                            $this->site->siteUsers()->updateOrCreate(
+                                ['wp_user_id' => $user['id']],
+                                [
+                                    'username' => $user['login'] ?? $user['username'] ?? '',
+                                    'email' => $user['email'] ?? null,
+                                    'display_name' => $user['display_name'] ?? null,
+                                    'role' => $user['roles'][0] ?? $user['role'] ?? null,
+                                    'avatar_url' => $user['avatar_url'] ?? null,
+                                    'orders_count' => $user['orders_count'] ?? 0,
+                                    'posts_count' => $user['posts_count'] ?? 0,
+                                    'registered_at' => $registered,
+                                    'last_login_at' => $lastLogin,
+                                    'synced_at' => now(),
+                                ]
+                            );
+                        } catch (\Exception $e) {
+                            Log::info("User sync failed for wp_user_id {$user['id']} on site {$this->site->id}: {$e->getMessage()}");
+                        }
+                        $existingWpUserIds[] = $user['id'];
                     }
-                    $existingWpUserIds[] = $user['id'];
-                }
 
-                // Remove users that no longer exist on the remote site
-                $this->site->siteUsers()
-                    ->whereNotIn('wp_user_id', $existingWpUserIds)
-                    ->delete();
+                    // Remove users that no longer exist on the remote site
+                    $this->site->siteUsers()
+                        ->whereNotIn('wp_user_id', $existingWpUserIds)
+                        ->delete();
+                }
             } catch (RequestException|\RuntimeException $e) {
                 // Users endpoint may not exist on older connector versions â skip silently
                 Log::info("User sync skipped for site {$this->site->id}: {$e->getMessage()}");

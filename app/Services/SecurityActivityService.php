@@ -6,32 +6,45 @@ namespace App\Services;
 
 use App\Models\SecurityActivityLog;
 use App\Models\Site;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SecurityActivityService
 {
+    /**
+     * Clock-skew tolerance when clamping remote `occurred_at` values. A row dated
+     * further than this into the future is treated as clock skew / tampering and
+     * clamped to "now" so it can never jump the ingestion watermark past real
+     * events (P1-11).
+     */
+    private const FUTURE_SKEW_MINUTES = 5;
+
     public function ingestLogs(Site $site, array $logs): int
     {
-        $logs = array_slice($logs, 0, 1000);
-
         $rows = [];
         $now = now();
 
         foreach ($logs as $log) {
-            $eventType = $log['event_type'] ?? 'unknown';
+            // P1-11: every remote field is untrusted and flows into typed Postgres
+            // columns (inet, varchar, timestamp). Validate/clamp each one so a
+            // single malformed row can never fail the batch insert and wedge this
+            // site's audit ingestion forever.
+            $eventType = self::clampString($log['event_type'] ?? null, 50) ?? 'unknown';
+
             $rows[] = [
                 'site_id' => $site->id,
                 'event_type' => $eventType,
                 'event_category' => self::categorizeEvent($eventType),
-                'username' => $log['username'] ?? null,
-                'object_type' => $log['object_type'] ?? null,
-                'object_name' => $log['object_name'] ?? null,
-                'action' => $log['action'] ?? null,
-                'ip_address' => $log['ip_address'] ?? null,
-                'user_agent' => isset($log['user_agent']) ? substr($log['user_agent'], 0, 500) : null,
+                'username' => self::clampString($log['username'] ?? null, 255),
+                'object_type' => self::clampString($log['object_type'] ?? null, 50),
+                'object_name' => self::clampString($log['object_name'] ?? null, 255),
+                'action' => self::clampString($log['action'] ?? null, 100),
+                'ip_address' => self::validIp($log['ip_address'] ?? null),
+                'user_agent' => self::clampString($log['user_agent'] ?? null, 500),
                 'details' => isset($log['details']) ? json_encode($log['details']) : null,
-                'occurred_at' => $log['occurred_at'] ?? $now,
+                'occurred_at' => self::clampOccurredAt($log['occurred_at'] ?? null, $now),
                 'created_at' => $now,
             ];
         }
@@ -40,12 +53,100 @@ class SecurityActivityService
             return 0;
         }
 
-        // Bulk insert in chunks
-        foreach (array_chunk($rows, 500) as $chunk) {
-            SecurityActivityLog::insert($chunk);
+        return $this->insertRowTolerant($rows);
+    }
+
+    /**
+     * The newest (clamped) occurred_at across a batch, formatted as naive-UTC for
+     * use as the `since` pagination cursor. Null when the batch is empty. Uses the
+     * same clamping as ingestion so the cursor matches what is persisted.
+     */
+    public function latestCursor(array $logs): ?string
+    {
+        $now = now();
+        $max = null;
+
+        foreach ($logs as $log) {
+            $ts = self::clampOccurredAt($log['occurred_at'] ?? null, $now);
+            if ($max === null || $ts > $max) {
+                $max = $ts;
+            }
         }
 
-        return count($rows);
+        return $max;
+    }
+
+    /**
+     * Insert in chunks, but never let one poisoned row stall the whole site's
+     * ingestion: on a chunk failure, retry the chunk row-by-row and drop only the
+     * offending rows (P1-11 — the batch must be row-tolerant).
+     */
+    private function insertRowTolerant(array $rows): int
+    {
+        $inserted = 0;
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            try {
+                SecurityActivityLog::insert($chunk);
+                $inserted += count($chunk);
+            } catch (\Throwable) {
+                foreach ($chunk as $row) {
+                    try {
+                        SecurityActivityLog::insert([$row]);
+                        $inserted++;
+                    } catch (\Throwable $inner) {
+                        Log::warning('SecurityActivityService: dropped a malformed audit row', [
+                            'site_id' => $row['site_id'] ?? null,
+                            'error' => $inner->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return $inserted;
+    }
+
+    private static function clampString(mixed $value, int $max): ?string
+    {
+        if ($value === null || is_array($value) || is_object($value)) {
+            return null;
+        }
+
+        return mb_substr((string) $value, 0, $max);
+    }
+
+    private static function validIp(mixed $value): ?string
+    {
+        if (! is_string($value) || filter_var($value, FILTER_VALIDATE_IP) === false) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private static function clampOccurredAt(mixed $value, Carbon $now): string
+    {
+        $parsed = null;
+
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                // Connector timestamps are naive-UTC DATETIMEs; treat a value with
+                // no timezone as UTC (never the container's local tz). A value that
+                // does carry an offset is honoured, then normalised to UTC below.
+                $parsed = Carbon::parse($value, 'UTC');
+            } catch (\Throwable) {
+                $parsed = null;
+            }
+        } elseif ($value instanceof \DateTimeInterface) {
+            $parsed = Carbon::instance($value);
+        }
+
+        if ($parsed === null || $parsed->greaterThan($now->copy()->addMinutes(self::FUTURE_SKEW_MINUTES))) {
+            $parsed = $now;
+        }
+
+        return $parsed->utc()->format('Y-m-d H:i:s');
     }
 
     public function getRecentActivity(Site $site, int $days = 7): Collection

@@ -52,34 +52,57 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
             $newFatals = 0;
 
             foreach ($entries as $entry) {
+                // Stable dedup key: level + message. The connector re-parses the
+                // same rolling window every 6h and returns the SAME aggregated
+                // entries each time, so ingestion must be idempotent.
                 $hash = md5(($entry['level'] ?? '').($entry['message'] ?? ''));
+
+                $entryLastSeen = $this->parseTimestamp($entry['last_seen'] ?? $entry['timestamp'] ?? null);
 
                 $existing = PhpErrorLog::where('site_id', $this->site->id)
                     ->where('message_hash', $hash)
                     ->first();
 
                 if ($existing) {
+                    // P1-51: only advance when the remote reports a strictly newer
+                    // occurrence. A repeated fetch of the same window is a no-op:
+                    //  - count is NOT re-added (previously inflated ~4x/day), and
+                    //  - is_resolved is NOT force-reset (previously resurrected
+                    //    every 6h). The connector's count is a window total, so we
+                    //    take the max rather than summing.
+                    // Compare as naive wall-clock strings so the guard is immune to
+                    // the container's local timezone (the stored value is naive).
+                    $entryWall = $entryLastSeen?->format('Y-m-d H:i:s');
+                    $existingWall = $existing->last_seen_at?->format('Y-m-d H:i:s');
+
+                    if ($entryWall === null || $existingWall === null || $entryWall <= $existingWall) {
+                        continue;
+                    }
+
                     $existing->update([
-                        'count' => $existing->count + ($entry['count'] ?? 1),
-                        'last_seen_at' => $entry['last_seen'] ?? now(),
-                        'is_resolved' => false,
-                    ]);
-                } else {
-                    PhpErrorLog::create([
-                        'site_id' => $this->site->id,
-                        'level' => $entry['level'] ?? 'unknown',
-                        'message' => mb_substr($entry['message'] ?? '', 0, 2000),
-                        'file' => $entry['file'] ?? null,
-                        'line' => $entry['line'] ?? null,
-                        'message_hash' => $hash,
-                        'count' => $entry['count'] ?? 1,
-                        'first_seen_at' => $entry['timestamp'] ?? now(),
-                        'last_seen_at' => $entry['last_seen'] ?? $entry['timestamp'] ?? now(),
+                        'count' => max($existing->count, (int) ($entry['count'] ?? $existing->count)),
+                        'last_seen_at' => $entryLastSeen,
                     ]);
 
-                    if (($entry['level'] ?? '') === 'fatal') {
-                        $newFatals++;
-                    }
+                    continue;
+                }
+
+                PhpErrorLog::create([
+                    'site_id' => $this->site->id,
+                    'level' => mb_substr($entry['level'] ?? 'unknown', 0, 255),
+                    'message' => mb_substr($entry['message'] ?? '', 0, 2000),
+                    // file column is varchar(255): truncate so one long path can't
+                    // abort the whole batch insert.
+                    'file' => isset($entry['file']) ? mb_substr((string) $entry['file'], 0, 255) : null,
+                    'line' => $entry['line'] ?? null,
+                    'message_hash' => $hash,
+                    'count' => (int) ($entry['count'] ?? 1),
+                    'first_seen_at' => $this->parseTimestamp($entry['timestamp'] ?? null) ?? now(),
+                    'last_seen_at' => $entryLastSeen ?? now(),
+                ]);
+
+                if (($entry['level'] ?? '') === 'fatal') {
+                    $newFatals++;
                 }
             }
 
@@ -103,6 +126,27 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
             }
         } catch (\Throwable $e) {
             Log::warning("PHP error log fetch failed for site {$this->site->name}: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Parse a connector-supplied timestamp (e.g. "05-Jul-2026 14:30:00 UTC")
+     * into a Carbon instance, or null when the value is missing/unparseable.
+     * A malformed timestamp must never wedge ingestion — the caller falls back
+     * to a safe default and never advances the dedup watermark on garbage.
+     */
+    private function parseTimestamp(mixed $value): ?\Illuminate\Support\Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            // Treat a timezone-less value as UTC (the stored watermark is naive);
+            // an explicit offset in the string is still honoured by Carbon.
+            return \Illuminate\Support\Carbon::parse($value, 'UTC');
+        } catch (\Throwable) {
+            return null;
         }
     }
 }
