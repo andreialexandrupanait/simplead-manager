@@ -349,3 +349,13 @@ Schedule::command('backups:recover-stuck-restores')
     ->everyFifteenMinutes()
     ->name('recover-stuck-restores')
     ->onOneServer();
+
+// P2-27: recover safe updates whose worker died mid-pipeline without running
+// failed() — a row stuck in an intermediate state (backing_up/updating/
+// health_checking/rolling_back) otherwise wedges the site's safe-update slot and
+// the UI polls it forever. The 30-min threshold is well above RunSafeUpdate's
+// 600s timeout, so anything it catches is genuinely dead, not slow.
+Schedule::command('safe-updates:recover-stuck')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-safe-updates')
+    ->onOneServer();
