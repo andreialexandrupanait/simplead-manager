@@ -866,6 +866,8 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
         $selectivePath = $this->tempDir.'/selective-files.zip';
         $selectedLookup = array_flip($this->selectedFiles);
+        $expected = count($this->selectedFiles);
+        $captured = 0;
 
         if ($isZip) {
             $source = new ZipArchive;
@@ -883,10 +885,14 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 $name = $source->getNameIndex($i);
                 if (isset($selectedLookup[$name])) {
                     $dest->addFromString($name, $source->getFromIndex($i));
+                    $captured++;
                 }
             }
 
-            $dest->close();
+            if ($dest->close() !== true) {
+                $source->close();
+                throw new \RuntimeException('Failed to finalise selective archive (zip write error).');
+            }
             $source->close();
         } else {
             $extractDir = $this->tempDir.'/selective-extract';
@@ -903,12 +909,25 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 2 => ['pipe', 'w'],
             ];
 
+            // P1-31: a failed/truncated tar extraction MUST fail the restore
+            // loudly. Previously the exit code and stderr were discarded, so a
+            // partial/empty extraction was packaged and reported as success.
             $process = proc_open($cmd, $descriptors, $pipes);
-            if (is_resource($process)) {
-                fclose($pipes[0]);
-                fclose($pipes[1]);
-                fclose($pipes[2]);
-                proc_close($process);
+            if (! is_resource($process)) {
+                throw new \RuntimeException('Failed to launch tar for selective restore extraction.');
+            }
+
+            fclose($pipes[0]);
+            stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+
+            if ($exitCode !== 0) {
+                throw new \RuntimeException(
+                    "Selective restore extraction failed (tar exit code {$exitCode}): ".trim((string) $stderr)
+                );
             }
 
             $dest = new ZipArchive;
@@ -925,10 +944,35 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 if ($file->isFile()) {
                     $relative = substr($file->getRealPath(), strlen($extractDir) + 1);
                     $dest->addFile($file->getRealPath(), $relative);
+                    $captured++;
                 }
             }
 
-            $dest->close();
+            if ($dest->close() !== true) {
+                throw new \RuntimeException('Failed to finalise selective archive from tar.gz (zip write error).');
+            }
+        }
+
+        // P1-31: never report success on a partial/empty selective extract.
+        // If the user asked for files but none made it into the archive, the
+        // extraction silently produced nothing — fail loudly instead.
+        if ($expected > 0 && $captured === 0) {
+            throw new \RuntimeException(
+                'Selective restore produced an empty archive: none of the '.$expected.' selected file(s) could be extracted from the backup.'
+            );
+        }
+
+        // Independently verify the on-disk archive really holds entries, so a
+        // silent zip-write failure can never masquerade as a successful restore.
+        $verify = new ZipArchive;
+        if ($verify->open($selectivePath) !== true) {
+            throw new \RuntimeException('Selective restore archive could not be reopened for verification.');
+        }
+        $entryCount = $verify->numFiles;
+        $verify->close();
+
+        if ($expected > 0 && $entryCount === 0) {
+            throw new \RuntimeException('Selective restore archive is empty after extraction — refusing to report success.');
         }
 
         return $selectivePath;
