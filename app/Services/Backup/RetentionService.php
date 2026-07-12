@@ -87,6 +87,63 @@ class RetentionService
         if ($cutoff !== null) {
             $this->cleanupOrphans($site, $cutoff, $dryRun);
         }
+
+        // P2-30: reclaim pre-update backups whose protection window has expired.
+        $this->reclaimExpiredPreUpdateLocks($site, $dryRun);
+    }
+
+    /**
+     * P2-30: pre-update backups (trigger `pre_update`) are locked so retention
+     * never strips the rollback point out from under an in-flight update. Left
+     * forever they accumulate unbounded. After config('backups.pre_update_lock_days')
+     * days the lock is considered expired and the backup becomes eligible for
+     * cleanup — but we NEVER delete a backup still inside its protection window,
+     * one that still has completed incrementals depending on it, or the site's
+     * only remaining completed restore point.
+     *
+     * Only auto-set pre-update locks (lock_reason = 'pre-update') are reclaimed;
+     * manual UI locks (any other reason) are always left untouched.
+     */
+    private function reclaimExpiredPreUpdateLocks(Site $site, bool $dryRun): void
+    {
+        $lockDays = (int) config('backups.pre_update_lock_days', 7);
+        $cutoff = now()->subDays($lockDays);
+
+        $expired = Backup::where('site_id', $site->id)
+            ->where('status', BackupStatus::Completed)
+            ->where('trigger', 'pre_update')
+            ->where('is_locked', true)
+            ->where('lock_reason', 'pre-update')
+            ->where('created_at', '<', $cutoff)
+            ->orderBy('created_at') // oldest first
+            ->get();
+
+        if ($expired->isEmpty()) {
+            return;
+        }
+
+        // Guard against deleting the site's last remaining restore point.
+        $completedCount = Backup::where('site_id', $site->id)
+            ->where('status', BackupStatus::Completed)
+            ->count();
+
+        foreach ($expired as $backup) {
+            if ($completedCount <= 1) {
+                break;
+            }
+
+            // Deleting a base full that still carries completed incrementals
+            // would orphan them — leave it locked until the chain expires.
+            if ($backup->incrementals()->where('status', BackupStatus::Completed)->exists()) {
+                continue;
+            }
+
+            Log::info("RetentionService: reclaiming expired pre-update backup {$backup->id} for site {$site->id} (older than {$lockDays} days)");
+
+            if ($this->deleteBackup($backup, $dryRun)) {
+                $completedCount--;
+            }
+        }
     }
 
     /**

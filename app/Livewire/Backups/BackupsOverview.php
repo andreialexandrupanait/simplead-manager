@@ -304,7 +304,7 @@ class BackupsOverview extends Component
             ]);
 
             CreateBackup::dispatch($site, $config->type ?? 'full', 'manual_bulk', $destination->id, $backup->id)
-                ->delay(now()->addSeconds($queued * 180));
+                ->delay(now()->addSeconds($queued * (int) config('backups.stagger_interval_seconds', 180)));
             $queued++;
         }
 

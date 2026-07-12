@@ -541,35 +541,57 @@ class CreateIncrementalBackup implements ShouldBeUnique, ShouldQueue
                 'parent_backup_id' => $parentBackup->id,
             ]);
         } else {
-            // Clean up any orphaned incremental backup from a previous failed attempt
-            Backup::where('site_id', $this->site->id)
+            $existing = Backup::where('site_id', $this->site->id)
                 ->where('type', 'incremental')
                 ->where('trigger', $this->trigger)
                 ->whereIn('status', [BackupStatus::Pending, BackupStatus::InProgress])
-                ->update([
-                    'status' => BackupStatus::Failed,
-                    'stage' => 'failed',
-                    'error_message' => 'Superseded by a new backup attempt',
-                    'completed_at' => now(),
-                ]);
+                ->orderByDesc('id')
+                ->first();
 
-            $this->backup = Backup::create([
-                'site_id' => $this->site->id,
-                'storage_destination_id' => $destination->id,
-                'parent_backup_id' => $parentBackup->id,
-                'type' => 'incremental',
-                'trigger' => $this->trigger,
-                'status' => BackupStatus::InProgress,
-                'includes_database' => true,
-                'includes_files' => true,
-                'wp_version' => $this->site->wp_version,
-                'php_version' => $this->site->php_version,
-                'plugins_count' => $this->site->sitePlugins()->count(),
-                'themes_count' => $this->site->siteThemes()->count(),
-                'db_size_mb' => $this->site->db_size_mb,
-                'started_at' => now(),
-            ]);
-            $this->backupId = $this->backup->id;
+            // P2-29: a retried attempt re-runs handle() with a null backupId
+            // (job property mutations don't survive release()). As a
+            // ShouldBeUnique job nothing else runs concurrently, so the existing
+            // in-flight row is our own previous attempt — adopt it rather than
+            // superseding it and inserting a duplicate row.
+            if ($existing && $this->attempts() > 1) {
+                $this->backup = $existing;
+                $this->backupId = $existing->id;
+                $this->backup->update([
+                    'status' => BackupStatus::InProgress,
+                    'stage' => 'initializing',
+                    'started_at' => $this->backup->started_at ?? now(),
+                    'parent_backup_id' => $parentBackup->id,
+                ]);
+            } else {
+                if ($existing) {
+                    // Brand-new dispatch that still found an orphaned in-flight
+                    // row from a previous dead attempt — supersede it.
+                    $existing->update([
+                        'status' => BackupStatus::Failed,
+                        'stage' => 'failed',
+                        'error_message' => 'Superseded by a new backup attempt',
+                        'completed_at' => now(),
+                    ]);
+                }
+
+                $this->backup = Backup::create([
+                    'site_id' => $this->site->id,
+                    'storage_destination_id' => $destination->id,
+                    'parent_backup_id' => $parentBackup->id,
+                    'type' => 'incremental',
+                    'trigger' => $this->trigger,
+                    'status' => BackupStatus::InProgress,
+                    'includes_database' => true,
+                    'includes_files' => true,
+                    'wp_version' => $this->site->wp_version,
+                    'php_version' => $this->site->php_version,
+                    'plugins_count' => $this->site->sitePlugins()->count(),
+                    'themes_count' => $this->site->siteThemes()->count(),
+                    'db_size_mb' => $this->site->db_size_mb,
+                    'started_at' => now(),
+                ]);
+                $this->backupId = $this->backup->id;
+            }
         }
 
         $this->reportProgress('initializing', 5, 'Initializing incremental backup...');

@@ -111,6 +111,18 @@ class BackupZipBuilder
                     continue;
                 }
 
+                // The chunk zips come from a semi-trusted WP host — reject any
+                // entry whose name would traverse outside the target subtree
+                // (path traversal / absolute path) before it is consolidated.
+                if (! SafeZipExtractor::isSafeEntryName($entryName)) {
+                    \Illuminate\Support\Facades\Log::warning('BackupZipBuilder: skipped unsafe zip entry (path traversal)', [
+                        'entry' => $entryName,
+                        'chunk' => $chunkZipPath,
+                    ]);
+
+                    continue;
+                }
+
                 $stream = $reader->getStream($entryName);
                 if ($stream === false) {
                     throw new \RuntimeException("BackupZipBuilder: cannot stream-read entry '{$entryName}' from {$chunkZipPath}");
