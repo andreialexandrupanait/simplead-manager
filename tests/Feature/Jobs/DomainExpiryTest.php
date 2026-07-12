@@ -55,6 +55,44 @@ class DomainExpiryTest extends TestCase
         $this->assertSame(DomainStatus::ExpiringSoon, $site->fresh()->domain_status);
     }
 
+    public function test_transient_rdap_failure_preserves_last_known_expiry(): void
+    {
+        // P1-55: a single rdap.org 429 must not overwrite good expiry data with
+        // NULLs, and must not stamp domain_checked_at forward (which would block
+        // the weekly re-check gate for a full week).
+        Queue::fake();
+        Http::fake(['rdap.org/domain/acme.com' => Http::response('rate limited', 429)]);
+
+        $priorExpiry = now()->addDays(10)->startOfSecond();
+        $checkedAt = now()->subDays(8)->startOfSecond();
+
+        $site = Site::factory()->create([
+            'url' => 'https://acme.com',
+            'domain_status' => DomainStatus::ExpiringSoon->value,
+            'domain_expires_at' => $priorExpiry,
+            'domain_registrar' => 'Acme Registrar',
+            'domain_checked_at' => $checkedAt,
+            'domain_last_error' => null,
+        ]);
+
+        (new CheckDomainExpiry($site))->handle();
+
+        $fresh = $site->fresh();
+        $this->assertSame(DomainStatus::ExpiringSoon, $fresh->domain_status, 'Status must be preserved.');
+        $this->assertSame(
+            $priorExpiry->toDateTimeString(),
+            $fresh->domain_expires_at->toDateTimeString(),
+            'Expiry date must be preserved, not nulled.'
+        );
+        $this->assertSame('Acme Registrar', $fresh->domain_registrar);
+        $this->assertNotNull($fresh->domain_last_error, 'The transient error must be recorded.');
+        $this->assertSame(
+            $checkedAt->toDateTimeString(),
+            $fresh->domain_checked_at->toDateTimeString(),
+            'checked_at must not advance so the site is re-checked instead of blocked for a week.'
+        );
+    }
+
     public function test_resolves_registrable_domain_from_a_subdomain(): void
     {
         Queue::fake();

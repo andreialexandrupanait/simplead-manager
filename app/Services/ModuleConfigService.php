@@ -118,6 +118,14 @@ class ModuleConfigService
     private const CONNECTION_REQUIRED = ['analytics', 'search_console', 'cloudflare'];
 
     /**
+     * Modules materialized on by default when a plan carries no explicit row for
+     * them. DNS monitoring is universal and predates the plan-module system, so
+     * legacy plans have no `dns` module — without this, wizard-created sites got
+     * no DNS monitor at all (P1-56).
+     */
+    private const DEFAULT_ON_MODULES = ['dns'];
+
+    /**
      * Apply a maintenance plan to a site. Creates/updates domain table rows for each module.
      */
     public function applyPlan(Site $site, MaintenancePlan $plan): void
@@ -127,7 +135,12 @@ class ModuleConfigService
 
         foreach (self::MODULE_MAP as $moduleKey => $config) {
             $mod = $planModules->get($moduleKey);
-            $enabled = $mod->is_enabled ?? false;
+            // DNS monitoring predates the plan-module system, so most plans carry
+            // no explicit `dns` row — which left every wizard-created site without
+            // a DNS monitor (P1-56). Treat DNS as a universal default-on monitor
+            // (matching the dns:backfill-monitors baseline) unless a plan opts out.
+            $default = in_array($moduleKey, self::DEFAULT_ON_MODULES, true);
+            $enabled = $mod->is_enabled ?? $default;
             $interval = $mod->interval_minutes ?? self::DEFAULT_INTERVALS[$moduleKey];
 
             $this->configureModule($site, $moduleKey, $enabled, $interval);

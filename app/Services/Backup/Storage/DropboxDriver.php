@@ -6,7 +6,9 @@ namespace App\Services\Backup\Storage;
 
 use App\Models\StorageDestination;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use RuntimeException;
 
 class DropboxDriver implements StorageDriver
@@ -18,6 +20,8 @@ class DropboxDriver implements StorageDriver
     protected const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
 
     protected const LARGE_FILE_THRESHOLD = 8 * 1024 * 1024; // 8MB — match chunk size to avoid loading large files into memory
+
+    protected const MAX_TRANSIENT_RETRIES = 5; // per request: retry 429/5xx so one throttled chunk can't abort a multi-GB upload (P1-64)
 
     public function __construct(
         protected StorageDestination $destination
@@ -436,25 +440,58 @@ class DropboxDriver implements StorageDriver
     protected function apiRequest(string $url, array $options): array
     {
         $accessToken = $this->getAccessToken();
+        $attempt = 0;
 
-        $response = $this->makeRequest($url, $options, $accessToken);
-
-        // If token expired, refresh and retry once
-        if ($response->status() === 401) {
-            $accessToken = $this->refreshAccessToken();
+        while (true) {
             $response = $this->makeRequest($url, $options, $accessToken);
-        }
 
-        if ($response->failed()) {
-            throw new RuntimeException("Dropbox API error [{$response->status()}]: ".$response->body());
-        }
+            // If token expired, refresh and retry once (does not count against
+            // the transient-retry budget).
+            if ($response->status() === 401) {
+                $accessToken = $this->refreshAccessToken();
+                $response = $this->makeRequest($url, $options, $accessToken);
+            }
 
-        $body = $response->body();
-        if (empty($body)) {
-            return [];
-        }
+            // Dropbox throttles with 429 (often with a Retry-After) and returns
+            // 5xx on transient server errors. Retry the individual request with
+            // backoff so a single blip on one chunk can't abort an entire
+            // multipart upload (P1-64). Each request (start/append/finish) runs
+            // through here, so every chunk gets its own retries.
+            if ($this->isTransient($response) && $attempt < self::MAX_TRANSIENT_RETRIES) {
+                $attempt++;
+                $this->backoff($response, $attempt);
 
-        return $response->json() ?? [];
+                continue;
+            }
+
+            if ($response->failed()) {
+                throw new RuntimeException("Dropbox API error [{$response->status()}]: ".$response->body());
+            }
+
+            $body = $response->body();
+            if (empty($body)) {
+                return [];
+            }
+
+            return $response->json() ?? [];
+        }
+    }
+
+    protected function isTransient(Response $response): bool
+    {
+        return $response->status() === 429 || $response->status() >= 500;
+    }
+
+    /**
+     * Sleep before retrying a throttled/failed request: honour Dropbox's
+     * Retry-After header when present, otherwise exponential backoff (capped).
+     */
+    protected function backoff(Response $response, int $attempt): void
+    {
+        $retryAfter = (int) $response->header('Retry-After');
+        $seconds = $retryAfter > 0 ? $retryAfter : min(2 ** $attempt, 60);
+
+        Sleep::for($seconds)->seconds();
     }
 
     protected function makeRequest(string $url, array $options, string $accessToken): \Illuminate\Http\Client\Response
