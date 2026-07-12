@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs\Concerns;
 
 use App\Enums\BackupStatus;
-use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
@@ -53,51 +52,65 @@ trait BackupJobTrait
         }
     }
 
+    /**
+     * Handle a per-attempt failure. This runs on EVERY thrown attempt, so it
+     * must not be destructive: P2-29 — a transient failure on attempt 1 must
+     * neither notify the user (the retry may still succeed) nor mark the row
+     * permanently Failed. Instead we record the error and leave the row in a
+     * recoverable Pending state so the imminent retry re-adopts THIS row rather
+     * than inserting a duplicate Backup. The permanent Failed transition, the
+     * user notification, and the circuit-breaker/activity accounting happen
+     * exactly once, from failed(), after all retries are exhausted.
+     */
     protected function handleFailure(\Exception $e): void
     {
         $label = $this->backupTypeLabel();
         $this->logStep("FAILED: {$e->getMessage()}");
 
-        Log::error("{$label} failed for site {$this->site->id} ({$this->site->domain})", [
+        Log::error("{$label} attempt failed for site {$this->site->id} ({$this->site->domain})", [
             'backup_id' => $this->backupId,
             'trigger' => $this->trigger,
+            'attempt' => $this->attempts(),
             'exception' => get_class($e),
             'message' => $e->getMessage(),
             'code' => $e->getCode(),
             'file' => $e->getFile().':'.$e->getLine(),
         ]);
 
-        if ($this->backup) {
-            $this->backup->refresh();
-            if (in_array($this->backup->status, [BackupStatus::Cancelled, BackupStatus::Pending])) {
-                return;
-            }
-            $this->backup->update([
-                'status' => BackupStatus::Failed,
-                'stage' => 'failed',
-                'progress_message' => "{$label} failed: ".Str::limit($e->getMessage(), 200),
-                'error_message' => $e->getMessage(),
-                'completed_at' => now(),
-                'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
-            ]);
+        if (! $this->backup) {
+            return;
         }
 
-        $config = $this->site->backupConfig;
-        if ($config) {
-            $config->update(['last_backup_status' => 'failed']);
+        $this->backup->refresh();
+        if (in_array($this->backup->status, [BackupStatus::Cancelled])) {
+            return;
         }
 
-        $this->site->update(['backup_ok' => false]);
+        $this->backup->update([
+            'status' => BackupStatus::Pending,
+            'stage' => 'retrying',
+            'progress_message' => "{$label} attempt failed, will retry: ".Str::limit($e->getMessage(), 180),
+            'error_message' => $e->getMessage(),
+        ]);
+    }
 
-        if ($this->backup) {
-            NotifyBackupFailed::dispatch($this->site, $this->backup, $e->getMessage());
+    /**
+     * Locate the Backup row for a permanent-failure hook. On a retried job the
+     * backupId set inside handle() is lost (job property mutations do not
+     * survive release()/redeliver), so fall back to the most recent
+     * still-open row for this (site, trigger).
+     */
+    protected function resolveFailedBackup(): ?Backup
+    {
+        if ($this->backupId) {
+            return Backup::find($this->backupId);
         }
 
-        ActivityLogger::backupFailed($this->site, $e->getMessage());
-
-        if ($this->attempts() >= $this->tries) {
-            static::releaseUniqueLock($this->site->id);
-        }
+        return Backup::where('site_id', $this->site->id)
+            ->where('trigger', $this->trigger)
+            ->whereNotIn('status', [BackupStatus::Completed, BackupStatus::Cancelled])
+            ->orderByDesc('id')
+            ->first();
     }
 
     protected function logStep(string $message): void
@@ -217,18 +230,35 @@ trait BackupJobTrait
         ]);
 
         $exceptionClass = $exception ? get_class($exception) : 'Unknown';
+        $errorMessage = $exception?->getMessage() ?? 'Job exceeded maximum attempts or timed out';
 
-        $backup = $this->backupId ? Backup::find($this->backupId) : null;
-        if ($backup && ! in_array($backup->status, [BackupStatus::Completed, BackupStatus::Failed, BackupStatus::Cancelled, BackupStatus::Pending])) {
+        // P2-29: retries are now exhausted — this is where the permanent Failed
+        // transition and the failure accounting happen (handleFailure keeps the
+        // row recoverable on each attempt so it is never marked Failed, and thus
+        // never notified, mid-retry). The single user notification is emitted by
+        // BackupObserver when the row transitions to Failed here (it dedups per
+        // event/site), so we deliberately do NOT dispatch NotifyBackupFailed
+        // again from the job — that was the source of the premature/duplicate
+        // notifications this fix removes.
+        $backup = $this->resolveFailedBackup();
+        if ($backup && ! in_array($backup->status, [BackupStatus::Completed, BackupStatus::Cancelled])) {
             $backup->update([
                 'status' => BackupStatus::Failed,
                 'stage' => 'failed',
-                'progress_message' => "{$label} failed: ".Str::limit($exception?->getMessage() ?? 'Unknown error', 200),
-                'error_message' => $exception?->getMessage() ?? 'Job exceeded maximum attempts or timed out',
+                'progress_message' => "{$label} failed: ".Str::limit($errorMessage, 200),
+                'error_message' => $errorMessage,
                 'completed_at' => now(),
                 'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
             ]);
         }
+
+        $config = $this->site->backupConfig;
+        if ($config) {
+            $config->update(['last_backup_status' => 'failed']);
+        }
+        $this->site->update(['backup_ok' => false]);
+
+        ActivityLogger::backupFailed($this->site, $errorMessage);
 
         CircuitBreakerService::recordFailure($this->site, "{$label} failed: {$exceptionClass}");
         JobTracker::fail($this->uniqueId(), "{$label} failed: {$exceptionClass}");

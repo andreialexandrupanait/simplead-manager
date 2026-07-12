@@ -276,6 +276,85 @@ class RetentionServiceTest extends TestCase
         $this->assertDatabaseHas('backups', ['id' => $completed->id]);
     }
 
+    private function createPreUpdateLock(array $overrides = []): Backup
+    {
+        return Backup::factory()->completed()->create(array_merge([
+            'site_id' => $this->site->id,
+            'storage_destination_id' => $this->destination->id,
+            'type' => 'full',
+            'trigger' => 'pre_update',
+            'is_locked' => true,
+            'lock_reason' => 'pre-update',
+            'format' => 'v2-zip',
+            'file_path' => 'backups/'.fake()->uuid().'.zip',
+            'file_size' => 1000,
+            'replicas' => [],
+        ], $overrides));
+    }
+
+    public function test_expired_pre_update_lock_is_reclaimed(): void
+    {
+        // P2-30: a pre-update backup older than the lock window becomes eligible
+        // for cleanup, provided the site keeps another restore point.
+        config(['backups.pre_update_lock_days' => 7]);
+        $this->createBackupConfig('count', 5);
+
+        $recent = $this->createBackup(['created_at' => now()->subDay()]);
+        $expiredLock = $this->createPreUpdateLock(['created_at' => now()->subDays(10)]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseMissing('backups', ['id' => $expiredLock->id]);
+        $this->assertDatabaseHas('backups', ['id' => $recent->id]);
+    }
+
+    public function test_fresh_pre_update_lock_is_retained(): void
+    {
+        // Within the protection window the pre-update lock is untouchable.
+        config(['backups.pre_update_lock_days' => 7]);
+        $this->createBackupConfig('count', 5);
+
+        $recent = $this->createBackup(['created_at' => now()->subDay()]);
+        $freshLock = $this->createPreUpdateLock(['created_at' => now()->subDays(2)]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $freshLock->id]);
+        $this->assertDatabaseHas('backups', ['id' => $recent->id]);
+    }
+
+    public function test_expired_pre_update_lock_kept_when_only_backup(): void
+    {
+        // Never delete the site's last remaining restore point, even if expired.
+        config(['backups.pre_update_lock_days' => 7]);
+        $this->createBackupConfig('count', 5);
+
+        $onlyLock = $this->createPreUpdateLock(['created_at' => now()->subDays(30)]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $onlyLock->id]);
+    }
+
+    public function test_manual_lock_is_never_reclaimed_by_pre_update_sweep(): void
+    {
+        // A user-applied lock (any reason other than 'pre-update') is protected.
+        config(['backups.pre_update_lock_days' => 7]);
+        $this->createBackupConfig('count', 5);
+
+        $recent = $this->createBackup(['created_at' => now()->subDay()]);
+        $manualLock = $this->createPreUpdateLock([
+            'created_at' => now()->subDays(30),
+            'trigger' => 'manual',
+            'lock_reason' => 'Keep forever',
+        ]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $manualLock->id]);
+        $this->assertDatabaseHas('backups', ['id' => $recent->id]);
+    }
+
     public function test_count_retention_with_zero_excess(): void
     {
         $this->createBackupConfig('count', 5);

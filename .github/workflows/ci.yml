@@ -47,10 +47,13 @@ jobs:
   test:
     name: PHPUnit (pgsql + redis)
     runs-on: ubuntu-latest
-    # Blocking since 2026-07: suite verified green (160 tests) via bin/test.
-    # Cap the job: some tests are not hermetic (real network calls with no
-    # timeout) and can hang the runner. Tracked as remediation item 2.10.
-    timeout-minutes: 15
+    # Blocking since 2026-07: suite verified green via bin/test.
+    # Cap the job so a non-hermetic test (real network call with no timeout)
+    # can't hang the runner indefinitely (tracked as remediation item 2.10).
+    # Raised 15→25 on 2026-07-12: the suite grew past 500 tests (~12m local,
+    # ~15m+ on the slower CI runner) and was tripping the 15m cap; 25m gives
+    # headroom for continued P2/P3 test growth without masking a real hang.
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine

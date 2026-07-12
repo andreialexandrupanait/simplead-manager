@@ -61,9 +61,11 @@ class BackupDispatcher
             ->with('site')
             ->get();
 
+        $staggerInterval = (int) config('backups.stagger_interval_seconds', 180);
+
         foreach ($configs->values() as $index => $config) {
             try {
-                $this->dispatchScheduledBackup($config, delaySeconds: $index * 180);
+                $this->dispatchScheduledBackup($config, delaySeconds: $index * $staggerInterval);
             } catch (\Throwable $e) {
                 Log::error("BackupDispatcher: failed to dispatch backup for site #{$config->site_id}: {$e->getMessage()}", [
                     'config_id' => $config->id,
@@ -176,7 +178,14 @@ class BackupDispatcher
      *   would otherwise be wrongly killed mid-flight. The push pipeline's
      *   pollPrepareStatus + S3 multipart callbacks both touch updated_at on
      *   every event, so a healthy job is always fresh.
-     * - Pending: absolute 45 min only (no heartbeat) — job never started
+     * - Pending: absolute threshold (no heartbeat) — job never started. P2-31:
+     *   the threshold must be STAGGER-AWARE. Scheduled/bulk dispatch spaces
+     *   jobs by stagger_interval_seconds per site, so the Nth pending backup is
+     *   not even expected to start until (N-1) × interval after it was queued.
+     *   A fixed 45-min threshold flagged everything past ~15 sites as "stuck"
+     *   and spuriously auto-retried it before it ran. We extend the base by the
+     *   stagger spread of the whole pending cohort, so no pending backup is
+     *   ever considered stale before its own expected start + base threshold.
      *
      * Auto-retries up to 2 times before marking as permanently failed.
      */
@@ -191,9 +200,16 @@ class BackupDispatcher
             ->with('site')
             ->get();
 
-        // Pending: job is queued but never picked up — only use absolute timeout
+        // Pending: job is queued but never picked up — absolute threshold,
+        // extended by the stagger spread of the pending cohort (P2-31).
+        $basePendingMinutes = (int) config('backups.pending_stale_minutes', 45);
+        $staggerInterval = (int) config('backups.stagger_interval_seconds', 180);
+        $pendingCount = Backup::where('status', BackupStatus::Pending)->count();
+        $staggerAllowanceMinutes = (int) ceil(($pendingCount * $staggerInterval) / 60);
+        $pendingThresholdMinutes = $basePendingMinutes + $staggerAllowanceMinutes;
+
         $stuckPending = Backup::where('status', BackupStatus::Pending)
-            ->where('started_at', '<', now()->subMinutes(45))
+            ->where('started_at', '<', now()->subMinutes($pendingThresholdMinutes))
             ->with('site')
             ->get();
 

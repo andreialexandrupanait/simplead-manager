@@ -26,6 +26,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use ZipArchive;
 
@@ -37,9 +38,26 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 2;
 
+    /**
+     * P2-32: the direct-upload pipeline polls the WP host by RELEASING the job
+     * back to the queue between polls (freeing the worker) rather than sleeping.
+     * Those releases must not count as failures, so total wall-clock is bounded
+     * by retryUntil() instead of $tries, while genuine thrown errors still stop
+     * after $maxExceptions attempts (preserving the P2-29 notify-once-at-end
+     * semantics). $tries is retained only for the site-lock busy-wait heuristic.
+     */
+    public int $maxExceptions = 2;
+
     public array $backoff = [120];
 
     public int $uniqueFor = 2700;
+
+    /**
+     * Set by pollPrepareStatus() when it releases the job to wait for the WP
+     * host to finish preparing the archive. handle() unwinds cleanly (no
+     * failure) when true so the worker is freed until the next poll.
+     */
+    protected bool $deferredForPolling = false;
 
     /**
      * P1-27: how long a backup row's heartbeat (updated_at — every stage writes
@@ -95,6 +113,18 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     public function uniqueId(): string
     {
         return 'backup-'.$this->site->id;
+    }
+
+    /**
+     * P2-32: bound the total wall-clock for release-based prepare polling.
+     * Generous vs the poll deadline (config max_wait_seconds) so a staggered
+     * dispatch still has room; genuine failures stop earlier via $maxExceptions.
+     */
+    public function retryUntil(): \DateTimeInterface
+    {
+        return now()->addSeconds(
+            (int) config('backups.prepare_poll.max_wait_seconds', 3600) + 1800
+        );
     }
 
     protected function backupTypeLabel(): string
@@ -201,7 +231,21 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 ->orderByDesc('id')
                 ->first();
 
-            if ($existing) {
+            // P2-29: a retried attempt (attempts() > 1) re-runs handle() with a
+            // null backupId because job property mutations don't survive a
+            // release()/redeliver. Since this is a ShouldBeUnique job, no OTHER
+            // dispatch can be running concurrently — the existing in-flight row
+            // is THIS backup's own previous attempt. Adopt it instead of
+            // inserting a duplicate Backup row.
+            if ($existing && $this->attempts() > 1) {
+                $this->backup = $existing;
+                $this->backupId = $existing->id;
+                $this->backup->update([
+                    'status' => BackupStatus::InProgress,
+                    'stage' => 'initializing',
+                    'started_at' => $this->backup->started_at ?? now(),
+                ]);
+            } elseif ($existing) {
                 $isFresh = $existing->updated_at?->gt(now()->subSeconds(self::STALE_HEARTBEAT_SECONDS));
 
                 if ($isFresh) {
@@ -228,22 +272,24 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
                 ]);
             }
 
-            $this->backup = Backup::create([
-                'site_id' => $this->site->id,
-                'storage_destination_id' => $destination->id,
-                'type' => $this->type,
-                'trigger' => $this->trigger,
-                'status' => BackupStatus::InProgress,
-                'includes_database' => true,
-                'includes_files' => $this->type === 'full',
-                'wp_version' => $this->site->wp_version,
-                'php_version' => $this->site->php_version,
-                'plugins_count' => $this->site->sitePlugins()->count(),
-                'themes_count' => $this->site->siteThemes()->count(),
-                'db_size_mb' => $this->site->db_size_mb,
-                'started_at' => now(),
-            ]);
-            $this->backupId = $this->backup->id;
+            if (! $this->backup) {
+                $this->backup = Backup::create([
+                    'site_id' => $this->site->id,
+                    'storage_destination_id' => $destination->id,
+                    'type' => $this->type,
+                    'trigger' => $this->trigger,
+                    'status' => BackupStatus::InProgress,
+                    'includes_database' => true,
+                    'includes_files' => $this->type === 'full',
+                    'wp_version' => $this->site->wp_version,
+                    'php_version' => $this->site->php_version,
+                    'plugins_count' => $this->site->sitePlugins()->count(),
+                    'themes_count' => $this->site->siteThemes()->count(),
+                    'db_size_mb' => $this->site->db_size_mb,
+                    'started_at' => now(),
+                ]);
+                $this->backupId = $this->backup->id;
+            }
         }
 
         $this->reportProgress('initializing', 5, 'Initializing backup...');
@@ -770,8 +816,13 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         // harmless no-op (the lock prevents double-execution).
         $this->kickPrepareExecute($api, $token);
 
-        // 2. Poll until ready
+        // 2. Poll until ready. pollPrepareStatus releases the job back to the
+        // queue between polls (P2-32) — when it does, unwind cleanly so the
+        // worker is freed; the redelivered attempt resumes the poll.
         $status = $this->pollPrepareStatus($api, $token);
+        if ($this->deferredForPolling) {
+            return;
+        }
         $size = (int) $status['size'];
         $checksum = (string) $status['checksum'];
 
@@ -902,79 +953,100 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Poll WP plugin /backup/prepare-status with exponential backoff until task
-     * is ready, failed, or we hit max wait.
+     * Poll the WP plugin /backup/prepare-status ONCE. If the archive is not yet
+     * ready, RELEASE the job back to the queue with a short delay (P2-32) and
+     * set $deferredForPolling so the caller unwinds — freeing the worker instead
+     * of sleeping in it for up to an hour. The redelivered attempt resumes here.
      *
-     * @return array{status: string, size: int, checksum: string, progress: int, message: string}
+     * The overall wall-clock deadline is persisted in the cache (keyed by
+     * site+token) so it survives release()/redeliver cycles; once it passes we
+     * give up with the same timeout semantics as the old sleep loop.
+     *
+     * @return array{status?: string, size?: int, checksum?: string, progress?: int, message?: string}
      */
     protected function pollPrepareStatus(WordPressApiServiceInterface $api, string $token): array
     {
-        $maxWaitSeconds = 3600; // 60 min — big sites with millions of files can legitimately take this long
-        $deadline = microtime(true) + $maxWaitSeconds;
-        // Tight at start (2/3/5s) so the user sees activity quickly, then back off
-        // to avoid hammering the WP REST endpoint during long file zip phases.
-        $delays = [2, 3, 5, 5, 8, 10, 15, 20, 30];
-        $delayIndex = 0;
+        $maxWaitSeconds = (int) config('backups.prepare_poll.max_wait_seconds', 3600);
+        $releaseDelay = (int) config('backups.prepare_poll.release_delay_seconds', 15);
+        $deadlineKey = "backup-prepare-deadline:{$this->site->id}:{$token}";
 
-        $lastReportedMessage = '';
-        $lastReportedProgress = -1;
-
-        while (microtime(true) < $deadline) {
-            $this->checkCancelled();
-            $this->touchHeartbeat();
-
-            $resp = $api->request('POST', '/backup/prepare-status', ['token' => $token], [], 30);
-
-            if (! $resp->successful()) {
-                if ($resp->status() === 404) {
-                    // Either the transient was force-cleared by a parallel attempt, or
-                    // the plugin/object cache lost it. Either way, we can't continue.
-                    throw new BackupException(
-                        'WP plugin lost backup task state — likely a parallel attempt or object-cache eviction. '
-                        .'Retry from UI (forceFreshPrepare=true) to clear and restart.',
-                        site: $this->site
-                    );
-                }
-                // transient — retry after delay
-                $this->logStep("prepare-status HTTP {$resp->status()}, will retry");
-            } else {
-                $data = $resp->json();
-                $status = $data['status'] ?? 'unknown';
-                $progress = (int) ($data['progress'] ?? 0);
-                $wpMessage = (string) ($data['message'] ?? '');
-
-                // Pass WP-side message + percent verbatim so user sees what's
-                // happening ("WP: Archiving files (45%)" not the compressed
-                // manager percent which doesn't move enough to feel like progress).
-                $surfaceMessage = $wpMessage !== ''
-                    ? sprintf('WP: %s (%d%%)', $wpMessage, $progress)
-                    : "WP preparing... {$progress}%";
-
-                if ($progress !== $lastReportedProgress || $surfaceMessage !== $lastReportedMessage) {
-                    // Map WP progress 0–100 → manager 5–28% (reserve 30%+ for upload).
-                    $mapped = 5 + (int) ($progress * 0.23);
-                    $this->reportProgress('preparing_on_wp', $mapped, $surfaceMessage);
-                    $lastReportedProgress = $progress;
-                    $lastReportedMessage = $surfaceMessage;
-                }
-
-                // Plugin reports 'done' on success; accept 'ready' too for forward-compat.
-                if ($status === 'done' || $status === 'ready') {
-                    return $data;
-                }
-                if ($status === 'failed') {
-                    $err = $data['error'] ?? 'unknown error on WP';
-                    throw new BackupException("WP prepare failed: {$err}", site: $this->site);
-                }
-                // status === 'working' → keep polling
-            }
-
-            $delay = $delays[min($delayIndex, count($delays) - 1)];
-            $delayIndex++;
-            sleep($delay);
+        $deadline = Cache::get($deadlineKey);
+        if ($deadline === null) {
+            $deadline = now()->addSeconds($maxWaitSeconds)->getTimestamp();
+            Cache::put($deadlineKey, $deadline, $maxWaitSeconds + 300);
         }
 
-        throw new BackupException('prepare-status polling timed out after '.$maxWaitSeconds.'s', site: $this->site);
+        if (now()->getTimestamp() > (int) $deadline) {
+            Cache::forget($deadlineKey);
+            throw new BackupException('prepare-status polling timed out after '.$maxWaitSeconds.'s', site: $this->site);
+        }
+
+        $this->checkCancelled();
+        $this->touchHeartbeat();
+
+        $resp = $api->request('POST', '/backup/prepare-status', ['token' => $token], [], 30);
+
+        if (! $resp->successful()) {
+            if ($resp->status() === 404) {
+                // Either the transient was force-cleared by a parallel attempt, or
+                // the plugin/object cache lost it. Either way, we can't continue.
+                Cache::forget($deadlineKey);
+                throw new BackupException(
+                    'WP plugin lost backup task state — likely a parallel attempt or object-cache eviction. '
+                    .'Retry from UI (forceFreshPrepare=true) to clear and restart.',
+                    site: $this->site
+                );
+            }
+            // transient — release and re-poll after a delay
+            $this->logStep("prepare-status HTTP {$resp->status()}, releasing to retry");
+            $this->deferForPolling($releaseDelay);
+
+            return [];
+        }
+
+        $data = $resp->json();
+        $status = $data['status'] ?? 'unknown';
+        $progress = (int) ($data['progress'] ?? 0);
+        $wpMessage = (string) ($data['message'] ?? '');
+
+        // Pass WP-side message + percent verbatim so user sees what's
+        // happening ("WP: Archiving files (45%)" not the compressed manager
+        // percent which doesn't move enough to feel like progress).
+        $surfaceMessage = $wpMessage !== ''
+            ? sprintf('WP: %s (%d%%)', $wpMessage, $progress)
+            : "WP preparing... {$progress}%";
+        // Map WP progress 0–100 → manager 5–28% (reserve 30%+ for upload).
+        $mapped = 5 + (int) ($progress * 0.23);
+        $this->reportProgress('preparing_on_wp', $mapped, $surfaceMessage);
+
+        // Plugin reports 'done' on success; accept 'ready' too for forward-compat.
+        if ($status === 'done' || $status === 'ready') {
+            Cache::forget($deadlineKey);
+
+            return $data;
+        }
+        if ($status === 'failed') {
+            Cache::forget($deadlineKey);
+            $err = $data['error'] ?? 'unknown error on WP';
+            throw new BackupException("WP prepare failed: {$err}", site: $this->site);
+        }
+
+        // status === 'working' → free the worker and poll again after a delay.
+        $this->deferForPolling($releaseDelay);
+
+        return [];
+    }
+
+    /**
+     * Release this job back to the queue with a delay so the worker is freed
+     * between prepare-status polls, and flag the run as deferred so handle()
+     * unwinds without treating it as a failure.
+     */
+    protected function deferForPolling(int $delay): void
+    {
+        $this->deferredForPolling = true;
+        $this->logStep("Waiting on WP archive build — released to queue, resuming poll in {$delay}s");
+        $this->release($delay);
     }
 
     /**

@@ -377,7 +377,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             if ($zip->open($localPath) !== true) {
                 throw new \RuntimeException('Failed to open backup archive.');
             }
-            $zip->extractTo($this->tempDir);
+            \App\Services\Backup\SafeZipExtractor::extractTo($zip, $this->tempDir);
             $zip->close();
             @unlink($localPath);
 
@@ -419,7 +419,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         if ($zip->open($localPath) !== true) {
             throw new \RuntimeException('Failed to open v3-zip backup archive.');
         }
-        $zip->extractTo($targetDir);
+        \App\Services\Backup\SafeZipExtractor::extractTo($zip, $targetDir);
         $zip->close();
         @unlink($localPath);
 
@@ -620,7 +620,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 if ($zip->open($localPath) !== true) {
                     throw new \RuntimeException("Failed to open backup #{$chainBackup->id} archive.");
                 }
-                $zip->extractTo($extractDir);
+                \App\Services\Backup\SafeZipExtractor::extractTo($zip, $extractDir);
                 $zip->close();
                 @unlink($localPath);
             }
@@ -633,7 +633,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                     if (file_exists($filesZip)) {
                         $fz = new ZipArchive;
                         if ($fz->open($filesZip) === true) {
-                            $fz->extractTo($mergedDir);
+                            \App\Services\Backup\SafeZipExtractor::extractTo($fz, $mergedDir);
                             $fz->close();
                         }
                     }
@@ -644,7 +644,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
                 if (file_exists($filesZip) && $this->restoreFiles) {
                     $fz = new ZipArchive;
                     if ($fz->open($filesZip) === true) {
-                        $fz->extractTo($mergedDir); // Overwrites existing files
+                        \App\Services\Backup\SafeZipExtractor::extractTo($fz, $mergedDir); // Overwrites existing files
                         $fz->close();
                     }
                 }
@@ -739,7 +739,7 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
 
                 $chunkZip = new ZipArchive;
                 if ($chunkZip->open($chunkPath) === true) {
-                    $chunkZip->extractTo($extractDir);
+                    \App\Services\Backup\SafeZipExtractor::extractTo($chunkZip, $extractDir);
                     $chunkZip->close();
                 }
                 @unlink($chunkPath);
