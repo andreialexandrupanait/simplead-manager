@@ -16,9 +16,11 @@ trait ManagesThemes
 
     public function updateThemes(array $themeSlugs): array
     {
+        // Updates run an unbounded task on the WP host — do not abandon the call
+        // at the 30s default and lose the result (P1-41).
         $response = $this->request('POST', '/themes/update', [
             'themes' => $themeSlugs,
-        ]);
+        ], timeout: self::UPDATE_REQUEST_TIMEOUT);
         $this->throwIfFailed($response);
 
         return $response->json();

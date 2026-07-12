@@ -16,9 +16,11 @@ trait ManagesPlugins
 
     public function updatePlugins(array $pluginFiles): array
     {
+        // Updates run an unbounded task on the WP host — do not abandon the call
+        // at the 30s default and lose the result (P1-41).
         $response = $this->request('POST', '/plugins/update', [
             'plugins' => $pluginFiles,
-        ]);
+        ], timeout: self::UPDATE_REQUEST_TIMEOUT);
         $this->throwIfFailed($response);
 
         return $response->json();

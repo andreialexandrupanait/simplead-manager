@@ -10,6 +10,7 @@ use App\Models\Backup;
 use App\Models\SafeUpdate;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
@@ -68,21 +69,29 @@ class SafeUpdateService
             // cannot be silently skipped by lock contention.
             $safeUpdate->update(['status' => 'backing_up']);
             $config = $site->backupConfig;
-            if ($config) {
-                $preBackup = $this->runPreUpdateBackup($site, $config, $heldLockToken);
 
-                if (! $preBackup || $preBackup->status !== BackupStatus::Completed) {
-                    $reason = 'Pre-update safety backup did not complete (it was skipped or failed); '
-                        .'aborting the update to avoid changing the site with no rollback point.';
-                    $safeUpdate->update([
-                        'status' => 'failed',
-                        'error_message' => $reason,
-                        'completed_at' => now(),
-                    ]);
-                    Log::error("Safe update {$safeUpdate->id} aborted for site {$site->id}: {$reason}");
+            // No backup configuration means no rollback point can be produced.
+            // A "safe" update with no safety net is worse than a plain update, so
+            // rather than silently skipping the backup and touching a client site
+            // anyway (the previous behaviour), hard-abort and escalate — the same
+            // fail-closed posture as the P0-07 backup-not-verified abort (P1-17).
+            if (! $config) {
+                $reason = 'No backup configuration exists for this site, so no pre-update safety '
+                    .'backup can be taken; aborting the safe update rather than changing a client site '
+                    .'with no rollback point. Configure backups for this site to enable safe updates.';
+                $this->abortSafeUpdate($safeUpdate, $reason);
 
-                    throw new \RuntimeException($reason);
-                }
+                throw new \RuntimeException($reason);
+            }
+
+            $preBackup = $this->runPreUpdateBackup($site, $config, $heldLockToken);
+
+            if (! $preBackup || $preBackup->status !== BackupStatus::Completed) {
+                $reason = 'Pre-update safety backup did not complete (it was skipped or failed); '
+                    .'aborting the update to avoid changing the site with no rollback point.';
+                $this->abortSafeUpdate($safeUpdate, $reason);
+
+                throw new \RuntimeException($reason);
             }
 
             // Step 2: Pre-update screenshot
@@ -126,12 +135,23 @@ class SafeUpdateService
             // or roll back to. Record the real failure instead of a false success
             // so a security remediation is never reported as done when it wasn't.
             if (! $updateSucceeded) {
+                $failureReason = $this->stringifyUpdateError($updateResult['error'] ?? null)
+                    ?? 'Update did not apply on the target site.';
                 $safeUpdate->update([
                     'status' => 'failed',
-                    'error_message' => $this->stringifyUpdateError($updateResult['error'] ?? null)
-                        ?? 'Update did not apply on the target site.',
+                    'error_message' => $failureReason,
                     'completed_at' => now(),
                 ]);
+
+                // The connector rejected the update — surface it so a security
+                // remediation is never left silently unapplied (P1-19/P1-42).
+                $this->notifySafeUpdateOutcome(
+                    $safeUpdate,
+                    'safe_update_failed',
+                    'Safe Update Failed',
+                    "The update for {$safeUpdate->name} did not apply on {$site->name}: {$failureReason}",
+                    rolledBack: false,
+                );
 
                 return;
             }
@@ -174,18 +194,45 @@ class SafeUpdateService
                     $errorParts[] = 'Visual regression detected significant changes ('.($visualResults['diff_percent'] ?? '?').'% different)';
                 }
 
+                $errorMessage = implode('. ', $errorParts);
+
+                $rolledBack = false;
                 if ($safeUpdate->auto_rollback) {
                     $safeUpdate->update(['status' => 'rolling_back']);
-                    $this->rollbackService->executeRollback($rollbackPoint);
+                    $rollbackResult = $this->rollbackService->executeRollback($rollbackPoint, $userId);
+                    $rolledBack = (bool) ($rollbackResult['success'] ?? true);
                 }
 
                 $safeUpdate->update([
                     'status' => 'failed',
                     'health_check_results' => $healthResults['checks'],
                     'visual_regression_results' => $visualResults,
-                    'error_message' => implode('. ', $errorParts),
+                    'error_message' => $errorMessage,
                     'completed_at' => now(),
                 ]);
+
+                // P1-42: these branches previously completed silently. An operator
+                // must be told when a client site failed its post-update checks —
+                // and especially when we automatically rolled it back.
+                if ($rolledBack) {
+                    $this->notifySafeUpdateOutcome(
+                        $safeUpdate,
+                        'safe_update_rolled_back',
+                        'Safe Update Rolled Back',
+                        "Post-update checks failed for {$safeUpdate->name} on {$site->name}; the site was "
+                            ."automatically rolled back to {$safeUpdate->from_version}. {$errorMessage}.",
+                        rolledBack: true,
+                    );
+                } else {
+                    $this->notifySafeUpdateOutcome(
+                        $safeUpdate,
+                        'safe_update_failed',
+                        'Safe Update Unhealthy',
+                        "Post-update checks failed for {$safeUpdate->name} on {$site->name} and auto-rollback "
+                            ."is off — the site may be unhealthy and was NOT rolled back. {$errorMessage}.",
+                        rolledBack: false,
+                    );
+                }
             }
         } catch (\Exception $e) {
             Log::error("Safe update failed for site {$site->id}: {$e->getMessage()}");
@@ -208,9 +255,13 @@ class SafeUpdateService
      */
     protected function runPreUpdateBackup(Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?Backup
     {
+        // Plugin/theme/core updates change FILES on disk, so a DB-only backup is
+        // not a rollback point for the thing being changed — a file-corrupting
+        // update would be unrecoverable. Take a FULL (files + database) backup so
+        // the safety net actually covers the update (P1-17).
         CreateBackup::dispatchSync(
             $site,
-            'database',
+            'full',
             'pre_update',
             $config->storage_destination_id,
             null,
@@ -222,6 +273,46 @@ class SafeUpdateService
             ->where('trigger', 'pre_update')
             ->orderByDesc('id')
             ->first();
+    }
+
+    /**
+     * Mark a safe update failed with a reason and log it. Used by the fail-closed
+     * abort paths (no backup config / backup did not complete).
+     */
+    private function abortSafeUpdate(SafeUpdate $safeUpdate, string $reason): void
+    {
+        $safeUpdate->update([
+            'status' => 'failed',
+            'error_message' => $reason,
+            'completed_at' => now(),
+        ]);
+
+        Log::error("Safe update {$safeUpdate->id} aborted for site {$safeUpdate->site_id}: {$reason}");
+    }
+
+    /**
+     * Emit a critical notification for a safe-update outcome an operator must see
+     * (failed to apply, rolled back, or left unhealthy). Previously these
+     * non-exception paths finished silently (P1-42).
+     */
+    private function notifySafeUpdateOutcome(SafeUpdate $safeUpdate, string $event, string $title, string $message, bool $rolledBack): void
+    {
+        /** @var Site $site */
+        $site = $safeUpdate->site;
+
+        NotificationService::notifySiteEvent(
+            $site,
+            $event,
+            $title,
+            $message,
+            [
+                'Type' => $safeUpdate->type,
+                'Name' => $safeUpdate->name,
+                'Version' => "{$safeUpdate->from_version} → {$safeUpdate->to_version}",
+                'Rolled back' => $rolledBack ? 'yes' : 'no',
+            ],
+            'critical',
+        );
     }
 
     /**

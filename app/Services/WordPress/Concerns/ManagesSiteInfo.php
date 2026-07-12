@@ -47,7 +47,9 @@ trait ManagesSiteInfo
 
     public function updateCore(): array
     {
-        $response = $this->request('POST', '/core/update');
+        // Core updates run an unbounded task on the WP host — do not abandon the
+        // call at the 30s default and lose the result (P1-41).
+        $response = $this->request('POST', '/core/update', timeout: self::UPDATE_REQUEST_TIMEOUT);
         $response->throw();
 
         return $response->json();
@@ -55,10 +57,12 @@ trait ManagesSiteInfo
 
     public function rollback(string $type, string $slug, string $version): array
     {
+        // A rollback reinstalls a prior version — the same unbounded work as an
+        // update, and it is the safety net, so give it the update timeout (P1-41).
         $response = $this->request('POST', "/rollback/{$type}", [
             'slug' => $slug,
             'version' => $version,
-        ]);
+        ], timeout: self::UPDATE_REQUEST_TIMEOUT);
         $response->throw();
 
         return $response->json();

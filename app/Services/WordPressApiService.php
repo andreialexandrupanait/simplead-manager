@@ -32,6 +32,15 @@ class WordPressApiService implements WordPressApiServiceInterface
     use ManagesThemes;
     use ManagesUsers;
 
+    /**
+     * HTTP timeout (seconds) for connector operations that run an effectively
+     * unbounded task on the WP host — plugin/theme/core updates and rollbacks.
+     * The 30s default abandons an in-flight update and loses its result while the
+     * connector keeps working, leaving the manager blind to the real outcome
+     * (P1-41). Sized above realistic single-item update/rollback wall time.
+     */
+    public const UPDATE_REQUEST_TIMEOUT = 300;
+
     public WordPressHttpClient $http;
 
     private ?WordPressBackupDownloader $backupDownloaderInstance = null;

@@ -60,6 +60,7 @@ class NotificationTemplate extends Model
         'abandoned_plugins_found' => 'Abandoned Plugins',
         'email_blacklisted' => 'Email Blacklisted',
         'safe_update_failed' => 'Safe Update Failed',
+        'safe_update_rolled_back' => 'Safe Update Rolled Back',
         'report_reminder' => 'Report Reminder',
         'connection_validation_failed' => 'Connection Failed',
         'dns_changed' => 'DNS Records Changed',

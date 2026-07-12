@@ -198,9 +198,12 @@ trait WithPluginManagement
 
         $plugin = SitePlugin::where('site_id', $this->site->id)->findOrFail($pluginId);
 
+        // Update logs store the plugin's display name in `name` and its slug in
+        // `slug`; looking up the last update by `name = slug` never matched, so the
+        // rollback button was dead. Match on the slug column (P1-43).
         $lastUpdate = UpdateLog::where('site_id', $this->site->id)
             ->where('type', 'plugin')
-            ->where('name', $plugin->slug)
+            ->where('slug', $plugin->slug)
             ->where('success', true)
             ->orderByDesc('performed_at')
             ->first();
@@ -220,8 +223,10 @@ trait WithPluginManagement
 
                 UpdateLog::create([
                     'site_id' => $this->site->id,
+                    'user_id' => auth()->id(),
                     'type' => 'plugin',
-                    'name' => $plugin->slug,
+                    'name' => $plugin->name,
+                    'slug' => $plugin->slug,
                     'from_version' => $plugin->version,
                     'to_version' => $lastUpdate->from_version,
                     'success' => true,
@@ -242,7 +247,11 @@ trait WithPluginManagement
     {
         $config = $this->site->backupConfig;
         if ($config?->backup_before_updates) {
-            CreateBackup::dispatch($this->site, 'database', 'pre_update', $config->storage_destination_id);
+            // Run the backup SYNCHRONOUSLY so it completes before the inline
+            // update touches the site. Dispatching it async raced the update and
+            // could capture post-update state (or run after it), defeating the
+            // point of a pre-update restore point (P1-18).
+            CreateBackup::dispatchSync($this->site, 'database', 'pre_update', $config->storage_destination_id);
         }
     }
 }

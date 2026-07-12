@@ -398,6 +398,8 @@ class PluginManagerService
         try {
             $api = $this->apiFactory->make($site);
             $result = $api->updateCore();
+            $success = (bool) ($result['success'] ?? false);
+            $error = $this->normalizeError($result['error'] ?? null);
 
             UpdateLog::create([
                 'site_id' => $site->id,
@@ -407,14 +409,24 @@ class PluginManagerService
                 'slug' => 'wordpress',
                 'from_version' => $site->wp_version,
                 'to_version' => $site->core_update_version,
-                'success' => $result['success'] ?? false,
-                'error_message' => $result['error'] ?? null,
+                'success' => $success,
+                'error_message' => $error,
                 'performed_at' => now(),
             ]);
 
+            // Only claim success when the connector actually confirms it. Reporting
+            // a core update as done regardless of the connector's result hid real
+            // failures and left sites on outdated (vulnerable) cores (P1-19).
+            if (! $success) {
+                return [
+                    'success' => false,
+                    'message' => 'Core update failed: '.($error ?? 'The site reported the update did not complete.'),
+                ];
+            }
+
             ActivityLogger::coreUpdated($site, $site->wp_version, $site->core_update_version);
 
-            return ['success' => true, 'message' => 'WordPress core update initiated.'];
+            return ['success' => true, 'message' => 'WordPress core updated successfully.'];
         } catch (WordPressApiException|RequestException|\RuntimeException $e) {
             Log::warning("Core update failed on site {$site->name}", [
                 'site_id' => $site->id,
@@ -428,5 +440,20 @@ class PluginManagerService
     private function cleanErrorMessage(string $message): string
     {
         return Str::limit(trim(strip_tags($message)), 200);
+    }
+
+    /**
+     * The connector usually reports an error as a string, but a transport-level
+     * failure can surface as an array; normalise both to a stored message.
+     */
+    private function normalizeError(mixed $error): ?string
+    {
+        if ($error === null || $error === '') {
+            return null;
+        }
+
+        $message = is_string($error) ? $error : (string) json_encode($error);
+
+        return $this->cleanErrorMessage($message) ?: null;
     }
 }
