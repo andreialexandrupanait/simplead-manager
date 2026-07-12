@@ -29,6 +29,21 @@ class SendNotificationJob implements ShouldQueue
 
     public array $backoff = [5, 15, 60];
 
+    /**
+     * Stable acknowledgement token, generated once at construction so the token
+     * embedded in the outgoing message always matches the persisted row — even
+     * across retries (see $idempotencyKey below). Null for non-ackable severities.
+     */
+    public ?string $ackToken = null;
+
+    /**
+     * P1-20: one logical send == one notification_logs row. This key is generated
+     * once at construction and preserved through serialization, so every retry of
+     * the same job upserts the same row instead of appending a fresh `failed` row
+     * that would later fire a phantom "Delivery FAILED" escalation.
+     */
+    public string $idempotencyKey;
+
     public function __construct(
         public NotificationChannel $channel,
         public ?Site $site,
@@ -43,14 +58,18 @@ class SendNotificationJob implements ShouldQueue
         public bool $isEscalation = false,
     ) {
         $this->onQueue('notifications');
+        $this->ackToken = in_array($this->severity, ['critical', 'warning'], true)
+            ? Str::random(64)
+            : null;
+        $this->idempotencyKey = (string) Str::uuid();
     }
 
     public function handle(): void
     {
-        // Ack token must exist BEFORE sending so the acknowledgement link can be
-        // embedded in the outgoing message (audit N-P1-2: tokens were generated
+        // Ack token was generated at construction so the acknowledgement link can
+        // be embedded in the outgoing message (audit N-P1-2: tokens were generated
         // but never delivered, making acknowledgement impossible).
-        $ackToken = in_array($this->severity, ['critical', 'warning'], true) ? Str::random(64) : null;
+        $ackToken = $this->ackToken;
 
         $message = $this->message;
         $webhookPayload = $this->webhookPayload ?? [];
@@ -80,26 +99,33 @@ class SendNotificationJob implements ShouldQueue
             default => ['success' => false, 'response_code' => null, 'error' => "Unknown channel type: {$this->channel->type}"],
         };
 
-        NotificationLog::create([
-            'notification_channel_id' => $this->channel->id,
-            'site_id' => $this->site?->id,
-            'event' => $this->event,
-            'channel_type' => $this->channel->type,
-            'status' => $result['success'] ? 'sent' : 'failed',
-            'message' => $this->message,
-            'error_message' => $result['error'] ?? null,
-            'response_code' => $result['response_code'] ?? null,
-            'severity' => $this->severity,
-            'ack_token' => $ackToken,
-            // Escalation-generated notifications are born "escalated" so
-            // ProcessNotificationEscalations never picks them up again —
-            // otherwise an A→B + B→A rule pair loops forever (audit N-P1-2).
-            'escalated' => $this->isEscalation,
-            'metadata' => [
-                'title' => $this->title,
+        // P1-20: upsert on the idempotency key so a retry updates the single row
+        // for this logical send (failed → sent on recovery) instead of leaving a
+        // stale `failed` row behind that ProcessNotificationEscalations would turn
+        // into a false "Delivery FAILED" escalation.
+        NotificationLog::updateOrCreate(
+            ['idempotency_key' => $this->idempotencyKey],
+            [
+                'notification_channel_id' => $this->channel->id,
+                'site_id' => $this->site?->id,
+                'event' => $this->event,
+                'channel_type' => $this->channel->type,
+                'status' => $result['success'] ? 'sent' : 'failed',
+                'message' => $this->message,
+                'error_message' => $result['error'] ?? null,
+                'response_code' => $result['response_code'] ?? null,
                 'severity' => $this->severity,
-            ],
-        ]);
+                'ack_token' => $ackToken,
+                // Escalation-generated notifications are born "escalated" so
+                // ProcessNotificationEscalations never picks them up again —
+                // otherwise an A→B + B→A rule pair loops forever (audit N-P1-2).
+                'escalated' => $this->isEscalation,
+                'metadata' => [
+                    'title' => $this->title,
+                    'severity' => $this->severity,
+                ],
+            ]
+        );
 
         // Update channel state
         if ($result['success']) {

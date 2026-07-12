@@ -6,12 +6,12 @@ namespace App\Jobs;
 
 use App\Models\NotificationChannel;
 use App\Models\Site;
+use App\Support\ReliableRedisList;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 
 /**
  * Processes buffered notifications from Redis, groups them by event+channel,
@@ -25,6 +25,19 @@ class ProcessNotificationBatch implements ShouldQueue
 
     private const BUFFER_KEY = 'notification_buffer';
 
+    /**
+     * Bounded per-run item cap so a huge incident-storm buffer drains across
+     * several minute-cadence runs rather than in one over-long pass.
+     */
+    private const MAX_ITEMS = 1000;
+
+    /**
+     * Explicit timeout (the notifications supervisor runs a tight worker timeout);
+     * combined with the at-least-once drain, a mid-batch kill no longer loses
+     * items — they stay claimed on the processing list and are recovered next run.
+     */
+    public int $timeout = 120;
+
     public function __construct()
     {
         $this->onQueue('notifications');
@@ -32,65 +45,87 @@ class ProcessNotificationBatch implements ShouldQueue
 
     public function handle(): void
     {
-        // Atomically pop all buffered items
-        $items = [];
-        while ($raw = Redis::lpop(self::BUFFER_KEY)) {
-            $item = json_decode($raw, true);
-            if ($item) {
-                $items[] = $item;
-            }
+        // P1-54: at-least-once drain. Items are reserved onto a processing list and
+        // only removed once safely handed to the durable queue — a SIGKILL mid-loop
+        // leaves the remainder claimed for recovery instead of dropping them.
+        $reserved = ReliableRedisList::reserve(self::BUFFER_KEY, self::MAX_ITEMS);
+        if ($reserved === []) {
+            return;
         }
 
-        if (empty($items)) {
-            return;
+        // Decode + validate. Malformed items (older code version / corrupted JSON,
+        // e.g. prod's "Undefined array key channel_id") are dropped immediately —
+        // acked so they never re-enter the processing loop.
+        $items = []; // list<array{raw:string,data:array}>
+        foreach ($reserved as $raw) {
+            $data = json_decode($raw, true);
+            if (! is_array($data) || ! isset($data['channel_id'], $data['event'])) {
+                Log::warning('Skipping malformed notification buffer item', ['item' => $data]);
+                ReliableRedisList::ack(self::BUFFER_KEY, $raw);
+
+                continue;
+            }
+            $items[] = ['raw' => $raw, 'data' => $data];
         }
 
         // Group by channel_id + event
         $groups = [];
-        foreach ($items as $item) {
-            // Buffer items written by an older code version (or corrupted JSON)
-            // may lack required keys — skip them instead of crashing the whole
-            // batch (seen in prod: "Undefined array key channel_id").
-            if (! is_array($item) || ! isset($item['channel_id'], $item['event'])) {
-                Log::warning('Skipping malformed notification buffer item', ['item' => $item]);
-
-                continue;
-            }
-
-            $key = $item['channel_id'].':'.$item['event'];
-            $groups[$key][] = $item;
+        foreach ($items as $entry) {
+            $key = $entry['data']['channel_id'].':'.$entry['data']['event'];
+            $groups[$key][] = $entry;
         }
 
-        foreach ($groups as $groupItems) {
-            $first = $groupItems[0];
+        foreach ($groups as $entries) {
+            $groupData = array_map(static fn (array $e): array => $e['data'], $entries);
+            $first = $groupData[0];
+
             $channel = NotificationChannel::find($first['channel_id']);
             if (! $channel || ! $channel->is_active) {
+                // No deliverable channel — drop (ack) so we don't reprocess forever.
+                $this->ackAll($entries);
+
                 continue;
             }
 
-            $count = count($groupItems);
-
-            if ($count === 1) {
-                // Single notification — send as-is
-                $site = $first['site_id'] ? Site::find($first['site_id']) : null;
-
-                SendNotificationJob::dispatch(
-                    $channel,
-                    $site,
-                    $first['event'],
-                    $first['title'] ?? '',
-                    $first['message'] ?? '',
-                    $first['fields'] ?? [],
-                    $first['severity'] ?? 'warning',
-                    $first['webhook_payload'] ?? null,
-                    $first['mailable_class'] ?? null,
-                    $first['mailable_args'] ?? null,
-                );
+            // Hand off to the durable queue BEFORE acking. If dispatch throws (queue
+            // unavailable), the exception propagates and the still-claimed items are
+            // recovered on the next run — never silently lost.
+            if (count($groupData) === 1) {
+                $this->dispatchSingle($channel, $first);
             } else {
-                // Multiple notifications — send grouped summary
-                $this->dispatchGrouped($channel, $groupItems);
+                $this->dispatchGrouped($channel, $groupData);
             }
+
+            $this->ackAll($entries);
         }
+    }
+
+    /**
+     * @param  list<array{raw:string,data:array}>  $entries
+     */
+    private function ackAll(array $entries): void
+    {
+        foreach ($entries as $entry) {
+            ReliableRedisList::ack(self::BUFFER_KEY, $entry['raw']);
+        }
+    }
+
+    private function dispatchSingle(NotificationChannel $channel, array $first): void
+    {
+        $site = $first['site_id'] ? Site::find($first['site_id']) : null;
+
+        SendNotificationJob::dispatch(
+            $channel,
+            $site,
+            $first['event'],
+            $first['title'] ?? '',
+            $first['message'] ?? '',
+            $first['fields'] ?? [],
+            $first['severity'] ?? 'warning',
+            $first['webhook_payload'] ?? null,
+            $first['mailable_class'] ?? null,
+            $first['mailable_args'] ?? null,
+        );
     }
 
     private function dispatchGrouped(NotificationChannel $channel, array $items): void

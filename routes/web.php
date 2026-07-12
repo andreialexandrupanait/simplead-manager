@@ -241,8 +241,10 @@ Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleSsoController::clas
 Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'callback'])->name('auth.google.callback')->middleware('guest');
 
 // Public status pages (no auth)
-// Notification acknowledgment (public, token-based)
-Route::get('/notifications/ack/{token}', \App\Http\Controllers\NotificationAckController::class)->name('notifications.ack')->middleware('throttle:30,1');
+// Notification acknowledgment (public, token-based).
+// P1-23: GET only shows a confirm page (crawler-safe); POST mutates.
+Route::get('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'show'])->name('notifications.ack')->middleware('throttle:30,1');
+Route::post('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'confirm'])->name('notifications.ack.confirm')->middleware('throttle:30,1');
 
 // Client Portal (public, token-based)
 Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');

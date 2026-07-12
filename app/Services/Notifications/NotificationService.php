@@ -10,7 +10,9 @@ use App\Models\NotificationEventPreference;
 use App\Models\NotificationTemplate;
 use App\Models\Site;
 use App\Services\SettingsService;
+use App\Support\ReliableRedisList;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 class NotificationService
@@ -30,6 +32,18 @@ class NotificationService
      */
     private const BUFFER_TTL = 300; // 5 minutes
 
+    /**
+     * Redis key holding channel sends deferred by quiet hours (P1-21). Drained by
+     * FlushDeferredNotifications once quiet hours end, so non-critical alerts are
+     * delayed — never silently annihilated.
+     */
+    private const DEFERRED_KEY = 'notification_deferred';
+
+    /**
+     * Deferred-queue TTL. Long enough to span a full quiet-hours window.
+     */
+    private const DEFERRED_TTL = 86400; // 24 hours
+
     public static function notifySiteEvent(
         Site $site,
         string $event,
@@ -42,10 +56,9 @@ class NotificationService
         ?array $mailableArgs = null,
         ?array $channelIds = null
     ): void {
-        // Check quiet hours — skip non-critical notifications
-        if ($severity !== 'critical' && static::isQuietHours()) {
-            return;
-        }
+        // P1-21: during quiet hours, non-critical channel sends are DEFERRED (not
+        // dropped) and the in-app record is still written below — nothing is lost.
+        $deferChannels = $severity !== 'critical' && static::isQuietHours();
 
         // Deduplication — skip if same event+site was sent recently
         if (static::isDuplicate($event, $site->id)) {
@@ -76,8 +89,11 @@ class NotificationService
                 continue;
             }
 
-            // Only buffer info-level notifications; everything else dispatches immediately
-            if ($severity === 'info') {
+            if ($deferChannels) {
+                // Quiet hours — hold the channel send until they end (P1-21).
+                static::defer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
+            } elseif ($severity === 'info') {
+                // Only buffer info-level notifications; everything else dispatches immediately
                 static::buffer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
             } else {
                 SendNotificationJob::dispatch(
@@ -204,9 +220,10 @@ class NotificationService
         ?array $channelIds = null,
         bool $sync = false
     ): void {
-        if ($severity !== 'critical' && static::isQuietHours()) {
-            return;
-        }
+        // P1-21: defer non-critical app-event channel sends during quiet hours
+        // instead of dropping them. Sync meta-alerts (e.g. "Horizon is down") are
+        // typically critical and are never deferred.
+        $deferChannels = $severity !== 'critical' && ! $sync && static::isQuietHours();
 
         // Deduplication — skip if same app event was sent recently
         if (static::isDuplicate($event)) {
@@ -231,8 +248,11 @@ class NotificationService
                 continue;
             }
 
-            // Only buffer info-level notifications; everything else dispatches immediately
-            if ($severity === 'info') {
+            if ($deferChannels) {
+                // Quiet hours — hold the channel send until they end (P1-21).
+                static::defer($channel, null, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
+            } elseif ($severity === 'info') {
+                // Only buffer info-level notifications; everything else dispatches immediately
                 static::buffer($channel, null, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
             } elseif ($sync) {
                 // Meta-alerts (e.g. "Horizon is down") must not ride the queue
@@ -291,6 +311,108 @@ class NotificationService
                 $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
             );
         }
+    }
+
+    /**
+     * P1-21: hold a channel send in the deferred Redis list during quiet hours.
+     * FlushDeferredNotifications drains it once quiet hours end. Falls back to
+     * immediate dispatch if Redis is unavailable — a delayed alert is acceptable,
+     * a lost one is not.
+     */
+    protected static function defer(
+        NotificationChannel $channel,
+        ?Site $site,
+        string $event,
+        string $title,
+        string $message,
+        array $fields,
+        string $severity,
+        ?array $webhookPayload,
+        ?string $mailableClass,
+        ?array $mailableArgs,
+    ): void {
+        try {
+            $item = [
+                'channel_id' => $channel->id,
+                'site_id' => $site?->id,
+                'event' => $event,
+                'title' => $title,
+                'message' => $message,
+                'fields' => $fields,
+                'severity' => $severity,
+                'webhook_payload' => $webhookPayload,
+                'mailable_class' => $mailableClass,
+                'mailable_args' => $mailableArgs,
+                'deferred_at' => now()->toIso8601String(),
+            ];
+
+            Redis::rpush(self::DEFERRED_KEY, json_encode($item));
+            Redis::expire(self::DEFERRED_KEY, self::DEFERRED_TTL);
+        } catch (\Throwable $e) {
+            SendNotificationJob::dispatch(
+                $channel, $site, $event, $title, $message,
+                $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs,
+            );
+        }
+    }
+
+    /**
+     * Drain quiet-hours-deferred notifications once quiet hours are over. Called
+     * every minute by FlushDeferredNotifications. Returns the number of sends
+     * dispatched. Uses the at-least-once reliable-list pattern so a mid-drain kill
+     * cannot lose held alerts (P1-21 + P1-54).
+     */
+    public static function flushDeferred(int $max = 1000): int
+    {
+        // Still inside quiet hours — leave everything queued.
+        if (static::isQuietHours()) {
+            return 0;
+        }
+
+        $reserved = ReliableRedisList::reserve(self::DEFERRED_KEY, $max);
+        if ($reserved === []) {
+            return 0;
+        }
+
+        $dispatched = 0;
+        foreach ($reserved as $raw) {
+            $item = json_decode($raw, true);
+
+            if (! is_array($item) || ! isset($item['channel_id'], $item['event'])) {
+                Log::warning('Skipping malformed deferred notification item', ['item' => $item]);
+                ReliableRedisList::ack(self::DEFERRED_KEY, $raw);
+
+                continue;
+            }
+
+            $channel = NotificationChannel::find($item['channel_id']);
+            if (! $channel || ! $channel->is_active) {
+                ReliableRedisList::ack(self::DEFERRED_KEY, $raw);
+
+                continue;
+            }
+
+            $site = ! empty($item['site_id']) ? Site::find($item['site_id']) : null;
+
+            // Hand off to the durable queue BEFORE acking (at-least-once).
+            SendNotificationJob::dispatch(
+                $channel,
+                $site,
+                $item['event'],
+                $item['title'] ?? '',
+                $item['message'] ?? '',
+                $item['fields'] ?? [],
+                $item['severity'] ?? 'warning',
+                $item['webhook_payload'] ?? null,
+                $item['mailable_class'] ?? null,
+                $item['mailable_args'] ?? null,
+            );
+
+            ReliableRedisList::ack(self::DEFERRED_KEY, $raw);
+            $dispatched++;
+        }
+
+        return $dispatched;
     }
 
     /**
