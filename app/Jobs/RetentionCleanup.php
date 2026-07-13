@@ -67,6 +67,13 @@ class RetentionCleanup implements ShouldQueue
             $cutoff = now()->subDays($days);
             $categoryDeleted = 0;
 
+            // P2-43: newly-added categories are gated behind the global retention
+            // dry-run flag — while it is on they LOG the count they *would* prune
+            // without deleting, so the owner can verify volumes before flipping it.
+            $dryRun = ($config['dry_run'] ?? false)
+                && (bool) config('backups.retention_dry_run', true);
+            $categoryWouldDelete = 0;
+
             $progress = (int) round(($index / $totalCategories) * 100);
             JobTracker::progress(self::JOB_KEY, $progress, "Cleaning {$config['label']}...");
 
@@ -83,6 +90,25 @@ class RetentionCleanup implements ShouldQueue
                 try {
                     if (! Schema::hasTable($tableConfig['table'])) {
                         Log::warning("Retention cleanup skipped missing table: {$tableConfig['table']}");
+
+                        continue;
+                    }
+
+                    if ($dryRun) {
+                        $wouldDelete = $this->countExpiredRows(
+                            table: $tableConfig['table'],
+                            column: $tableConfig['column'],
+                            colType: $tableConfig['col_type'],
+                            cutoff: $cutoff,
+                            condition: $tableConfig['condition'],
+                        );
+
+                        $categoryWouldDelete += $wouldDelete;
+
+                        Log::info("Retention DRY-RUN: would prune {$wouldDelete} rows from {$tableConfig['table']}", [
+                            'category' => $categoryKey,
+                            'cutoff_days' => $days,
+                        ]);
 
                         continue;
                     }
@@ -104,6 +130,17 @@ class RetentionCleanup implements ShouldQueue
                         'message' => $e->getMessage(),
                     ]);
                 }
+            }
+
+            if ($dryRun) {
+                $categoryResults[$categoryKey] = [
+                    'days' => $days,
+                    'deleted' => 0,
+                    'dry_run' => true,
+                    'would_delete' => $categoryWouldDelete,
+                ];
+
+                continue;
             }
 
             $categoryResults[$categoryKey] = [
@@ -150,6 +187,44 @@ class RetentionCleanup implements ShouldQueue
         }
 
         JobTracker::complete(self::JOB_KEY, "Cleaned {$totalDeleted} records in {$duration}s");
+    }
+
+    /**
+     * P2-43: count rows a delete WOULD remove, without touching them. Used by
+     * the dry-run gate so newly-added categories can report volumes before the
+     * owner enables real pruning. Mirrors deleteInBatches' condition handling.
+     */
+    private function countExpiredRows(
+        string $table,
+        string $column,
+        string $colType,
+        Carbon $cutoff,
+        ?array $condition,
+    ): int {
+        $cutoffValue = $colType === 'date'
+            ? $cutoff->toDateString()
+            : $cutoff->toDateTimeString();
+
+        $conditionSQL = '';
+        $params = [$cutoffValue];
+
+        if ($condition) {
+            if ($condition[1] === 'in') {
+                $placeholders = implode(',', array_fill(0, count($condition[2]), '?'));
+                $conditionSQL = "AND \"{$condition[0]}\" IN ({$placeholders})";
+                $params = array_merge($params, $condition[2]);
+            } else {
+                $conditionSQL = "AND \"{$condition[0]}\" {$condition[1]} ?";
+                $params[] = $condition[2];
+            }
+        }
+
+        $row = DB::selectOne(
+            "SELECT COUNT(*) AS c FROM \"{$table}\" WHERE \"{$column}\" <= ? {$conditionSQL}",
+            $params
+        );
+
+        return (int) ($row->c ?? 0);
     }
 
     private function deleteInBatches(

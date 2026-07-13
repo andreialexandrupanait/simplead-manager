@@ -29,7 +29,11 @@ class CreateStatusPageIncident implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public Site $site,
         public string $reason,
-    ) {}
+    ) {
+        // P2-70: public status-page incidents must post fast during a real
+        // outage — keep them off the low-priority `default` queue.
+        $this->onQueue('notifications');
+    }
 
     public function uniqueId(): string
     {

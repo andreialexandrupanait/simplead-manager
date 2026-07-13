@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\CloudflareRateLimitException;
 use App\Models\CloudflareConnection;
 use App\Models\Site;
 use App\Models\SiteCloudflare;
@@ -455,13 +456,7 @@ class CloudflareService
 
     private function graphqlRequest(string $query): array
     {
-        $rateLimitKey = "cloudflare:{$this->connection->id}";
-
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 200)) {
-            throw new \RuntimeException('Cloudflare API rate limit exceeded.');
-        }
-
-        RateLimiter::hit($rateLimitKey, 60);
+        $this->assertWithinRateLimit();
 
         $response = Http::withToken($this->connection->api_token)
             ->timeout(30)
@@ -483,6 +478,30 @@ class CloudflareService
      * anything else before it is interpolated into a REST path or GraphQL
      * query (path-manipulation / injection defence).
      */
+    /**
+     * P2-65: enforce the per-connection Cloudflare API rate window.
+     *
+     * When the window is exhausted this throws a typed
+     * {@see CloudflareRateLimitException} carrying the seconds until it frees
+     * up, so a queued caller (e.g. SyncCloudflareZone) can DEFER — release the
+     * job back to the queue and retry after the window — instead of failing.
+     * Non-job callers catch the same typed exception and degrade gracefully.
+     */
+    private function assertWithinRateLimit(): void
+    {
+        $rateLimitKey = "cloudflare:{$this->connection->id}";
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 200)) {
+            // availableIn() can momentarily read 0 at the boundary; floor the
+            // deferral at 1s so a released job never busy-loops.
+            $retryAfter = max(1, RateLimiter::availableIn($rateLimitKey));
+
+            throw new CloudflareRateLimitException($retryAfter);
+        }
+
+        RateLimiter::hit($rateLimitKey, 60);
+    }
+
     private function assertValidZoneId(string $zoneId): void
     {
         if (preg_match('/^[a-f0-9]{32}$/', $zoneId) !== 1) {
@@ -498,13 +517,7 @@ class CloudflareService
             $this->assertValidZoneId($matches[1]);
         }
 
-        $rateLimitKey = "cloudflare:{$this->connection->id}";
-
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 200)) {
-            throw new \RuntimeException('Cloudflare API rate limit exceeded. Please wait before making more requests.');
-        }
-
-        RateLimiter::hit($rateLimitKey, 60);
+        $this->assertWithinRateLimit();
 
         $baseUrl = config('services.cloudflare.api_url', 'https://api.cloudflare.com/client/v4');
 

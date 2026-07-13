@@ -336,31 +336,11 @@ class AppBackupCreator
     protected function backupDatabase(string $tempDir): string
     {
         $connection = config('database.default');
-        $dbConfig = config("database.connections.{$connection}");
+        $dbConfig = $this->databaseConnectionConfig($connection);
         $outputPath = $tempDir.'/database.sql.gz';
         $sqlPath = $tempDir.'/database.sql';
 
-        if ($connection === 'pgsql') {
-            $dumpCmd = sprintf(
-                'PGPASSWORD=%s pg_dump --host=%s --port=%s --username=%s --no-owner --no-acl --clean --if-exists %s > %s',
-                escapeshellarg($dbConfig['password']),
-                escapeshellarg($dbConfig['host']),
-                escapeshellarg($dbConfig['port']),
-                escapeshellarg($dbConfig['username']),
-                escapeshellarg($dbConfig['database']),
-                escapeshellarg($sqlPath)
-            );
-        } else {
-            $dumpCmd = sprintf(
-                'mysqldump --single-transaction --routines --triggers --events --quick --lock-tables=false --host=%s --port=%s --user=%s --password=%s %s > %s',
-                escapeshellarg($dbConfig['host']),
-                escapeshellarg($dbConfig['port']),
-                escapeshellarg($dbConfig['username']),
-                escapeshellarg($dbConfig['password']),
-                escapeshellarg($dbConfig['database']),
-                escapeshellarg($sqlPath)
-            );
-        }
+        $dumpCmd = $this->buildDumpCommand($connection, $dbConfig, $sqlPath);
 
         $this->exec($dumpCmd);
 
@@ -375,6 +355,60 @@ class AppBackupCreator
         }
 
         return $outputPath;
+    }
+
+    /**
+     * P2-35: resolve the connection config used for the platform DB dump.
+     *
+     * For PostgreSQL the default `pgsql` connection points at PgBouncer, whose
+     * transaction pooling breaks pg_dump (it needs a real, session-scoped
+     * connection — no SET/prepared-statement reuse across the dump). Prefer the
+     * direct (non-pooled) `pgsql_direct` connection, the same one deploy
+     * migrations use, and fall back to `pgsql` only when it is not configured.
+     *
+     * @return array<string, mixed>
+     */
+    protected function databaseConnectionConfig(string $connection): array
+    {
+        if ($connection === 'pgsql') {
+            $direct = config('database.connections.pgsql_direct');
+            if (is_array($direct) && ! empty($direct['host'])) {
+                return $direct;
+            }
+        }
+
+        return config("database.connections.{$connection}");
+    }
+
+    /**
+     * Build the dump command for the resolved connection. The password is passed
+     * via the PGPASSWORD/--password env-adjacent mechanism and is never logged.
+     *
+     * @param  array<string, mixed>  $dbConfig
+     */
+    protected function buildDumpCommand(string $connection, array $dbConfig, string $sqlPath): string
+    {
+        if ($connection === 'pgsql') {
+            return sprintf(
+                'PGPASSWORD=%s pg_dump --host=%s --port=%s --username=%s --no-owner --no-acl --clean --if-exists %s > %s',
+                escapeshellarg((string) $dbConfig['password']),
+                escapeshellarg((string) $dbConfig['host']),
+                escapeshellarg((string) $dbConfig['port']),
+                escapeshellarg((string) $dbConfig['username']),
+                escapeshellarg((string) $dbConfig['database']),
+                escapeshellarg($sqlPath)
+            );
+        }
+
+        return sprintf(
+            'mysqldump --single-transaction --routines --triggers --events --quick --lock-tables=false --host=%s --port=%s --user=%s --password=%s %s > %s',
+            escapeshellarg((string) $dbConfig['host']),
+            escapeshellarg((string) $dbConfig['port']),
+            escapeshellarg((string) $dbConfig['username']),
+            escapeshellarg((string) $dbConfig['password']),
+            escapeshellarg((string) $dbConfig['database']),
+            escapeshellarg($sqlPath)
+        );
     }
 
     protected function backupEnv(string $tempDir): string

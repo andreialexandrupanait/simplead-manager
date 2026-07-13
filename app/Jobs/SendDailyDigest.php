@@ -27,6 +27,13 @@ class SendDailyDigest implements ShouldQueue
 
     public array $backoff = [30, 60];
 
+    public function __construct()
+    {
+        // P2-70: run on the dedicated notifications supervisor rather than the
+        // low-priority `default` queue behind long-running general jobs.
+        $this->onQueue('notifications');
+    }
+
     public function handle(): void
     {
         $digest = $this->gatherDigest();

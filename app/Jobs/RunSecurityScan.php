@@ -29,7 +29,11 @@ class RunSecurityScan implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public Site $site,
-    ) {}
+    ) {
+        // P2-70: run on the dedicated `security` supervisor rather than the
+        // shared low-priority `default` queue behind long SEO crawls.
+        $this->onQueue('security');
+    }
 
     public function uniqueId(): string
     {

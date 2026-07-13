@@ -21,6 +21,14 @@ class ProcessNotificationEscalations implements ShouldQueue
 
     public int $timeout = 60;
 
+    public function __construct()
+    {
+        // P2-70: escalations are latency-sensitive — a dead primary channel must
+        // escalate promptly. Keep them off the low-priority `default` queue
+        // (which sits behind 900s SEO crawls on supervisor-general).
+        $this->onQueue('notifications');
+    }
+
     public function handle(): void
     {
         $rules = NotificationEscalationRule::where('is_active', true)
