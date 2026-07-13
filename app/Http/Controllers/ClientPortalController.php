@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Enums\ReportStatus;
 use App\Models\Client;
 use App\Models\Report;
+use App\Models\Site;
+use App\Services\HealthScoreService;
 use Illuminate\Support\Facades\Storage;
 
 class ClientPortalController extends Controller
@@ -42,6 +44,14 @@ class ClientPortalController extends Controller
             ->with(['uptimeMonitor', 'uptimeMonitor.ongoingIncident', 'latestCompletedBackup', 'performanceMonitor', 'securityMonitor', 'backupConfig'])
             ->get();
 
+        // P3-25: compute each site's health score here rather than inside the
+        // Blade loop — the view should only render values, not run service logic.
+        $healthScores = [];
+        foreach ($sites as $site) {
+            /** @var Site $site */
+            $healthScores[$site->id] = HealthScoreService::calculate($site)['total'];
+        }
+
         $siteIds = $sites->pluck('id');
 
         $reports = Report::whereIn('site_id', $siteIds)
@@ -56,6 +66,7 @@ class ClientPortalController extends Controller
             'client' => $client,
             'sites' => $sites,
             'reports' => $reports,
+            'healthScores' => $healthScores,
         ]);
     }
 

@@ -68,7 +68,7 @@
             <div class="flex gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                 {{-- Severity indicator --}}
                 <div class="shrink-0 mt-0.5">
-                    @switch($event->severity)
+                    @switch($event->severity?->value)
                         @case('critical')
                             <div class="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                                 <svg class="h-4 w-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $event->title }}</span>
-                        <x-ui.badge variant="{{ match($event->type) {
+                        <x-ui.badge variant="{{ match($event->type?->value) {
                             'uptime' => 'red',
                             'backup' => 'blue',
                             'update', 'plugin' => 'purple',
@@ -111,7 +111,7 @@
                             'performance' => 'green',
                             'auth' => 'gray',
                             default => 'gray',
-                        } }}" class="text-[10px]">{{ ucfirst(str_replace('_', ' ', $event->type)) }}</x-ui.badge>
+                        } }}" class="text-[10px]">{{ ucfirst(str_replace('_', ' ', $event->type?->value ?? 'unknown')) }}</x-ui.badge>
                     </div>
 
                     @if($event->description)

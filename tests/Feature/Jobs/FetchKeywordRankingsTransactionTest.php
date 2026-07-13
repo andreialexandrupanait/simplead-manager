@@ -55,47 +55,26 @@ class FetchKeywordRankingsTransactionTest extends TestCase
         ]);
     }
 
-    public function test_failed_insert_rolls_back_the_delete_and_surfaces_the_error(): void
+    public function test_out_of_range_values_are_clamped_not_crashed(): void
     {
+        // Garbage/edge Search-Console data (a stray position=100000, a 100% CTR)
+        // must be CLAMPED to the numeric column bounds and stored, not overflow
+        // and abort the whole day's fetch. Previously position=100000 threw a
+        // numeric-overflow mid-transaction (which also intermittently poisoned
+        // the shared test connection); the job now clamps before insert.
         $site = $this->connectedSite();
 
-        // A pre-existing "good" placement for today that must survive a failed run.
-        SeoKeywordRanking::create([
-            'site_id' => $site->id,
-            'keyword' => 'existing keyword',
-            'keyword_hash' => md5('existing keyword'),
-            'position' => 4.2,
-            'clicks' => 10,
-            'impressions' => 100,
-            'ctr' => 0.1,
-            'recorded_date' => now()->format('Y-m-d'),
-            'is_tracked' => true,
-        ]);
-
-        // position 100000 overflows numeric(6,2) → the insert throws mid-run.
         $this->fakeGscQueries([
-            ['keys' => ['boom'], 'position' => 100000, 'clicks' => 1, 'impressions' => 2, 'ctr' => 0.01],
+            ['keys' => ['boom'], 'position' => 100000, 'clicks' => 1, 'impressions' => 2, 'ctr' => 5.0],
         ]);
 
-        $threw = false;
-        try {
-            (new FetchKeywordRankings($site))->handle();
-        } catch (\Throwable $e) {
-            $threw = true;
-        }
+        // No throw — the run completes and stores the clamped row.
+        (new FetchKeywordRankings($site))->handle();
 
-        $this->assertTrue($threw, 'The job must rethrow so tries=2 engages and the failure is visible.');
-
-        // The delete was rolled back with the failed insert: the day's data is intact.
-        $this->assertDatabaseHas('seo_keyword_rankings', [
-            'site_id' => $site->id,
-            'keyword' => 'existing keyword',
-            'recorded_date' => now()->format('Y-m-d'),
-        ]);
-        $this->assertDatabaseMissing('seo_keyword_rankings', [
-            'site_id' => $site->id,
-            'keyword' => 'boom',
-        ]);
+        $row = SeoKeywordRanking::where('site_id', $site->id)->where('keyword', 'boom')->first();
+        $this->assertNotNull($row, 'the clamped row is stored, not dropped');
+        $this->assertSame('9999.99', (string) $row->position, 'position clamped to numeric(6,2) max');
+        $this->assertSame('99.9999', (string) $row->ctr, 'ctr clamped to numeric(6,4) max');
     }
 
     public function test_successful_run_replaces_the_days_rankings(): void

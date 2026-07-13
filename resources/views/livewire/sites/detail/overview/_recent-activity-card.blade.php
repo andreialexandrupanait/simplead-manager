@@ -22,13 +22,13 @@
         <div class="divide-y divide-gray-50 dark:divide-gray-700/60">
             @foreach($activities as $activity)
                 @php
-                    $dotColor = match($activity->severity) {
+                    $dotColor = match($activity->severity?->value) {
                         'critical' => 'bg-red-500',
                         'warning'  => 'bg-yellow-400',
                         'success'  => 'bg-green-500',
                         default    => 'bg-gray-400 dark:bg-gray-500',
                     };
-                    $textColor = match($activity->severity) {
+                    $textColor = match($activity->severity?->value) {
                         'critical' => 'text-red-600 dark:text-red-400',
                         'warning'  => 'text-yellow-600 dark:text-yellow-400',
                         'success'  => 'text-green-600 dark:text-green-400',
