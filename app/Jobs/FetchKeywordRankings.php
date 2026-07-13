@@ -85,10 +85,15 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
                     'keyword' => mb_substr($keyword, 0, 500),
                     'keyword_hash' => $hash,
                     'url' => isset($q['url']) ? mb_substr($q['url'], 0, 2048) : null,
-                    'position' => round((float) ($q['position'] ?? 0), 2),
-                    'clicks' => (int) ($q['clicks'] ?? 0),
-                    'impressions' => (int) ($q['impressions'] ?? 0),
-                    'ctr' => round((float) ($q['ctr'] ?? 0), 4),
+                    // Clamp to the numeric column bounds — position numeric(6,2)
+                    // max 9999.99, ctr numeric(6,4) max 99.9999. Garbage/edge data
+                    // (a stray position=100000, a 100% CTR) must not overflow and
+                    // abort the whole day's fetch (it also poisoned the shared
+                    // test connection). clicks/impressions clamp to int4 max.
+                    'position' => min(9999.99, max(0.0, round((float) ($q['position'] ?? 0), 2))),
+                    'clicks' => min(2147483647, max(0, (int) ($q['clicks'] ?? 0))),
+                    'impressions' => min(2147483647, max(0, (int) ($q['impressions'] ?? 0))),
+                    'ctr' => min(99.9999, max(0.0, round((float) ($q['ctr'] ?? 0), 4))),
                     'recorded_date' => $today,
                     'is_tracked' => $isTracked,
                     'created_at' => now(),
