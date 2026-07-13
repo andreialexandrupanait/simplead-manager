@@ -20,7 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(
-            at: config('app.trusted_proxies', '127.0.0.1'),
+            // NOTE: this closure runs during application construction, BEFORE the
+            // config repository is bound — config() here fatals with
+            // "Class 'config' does not exist". env() reads the process/container
+            // environment directly and is the only safe source at this point.
+            // (Reverts the P3-34 config() swap that took prod down.)
+            at: env('TRUSTED_PROXIES', '127.0.0.1'),
             headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
                      \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
                      \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
