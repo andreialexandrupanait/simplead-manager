@@ -6,6 +6,15 @@ namespace App\Services\SeoAudit;
 
 class UrlNormalizerService
 {
+    /**
+     * Query params that never distinguish a page (tracking/analytics noise) and
+     * so are stripped before hashing — everything else is significant and kept.
+     */
+    private const TRACKING_PARAMS = [
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'gclid', 'fbclid', 'mc_cid', 'mc_eid', 'msclkid', '_ga',
+    ];
+
     public static function normalize(string $url): string
     {
         $p = parse_url($url);
@@ -20,7 +29,34 @@ class UrlNormalizerService
             $path = rtrim($path, '/');
         } $n = $s.'://'.$h.$path;
 
+        // P3-20: preserve SIGNIFICANT query strings so that e.g. ?p=1 and ?p=2
+        // (paginated / parameter-driven pages) are treated as distinct URLs
+        // instead of collapsing to the same hash. Tracking params are dropped
+        // and the remainder is sorted so ordering differences still dedupe.
+        $query = self::normalizeQuery($p['query'] ?? '');
+        if ($query !== '') {
+            $n .= '?'.$query;
+        }
+
         return $n;
+    }
+
+    private static function normalizeQuery(string $query): string
+    {
+        if ($query === '') {
+            return '';
+        }
+
+        parse_str($query, $params);
+        foreach (self::TRACKING_PARAMS as $tracking) {
+            unset($params[$tracking]);
+        }
+        if ($params === []) {
+            return '';
+        }
+        ksort($params);
+
+        return http_build_query($params);
     }
 
     public static function hash(string $url): string

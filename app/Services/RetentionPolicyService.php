@@ -156,6 +156,20 @@ class RetentionPolicyService
                 ['table' => 'incident_responses', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Incident responses', 'condition' => ['status', 'in', ['resolved', 'failed', 'escalated']]],
             ],
         ],
+        // P3-23: generated report PDFs. Pruning is file-aware (the PDF on disk is
+        // deleted alongside its row), so RetentionCleanup handles this category via
+        // its dedicated cleanExpiredReports() path rather than the generic table
+        // deleter — the `tables` entry below is metadata for the dry-run counter.
+        'reports' => [
+            'label' => 'Report PDFs',
+            'default' => 365,
+            'min' => 90,
+            'max' => 1825,
+            'dry_run' => true,
+            'tables' => [
+                ['table' => 'reports', 'column' => 'generated_at', 'col_type' => 'timestamp', 'label' => 'Report PDFs', 'condition' => null],
+            ],
+        ],
     ];
 
     public function __construct(

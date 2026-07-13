@@ -4,21 +4,17 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms;
 
-use Livewire\Attributes\Validate;
+use Illuminate\Validation\Rule;
 use Livewire\Form;
 
 class SiteWizardFormData extends Form
 {
-    #[Validate('required|url|max:255|unique:sites,url')]
     public string $url = '';
 
-    #[Validate('required|string|max:255')]
     public string $name = '';
 
-    #[Validate('nullable|exists:clients,id')]
     public ?int $clientId = null;
 
-    #[Validate('nullable|exists:maintenance_plans,id')]
     public ?int $planId = null;
 
     // Inline client creation
@@ -27,12 +23,30 @@ class SiteWizardFormData extends Form
     public string $newClientEmail = '';
 
     /**
+     * Validation rules for the wizard.
+     *
+     * The `url` uniqueness check ignores soft-deleted sites so that a URL
+     * whose only conflict is a previously-removed site can be re-added.
+     *
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'url' => ['required', 'url', 'max:255', $this->uniqueUrlRule()],
+            'name' => ['required', 'string', 'max:255'],
+            'clientId' => ['nullable', 'exists:clients,id'],
+            'planId' => ['nullable', 'exists:maintenance_plans,id'],
+        ];
+    }
+
+    /**
      * Validate only Step 1 fields (URL + name).
      */
     public function validateStep1(): void
     {
         $this->validateOnly('url', [
-            'url' => 'required|url|max:255|unique:sites,url',
+            'url' => ['required', 'url', 'max:255', $this->uniqueUrlRule()],
         ]);
         $this->validateOnly('name', [
             'name' => 'required|string|max:255',
@@ -58,5 +72,13 @@ class SiteWizardFormData extends Form
             'newClientName' => 'required|string|max:255',
             'newClientEmail' => 'nullable|email|max:255',
         ]);
+    }
+
+    /**
+     * Unique-URL rule that excludes soft-deleted sites.
+     */
+    private function uniqueUrlRule(): \Illuminate\Validation\Rules\Unique
+    {
+        return Rule::unique('sites', 'url')->whereNull('deleted_at');
     }
 }

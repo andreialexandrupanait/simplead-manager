@@ -40,7 +40,10 @@ class CalculateSeoScores implements ShouldQueue
         $this->audit->update([
             'score' => $scores['overall'],
             'category_scores' => $scores['categories'],
-            'scan_duration' => $this->audit->created_at ? (int) now()->diffInSeconds($this->audit->created_at) : null,
+            // P3-20: Carbon 3 returns SIGNED diffs, so now()->diffInSeconds($created_at)
+            // (created_at is in the past) yielded a NEGATIVE duration. Compute
+            // created_at -> now and clamp at 0 so a clock skew can never go negative.
+            'scan_duration' => $this->audit->created_at ? max(0, (int) $this->audit->created_at->diffInSeconds(now())) : null,
             'broken_links_count' => $this->audit->links()->where('is_broken', true)->count(),
             'broken_images_count' => $this->audit->images()->where('is_broken', true)->count(),
             'total_images_count' => $this->audit->images()->count(),

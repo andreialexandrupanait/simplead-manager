@@ -62,9 +62,12 @@ class ReportDispatcher
 
                 $period = $schedule->period ?? 'last_30_days';
                 [$periodStart, $periodEnd] = match ($period) {
-                    'last_7_days' => [now()->subDays(7)->startOfDay(), now()->endOfDay()],
+                    // P3-23: subDays(7)->startOfDay()..endOfDay() spanned 8 calendar
+                    // days (today-7 through today). A true 7-day window is today-6
+                    // through today inclusive.
+                    'last_7_days' => [now()->subDays(6)->startOfDay(), now()->endOfDay()],
                     'last_month' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
-                    default => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
+                    default => [now()->subDays(29)->startOfDay(), now()->endOfDay()],
                 };
 
                 GenerateReport::dispatch(
