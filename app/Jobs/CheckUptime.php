@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\UptimeCheck;
 use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
+use App\Services\HealthScoreService;
 use App\Services\JobTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -38,6 +39,9 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     public array $backoff = [30, 60, 120];
 
+    /** Last ping/TCP-probe error message, set by {@see tcpProbe()}. */
+    private ?string $lastProbeError = null;
+
     public function __construct(
         public UptimeMonitor $monitor
     ) {
@@ -59,6 +63,19 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
     public function handle(): void
     {
         if ($this->monitor->isInMaintenanceWindow()) {
+            // P3-18: skipping without advancing next_check_at leaves the monitor
+            // "due" every minute, so the dispatcher relaunches this job for the
+            // whole window (wasted work). Advance to the next interval — or to the
+            // end of the window if that is further out — so it is not re-dispatched
+            // until there is actually work to do.
+            $next = now()->addMinutes($this->monitor->interval_minutes);
+
+            if ($this->monitor->maintenance_ends_at && $this->monitor->maintenance_ends_at->gt($next)) {
+                $next = $this->monitor->maintenance_ends_at;
+            }
+
+            $this->monitor->update(['next_check_at' => $next]);
+
             return;
         }
 
@@ -82,9 +99,19 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         /** @var Site $monitorSite */
         $monitorSite = $this->monitor->site;
         $monitorSite->update([
-            'is_up' => $this->monitor->current_state === \App\Enums\MonitorState::Up,
+            // P3-15: is_up reflects the actual DOWN state, not "not perfectly up".
+            // A Degraded monitor (a slow / partial failure below the alert
+            // threshold) is still up-but-slow, so it must not flip the dashboard
+            // up/down indicator to down.
+            'is_up' => $this->monitor->current_state !== MonitorState::Down,
             'uptime_percentage' => $this->monitor->uptime_30d,
         ]);
+
+        // P3-13: refresh the site's health_score responsively off the completed
+        // uptime check (in addition to the nightly RecordHealthScores job) so a
+        // newly-connected or recently-changed site never shows a stale/NULL score
+        // on the dashboard filters/sorts. The compute is light and per-site.
+        HealthScoreService::refresh($monitorSite);
 
         // Circuit breaker reporting
         if ($result['is_up']) {
@@ -125,7 +152,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             $monitorSite = $this->monitor->site;
             if ($monitorSite) {
                 $monitorSite->update([
-                    'is_up' => $this->monitor->current_state === MonitorState::Up,
+                    'is_up' => $this->monitor->current_state !== MonitorState::Down,
                     'uptime_percentage' => $this->monitor->uptime_30d,
                 ]);
             }
@@ -138,6 +165,14 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     protected function performCheck(): array
     {
+        // P3-16: 'ping' is a reachability check, not an HTTP request. Previously
+        // it fell through to the HTTP path, so a "ping" monitor behaved exactly
+        // like an http one. Do an actual TCP-connect probe instead (ICMP needs
+        // root, so a TCP connect to the host:port is the standard substitute).
+        if ($this->monitor->type === 'ping') {
+            return $this->performPingCheck();
+        }
+
         $startTime = microtime(true);
         $result = [
             'is_up' => false,
@@ -147,12 +182,13 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             'keyword_found' => null,
         ];
 
-        try {
-            $options = [
-                'timeout' => $this->monitor->timeout,
-                'connect_timeout' => $this->monitor->timeout,
-            ];
+        // P3-16: a keyword check needs a response BODY to match against. A HEAD
+        // request returns no body, so the keyword would never be found and the
+        // monitor would report a permanent false "down". Force GET whenever a
+        // keyword is configured.
+        $hasKeyword = $this->monitor->keyword !== null && $this->monitor->keyword !== '';
 
+        try {
             // Build the HTTP request
             $request = Http::timeout($this->monitor->timeout)
                 ->connectTimeout($this->monitor->timeout)
@@ -181,7 +217,7 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             }
 
             // Make the request
-            $method = strtolower($this->monitor->http_method);
+            $method = $hasKeyword ? 'get' : strtolower($this->monitor->http_method);
             $response = $this->monitor->http_body
                 ? $request->$method($this->monitor->url, $this->monitor->http_body)
                 : $request->$method($this->monitor->url);
@@ -231,6 +267,77 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         return $result;
     }
 
+    /**
+     * TCP-connect reachability probe for 'ping' monitors (P3-16). ICMP requires
+     * root, so a TCP connect to the resolved host:port is the standard "ping"
+     * substitute: it proves the host is reachable and accepting connections
+     * without needing an HTTP response body.
+     *
+     * @return array<string, mixed>
+     */
+    protected function performPingCheck(): array
+    {
+        $startTime = microtime(true);
+        $result = [
+            'is_up' => false,
+            'response_time' => null,
+            'status_code' => null,
+            'failure_reason' => null,
+            'keyword_found' => null,
+        ];
+
+        $parts = parse_url($this->monitor->url);
+        $host = is_array($parts) ? ($parts['host'] ?? null) : null;
+
+        if ($host === null || $host === '') {
+            $result['response_time'] = 0;
+            $result['failure_reason'] = 'Invalid host for ping check';
+
+            return $result;
+        }
+
+        $scheme = is_array($parts) ? ($parts['scheme'] ?? 'http') : 'http';
+        $port = is_array($parts) && isset($parts['port'])
+            ? (int) $parts['port']
+            : ($scheme === 'https' ? 443 : 80);
+
+        $reachable = $this->tcpProbe($host, $port, $this->monitor->timeout);
+
+        $result['response_time'] = (int) round((microtime(true) - $startTime) * 1000);
+
+        if ($reachable) {
+            $result['is_up'] = true;
+        } else {
+            $result['failure_reason'] = $this->lastProbeError ?? 'TCP connection failed';
+        }
+
+        return $result;
+    }
+
+    /**
+     * Open (and immediately close) a TCP connection to prove reachability. This
+     * is the probe seam — tests override it to stay hermetic (no live network).
+     */
+    protected function tcpProbe(string $host, int $port, int $timeout): bool
+    {
+        $errno = 0;
+        $errstr = '';
+
+        $connection = @fsockopen($host, $port, $errno, $errstr, $timeout);
+
+        if ($connection === false) {
+            $this->lastProbeError = $this->sanitizeErrorMessage(
+                "TCP connect to {$host}:{$port} failed: {$errstr} ({$errno})"
+            );
+
+            return false;
+        }
+
+        fclose($connection);
+
+        return true;
+    }
+
     protected function saveCheck(array $result): UptimeCheck
     {
         /** @var UptimeCheck */
@@ -278,25 +385,27 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         $monitor = $this->monitor;
         $now = now();
 
-        $baseQuery = UptimeCheck::forMonitorSince($monitor->id, $now->copy()->subDays(365));
+        // P3-14: only the short, responsive windows (≤30d) are recomputed on
+        // every check. The long 365d window used to be recomputed here too — a
+        // full 365-day scan on every single check — for a figure that is
+        // misleading anyway, since uptime_checks are pruned to the (≤45d)
+        // retention window. It is now recomputed by the daily
+        // AggregateUptimeWindows job, honestly bounded to the retained coverage.
+        $baseQuery = UptimeCheck::forMonitorSince($monitor->id, $now->copy()->subDays(30));
 
         $stats = $baseQuery->selectRaw(implode(', ', [
             'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_24h',
             'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_24h',
             'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_7d',
             'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_7d',
-            'SUM(CASE WHEN checked_at >= ? THEN 1 ELSE 0 END) as total_30d',
-            'SUM(CASE WHEN checked_at >= ? AND is_up = true THEN 1 ELSE 0 END) as up_30d',
-            'COUNT(*) as total_365d',
-            'SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_365d',
+            'COUNT(*) as total_30d',
+            'SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up_30d',
             'AVG(CASE WHEN checked_at >= ? AND is_up = true AND response_time IS NOT NULL THEN response_time END) as avg_response',
         ]), [
             $now->copy()->subHours(24),
             $now->copy()->subHours(24),
             $now->copy()->subDays(7),
             $now->copy()->subDays(7),
-            $now->copy()->subDays(30),
-            $now->copy()->subDays(30),
             $now->copy()->subHours(24),
         ])->first();
 
@@ -304,7 +413,6 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
             '24h' => [$stats->total_24h, $stats->up_24h],
             '7d' => [$stats->total_7d, $stats->up_7d],
             '30d' => [$stats->total_30d, $stats->up_30d],
-            '365d' => [$stats->total_365d, $stats->up_365d],
         ];
 
         foreach ($periods as $key => [$total, $up]) {

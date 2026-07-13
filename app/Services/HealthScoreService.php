@@ -8,6 +8,24 @@ use App\Models\Site;
 
 class HealthScoreService
 {
+    /**
+     * Recompute and persist the site's health_score responsively (P3-13).
+     *
+     * Called off the pipelines that actually change the score (a completed
+     * uptime check, a security scan) in addition to the nightly snapshot job,
+     * so dashboard filters/sorts never run on a stale or NULL score. The compute
+     * is light and per-site; updateQuietly avoids firing Site::saved (which
+     * would stampede the dashboard cache).
+     */
+    public static function refresh(Site $site): int
+    {
+        $score = (int) self::calculate($site)['total'];
+
+        $site->updateQuietly(['health_score' => $score]);
+
+        return $score;
+    }
+
     public static function calculate(Site $site): array
     {
         $site->loadMissing(['uptimeMonitor', 'performanceMonitor']);
