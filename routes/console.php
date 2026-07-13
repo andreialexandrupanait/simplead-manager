@@ -108,6 +108,10 @@ Schedule::call(function () {
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();
 
+// P3-14: recompute the long uptime window (uptime_365d) once daily instead of on
+// every check, bounded honestly to the retained uptime-checks coverage.
+Schedule::job(new \App\Jobs\AggregateUptimeWindows)->dailyAt('01:30')->name('aggregate-uptime-windows')->onOneServer();
+
 // ==========================================================================
 // Monthly Aggregation
 // ==========================================================================

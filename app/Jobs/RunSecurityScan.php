@@ -54,6 +54,11 @@ class RunSecurityScan implements ShouldBeUnique, ShouldQueue
             ]);
         }
 
+        // P3-13: a security scan changes the security component of the health
+        // score, so refresh it responsively rather than waiting for the nightly
+        // RecordHealthScores job. Light, per-site compute.
+        \App\Services\HealthScoreService::refresh($this->site->fresh() ?? $this->site);
+
         CircuitBreakerService::recordSuccess($this->site);
         JobTracker::complete($this->uniqueId(), 'Security scan complete');
     }
