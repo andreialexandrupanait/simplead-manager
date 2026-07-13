@@ -272,7 +272,14 @@ class CrawlSitePages implements ShouldBeUnique, ShouldQueue
                 ->update(['inbound_internal_links' => $count]);
         }
 
-        $this->audit->update(['pages_crawled' => $crawled]);
+        // P3-20: the loop exits early when it hits $maxPages or the runtime
+        // deadline. If URLs are still queued at that point the crawl did NOT cover
+        // every discovered page — flag it so consumers don't read partial results
+        // as a full-site audit.
+        $this->audit->update([
+            'pages_crawled' => $crawled,
+            'coverage_partial' => ! empty($queue),
+        ]);
 
         JobTracker::progress($trackerId, 56, 'Checking broken links...');
         $this->checkBrokenLinks();

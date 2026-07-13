@@ -119,8 +119,12 @@ class MaintenancePlanService
             $needsTweaksPush = true;
         }
 
+        // P3-24: `pushed` reports whether settings were actually pushed to the
+        // connector. A modules-only apply pushes nothing (modules are materialized
+        // as DB rows, not pushed), so it must NOT report pushed=true just because
+        // the site is connected — only security/tweaks trigger a real push.
         $pushed = false;
-        if ($site->is_connected) {
+        if ($site->is_connected && ($needsSecurityPush || $needsTweaksPush)) {
             if ($needsSecurityPush) {
                 $this->securityService->pushToPlugin($site);
             }

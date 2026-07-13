@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class RetentionCleanup implements ShouldQueue
 {
@@ -76,6 +77,15 @@ class RetentionCleanup implements ShouldQueue
 
             $progress = (int) round(($index / $totalCategories) * 100);
             JobTracker::progress(self::JOB_KEY, $progress, "Cleaning {$config['label']}...");
+
+            // P3-23: report PDFs are files on disk, not just DB rows — prune them
+            // file-aware (delete the PDF then the row) instead of the generic
+            // table deleter which would orphan the files.
+            if ($categoryKey === 'reports') {
+                $categoryResults[$categoryKey] = $this->cleanExpiredReports($cutoff, $days, $dryRun, $deadline);
+
+                continue;
+            }
 
             foreach ($config['tables'] as $tableConfig) {
                 if (now()->gte($deadline)) {
@@ -316,6 +326,50 @@ class RetentionCleanup implements ShouldQueue
         }
 
         return $count;
+    }
+
+    /**
+     * P3-23: prune expired report PDFs — file-aware, mirroring cleanExpiredBackups.
+     * Deletes the PDF from disk `local` and then the row. Dry-run gated: while the
+     * global retention dry-run flag is on it only counts what it WOULD prune.
+     *
+     * @return array<string, mixed>
+     */
+    private function cleanExpiredReports(Carbon $cutoff, int $days, bool $dryRun, Carbon $deadline): array
+    {
+        $query = DB::table('reports')->where('generated_at', '<=', $cutoff);
+
+        if ($dryRun) {
+            $wouldDelete = (int) $query->count();
+            Log::info("Retention DRY-RUN: would prune {$wouldDelete} report PDFs", [
+                'category' => 'reports',
+                'cutoff_days' => $days,
+            ]);
+
+            return ['days' => $days, 'deleted' => 0, 'dry_run' => true, 'would_delete' => $wouldDelete];
+        }
+
+        $count = 0;
+        foreach ($query->orderBy('id')->cursor() as $report) {
+            if (now()->gte($deadline)) {
+                break;
+            }
+
+            try {
+                if (! empty($report->file_path)) {
+                    Storage::disk('local')->delete($report->file_path);
+                }
+                DB::table('reports')->where('id', $report->id)->delete();
+                $count++;
+            } catch (\Throwable $e) {
+                Log::warning("Failed to clean expired report {$report->id}", [
+                    'exception' => get_class($e),
+                    'code' => $e->getCode(),
+                ]);
+            }
+        }
+
+        return ['days' => $days, 'deleted' => $count];
     }
 
     public function failed(\Throwable $exception): void

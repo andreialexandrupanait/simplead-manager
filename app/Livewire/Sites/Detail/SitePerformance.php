@@ -295,34 +295,46 @@ class SitePerformance extends Component
 
         $tests = $query->orderBy('tested_at')->get();
 
-        $mobileTests = $tests->where('device', 'mobile');
-        $desktopTests = $tests->where('device', 'desktop');
+        // P3-19: build a single date-keyed axis so the mobile and desktop series
+        // stay aligned. Previously each device's scores were plucked into its own
+        // positional array while the labels were a deduped union of both devices'
+        // dates — so any day with only one device, or multiple tests on one day,
+        // shifted the two lines out of alignment with each other and the x-axis.
+        // Here every calendar day is one bucket; missing device-days are null-filled
+        // (Chart.js skips null points) and same-day retests collapse to the latest.
+        $byDate = [];
+        foreach ($tests as $test) {
+            $key = $test->tested_at->format('Y-m-d');
+            if (! isset($byDate[$key])) {
+                $byDate[$key] = ['label' => $test->tested_at->format('M j'), 'mobile' => null, 'desktop' => null];
+            }
+            if ($test->device === 'mobile') {
+                $byDate[$key]['mobile'] = $test->performance_score;
+            } elseif ($test->device === 'desktop') {
+                $byDate[$key]['desktop'] = $test->performance_score;
+            }
+        }
+        ksort($byDate);
 
-        $labels = $mobileTests->merge($desktopTests)
-            ->pluck('tested_at')
-            ->map(fn ($d) => $d->format('M j'))
-            ->unique()
-            ->values()
-            ->toArray();
+        $labels = array_values(array_map(fn ($d) => $d['label'], $byDate));
+        $mobileScores = array_values(array_map(fn ($d) => $d['mobile'], $byDate));
+        $desktopScores = array_values(array_map(fn ($d) => $d['desktop'], $byDate));
 
         $datasets = [
             [
                 'label' => 'Mobile',
-                'data' => $mobileTests->pluck('performance_score')->toArray(),
+                'data' => $mobileScores,
                 'color' => '#8B5CF6',
             ],
             [
                 'label' => 'Desktop',
-                'data' => $desktopTests->pluck('performance_score')->toArray(),
+                'data' => $desktopScores,
                 'color' => '#3B82F6',
             ],
         ];
 
         // Add rolling averages if enabled and enough data
         if ($this->showRollingAverage) {
-            $mobileScores = $mobileTests->pluck('performance_score')->toArray();
-            $desktopScores = $desktopTests->pluck('performance_score')->toArray();
-
             $mobileAvg = $this->computeRollingAverage($mobileScores, 7);
             $desktopAvg = $this->computeRollingAverage($desktopScores, 7);
 

@@ -68,4 +68,25 @@ class ReportRecommendation extends Model
     {
         return $query->where('site_id', $siteId);
     }
+
+    /**
+     * P3-22: link ONLY the captured draft ids that are still unlinked to a report.
+     *
+     * Scoping to a captured id set (instead of "every unlinked draft for the
+     * site") plus the whereNull('report_id') guard keeps two reports generating
+     * concurrently for the same site from stealing each other's recommendations.
+     *
+     * @param  array<int, int>  $draftIds
+     * @return int rows linked
+     */
+    public static function linkDraftsToReport(array $draftIds, int $reportId): int
+    {
+        if ($draftIds === []) {
+            return 0;
+        }
+
+        return static::whereIn('id', $draftIds)
+            ->whereNull('report_id')
+            ->update(['report_id' => $reportId]);
+    }
 }

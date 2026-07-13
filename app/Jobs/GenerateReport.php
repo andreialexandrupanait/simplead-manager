@@ -116,6 +116,18 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 
         $this->reportId = $report->id;
 
+        // P3-22: snapshot the draft recommendation IDs THIS report will consume
+        // BEFORE generation. Linking by site_id alone claimed every unlinked draft
+        // for the site, so two reports generating concurrently for the same site
+        // (e.g. different templates — uniqueId is per site+template) stole each
+        // other's recommendations. We link only this captured set, and the
+        // whereNull('report_id') guard means a draft another report already claimed
+        // is never re-stolen — keeping each report's recommendations separate.
+        $draftRecommendationIds = ReportRecommendation::where('site_id', $this->site->id)
+            ->whereNull('report_id')
+            ->pluck('id')
+            ->all();
+
         try {
             $service = new ReportGeneratorService(
                 $this->site,
@@ -129,11 +141,9 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
             $filePath = $service->generate();
             JobTracker::progress($this->trackerKey(), 70, 'Saving report...');
 
-            // Link draft recommendations to this report AFTER generation
-            // so gatherData() can read is_included state from unlinked drafts
-            ReportRecommendation::where('site_id', $this->site->id)
-                ->whereNull('report_id')
-                ->update(['report_id' => $report->id]);
+            // Link the captured draft recommendations to this report AFTER
+            // generation (so gatherData() reads is_included from unlinked drafts).
+            ReportRecommendation::linkDraftsToReport($draftRecommendationIds, $report->id);
 
             $fullPath = Storage::disk('local')->path($filePath);
             $fileSize = file_exists($fullPath) ? (int) filesize($fullPath) : 0;

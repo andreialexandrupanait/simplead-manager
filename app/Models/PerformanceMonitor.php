@@ -73,6 +73,7 @@ class PerformanceMonitor extends Model
         'alert_on_score_drop' => 'boolean',
         'alert_on_poor_vitals' => 'boolean',
         'interval_minutes' => 'integer',
+        'day_of_week' => 'integer',
         'budgets' => 'array',
         'competitor_urls' => 'array',
         'last_tested_at' => 'datetime',
@@ -99,6 +100,20 @@ class PerformanceMonitor extends Model
         // dispatcher never auto-runs it — tests only fire when triggered by hand.
         if (! in_array($this->frequency, ['daily', 'weekly'], true)) {
             return null;
+        }
+
+        // P3-19: a weekly monitor pins to its configured day-of-week (0=Sunday..
+        // 6=Saturday, Carbon's convention — the same value the settings UI writes)
+        // instead of drifting by the raw interval. `next()` always lands on the
+        // upcoming occurrence of that weekday (1-7 days out), anchored to test_time.
+        if ($this->frequency === 'weekly' && $this->day_of_week !== null) {
+            $next = now()->next((int) $this->day_of_week);
+            if ($this->test_time) {
+                [$hour, $minute] = array_pad(explode(':', $this->test_time), 2, '0');
+                $next->setTime((int) $hour, (int) $minute);
+            }
+
+            return $next;
         }
 
         $interval = max((int) $this->interval_minutes, self::MIN_INTERVAL_MINUTES);

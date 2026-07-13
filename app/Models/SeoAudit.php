@@ -12,11 +12,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SeoAudit extends Model
 {
-    protected $fillable = ['site_id', 'score', 'critical_count', 'high_count', 'medium_count', 'low_count', 'info_count', 'scan_duration', 'pages_crawled', 'seo_plugin', 'seo_plugin_version', 'data', 'scanned_at', 'status', 'error_message', 'category_scores', 'sitemap_urls_count', 'security_headers', 'ssl_info', 'redirect_info', 'robots_txt_data', 'broken_links_count', 'broken_images_count', 'total_images_count', 'redirect_pages_count'];
+    protected $fillable = ['site_id', 'score', 'critical_count', 'high_count', 'medium_count', 'low_count', 'info_count', 'scan_duration', 'pages_crawled', 'seo_plugin', 'seo_plugin_version', 'data', 'scanned_at', 'status', 'error_message', 'category_scores', 'sitemap_urls_count', 'security_headers', 'ssl_info', 'redirect_info', 'robots_txt_data', 'broken_links_count', 'broken_images_count', 'total_images_count', 'redirect_pages_count', 'coverage_partial'];
 
     protected function casts(): array
     {
-        return ['data' => 'array', 'category_scores' => 'array', 'security_headers' => 'array', 'ssl_info' => 'array', 'redirect_info' => 'array', 'robots_txt_data' => 'array', 'scanned_at' => 'datetime', 'status' => SeoAuditStatus::class];
+        return ['data' => 'array', 'category_scores' => 'array', 'security_headers' => 'array', 'ssl_info' => 'array', 'redirect_info' => 'array', 'robots_txt_data' => 'array', 'scanned_at' => 'datetime', 'status' => SeoAuditStatus::class, 'coverage_partial' => 'boolean'];
     }
 
     public function site(): BelongsTo
