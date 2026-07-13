@@ -74,6 +74,10 @@ class ClientPortalActivityTest extends TestCase
 
     public function test_portal_health_is_computed_by_the_controller_and_passed_to_the_view(): void
     {
+        // The portal view uses @vite; CI doesn't build frontend assets, so stub
+        // Vite or the render 500s with ViteManifestNotFoundException.
+        $this->withoutVite();
+
         $client = Client::factory()->create(['status' => 'active', 'portal_enabled' => true, 'portal_token' => str_repeat('b', 64)]);
         $site = Site::factory()->create(['client_id' => $client->id]);
 
