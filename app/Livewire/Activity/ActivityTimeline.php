@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Activity;
 
+use App\Enums\ActivityType;
 use App\Livewire\Traits\WithVisibleSites;
 use App\Models\ActivityLog;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,20 +23,6 @@ class ActivityTimeline extends Component
     public string $severity = 'all';
 
     public string $dateRange = 'week';
-
-    private const TYPES = [
-        'all' => 'All',
-        'uptime' => 'Uptime',
-        'backup' => 'Backups',
-        'update' => 'Updates',
-        'plugin' => 'Plugins',
-        'security' => 'Security',
-        'auth' => 'Authentication',
-        'performance' => 'Performance',
-        'report' => 'Reports',
-        'app_backup' => 'App Backup',
-        'retention' => 'Cleanup',
-    ];
 
     /**
      * Restrict the timeline to activity the acting user may see: events on a
@@ -73,10 +60,13 @@ class ActivityTimeline extends Component
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     #[Computed]
     public function typeOptions(): array
     {
-        return self::TYPES;
+        return ActivityType::filterOptions();
     }
 
     public function updatedFilter(): void
@@ -100,14 +90,23 @@ class ActivityTimeline extends Component
         unset($this->stats);
     }
 
+    /**
+     * Lower bound for the "since" cursor. Pinned to UTC so the comparison is
+     * deterministic regardless of the app/container timezone: activity
+     * timestamps are stored as UTC wall-clock, and binding a Carbon carrying a
+     * non-UTC offset would shift the window by that offset and silently
+     * include/exclude events at the boundary (P3-28).
+     */
     private function dateStart(): \Carbon\Carbon
     {
+        $now = now('UTC');
+
         return match ($this->dateRange) {
-            'today' => now()->startOfDay(),
-            'week' => now()->subWeek(),
-            'month' => now()->subMonth(),
-            'quarter' => now()->subQuarter(),
-            default => now()->subWeek(),
+            'today' => $now->startOfDay(),
+            'week' => $now->subWeek(),
+            'month' => $now->subMonth(),
+            'quarter' => $now->subQuarter(),
+            default => $now->subWeek(),
         };
     }
 

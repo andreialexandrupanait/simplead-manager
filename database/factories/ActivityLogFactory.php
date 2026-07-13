@@ -24,8 +24,8 @@ class ActivityLogFactory extends Factory
         return [
             'site_id' => Site::factory(),
             'user_id' => User::factory(),
-            'type' => fake()->randomElement(['backup', 'update', 'uptime', 'security', 'ssl', 'domain', 'performance', 'system']),
-            'severity' => fake()->randomElement(['info', 'warning', 'error', 'success']),
+            'type' => fake()->randomElement(['backup', 'update', 'uptime', 'security', 'performance', 'report', 'user']),
+            'severity' => fake()->randomElement(['info', 'warning', 'critical', 'success']),
             'title' => fake()->sentence(4),
             'description' => fake()->optional()->sentence(),
             'metadata' => null,
@@ -63,7 +63,7 @@ class ActivityLogFactory extends Factory
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [
-            'severity' => 'error',
+            'severity' => 'critical',
             'icon' => 'x-circle',
         ]);
     }
@@ -140,7 +140,7 @@ class ActivityLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'user_id' => null,
-            'type' => 'system',
+            'type' => 'retention',
         ]);
     }
 }

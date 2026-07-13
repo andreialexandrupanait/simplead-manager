@@ -189,7 +189,7 @@ class ProfileSettings extends Component
             ->get();
         $zip->addFromString('activity-logs.json', json_encode(
             $logs->map(fn (\App\Models\ActivityLog $l) => [
-                'type' => $l->type,
+                'type' => $l->type?->value,
                 'title' => $l->title,
                 'description' => $l->description,
                 'created_at' => $l->created_at->toIso8601String(),

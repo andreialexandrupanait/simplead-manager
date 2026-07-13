@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\SecurityCategory;
 use App\Jobs\PushSecuritySettings;
 use App\Models\SecurityBannedIp;
 use App\Models\SecurityPreset;
@@ -255,6 +256,33 @@ class SecuritySettingsService
         }
 
         return min(100, $score);
+    }
+
+    /**
+     * P3-21: credit the Laravel-only activity_log setting only once the
+     * connector has actually confirmed enforcement. Unlike hardening/htaccess/
+     * login/captcha/ip_management, activity_log is never part of the security
+     * push payload — its "enforcement" is that the connector's audit-log endpoint
+     * responds, proving audit logging is live and we can ingest events. Callers
+     * invoke this after a successful audit-log fetch. Idempotent: only enabled,
+     * not-yet-applied rows are touched, and the score is recomputed only when a
+     * row actually flips so we don't thrash the site record.
+     */
+    public function markActivityLogVerified(Site $site): void
+    {
+        $updated = SecuritySetting::where('site_id', $site->id)
+            ->where('category', SecurityCategory::ActivityLog)
+            ->where('is_enabled', true)
+            ->whereNull('applied_at')
+            ->update([
+                'applied_at' => now(),
+                'failed_at' => null,
+                'failure_reason' => null,
+            ]);
+
+        if ($updated > 0) {
+            $site->update(['security_hardening_score' => $this->getSecurityScore($site)]);
+        }
     }
 
     /**

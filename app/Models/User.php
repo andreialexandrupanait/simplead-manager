@@ -23,6 +23,7 @@ use Illuminate\Notifications\Notifiable;
  * @property string $timezone
  * @property string $date_format
  * @property string $language
+ * @property bool $digest_enabled
  * @property string|null $avatar_path
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -50,6 +51,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'timezone',
         'date_format',
         'language',
+        'digest_enabled',
         'theme',
         'avatar_path',
         'google_id',
@@ -76,6 +78,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'digest_enabled' => 'boolean',
             'role' => UserRole::class,
         ];
     }

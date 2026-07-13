@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\SecurityActivityLog;
 use App\Models\Site;
 use App\Services\SecurityActivityService;
+use App\Services\SecuritySettingsService;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -112,6 +113,12 @@ class PullSecurityActivityLogs implements ShouldBeUnique, ShouldQueue
             $since = $newSince;
             $page++;
         } while (count($wpLogs) >= self::PAGE_LIMIT && $page < self::MAX_PAGES);
+
+        // P3-21: reaching here means at least one audit-log request came back
+        // successful (a failed request returns early above), which confirms the
+        // connector's activity logging is live — the enforcement signal that lets
+        // us credit the (otherwise never-pushed) activity_log security setting.
+        app(SecuritySettingsService::class)->markActivityLogVerified($this->site);
 
         if ($totalIngested > 0) {
             Log::info('PullSecurityActivityLogs: ingested logs', [

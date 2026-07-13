@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\SafeBackedEnum;
+use App\Enums\ActivitySeverity;
+use App\Enums\ActivityType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,8 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int|null $site_id
  * @property int|null $user_id
- * @property string $type
- * @property string $severity
+ * @property \App\Enums\ActivityType|null $type
+ * @property \App\Enums\ActivitySeverity|null $severity
  * @property string $title
  * @property string|null $description
  * @property array|null $metadata
@@ -46,6 +49,8 @@ class ActivityLog extends Model
     protected $casts = [
         'metadata' => 'array',
         'created_at' => 'datetime',
+        'type' => SafeBackedEnum::class.':'.ActivityType::class,
+        'severity' => SafeBackedEnum::class.':'.ActivitySeverity::class,
     ];
 
     public function site(): BelongsTo

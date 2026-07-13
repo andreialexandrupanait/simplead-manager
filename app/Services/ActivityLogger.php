@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\ActivityLog;
+use App\Models\Client;
 use App\Models\Site;
 use App\Models\User;
 
@@ -403,6 +404,42 @@ class ActivityLogger
             metadata: $results,
             icon: 'trash-2',
             url: route('settings.data-retention'),
+        );
+    }
+
+    public static function clientPortalEnabled(Client $client): ActivityLog
+    {
+        return static::log(
+            type: 'portal',
+            severity: 'warning',
+            title: "Client portal enabled for {$client->name}",
+            description: 'The public portal is now reachable with a valid access token.',
+            metadata: ['client_id' => $client->id, 'action' => 'enabled'],
+            icon: 'external-link',
+        );
+    }
+
+    public static function clientPortalDisabled(Client $client): ActivityLog
+    {
+        return static::log(
+            type: 'portal',
+            severity: 'info',
+            title: "Client portal disabled for {$client->name}",
+            description: 'The public portal is no longer reachable.',
+            metadata: ['client_id' => $client->id, 'action' => 'disabled'],
+            icon: 'external-link',
+        );
+    }
+
+    public static function clientPortalTokenRegenerated(Client $client): ActivityLog
+    {
+        return static::log(
+            type: 'portal',
+            severity: 'warning',
+            title: "Client portal token regenerated for {$client->name}",
+            description: 'The previous portal link has been invalidated.',
+            metadata: ['client_id' => $client->id, 'action' => 'token_regenerated'],
+            icon: 'refresh-cw',
         );
     }
 

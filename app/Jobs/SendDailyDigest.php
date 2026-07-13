@@ -38,7 +38,9 @@ class SendDailyDigest implements ShouldQueue
     {
         $digest = $this->gatherDigest();
 
-        foreach (User::cursor() as $user) {
+        // P3-29: only mail users who have not opted out of the digest. Previously
+        // every user was force-mailed regardless of their preference.
+        foreach (User::where('digest_enabled', true)->cursor() as $user) {
             try {
                 Mail::to($user->email)->queue(new DailyDigestMail($digest));
             } catch (\Throwable $e) {

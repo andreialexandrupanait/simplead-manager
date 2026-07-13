@@ -41,9 +41,12 @@ class PushSecuritySettings implements ShouldBeUnique, ShouldQueue
             ->where('is_enabled', true)
             ->get();
 
-        // Activity log is a Laravel-only setting â mark applied immediately
-        $settings->where('category', \App\Enums\SecurityCategory::ActivityLog)
-            ->each(fn ($s) => $s->update(['applied_at' => now(), 'failed_at' => null, 'failure_reason' => null]));
+        // P3-21: activity_log is NOT pushed here — the connector exposes no
+        // security-settings hook for it (buildPayload omits the category). Its
+        // enforcement is verified out-of-band: PullSecurityActivityLogs marks it
+        // applied only once the connector's audit-log endpoint actually responds,
+        // proving audit logging is live. Marking it applied here (as before) would
+        // credit the hardening score even for an unreachable/unconfigured site.
 
         $payload = $this->buildPayload($settings);
 

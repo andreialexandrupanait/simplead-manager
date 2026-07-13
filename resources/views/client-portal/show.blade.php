@@ -33,7 +33,7 @@
                         default    => 'bg-gray-300',
                     };
                     $incident = $monitor?->ongoingIncident;
-                    $healthScore = \App\Services\HealthScoreService::calculate($site)['total'];
+                    $healthScore = $healthScores[$site->id] ?? 0;
                     $healthColor = $healthScore >= 75 ? 'text-green-600' : ($healthScore >= 50 ? 'text-amber-600' : 'text-red-600');
                     $securityScore = $site->security_hardening_score;
                 @endphp
