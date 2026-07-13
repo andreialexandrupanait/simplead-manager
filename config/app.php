@@ -147,4 +147,18 @@ return [
 
     'staging_mode' => (bool) env('STAGING_MODE', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | The proxies (or proxy) the application should trust when reading the
+    | X-Forwarded-* headers. Read from config (not env() directly) so the value
+    | survives `config:cache` in production, where env() returns null (P3-34).
+    | May be a single IP, a comma-separated list, or '*' to trust all.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.1'),
+
 ];

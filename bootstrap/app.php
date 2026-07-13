@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(
-            at: env('TRUSTED_PROXIES', '127.0.0.1'),
+            at: config('app.trusted_proxies', '127.0.0.1'),
             headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
                      \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
                      \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
@@ -69,7 +69,32 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Scrub sensitive data from generic exceptions in production
+        // Single-source logging for unhandled exceptions in production (P3-36):
+        // log once here — with full stack trace and context — and return false so
+        // the exception does NOT also propagate to the framework's default logging
+        // stack (which previously produced a duplicate, trace-less log line).
+        $exceptions->report(function (\Throwable $e) {
+            if (! app()->isProduction()) {
+                return true;
+            }
+
+            if ($e instanceof ValidationException || $e instanceof HttpException || $e instanceof AuthorizationException || $e instanceof AuthenticationException) {
+                return true;
+            }
+
+            \Illuminate\Support\Facades\Log::error('Unhandled exception', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return false;
+        });
+
+        // Scrub sensitive data from generic exceptions in production (response only —
+        // logging is handled once by the report() callback above).
         $exceptions->renderable(function (\Throwable $e, Request $request) {
             if (! app()->isProduction()) {
                 return null;
@@ -79,13 +104,6 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof ValidationException || $e instanceof HttpException || $e instanceof AuthorizationException || $e instanceof AuthenticationException) {
                 return null;
             }
-
-            \Illuminate\Support\Facades\Log::error('Unhandled exception', [
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'An unexpected error occurred.'], 500);

@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Backup;
-use App\Services\Backup\BackupManifestV3;
-use App\Services\Backup\IntegrityVerifier;
-use App\Services\Backup\Storage\StorageFactory;
+use App\Services\Backup\BackupVerifier;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -27,14 +25,16 @@ use Illuminate\Support\Facades\Log;
 class VerifyBackupRestoreCommand extends Command
 {
     protected $signature = 'backup:verify-restore '
-        .'{--count=3 : Number of backups to verify in this run} '
+        .'{--count= : Number of backups to verify (defaults to config backups.level_b_sample_size)} '
         .'{--max-age-days=30 : Only consider backups created within this many days}';
 
     protected $description = 'Sample recent backups, download from storage, validate integrity end-to-end';
 
     public function handle(): int
     {
-        $count = max(1, (int) $this->option('count'));
+        // Sample size is config-driven so it can scale with the fleet (P2-33);
+        // an explicit --count still overrides.
+        $count = max(1, (int) ($this->option('count') ?: config('backups.level_b_sample_size', 3)));
         $maxAgeDays = max(1, (int) $this->option('max-age-days'));
 
         $candidates = Backup::query()
@@ -57,7 +57,7 @@ class VerifyBackupRestoreCommand extends Command
 
         $passed = 0;
         $failed = 0;
-        $verifier = app(IntegrityVerifier::class);
+        $verifier = app(BackupVerifier::class);
         $tempRoot = storage_path('app/temp');
 
         foreach ($candidates as $backup) {
@@ -65,32 +65,11 @@ class VerifyBackupRestoreCommand extends Command
             @mkdir($tempDir, 0700, true);
 
             try {
-                if ($backup->format === BackupManifestV3::FORMAT) {
-                    $this->line("  #{$backup->id} (multipart prefix {$backup->file_path}) — verifying...");
-                    $result = $verifier->verifyMultipart($backup, $tempDir);
-                } else {
-                    $localPath = $tempDir.'/'.$backup->file_name;
-                    $destination = $backup->storageDestination;
-                    if (! $destination) {
-                        $this->markFailed($backup, 'storage destination missing');
-                        $failed++;
-
-                        continue;
-                    }
-
-                    $this->line("  #{$backup->id} ({$backup->file_name}) — downloading from {$destination->type}...");
-                    $driver = StorageFactory::make($destination);
-                    $driver->download($backup->file_path, $localPath);
-
-                    if (! is_file($localPath) || filesize($localPath) === 0) {
-                        $this->markFailed($backup, 'downloaded file empty or missing');
-                        $failed++;
-
-                        continue;
-                    }
-
-                    $result = $verifier->verifyArchive($localPath, $backup->checksum);
-                }
+                $this->line("  #{$backup->id} ({$backup->format}) — downloading + verifying...");
+                // Full integrity check with replica fallback (P2-33): routes
+                // v3-zip through the same verifier the creation path uses and
+                // falls back to a replica if the primary storage is unreachable.
+                $result = $verifier->runIntegrityCheck($backup, $tempDir);
 
                 if ($result['ok']) {
                     $backup->update([
