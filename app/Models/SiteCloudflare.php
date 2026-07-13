@@ -82,6 +82,9 @@ class SiteCloudflare extends Model
 
     protected function planLabel(): Attribute
     {
-        return Attribute::get(fn () => ucfirst($this->plan_type));
+        // P3-31: plan_type is nullable (a freshly-connected zone before its first
+        // sync, or a plan Cloudflare didn't return). ucfirst(null) is a TypeError
+        // under strict types, so guard the null and yield no label instead.
+        return Attribute::get(fn () => $this->plan_type === null ? null : ucfirst($this->plan_type));
     }
 }

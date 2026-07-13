@@ -110,9 +110,28 @@ class CloudflareService
 
     public function listDnsRecords(string $zoneId): array
     {
-        $response = $this->request('GET', "/zones/{$zoneId}/dns_records?per_page=100");
+        // P3-31: Cloudflare caps dns_records at 100 per page. Without paging, a
+        // zone with >100 records silently lost the rest (breaking DKIM selector
+        // discovery). Follow result_info.total_pages, capped so a runaway
+        // total_pages can never spin forever.
+        $params = ['per_page' => 100];
+        $allRecords = [];
+        $page = 1;
+        $maxPages = 50; // sane cap: up to 5,000 records
 
-        return $response['result'] ?? [];
+        do {
+            $params['page'] = $page;
+            $query = '?'.http_build_query($params);
+            $response = $this->request('GET', "/zones/{$zoneId}/dns_records{$query}");
+
+            $records = $response['result'] ?? [];
+            $allRecords = array_merge($allRecords, $records);
+
+            $totalPages = (int) ($response['result_info']['total_pages'] ?? 1);
+            $page++;
+        } while ($page <= $totalPages && $page <= $maxPages);
+
+        return $allRecords;
     }
 
     public function discoverDkimSelectors(string $zoneId, string $domain): array
@@ -148,27 +167,6 @@ class CloudflareService
         });
     }
 
-    public function createDnsRecord(string $zoneId, array $data): array
-    {
-        $response = $this->request('POST', "/zones/{$zoneId}/dns_records", $data);
-
-        return $response['result'] ?? [];
-    }
-
-    public function updateDnsRecord(string $zoneId, string $recordId, array $data): array
-    {
-        $response = $this->request('PUT', "/zones/{$zoneId}/dns_records/{$recordId}", $data);
-
-        return $response['result'] ?? [];
-    }
-
-    public function deleteDnsRecord(string $zoneId, string $recordId): bool
-    {
-        $response = $this->request('DELETE', "/zones/{$zoneId}/dns_records/{$recordId}");
-
-        return $response['success'] ?? false;
-    }
-
     // Cache Methods
 
     public function purgeEverything(string $zoneId): bool
@@ -185,119 +183,6 @@ class CloudflareService
         $response = $this->request('POST', "/zones/{$zoneId}/purge_cache", [
             'files' => $urls,
         ]);
-
-        return $response['success'] ?? false;
-    }
-
-    public function purgeByTags(string $zoneId, array $tags): bool
-    {
-        $response = $this->request('POST', "/zones/{$zoneId}/purge_cache", [
-            'tags' => $tags,
-        ]);
-
-        return $response['success'] ?? false;
-    }
-
-    public function purgeByPrefix(string $zoneId, array $prefixes): bool
-    {
-        $response = $this->request('POST', "/zones/{$zoneId}/purge_cache", [
-            'prefixes' => $prefixes,
-        ]);
-
-        return $response['success'] ?? false;
-    }
-
-    // Security Methods
-
-    public function getSecurityLevel(string $zoneId): string
-    {
-        $response = $this->request('GET', "/zones/{$zoneId}/settings/security_level");
-
-        return $response['result']['value'] ?? 'medium';
-    }
-
-    public function setSecurityLevel(string $zoneId, string $level): bool
-    {
-        $response = $this->request('PATCH', "/zones/{$zoneId}/settings/security_level", [
-            'value' => $level,
-        ]);
-
-        return $response['success'] ?? false;
-    }
-
-    public function listFirewallRules(string $zoneId): array
-    {
-        $response = $this->request('GET', "/zones/{$zoneId}/firewall/rules");
-
-        return $response['result'] ?? [];
-    }
-
-    public function createFirewallRule(string $zoneId, array $data): array
-    {
-        $response = $this->request('POST', "/zones/{$zoneId}/firewall/rules", [$data]);
-
-        return $response['result'] ?? [];
-    }
-
-    public function updateFirewallRule(string $zoneId, string $ruleId, array $data): array
-    {
-        $response = $this->request('PUT', "/zones/{$zoneId}/firewall/rules/{$ruleId}", $data);
-
-        return $response['result'] ?? [];
-    }
-
-    public function deleteFirewallRule(string $zoneId, string $ruleId): bool
-    {
-        $response = $this->request('DELETE', "/zones/{$zoneId}/firewall/rules/{$ruleId}");
-
-        return $response['success'] ?? false;
-    }
-
-    // WAF
-
-    public function getWafStatus(string $zoneId): string
-    {
-        $response = $this->request('GET', "/zones/{$zoneId}/settings/waf");
-
-        return $response['result']['value'] ?? 'off';
-    }
-
-    public function enableWaf(string $zoneId): array
-    {
-        return $this->request('PATCH', "/zones/{$zoneId}/settings/waf", ['value' => 'on']);
-    }
-
-    public function disableWaf(string $zoneId): array
-    {
-        return $this->request('PATCH', "/zones/{$zoneId}/settings/waf", ['value' => 'off']);
-    }
-
-    // Access Rules (IP blocking)
-
-    public function listAccessRules(string $zoneId): array
-    {
-        $response = $this->request('GET', "/zones/{$zoneId}/firewall/access_rules/rules?per_page=50");
-
-        return $response['result'] ?? [];
-    }
-
-    public function blockIpViaCloudflare(string $zoneId, string $ip, string $note = ''): array
-    {
-        $response = $this->request('POST', "/zones/{$zoneId}/firewall/access_rules/rules", [
-            'mode' => 'block',
-            'configuration' => [
-                'target' => 'ip',
-                'value' => $ip,
-            ],
-            'notes' => $note,
-        ]);
-
-        return $response['result'] ?? [];
-    }
-
-    public function deleteAccessRule(string $zoneId, string $ruleId): bool
-    {
-        $response = $this->request('DELETE', "/zones/{$zoneId}/firewall/access_rules/rules/{$ruleId}");
 
         return $response['success'] ?? false;
     }

@@ -162,6 +162,7 @@ class AggregateMonthlySnapshots implements ShouldQueue
             FROM performance_tests pt
             JOIN performance_monitors pm ON pm.id = pt.performance_monitor_id
             WHERE pt.status = 'completed'
+              AND pt.is_competitor = false
               AND pt.tested_at BETWEEN ? AND ?
             GROUP BY pm.site_id
         ", [$start, $end]);

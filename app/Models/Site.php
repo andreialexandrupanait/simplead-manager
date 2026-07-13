@@ -262,6 +262,23 @@ class Site extends Model
         return parse_url($this->url, PHP_URL_HOST) ?? $this->url;
     }
 
+    /**
+     * The hostname used for DNS monitoring: the URL host with any leading
+     * `www.` stripped, falling back to the raw URL when it has no parseable
+     * host. Single source of truth — DNS monitor creation (ModuleConfigService,
+     * BackfillDnsMonitors) all derive the monitored domain through here (P3-26).
+     */
+    public function dnsDomain(): string
+    {
+        $host = parse_url($this->url, PHP_URL_HOST);
+
+        if (! $host) {
+            return $this->url;
+        }
+
+        return preg_replace('/^www\./', '', $host);
+    }
+
     public function getOverallStatusAttribute(): string
     {
         return HealthLevel::fromScore($this->health_score, $this->is_up)->value;
