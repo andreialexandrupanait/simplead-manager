@@ -6,6 +6,7 @@ namespace App\Services\IncidentResponse;
 
 use App\Enums\IncidentResponseStatus;
 use App\Enums\IncidentTriggerType;
+use App\Exceptions\IncidentSkippedException;
 use App\Models\IncidentResponse;
 use App\Models\Site;
 use App\Services\ActivityLogger;
@@ -28,20 +29,24 @@ class IncidentResponderService
         ?int $triggerSourceId = null,
         array $context = [],
     ): IncidentResponse {
+        // P3-32: these three are intentional guardrail SKIPS, not failures. They
+        // throw a typed IncidentSkippedException (a RuntimeException subtype, so
+        // the message contract is unchanged) that the job catches specifically and
+        // logs at debug — a routine cooldown skip no longer pollutes the error log.
         if (! config('incident-response.enabled', false)) {
-            throw new \RuntimeException('Incident response is disabled');
+            throw new IncidentSkippedException('Incident response is disabled');
         }
 
         // Safety: cooldown check
         if ($this->isInCooldown($site, $trigger)) {
-            Log::info("Incident response skipped for site {$site->id}: cooldown active for {$trigger->value}");
-            throw new \RuntimeException('Cooldown active');
+            Log::debug("Incident response skipped for site {$site->id}: cooldown active for {$trigger->value}");
+            throw new IncidentSkippedException('Cooldown active');
         }
 
         // Safety: rate limit per site
         if ($this->hasExceededHourlyLimit($site)) {
-            Log::warning("Incident response skipped for site {$site->id}: hourly limit exceeded");
-            throw new \RuntimeException('Hourly limit exceeded');
+            Log::debug("Incident response skipped for site {$site->id}: hourly limit exceeded");
+            throw new IncidentSkippedException('Hourly limit exceeded');
         }
 
         $response = IncidentResponse::create([

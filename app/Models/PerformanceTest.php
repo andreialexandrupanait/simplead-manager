@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,6 +54,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $status
  * @property string|null $error_message
  * @property string|null $lighthouse_version
+ * @property bool $is_competitor
+ * @property string|null $competitor_url
  * @property \Illuminate\Support\Carbon|null $tested_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -109,9 +112,12 @@ class PerformanceTest extends Model
         'error_message',
         'lighthouse_version',
         'tested_at',
+        'is_competitor',
+        'competitor_url',
     ];
 
     protected $casts = [
+        'is_competitor' => 'boolean',
         'opportunities' => 'array',
         'diagnostics' => 'array',
         'third_party_scripts' => 'array',
@@ -122,6 +128,29 @@ class PerformanceTest extends Model
         'filmstrip' => 'array',
         'tested_at' => 'datetime',
     ];
+
+    /**
+     * P2-15: competitor benchmark rows share the performance_tests table with the
+     * site's own tests. A default global scope hides them from every existing
+     * query (history, charts, latest score, budgets) so they never pollute the
+     * site's own metrics; the competitor comparison opts back in via
+     * {@see scopeCompetitors()}.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('non_competitor', function (Builder $query): void {
+            $query->where($query->getModel()->getTable().'.is_competitor', false);
+        });
+    }
+
+    /**
+     * Opt back in to competitor benchmark rows (removes the non_competitor global
+     * scope). Used by the competitor comparison surface.
+     */
+    public function scopeCompetitors(Builder $query): Builder
+    {
+        return $query->withoutGlobalScope('non_competitor')->where('is_competitor', true);
+    }
 
     public function site(): BelongsTo
     {

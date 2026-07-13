@@ -176,6 +176,39 @@ class CloudflareServiceResilienceTest extends TestCase
         $this->assertTrue($connection->fresh()->is_valid);
     }
 
+    // P3-31: listDnsRecords must paginate — a zone with >100 records used to lose
+    // everything past the first page.
+
+    public function test_list_dns_records_paginates_beyond_100_records(): void
+    {
+        $service = $this->service();
+        $zoneId = str_repeat('a', 32);
+
+        Http::fake([
+            'api.cloudflare.com/*dns_records*' => function ($request) {
+                parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+                $page = (int) ($query['page'] ?? 1);
+
+                // Two pages of 100 + 25 records. total_pages tells the loop to continue.
+                $count = $page === 1 ? 100 : 25;
+                $result = [];
+                for ($i = 0; $i < $count; $i++) {
+                    $result[] = ['id' => "rec-{$page}-{$i}", 'type' => 'A', 'name' => "r{$page}{$i}.example.com"];
+                }
+
+                return Http::response([
+                    'success' => true,
+                    'result' => $result,
+                    'result_info' => ['page' => $page, 'per_page' => 100, 'total_pages' => 2, 'count' => $count],
+                ], 200);
+            },
+        ]);
+
+        $records = $service->listDnsRecords($zoneId);
+
+        $this->assertCount(125, $records, 'All records across both pages must be returned.');
+    }
+
     public function test_genuine_auth_failure_flips_is_valid_false(): void
     {
         $connection = CloudflareConnection::factory()->create(['is_valid' => true]);

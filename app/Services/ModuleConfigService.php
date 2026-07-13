@@ -340,8 +340,7 @@ class ModuleConfigService
                 break;
 
             case 'dns':
-                $host = parse_url($site->url, PHP_URL_HOST);
-                $data['domain'] = $host ? preg_replace('/^www\./', '', $host) : $site->url;
+                $data['domain'] = $site->dnsDomain();
                 $data['is_active'] = $enabled;
                 $data['interval_minutes'] = $interval ?? 360;
                 $data['next_check_at'] = now()->addMinutes($jitter);

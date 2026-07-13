@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\SsrfException;
 use App\Models\PerformanceMonitor;
 use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Services\ActivityLogger;
 use App\Services\PageSpeedService;
+use App\Services\Security\SsrfGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
@@ -58,7 +61,7 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
      */
     private function failOrphanedRunningTests(string $reason): void
     {
-        PerformanceTest::query()
+        PerformanceTest::withoutGlobalScope('non_competitor')
             ->where('performance_monitor_id', $this->monitor->id)
             ->where('status', 'running')
             ->update([
@@ -97,9 +100,79 @@ class RunPerformanceTest implements ShouldBeUnique, ShouldQueue
             }
         }
 
+        $this->runCompetitorBenchmarks($pageSpeed, $site, $devices);
+
         $this->updateMonitorScores();
         $this->checkAlerts();
         $this->checkBudgets();
+    }
+
+    /**
+     * P2-15: benchmark each configured competitor URL on the monitor's cadence so
+     * the competitor comparison in the UI is populated with real data instead of
+     * being a dead field. Results are stored as PerformanceTest rows flagged
+     * is_competitor=true and keyed by competitor_url, which is exactly what
+     * WithPerformanceCompetitors::competitorComparison() reads back.
+     *
+     * Competitor URLs are user-supplied, so each is SSRF-validated before it is
+     * handed to PageSpeed (defence in depth — PageSpeed itself fetches server-side).
+     *
+     * @param  list<string>  $devices
+     */
+    private function runCompetitorBenchmarks(PageSpeedService $pageSpeed, Site $site, array $devices): void
+    {
+        $competitors = array_values(array_filter(
+            $this->monitor->competitor_urls ?? [],
+            fn ($url) => is_string($url) && $url !== '',
+        ));
+
+        if ($competitors === []) {
+            return;
+        }
+
+        /** @var SsrfGuard $guard */
+        $guard = app(SsrfGuard::class);
+
+        foreach ($competitors as $competitorUrl) {
+            try {
+                $guard->assertPublicUrl($competitorUrl);
+            } catch (SsrfException $e) {
+                Log::warning("Skipping competitor benchmark for non-public URL {$competitorUrl}: {$e->getMessage()}");
+
+                continue;
+            }
+
+            foreach ($devices as $device) {
+                sleep(2); // Rate-limit between PageSpeed API calls
+
+                $test = PerformanceTest::create([
+                    'site_id' => $site->id,
+                    'performance_monitor_id' => $this->monitor->id,
+                    'device' => $device,
+                    'url' => $competitorUrl,
+                    'is_competitor' => true,
+                    'competitor_url' => $competitorUrl,
+                    'status' => 'running',
+                    'tested_at' => now(),
+                ]);
+
+                try {
+                    $results = $pageSpeed->analyze($competitorUrl, $device);
+
+                    $test->update([
+                        'status' => 'completed',
+                        ...$results,
+                    ]);
+                } catch (\Exception $e) {
+                    $test->update([
+                        'status' => 'failed',
+                        'error_message' => $e->getMessage(),
+                    ]);
+
+                    report($e);
+                }
+            }
+        }
     }
 
     private function runTestForUrl(PageSpeedService $pageSpeed, Site $site, string $url, ?int $pageId, array $devices): void

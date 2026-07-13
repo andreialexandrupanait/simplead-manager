@@ -64,6 +64,17 @@ class DnsMonitor extends Model
         return $query->where('is_active', true);
     }
 
+    /**
+     * Restrict to monitors whose owning site is still visible (not soft-deleted).
+     * Site applies a SoftDeletes global scope, so whereHas('site') transparently
+     * excludes monitors orphaned by a deleted site — keeping every DNS overview
+     * query consistent with the monitor list, which already filters them (P3-26).
+     */
+    public function scopeForVisibleSites(Builder $query): Builder
+    {
+        return $query->whereHas('site');
+    }
+
     public function scopeDue(Builder $query): Builder
     {
         return $query->where(function ($q) {

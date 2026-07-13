@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\IncidentResponseStatus;
 use App\Enums\IncidentTriggerType;
+use App\Exceptions\IncidentSkippedException;
 use App\Models\IncidentResponse;
 use App\Models\Site;
 use App\Services\IncidentResponse\IncidentResponderService;
@@ -69,6 +70,12 @@ class RunIncidentResponse implements ShouldBeUnique, ShouldQueue
             );
 
             JobTracker::complete($trackingId, "Incident response {$response->status->value}: {$response->summary}");
+        } catch (IncidentSkippedException $e) {
+            // P3-32: a guardrail skip (cooldown / hourly limit / disabled) is normal
+            // control flow, not a failure — log at debug so it never spams the error
+            // log, and close the tracker cleanly rather than marking it failed.
+            Log::debug("RunIncidentResponse skipped for site {$this->site->id}: {$e->getMessage()}");
+            JobTracker::complete($trackingId, "Skipped: {$e->getMessage()}");
         } catch (\Throwable $e) {
             Log::error("RunIncidentResponse failed for site {$this->site->id}: {$e->getMessage()}");
             JobTracker::fail($trackingId, $e->getMessage());

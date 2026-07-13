@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Traits;
 
+use App\Exceptions\SsrfException;
 use App\Models\PerformanceTest;
+use App\Services\Security\SsrfGuard;
 use Livewire\Attributes\Computed;
 
 trait WithPerformanceCompetitors
@@ -18,6 +20,16 @@ trait WithPerformanceCompetitors
         $this->validate(['newCompetitorUrl' => 'required|url|max:255']);
 
         if (! $this->monitor) {
+            return;
+        }
+
+        // P2-15: competitor URLs are benchmarked (RunPerformanceTest), so reject a
+        // URL that resolves to an internal/loopback/metadata address up front.
+        try {
+            app(SsrfGuard::class)->assertPublicUrl($this->newCompetitorUrl);
+        } catch (SsrfException $e) {
+            $this->addError('newCompetitorUrl', 'That URL is not a public address.');
+
             return;
         }
 
@@ -57,16 +69,16 @@ trait WithPerformanceCompetitors
 
         $results = [];
         foreach ($this->monitor->competitor_urls as $url) {
-            $latestMobile = PerformanceTest::where('performance_monitor_id', $this->monitor->id)
-                ->where('is_competitor', true)
+            $latestMobile = PerformanceTest::competitors()
+                ->where('performance_monitor_id', $this->monitor->id)
                 ->where('competitor_url', $url)
                 ->where('device', 'mobile')
                 ->where('status', 'completed')
                 ->orderByDesc('tested_at')
                 ->first();
 
-            $latestDesktop = PerformanceTest::where('performance_monitor_id', $this->monitor->id)
-                ->where('is_competitor', true)
+            $latestDesktop = PerformanceTest::competitors()
+                ->where('performance_monitor_id', $this->monitor->id)
                 ->where('competitor_url', $url)
                 ->where('device', 'desktop')
                 ->where('status', 'completed')

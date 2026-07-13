@@ -22,11 +22,9 @@ class BackfillDnsMonitors extends Command
 
         $created = 0;
         foreach ($sites as $site) {
-            $host = parse_url($site->url, PHP_URL_HOST);
-            $domain = $host ? preg_replace('/^www\./', '', $host) : $site->url;
             DnsMonitor::create([
                 'site_id' => $site->id,
-                'domain' => $domain,
+                'domain' => $site->dnsDomain(),
                 'is_active' => true,
                 'interval_minutes' => 360,
                 'next_check_at' => now()->addMinutes(rand(1, 60)),

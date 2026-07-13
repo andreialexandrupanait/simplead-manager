@@ -30,7 +30,7 @@ class DnsOverview extends Component
     #[Computed]
     public function stats(): array
     {
-        $monitors = DnsMonitor::active()->whereNotNull('current_records')->get();
+        $monitors = DnsMonitor::active()->forVisibleSites()->whereNotNull('current_records')->get();
 
         $noSpf = 0;
         $noDmarc = 0;
@@ -57,13 +57,15 @@ class DnsOverview extends Component
         }
 
         return [
-            'total' => DnsMonitor::active()->count(),
-            'with_changes' => DnsMonitor::active()->where('has_changes', true)->count(),
+            'total' => DnsMonitor::active()->forVisibleSites()->count(),
+            'with_changes' => DnsMonitor::active()->forVisibleSites()->where('has_changes', true)->count(),
             'no_spf' => $noSpf,
             'no_dmarc' => $noDmarc,
             'no_dkim' => $noDkim,
             'cloudflare' => $usesCloudflare,
-            'recent_changes' => DnsChange::where('detected_at', '>=', now()->subWeek())->count(),
+            'recent_changes' => DnsChange::whereHas('monitor.site')
+                ->where('detected_at', '>=', now()->subWeek())
+                ->count(),
         ];
     }
 
@@ -190,6 +192,7 @@ class DnsOverview extends Component
     {
         if ($this->tab === 'changes') {
             $changes = DnsChange::with('monitor.site')
+                ->whereHas('monitor.site')
                 ->orderByDesc('detected_at')
                 ->paginate(50);
 
