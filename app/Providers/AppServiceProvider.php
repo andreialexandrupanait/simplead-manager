@@ -117,19 +117,27 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        // Job failure tracking — notify on 3rd failure within an hour
+        // Job failure tracking — alert once a job class crosses the failure
+        // threshold within the rolling window (P3-33). The counter is atomic
+        // (Cache::add to seed the TTL, then Cache::increment) so concurrent
+        // worker failures never lose a count, and a fire-once guard means the
+        // alert fires when the count reaches OR exceeds the threshold — not only
+        // on exactly N, and not once per subsequent failure.
         Queue::failing(function (JobFailed $event) {
             $jobClass = $event->job->resolveName();
+            $window = (int) config('monitoring.job_failure_window_seconds', 3600);
+            $threshold = max(1, (int) config('monitoring.job_failure_alert_threshold', 3));
             $cacheKey = "job_failures:{$jobClass}";
 
-            $failures = Cache::get($cacheKey, 0) + 1;
-            Cache::put($cacheKey, $failures, 3600);
+            Cache::add($cacheKey, 0, $window);
+            $failures = (int) Cache::increment($cacheKey);
 
-            if ($failures === 3) {
+            if ($failures >= $threshold && Cache::add("{$cacheKey}:alerted", true, $window)) {
+                $minutes = max(1, intdiv($window, 60));
                 NotificationService::notifyAppEvent(
                     event: 'job_failures',
                     title: 'Repeated Job Failures',
-                    message: "{$jobClass} has failed {$failures} times in the last hour.",
+                    message: "{$jobClass} has failed {$failures} times in the last {$minutes} minutes.",
                     fields: ['exception' => $event->exception->getMessage()],
                     severity: 'critical',
                 );
@@ -137,7 +145,7 @@ class AppServiceProvider extends ServiceProvider
 
             Log::error("Job failed: {$jobClass}", [
                 'exception' => $event->exception->getMessage(),
-                'failures_in_hour' => $failures,
+                'failures_in_window' => $failures,
             ]);
         });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Backup;
 
 use App\Models\Backup;
+use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Log;
  */
 class BackupVerifier
 {
+    /** Current single-file backup format written by the v3-zip pipeline. */
+    private const FORMAT_V3_ZIP = 'v3-zip';
+
     public function __construct(private readonly IntegrityVerifier $verifier) {}
 
     /**
@@ -28,23 +32,7 @@ class BackupVerifier
         @mkdir($tempDir, 0700, true);
 
         try {
-            if ($backup->format === BackupManifestV3::FORMAT) {
-                $result = $this->verifier->verifyMultipart($backup, $tempDir);
-            } else {
-                $destination = $backup->storageDestination;
-                if (! $destination) {
-                    return $this->fail($backup, 'storage destination missing');
-                }
-
-                $localPath = $tempDir.'/'.$backup->file_name;
-                StorageFactory::make($destination)->download($backup->file_path, $localPath);
-
-                if (! is_file($localPath) || filesize($localPath) === 0) {
-                    return $this->fail($backup, 'downloaded file empty or missing');
-                }
-
-                $result = $this->verifier->verifyArchive($localPath, $backup->checksum);
-            }
+            $result = $this->runIntegrityCheck($backup, $tempDir);
 
             if (! $result['ok']) {
                 return $this->fail($backup, $result['message']);
@@ -62,6 +50,94 @@ class BackupVerifier
         } finally {
             $this->cleanup($tempDir);
         }
+    }
+
+    /**
+     * Download a backup (with replica fallback) and run the SAME full integrity
+     * verifier the creation path uses — closing the gap where v3-zip Level-B /
+     * on-demand verification fell through to the legacy `verifyArchive`, which
+     * skipped the has-files assertion (P2-33):
+     *   - multipart-v3  → verifyMultipart (already replica-aware)
+     *   - v3-zip        → verifyV3Zip (includes the has-files assertion)
+     *   - legacy v1/v2  → verifyArchive (restore-read compatibility)
+     *
+     * Does NOT persist any state — callers own the record update / alerting.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function runIntegrityCheck(Backup $backup, string $tempDir): array
+    {
+        if ($backup->format === BackupManifestV3::FORMAT) {
+            $result = $this->verifier->verifyMultipart($backup, $tempDir);
+
+            return ['ok' => $result['ok'], 'message' => $result['message']];
+        }
+
+        $localPath = $tempDir.'/'.($backup->file_name ?: 'backup.zip');
+        $download = $this->downloadWithReplicaFallback($backup, $localPath);
+        if (! $download['ok']) {
+            return $download;
+        }
+
+        if (! is_file($localPath) || filesize($localPath) === 0) {
+            return ['ok' => false, 'message' => 'downloaded file empty or missing'];
+        }
+
+        $checksum = (string) $backup->checksum;
+        $result = $backup->format === self::FORMAT_V3_ZIP
+            ? $this->verifier->verifyV3Zip($localPath, $checksum)
+            : $this->verifier->verifyArchive($localPath, $checksum);
+
+        return ['ok' => $result['ok'], 'message' => $result['message']];
+    }
+
+    /**
+     * Download a single-file backup from its primary storage, falling back to
+     * each replicated copy in turn if the primary is unreachable — an
+     * unreachable PRIMARY must not false-alarm a healthy REPLICATED backup
+     * (P2-33). Returns ok=false only when every destination fails.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    private function downloadWithReplicaFallback(Backup $backup, string $localPath): array
+    {
+        $candidates = [];
+        if ($backup->storage_destination_id) {
+            $candidates[(int) $backup->storage_destination_id] = $backup->file_path;
+        }
+        foreach ($backup->replicas ?? [] as $replica) {
+            if (! empty($replica['destination_id'])) {
+                $destId = (int) $replica['destination_id'];
+                $candidates[$destId] ??= ($replica['remote_path'] ?? $backup->file_path);
+            }
+        }
+
+        if ($candidates === []) {
+            return ['ok' => false, 'message' => 'no storage destination or replicas to verify against'];
+        }
+
+        $errors = [];
+        foreach ($candidates as $destId => $remotePath) {
+            $destination = StorageDestination::find($destId);
+            if (! $destination) {
+                $errors[] = "destination #{$destId} not found";
+
+                continue;
+            }
+
+            try {
+                StorageFactory::make($destination)->download((string) $remotePath, $localPath);
+                if (is_file($localPath) && filesize($localPath) > 0) {
+                    return ['ok' => true, 'message' => "downloaded from {$destination->name}"];
+                }
+                $errors[] = "{$destination->name}: downloaded file empty";
+            } catch (\Throwable $e) {
+                @unlink($localPath);
+                $errors[] = "{$destination->name}: {$e->getMessage()}";
+            }
+        }
+
+        return ['ok' => false, 'message' => 'all storage destinations unreachable ('.implode('; ', $errors).')'];
     }
 
     /**

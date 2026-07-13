@@ -53,4 +53,15 @@ return [
     | Leave null to disable.
     */
     'heartbeat_url' => env('SCHEDULER_HEARTBEAT_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Repeated job-failure alerting (P3-33)
+    |--------------------------------------------------------------------------
+    | Fire a critical alert once a given job class fails this many times within
+    | the rolling window (seconds). The counter is atomic (Cache::increment) and
+    | the alert fires once per window when the threshold is reached or exceeded.
+    */
+    'job_failure_alert_threshold' => (int) env('JOB_FAILURE_ALERT_THRESHOLD', 3),
+    'job_failure_window_seconds' => (int) env('JOB_FAILURE_WINDOW_SECONDS', 3600),
 ];

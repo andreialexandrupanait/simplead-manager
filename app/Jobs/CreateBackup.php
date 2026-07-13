@@ -28,7 +28,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use ZipArchive;
 
 class CreateBackup implements ShouldBeUnique, ShouldQueue
 {
@@ -453,74 +452,6 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
 
             return false;
         }
-    }
-
-    protected function createArchive(string $dbPath, array $filesChunkPaths): array
-    {
-        $timestamp = now()->format('Y-m-d-His');
-        $fileName = "{$this->site->domain}-{$this->type}-{$timestamp}.zip";
-        $combinedPath = $this->tempDir.'/'.$fileName;
-
-        $this->reportProgress('creating_archive', $this->type === 'full' ? 60 : 50, 'Creating backup archive...');
-        $this->logStep('Creating archive...');
-
-        $zip = new ZipArchive;
-        if ($zip->open($combinedPath, ZipArchive::CREATE) !== true) {
-            throw new \RuntimeException('Failed to create backup archive.');
-        }
-
-        $zip->addFile($dbPath, 'database.sql.gz');
-        $zip->setCompressionName('database.sql.gz', ZipArchive::CM_STORE);
-
-        $chunkFileNames = [];
-        if (! empty($filesChunkPaths)) {
-            if (count($filesChunkPaths) === 1 && basename($filesChunkPaths[0]) === 'files.zip') {
-                // Legacy single files.zip (from non-chunked download)
-                $zip->addFile($filesChunkPaths[0], 'files.zip');
-                $zip->setCompressionName('files.zip', ZipArchive::CM_STORE);
-            } else {
-                // v2 format: store each chunk zip directly with CM_STORE
-                foreach ($filesChunkPaths as $idx => $chunkPath) {
-                    $entryName = "files_chunk_{$idx}.zip";
-                    $zip->addFile($chunkPath, $entryName);
-                    $zip->setCompressionName($entryName, ZipArchive::CM_STORE);
-                    $chunkFileNames[] = $entryName;
-                }
-            }
-        }
-
-        $metaData = [
-            'site_name' => $this->site->name,
-            'site_url' => $this->site->url,
-            'type' => $this->type,
-            'wp_version' => $this->site->wp_version,
-            'php_version' => $this->site->php_version,
-            'created_at' => now()->toIso8601String(),
-            'trigger' => $this->trigger,
-        ];
-
-        if (! empty($chunkFileNames)) {
-            $metaData['format_version'] = 2;
-            $metaData['chunk_files'] = $chunkFileNames;
-        }
-
-        $zip->addFromString('backup-meta.json', json_encode($metaData, JSON_PRETTY_PRINT));
-
-        if (! $zip->close()) {
-            throw new \RuntimeException('Failed to finalize backup archive (ZipArchive::close failed).');
-        }
-
-        $this->reportProgress('creating_archive', 70, 'Archive created');
-
-        $fileSize = filesize($combinedPath);
-        $this->logStep('Archive created ('.FormatHelper::bytes((int) $fileSize).')');
-        $checksum = hash_file('sha256', $combinedPath);
-
-        // For file list precaching, pass the first chunk path (or null if DB-only)
-        $firstFilesPath = ! empty($filesChunkPaths) ? $filesChunkPaths[0] : null;
-        PrecacheBackupFileList::dispatch($this->backup->id, $firstFilesPath, true);
-
-        return [$combinedPath, $fileName, $fileSize, $checksum];
     }
 
     /**
@@ -1168,36 +1099,6 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    /**
-     * Validate the freshly-built archive before upload. Catches truncation, CRC corruption,
-     * malformed metadata, empty/broken DB dumps. Throws on failure (handled by handleFailure).
-     *
-     * @return array{ok: bool, message: string, checks: array<string, mixed>}
-     */
-    protected function verifyIntegrity(string $combinedPath, string $expectedSha256): array
-    {
-        $this->reportProgress('verifying', 72, 'Verifying archive integrity...');
-        $this->logStep('Verifying archive integrity...');
-
-        $verifier = app(\App\Services\Backup\IntegrityVerifier::class);
-        $result = $verifier->verifyArchive($combinedPath, $expectedSha256);
-
-        if (! $result['ok']) {
-            $msg = "Archive integrity check failed: {$result['message']}";
-
-            $this->backup->update([
-                'verification_status' => 'failed',
-                'verification_message' => $result['message'],
-            ]);
-
-            throw new \App\Exceptions\BackupException($msg, site: $this->site);
-        }
-
-        $this->logStep($result['message']);
-
-        return $result;
-    }
-
     protected function upload(StorageDestination $destination, string $combinedPath, string $fileName): string
     {
         $uploadSize = FormatHelper::bytes((int) filesize($combinedPath));
@@ -1213,94 +1114,5 @@ class CreateBackup implements ShouldBeUnique, ShouldQueue
         $this->reportProgress('finalizing', 95, 'Finalizing...');
 
         return $remotePath;
-    }
-
-    /**
-     * @param  array{ok: bool, message: string, checks: array<string, mixed>}  $integrity
-     */
-    protected function finalize(StorageDestination $destination, string $remotePath, string $fileName, int $fileSize, string $checksum, array $integrity): void
-    {
-        $primaryReplica = [[
-            'destination_id' => $destination->id,
-            'remote_path' => $remotePath,
-            'uploaded_at' => now()->toIso8601String(),
-            'status' => 'completed',
-        ]];
-
-        $this->backup->update([
-            'status' => BackupStatus::Completed,
-            'stage' => 'completed',
-            'progress_percent' => 100,
-            'progress_message' => 'Backup completed successfully',
-            'error_message' => null,
-            'file_path' => $remotePath,
-            'file_name' => $fileName,
-            'file_size' => $fileSize,
-            'checksum' => $checksum,
-            'replicas' => $primaryReplica,
-            'completed_at' => now(),
-            'verified_at' => now(),
-            'verification_status' => 'passed',
-            'verification_message' => $integrity['message'],
-            'duration_seconds' => (int) $this->backup->started_at->diffInSeconds(now()),
-            'is_locked' => $this->trigger === 'pre_update',
-            'lock_reason' => $this->trigger === 'pre_update' ? 'pre-update' : null,
-        ]);
-
-        ActivityLogger::backupCompleted($this->site, $fileName, $fileSize);
-
-        // Self-describing sidecar so the backup is reindexable without the Laravel DB.
-        // Best-effort: failure here is logged but doesn't fail the backup.
-        try {
-            $sidecar = \App\Services\Backup\BackupSidecarMetadata::buildForV2Zip($this->backup->fresh(), $this->site);
-            \App\Services\Backup\BackupSidecarMetadata::uploadAlongside(StorageFactory::make($destination), $remotePath, $sidecar);
-        } catch (\Throwable $e) {
-            Log::warning("Sidecar metadata write failed for backup {$this->backupId}: {$e->getMessage()}");
-        }
-
-        // Dispatch off-site replication if configured (3-2-1 rule). Failure here doesn't
-        // fail the backup — primary upload already succeeded.
-        $secondaryDestId = $this->site->backupConfig?->secondary_storage_destination_id;
-        if ($secondaryDestId && $secondaryDestId !== $destination->id) {
-            ReplicateBackup::dispatch($this->backup->id, $secondaryDestId);
-        }
-
-        // Generate manifest for incremental backup support (non-fatal)
-        // Uses pre-collected manifest from the backup session if available (avoids re-scanning)
-        if ($this->type === 'full') {
-            try {
-                $api = app(WordPressApiServiceFactory::class)->make($this->site);
-                $manifestService = new \App\Services\Backup\ManifestService;
-                $manifestService->generateAndStore($api, $this->backup, $destination, $this->filesSessionToken);
-            } catch (\Throwable $e) {
-                Log::warning("Manifest generation failed for backup {$this->backupId} (non-fatal): {$e->getMessage()}");
-            }
-        }
-
-        $this->site->update([
-            'backup_ok' => true,
-            'last_backup_at' => now(),
-        ]);
-
-        $config = $this->site->backupConfig;
-        if ($config) {
-            $config->update([
-                'last_backup_at' => now(),
-                'last_backup_status' => 'completed',
-                'last_full_backup_at' => $this->type === 'full' ? now() : $config->last_full_backup_at,
-            ]);
-        }
-
-        $destination->increment('used_bytes', $fileSize);
-        app(RetentionService::class)->apply($this->site, $destination);
-
-        CircuitBreakerService::recordSuccess($this->site);
-        JobTracker::complete($this->uniqueId(), 'Backup complete');
-
-        $duration = $this->backup->duration_seconds;
-        $this->logStep("Backup completed in {$duration}s");
-
-        // Release unique lock immediately so new backups can start
-        static::releaseUniqueLock($this->site->id);
     }
 }

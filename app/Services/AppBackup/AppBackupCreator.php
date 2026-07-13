@@ -592,17 +592,25 @@ class AppBackupCreator
     public function getTableRowCounts(): array
     {
         $counts = [];
-        $tables = DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename");
 
-        foreach ($tables as $table) {
-            try {
-                if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table->tablename)) {
-                    continue;
-                }
-                $counts[$table->tablename] = DB::table($table->tablename)->count();
-            } catch (QueryException) {
-                // Skip tables that can't be counted
+        try {
+            // Approximate row counts from the Postgres catalog (pg_class.reltuples):
+            // O(1) per table, sourced from the last ANALYZE, instead of a full
+            // COUNT(*) scan over every table which crawls at scale (P3-35).
+            // reltuples is -1 for never-analyzed tables (PG14+) — clamp to 0.
+            $rows = DB::select(
+                "SELECT c.relname AS tablename, c.reltuples::bigint AS estimate
+                 FROM pg_class c
+                 JOIN pg_namespace n ON n.oid = c.relnamespace
+                 WHERE n.nspname = 'public' AND c.relkind = 'r'
+                 ORDER BY c.relname"
+            );
+
+            foreach ($rows as $row) {
+                $counts[$row->tablename] = max(0, (int) $row->estimate);
             }
+        } catch (QueryException) {
+            // Best-effort: if the catalog is unreadable, return whatever we have.
         }
 
         return $counts;

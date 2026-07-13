@@ -81,4 +81,18 @@ return [
         'release_delay_seconds' => (int) env('BACKUP_PREPARE_RELEASE_DELAY_SECONDS', 15),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Level B verification sample size
+    |--------------------------------------------------------------------------
+    |
+    | Number of recent backups the weekly Level B verification job downloads
+    | from real storage and re-runs the full integrity check against. Kept
+    | config-driven so the sample can scale with fleet size without a code
+    | change (P2-33). A larger sample gives stronger statistical confidence
+    | that stored backups are still restorable, at the cost of more egress.
+    |
+    */
+    'level_b_sample_size' => (int) env('BACKUP_LEVEL_B_SAMPLE_SIZE', 3),
+
 ];

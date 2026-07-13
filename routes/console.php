@@ -202,8 +202,10 @@ Schedule::command('app:backup-cleanup')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Weekly Level B backup verification — sample 3 recent backups, full integrity re-check
-Schedule::command('backup:verify-restore --count=3')
+// Weekly Level B backup verification — sample N recent backups, full integrity
+// re-check. Sample size is config-driven (backups.level_b_sample_size) inside the
+// command so it can scale with the fleet (P2-33).
+Schedule::command('backup:verify-restore')
     ->weeklyOn(0, '03:00')
     ->name('backup-verify-restore-weekly')
     ->withoutOverlapping()
