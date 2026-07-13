@@ -10,6 +10,12 @@
 
 <p class="section-description">{{ $sectionOverrides['analytics']['description'] ?? __('report.analytics_description', [], $lang) }}</p>
 
+@if(!empty($a['data_period_start']) && !empty($a['data_period_end']))
+    <p class="section-description" style="font-size:9px;color:#94a3b8;margin-top:-4px;">
+        {{ __('report.data_window', ['start' => $a['data_period_start'], 'end' => $a['data_period_end']], $lang) }}@if(!empty($a['data_is_stale'])) — {{ __('report.data_stale_note', [], $lang) }}@endif
+    </p>
+@endif
+
 {{-- Daily users SVG chart --}}
 @if(($sectionOptions['analytics']['show_daily_chart'] ?? true) && !empty($a['chart_points']['line_points'] ?? ''))
     <div class="chart-container">

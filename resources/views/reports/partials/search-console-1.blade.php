@@ -9,6 +9,12 @@
     'number' => $sectionNumber ?? null,
 ])
 
+@if(!empty($sc['data_period_start']) && !empty($sc['data_period_end']))
+    <p class="section-description" style="font-size:9px;color:#94a3b8;">
+        {{ __('report.data_window', ['start' => $sc['data_period_start'], 'end' => $sc['data_period_end']], $lang) }}@if(!empty($sc['data_is_stale'])) — {{ __('report.data_stale_note', [], $lang) }}@endif
+    </p>
+@endif
+
 {{-- Dual-line chart: clicks + impressions --}}
 @if(($sectionOptions['search_console']['show_performance_chart'] ?? true) && (!empty($sc['dual_line_chart']['line1']['line_points'] ?? '') || !empty($sc['dual_line_chart']['line2']['line_points'] ?? '')))
     <div class="chart-container">

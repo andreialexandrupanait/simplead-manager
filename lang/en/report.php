@@ -9,6 +9,8 @@ return [
     'not_available' => 'N/A',
     'not_configured' => 'Not configured',
     'no_data' => 'No data available',
+    'data_window' => 'Data shown for :start – :end',
+    'data_stale_note' => 'This data does not fully cover the report period and may be out of date.',
     'page' => 'Page',
     'of' => 'of',
     'ms' => 'ms',

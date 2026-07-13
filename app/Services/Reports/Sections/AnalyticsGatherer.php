@@ -24,10 +24,7 @@ class AnalyticsGatherer extends BaseReportSectionGatherer
         ReportChartService $chartService,
         string $language,
     ): array {
-        $cache = AnalyticsCache::where('site_id', $site->id)
-            ->where('date_range', '28d')
-            ->latest('fetched_at')
-            ->first();
+        $cache = $this->resolveCache($site, $periodStart, $periodEnd);
 
         if (! $cache) {
             return [];
@@ -59,7 +56,15 @@ class AnalyticsGatherer extends BaseReportSectionGatherer
         }
         $trafficBarChart = $chartService->generateBarChartData($trafficBarData, 500, 160, 40, 35);
 
-        return [
+        $meta = $this->googleDataMeta(
+            $cache->start_date,
+            $cache->end_date,
+            $cache->fetched_at,
+            $periodStart,
+            $periodEnd,
+        );
+
+        return $meta + [
             'total_pageviews' => $overview['pageviews'] ?? 0,
             'total_users' => $overview['total_users'] ?? 0,
             'new_users' => $overview['new_users'] ?? 0,
@@ -96,5 +101,28 @@ class AnalyticsGatherer extends BaseReportSectionGatherer
             'countries' => collect($raw['countries'] ?? [])->take(5)->toArray(),
             'cities' => [],
         ];
+    }
+
+    /**
+     * P2-03: prefer a cached window that fully covers the report period; only fall
+     * back to the rolling 28-day cache when no covering window exists (the fallback
+     * is then flagged + labelled by googleDataMeta() rather than shown as current).
+     */
+    private function resolveCache(Site $site, Carbon $periodStart, Carbon $periodEnd): ?AnalyticsCache
+    {
+        $covering = AnalyticsCache::where('site_id', $site->id)
+            ->whereDate('start_date', '<=', $periodStart->toDateString())
+            ->whereDate('end_date', '>=', $periodEnd->toDateString())
+            ->orderByDesc('fetched_at')
+            ->first();
+
+        if ($covering) {
+            return $covering;
+        }
+
+        return AnalyticsCache::where('site_id', $site->id)
+            ->where('date_range', '28d')
+            ->latest('fetched_at')
+            ->first();
     }
 }

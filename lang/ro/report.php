@@ -9,6 +9,8 @@ return [
     'not_available' => 'N/A',
     'not_configured' => 'Neconfigurat',
     'no_data' => 'Nu sunt date disponibile',
+    'data_window' => 'Date afișate pentru :start – :end',
+    'data_stale_note' => 'Aceste date nu acoperă integral perioada raportului și pot fi neactualizate.',
     'page' => 'Pagină',
     'of' => 'din',
     'ms' => 'ms',

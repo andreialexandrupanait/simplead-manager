@@ -33,7 +33,7 @@ class SecurityActivityService
             // site's audit ingestion forever.
             $eventType = self::clampString($log['event_type'] ?? null, 50) ?? 'unknown';
 
-            $rows[] = [
+            $row = [
                 'site_id' => $site->id,
                 'event_type' => $eventType,
                 'event_category' => self::categorizeEvent($eventType),
@@ -47,13 +47,25 @@ class SecurityActivityService
                 'occurred_at' => self::clampOccurredAt($log['occurred_at'] ?? null, $now),
                 'created_at' => $now,
             ];
+
+            // P2-46: a stable content hash makes ingestion idempotent. Overlapping
+            // pulls, retries, or an inclusive `since` cursor re-fetching the boundary
+            // event would otherwise insert duplicate audit rows. The unique index on
+            // (site_id, dedup_hash) + insertOrIgnore below collapses re-ingestion of
+            // the same event to a no-op.
+            $row['dedup_hash'] = self::dedupHash($row);
+
+            // Collapse duplicates that appear within the SAME batch (keyed by hash)
+            // up-front, so idempotency does not depend on Postgres' intra-statement
+            // ON CONFLICT semantics.
+            $rows[$row['dedup_hash']] = $row;
         }
 
         if (empty($rows)) {
             return 0;
         }
 
-        return $this->insertRowTolerant($rows);
+        return $this->insertRowTolerant(array_values($rows));
     }
 
     /**
@@ -77,9 +89,32 @@ class SecurityActivityService
     }
 
     /**
+     * The deterministic dedup key for an audit row (P2-46). Built from the stable
+     * identifying fields — NOT created_at — so the same event ingested twice hashes
+     * identically and is ignored by the (site_id, dedup_hash) unique index.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function dedupHash(array $row): string
+    {
+        return md5(implode('|', [
+            (string) ($row['site_id'] ?? ''),
+            (string) ($row['event_type'] ?? ''),
+            (string) ($row['username'] ?? ''),
+            (string) ($row['object_type'] ?? ''),
+            (string) ($row['object_name'] ?? ''),
+            (string) ($row['action'] ?? ''),
+            (string) ($row['ip_address'] ?? ''),
+            (string) ($row['occurred_at'] ?? ''),
+        ]));
+    }
+
+    /**
      * Insert in chunks, but never let one poisoned row stall the whole site's
      * ingestion: on a chunk failure, retry the chunk row-by-row and drop only the
-     * offending rows (P1-11 — the batch must be row-tolerant).
+     * offending rows (P1-11 — the batch must be row-tolerant). Uses insertOrIgnore
+     * so a re-ingested event (same dedup_hash) is a silent no-op (P2-46) rather than
+     * a "malformed row" that trips the row-by-row fallback and logs noise.
      */
     private function insertRowTolerant(array $rows): int
     {
@@ -87,13 +122,11 @@ class SecurityActivityService
 
         foreach (array_chunk($rows, 500) as $chunk) {
             try {
-                SecurityActivityLog::insert($chunk);
-                $inserted += count($chunk);
+                $inserted += SecurityActivityLog::insertOrIgnore($chunk);
             } catch (\Throwable) {
                 foreach ($chunk as $row) {
                     try {
-                        SecurityActivityLog::insert([$row]);
-                        $inserted++;
+                        $inserted += SecurityActivityLog::insertOrIgnore([$row]);
                     } catch (\Throwable $inner) {
                         Log::warning('SecurityActivityService: dropped a malformed audit row', [
                             'site_id' => $row['site_id'] ?? null,

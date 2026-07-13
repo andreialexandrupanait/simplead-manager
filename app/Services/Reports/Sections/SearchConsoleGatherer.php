@@ -24,8 +24,15 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
         ReportChartService $chartService,
         string $language,
     ): array {
+        // P2-03: pick the cached window that best matches the report period rather
+        // than always reading the rolling 28-day cache.
+        $dateRange = $this->resolveDateRange($site, $periodStart, $periodEnd);
+        if ($dateRange === null) {
+            return [];
+        }
+
         $caches = SearchConsoleCache::where('site_id', $site->id)
-            ->where('date_range', '28d')
+            ->where('date_range', $dateRange)
             ->get()
             ->keyBy('data_type');
 
@@ -77,7 +84,15 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
             'ctr' => ($p['ctr'] ?? 0) / 100,
         ]))->take(10)->toArray();
 
-        return [
+        $meta = $this->googleDataMeta(
+            $overviewCache->start_date,
+            $overviewCache->end_date,
+            $overviewCache->fetched_at,
+            $periodStart,
+            $periodEnd,
+        );
+
+        return $meta + [
             'overview' => $mappedOverview,
             'queries' => $queries,
             'pages' => $pages,
@@ -87,5 +102,29 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
             'dual_line_y_labels' => $dualLineYLabels,
             'dual_line_x_labels' => $chartXLabels,
         ];
+    }
+
+    /**
+     * P2-03: prefer the date_range whose overview window fully covers the report
+     * period; fall back to the rolling 28-day range (then flagged by googleDataMeta).
+     */
+    private function resolveDateRange(Site $site, Carbon $periodStart, Carbon $periodEnd): ?string
+    {
+        $covering = SearchConsoleCache::where('site_id', $site->id)
+            ->where('data_type', 'overview')
+            ->whereDate('start_date', '<=', $periodStart->toDateString())
+            ->whereDate('end_date', '>=', $periodEnd->toDateString())
+            ->orderByDesc('fetched_at')
+            ->first();
+
+        if ($covering) {
+            return $covering->date_range;
+        }
+
+        return SearchConsoleCache::where('site_id', $site->id)
+            ->where('data_type', 'overview')
+            ->where('date_range', '28d')
+            ->latest('fetched_at')
+            ->first()?->date_range;
     }
 }
