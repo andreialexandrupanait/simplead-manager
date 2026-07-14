@@ -1,6 +1,8 @@
 # SimpleAD Manager — Full-Application Audit, Roadmap & Action Plan
 **A prompt for Claude Code · read-only analysis pass**
 
+> Reusable charter. Latest run: **2026-07-11** → `docs/audit/2026-07-11-full-audit.md` (supersedes the 2026-07-10 audit, removed from the tree; history in git). Update the dimensions/version below before each run.
+
 ---
 
 ## 0. How to use this prompt
@@ -38,9 +40,9 @@ Two distinct tracks run through the whole document and must be **kept clearly se
 ## 3. What SimpleAD Manager is (context)
 
 - **Purpose:** Monitoring, backups, security, reporting, updates, and client management across a portfolio of WordPress sites. Currently in the tens of sites; must scale cleanly to **100+**.
-- **Stack:** Laravel 11, Livewire 3, Alpine.js, Tailwind CSS, PostgreSQL 16, Redis, Horizon, deployed on AWS EC2 with Docker (multi-container: app, PostgreSQL, Redis, Nginx, Horizon, scheduler).
-- **Agent:** A custom WordPress plugin on each managed site communicates back to the platform via a **pull-based command queue** (agent polls, executes, reports back; rollback expected for breaking changes).
-- **Rough size:** ~95 tables, ~79 models, ~47 services, ~44 Livewire components, ~41 jobs. Previously used Filament; fully migrated to a custom Livewire interface (watch for leftover Filament remnants).
+- **Stack:** Laravel 11 / PHP 8.3, Livewire 4, Alpine.js, Tailwind CSS, PostgreSQL 16 (via PgBouncer), Redis, Horizon, deployed with Docker (multi-container: app, PostgreSQL, PgBouncer, Redis, Nginx, Horizon, scheduler). Deploy via `deploy.sh` with a CI gate.
+- **Agent:** A custom WordPress connector plugin (**v2.17.0**) on each managed site. NOTE: the originally-intended pull-based command queue was **removed** (2026-07-11, PR #45) — no WP-side poller ever shipped; the live path is the manager pushing signed (HMAC) REST calls to the connector. Verify current reality against the code.
+- **Rough size (2026-07-11):** ~106 tables, ~89 models, ~53 services, ~52 jobs, ~105 Livewire components, ~23 console commands, ~96 web routes. Previously used Filament; fully migrated to a custom Livewire interface (watch for leftover Filament remnants).
 - **UI language is Romanian; this document and all findings are in English.**
 
 ### 3.1 Known context — validate against the codebase, do not assume
