@@ -7,6 +7,7 @@ namespace App\Livewire\Traits;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
+use App\Jobs\ExportBackupForLocal;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
@@ -285,6 +286,64 @@ trait WithBackupActions
 
         if (! $url) {
             session()->flash('backup-error', 'Could not generate download link.');
+
+            return null;
+        }
+
+        return $this->redirect($url);
+    }
+
+    public function exportBackupForLocal(int $backupId): void
+    {
+        /** @var Backup $backup */
+        $backup = $this->site->backups()->findOrFail($backupId);
+
+        if ($backup->status !== BackupStatus::Completed) {
+            session()->flash('backup-error', 'Backup is not ready yet.');
+
+            return;
+        }
+
+        if ($backup->localExportInProgress()) {
+            session()->flash('backup-info', 'Local export is already in progress.');
+
+            return;
+        }
+
+        $backup->update([
+            'local_export_status' => 'pending',
+            'local_export_error' => null,
+        ]);
+
+        ExportBackupForLocal::dispatch($backup->id);
+
+        session()->flash('backup-success', 'Local-compatible export queued. The list will refresh when it is ready to download.');
+    }
+
+    public function downloadBackupForLocal(int $backupId): mixed
+    {
+        /** @var Backup $backup */
+        $backup = $this->site->backups()->with('storageDestination')->findOrFail($backupId);
+
+        if (! $backup->localExportReady() || ! $backup->storageDestination) {
+            session()->flash('backup-error', 'Local export is not ready for download.');
+
+            return null;
+        }
+
+        $destination = $backup->storageDestination;
+
+        if ($destination->type === 'local') {
+            $url = URL::signedRoute('backups.download-local', ['backup' => $backup->id]);
+
+            return $this->redirect($url);
+        }
+
+        $driver = StorageFactory::make($destination);
+        $url = $driver->temporaryUrl($backup->local_export_file_path);
+
+        if (! $url) {
+            session()->flash('backup-error', 'Could not generate Local export download link.');
 
             return null;
         }

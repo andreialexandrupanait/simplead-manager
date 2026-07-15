@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup\Storage;
 
+use Aws\Exception\MultipartUploadException;
 use Aws\S3\MultipartUploader;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,17 @@ class S3Driver implements StorageDriver
             'credentials' => [
                 'key' => decrypt($config['key'] ?? ''),
                 'secret' => decrypt($config['secret'] ?? ''),
+            ],
+            // Adaptive retry tolerates intermittent 5xx from S3-compatible providers
+            // (notably Hetzner Object Storage 504 GatewayTimeout under load).
+            'retries' => [
+                'mode' => 'adaptive',
+                'max_attempts' => 5,
+            ],
+            // Explicit timeouts so a stalled connection fails fast and retries kick in.
+            'http' => [
+                'connect_timeout' => 30,
+                'timeout' => 600,
             ],
         ];
 
@@ -58,7 +70,9 @@ class S3Driver implements StorageDriver
     }
 
     /**
-     * Upload a large file using S3 multipart upload (50MB parts, concurrency 3).
+     * Upload a large file using S3 multipart upload (50MB parts, sequential).
+     * Resumes from SDK upload state on MultipartUploadException so only failed
+     * parts are re-uploaded rather than restarting from zero.
      */
     protected function multipartUpload(string $localPath, string $remotePath): void
     {
@@ -69,12 +83,31 @@ class S3Driver implements StorageDriver
         $uploader = new MultipartUploader($this->client, $localPath, [
             'bucket' => $this->bucket,
             'key' => $key,
-            'part_size' => 50 * 1024 * 1024, // 50MB parts
-            'concurrency' => 3,
+            'part_size' => 50 * 1024 * 1024,
+            'concurrency' => 1,
         ]);
 
-        $uploader->upload();
-        Log::info("S3 multipart upload completed: {$key}");
+        $maxResumes = 3;
+        $attempt = 0;
+        while (true) {
+            try {
+                $uploader->upload();
+                Log::info("S3 multipart upload completed: {$key}");
+
+                return;
+            } catch (MultipartUploadException $e) {
+                $attempt++;
+                if ($attempt > $maxResumes) {
+                    throw $e;
+                }
+                Log::warning(
+                    "S3 multipart resume attempt {$attempt}/{$maxResumes} for {$key}: {$e->getMessage()}"
+                );
+                $uploader = new MultipartUploader($this->client, $localPath, [
+                    'state' => $e->getState(),
+                ]);
+            }
+        }
     }
 
     public function download(string $remotePath, string $localPath): void
