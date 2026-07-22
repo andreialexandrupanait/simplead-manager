@@ -53,6 +53,15 @@ WordPress sites.
   is `(key, count, value)`, so the ack threw under a real phpredis connection.
   Existing batch tests mocked Redis and never hit it; the P1-54 at-least-once
   drain's ack was effectively broken against production Redis. Fixed the order.
+### Added
+- **C-12 — offsite backup verification banner.** The site backups page now warns
+  when a site's backups aren't safely reaching a healthy offsite destination:
+  **missing** (no active, non-local offsite destination while backups exist),
+  **failing** (the destination failed its last credential check — recorded by the
+  existing daily `ValidateConnection` job), or **stale** (a backup old enough to
+  have replicated carries no offsite replica). Healthy state also surfaces the
+  last successful offsite copy time. Reads existing data — no new job/migration.
+  RO/EN strings added. *(Faza C, val C2.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
