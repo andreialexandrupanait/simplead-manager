@@ -27,6 +27,27 @@
         </div>
     @endif
 
+    {{-- C-12: Offsite backup health --}}
+    @if($this->offsiteStatus)
+        @php $offsite = $this->offsiteStatus; @endphp
+        <div class="mb-4 rounded-lg p-3 {{ $offsite['level'] === 'missing' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200' }}">
+            <div class="flex items-start gap-2">
+                <svg aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 {{ $offsite['level'] === 'missing' ? 'text-red-500' : 'text-yellow-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div class="text-sm {{ $offsite['level'] === 'missing' ? 'text-red-800' : 'text-yellow-800' }}">
+                    <span class="font-medium">{{ $offsite['message'] }}</span>
+                    @if(! empty($offsite['error']))
+                        <span class="block text-xs opacity-80 mt-0.5">{{ $offsite['error'] }}</span>
+                    @endif
+                    @if(! empty($offsite['last_replicated_at']))
+                        <span class="block text-xs opacity-80 mt-0.5">{{ __('Last successful offsite copy: :when', ['when' => $offsite['last_replicated_at']->diffForHumans()]) }}</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {{-- Quick Actions --}}
         <x-ui.card>

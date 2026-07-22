@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Enums\BackupStatus;
 use App\Livewire\Traits\WithBackupActions;
 use App\Livewire\Traits\WithBackupProgress;
 use App\Livewire\Traits\WithSiteAuthorization;
@@ -119,6 +120,104 @@ class SiteBackups extends Component
             'total' => $this->formatBytes($destination->quota_bytes),
             'level' => $level,
         ];
+    }
+
+    /**
+     * C-12: offsite backup health for the banner. Returns null when the site's
+     * backups are safely reaching a healthy offsite destination; otherwise a
+     * ['level','message',...] describing the problem:
+     *   - 'missing'  — no active, non-local offsite destination (and data exists)
+     *   - 'failing'  — the destination failed its last credential check (recorded
+     *                  by the daily ValidateConnection job)
+     *   - 'stale'    — a backup old enough to have replicated has no offsite replica
+     *
+     * @return array{level:string,message:string,error?:?string,tested_at?:mixed,last_replicated_at?:mixed}|null
+     */
+    #[Computed]
+    public function offsiteStatus(): ?array
+    {
+        $config = $this->site->backupConfig;
+        $hasBackups = $this->site->backups()->where('status', BackupStatus::Completed)->exists();
+
+        $secondaryId = $config?->secondary_storage_destination_id;
+        $destination = $secondaryId ? StorageDestination::find($secondaryId) : null;
+
+        // No usable offsite replica target — only warn once there's data worth
+        // protecting offsite (don't nag a brand-new site with no backups yet).
+        if (! $destination || ! $destination->is_active || $destination->type === 'local') {
+            return $hasBackups
+                ? ['level' => 'missing', 'message' => __('No active offsite backup destination — backups exist in only one place.')]
+                : null;
+        }
+
+        // Credentials known bad (recorded by the daily ValidateConnection job).
+        if ($destination->last_test_passed === false) {
+            return [
+                'level' => 'failing',
+                'message' => __('Offsite destination ":name" failed its last credential check.', ['name' => $destination->name]),
+                'error' => $destination->last_test_error,
+                'tested_at' => $destination->last_tested_at,
+            ];
+        }
+
+        // Replication recency: the newest backup old enough to have replicated
+        // (grace of 6h for the async replica job) should carry a successful
+        // replica to this destination.
+        /** @var Backup|null $newest */
+        $newest = $this->site->backups()->where('status', BackupStatus::Completed)
+            ->where('created_at', '<', now()->subHours(6))
+            ->latest()
+            ->first();
+
+        if ($newest && ! $this->backupHasOffsiteReplica($newest, $destination->id)) {
+            return [
+                'level' => 'stale',
+                'message' => __('Backups are not reaching the offsite destination ":name".', ['name' => $destination->name]),
+                'last_replicated_at' => $this->offsiteLastReplicatedAt($destination->id),
+            ];
+        }
+
+        return null;
+    }
+
+    private function backupHasOffsiteReplica(Backup $backup, int $destinationId): bool
+    {
+        foreach ($backup->replicas ?? [] as $replica) {
+            if (($replica['destination_id'] ?? null) === $destinationId
+                && ($replica['status'] ?? null) === 'completed') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function offsiteLastReplicatedAt(int $destinationId): ?\Illuminate\Support\Carbon
+    {
+        /** @var \Illuminate\Support\Carbon|null $latest */
+        $latest = null;
+
+        $backups = $this->site->backups()->where('status', BackupStatus::Completed)
+            ->whereJsonLength('replicas', '>', 0)
+            ->latest()
+            ->limit(20)
+            ->get(['id', 'replicas']);
+
+        foreach ($backups as $backup) {
+            foreach ($backup->replicas ?? [] as $replica) {
+                if (($replica['destination_id'] ?? null) !== $destinationId
+                    || ($replica['status'] ?? null) !== 'completed'
+                    || empty($replica['uploaded_at'])) {
+                    continue;
+                }
+                $at = \Illuminate\Support\Carbon::parse($replica['uploaded_at']);
+                if ($latest === null || $at->greaterThan($latest)) {
+                    $latest = $at;
+                }
+            }
+        }
+
+        return $latest;
     }
 
     #[Computed]

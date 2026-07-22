@@ -1240,5 +1240,9 @@
     "Full Backup Day": "Ziua backup-ului complet",
     "Other days will run incremental backups (only changed files + full database).": "Celelalte zile vor rula backup-uri incrementale (doar fișierele modificate + baza de date completă).",
     "Create backup before applying updates": "Creare backup înainte de aplicarea actualizărilor",
-    "backups": "backup-uri"
+    "backups": "backup-uri",
+    "No active offsite backup destination — backups exist in only one place.": "Nicio destinație de backup offsite activă — backup-urile există într-un singur loc.",
+    "Offsite destination \":name\" failed its last credential check.": "Destinația offsite „:name” a eșuat la ultima verificare a credențialelor.",
+    "Backups are not reaching the offsite destination \":name\".": "Backup-urile nu ajung la destinația offsite „:name”.",
+    "Last successful offsite copy: :when": "Ultima copie offsite reușită: :when"
 }
