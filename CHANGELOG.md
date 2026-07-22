@@ -7,6 +7,18 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Tests
+- **C-13** — end-to-end safety net for the restore execution core (the
+  `RestoreBackup` god-object, slated for decomposition in Faza F). Drives
+  `doRestore()` through `FakeWordPressApiService` and locks the load-bearing
+  contracts: a **full** restore uses the connector's atomic **staged** swap
+  (`file_mode=staged`), a **selective** restore **merges** in place
+  (`file_mode=merge`, so a swap can't wipe unselected files), post-restore
+  health checks run, and a transport failure **propagates** instead of reporting
+  a silent success. (Safe-update rollback-on-health-check-failure is already
+  covered by `SafeUpdateServiceTest`; backup poll/dedup/retry by the
+  `CreateBackup*Test` suite — not duplicated.) *(Faza C, val C2.)*
+
 ### Added
 - **C-02 — TOTP two-factor authentication for Manager users.** App-level 2FA was
   removed in PR #34; this reintroduces it properly. Authenticator-app codes
