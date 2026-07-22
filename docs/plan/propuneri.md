@@ -128,12 +128,17 @@ Plugin canonic: **Modern Image Formats (webp-uploads) v2.7.1**, WP 6.9+/PHP 7.4+
 
 ---
 
-## Lista de bifat (STOP — aștept răspunsul lui Andrei)
+## Decizia proprietarului (STOP Faza B — REZOLVAT, 22 iulie 2026)
 
-- [ ] **Faza C integral** (C-01…C-14) — corecturi, fără funcții noi
-- [ ] **Faza D integral** (designul §3) — modulul unificat
-- [ ] **E1**: N-01 install-from-slug + N-02 webp (inclusiv val 2 regenerare istoric? da/nu)
-- [ ] **E2**: N-03 BLC pe SF · N-04 IndexNow · N-05 Branda-light · N-06 Cloudflare geo/WAF · N-07 malware heuristic
-- [ ] **N-08 SSO 1-click** (recomandat, descoperit la research) — da/nu
-- [ ] N-09 diff vizual safe-update / N-10 restore selectiv / N-11 GA4 / N-12 billing — confirmați ⏳ (mai târziu)?
-- [ ] Al doilea site pilot înainte de acceptanța D — care?
+- [x] **Faza C integral** (C-01…C-14) — DA
+- [x] **Faza D integral** (designul §3) — DA; piloți: **notificarialimente.ro + universulsacru.ro**
+- [x] **E1 REDEFINIT de Andrei**: NU se instalează plugin extern; conversia imaginilor se face
+  **prin conector** (care e deja plugin pe fiecare site), **la cerere din Manager** (nu automat):
+  endpoint `/media-capabilities` (Imagick/GD, suport WebP/AVIF) + conversie batched cu progres,
+  **păstrarea originalelor + rollback**, măsurare LCP before/after pe piloți prin PageSpeed-ul
+  existent. Detaliile de servire (extensie/URL-uri/fallback) se decid la designul Fazei E.
+  → N-02 (plugin webp-uploads) **anulat**; N-01 (install-from-slug) rămâne fără consumator imediat → ⏳.
+- [x] **E2 bifat**: N-03 linkuri moarte pe SF · N-04 IndexNow · N-07 scanare fișiere (malware
+  heuristic) · **N-08 SSO 1-click** (da la punctul 5)
+- [x] **Scoase**: N-05 Branda-light (nebifat) · N-06 Cloudflare geo/WAF (Andrei o face manual din Cloudflare)
+- [x] N-09 diff vizual · N-10 restore selectiv · N-11 GA4 · N-12 billing — confirmate ⏳ mai târziu
