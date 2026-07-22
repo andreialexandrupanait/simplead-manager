@@ -22,11 +22,19 @@
   - **Bonus:** `composer audit` pe main = **0 advisories** (L12 a adus deja versiuni patchate
     phpspreadsheet 5.9/jmespath 2.9.2/phpseclib 3.0.55). Lock pin-uit `config.platform.php=8.3.32`
     + `laravel/pint=1.27.1` (ca L12 să nu forțeze symfony v8/PHP 8.4 sau un reformat Pint 1.29).
-  - **Main HEAD `e6df429`, tot verde (768/768).** ⚠️ Deploy: migrarea C-04 (drop tabele) cere pg_dump
-    ÎNAINTE; 3 migrări noi (000001 GSC, 000002 drop orphans, 000003 2FA cols); restart pgbouncer după DDL.
-  - **Rămâne C2 — DOAR itemii de infra (cer deciziile lui Andrei):** C-08 proven restore (container WP
-    sandbox pe dasher în compose prod), C-09 transport async restore + reconciliere, C-10 negociere
-    capabilități conector (schimbă conectorul + push pe flotă). Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
+  - **C2 infra pe main (MERGED):** #110 C-08 proven restore (sandbox WP izolat pe dasher, val 1) ·
+    #111 C-10 negociere capabilități conector (**Manager-only** — conectorul expunea deja
+    `/backup/capabilities`; sync reîmprospătează + gate staged restore pe capabilitate, refuz explicit,
+    fără merge tăcut).
+  - **Main HEAD `d317225`, tot verde (785/785).** ⚠️ Deploy: 4 migrări noi (GSC date, drop 12 orphans
+    — pg_dump ÎNAINTE, 2FA cols, proven_restores + flag-uri sandbox); restart pgbouncer după DDL.
+    Adminii se enrolează la MFA din Settings → Two-Factor.
+  - **Rămâne C2 — DOAR C-09** (transport async restore): schimbă conectorul (endpoint-uri restore-async/
+    status/execute după modelul backup prepare-async, refactor `restore()` sincron în work detașat +
+    transient `sam_restore_task_{token}`), Manager face poll semnat (după `pollPrepareStatus`),
+    finalizare idempotentă + reconciliere, kill-switch. **Cere bump conector + push pe flotă**
+    (doar site-uri test). Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
+  - C-08 val 2 (follow-up): dashboard global proof + validare live pe dasher după provizionarea sandbox-ului.
   - **Follow-up opțional (Faza F):** upgrade Pint 1.27→1.29 + reformat codebase (amânat deliberat).
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
