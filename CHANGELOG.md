@@ -20,6 +20,17 @@ WordPress sites.
   so every point in `seo_keyword_rankings` sat 3 days ahead of the date its data
   describes. Rows are now labeled with the data date, and a one-time migration
   shifts existing history back 3 days. *(Faza C, val C1-a.)*
+### Removed
+- **C-04** — dropped 12 orphan SEO/keyword tables from an abandoned crawler/
+  keyword-research design (`crawled_pages`, `site_crawls`, `seo_contents`,
+  `seo_content_revisions`, `seo_alert_rules`, `backlinks`, `backlink_snapshots`,
+  `tracked_keywords`, `keyword_positions`, `keyword_page_mappings`,
+  `keyword_research_results`, `competitor_keyword_positions`). Verified at HEAD
+  `0351c29`: no model, no app query, no incoming FK for any of them; the lone
+  reference (a `keyword_positions` retention-cleanup entry, already
+  `Schema::hasTable`-guarded) is removed in the same change. Deploy takes a
+  `pg_dump` first (runbook §3b). Full `pgsql-schema.sql` regeneration is a
+  separate follow-up. *(Faza C, val C1-a.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
