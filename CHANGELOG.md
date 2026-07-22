@@ -7,6 +7,11 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Fixed
+- **C-06** — pinned `edoburu/pgbouncer` to the exact digest running in production
+  instead of `:latest`: a silent PgBouncer version jump on container recreate could
+  change pooling behavior under the app with no diff in the repo. *(Faza C, val C1-a.)*
+
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
   PHPUnit 744/744) consemnat în `docs/plan/raport-faza-A.md`; toate cele 13 probleme cunoscute
