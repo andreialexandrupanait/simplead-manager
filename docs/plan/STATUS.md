@@ -22,10 +22,16 @@
   - **Val C1-c livrat (#102, stacked pe #101):** C-02 MFA TOTP (pragmarx google2fa + bacon QR) —
     obligatoriu Admin cu grace, challenge la login normal + Google SSO, coduri recovery, activity log.
     Full suite 754/754, gate on authenticated route group (nu global, ca să nu rupă `/livewire/update`).
-  - **C1 COMPLET** (C-01…C-07, C-14). **Loose end:** 8 advisories tranzitive (phpspreadsheet/jmespath/phpseclib) — follow-up.
-  - **Rămâne C2** (val mare — atinge conectorul + infra): C-08 proven restore (sandbox WP pe dasher),
-    C-09 transport async restore + reconciliere, C-10 negociere capabilități conector, C-11 agregare
-    furtuni alerte, C-12 offsite verificat, C-13 e2e cu FakeWordPressApiService. Apoi AUDITOR fază + STOP.
+  - **C1 COMPLET** (C-01…C-07, C-14).
+  - **C2 cod pur — parțial livrat:** C-11 agregare furtuni alerte (#104; + fix bug Redis latent
+    `ReliableRedisList::ack` lrem arg order) · C-12 offsite verificat banner (#105).
+  - **Rămâne C2:** C-13 e2e cu FakeWordPressApiService (backup→verificare→restore staged, safe-update
+    rollback, callback-uri) — cod pur, de făcut. C-08/C-09/C-10 (proven restore sandbox pe dasher,
+    transport async restore, negociere capabilități conector) — **ating conectorul + infra dasher, cer
+    deciziile lui Andrei** (container WP sandbox în compose prod; push conector pe flotă). Apoi AUDITOR fază C + STOP.
+  - **Advisory bump (phpspreadsheet 5.6→5.9 / jmespath 2.8→2.9.2 / phpseclib 3.0.50→3.0.55):** de făcut
+    **DUPĂ ce #101 (L12) e merge-uit** — pe L11 trage symfony/string v8 într-un mix cross-major și lasă un
+    advisory symfony; pe L12 (symfony deja curent) e un `composer update` trivial și curat.
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
 - [ ] Faza F — Șlefuire & datorie
@@ -37,7 +43,17 @@
 - #97 C-06 pin pgbouncer · #98 C-07 restore-download expiry · #99 C-14 GSC date · #100 C-04 drop orphan tables
 - #101 C-01/C-05 Laravel 12 upgrade + trusted-proxies test
 - #102 C-02 MFA TOTP (stacked pe #101)
-- `chore/env-example-runbook` — C-03 runbook (așteaptă `.env.example`)
+- #103 C-03 runbook + `.env.example` (plasat de Andrei)
+- #104 C-11 agregare furtuni alerte (+ fix Redis ack)
+- #105 C-12 offsite verificat banner
+
+## Pasul următor (reluare sesiune)
+1. Andrei revizuiește/merge-uiește backlog-ul de PR-uri (recomandat: #101→#102 stacked; restul independente;
+   toate ating `## [Unreleased]` în CHANGELOG → merge pe rând, conflict trivial de listă).
+2. C-13 e2e (cod pur) — de făcut oricând.
+3. C-08/09/10 — după deciziile de infra ale lui Andrei (sandbox WP pe dasher, push conector flotă).
+4. Advisory bump — după merge #101.
+Clona metodologiei: `../simplead-audit` (@ 9aeb9f4). Migrarea C-04 la deploy: pg_dump ÎNAINTE + restart pgbouncer.
 
 ## Ordine de merge recomandată (pentru CHANGELOG fără conflicte)
 Independente de main: #97, #98, #99, #100, #96 (docs), C-03 branch. Stacked: #101 → apoi #102.
