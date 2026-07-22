@@ -11,6 +11,10 @@ WordPress sites.
 - **C-06** — pinned `edoburu/pgbouncer` to the exact digest running in production
   instead of `:latest`: a silent PgBouncer version jump on container recreate could
   change pooling behavior under the app with no diff in the repo. *(Faza C, val C1-a.)*
+- **C-07** — `/restore-download/{token}` now expires: files older than 45 minutes
+  (the legitimate connector-fetch window is ≤30) are rejected and deleted. A worker
+  killed between staging the archive and cleanup used to leave a full site backup
+  downloadable by anyone holding the token until the 24h temp sweep. *(Faza C, val C1-a.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
