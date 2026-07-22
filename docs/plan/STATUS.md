@@ -6,9 +6,10 @@
 ## Unde suntem
 
 - [x] Întrebările de la startul sesiunii puse și consemnate în `config.md`
-- [x] Pas 0 — setup program (acest PR)
-- [ ] **Faza A — Fundație & inventar** (în lucru)
-- [ ] Faza B — Research & propuneri (4 subagenți) → STOP: Andrei bifează propunerile
+- [x] Pas 0 — setup program (PR #94)
+- [x] **Faza A — Fundație & inventar** — `inventar.md` + `raport-faza-A.md` (13/13 puncte confirmate, 3 nuanțe)
+- [x] Faza B — research R1–R4 rulat (r1-wpmudev, r2-webp, r3-autopsie-seo, r4-metodologie) + `propuneri.md`
+- [ ] **→ STOP Faza B: Andrei bifează lista din `propuneri.md`** (nimic din D/E nebifat nu se construiește)
 - [ ] Faza C — Corectare & întărire (C1 securitate, C2 operații critice)
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
@@ -16,12 +17,14 @@
 
 ## PR-uri deschise
 
-- `chore/program-setup` — config + STATUS + promptul-program în docs/plan/ (acest PR)
+- #94 `chore/program-setup` — config + STATUS + promptul-program
+- `docs/faza-a-b` — inventar + raport A + rapoartele R1–R4 + propuneri (stacked pe #94)
 
 ## Pasul următor
 
-Faza A: baseline quality (Pint/PHPStan/PHPUnit), `inventar.md`, `raport-faza-A.md` cu starea
-reală a punctelor cunoscute (explorarea a fost deja făcută — vezi planul sesiunii), STOP scurt.
+STOP Faza B: aștept bifele lui Andrei pe `propuneri.md`. După OK: plan detaliat Faza C
+(`faza-C-plan.md` cu valurile de PR-uri), începând cu C1 (L12, MFA, .env.example, schema).
+Clona metodologiei e la `../simplead-audit` (@ 9aeb9f4).
 
 ## Note pentru sesiunea următoare (dacă se reia din context pierdut)
 
