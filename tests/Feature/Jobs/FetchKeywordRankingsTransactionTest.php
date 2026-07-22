@@ -89,7 +89,8 @@ class FetchKeywordRankingsTransactionTest extends TestCase
             'clicks' => 1,
             'impressions' => 1,
             'ctr' => 0.01,
-            'recorded_date' => now()->format('Y-m-d'),
+            // The job replaces the GSC data-date window (now-3d), not today (C-14)
+            'recorded_date' => now()->subDays(3)->format('Y-m-d'),
             'is_tracked' => false,
         ]);
 
@@ -107,5 +108,25 @@ class FetchKeywordRankingsTransactionTest extends TestCase
             'site_id' => $site->id,
             'keyword' => 'fresh keyword',
         ]);
+    }
+
+    public function test_rows_are_labeled_with_the_gsc_data_date_not_the_fetch_date(): void
+    {
+        // C-14: the job fetches the final GSC window of now()-3d; rows must
+        // carry THAT date. Stamping the fetch date shifted history +3 days.
+        $site = $this->connectedSite();
+
+        $this->fakeGscQueries([
+            ['keys' => ['dated keyword'], 'position' => 2.0, 'clicks' => 10, 'impressions' => 100, 'ctr' => 0.1],
+        ]);
+
+        (new FetchKeywordRankings($site))->handle();
+
+        $row = SeoKeywordRanking::where('site_id', $site->id)->where('keyword', 'dated keyword')->first();
+        $this->assertNotNull($row);
+        $this->assertSame(
+            now()->subDays(3)->format('Y-m-d'),
+            $row->recorded_date->format('Y-m-d')
+        );
     }
 }

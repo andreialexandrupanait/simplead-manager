@@ -15,6 +15,11 @@ WordPress sites.
   (the legitimate connector-fetch window is ≤30) are rejected and deleted. A worker
   killed between staging the archive and cleanup used to leave a full site backup
   downloadable by anyone holding the token until the 24h temp sweep. *(Faza C, val C1-a.)*
+- **C-14** — keyword-ranking history was shifted +3 days: `FetchKeywordRankings`
+  pulled the final GSC window (`now()-3d`) but stamped rows with the *fetch* date,
+  so every point in `seo_keyword_rankings` sat 3 days ahead of the date its data
+  describes. Rows are now labeled with the data date, and a one-time migration
+  shifts existing history back 3 days. *(Faza C, val C1-a.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
