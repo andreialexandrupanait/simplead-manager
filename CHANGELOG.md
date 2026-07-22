@@ -8,6 +8,16 @@ WordPress sites.
 ## [Unreleased]
 
 ### Program: corectare completă + modul SEO/Audit unificat
+- **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
+  PHPUnit 744/744) consemnat în `docs/plan/raport-faza-A.md`; toate cele 13 probleme cunoscute
+  confirmate în cod cu file:line (nuanțe: ~9–12 tabele orfane nu 14; `SiteSeoAudit` e Livewire nu
+  Job; trustProxies `env()` e revert deliberat P3-34 — fix-ul se re-proiectează cu L12);
+  `docs/plan/inventar.md` cu modulele existente.
+- **Faza B — research & propuneri**: 4 rapoarte de research în `docs/plan/` (r1 WPMU DEV live —
+  catalog 12 Pro + Hub, gap-uri și licențiere; r2 webp-uploads v2.7.1 + plan orchestrare; r3
+  autopsia modulului SEO cu verdicte MOARE/SE TRANSFORMĂ/SUPRAVIEȚUIEȘTE pe cod; r4 metodologia
+  celor 82 de verificări din simplead-audit @ 9aeb9f4 + plan de port Laravel) consolidate în
+  `docs/plan/propuneri.md` — STOP: așteaptă bifele proprietarului.
 - **Pas 0 — setup program**: promptul-program v1.1 mutat în `docs/plan/program-prompt.md`;
   răspunsurile proprietarului la întrebările de start (site pilot notificarialimente.ro,
   Screaming Frog pe dasher cu licență disponibilă, cheia Anthropic se adaugă la Faza D)
