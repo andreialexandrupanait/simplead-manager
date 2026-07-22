@@ -31,6 +31,12 @@ WordPress sites.
   `Schema::hasTable`-guarded) is removed in the same change. Deploy takes a
   `pg_dump` first (runbook §3b). Full `pgsql-schema.sql` regeneration is a
   separate follow-up. *(Faza C, val C1-a.)*
+### Added
+- **C-03** — `.env.example` (complete, grouped: required vars + operational knobs,
+  no secrets) and `docs/runbook-instalare.md` (from-scratch install + disaster
+  recovery: env reconstruction, DB restore on the direct connection, PgBouncer
+  DDL caveat, fleet reconnect, post-recovery checklist). A new machine is now
+  reconstructible from the repo. *(Faza C, val C1-a.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
