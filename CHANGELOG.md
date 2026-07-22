@@ -27,7 +27,9 @@ WordPress sites.
   transitive packages — separate follow-up). Pinned `config.platform.php` to
   8.3.32 so the lock resolves to PHP-8.3-compatible versions (symfony stays 7.4,
   not the 8.x that requires PHP 8.4) — otherwise a clean `composer install`
-  fails on the runtime. *(Faza C, val C1-b.)*
+  fails on the runtime. Pint held at 1.27.1 (matching the pre-upgrade lock) so
+  the framework bump doesn't drag in 1.29's new default rules and a codebase-wide
+  reformat — that's a separate cleanup. *(Faza C, val C1-b.)*
 
 ### Fixed
 - **C-05** — trusted-proxies regression guard. `bootstrap/app.php` configures
