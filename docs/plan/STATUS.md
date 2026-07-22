@@ -16,16 +16,17 @@
   - **C1 pe main (MERGED):** #96 docs · #97 C-06 pin pgbouncer · #98 C-07 restore-download expiry ·
     #99 C-14 GSC date · #100 C-04 drop 12 tabele orfane · #103 C-03 runbook + `.env.example` ·
     #101 C-01 **Laravel 12.64** + C-05 trustProxies · #106 C-02 **MFA TOTP**.
-  - **C2 cod pur pe main (MERGED):** #104 C-11 agregare furtuni alerte (+ fix bug Redis latent
-    `ReliableRedisList::ack`) · #105 C-12 offsite verificat banner.
+  - **C2 cod pur pe main (MERGED, COMPLET):** #104 C-11 agregare furtuni alerte (+ fix bug Redis latent
+    `ReliableRedisList::ack`) · #105 C-12 offsite verificat banner · #108 C-13 e2e restore staged/merge
+    (plasă pentru Faza F pe RestoreBackup; safe-update deja acoperit de SafeUpdateServiceTest).
   - **Bonus:** `composer audit` pe main = **0 advisories** (L12 a adus deja versiuni patchate
     phpspreadsheet 5.9/jmespath 2.9.2/phpseclib 3.0.55). Lock pin-uit `config.platform.php=8.3.32`
     + `laravel/pint=1.27.1` (ca L12 să nu forțeze symfony v8/PHP 8.4 sau un reformat Pint 1.29).
   - **Main HEAD `e6df429`, tot verde (768/768).** ⚠️ Deploy: migrarea C-04 (drop tabele) cere pg_dump
     ÎNAINTE; 3 migrări noi (000001 GSC, 000002 drop orphans, 000003 2FA cols); restart pgbouncer după DDL.
-  - **Rămâne C2:** C-13 e2e cu FakeWordPressApiService (cod pur). C-08/C-09/C-10 (proven restore
-    sandbox pe dasher, transport async restore, negociere capabilități conector) — cer deciziile de
-    infra ale lui Andrei (container WP sandbox în compose prod; push conector pe flotă). Apoi AUDITOR fază C + STOP.
+  - **Rămâne C2 — DOAR itemii de infra (cer deciziile lui Andrei):** C-08 proven restore (container WP
+    sandbox pe dasher în compose prod), C-09 transport async restore + reconciliere, C-10 negociere
+    capabilități conector (schimbă conectorul + push pe flotă). Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
   - **Follow-up opțional (Faza F):** upgrade Pint 1.27→1.29 + reformat codebase (amânat deliberat).
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
