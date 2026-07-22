@@ -48,7 +48,6 @@ class RetentionPolicyService
             'tables' => [
                 ['table' => 'analytics_cache', 'column' => 'fetched_at', 'col_type' => 'timestamp', 'label' => 'Analytics cache', 'condition' => null],
                 ['table' => 'search_console_cache', 'column' => 'fetched_at', 'col_type' => 'timestamp', 'label' => 'Search console cache', 'condition' => null],
-                ['table' => 'keyword_positions', 'column' => 'date', 'col_type' => 'date', 'label' => 'Keyword positions', 'condition' => null],
             ],
         ],
         'activity_logs' => [
