@@ -48,6 +48,20 @@
         </div>
     @endif
 
+    {{-- C-08: Proven restore badge --}}
+    @if($this->provenRestore)
+        @php $proven = $this->provenRestore; @endphp
+        <div class="mb-4 flex items-center gap-2 text-sm">
+            @if($proven->passed())
+                <x-ui.badge variant="green">{{ __('Restore proven') }}</x-ui.badge>
+                <span class="text-gray-500">{{ __('Last proven restore: :when', ['when' => $proven->ran_at->diffForHumans()]) }}</span>
+            @else
+                <x-ui.badge variant="red">{{ __('Restore proof failed') }}</x-ui.badge>
+                <span class="text-red-600">{{ $proven->error ?? __('one or more health checks failed') }} ({{ $proven->ran_at->diffForHumans() }})</span>
+            @endif
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {{-- Quick Actions --}}
         <x-ui.card>

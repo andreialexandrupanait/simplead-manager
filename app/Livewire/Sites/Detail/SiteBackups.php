@@ -65,6 +65,20 @@ class SiteBackups extends Component
         return StorageDestination::where('is_active', true)->get();
     }
 
+    /**
+     * C-08: the site's most recent proven-restore result (a real restore into the
+     * sandbox WP), or null if the site isn't enrolled / hasn't been proven yet.
+     */
+    #[Computed]
+    public function provenRestore(): ?\App\Models\ProvenRestore
+    {
+        if (! $this->site->proven_restore_enabled) {
+            return null;
+        }
+
+        return $this->site->latestProvenRestore()->first();
+    }
+
     #[Computed]
     public function storageUsage()
     {

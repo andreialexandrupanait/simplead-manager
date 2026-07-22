@@ -40,6 +40,9 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $api_secret
  * @property string|null $api_endpoint
  * @property bool $is_connected
+ * @property bool $is_sandbox
+ * @property bool $proven_restore_enabled
+ * @property-read \App\Models\ProvenRestore|null $latestProvenRestore
  * @property \Illuminate\Support\Carbon|null $last_synced_at
  * @property string|null $wp_version
  * @property string|null $php_version
@@ -143,6 +146,8 @@ class Site extends Model
         'api_endpoint',
         'is_connected',
         'is_prospect',
+        'is_sandbox',
+        'proven_restore_enabled',
         'last_synced_at',
         'wp_version',
         'php_version',
@@ -176,6 +181,8 @@ class Site extends Model
         'backup_ok' => 'boolean',
         'is_connected' => 'boolean',
         'is_prospect' => 'boolean',
+        'is_sandbox' => 'boolean',
+        'proven_restore_enabled' => 'boolean',
         'last_backup_at' => 'datetime',
         'last_synced_at' => 'datetime',
         'domain_expires_at' => 'datetime',
