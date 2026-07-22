@@ -7,6 +7,18 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Added
+- **C-02 — TOTP two-factor authentication for Manager users.** App-level 2FA was
+  removed in PR #34; this reintroduces it properly. Authenticator-app codes
+  (pragmarx/google2fa + bacon QR, both framework-agnostic) with 8 single-use
+  recovery codes; secret + codes encrypted at rest. **Mandatory for admins** with
+  a per-user grace window (`MFA_ADMIN_GRACE_DAYS`, default 7, measured from first
+  exposure so existing admins aren't locked out on deploy) — nagged during grace,
+  forced to enroll after. A fresh session (password login **or** Google SSO)
+  re-challenges via a session-flag gate; enroll/disable/regenerate and every
+  challenge are activity-logged; disable/regenerate require the current password.
+  New `/settings/two-factor` and `/two-factor-challenge` screens. *(Faza C, val C1-c.)*
+
 ### Changed
 - **C-01 — Laravel 11.48 → 12.64.** Framework bump only; every dependency already
   supported 12 (Livewire 4, Horizon 5.43, Larastan 3, PHPUnit 11, collision 8.9,

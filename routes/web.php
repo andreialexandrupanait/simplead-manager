@@ -67,8 +67,16 @@ Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadControlle
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
 
-// Authenticated routes
-Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(function () {
+// Two-factor challenge (authenticated but NOT behind the 2FA gate, so a user
+// mid-login can reach it). C-02.
+Route::middleware(['auth'])->group(function () {
+    Route::get('/two-factor-challenge', \App\Livewire\Auth\TwoFactorChallenge::class)
+        ->name('two-factor.challenge')
+        ->middleware('throttle:authenticated');
+});
+
+// Authenticated routes — gated behind the 2FA challenge + admin enrollment.
+Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge', '2fa.enforce'])->group(function () {
 
     // Dashboard
     Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
@@ -183,9 +191,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated'])->group(functio
     Route::get('/download/connector-plugin', ConnectorPluginDownloadController::class)
         ->name('download.connector-plugin');
 
-    // Settings — Profile accessible to all roles
+    // Settings — Profile & 2FA accessible to all roles
     Route::prefix('/settings')->group(function () {
         Route::get('/profile', Settings\ProfileSettings::class)->name('settings.profile');
+        Route::get('/two-factor', Settings\TwoFactorAuthentication::class)->name('settings.two-factor');
     });
 
     // Settings — Admin-only pages
