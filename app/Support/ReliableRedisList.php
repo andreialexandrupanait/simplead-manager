@@ -58,10 +58,17 @@ final class ReliableRedisList
 
     /**
      * Remove a payload from the processing list after it has been safely handed to
-     * a durable queue (or deliberately dropped). phpredis signature: (key, value, count).
+     * a durable queue (or deliberately dropped). Laravel's Redis facade signature
+     * is lrem(key, count, value) — passing them as (key, value, count) makes
+     * phpredis reject the string payload as the int $count. Existing tests mocked
+     * Redis so this only surfaced against a real connection.
      */
     public static function ack(string $key, string $raw): void
     {
-        Redis::lrem(self::processingKey($key), $raw, 1);
+        // Laravel's facade signature is lrem(key, count, value); larastan resolves
+        // the raw phpredis stub (key, value, count), so the runtime-correct call
+        // below looks mistyped to it.
+        // @phpstan-ignore argument.type
+        Redis::lrem(self::processingKey($key), 1, $raw);
     }
 }

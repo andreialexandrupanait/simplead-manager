@@ -92,8 +92,11 @@ class NotificationService
             if ($deferChannels) {
                 // Quiet hours — hold the channel send until they end (P1-21).
                 static::defer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
-            } elseif ($severity === 'info') {
-                // Only buffer info-level notifications; everything else dispatches immediately
+            } elseif ($severity === 'info' || static::shouldAggregate($event)) {
+                // Buffer info notifications, and — when alert-storm aggregation is on
+                // (C-11) — site_down/site_recovered too, so ProcessNotificationBatch
+                // coalesces a cross-site burst into one "Nx" message per channel
+                // instead of one send per site.
                 static::buffer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
             } else {
                 SendNotificationJob::dispatch(
@@ -465,6 +468,17 @@ class NotificationService
         ]);
 
         return true;
+    }
+
+    /**
+     * C-11: whether a cross-site down/recovery burst should be coalesced through
+     * the batch buffer instead of dispatched one-per-site. Only the two uptime
+     * storm events qualify, and only while aggregation is enabled.
+     */
+    protected static function shouldAggregate(string $event): bool
+    {
+        return in_array($event, ['site_down', 'site_recovered'], true)
+            && (bool) config('monitoring.aggregate_alert_storms', true);
     }
 
     protected static function isQuietHours(): bool

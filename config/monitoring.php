@@ -64,4 +64,19 @@ return [
     */
     'job_failure_alert_threshold' => (int) env('JOB_FAILURE_ALERT_THRESHOLD', 3),
     'job_failure_window_seconds' => (int) env('JOB_FAILURE_WINDOW_SECONDS', 3600),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Alert-storm aggregation (C-11)
+    |--------------------------------------------------------------------------
+    | When many sites go down (or recover) at once — a shared cause like the
+    | monitoring host, an upstream network, or Cloudflare — sending one message
+    | per site per channel floods every channel. With this on, site_down and
+    | site_recovered notifications are routed through the same per-channel buffer
+    | as info notifications, so ProcessNotificationBatch coalesces a burst into a
+    | single "Nx" message per channel (one for down, one for recovery). The cost
+    | is a short coalescing delay (up to the batch cadence, ~60s) on these two
+    | events; set to false to restore immediate per-site delivery.
+    */
+    'aggregate_alert_storms' => (bool) env('ALERT_STORM_AGGREGATION', true),
 ];

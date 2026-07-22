@@ -49,8 +49,11 @@ class NotificationDedupTest extends TestCase
         $siteA = $this->site();
         $siteB = $this->site();
 
-        NotificationService::notifySiteEvent($siteA, 'site_down', 'Down', 'A is down', severity: 'warning');
-        NotificationService::notifySiteEvent($siteB, 'site_down', 'Down', 'B is down', severity: 'warning');
+        // Uses a non-aggregated event (backup_failed) so this exercises the
+        // immediate-dispatch dedup path; site_down/site_recovered are now coalesced
+        // through the batch buffer by alert-storm aggregation (C-11).
+        NotificationService::notifySiteEvent($siteA, 'backup_failed', 'Failed', 'A failed', severity: 'warning');
+        NotificationService::notifySiteEvent($siteB, 'backup_failed', 'Failed', 'B failed', severity: 'warning');
 
         // Different sites are distinct alerts — neither should be suppressed.
         Queue::assertPushed(SendNotificationJob::class, 2);
@@ -62,8 +65,8 @@ class NotificationDedupTest extends TestCase
         $this->defaultChannel();
         $site = $this->site();
 
-        NotificationService::notifySiteEvent($site, 'site_down', 'Down', 'msg', severity: 'warning');
-        NotificationService::notifySiteEvent($site, 'site_down', 'Down', 'msg', severity: 'critical');
+        NotificationService::notifySiteEvent($site, 'backup_failed', 'Failed', 'msg', severity: 'warning');
+        NotificationService::notifySiteEvent($site, 'backup_failed', 'Failed', 'msg', severity: 'critical');
 
         // Same site+event but different severity — a distinct alert, not a dup.
         Queue::assertPushed(SendNotificationJob::class, 2);
@@ -76,8 +79,8 @@ class NotificationDedupTest extends TestCase
         $this->defaultChannel();
         $site = $this->site();
 
-        NotificationService::notifySiteEvent($site, 'site_down', 'Down', 'msg', severity: 'warning');
-        NotificationService::notifySiteEvent($site, 'site_down', 'Down', 'msg', severity: 'warning');
+        NotificationService::notifySiteEvent($site, 'backup_failed', 'Failed', 'msg', severity: 'warning');
+        NotificationService::notifySiteEvent($site, 'backup_failed', 'Failed', 'msg', severity: 'warning');
 
         // The second identical alert is suppressed — only one send goes out.
         Queue::assertPushed(SendNotificationJob::class, 1);
@@ -85,7 +88,7 @@ class NotificationDedupTest extends TestCase
         // Suppression leaves a trace (not silent).
         Log::shouldHaveReceived('debug')
             ->withArgs(fn (string $message, array $context = []): bool => str_contains($message, 'Suppressed duplicate notification')
-                && ($context['event'] ?? null) === 'site_down')
+                && ($context['event'] ?? null) === 'backup_failed')
             ->once();
     }
 
