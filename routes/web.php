@@ -46,6 +46,15 @@ Route::get('/restore-download/{token}', function (string $token) {
         abort(404);
     }
 
+    // The legitimate window is the single connector fetch inside the restore
+    // POST (≤30 min). A worker killed between staging and cleanup used to
+    // leave the token downloadable until the 24h temp sweep — expire it here.
+    $mtime = filemtime($path);
+    if ($mtime === false || $mtime < now()->subMinutes(45)->getTimestamp()) {
+        @unlink($path);
+        abort(404);
+    }
+
     return response()->file($path);
 })->middleware('throttle:10,1');
 
