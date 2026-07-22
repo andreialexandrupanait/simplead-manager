@@ -62,6 +62,26 @@ WordPress sites.
   have replicated carries no offsite replica). Healthy state also surfaces the
   last successful offsite copy time. Reads existing data — no new job/migration.
   RO/EN strings added. *(Faza C, val C2.)*
+### Changed
+- **C-01 — Laravel 11.48 → 12.64.** Framework bump only; every dependency already
+  supported 12 (Livewire 4, Horizon 5.43, Larastan 3, PHPUnit 11, collision 8.9,
+  pail 1.2), so no code changes were required. Full suite green (744/744), PHPStan
+  clean. Composer audit dropped from 24 advisories to 8 (remaining 8 are in three
+  transitive packages — separate follow-up). Pinned `config.platform.php` to
+  8.3.32 so the lock resolves to PHP-8.3-compatible versions (symfony stays 7.4,
+  not the 8.x that requires PHP 8.4) — otherwise a clean `composer install`
+  fails on the runtime. Pint held at 1.27.1 (matching the pre-upgrade lock) so
+  the framework bump doesn't drag in 1.29's new default rules and a codebase-wide
+  reformat — that's a separate cleanup. *(Faza C, val C1-b.)*
+
+### Fixed
+- **C-05** — trusted-proxies regression guard. `bootstrap/app.php` configures
+  proxies during application construction, before the config repository is bound;
+  the P3-34 hotfix's `config()` call fatals there and 500'd every prod request.
+  Kept the correct boot-phase source (`env()`, documented) and added a test that
+  boots the app with `X-Forwarded-*` headers and asserts a trusted proxy's
+  forwarded scheme is honored — the coverage that was missing when P3-34 shipped.
+  *(Faza C, val C1-b.)*
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
