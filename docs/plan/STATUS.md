@@ -8,8 +8,11 @@
 - [x] Întrebările de la startul sesiunii puse și consemnate în `config.md`
 - [x] Pas 0 — setup program (PR #94)
 - [x] **Faza A — Fundație & inventar** — `inventar.md` + `raport-faza-A.md` (13/13 puncte confirmate, 3 nuanțe)
-- [x] Faza B — research R1–R4 rulat (r1-wpmudev, r2-webp, r3-autopsie-seo, r4-metodologie) + `propuneri.md`
-- [ ] **→ STOP Faza B: Andrei bifează lista din `propuneri.md`** (nimic din D/E nebifat nu se construiește)
+- [x] Faza B — research R1–R4 + `propuneri.md` → **STOP REZOLVAT**: C+D integral; piloți
+  notificarialimente.ro + universulsacru.ro; E1 redefinit (conversie imagini PRIN CONECTOR, la
+  cerere, fără plugin extern); E2 = linkuri moarte + IndexNow + scanare fișiere + SSO;
+  scoase: Branda-light, Cloudflare geo/WAF (manual de Andrei)
+- [ ] **Faza C — în lucru** (plan: `faza-C-plan.md`; ordinea: quick-wins → L12 → MFA → C2)
 - [ ] Faza C — Corectare & întărire (C1 securitate, C2 operații critice)
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
@@ -22,9 +25,9 @@
 
 ## Pasul următor
 
-STOP Faza B: aștept bifele lui Andrei pe `propuneri.md`. După OK: plan detaliat Faza C
-(`faza-C-plan.md` cu valurile de PR-uri), începând cu C1 (L12, MFA, .env.example, schema).
-Clona metodologiei e la `../simplead-audit` (@ 9aeb9f4).
+Faza C, val C1-a (quick wins): C-06 pin pgbouncer → C-07 expirare restore-download →
+C-03 .env.example+runbook → C-14 fix decalaj GSC → C-04 drop tabele orfane.
+Apoi C1-b (L12+trustProxies), C1-c (MFA), C2. Clona metodologiei: `../simplead-audit` (@ 9aeb9f4).
 
 ## Note pentru sesiunea următoare (dacă se reia din context pierdut)
 

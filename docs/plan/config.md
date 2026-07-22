@@ -5,9 +5,7 @@ Răspunsurile lui Andrei la cele 3 întrebări de la startul sesiunii (conform p
 ## 1. Site-uri pilot (fix-uri AI, webp)
 
 - **notificarialimente.ro**
-
-Notă: promptul cerea 2–3 site-uri pilot; deocamdată există unul singur. Un al doilea pilot se poate
-adăuga înainte de acceptanța Fazei D (acceptanța D cere demonstrația cap-coadă pe site-urile pilot).
+- **universulsacru.ro** (adăugat la STOP-ul Fazei B, 22 iul)
 
 ## 2. Screaming Frog headless
 
