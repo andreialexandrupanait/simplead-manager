@@ -7,6 +7,13 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Program: corectare completă + modul SEO/Audit unificat
+- **Pas 0 — setup program**: promptul-program v1.1 mutat în `docs/plan/program-prompt.md`;
+  răspunsurile proprietarului la întrebările de start (site pilot notificarialimente.ro,
+  Screaming Frog pe dasher cu licență disponibilă, cheia Anthropic se adaugă la Faza D)
+  consemnate în `docs/plan/config.md`; `docs/plan/STATUS.md` inițializat ca punct de
+  reluare între sesiuni (regula globală 10 din program).
+
 ## [2026-07-11]
 
 ### Security module — design-only features made functional (PRs #43-#47)
