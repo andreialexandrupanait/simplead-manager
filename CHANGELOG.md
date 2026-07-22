@@ -7,6 +7,18 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Fixed
+- **C-10 — connector capability negotiation for restore.** A full restore relies
+  on the connector's atomic staged swap, but the job sent `file_mode=staged`
+  blindly and trusted old connectors to silently ignore it and merge in place —
+  which leaves the restored files running against the **old database**. The
+  connector already advertises capabilities via `/backup/capabilities`
+  (including `staged_restore`); `SyncWordPressSite` now refreshes them every sync
+  (into the existing `sites.backup_capabilities`), and `RestoreBackup` **gates a
+  staged restore on that capability** — refreshing once on demand, then refusing
+  loudly (\"update the connector plugin to ≥ 2.15.0\") instead of merging in
+  place. Manager-only — no connector change or fleet push required. *(Faza C, val C2.)*
+
 ### Added
 - **C-08 — proven restore (wave 1).** Weekly job that restores a pilot site's
   most recent backup into an **isolated sandbox WordPress** and health-checks it
