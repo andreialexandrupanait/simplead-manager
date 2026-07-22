@@ -286,6 +286,16 @@ class Site extends Model
         return preg_replace('/^www\./', '', $host);
     }
 
+    /**
+     * C-10: whether the connector advertises a given capability
+     * (from `sites.backup_capabilities`, refreshed on sync). Fail-closed: an
+     * unknown/unfetched capability reads as unsupported.
+     */
+    public function connectorSupports(string $capability): bool
+    {
+        return (bool) ($this->backup_capabilities[$capability] ?? false);
+    }
+
     public function getOverallStatusAttribute(): string
     {
         return HealthLevel::fromScore($this->health_score, $this->is_up)->value;

@@ -27,7 +27,9 @@ class RestoreBackupLockTest extends TestCase
     {
         parent::setUp();
         Redis::spy();
-        $this->site = Site::factory()->create();
+        // The connector supports staged restore (C-10 gate) — these tests exercise
+        // locking, not the capability gate.
+        $this->site = Site::factory()->create(['backup_capabilities' => ['staged_restore' => true]]);
         $this->backup = Backup::factory()->create([
             'site_id' => $this->site->id,
             'status' => BackupStatus::Completed,

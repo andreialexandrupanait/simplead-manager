@@ -70,6 +70,18 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 'last_synced_at' => now(),
             ]);
 
+            // C-10: keep the connector's advertised capabilities fresh on every
+            // sync, so operation gating (e.g. staged restore) reads current data
+            // instead of relying on CreateBackup's lazy 24h refresh. Non-fatal —
+            // an old connector without /backup/capabilities just leaves it untouched.
+            $capabilities = $api->getBackupCapabilities();
+            if ($capabilities !== null) {
+                $this->site->update([
+                    'backup_capabilities' => $capabilities,
+                    'backup_capabilities_checked_at' => now(),
+                ]);
+            }
+
             JobTracker::progress($this->uniqueId(), 15, 'Syncing plugins...');
 
             // Sync plugins

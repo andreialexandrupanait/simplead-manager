@@ -165,6 +165,12 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             // (Inside the try so the lock is released and the row marked failed.)
             $this->assertDiskSpaceForRestore();
 
+            // C-10: a full restore relies on the connector's atomic staged swap.
+            // Refuse loudly if the connector doesn't advertise that capability —
+            // never silently fall back to a merge-in-place, which would leave the
+            // site with the restored files running against the old database.
+            $this->assertRestoreCapabilities();
+
             $this->backup->update([
                 'restore_status' => BackupStatus::InProgress,
                 'restore_stage' => 'downloading',
@@ -1079,6 +1085,42 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
      * download-endpoint copy simultaneously. Floors at 2 GB so a tiny archive
      * still demands sane headroom. Fails open when free space is unmeasurable.
      */
+    /**
+     * C-10: gate a staged (full) restore on the connector advertising the
+     * `staged_restore` capability. Fail-closed with a clear operator message —
+     * refuse rather than merge in place, which corrupts the site (new files, old
+     * DB). Selective restores merge by design and need no capability.
+     */
+    protected function assertRestoreCapabilities(): void
+    {
+        if (! empty($this->selectedFiles)) {
+            return;
+        }
+
+        $site = $this->backup->site;
+        if ($site->connectorSupports('staged_restore')) {
+            return;
+        }
+
+        // Capabilities may simply never have been fetched — refresh once on demand.
+        $capabilities = app(WordPressApiServiceFactory::class)->make($site)->getBackupCapabilities();
+        $supported = is_array($capabilities) && ($capabilities['staged_restore'] ?? false);
+        if (is_array($capabilities)) {
+            $site->update([
+                'backup_capabilities' => $capabilities,
+                'backup_capabilities_checked_at' => now(),
+            ]);
+        }
+
+        if (! $supported) {
+            throw new \RuntimeException(
+                "Cannot restore {$site->name}: its connector does not support staged restore. "
+                .'Update the connector plugin (≥ 2.15.0) first — refusing to merge in place, '
+                .'which would leave the restored files running against the old database.'
+            );
+        }
+    }
+
     protected function assertDiskSpaceForRestore(): void
     {
         $archiveBytes = (int) ($this->backup->file_size ?? 0);
