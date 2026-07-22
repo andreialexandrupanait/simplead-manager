@@ -282,7 +282,9 @@ services:
   # Connection pooler — app containers connect here instead of directly to pgsql.
   # Set DB_HOST=pgbouncer in .env when enabling this service.
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    # Pinned to the digest running in prod since 2026 — :latest jumped versions
+    # unannounced on recreate. Update deliberately: pull, test, then bump the digest.
+    image: edoburu/pgbouncer@sha256:85d1e38593617af1b5f7f285e97d407e56c29939683cc7cfe4c8f6dc19f1268b
     container_name: simplead-pgbouncer
     restart: unless-stopped
     environment:
