@@ -19,8 +19,13 @@
     blochează scrierea prin Claude; șablon în scratchpad + inline în runbook)
   - **Val C1-b livrat (#101):** Laravel 11.48→12.64 (upgrade curat, 744/744, PHPStan clean, advisories 24→8)
     + C-05 trustProxies (păstrat `env()` la boot — corect acolo; adăugat test de regresie care ar fi prins P3-34)
-  - **Loose end:** 8 advisories tranzitive rămase (phpspreadsheet direct dep + jmespath/phpseclib via aws-sdk) — follow-up
-  - **Rămâne: C1-c MFA TOTP** (val următor), apoi C2 (proven restore, transport async, capabilități conector, agregare alerte, offsite, e2e)
+  - **Val C1-c livrat (#102, stacked pe #101):** C-02 MFA TOTP (pragmarx google2fa + bacon QR) —
+    obligatoriu Admin cu grace, challenge la login normal + Google SSO, coduri recovery, activity log.
+    Full suite 754/754, gate on authenticated route group (nu global, ca să nu rupă `/livewire/update`).
+  - **C1 COMPLET** (C-01…C-07, C-14). **Loose end:** 8 advisories tranzitive (phpspreadsheet/jmespath/phpseclib) — follow-up.
+  - **Rămâne C2** (val mare — atinge conectorul + infra): C-08 proven restore (sandbox WP pe dasher),
+    C-09 transport async restore + reconciliere, C-10 negociere capabilități conector, C-11 agregare
+    furtuni alerte, C-12 offsite verificat, C-13 e2e cu FakeWordPressApiService. Apoi AUDITOR fază + STOP.
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
 - [ ] Faza E — webp-uploads + integrări bifate
 - [ ] Faza F — Șlefuire & datorie
@@ -31,7 +36,12 @@
 - #96 `docs/faza-a-b` — inventar + raport A + R1–R4 + propuneri + faza-C-plan + acest STATUS
 - #97 C-06 pin pgbouncer · #98 C-07 restore-download expiry · #99 C-14 GSC date · #100 C-04 drop orphan tables
 - #101 C-01/C-05 Laravel 12 upgrade + trusted-proxies test
+- #102 C-02 MFA TOTP (stacked pe #101)
 - `chore/env-example-runbook` — C-03 runbook (așteaptă `.env.example`)
+
+## Ordine de merge recomandată (pentru CHANGELOG fără conflicte)
+Independente de main: #97, #98, #99, #100, #96 (docs), C-03 branch. Stacked: #101 → apoi #102.
+Toate ating `## [Unreleased]` în CHANGELOG → merge-uite pe rând, rezolvă conflictul trivial de listă.
 
 ## Pasul următor
 
