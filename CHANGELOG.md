@@ -67,7 +67,10 @@ WordPress sites.
   supported 12 (Livewire 4, Horizon 5.43, Larastan 3, PHPUnit 11, collision 8.9,
   pail 1.2), so no code changes were required. Full suite green (744/744), PHPStan
   clean. Composer audit dropped from 24 advisories to 8 (remaining 8 are in three
-  transitive packages — separate follow-up). *(Faza C, val C1-b.)*
+  transitive packages — separate follow-up). Pinned `config.platform.php` to
+  8.3.32 so the lock resolves to PHP-8.3-compatible versions (symfony stays 7.4,
+  not the 8.x that requires PHP 8.4) — otherwise a clean `composer install`
+  fails on the runtime. *(Faza C, val C1-b.)*
 
 ### Fixed
 - **C-05** — trusted-proxies regression guard. `bootstrap/app.php` configures
