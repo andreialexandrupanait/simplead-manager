@@ -45,6 +45,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'site.context' => \App\Http\Middleware\SetCurrentSite::class,
             'role' => \App\Http\Middleware\RequireRole::class,
             'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
+            '2fa.challenge' => \App\Http\Middleware\RequireTwoFactorChallenge::class,
+            '2fa.enforce' => \App\Http\Middleware\EnforceTwoFactorEnrollment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

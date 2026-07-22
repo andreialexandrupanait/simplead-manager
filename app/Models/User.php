@@ -18,6 +18,10 @@ use Illuminate\Notifications\Notifiable;
  * @property \Illuminate\Support\Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $remember_token
+ * @property string|null $two_factor_secret
+ * @property list<string>|null $two_factor_recovery_codes
+ * @property \Illuminate\Support\Carbon|null $two_factor_confirmed_at
+ * @property \Illuminate\Support\Carbon|null $two_factor_grace_started_at
  * @property bool $is_admin
  * @property \App\Enums\UserRole $role
  * @property string $timezone
@@ -65,6 +69,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -80,7 +86,19 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_admin' => 'boolean',
             'digest_enabled' => 'boolean',
             'role' => UserRole::class,
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
+            'two_factor_grace_started_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether the user has completed 2FA enrollment (secret verified).
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && $this->two_factor_secret !== null;
     }
 
     public function sites(): HasMany

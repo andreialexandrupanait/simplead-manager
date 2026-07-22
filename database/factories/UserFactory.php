@@ -83,4 +83,16 @@ class UserFactory extends Factory
             'is_admin' => false,
         ]);
     }
+
+    /**
+     * Enroll the user in TOTP two-factor auth with a known secret.
+     */
+    public function withTwoFactor(string $secret, array $recoveryCodes = ['AAAAA-BBBBB']): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'two_factor_secret' => $secret,
+            'two_factor_recovery_codes' => $recoveryCodes,
+            'two_factor_confirmed_at' => now(),
+        ]);
+    }
 }
