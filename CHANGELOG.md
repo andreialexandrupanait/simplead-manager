@@ -7,6 +7,22 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Changed
+- **C-01 — Laravel 11.48 → 12.64.** Framework bump only; every dependency already
+  supported 12 (Livewire 4, Horizon 5.43, Larastan 3, PHPUnit 11, collision 8.9,
+  pail 1.2), so no code changes were required. Full suite green (744/744), PHPStan
+  clean. Composer audit dropped from 24 advisories to 8 (remaining 8 are in three
+  transitive packages — separate follow-up). *(Faza C, val C1-b.)*
+
+### Fixed
+- **C-05** — trusted-proxies regression guard. `bootstrap/app.php` configures
+  proxies during application construction, before the config repository is bound;
+  the P3-34 hotfix's `config()` call fatals there and 500'd every prod request.
+  Kept the correct boot-phase source (`env()`, documented) and added a test that
+  boots the app with `X-Forwarded-*` headers and asserts a trusted proxy's
+  forwarded scheme is honored — the coverage that was missing when P3-34 shipped.
+  *(Faza C, val C1-b.)*
+
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Pas 0 — setup program**: promptul-program v1.1 mutat în `docs/plan/program-prompt.md`;
   răspunsurile proprietarului la întrebările de start (site pilot notificarialimente.ro,
