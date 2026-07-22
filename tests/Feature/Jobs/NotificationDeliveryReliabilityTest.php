@@ -74,6 +74,10 @@ class NotificationDeliveryReliabilityTest extends TestCase
 
         (new NotifyIncident($incident, 'recovery'))->handle();
 
+        // Recovery is now coalesced through the batch buffer (alert-storm
+        // aggregation, C-11); draining the batch delivers the single recovery.
+        (new ProcessNotificationBatch)->handle();
+
         Queue::assertPushed(
             SendNotificationJob::class,
             fn (SendNotificationJob $job) => $job->event === 'site_recovered' && $job->severity === 'success'

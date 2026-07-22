@@ -37,6 +37,22 @@ WordPress sites.
   recovery: env reconstruction, DB restore on the direct connection, PgBouncer
   DDL caveat, fleet reconnect, post-recovery checklist). A new machine is now
   reconstructible from the repo. *(Faza C, val C1-a.)*
+### Changed
+- **C-11 — cross-site alert-storm aggregation.** When many sites go down (or
+  recover) at once — a shared cause like the monitoring host, upstream network,
+  or Cloudflare — the platform sent one message per site per channel, flooding
+  every channel. `site_down`/`site_recovered` now route through the same batch
+  buffer as info notifications, so `ProcessNotificationBatch` coalesces a burst
+  into one "Nx" message per channel (one for down, one for recovery). Cost is a
+  short coalescing delay (~batch cadence) on those two events; toggle with
+  `ALERT_STORM_AGGREGATION`. *(Faza C, val C2.)*
+
+### Fixed
+- **Latent Redis bug (surfaced by C-11)** — `ReliableRedisList::ack()` passed
+  `lrem` arguments as `(key, value, count)`, but Laravel's Redis facade signature
+  is `(key, count, value)`, so the ack threw under a real phpredis connection.
+  Existing batch tests mocked Redis and never hit it; the P1-54 at-least-once
+  drain's ack was effectively broken against production Redis. Fixed the order.
 
 ### Program: corectare completă + modul SEO/Audit unificat
 - **Faza A — fundație & inventar**: baseline quality verde (Pint 783 fișiere, PHPStan 0 erori,
