@@ -83,6 +83,18 @@ trait HasSiteRelationships
         return $this->hasMany(\App\Models\SiteRedirect::class);
     }
 
+    /** @return HasMany<\App\Models\ProvenRestore, $this> */
+    public function provenRestores(): HasMany
+    {
+        return $this->hasMany(\App\Models\ProvenRestore::class);
+    }
+
+    /** @return HasOne<\App\Models\ProvenRestore, $this> */
+    public function latestProvenRestore(): HasOne
+    {
+        return $this->hasOne(\App\Models\ProvenRestore::class)->latestOfMany('ran_at');
+    }
+
     public function siteStatus(): BelongsTo
     {
         return $this->belongsTo(SiteStatus::class);

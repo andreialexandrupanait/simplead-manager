@@ -7,6 +7,20 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Added
+- **C-08 — proven restore (wave 1).** Weekly job that restores a pilot site's
+  most recent backup into an **isolated sandbox WordPress** and health-checks it
+  — homepage 200, login reachable, connector loopback, and DB row counts coherent
+  with the backup manifest — then records a per-site "last proven restore" badge
+  and alerts on failure. Stronger than the offline integrity verify: it proves a
+  backup actually *restores and boots*. Self-contained `SandboxRestoreService`
+  (does not touch the `RestoreBackup` job), rotation across
+  `proven_restore_enabled` sites, new `sandbox-wp`/`sandbox-db` compose services
+  on an internal-only network with the connector mounted. Enabled only for the
+  pilot/test sites. **Deploy:** bring the sandbox containers up on dasher and
+  register the sandbox as an internal `is_sandbox` Site with its own API key
+  (see `docs/plan/faza-C2-proven-restore-plan.md`). *(Faza C, val C2.)*
+
 ### Tests
 - **C-13** — end-to-end safety net for the restore execution core (the
   `RestoreBackup` god-object, slated for decomposition in Faza F). Drives

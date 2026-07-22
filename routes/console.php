@@ -216,6 +216,16 @@ Schedule::command('backup:verify-restore')
     ->onOneServer()
     ->onFailure($criticalFailureAlert('backup-verify-restore-weekly'));
 
+// C-08: proven restore — actually restore a pilot site's latest backup into the
+// isolated sandbox WP and health-check it (stronger than the offline integrity
+// verify above). Staggered after it so the two heavy jobs don't collide.
+Schedule::job(new \App\Jobs\RunProvenRestore)
+    ->weeklyOn(0, '04:30')
+    ->name('proven-restore-weekly')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('proven-restore-weekly'));
+
 // Horizon health check
 Schedule::command('horizon:health-check')
     ->everyFiveMinutes()

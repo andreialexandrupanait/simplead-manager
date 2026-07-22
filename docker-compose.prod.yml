@@ -375,9 +375,62 @@ services:
           memory: 512M
           cpus: "1.0"
 
+  # C-08 proven restore: an isolated throwaway WordPress the RunProvenRestore job
+  # restores a pilot backup into and health-checks. Runs on its own `sandbox`
+  # network (NOT reachable from the public internet / prod app). The SAM connector
+  # plugin is mounted so the manager drives restores + diagnostics exactly as it
+  # would a real site. Register it once in the manager as an internal Site
+  # (is_sandbox=true) pointing at http://sandbox-wp, with its own API key.
+  sandbox-db:
+    image: mariadb:11
+    container_name: simplead-sandbox-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: "${SANDBOX_DB_NAME:-wordpress}"
+      MARIADB_USER: "${SANDBOX_DB_USER:-wordpress}"
+      MARIADB_PASSWORD: "${SANDBOX_DB_PASSWORD:-wordpress}"
+      MARIADB_ROOT_PASSWORD: "${SANDBOX_DB_ROOT_PASSWORD:-rootpw}"
+    networks:
+      - sandbox
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  sandbox-wp:
+    image: wordpress:6-php8.3-apache
+    container_name: simplead-sandbox-wp
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: sandbox-db
+      WORDPRESS_DB_NAME: "${SANDBOX_DB_NAME:-wordpress}"
+      WORDPRESS_DB_USER: "${SANDBOX_DB_USER:-wordpress}"
+      WORDPRESS_DB_PASSWORD: "${SANDBOX_DB_PASSWORD:-wordpress}"
+    volumes:
+      # Mount the SAM connector so the manager can drive staged restores here.
+      - ./wordpress-plugin/simplead-manager-connector:/var/www/html/wp-content/plugins/simplead-manager-connector:ro
+    networks:
+      - simplead   # reachable from horizon/app for connector + HTTP health checks
+      - sandbox    # talks to sandbox-db
+    depends_on:
+      - sandbox-db
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
 networks:
   simplead:
     driver: bridge
+  sandbox:
+    driver: bridge
+    internal: true   # no outbound internet for the throwaway restore target
 
 volumes:
   simplead-pgsql:

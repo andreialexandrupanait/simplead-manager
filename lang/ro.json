@@ -1244,5 +1244,9 @@
     "No active offsite backup destination — backups exist in only one place.": "Nicio destinație de backup offsite activă — backup-urile există într-un singur loc.",
     "Offsite destination \":name\" failed its last credential check.": "Destinația offsite „:name” a eșuat la ultima verificare a credențialelor.",
     "Backups are not reaching the offsite destination \":name\".": "Backup-urile nu ajung la destinația offsite „:name”.",
-    "Last successful offsite copy: :when": "Ultima copie offsite reușită: :when"
+    "Last successful offsite copy: :when": "Ultima copie offsite reușită: :when",
+    "Restore proven": "Restore dovedit",
+    "Restore proof failed": "Dovada de restore a eșuat",
+    "Last proven restore: :when": "Ultimul restore dovedit: :when",
+    "one or more health checks failed": "una sau mai multe verificări au eșuat"
 }
