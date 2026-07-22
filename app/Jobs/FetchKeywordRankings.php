@@ -49,8 +49,12 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
         }
 
         $siteUrl = $connection->property_url;
-        $endDate = now()->subDays(3)->format('Y-m-d');
-        $startDate = now()->subDays(3)->format('Y-m-d');
+        // GSC data is only final ~3 days back, so we fetch that single-day
+        // window — and rows must be labeled with the date the data DESCRIBES.
+        // Stamping the fetch date shifted the whole history +3 days (C-14).
+        $dataDate = now()->subDays(3)->format('Y-m-d');
+        $endDate = $dataDate;
+        $startDate = $dataDate;
 
         try {
             $service = new GoogleSearchConsoleService($google);
@@ -69,7 +73,6 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
                 ->toArray();
 
             $records = [];
-            $today = now()->format('Y-m-d');
 
             foreach ($queries as $q) {
                 $keyword = $q['query'] ?? $q['keys'][0] ?? null;
@@ -94,7 +97,7 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
                     'clicks' => min(2147483647, max(0, (int) ($q['clicks'] ?? 0))),
                     'impressions' => min(2147483647, max(0, (int) ($q['impressions'] ?? 0))),
                     'ctr' => min(99.9999, max(0.0, round((float) ($q['ctr'] ?? 0), 4))),
-                    'recorded_date' => $today,
+                    'recorded_date' => $dataDate,
                     'is_tracked' => $isTracked,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -104,9 +107,9 @@ class FetchKeywordRankings implements ShouldBeUnique, ShouldQueue
             // Delete-then-insert must be atomic: a crash between the two used to
             // wipe the day's placements with no replacement (P1-65). Wrap both in
             // a transaction so a failed insert rolls the delete back.
-            DB::transaction(function () use ($records, $today) {
+            DB::transaction(function () use ($records, $dataDate) {
                 SeoKeywordRanking::where('site_id', $this->site->id)
-                    ->where('recorded_date', $today)
+                    ->where('recorded_date', $dataDate)
                     ->delete();
 
                 foreach (array_chunk($records, 100) as $chunk) {
