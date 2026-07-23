@@ -8,6 +8,20 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3d) — AI drafting of recommendation cards.** `AiCardDrafter` turns a
+  module's NU_EXISTA gaps into recommendation cards (title, diagnosis, per-URL
+  table, code blocks, callouts) via a forced strict tool call — **ported verbatim**
+  from `draft-v2.ts`, prompt included. The **anti-fabrication guarantee is
+  structural**: the per-URL table is built ONLY from REAL `affected[].url` evidence
+  — a card whose covered gaps have no real URLs has its table **dropped**, gets a
+  "verify manually" callout, and is marked `needsVerification`; a payload component
+  that fails validation is stripped, never invented; `checkIds` is an enum of the
+  module's own gaps. Plus the **"every gap → a resolution" guarantee**
+  (`ensureEveryGapCovered`): any gap no AI card covered gets a fallback card from
+  its `recommendationTemplate` (stays DRAFT_AI, never auto-approved). Reuses the
+  D3c `AuditAiClient` (faked in tests). Wiring the AI tier (page-content collection
+  → evaluate → draft → persist `audit_cards`) and D4 (applying fixes) come next and
+  need the key in prod. *(Faza D, val D3d.)*
 - **Faza D (D3c) — AI evaluation of qualitative check states.** `AiCheckEvaluator`
   judges the ~48 qualitative checks nothing deterministic can reach (CRO, content,
   LLM, off-site) STRICTLY from the representative pages' content, via a forced
