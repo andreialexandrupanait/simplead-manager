@@ -16,9 +16,15 @@ verde (819 teste). **NEDEPLOYAT încă** (deploy = comanda lui Andrei).
 (`DeterministicSfEvaluator`); **D3b-fetch** (#125) colectorii HTTP robots/redirects/llms/headers + cele 5
 verificări fetch (6.1/6.2/6.5/3.1/3.8); **D3b-orchestrator** (#126) PSI (`PsiEvaluator`) + applicability
 e-commerce + `AuditEvaluator` (îmbină SF+fetch+PSI+ecom → 82) + persistare din `RunSfCrawl`.
-Rămân în D3: **D3-psi** (colectarea PSI reală — psiMobile e null acum, 3.5/3.6 rămân manuale; follow-up mic),
-**D3c** AI eval (`EVAL_V2_SYSTEM_PROMPT` verbatim + anti-fabricare), **D3d** AI draft (`DRAFT_V2_SYSTEM_PROMPT`).
-D3c/D3d se portează + testează cu client AI **fals** (fără cheie); rularea reală + **D4 au nevoie de cheia Anthropic**.
+**D3c** (#127) AI eval — `AiCheckEvaluator` (`EVAL_V2_SYSTEM_PROMPT` verbatim, tool strict, anti-fabricare:
+dovadă <8 char → null) + `AuditAiClient` injectabil (HTTP reutilizează `ANTHROPIC_API_KEY`; fals în teste).
+**D3d** (#128) AI draft — `AiCardDrafter` (`DRAFT_V2_SYSTEM_PROMPT` verbatim, carduri din goluri, fără URL-uri
+reale → fără tabel + callout manual, `ensureEveryGapCovered` fallback din șablon). **Stratul logic AI e COMPLET**,
+testat cu client fals (fără cheie). Config: `config/audit.php` bloc `ai` (model `claude-sonnet-5`).
+Rămân în D3: **D3-pages** (colectorul `page-content.ts` — conținutul paginilor reprezentative) + **legarea AI
+în `RunSfCrawl`** (colectează pagini → `AiCheckEvaluator` per modul → `AiCardDrafter` → persistă `audit_cards`
++ actualizează stările AI pe `audit_check_results`) + **D3-psi** (colectarea PSI reală). Rularea reală AI +
+**D4 (aplicarea fix-urilor prin conector) au nevoie de cheia Anthropic în `.env` prod.**
 ⚠️ **D4 (fix-uri AI) e BLOCAT pe cheia Anthropic în `.env` prod — Andrei o adaugă.** D3c/D3d se pot construi
 + testa cu client AI fals (fără cheie); doar rularea reală + D4 au nevoie de cheie.
 ⚠️ Deploy Faza D: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
