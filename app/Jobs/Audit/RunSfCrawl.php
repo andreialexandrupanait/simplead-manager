@@ -14,6 +14,7 @@ use App\Models\Audit;
 use App\Models\AuditCheck;
 use App\Models\AuditCheckResult;
 use App\Models\AuditRun;
+use App\Services\Audit\AuditAiPipeline;
 use App\Services\Audit\AuditEvaluator;
 use App\Services\Audit\SfCrawlLoader;
 use App\Services\Audit\SfCrawlRunner;
@@ -185,6 +186,34 @@ class RunSfCrawl implements ShouldQueue
             'Evaluated %d checks: %d EXISTA, %d NU_EXISTA, %d NU_SE_APLICA, %d left manual.',
             count($evaluations), $counts['EXISTA'], $counts['NU_EXISTA'], $counts['NU_SE_APLICA'], $counts['manual'],
         ));
+
+        $this->runAiTier($audit, $exports);
+    }
+
+    /**
+     * The AI tier: qualitative-check evaluation + card drafting. Runs only when an
+     * Anthropic key is present; an AI failure never fails the crawl (the
+     * deterministic results are already persisted).
+     */
+    private function runAiTier(Audit $audit, SfExports $exports): void
+    {
+        $apiKey = config('audit.ai.api_key');
+        if (! is_string($apiKey) || $apiKey === '') {
+            $this->log('AI tier skipped — no ANTHROPIC_API_KEY configured.');
+
+            return;
+        }
+
+        try {
+            $summary = app(AuditAiPipeline::class)->run($audit, $exports);
+            $this->log(sprintf(
+                'AI tier: %d pages, %d cards drafted (%d in / %d out tokens).',
+                $summary['pages'], $summary['cards'], $summary['input_tokens'], $summary['output_tokens'],
+            ));
+        } catch (Throwable $e) {
+            $this->log('AI tier failed (deterministic results kept): '.$e->getMessage());
+            Log::warning("RunSfCrawl AI tier failed for audit {$this->auditId}: {$e->getMessage()}");
+        }
     }
 
     public function failed(Throwable $e): void
