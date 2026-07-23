@@ -12,7 +12,14 @@
   notificarialimente.ro + universulsacru.ro; E1 redefinit (conversie imagini PRIN CONECTOR, la
   cerere, fără plugin extern); E2 = linkuri moarte + IndexNow + scanare fișiere + SSO;
   scoase: Branda-light, Cloudflare geo/WAF (manual de Andrei)
-- [~] **Faza C — C1 COMPLET + MERGE-UIT PE MAIN; C2 parțial**
+- [x] **Faza C — COMPLETĂ, MERGE-UITĂ ȘI ÎN PRODUCȚIE (C1 + C2).**
+  - **C-09 WAVE 3 FĂCUT (23 iul):** deploy prod C-09 (0 erori, healthy); conector 2.18.0 împins pe
+    site-urile test 23 (universulsacru.ro 2.17.1→2.18.0) + 41 (notificarialimente.ro 2.17.0→2.18.0);
+    sync → ambele anunță `async_restore=true` + `staged_restore=true`; ambele rămân conectate + homepage 200.
+    Async restore e LIVE pe cele 2 piloți (kill-switch `ASYNC_RESTORE_ENABLED` gata). Un restore async
+    REAL cap-coadă (invaziv — restaurează un backup) NU a fost declanșat — de făcut pe sandbox/deliberat.
+  - **URMĂTORUL PAS DE PROGRAM: subagent AUDITOR pe toată Faza C** (context curat, DOAR criteriile de
+    acceptanță C + acces cod) → `docs/plan/raport-faza-C.md` P0–P3 → remediere P0/P1 → STOP → OK Andrei → Faza D.
   - **C1 pe main (MERGED):** #96 docs · #97 C-06 pin pgbouncer · #98 C-07 restore-download expiry ·
     #99 C-14 GSC date · #100 C-04 drop 12 tabele orfane · #103 C-03 runbook + `.env.example` ·
     #101 C-01 **Laravel 12.64** + C-05 trustProxies · #106 C-02 **MFA TOTP**.
