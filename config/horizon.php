@@ -288,6 +288,23 @@ return [
             'timeout' => 3000,
             'nice' => 0,
         ],
+        'supervisor-audit' => [
+            'connection' => 'redis',
+            'queue' => ['audit'],
+            'balance' => 'simple',
+            // A SINGLE crawl at a time: Screaming Frog is memory-heavy (-Xmx2g)
+            // and WithoutOverlapping guards the invariant regardless.
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 512,
+            // No auto-retry: an SF crawl is expensive — a failure surfaces on the
+            // audit_run row, not a silent re-crawl. Kept in sync with
+            // RunSfCrawl::$tries (1) / ::$timeout (1900, just above SF's 1800).
+            'tries' => 1,
+            'timeout' => 1900,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -317,6 +334,9 @@ return [
             'supervisor-incident-response' => [
                 'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 2),
             ],
+            'supervisor-audit' => [
+                'maxProcesses' => 1, // never more than one SF crawl
+            ],
         ],
 
         'staging' => [
@@ -338,6 +358,9 @@ return [
             'supervisor-incident-response' => [
                 'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 1),
             ],
+            'supervisor-audit' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'local' => [
@@ -357,6 +380,9 @@ return [
                 'maxProcesses' => 2,
             ],
             'supervisor-incident-response' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-audit' => [
                 'maxProcesses' => 1,
             ],
         ],
