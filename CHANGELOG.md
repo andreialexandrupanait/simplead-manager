@@ -8,6 +8,18 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3b, orchestrator) — evaluation assembled + persisted end-to-end.**
+  The keystone that turns a crawl into stored verdicts: `AuditEvaluator` merges the
+  four sources — deterministic SF (D3a), fetch checks (D3b), **PSI** (3.5 modern
+  images / 3.6 lazy-load, ported with their conservative thresholds), and
+  **e-commerce applicability** (5.10–5.13 → NU_SE_APLICA off ECOMMERCE) — into one
+  `{state, evidence}` per check for **all 82** (`evaluateV2Audit` port: PSI drives
+  3.5/3.6 with SF as context, 3.10 carries the measured homepage headers, unsourced
+  checks stay `state=null` for the auditor). `RunSfCrawl` now runs the evaluation
+  after ingest and **persists one `audit_check_results` row per check**
+  (`state_set_by=auto`; the auditor overrides in the editor). PSI *collection* is a
+  follow-up (psiMobile stays null for now, so 3.5/3.6 remain manual); the AI eval/
+  draft (D3c/D3d) build on these stored results. *(Faza D, val D3b.)*
 - **Faza D (D3b, fetch checks) — the direct-fetch v2 evaluators.** The checks SF
   can't cover, proven by HTTP request and **ported verbatim** from the audit repo
   (`fetch-checks.ts` + the `robots`/`redirects`/`headers`/`llmstxt` collectors):
