@@ -11,10 +11,11 @@
 **D2a** (#122, fundația de ingestie SF — registru 57/2/5 + parser + loader) + **D2b** (#123, jobul de
 crawl SF + coada `audit` + tracker `audit_runs`). Fundația crawl/ingest a modulului e completă; suita full
 verde (819 teste). **NEDEPLOYAT încă** (deploy = comanda lui Andrei).
-Următorul val: **D3 — evaluatoarele deterministe + AI** (port §2/§3 din `r4-metodologie.md`; ~1250 linii TS
-→ PHP + 551 teste-specificație). Plan sub-valuri: **D3a** evaluatoare SF (`combineFilters` + ~54 verificări),
-**D3b** PSI + fetch-checks + applicability e-commerce + orchestrator `evaluateV2Audit`, **D3c** AI eval
-(`EVAL_V2_SYSTEM_PROMPT` verbatim + garanție anti-fabricare), **D3d** AI draft (`DRAFT_V2_SYSTEM_PROMPT`).
+**D3 în curs.** **D3a GATA** (#124, pe main): evaluatoarele SF deterministe — `DeterministicSfEvaluator`
+(`combineFilters` + `evaluateSfChecks`, port verbatim din `evaluators.ts`; DTO `V2Eval`; 11 teste). Rămân:
+**D3b** PSI + fetch-checks (colectori HTTP: robots/redirects/llms/headers, cei 8 UA AI) + applicability
+e-commerce + orchestrator `evaluateV2Audit`, **D3c** AI eval (`EVAL_V2_SYSTEM_PROMPT` verbatim + garanție
+anti-fabricare), **D3d** AI draft (`DRAFT_V2_SYSTEM_PROMPT`). D3c/D3d testabile cu client AI fals (fără cheie).
 ⚠️ **D4 (fix-uri AI) e BLOCAT pe cheia Anthropic în `.env` prod — Andrei o adaugă.** D3c/D3d se pot construi
 + testa cu client AI fals (fără cheie); doar rularea reală + D4 au nevoie de cheie.
 ⚠️ Deploy Faza D: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
