@@ -35,13 +35,16 @@
     `/backup/restore-async|execute|status` (model prepare-async: work detașat loopback→cron + transient
     `sam_restore_task_{token}`), capabilitate `async_restore`, `perform_typed_restore()` partajat.
     **Strict aditiv/backward-compatible — conectorul NU e împins pe flotă, Manager încă sincron → 0 impact.**
-  - **RĂMÂNE C-09 wave 2+3:**
-    - **Wave 2 (Manager):** folosește async kick+poll (poll-and-release ca `pollPrepareStatus`) când
-      `async_restore` e anunțat (gate C-10 deja există), altfel sincron; **reconciliere idempotentă**
-      (transport failed dar conector `done` → succes, niciodată „fișiere noi + DB vechi") + kill-switch.
-      Refactorizează god-object-ul RestoreBackup (protejat de e2e C-13).
-    - **Wave 3:** push conector 2.18.0 pe **DOAR site-urile test** (notificarialimente.ro, universulsacru.ro)
-      + validare cap-coadă. **Op prod pe site-uri client LIVE — de făcut deliberat, cu Andrei.**
+  - **C-09 WAVE 2 MERGED (#115):** transport async pe Manager — `RestoreBackup` face kick+poll pe
+    `/backup/restore-status` când `async_restore` e anunțat (gate C-10) + kill-switch `ASYNC_RESTORE_ENABLED`;
+    **reconciliere idempotentă** (token în cache per backup+type; transport failed dar conector `done` → succes,
+    niciodată „fișiere noi + DB vechi"); fallback pe sincron dacă conectorul nu poate async. 792/792. **Inert
+    în prod până la push conector.**
+  - **RĂMÂNE DOAR C-09 wave 3 (op prod live, cu Andrei):** (1) DEPLOY codul C-09 pe prod (Manager async +
+    conector 2.18.0 în filesystem — sigur, inert); (2) push conector 2.18.0 pe **DOAR** notificarialimente.ro
+    + universulsacru.ro (`connector:update --site=ID`; self-update cu rollback); (3) sync → verifică
+    `connector_version=2.18.0` + `backup_capabilities.async_restore=true`. Validarea cap-coadă a unui restore
+    async real e invazivă (restaurează un backup) — de făcut pe sandbox sau deliberat.
   - Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
   - C-08 val 2 (follow-up): dashboard global proof + validare live pe dasher după provizionarea sandbox-ului.
   - **Follow-up opțional (Faza F):** upgrade Pint 1.27→1.29 + reformat codebase (amânat deliberat).
