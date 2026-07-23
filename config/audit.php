@@ -45,6 +45,7 @@ return [
         'anthropic_version' => '2023-06-01',
         'timeout' => (int) env('AUDIT_AI_TIMEOUT', 120),
         'eval_max_tokens' => 8000,
+        'draft_max_tokens' => 20000,
     ],
 
 ];
