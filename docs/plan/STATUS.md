@@ -7,12 +7,18 @@
 ## ▶ RELUARE (inclusiv pe alt calculator) — CITEȘTE ÎNTÂI
 
 **Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** **FAZA D în curs**
-(Andrei: „hai să continuăm și cu faza D"). Pe main: **D1** (#121, schema + seed 82) + **D2a** (#122,
-fundația de ingestie SF — registru 57/2/5 + parser + loader). **D2b** (#123, jobul de crawl + coada
-`audit` + tracker `audit_runs`) — **PR deschis, verde local (819 teste integrare)**, de îmbinat după CI.
-Următorul val: **D3 — evaluatoarele deterministe + `RunAiChecks`** (port §2/§3 din `r4-metodologie.md`).
-⚠️ Deploy D2b: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
-+ heap pe dasher (`docs/audit/screaming-frog/`). Migrări noi Faza D: `2026_07_23_000001` (modul) +
+(Andrei: „hai să continuăm și cu faza D"). Pe main, TOATE îmbinate: **D1** (#121, schema + seed 82) +
+**D2a** (#122, fundația de ingestie SF — registru 57/2/5 + parser + loader) + **D2b** (#123, jobul de
+crawl SF + coada `audit` + tracker `audit_runs`). Fundația crawl/ingest a modulului e completă; suita full
+verde (819 teste). **NEDEPLOYAT încă** (deploy = comanda lui Andrei).
+Următorul val: **D3 — evaluatoarele deterministe + AI** (port §2/§3 din `r4-metodologie.md`; ~1250 linii TS
+→ PHP + 551 teste-specificație). Plan sub-valuri: **D3a** evaluatoare SF (`combineFilters` + ~54 verificări),
+**D3b** PSI + fetch-checks + applicability e-commerce + orchestrator `evaluateV2Audit`, **D3c** AI eval
+(`EVAL_V2_SYSTEM_PROMPT` verbatim + garanție anti-fabricare), **D3d** AI draft (`DRAFT_V2_SYSTEM_PROMPT`).
+⚠️ **D4 (fix-uri AI) e BLOCAT pe cheia Anthropic în `.env` prod — Andrei o adaugă.** D3c/D3d se pot construi
++ testa cu client AI fals (fără cheie); doar rularea reală + D4 au nevoie de cheie.
+⚠️ Deploy Faza D: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
++ heap pe dasher (`docs/audit/screaming-frog/`). Migrări noi: `2026_07_23_000001` (modul) +
 `2026_07_23_000002` (audit_runs) — DDL pe pgsql_direct + restart pgbouncer.
 
 **Ce citești ca să reiei:** acest fișier + `docs/plan/program-prompt.md` + `docs/plan/propuneri.md`
