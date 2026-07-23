@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Enums\BackupStatus;
 use App\Jobs\RestoreBackup;
 use App\Models\Backup;
 use App\Models\Site;
@@ -151,5 +152,53 @@ class AsyncRestoreTransportTest extends TestCase
         $m = new \ReflectionMethod($job, 'shouldUseAsyncRestore');
         $m->setAccessible(true);
         $this->assertFalse($m->invoke($job));
+    }
+
+    private function reconcile(RestoreBackup $job): bool
+    {
+        $m = new \ReflectionMethod($job, 'tryReconcileAsyncRestore');
+        $m->setAccessible(true);
+
+        return $m->invoke($job);
+    }
+
+    public function test_reconciles_a_redelivered_restore_when_the_connector_finished(): void
+    {
+        $backup = $this->backup();
+        Cache::put("restore-async:{$backup->id}:files", self::TOKEN, 7200);
+        Cache::put("restore-async:{$backup->id}:database", str_repeat('b', 64), 7200);
+        $this->scriptRoutes($this->fakeApi(), ['/backup/restore-status' => ['status' => 'done']]);
+
+        $job = new RestoreBackup($backup, restoreDatabase: true, restoreFiles: true);
+
+        $this->assertTrue($this->reconcile($job), 'both async tasks are done → reconcile to complete');
+        $this->assertSame(BackupStatus::Completed, $backup->fresh()->restore_status);
+        $this->assertNull(Cache::get("restore-async:{$backup->id}:files"));
+        $this->assertNull(Cache::get("restore-async:{$backup->id}:database"));
+    }
+
+    public function test_does_not_reconcile_when_a_task_is_still_working(): void
+    {
+        $backup = $this->backup();
+        Cache::put("restore-async:{$backup->id}:files", self::TOKEN, 7200);
+        $this->scriptRoutes($this->fakeApi(), ['/backup/restore-status' => ['status' => 'working']]);
+
+        $job = new RestoreBackup($backup, restoreDatabase: false, restoreFiles: true);
+
+        $this->assertFalse($this->reconcile($job), 'a not-done task must NOT be reconciled — keep the hard refusal');
+        $this->assertNotSame(BackupStatus::Completed, $backup->fresh()->restore_status);
+    }
+
+    public function test_does_not_reconcile_when_an_expected_token_is_missing(): void
+    {
+        $backup = $this->backup();
+        // Files done, but the database restore was never kicked (no token) — a
+        // partial restore that must NOT be reconciled to success.
+        Cache::put("restore-async:{$backup->id}:files", self::TOKEN, 7200);
+        $this->scriptRoutes($this->fakeApi(), ['/backup/restore-status' => ['status' => 'done']]);
+
+        $job = new RestoreBackup($backup, restoreDatabase: true, restoreFiles: true);
+
+        $this->assertFalse($this->reconcile($job));
     }
 }
