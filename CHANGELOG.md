@@ -33,6 +33,21 @@ WordPress sites.
   semantic (an absent requested export = an empty filter = positive evidence). The
   four SF operating docs are copied into `docs/audit/screaming-frog/`. Pure code,
   no side effects — the crawl job + queue land in D2b. *(Faza D, val D2a.)*
+- **Faza D (D2b) — automated Screaming Frog crawl.** `RunSfCrawl` runs a headless
+  SF crawl for one audit on a new dedicated `audit` Horizon queue, then ingests
+  the exports (via D2a's `SfCrawlLoader`) into a manifest — evaluation is Faza D3.
+  A **single crawl fleet-wide** (`WithoutOverlapping` + a 1-process supervisor):
+  SF is memory-heavy (`-Xmx2g`) and we crawl clients politely at 1 URL/sec. **No
+  auto-retry** (`tries=1`) — an expensive crawl surfaces its failure on a new
+  `audit_runs` tracker row (status, human log, resolved-export manifest, error)
+  rather than silently re-crawling. The crawler is behind an injectable
+  `SfCrawlRunner` interface (`ScreamingFrogCrawlRunner` is the production impl;
+  faked in tests — real SF never runs in CI), with `buildSfArgs` ported verbatim
+  (no `--config`, no `--use-*`; the default SF 24.3 config is validated). The same
+  job ingests a **manual upload** (`CrawlSource::ManualUpload`) without running
+  the crawler. **Deploy/provisioning:** SF binary + license + `eula.accepted=15` +
+  heap live on the host (dasher) — see `docs/audit/screaming-frog/`; a new Horizon
+  supervisor means `horizon:terminate` on deploy. *(Faza D, val D2b.)*
 
 ### Fixed
 - **C-09 follow-up (Faza C audit P2)** — a redelivered in-progress async restore

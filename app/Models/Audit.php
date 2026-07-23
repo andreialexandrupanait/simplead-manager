@@ -59,6 +59,12 @@ class Audit extends Model
         return $this->hasMany(AuditCard::class);
     }
 
+    /** @return HasMany<AuditRun, $this> */
+    public function runs(): HasMany
+    {
+        return $this->hasMany(AuditRun::class);
+    }
+
     /** @return HasOne<AuditReport, $this> */
     public function report(): HasOne
     {
