@@ -21,10 +21,22 @@ dovadă <8 char → null) + `AuditAiClient` injectabil (HTTP reutilizează `ANTH
 **D3d** (#128) AI draft — `AiCardDrafter` (`DRAFT_V2_SYSTEM_PROMPT` verbatim, carduri din goluri, fără URL-uri
 reale → fără tabel + callout manual, `ensureEveryGapCovered` fallback din șablon). **Stratul logic AI e COMPLET**,
 testat cu client fals (fără cheie). Config: `config/audit.php` bloc `ai` (model `claude-sonnet-5`).
-Rămân în D3: **D3-pages** (colectorul `page-content.ts` — conținutul paginilor reprezentative) + **legarea AI
-în `RunSfCrawl`** (colectează pagini → `AiCheckEvaluator` per modul → `AiCardDrafter` → persistă `audit_cards`
-+ actualizează stările AI pe `audit_check_results`) + **D3-psi** (colectarea PSI reală). Rularea reală AI +
-**D4 (aplicarea fix-urilor prin conector) au nevoie de cheia Anthropic în `.env` prod.**
+**D3 wiring (#129) GATA** — pipeline-ul AI e legat cap-coadă: `PageContentCollector` (port `page-content.ts`,
+cheerio→DOMXPath: selecție pagini reprezentative + extracție semnale calitative) + `AuditAiPipeline` chemat din
+`RunSfCrawl` **doar când `ANTHROPIC_API_KEY` e setat** (eșec AI nu pică crawl-ul). Per modul: colectează pagini →
+AI-eval verificări necunoscute (`state_set_by=ai`) → draft `audit_cards` pentru goluri (+ fallback). Regenerarea
+înlocuiește doar `DRAFT_AI`, păstrează cardurile umane. **Pipeline-ul complet: crawl → 82 rezultate + carduri AI.**
+**Un crawl real cu AI activ nu a fost rulat** (nu există încă UI care să pornească un audit; cheia nu e în prod).
+
+**RĂMÂNE în Faza D:**
+1. **Colectarea PSI reală** (3.5/3.6 sunt manuale; port `psi.ts` → `PsiRunResult`, extras opportunities/lcpDiscovery din Lighthouse JSON, reutilizează `PageSpeedService`). Follow-up mic.
+2. **UI-ul modulului** (L, neînceput): creare audit (site/prospect), progres, editor validare stări + carduri (aprobă/editează/respinge), buton pornire crawl/AI. Port `v2-editor.ts` din clonă.
+3. **Auto-approve** carduri (port `auto-approve.ts`: auto-aprobă doar cardurile cu `needsVerification=false` ale căror verificări au TOATE sursele deterministe).
+4. **D4** aplicarea fix-urilor prin conector (L, **cheia + conector**).
+5. **D5** monitorizare/delta. **D6** raport public token-izat + PDF Gotenberg + migrare 11MB din audit.simplead.ro + redirect nginx + sunset modul SEO vechi pe flag.
+6. **AUDITOR Faza D** → `raport-faza-D.md` → STOP → OK Andrei.
+
+⚠️ **Precondiție**: `ANTHROPIC_API_KEY` în `.env` prod (rulare AI reală + D4). **NEDEPLOYAT** tot ce e Faza D.
 ⚠️ **D4 (fix-uri AI) e BLOCAT pe cheia Anthropic în `.env` prod — Andrei o adaugă.** D3c/D3d se pot construi
 + testa cu client AI fals (fără cheie); doar rularea reală + D4 au nevoie de cheie.
 ⚠️ Deploy Faza D: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
