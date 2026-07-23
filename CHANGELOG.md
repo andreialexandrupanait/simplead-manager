@@ -8,6 +8,18 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **C-09 (wave 2 — manager) — async restore transport.** When the connector
+  advertises `async_restore` (C-10 capability gate) and the fleet-wide
+  kill-switch (`ASYNC_RESTORE_ENABLED`) is on, `RestoreBackup` now **kicks a
+  detached restore and polls** `/backup/restore-status` to completion instead of
+  holding a 1800s synchronous request. The connector's task status is
+  authoritative: a transport hiccup is retried, and a redelivered job
+  **reconciles** against the in-flight token (cached per backup+type) rather than
+  re-running the restore — so it never leaves "new files + old database". Falls
+  back to the synchronous swap automatically if the connector can't dispatch
+  async, or instantly fleet-wide via the kill-switch. Still **inert in prod until
+  connector 2.18.0 is pushed** (wave 3, test sites only). *(Faza C, val C2.)*
+### Added
 - **C-09 (wave 1 — connector) — async restore transport.** Connector **2.18.0**
   adds `/backup/restore-async`, `/backup/restore-execute`, `/backup/restore-status`,
   mirroring the proven `prepare-async` pattern: a restore now runs **detached**

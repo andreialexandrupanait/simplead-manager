@@ -997,19 +997,143 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             $downloadUrl = rtrim(config('app.url'), '/').'/restore-download/'.$token;
 
             // Full file restores use the connector's atomic staged swap
-            // (connector >= 2.15.0; older connectors ignore the flag and
-            // merge in place). Selective restores MUST merge — their archive
-            // holds only the chosen files, and a swap would wipe the rest.
+            // (gated on the staged_restore capability, C-10). Selective restores
+            // MUST merge — their archive holds only the chosen files.
             $fileMode = empty($this->selectedFiles) ? 'staged' : 'merge';
 
-            $result = $api->request('POST', '/backup/restore', [
-                'type' => $type,
-                'download_url' => $downloadUrl,
-                'file_mode' => $fileMode,
-            ], [], 1800);
-            $result->throw();
+            if ($this->shouldUseAsyncRestore()) {
+                $this->sendRestoreAsync($api, $type, $downloadUrl, $fileMode);
+            } else {
+                $this->sendRestoreSync($api, $type, $downloadUrl, $fileMode);
+            }
         } finally {
             @unlink($storagePath);
+        }
+    }
+
+    /**
+     * C-09: use the async transport only when the connector advertises it AND the
+     * fleet-wide kill-switch is on. Everything else stays on the proven sync path.
+     */
+    protected function shouldUseAsyncRestore(): bool
+    {
+        return (bool) config('backups.async_restore.enabled', true)
+            && $this->backup->site->connectorSupports('async_restore');
+    }
+
+    protected function sendRestoreSync(WordPressApiServiceInterface $api, string $type, string $downloadUrl, string $fileMode): void
+    {
+        $result = $api->request('POST', '/backup/restore', [
+            'type' => $type,
+            'download_url' => $downloadUrl,
+            'file_mode' => $fileMode,
+        ], [], 1800);
+        $result->throw();
+    }
+
+    /**
+     * C-09: kick a detached restore on the connector and poll it to completion.
+     * The connector's task status is authoritative — a transport hiccup is
+     * retried, and a redelivered job reconciles against the in-flight token
+     * (persisted in the cache) rather than re-running the restore, so we never
+     * end up with "new files + old database". Falls back to sync if the connector
+     * cannot dispatch async.
+     */
+    protected function sendRestoreAsync(WordPressApiServiceInterface $api, string $type, string $downloadUrl, string $fileMode): void
+    {
+        $cacheKey = "restore-async:{$this->backup->id}:{$type}";
+
+        // Reconcile: a previous attempt for this (backup, type) may already have
+        // completed on the connector even if the manager lost the response.
+        $existing = Cache::get($cacheKey);
+        if (is_string($existing) && $this->pollRestoreStatus($api, $existing) === 'done') {
+            Cache::forget($cacheKey);
+
+            return;
+        }
+
+        $response = $api->request('POST', '/backup/restore-async', [
+            'type' => $type,
+            'download_url' => $downloadUrl,
+            'file_mode' => $fileMode,
+        ], [], 60);
+        $response->throw();
+        $body = $response->json();
+
+        // The connector could not dispatch async (no loopback/cron) — fall back
+        // to the synchronous swap, which it always supports.
+        if (empty($body['async'])) {
+            $this->sendRestoreSync($api, $type, $downloadUrl, $fileMode);
+
+            return;
+        }
+
+        $connectorToken = $body['token'] ?? null;
+        if (! is_string($connectorToken) || $connectorToken === '') {
+            throw new \RuntimeException("Async restore ({$type}): the connector returned no task token.");
+        }
+        Cache::put($cacheKey, $connectorToken, 7200);
+
+        $status = $this->pollRestoreStatus($api, $connectorToken);
+        if ($status !== 'done') {
+            throw new \RuntimeException("Async restore ({$type}) did not complete (status: {$status}).");
+        }
+
+        Cache::forget($cacheKey);
+    }
+
+    /**
+     * Poll /backup/restore-status until the connector task reaches a terminal
+     * state or the deadline passes. Never throws on a transient transport error
+     * (the connector may still be finishing) — returns a status string the caller
+     * interprets: 'done' | 'failed' | 'expired' | 'timeout' | 'unreachable'.
+     */
+    protected function pollRestoreStatus(WordPressApiServiceInterface $api, string $connectorToken): string
+    {
+        $deadline = now()->addSeconds((int) config('backups.async_restore.max_wait_seconds', 1800));
+        $interval = (int) config('backups.async_restore.poll_interval_seconds', 5);
+        $consecutiveErrors = 0;
+
+        while (now()->lessThan($deadline)) {
+            try {
+                $response = $api->request('POST', '/backup/restore-status', ['token' => $connectorToken], [], 30);
+            } catch (\Throwable) {
+                if (++$consecutiveErrors >= 5) {
+                    return 'unreachable';
+                }
+                $this->sleepBetweenPolls($interval);
+
+                continue;
+            }
+            $consecutiveErrors = 0;
+
+            if ($response->status() === 404) {
+                return 'expired';
+            }
+
+            $body = $response->json();
+            $status = (string) ($body['status'] ?? 'unknown');
+
+            if ($status === 'done') {
+                return 'done';
+            }
+            if ($status === 'failed') {
+                Log::warning("Async restore reported failed for backup {$this->backup->id}", ['error' => $body['error'] ?? null]);
+
+                return 'failed';
+            }
+
+            $this->reportRestoreProgress('restoring', 60, (string) ($body['message'] ?? 'Restore in progress...'));
+            $this->sleepBetweenPolls($interval);
+        }
+
+        return 'timeout';
+    }
+
+    protected function sleepBetweenPolls(int $seconds): void
+    {
+        if ($seconds > 0) {
+            sleep($seconds);
         }
     }
 

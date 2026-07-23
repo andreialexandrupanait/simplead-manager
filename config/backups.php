@@ -83,6 +83,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Async restore transport (C-09)
+    |--------------------------------------------------------------------------
+    | When the connector advertises the `async_restore` capability, the manager
+    | kicks a detached restore and polls its status instead of holding a 1800s
+    | synchronous request. `enabled` is a fleet-wide KILL-SWITCH — set it false to
+    | fall the whole fleet back to the synchronous path instantly if the async
+    | path ever misbehaves. If a connector cannot dispatch async, the manager
+    | also falls back to sync automatically.
+    */
+    'async_restore' => [
+        'enabled' => (bool) env('ASYNC_RESTORE_ENABLED', true),
+        'max_wait_seconds' => (int) env('ASYNC_RESTORE_MAX_WAIT_SECONDS', 1800),
+        'poll_interval_seconds' => (int) env('ASYNC_RESTORE_POLL_INTERVAL_SECONDS', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Level B verification sample size
     |--------------------------------------------------------------------------
     |
