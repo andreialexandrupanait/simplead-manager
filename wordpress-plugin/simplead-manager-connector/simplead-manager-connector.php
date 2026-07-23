@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.17.1
+ * Version: 2.18.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.17.1');
+define('SAM_VERSION', '2.18.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -143,6 +143,9 @@ final class SimpleAd_Manager_Connector {
 
         // Async backup preparation via WP-Cron fallback
         add_action('sam_async_backup_prepare', [$this, 'run_async_backup_prepare'], 10, 2);
+
+        // C-09: async restore via WP-Cron fallback (when loopback is unavailable).
+        add_action('sam_async_restore_execute', [$this, 'run_async_restore_execute'], 10, 1);
 
         // Single-shot cleanup of restore staging/trash directories that the
         // staged file restore could not delete within its time budget
@@ -352,6 +355,21 @@ final class SimpleAd_Manager_Connector {
         $request->set_param('token', $token);
         $request->set_param('type', $type);
         $endpoint->prepare_execute($request);
+    }
+
+    /**
+     * C-09: WP-Cron fallback runner for async restore. Reads the restore
+     * parameters from the task transient (via restore_execute) and runs the
+     * restore detached.
+     */
+    public function run_async_restore_execute(string $token): void {
+        ignore_user_abort(true);
+        @set_time_limit(3600);
+
+        $endpoint = new SAM_Backup_Endpoint();
+        $request = new WP_REST_Request('POST');
+        $request->set_param('token', $token);
+        $endpoint->restore_execute($request);
     }
 
     /**

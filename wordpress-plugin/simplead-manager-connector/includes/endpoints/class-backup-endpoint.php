@@ -28,6 +28,23 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
+        // C-09: async restore (kick / detached execute / poll).
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/restore-async', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'restore_async'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/restore-execute', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'restore_execute'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+        register_rest_route(SAM_REST_NAMESPACE, '/backup/restore-status', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'restore_status'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
         register_rest_route(SAM_REST_NAMESPACE, '/backup/prepare', [
             'methods'             => 'POST',
             'callback'            => [$this, 'prepare_backup'],
@@ -383,6 +400,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             'incremental_backup' => true,
             'manifest_generation' => true,
             'staged_restore' => true,
+            'async_restore' => true,
             'strategies' => ['s3_multipart', 'chunked_push', 's3_multipart_per_part'],
             'async_methods' => [
                 'cli'      => false,
@@ -1701,43 +1719,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
 
         try {
-            if ($type === 'database') {
-                $sam_api_key = get_option('sam_api_key');
-                $sam_api_secret = get_option('sam_api_secret');
-                $active_plugins = get_option('active_plugins', []);
-                $plugin_basename = defined('SAM_PLUGIN_BASENAME') ? SAM_PLUGIN_BASENAME : 'simplead-manager-connector/simplead-manager-connector.php';
-
-                SAM_Audit_Logger::log('restore_db_started', 'restore', 'database', 'Database restore initiated via SimpleAd Manager');
-                $this->restore_database($tmp_file);
-
-                $new_active = get_option('active_plugins', []);
-                if (!in_array($plugin_basename, $new_active, true)) {
-                    $new_active[] = $plugin_basename;
-                    update_option('active_plugins', $new_active);
-                }
-                if ($sam_api_key) {
-                    update_option('sam_api_key', $sam_api_key);
-                }
-                if ($sam_api_secret) {
-                    update_option('sam_api_secret', $sam_api_secret);
-                }
-
-                wp_cache_flush();
-
-                // The pre-restore tables were kept as samold_* through the
-                // swap; drop them now that the restore is confirmed good.
-                $this->drop_orphaned_restore_tables();
-
-                SAM_Audit_Logger::log('restore_db_completed', 'restore', 'database', 'Database restore completed');
-            } else {
-                SAM_Audit_Logger::log('restore_files_started', 'restore', 'files', "File restore initiated via SimpleAd Manager (mode: {$file_mode})");
-                $this->restore_files($tmp_file, $file_mode);
-                // Reset OPcache after file restore to prevent stale bytecode
-                if (function_exists('opcache_reset')) {
-                    opcache_reset();
-                }
-                SAM_Audit_Logger::log('restore_files_completed', 'restore', 'files', 'File restore completed');
-            }
+            $this->perform_typed_restore($tmp_file, $type, $file_mode);
 
             return new WP_REST_Response(['success' => true, 'type' => $type], 200);
         } catch (\Exception $e) {
@@ -1748,6 +1730,254 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             ], 500);
         } finally {
             @unlink($tmp_file);
+        }
+    }
+
+    /**
+     * C-09: async restore. Mirrors prepare_async — creates a task token +
+     * progress transient, dispatches the actual restore detached (loopback →
+     * cron), and returns immediately so the manager polls /backup/restore-status
+     * instead of holding a 1800s synchronous request. Backward compatible: the
+     * synchronous /backup/restore endpoint is unchanged; the manager only uses
+     * this path when the connector advertises the `async_restore` capability.
+     */
+    public function restore_async(WP_REST_Request $request): WP_REST_Response {
+        $type = $request->get_param('type');
+        $file_mode = $request->get_param('file_mode') ?: 'merge';
+        $download_url = $request->get_param('download_url');
+
+        if (!in_array($type, ['database', 'files'], true)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_TYPE', 'message' => 'Type must be "database" or "files".']], 400);
+        }
+        if (!in_array($file_mode, ['merge', 'staged'], true)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_FILE_MODE', 'message' => 'file_mode must be "merge" or "staged".']], 400);
+        }
+        if (empty($download_url)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'MISSING_DATA', 'message' => 'No download_url provided.']], 400);
+        }
+
+        $lock_key = 'sam_restore_lock';
+        $force = (bool) $request->get_param('force');
+        $existing_token = get_transient($lock_key);
+        if ($existing_token) {
+            if ($force) {
+                delete_transient($lock_key);
+                delete_transient('sam_restore_task_' . $existing_token);
+            } else {
+                $existing_task = get_transient('sam_restore_task_' . $existing_token);
+                if ($existing_task && $existing_task['status'] === 'working') {
+                    return new WP_REST_Response(['success' => true, 'async' => true, 'token' => $existing_token, 'resumed' => true], 200);
+                }
+                delete_transient($lock_key);
+                delete_transient('sam_restore_task_' . $existing_token);
+            }
+        }
+
+        $token = bin2hex(random_bytes(32));
+        set_transient('sam_restore_task_' . $token, [
+            'status' => 'working',
+            'progress' => 0,
+            'message' => 'Starting restore...',
+            'type' => $type,
+            'file_mode' => $file_mode,
+            'download_url' => $download_url,
+            'size' => null,
+            'checksum' => null,
+            'error' => null,
+            'started_at' => time(),
+            'updated_at' => time(),
+        ], 7200);
+        set_transient($lock_key, $token, 7200);
+
+        SAM_Audit_Logger::log('restore_async_started', 'restore', $type, "Async restore ({$type}, {$file_mode}) initiated");
+
+        $preferred_method = $request->get_param('preferred_method');
+
+        if (!$preferred_method || $preferred_method === 'loopback') {
+            if ($this->dispatch_restore_loopback($token)) {
+                return new WP_REST_Response(['success' => true, 'async' => true, 'token' => $token, 'method' => 'loopback'], 200);
+            }
+        }
+
+        if (!$preferred_method || $preferred_method === 'cron') {
+            $hook = 'sam_async_restore_execute';
+            if (!wp_next_scheduled($hook, [$token])) {
+                wp_schedule_single_event(time(), $hook, [$token]);
+                spawn_cron();
+            }
+            if (wp_next_scheduled($hook, [$token])) {
+                return new WP_REST_Response(['success' => true, 'async' => true, 'token' => $token, 'method' => 'cron'], 200);
+            }
+        }
+
+        // No async method available — clean up so the manager falls back to sync.
+        delete_transient('sam_restore_task_' . $token);
+        delete_transient($lock_key);
+
+        return new WP_REST_Response(['success' => true, 'async' => false, 'reason' => 'All async methods unavailable'], 200);
+    }
+
+    public function restore_execute(WP_REST_Request $request): WP_REST_Response {
+        ignore_user_abort(true);
+        @set_time_limit(3600);
+        @ini_set('memory_limit', '512M');
+
+        $token = $request->get_param('token');
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response(['success' => false, 'error' => 'Invalid token'], 400);
+        }
+
+        $task = get_transient('sam_restore_task_' . $token);
+        if (!$task || $task['status'] !== 'working') {
+            return new WP_REST_Response(['success' => false, 'error' => 'No pending task'], 404);
+        }
+
+        $this->run_restore_work($token, $task['type'], (string) $task['download_url'], (string) $task['file_mode']);
+
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    public function restore_status(WP_REST_Request $request): WP_REST_Response {
+        $token = $request->get_param('token');
+        if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'INVALID_TOKEN', 'message' => 'Invalid token.']], 400);
+        }
+
+        $task = get_transient('sam_restore_task_' . $token);
+        if (!$task) {
+            return new WP_REST_Response(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Task not found or expired.']], 404);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'status' => $task['status'],
+            'progress' => $task['progress'],
+            'message' => $task['message'],
+            'type' => $task['type'] ?? null,
+            'error' => $task['error'],
+            'started_at' => $task['started_at'] ?? null,
+            'updated_at' => $task['updated_at'] ?? null,
+        ], 200);
+    }
+
+    /**
+     * The detached restore body: download the staged archive, run the typed
+     * restore, and write terminal state to the task transient. Idempotent-safe —
+     * the manager reconciles a transport failure against this 'done' status.
+     */
+    private function run_restore_work(string $token, string $type, string $download_url, string $file_mode): void {
+        $task_key = 'sam_restore_task_' . $token;
+        $tmp_file = tempnam(sys_get_temp_dir(), 'sam_restore_');
+
+        try {
+            if (!$tmp_file) {
+                throw new \RuntimeException('Failed to create temp file.');
+            }
+
+            $this->update_task_progress($task_key, 15, 'Downloading restore data...');
+            $response = wp_remote_get($download_url, ['timeout' => 600, 'stream' => true, 'filename' => $tmp_file]);
+            if (is_wp_error($response)) {
+                throw new \RuntimeException('Download failed: ' . $response->get_error_message());
+            }
+            if (wp_remote_retrieve_response_code($response) !== 200) {
+                throw new \RuntimeException('Download returned HTTP ' . wp_remote_retrieve_response_code($response) . '.');
+            }
+
+            $this->update_task_progress($task_key, 55, ucfirst($type) . ' restore in progress...');
+            $this->perform_typed_restore($tmp_file, $type, $file_mode);
+
+            $task = get_transient($task_key) ?: [];
+            $task['status'] = 'done';
+            $task['progress'] = 100;
+            $task['message'] = ucfirst($type) . ' restore complete';
+            $task['updated_at'] = time();
+            set_transient($task_key, $task, 7200);
+            delete_transient('sam_restore_lock');
+        } catch (\Throwable $e) {
+            SAM_Audit_Logger::log('restore_async_failed', 'restore', $type, 'Async restore failed: ' . $e->getMessage());
+            $task = get_transient($task_key) ?: [];
+            $task['status'] = 'failed';
+            $task['error'] = $e->getMessage();
+            $task['updated_at'] = time();
+            set_transient($task_key, $task, 7200);
+            delete_transient('sam_restore_lock');
+        } finally {
+            if ($tmp_file) {
+                @unlink($tmp_file);
+            }
+        }
+    }
+
+    /**
+     * Fire a non-blocking, HMAC-signed loopback request to /backup/restore-execute
+     * so the restore runs detached. Same self-signing scheme as prepare_async.
+     */
+    private function dispatch_restore_loopback(string $token): bool {
+        $body = wp_json_encode(['token' => $token]);
+        $timestamp = (string) time();
+        $route = '/' . SAM_REST_NAMESPACE . '/backup/restore-execute';
+        $api_key = get_option('sam_api_key', '');
+        $api_secret = get_option('sam_api_secret', '');
+        $signature = hash_hmac('sha256', implode('|', ['POST', $route, $timestamp, $body]), $api_secret);
+
+        $result = wp_remote_post(rest_url(SAM_REST_NAMESPACE . '/backup/restore-execute'), [
+            'method' => 'POST',
+            'timeout' => 1,
+            'blocking' => false,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-SAM-Key' => $api_key,
+                'X-SAM-Timestamp' => $timestamp,
+                'X-SAM-Signature' => $signature,
+            ],
+            'body' => $body,
+            'sslverify' => false,
+        ]);
+
+        return !is_wp_error($result);
+    }
+
+    /**
+     * Shared typed-restore core used by both the synchronous restore() and the
+     * async run_restore_work(). A DB restore preserves the connector's own
+     * options (api keys, active-plugin entry) so the connector never locks itself
+     * out after importing the client's dump.
+     */
+    private function perform_typed_restore(string $tmp_file, string $type, string $file_mode): void {
+        if ($type === 'database') {
+            $sam_api_key = get_option('sam_api_key');
+            $sam_api_secret = get_option('sam_api_secret');
+            $plugin_basename = defined('SAM_PLUGIN_BASENAME') ? SAM_PLUGIN_BASENAME : 'simplead-manager-connector/simplead-manager-connector.php';
+
+            SAM_Audit_Logger::log('restore_db_started', 'restore', 'database', 'Database restore initiated via SimpleAd Manager');
+            $this->restore_database($tmp_file);
+
+            $new_active = get_option('active_plugins', []);
+            if (!in_array($plugin_basename, $new_active, true)) {
+                $new_active[] = $plugin_basename;
+                update_option('active_plugins', $new_active);
+            }
+            if ($sam_api_key) {
+                update_option('sam_api_key', $sam_api_key);
+            }
+            if ($sam_api_secret) {
+                update_option('sam_api_secret', $sam_api_secret);
+            }
+
+            wp_cache_flush();
+
+            // The pre-restore tables were kept as samold_* through the swap; drop
+            // them now that the restore is confirmed good.
+            $this->drop_orphaned_restore_tables();
+
+            SAM_Audit_Logger::log('restore_db_completed', 'restore', 'database', 'Database restore completed');
+        } else {
+            SAM_Audit_Logger::log('restore_files_started', 'restore', 'files', "File restore initiated via SimpleAd Manager (mode: {$file_mode})");
+            $this->restore_files($tmp_file, $file_mode);
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+            SAM_Audit_Logger::log('restore_files_completed', 'restore', 'files', 'File restore completed');
         }
     }
 

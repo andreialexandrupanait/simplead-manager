@@ -7,6 +7,17 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Added
+- **C-09 (wave 1 — connector) — async restore transport.** Connector **2.18.0**
+  adds `/backup/restore-async`, `/backup/restore-execute`, `/backup/restore-status`,
+  mirroring the proven `prepare-async` pattern: a restore now runs **detached**
+  (loopback → WP-Cron) against a `sam_restore_task_{token}` progress transient
+  instead of blocking a 1800s synchronous request. Advertises the `async_restore`
+  capability. **Strictly additive and backward compatible** — the synchronous
+  `/backup/restore` endpoint is unchanged (its typed-restore core was extracted
+  into a shared `perform_typed_restore()` used by both paths), so nothing changes
+  until the manager-side poll transport (wave 2) lands and the connector is pushed
+  to the fleet. *(Faza C, val C2.)*
 ### Fixed
 - **C-10 — connector capability negotiation for restore.** A full restore relies
   on the connector's atomic staged swap, but the job sent `file_mode=staged`
