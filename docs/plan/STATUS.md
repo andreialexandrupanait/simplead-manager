@@ -6,9 +6,14 @@
 ---
 ## ▶ RELUARE (inclusiv pe alt calculator) — CITEȘTE ÎNTÂI
 
-**Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** **FAZA D a PORNIT**
-(Andrei: „hai să continuăm și cu faza D"). **D1 GATA** (PR #121, branch `feat/faza-d-plan`): schema +
-seed 82 verificări; suita full verde (800 teste). Următorul val: **D2 — Screaming Frog headless pe dasher**.
+**Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** **FAZA D în curs**
+(Andrei: „hai să continuăm și cu faza D"). Pe main: **D1** (#121, schema + seed 82) + **D2a** (#122,
+fundația de ingestie SF — registru 57/2/5 + parser + loader). **D2b** (#123, jobul de crawl + coada
+`audit` + tracker `audit_runs`) — **PR deschis, verde local (819 teste integrare)**, de îmbinat după CI.
+Următorul val: **D3 — evaluatoarele deterministe + `RunAiChecks`** (port §2/§3 din `r4-metodologie.md`).
+⚠️ Deploy D2b: supervizor Horizon nou `audit` → `horizon:terminate`; binar SF + licență + `eula.accepted=15`
++ heap pe dasher (`docs/audit/screaming-frog/`). Migrări noi Faza D: `2026_07_23_000001` (modul) +
+`2026_07_23_000002` (audit_runs) — DDL pe pgsql_direct + restart pgbouncer.
 
 **Ce citești ca să reiei:** acest fișier + `docs/plan/program-prompt.md` + `docs/plan/propuneri.md`
 (scope aprobat) + `docs/plan/r4-metodologie.md` (planul de port al Fazei D) + `docs/plan/raport-faza-C.md` (audit).
@@ -38,7 +43,8 @@ seed 82 verificări; suita full verde (800 teste). Următorul val: **D2 — Scre
   cerere, fără plugin extern); E2 = linkuri moarte + IndexNow + scanare fișiere + SSO;
   scoase: Branda-light, Cloudflare geo/WAF (manual de Andrei)
 - [x] **Faza C — COMPLETĂ, ÎN PRODUCȚIE, AUDIT TRECUT** (auditor #118: VERDICT TRECE, 0 P0/P1). C1 + C2.
-- [ ] **Faza D — modulul SEO/Audit unificat (D1–D6)** ← URMĂTORUL (la STOP-point, așteaptă OK Andrei)
+- [ ] **Faza D — modulul SEO/Audit unificat (D1–D6)** ← ÎN CURS. D1✓ (#121) + D2a✓ (#122) pe main;
+  D2b (#123, crawl SF + coadă `audit`) PR deschis. Rămân: D3 evaluatoare+AI, D4 fix-uri AI, D5 monitorizare, D6 raport public+migrare.
 - [ ] Faza E — webp/conversie imagini prin conector + integrări bifate (linkuri moarte, IndexNow, scanare fișiere, SSO)
 - [ ] Faza F — șlefuire & datorie
   - **C-09 WAVE 3 FĂCUT (23 iul):** deploy prod C-09 (0 erori, healthy); conector 2.18.0 împins pe
