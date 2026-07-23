@@ -29,11 +29,20 @@
   - **Main HEAD `d317225`, tot verde (785/785).** ⚠️ Deploy: 4 migrări noi (GSC date, drop 12 orphans
     — pg_dump ÎNAINTE, 2FA cols, proven_restores + flag-uri sandbox); restart pgbouncer după DDL.
     Adminii se enrolează la MFA din Settings → Two-Factor.
-  - **Rămâne C2 — DOAR C-09** (transport async restore): schimbă conectorul (endpoint-uri restore-async/
-    status/execute după modelul backup prepare-async, refactor `restore()` sincron în work detașat +
-    transient `sam_restore_task_{token}`), Manager face poll semnat (după `pollPrepareStatus`),
-    finalizare idempotentă + reconciliere, kill-switch. **Cere bump conector + push pe flotă**
-    (doar site-uri test). Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
+  - **DEPLOY FĂCUT (22 iul):** tot ce era pe main e în producție — L12 + MFA + C-04 drops + restul.
+    pg_dump 334M luat înainte; 4 migrări aplicate; pgbouncer repornit; 0 erori; MFA confirmat live de Andrei.
+  - **C-09 (transport async restore) — WAVE 1 MERGED (#113):** conector 2.18.0 cu endpoint-uri
+    `/backup/restore-async|execute|status` (model prepare-async: work detașat loopback→cron + transient
+    `sam_restore_task_{token}`), capabilitate `async_restore`, `perform_typed_restore()` partajat.
+    **Strict aditiv/backward-compatible — conectorul NU e împins pe flotă, Manager încă sincron → 0 impact.**
+  - **RĂMÂNE C-09 wave 2+3:**
+    - **Wave 2 (Manager):** folosește async kick+poll (poll-and-release ca `pollPrepareStatus`) când
+      `async_restore` e anunțat (gate C-10 deja există), altfel sincron; **reconciliere idempotentă**
+      (transport failed dar conector `done` → succes, niciodată „fișiere noi + DB vechi") + kill-switch.
+      Refactorizează god-object-ul RestoreBackup (protejat de e2e C-13).
+    - **Wave 3:** push conector 2.18.0 pe **DOAR site-urile test** (notificarialimente.ro, universulsacru.ro)
+      + validare cap-coadă. **Op prod pe site-uri client LIVE — de făcut deliberat, cu Andrei.**
+  - Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
   - C-08 val 2 (follow-up): dashboard global proof + validare live pe dasher după provizionarea sandbox-ului.
   - **Follow-up opțional (Faza F):** upgrade Pint 1.27→1.29 + reformat codebase (amânat deliberat).
 - [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
