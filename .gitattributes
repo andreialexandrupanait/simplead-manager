@@ -6,6 +6,10 @@
 *.md diff=markdown
 *.php diff=php
 
+# SF crawl fixtures reproduce Screaming Frog's exact bytes (UTF-8 BOM + CRLF) —
+# keep them verbatim, no line-ending normalization.
+tests/Fixtures/Audit/crawl-sample/*.csv -text
+
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore

@@ -20,6 +20,19 @@ WordPress sites.
   is only "X of Y implemented", a locked design decision). Enums, models,
   factories. The old SEO module is untouched; it will be sunset behind a flag
   after parity. *(Faza D, val D1.)*
+- **Faza D (D2a) — Screaming Frog ingestion foundation.** The deterministic core
+  that turns a crawl folder into the normalized shape the evaluators (Faza D3)
+  consume. `SfExportRegistry` holds the **57 export tabs + 2 bulk exports + 5
+  reports** requested from SF 24.3 and the file-name resolution — normalization,
+  the fuzzy numeric-threshold match ("Over X Characters" → the file written with
+  the effective threshold), and SF's hyphen-removal quirk ("Content-Security-Policy"
+  → `contentsecuritypolicy`) — all **ported verbatim** from the audit repo's
+  `exports.ts`. `SfCsvParser` reads SF's BOM + doubled-quote CSV format with a row
+  cap; `SfCrawlLoader` is the single ingestion normalizer used identically for SF
+  headless output and manual uploads, preserving the load-bearing `--skip-empty`
+  semantic (an absent requested export = an empty filter = positive evidence). The
+  four SF operating docs are copied into `docs/audit/screaming-frog/`. Pure code,
+  no side effects — the crawl job + queue land in D2b. *(Faza D, val D2a.)*
 
 ### Fixed
 - **C-09 follow-up (Faza C audit P2)** — a redelivered in-progress async restore
