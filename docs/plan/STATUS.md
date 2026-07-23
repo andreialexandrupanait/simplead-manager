@@ -6,9 +6,9 @@
 ---
 ## ▶ RELUARE (inclusiv pe alt calculator) — CITEȘTE ÎNTÂI
 
-**Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** Următorul pas de
-program e **FAZA D** (modulul SEO/Audit unificat) — dar e la un **STOP-point**: pornește-o doar după OK-ul
-lui Andrei (el a zis „continuăm ulterior").
+**Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** **FAZA D a PORNIT**
+(Andrei: „hai să continuăm și cu faza D"). **D1 GATA** (PR #121, branch `feat/faza-d-plan`): schema +
+seed 82 verificări; suita full verde (800 teste). Următorul val: **D2 — Screaming Frog headless pe dasher**.
 
 **Ce citești ca să reiei:** acest fișier + `docs/plan/program-prompt.md` + `docs/plan/propuneri.md`
 (scope aprobat) + `docs/plan/r4-metodologie.md` (planul de port al Fazei D) + `docs/plan/raport-faza-C.md` (audit).
