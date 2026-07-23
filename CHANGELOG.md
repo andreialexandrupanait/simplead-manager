@@ -8,6 +8,20 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3b, fetch checks) — the direct-fetch v2 evaluators.** The checks SF
+  can't cover, proven by HTTP request and **ported verbatim** from the audit repo
+  (`fetch-checks.ts` + the `robots`/`redirects`/`headers`/`llmstxt` collectors):
+  **6.1** robots.txt allows the 8 AI user-agents (a faithful robots parser —
+  group specificity, longest-match rules, Allow-wins ties, `*`/`$` patterns),
+  **6.2** no WAF/server block on a real per-UA request (the 8 curl-`-A` UA
+  strings + the blocked-status set), **6.5** llms.txt exists and isn't an HTML
+  error page, **3.1** a single canonical HTTPS host reached in one hop across all
+  four http/https × www/non-www variants (manual redirect following), **3.8** a
+  non-existent URL returns a real 404, plus the homepage security/HSTS/CDN/cookie
+  headers as **3.10** evidence. A network failure never fabricates a verdict — the
+  check stays `state=null` with the error cited. HTTP goes through Laravel's client
+  (faked in tests — no real network). PSI + the orchestrator that assembles all 82
+  land next. *(Faza D, val D3b.)*
 - **Faza D (D3a) — deterministic Screaming Frog evaluators.** The engine that
   turns the ingested crawl (D2a) into a verdict per SF-covered check. Ported
   **verbatim** from the audit repo's `evaluators.ts`: the `combineFilters` base
