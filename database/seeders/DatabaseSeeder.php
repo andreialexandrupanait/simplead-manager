@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SiteStatusSeeder::class);
         $this->call(MaintenancePlanSeeder::class);
         $this->call(SecurityPresetSeeder::class);
+        $this->call(AuditChecksSeeder::class);
 
         if (app()->environment('local', 'testing')) {
             $this->call(DevelopmentSeeder::class);

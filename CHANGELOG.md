@@ -7,6 +7,20 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Added
+- **Faza D (D1) — unified SEO/Audit module: schema + seed.** The foundation of
+  the new audit module built on the 82-check methodology from the `simplead-audit`
+  repo. `methodology-v2/checks.js` is converted verbatim to
+  `database/data/audit-checks-v2.json` (regenerable, not hand-written) and seeded
+  into `audit_checks` (**exactly 82 checks, 5 sections: 44/10/5/13/10**) by an
+  idempotent seeder keyed on the stable methodology id ("2.1.1"). New tables:
+  `prospects`, `audits` (a DB CHECK enforces a **site XOR prospect** target),
+  `audit_check_results` (state EXISTA/NU_EXISTA/NU_SE_APLICA + cited evidence),
+  `audit_cards`, `audit_reports` — all jsonb, **no scores/weights** (aggregation
+  is only "X of Y implemented", a locked design decision). Enums, models,
+  factories. The old SEO module is untouched; it will be sunset behind a flag
+  after parity. *(Faza D, val D1.)*
+
 ### Fixed
 - **C-09 follow-up (Faza C audit P2)** — a redelivered in-progress async restore
   was hard-refused by the P0-06 re-run guard before the reconciliation branch

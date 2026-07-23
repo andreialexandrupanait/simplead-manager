@@ -1,0 +1,1739 @@
+{
+  "version": "2.0",
+  "updated": "2026-07",
+  "states": [
+    "EXISTA",
+    "NU_EXISTA",
+    "NU_SE_APLICA"
+  ],
+  "recommendationStates": [
+    "IMPLEMENTAT",
+    "NEIMPLEMENTAT"
+  ],
+  "aggregate": "X din Y recomandări implementate",
+  "prioritization": {
+    "impact": [
+      "mare",
+      "mediu",
+      "mic"
+    ],
+    "effort": [
+      "mare",
+      "mediu",
+      "mic"
+    ]
+  },
+  "sections": [
+    {
+      "id": "02",
+      "key": "seo-onsite",
+      "name": "SEO on-site",
+      "lenses": {
+        "seo": "On-site-ul este fundația: URL-uri, indexabilitate, headinguri, meta date și date structurate sunt semnalele primare de clasare.",
+        "ai": "Aceleași structuri (H1 clar, FAQ, schema, breadcrumbs) sunt exact ce extrag și citează modelele AI.",
+        "users": "Structura on-site corectă înseamnă pagini lizibile, navigabile și previzibile."
+      },
+      "subsections": [
+        {
+          "id": "2.1",
+          "name": "URL-uri SEO-friendly",
+          "checks": [
+            {
+              "id": "2.1.1",
+              "question": "Toate URL-urile indexabile sunt lowercase, cu cratime (fără underscore, fără spații)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "URL",
+                "filters": [
+                  "Uppercase",
+                  "Underscores",
+                  "Contains Space"
+                ],
+                "columns": [
+                  "Address"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "URL-urile inconsistente creează variante duplicate și diluează semnalul.",
+                "ai": "Asistenții AI citează URL-uri; cele curate sunt preferate la citare.",
+                "users": "Un URL lowercase cu cratime se citește și se partajează fără suspiciune."
+              },
+              "recommendationTemplate": "Redenumește [URL] în [URL-NOU] (lowercase, cratime, fără underscore/spații) și adaugă redirect 301 de la vechiul URL; actualizează linkurile interne să indice direct noul URL."
+            },
+            {
+              "id": "2.1.2",
+              "question": "URL-urile sunt fără diacritice / caractere non-ASCII?",
+              "source": {
+                "type": "sf_export",
+                "tab": "URL",
+                "filters": [
+                  "Non ASCII Characters"
+                ],
+                "columns": [
+                  "Address"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Caracterele non-ASCII se encodează urât și produc variante duplicate greu de canonicalizat.",
+                "ai": "URL-urile percent-encoded sunt ilizibile în citările generate de modele.",
+                "users": "Un URL cu %C4%83 în el pare rupt și descurajează clickul."
+              },
+              "recommendationTemplate": "Transliterează [URL] în [URL-NOU] (ă→a, â→a, î→i, ș→s, ț→t) și adaugă redirect 301 de la varianta cu diacritice."
+            },
+            {
+              "id": "2.1.3",
+              "question": "URL-urile indexabile sunt fără parametri (variantele cu parametri sunt canonicalizate)?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "URL",
+                  "filters": [
+                    "Parameters"
+                  ],
+                  "columns": [
+                    "Address"
+                  ]
+                },
+                {
+                  "type": "sf_export",
+                  "tab": "Canonicals",
+                  "columns": [
+                    "Canonical Link Element 1"
+                  ]
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Parametrii indexați multiplică aceeași pagină și consumă buget de crawl.",
+                "ai": "Crawlerele AI cu buget mic se pierd în variantele parametrizate ale aceleiași pagini.",
+                "users": "URL-ul curat, fără ?sort= și ?utm_, este cel pe care oamenii îl salvează și îl trimit."
+              },
+              "recommendationTemplate": "Adaugă pe varianta [URL]?[parametri] canonical absolut spre [URL] și păstrează indexabilă doar varianta fără parametri."
+            },
+            {
+              "id": "2.1.4",
+              "question": "URL-urile sunt scurte și curate (≤115 caractere, fără segmente repetate/slash-uri multiple)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "URL",
+                "filters": [
+                  "Over X Characters",
+                  "Repetitive Path",
+                  "Multiple Slashes"
+                ],
+                "columns": [
+                  "Address"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Path-urile repetitive și slash-urile duble semnalează generare defectă și produc duplicate.",
+                "ai": "URL-urile scurte sunt reproduse corect în răspunsurile AI; cele kilometrice se trunchiază.",
+                "users": "Un URL scurt spune instant unde duce."
+              },
+              "recommendationTemplate": "Scurtează [URL] la [URL-NOU] (≤115 caractere, fără segmente repetate, fără //) cu redirect 301 de la varianta veche."
+            }
+          ]
+        },
+        {
+          "id": "2.2",
+          "name": "Crawling și indexabilitate",
+          "checks": [
+            {
+              "id": "2.2.1",
+              "question": "Toate paginile importante au meta robots index,follow (explicit sau implicit)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Directives",
+                "filters": [
+                  "Noindex"
+                ],
+                "columns": [
+                  "Meta Robots 1"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Un noindex accidental scoate pagina complet din căutare.",
+                "ai": "Crawlerele AI respectă directivele robots; noindex-ul o ascunde și din răspunsurile lor.",
+                "users": "Pagina nu mai poate fi găsită organic de cei care o caută."
+              },
+              "recommendationTemplate": "Pe [URL] înlocuiește directiva actuală cu <meta name=\"robots\" content=\"index, follow\">."
+            },
+            {
+              "id": "2.2.2",
+              "question": "Toate paginile indexabile au self-canonical absolut?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Canonicals",
+                "filters": [
+                  "Missing",
+                  "Canonicalised",
+                  "Canonical Is Relative",
+                  "Multiple Conflicting"
+                ],
+                "columns": [
+                  "Canonical Link Element 1"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Canonical-ul lipsă sau conflictual lasă Google să aleagă singur varianta indexată.",
+                "ai": "Canonical-ul clar spune crawlerelor AI care e URL-ul de citat.",
+                "users": "Indirect: vizitatorii ajung pe varianta corectă a paginii."
+              },
+              "recommendationTemplate": "Adaugă pe [URL] exact un canonical absolut self-referential: <link rel=\"canonical\" href=\"[URL]\">."
+            },
+            {
+              "id": "2.2.3",
+              "question": "Toate paginile indexabile sunt prezente în sitemap-ul XML?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Sitemaps",
+                "filters": [
+                  "URLs not in Sitemap"
+                ],
+                "columns": [
+                  "Address"
+                ],
+                "note": "necesită Crawl Linked XML Sitemaps + Crawl Analysis"
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Sitemap-ul complet accelerează descoperirea și rea-crawlarea paginilor.",
+                "ai": "Sitemap-ul este harta pe care o folosesc și crawlerele AI la descoperire.",
+                "users": "Indirect: paginile noi apar mai repede în căutare."
+              },
+              "recommendationTemplate": "Adaugă [URL] în sitemap-ul XML (cu lastmod real) și retrimite sitemap-ul în GSC și Bing WT."
+            },
+            {
+              "id": "2.2.4",
+              "question": "Nicio pagină importantă nu e blocată în robots.txt?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Response Codes",
+                  "filters": [
+                    "Blocked by Robots.txt"
+                  ],
+                  "columns": [
+                    "Address"
+                  ]
+                },
+                {
+                  "type": "fetch",
+                  "target": "/robots.txt"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "O regulă Disallow prea largă poate scoate secțiuni întregi din crawl.",
+                "ai": "Aceleași reguli robots blochează și crawlerele AI.",
+                "users": "Paginile blocate dispar treptat din rezultate."
+              },
+              "recommendationTemplate": "Elimină din /robots.txt regula „Disallow: [regula]\" care acoperă [URL] (sau restrânge-o la path-ul care chiar trebuie blocat)."
+            },
+            {
+              "id": "2.2.5",
+              "question": "Toate paginile indexabile răspund cu cod 200?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Internal:All",
+                  "columns": [
+                    "Status Code"
+                  ]
+                },
+                {
+                  "type": "sf_export",
+                  "tab": "Response Codes",
+                  "filters": [
+                    "3xx",
+                    "4xx",
+                    "5xx"
+                  ]
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Erorile 4xx/5xx pierd pagini din index; 3xx-urile interne diluează semnalul.",
+                "ai": "Crawlerele AI abandonează la primul răspuns non-200.",
+                "users": "Erorile sunt fundături directe pentru vizitatori."
+              },
+              "recommendationTemplate": "Pentru [URL] (status [X]): corectează linkurile interne să indice destinația finală, repară pagina sau adaugă redirect 301 spre echivalentul valid."
+            },
+            {
+              "id": "2.2.6",
+              "question": "Fiecare pagină indexabilă primește linkuri interne (zero pagini orfane)?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Internal:All",
+                  "columns": [
+                    "Unique Inlinks"
+                  ]
+                },
+                {
+                  "type": "sf_report",
+                  "report": "Reports > Orphan Pages",
+                  "note": "cu GSC/GA4 conectate"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Paginile orfane nu primesc autoritate internă și se crawlează rar.",
+                "ai": "Crawlerele AI descoperă conținutul urmând linkuri; pagina orfană e invizibilă pentru ele.",
+                "users": "O pagină fără drum de navigare spre ea nu e găsită de nimeni."
+              },
+              "recommendationTemplate": "Adaugă cel puțin un link intern contextual din pagina-părinte tematică [URL-PĂRINTE] spre [URL], cu ancoră descriptivă."
+            }
+          ]
+        },
+        {
+          "id": "2.3",
+          "name": "H1 — heading principal",
+          "checks": [
+            {
+              "id": "2.3.1",
+              "question": "Fiecare pagină are exact un H1?",
+              "source": {
+                "type": "sf_export",
+                "tab": "H1",
+                "filters": [
+                  "Missing",
+                  "Multiple"
+                ],
+                "columns": [
+                  "H1-1"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "H1 lipsă sau multiplu tulbură semnalul principal de temă al paginii.",
+                "ai": "Modelele AI folosesc H1 ca titlu al sursei citate.",
+                "users": "Un singur titlu dominant confirmă instant despre ce e pagina."
+              },
+              "recommendationTemplate": "Pe [URL] păstrează exact un H1: <h1>[KEYWORD]</h1>; retrogradează celelalte H1-uri la H2."
+            },
+            {
+              "id": "2.3.2",
+              "question": "H1 = cuvântul cheie principal al paginii?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Internal:All",
+                  "columns": [
+                    "H1-1"
+                  ]
+                },
+                {
+                  "type": "gsc",
+                  "note": "interogări per URL"
+                },
+                {
+                  "type": "manual"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "H1 aliniat pe cuvântul cheie principal e cel mai puternic semnal on-page.",
+                "ai": "H1-ul formulat cum caută oamenii se potrivește cu întrebările puse asistenților AI.",
+                "users": "Vizitatorul vede în H1 exact ce a căutat."
+              },
+              "recommendationTemplate": "Rescrie H1 pe [URL] din „[H1-ACTUAL]\" în „[KEYWORD]\" (validat cu interogările GSC ale paginii)."
+            },
+            {
+              "id": "2.3.3",
+              "question": "Toate H1-urile sunt unice la nivel de site?",
+              "source": {
+                "type": "sf_export",
+                "tab": "H1",
+                "filters": [
+                  "Duplicate"
+                ],
+                "columns": [
+                  "H1-1"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Două pagini cu același H1 concurează între ele (canibalizare).",
+                "ai": "H1-uri duplicate fac sursele imposibil de diferențiat la citare.",
+                "users": "Pagini diferite cu același titlu derutează."
+              },
+              "recommendationTemplate": "Diferențiază H1-urile duplicate: [URL-1] păstrează „[KEYWORD-1]\", [URL-2] primește „[KEYWORD-2]\" (cuvântul cheie propriu al paginii)."
+            },
+            {
+              "id": "2.3.4",
+              "question": "H1-urile sunt fără decorațiuni (an, pipe, brand, emoji)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "H1",
+                "note": "analiza valorilor exportate",
+                "columns": [
+                  "H1-1"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Decorațiunile diluează cuvântul cheie și îmbătrânesc pagina (anul).",
+                "ai": "Modelele preiau H1 verbatim; decorurile ajung în răspunsuri.",
+                "users": "Titlul curat pare profesionist; emoji-urile și pipe-urile par spam."
+              },
+              "recommendationTemplate": "Curăță H1 pe [URL]: din „[H1-ACTUAL]\" în „[KEYWORD]\" (fără an, pipe, brand, emoji — brandul rămâne doar în meta title)."
+            }
+          ]
+        },
+        {
+          "id": "2.4",
+          "name": "H2 — heading secundar",
+          "checks": [
+            {
+              "id": "2.4.1",
+              "question": "Primul H2 conține cuvântul cheie secundar al paginii?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Internal:All",
+                  "columns": [
+                    "H2-1"
+                  ]
+                },
+                {
+                  "type": "manual"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Primul H2 acoperă cuvântul cheie secundar și lărgește relevanța paginii.",
+                "ai": "Modelele decupează pasaje pe granițele H2; un H2 tematic devine răspuns citabil.",
+                "users": "Sub-titlul confirmă a doua intenție de căutare a vizitatorului."
+              },
+              "recommendationTemplate": "Rescrie primul H2 pe [URL] în „[KEYWORD-SECUNDAR] – [sufix de acțiune]\"."
+            },
+            {
+              "id": "2.4.2",
+              "question": "H2-urile de pe paginile comerciale au sufix orientat spre acțiune?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "H2",
+                  "columns": [
+                    "H2-1"
+                  ]
+                },
+                {
+                  "type": "manual",
+                  "note": "pe template-uri"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Sufixul de acțiune diferențiază H2-ul de miile de headinguri generice concurente.",
+                "ai": "Formularea acțională spune modelelor ce poate face utilizatorul pe pagină.",
+                "users": "H2-ul cu îndemn împinge spre următorul pas."
+              },
+              "recommendationTemplate": "Adaugă sufix de acțiune pe H2-ul paginii [URL]: „[KEYWORD-SECUNDAR] – Vezi toate produsele\" (sau echivalent conversional)."
+            },
+            {
+              "id": "2.4.3",
+              "question": "Nu există H2 generice duplicate pe tot site-ul?",
+              "source": {
+                "type": "sf_export",
+                "tab": "H2",
+                "filters": [
+                  "Duplicate"
+                ],
+                "columns": [
+                  "H2-1"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "H2-urile identice pe tot site-ul nu adaugă niciun semnal tematic paginii.",
+                "ai": "Blocurile repetate sunt ignorate ca boilerplate de modelele AI.",
+                "users": "Sub-titlurile generice nu spun nimic despre pagina curentă."
+              },
+              "recommendationTemplate": "Rescrie H2-ul generic „[H2-ACTUAL]\" specific per pagină: pe [URL] devine „[KEYWORD-SECUNDAR] – [sufix de acțiune]\"."
+            }
+          ]
+        },
+        {
+          "id": "2.5",
+          "name": "H3 — CTA de final",
+          "checks": [
+            {
+              "id": "2.5.1",
+              "question": "Există un H3 CTA (formulă orientată spre conversie) la finalul listărilor/conținutului?",
+              "source": {
+                "type": "manual",
+                "note": "pe template-uri (opțional SF Custom Search)"
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "H3-ul tranzacțional acoperă interogările cu intenție de cumpărare (comandă, cumpără).",
+                "ai": "Formulează explicit acțiunea pe care asistenții AI o citează la întrebări de cumpărare.",
+                "users": "Închide pagina cu următorul pas clar, în punctul de decizie."
+              },
+              "recommendationTemplate": "Adaugă la finalul paginii [URL]: <h3>Comandă [KEYWORD] online cu livrare rapidă</h3> urmat de butonul de conversie."
+            }
+          ]
+        },
+        {
+          "id": "2.6",
+          "name": "Internal linking",
+          "checks": [
+            {
+              "id": "2.6.1",
+              "question": "Navigarea permite părinte → copii → frați pe toate categoriile?",
+              "sources": [
+                {
+                  "type": "manual",
+                  "note": "pe template-uri"
+                },
+                {
+                  "type": "sf_bulk_export",
+                  "export": "All Inlinks"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Arhitectura completă distribuie autoritatea și definește taxonomia.",
+                "ai": "Crawlerele AI descoperă tot inventarul urmând linkurile părinte-copii-frați.",
+                "users": "Navigarea în toate direcțiile elimină fundăturile."
+              },
+              "recommendationTemplate": "Pe template-ul de categorie [URL] adaugă: breadcrumbs spre părinte, listă vizibilă a sub-categoriilor și bloc „Categorii similare\" cu frații."
+            },
+            {
+              "id": "2.6.2",
+              "question": "Există secțiune de articole relevante pre-footer pe paginile comerciale?",
+              "source": {
+                "type": "manual",
+                "note": "pe template-uri"
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Podul comercial ↔ editorial transferă relevanță tematică între pagini.",
+                "ai": "Leagă răspunsurile informaționale de paginile comerciale citabile.",
+                "users": "Vizitatorul nedecis primește conținut de ghidare înainte de a pleca."
+              },
+              "recommendationTemplate": "Adaugă pe template-ul comercial [URL] un bloc pre-footer cu 3–4 articole din blog tematic legate de [KEYWORD]."
+            },
+            {
+              "id": "2.6.3",
+              "question": "Există carusel de articole similare la finalul articolelor?",
+              "source": {
+                "type": "manual",
+                "note": "pe template-uri"
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Linkurile între articole din aceeași temă construiesc clustere tematice.",
+                "ai": "Clusterele tematice consolidează autoritatea sursei pe subiect.",
+                "users": "Cititorul angajat primește următoarea lectură fără să caute."
+              },
+              "recommendationTemplate": "Adaugă la finalul template-ului de articol un carusel cu 3–6 articole din aceeași categorie editorială."
+            },
+            {
+              "id": "2.6.4",
+              "question": "Toate ancorele interne sunt descriptive (fără „click aici\"/ancore goale)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Links",
+                "filters": [
+                  "Non-Descriptive Anchor Text In Internal Outlinks",
+                  "Internal Outlinks With No Anchor Text"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Ancora descriptivă spune crawlerelor despre ce este pagina țintă.",
+                "ai": "Modelele folosesc textul ancorei pentru a înțelege relația dintre pagini.",
+                "users": "„Click aici\" nu spune unde duce linkul; ancora descriptivă da."
+              },
+              "recommendationTemplate": "Pe [URL-SURSĂ] rescrie ancora „[ANCORA-ACTUALĂ]\" în „[ancoră descriptivă cu KEYWORD-ul paginii țintă]\"."
+            }
+          ]
+        },
+        {
+          "id": "2.7",
+          "name": "Meta title și meta descriere",
+          "checks": [
+            {
+              "id": "2.7.1",
+              "question": "Toate title-urile respectă formula „[Keyword] - Brand.ro\"?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Page Titles",
+                  "columns": [
+                    "Title 1"
+                  ]
+                },
+                {
+                  "type": "manual",
+                  "note": "verificare formulă"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Cuvântul cheie primul în title e semnal direct de clasare.",
+                "ai": "Formula consecventă cu brandul construiește recunoaștere de entitate în citări.",
+                "users": "Title-ul predictibil spune ce e pagina și al cui e site-ul."
+              },
+              "recommendationTemplate": "Rescrie title-ul paginii [URL] în „[KEYWORD] - [BRAND].ro\"."
+            },
+            {
+              "id": "2.7.2",
+              "question": "Toate title-urile sunt unice, prezente, câte unul singur?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Page Titles",
+                "filters": [
+                  "Missing",
+                  "Duplicate",
+                  "Multiple",
+                  "Same as H1"
+                ],
+                "columns": [
+                  "Title 1"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Title-urile lipsă/duplicate lasă Google să genereze singur titlul din SERP.",
+                "ai": "Title-urile duplicate fac paginile indistincte la selecția sursei.",
+                "users": "Fiecare rezultat din SERP trebuie să promită altceva."
+              },
+              "recommendationTemplate": "Pe [URL] setează un singur title unic: „[KEYWORD] - [BRAND].ro\" (diferit de H1, care rămâne fără brand)."
+            },
+            {
+              "id": "2.7.3",
+              "question": "Title-urile sunt în limite (30–60 caractere)?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Page Titles",
+                "filters": [
+                  "Over X Characters",
+                  "Below X Characters"
+                ],
+                "columns": [
+                  "Title 1 Length"
+                ]
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Peste ~60 de caractere Google trunchiază sau rescrie title-ul.",
+                "ai": "Title-urile scurte se reproduc integral în răspunsurile AI.",
+                "users": "Titlul complet vizibil în SERP se citește dintr-o privire."
+              },
+              "recommendationTemplate": "Scurtează/extinde title-ul paginii [URL] la 30–60 caractere păstrând formula: „[KEYWORD] - [BRAND].ro\"."
+            },
+            {
+              "id": "2.7.4",
+              "question": "Toate meta descrierile sunt unice, ≤155–160 caractere, cu intenție comercială?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Meta Description",
+                  "filters": [
+                    "Missing",
+                    "Duplicate",
+                    "Over X Characters",
+                    "Below X Characters"
+                  ]
+                },
+                {
+                  "type": "manual",
+                  "note": "intenție comercială"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Descrierea unică și în limite este afișată ca atare, nu regenerată de Google.",
+                "ai": "Descrierea e preluată des ca rezumat al sursei în răspunsurile generative.",
+                "users": "Descrierea vinde clickul — e anunțul gratuit din SERP."
+              },
+              "recommendationTemplate": "Scrie pentru [URL] meta descrierea (≤155–160 caractere): „Cumpără [KEYWORD] online de pe [BRAND].ro. [Beneficiu concret + livrare/ofertă].\""
+            },
+            {
+              "id": "2.7.5",
+              "question": "Paginile de paginare au title cu prefix „Pagina X - \"?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Pagination",
+                "filters": [
+                  "Paginated 2+ Pages"
+                ],
+                "note": "încrucișat cu exportul „Page Titles\""
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Prefixul diferențiază title-urile paginilor de paginare, altfel duplicate.",
+                "ai": "Elimină ambiguitatea între pagina principală și continuările ei.",
+                "users": "Vizitatorul vede din SERP că a aterizat pe pagina 3, nu pe prima."
+              },
+              "recommendationTemplate": "Setează pe paginile de paginare title-ul „Pagina [X] - [KEYWORD] - [BRAND].ro\" (generat automat din template)."
+            }
+          ]
+        },
+        {
+          "id": "2.8",
+          "name": "FAQ + Schema FAQPage",
+          "checks": [
+            {
+              "id": "2.8.1",
+              "question": "Există secțiune FAQ vizibilă cu 7–10 întrebări pe paginile importante?",
+              "source": {
+                "type": "manual",
+                "note": "pe template-uri"
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "FAQ-ul acoperă interogările informaționale conexe și poate genera rich snippets.",
+                "ai": "Întrebare + răspuns concis este exact unitatea pe care o extrag modelele AI.",
+                "users": "Răspunde obiecțiilor înainte de conversie."
+              },
+              "recommendationTemplate": "Adaugă pe [URL] secțiunea „Întrebări frecvente despre [KEYWORD]\" cu 7–10 întrebări formulate cum le pun clienții (surse: GSC + întrebările din suport)."
+            },
+            {
+              "id": "2.8.2",
+              "question": "Există JSON-LD FAQPage identic cu conținutul vizibil?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Structured Data"
+                },
+                {
+                  "type": "fetch",
+                  "note": "HTML — comparație vizibil ↔ JSON-LD"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "FAQPage valid și identic cu vizibilul e eligibil pentru rich results fără risc de penalizare.",
+                "ai": "JSON-LD-ul dă modelelor perechile întrebare-răspuns în format direct parsabil.",
+                "users": "Indirect: aceleași răspunsuri apar direct în SERP."
+              },
+              "recommendationTemplate": "Adaugă pe [URL] blocul <script type=\"application/ld+json\"> FAQPage cu exact aceleași întrebări și răspunsuri ca secțiunea vizibilă (snippet complet în METODOLOGIE.md §2.8)."
+            }
+          ]
+        },
+        {
+          "id": "2.9",
+          "name": "Breadcrumbs + Schema BreadcrumbList",
+          "checks": [
+            {
+              "id": "2.9.1",
+              "question": "Există trail de breadcrumbs vizibil pe toate paginile sub homepage?",
+              "source": {
+                "type": "manual",
+                "note": "pe template-uri"
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Breadcrumbs întăresc arhitectura de linkuri și pot înlocui URL-ul brut în SERP.",
+                "ai": "Trail-ul arată modelelor unde se încadrează pagina în taxonomie.",
+                "users": "Orientare instantă și întoarcere cu un click la nivelul superior."
+              },
+              "recommendationTemplate": "Adaugă pe template-ul [URL] trail-ul vizibil: Acasă › [Categoria] › [TITLU pagina curentă] (markup complet în METODOLOGIE.md §2.9)."
+            },
+            {
+              "id": "2.9.2",
+              "question": "Există JSON-LD BreadcrumbList personalizat per pagină?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Structured Data"
+                },
+                {
+                  "type": "fetch",
+                  "note": "pe template-uri"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "BreadcrumbList alimentează afișarea trail-ului în rezultatele Google.",
+                "ai": "Pozițiile din listă dau modelelor taxonomia exactă a site-ului.",
+                "users": "Indirect: rezultatul din SERP arată calea, nu URL-ul brut."
+              },
+              "recommendationTemplate": "Generează per pagină JSON-LD BreadcrumbList cu pozițiile reale din taxonomie (nu un bloc static copiat pe tot site-ul); snippet complet în METODOLOGIE.md §2.9."
+            },
+            {
+              "id": "2.9.3",
+              "question": "Ultimul element din trail e text static (nu link)?",
+              "sources": [
+                {
+                  "type": "fetch",
+                  "note": "pe template-uri"
+                },
+                {
+                  "type": "manual"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Self-link-ul din breadcrumbs e un link intern inutil spre pagina însăși.",
+                "ai": "Elementul final fără item marchează clar pagina curentă în date structurate.",
+                "users": "Un link către pagina pe care ești deja derutează."
+              },
+              "recommendationTemplate": "Transformă ultimul element din trail pe [URL] în text static (<li aria-current=\"page\">[TITLU]</li>) și omite proprietatea item din ultimul ListItem al JSON-LD-ului."
+            }
+          ]
+        },
+        {
+          "id": "2.10",
+          "name": "Conținut on-page",
+          "checks": [
+            {
+              "id": "2.10.1",
+              "question": "Paginile de categorie au descrieri proprii de conținut?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Internal:All",
+                  "columns": [
+                    "Word Count"
+                  ],
+                  "note": "pe URL-urile de categorie"
+                },
+                {
+                  "type": "manual"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Categoria fără text propriu e un listing subțire, identic cu mii de altele.",
+                "ai": "Descrierea proprie dă modelelor context de recomandat, nu doar o grilă de produse.",
+                "users": "Răspunde la „ce e aici, pentru cine, cum aleg\"."
+              },
+              "recommendationTemplate": "Scrie pentru categoria [URL] o descriere unică (ce conține, pentru cine, cum aleg), plasată vizibil pe pagină."
+            },
+            {
+              "id": "2.10.2",
+              "question": "Articolele lungi au cuprins clickabil?",
+              "source": {
+                "type": "manual",
+                "note": "pe eșantion de articole"
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Ancorele din cuprins pot apărea ca jump links în SERP.",
+                "ai": "Cuprinsul expune structura articolului în format navigabil pentru modele.",
+                "users": "Cititorul sare direct la secțiunea care îl interesează."
+              },
+              "recommendationTemplate": "Adaugă la începutul articolului [URL] un cuprins cu ancore către fiecare H2 (markup în METODOLOGIE.md §2.10)."
+            },
+            {
+              "id": "2.10.3",
+              "question": "Toate imaginile au alt text conform formulei?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Images",
+                  "filters": [
+                    "Missing Alt Text",
+                    "Missing Alt Attribute"
+                  ]
+                },
+                {
+                  "type": "sf_bulk_export",
+                  "export": "Images"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Alt-ul e semnalul principal pentru căutarea de imagini și context on-page.",
+                "ai": "Modelele nu văd imaginea; alt-ul e singura ei descriere.",
+                "users": "Accesibilitate: screen-readerele citesc alt-ul."
+              },
+              "recommendationTemplate": "Setează pe imaginea [URL-IMAGINE] din pagina [URL]: alt=\"[TITLU], [x], [BRAND].ro\" (unde [x] = atributul distinctiv al imaginii: culoare, volum, variantă)."
+            },
+            {
+              "id": "2.10.4",
+              "question": "Articolele afișează autor, dată și categorie?",
+              "sources": [
+                {
+                  "type": "manual"
+                },
+                {
+                  "type": "sf_export",
+                  "tab": "Structured Data",
+                  "note": "Article"
+                }
+              ],
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Autorul și data sunt semnale E-E-A-T și de prospețime.",
+                "ai": "Modelele preferă surse cu autor și dată verificabile.",
+                "users": "Cititorul vede cine și când a scris — bază de încredere."
+              },
+              "recommendationTemplate": "Afișează pe template-ul de articol: autorul (linkat spre pagina de autor), data publicării/actualizării și categoria; aceleași valori intră în schema Article."
+            },
+            {
+              "id": "2.10.5",
+              "question": "Referințele de an din conținut sunt actuale?",
+              "source": {
+                "type": "manual",
+                "note": "opțional SF Custom Search pe anii vechi"
+              },
+              "team": "CONTINUT",
+              "lenses": {
+                "seo": "Anul vechi în titlu îngroapă pagina la interogările cu anul curent.",
+                "ai": "Modelele evită să citeze conținut datat vizibil.",
+                "users": "Informația marcată cu un an trecut pare expirată."
+              },
+              "recommendationTemplate": "Actualizează pe [URL] referința „[AN-VECHI]\" la anul curent doar după reverificarea informației; altfel elimină anul din titlu/conținut."
+            }
+          ]
+        },
+        {
+          "id": "2.11",
+          "name": "Schema corectă per tip de pagină",
+          "checks": [
+            {
+              "id": "2.11.1",
+              "question": "Paginile de produs au schema Product + Offer?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Structured Data"
+                },
+                {
+                  "type": "fetch",
+                  "note": "JSON-LD pe template"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Product + Offer aduc rich results cu preț și stoc în SERP.",
+                "ai": "Prețul și disponibilitatea structurate ajung direct în răspunsurile de cumpărare.",
+                "users": "Prețul vizibil din SERP filtrează clickurile potrivite."
+              },
+              "recommendationTemplate": "Adaugă pe template-ul de produs JSON-LD Product cu offers (Offer: url, priceCurrency RON, price real, availability) — snippet complet în METODOLOGIE.md §2.11."
+            },
+            {
+              "id": "2.11.2",
+              "question": "Articolele au schema Article?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Structured Data"
+                },
+                {
+                  "type": "fetch",
+                  "note": "JSON-LD pe template"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Article cu autor și date alimentează afișările îmbogățite pe conținut editorial.",
+                "ai": "Autorul și datele structurate cresc credibilitatea sursei la selecție.",
+                "users": "Indirect: articolele apar corect datate în rezultate."
+              },
+              "recommendationTemplate": "Adaugă pe template-ul de articol JSON-LD Article cu headline, author, datePublished, dateModified, image, publisher — snippet complet în METODOLOGIE.md §2.11."
+            },
+            {
+              "id": "2.11.3",
+              "question": "Organization/LocalBusiness apare DOAR pe homepage/contact (eliminată de pe blog/articole)?",
+              "source": {
+                "type": "fetch",
+                "note": "JSON-LD per template"
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Schema de entitate pe fiecare pagină diluează tipul real al paginii.",
+                "ai": "Fiecare pagină trebuie să-și declare propriul tip, nu tipul organizației.",
+                "users": "Fără impact direct — igienă de date structurate."
+              },
+              "recommendationTemplate": "Elimină blocul JSON-LD Organization/LocalBusiness de pe template-urile de blog/articol/categorie; păstrează-l exclusiv pe homepage și pagina de contact."
+            },
+            {
+              "id": "2.11.4",
+              "question": "Zero erori de validare pe datele structurate?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Structured Data",
+                "filters": [
+                  "Validation Errors",
+                  "Rich Result Validation Errors"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "O singură eroare poate descalifica pagina de la rich results.",
+                "ai": "JSON-LD-ul invalid e ignorat complet de parsere.",
+                "users": "Indirect: rich results pierdute înseamnă rezultate mai sărace."
+              },
+              "recommendationTemplate": "Corectează pe [URL] eroarea de validare „[EROAREA]\" din blocul [TIP-SCHEMA] (proprietatea lipsă/valoarea invalidă citată exact din SF)."
+            }
+          ]
+        },
+        {
+          "id": "2.12",
+          "name": "Paginare și categorii duplicate",
+          "checks": [
+            {
+              "id": "2.12.1",
+              "question": "Paginile 2+ de paginare au self-canonical (nu canonical spre pagina 1), iar /page/1 nu există ca duplicat?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Pagination"
+                },
+                {
+                  "type": "sf_export",
+                  "tab": "Canonicals"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Canonical-ul spre pagina 1 ascunde de la indexare produsele de pe paginile următoare.",
+                "ai": "Paginarea corectă expune crawlerelor tot inventarul, nu doar prima pagină.",
+                "users": "Indirect: toate produsele rămân găsibile din căutare."
+              },
+              "recommendationTemplate": "Setează pe [URL]/page/[X] self-canonical spre propriul URL și title „Pagina [X] - [KEYWORD] - [BRAND].ro\"; dacă /page/1 răspunde 200, redirecționează-l 301 spre [URL]."
+            },
+            {
+              "id": "2.12.2",
+              "question": "Categoriile care dublează listing-ul principal au noindex,follow?",
+              "sources": [
+                {
+                  "type": "sf_export",
+                  "tab": "Directives"
+                },
+                {
+                  "type": "manual",
+                  "note": "decizie pe lista de categorii"
+                }
+              ],
+              "team": "DEV",
+              "lenses": {
+                "seo": "Categoriile-clonă canibalizează listing-ul principal pe aceleași interogări.",
+                "ai": "Duplicatele consumă bugetul mic de crawl al crawlerelor AI.",
+                "users": "Fără impact direct — vizitatorii pot naviga duplicatele în continuare."
+              },
+              "recommendationTemplate": "Adaugă pe categoria duplicată [URL]: <meta name=\"robots\" content=\"noindex, follow\"> (follow rămâne ca linkurile spre produse să transmită semnal)."
+            },
+            {
+              "id": "2.12.3",
+              "question": "URL-urile noindex sunt excluse din sitemap?",
+              "source": {
+                "type": "sf_export",
+                "tab": "Sitemaps",
+                "filters": [
+                  "Non-Indexable URLs in Sitemap"
+                ]
+              },
+              "team": "DEV",
+              "lenses": {
+                "seo": "Sitemap-ul cu URL-uri noindex trimite semnale contradictorii și erodează încrederea în sitemap.",
+                "ai": "Harta curată duce crawlerele doar la conținutul care merită citit.",
+                "users": "Fără impact direct — igienă de sitemap."
+              },
+              "recommendationTemplate": "Elimină din sitemap-ul XML toate URL-urile non-indexabile listate (începând cu [URL]); sitemap-ul conține exclusiv URL-uri indexabile cu răspuns 200."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "key": "tehnic",
+      "name": "Recomandări tehnice",
+      "lenses": {
+        "seo": "Gazda canonică unică, HTTPS complet, redirect-urile curate și sitemap-ul onest sunt igiena fără de care semnalele se diluează.",
+        "ai": "Crawlerele AI urmează greu lanțurile de redirect și abandonează la challenge-uri; un site tehnic curat este un site citabil.",
+        "users": "Viteza, pagina 404 utilă și căutarea internă funcțională sunt experiența de bază."
+      },
+      "checks": [
+        {
+          "id": "3.1",
+          "question": "Există o singură gazdă canonică (www/non-www, http→https) printr-un singur 301?",
+          "sources": [
+            {
+              "type": "fetch",
+              "note": "curl pe cele 4 variante (http/https × www/non-www)"
+            },
+            {
+              "type": "sf_report",
+              "report": "Reports > Redirects > Redirect Chains"
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Patru gazde care răspund diferit împart autoritatea în patru.",
+            "ai": "Un singur hop de redirect e tot ce parcurg fiabil crawlerele AI.",
+            "users": "Oricum ar tasta adresa, ajung pe aceeași variantă securizată."
+          },
+          "recommendationTemplate": "Configurează un singur 301 de la toate cele 3 variante non-canonice spre https://www.[BRAND].ro (bloc nginx/.htaccess gata de lipit în METODOLOGIE.md §3.1)."
+        },
+        {
+          "id": "3.2",
+          "question": "HTTPS e complet, fără mixed content?",
+          "source": {
+            "type": "sf_export",
+            "tab": "Security",
+            "filters": [
+              "HTTP URLs",
+              "Mixed Content"
+            ]
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "HTTPS e semnal de clasare; mixed content declanșează avertismente de browser.",
+            "ai": "Resursele http blocate lasă pagini incomplete la crawl.",
+            "users": "Avertismentul „nesecurizat\" ucide încrederea instant."
+          },
+          "recommendationTemplate": "Rescrie la https:// toate resursele listate (URL pagină | resursă http | înlocuire https); înlocuiește global referințele http:// hard-codate din template-uri și baza de date."
+        },
+        {
+          "id": "3.3",
+          "question": "Nu există lanțuri sau bucle de redirect intern?",
+          "sources": [
+            {
+              "type": "sf_report",
+              "report": "Reports > Redirects > Redirect Chains"
+            },
+            {
+              "type": "sf_export",
+              "tab": "Response Codes",
+              "filters": [
+                "Redirect Chain",
+                "Redirect Loop"
+              ]
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Fiecare hop suplimentar pierde semnal și încetinește crawlul.",
+            "ai": "Crawlerele AI abandonează frecvent după primul redirect.",
+            "users": "Lanțurile se simt ca pagini lente; buclele sunt erori vizibile."
+          },
+          "recommendationTemplate": "Scurtează lanțul [URL-SURSĂ] → ... → [URL-FINAL] la un singur 301 direct spre [URL-FINAL] și actualizează linkurile interne să indice direct destinația."
+        },
+        {
+          "id": "3.4",
+          "question": "Sitemap-ul e integru, cu lastmod real (nu generat identic pe tot)?",
+          "sources": [
+            {
+              "type": "fetch",
+              "note": "sitemap XML"
+            },
+            {
+              "type": "sf_export",
+              "tab": "Sitemaps"
+            },
+            {
+              "type": "manual",
+              "note": "comparație lastmod ↔ modificări reale"
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "lastmod onest prioritizează re-crawlarea paginilor chiar modificate.",
+            "ai": "Harta corectă și datată ghidează crawlerele AI spre conținutul proaspăt.",
+            "users": "Indirect: actualizările ajung mai repede în rezultate."
+          },
+          "recommendationTemplate": "Corectează generatorul de sitemap să scrie <lastmod> cu data reală a ultimei modificări per URL; dacă data reală nu e disponibilă, elimină lastmod complet."
+        },
+        {
+          "id": "3.5",
+          "question": "Imaginile sunt servite WebP cu srcset?",
+          "sources": [
+            {
+              "type": "sf_export",
+              "tab": "Internal:Images",
+              "columns": [
+                "Content Type"
+              ]
+            },
+            {
+              "type": "psi",
+              "note": "per URL — modern image formats"
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Greutatea imaginilor apasă direct pe LCP, semnal de clasare.",
+            "ai": "Fără impact direct — beneficiul e viteza generală de crawl.",
+            "users": "Pagini vizibil mai rapide, mai ales pe mobil."
+          },
+          "recommendationTemplate": "Convertește imaginile listate la WebP și servește-le cu srcset + sizes + width/height (snippet complet în METODOLOGIE.md §3.5)."
+        },
+        {
+          "id": "3.6",
+          "question": "Lazy-load e aplicat DOAR sub fold, cu elementul LCP încărcat eager?",
+          "sources": [
+            {
+              "type": "psi",
+              "note": "per URL (SF tab „PageSpeed\")"
+            },
+            {
+              "type": "fetch",
+              "note": "HTML — atribute loading="
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "LCP lazy-load-at e cea mai frecventă auto-sabotare de Core Web Vitals.",
+            "ai": "Fără impact direct — igienă de performanță.",
+            "users": "Hero-ul apare instant în loc să aștepte propriul lazy-load."
+          },
+          "recommendationTemplate": "Pe [URL]: elimină loading=\"lazy\" de pe elementul LCP ([URL-IMAGINE]), setează loading=\"eager\" + fetchpriority=\"high\" + <link rel=\"preload\">; păstrează lazy doar sub fold."
+        },
+        {
+          "id": "3.7",
+          "question": "Hărțile/video-urile se încarcă la interacțiune (nu la load)?",
+          "source": {
+            "type": "manual",
+            "note": "pe paginile cu embed-uri"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Iframe-urile terțe la load sunt printre cele mai grele costuri de performanță.",
+            "ai": "Fără impact direct — igienă de performanță.",
+            "users": "Pagina devine interactivă imediat; video-ul pornește doar la cerere."
+          },
+          "recommendationTemplate": "Înlocuiește pe [URL] embed-ul încărcat la load cu placeholder static (thumbnail + buton) și injectează iframe-ul la click (snippet complet în METODOLOGIE.md §3.7)."
+        },
+        {
+          "id": "3.8",
+          "question": "Există pagină 404 customizată care întoarce cod 404 real?",
+          "source": {
+            "type": "fetch",
+            "note": "pe URL inexistent"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Soft-404 (200 pe pagini inexistente) umple indexul cu pagini goale.",
+            "ai": "Codul 404 real spune crawlerelor să nu citeze pagina inexistentă.",
+            "users": "404-ul util (căutare + linkuri spre categorii) recuperează vizita."
+          },
+          "recommendationTemplate": "Configurează pagina 404 customizată să răspundă cu HTTP 404 real (nginx: error_page 404 /404.html) și include în ea căutarea internă + linkuri spre categoriile principale."
+        },
+        {
+          "id": "3.9",
+          "question": "Există search intern funcțional (cu rezultatele noindex)?",
+          "sources": [
+            {
+              "type": "manual"
+            },
+            {
+              "type": "sf_export",
+              "tab": "URL",
+              "filters": [
+                "Internal Search"
+              ]
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Paginile de căutare indexate generează conținut duplicat infinit.",
+            "ai": "Fără impact direct — igienă de index.",
+            "users": "Căutarea internă e plasa de siguranță a navigării."
+          },
+          "recommendationTemplate": "Adaugă pe paginile de rezultate ale căutării interne <meta name=\"robots\" content=\"noindex, follow\">; deindexează URL-urile de căutare deja indexate (listate exhaustiv)."
+        },
+        {
+          "id": "3.10",
+          "question": "Toate headerele de securitate sunt prezente (HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy)?",
+          "source": {
+            "type": "sf_export",
+            "tab": "Security",
+            "filters": [
+              "Missing HSTS Header",
+              "Missing Content-Security-Policy Header",
+              "Missing X-Content-Type-Options Header",
+              "Missing X-Frame-Options Header",
+              "Missing Secure Referrer-Policy Header"
+            ]
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Site-ul securizat susține încrederea generală în domeniu.",
+            "ai": "Fără impact direct — igienă de securitate.",
+            "users": "Protecție reală contra clickjacking, sniffing și downgrade."
+          },
+          "recommendationTemplate": "Adaugă headerele lipsă cu valorile recomandate din METODOLOGIE.md §3.10 (HSTS max-age=31536000; nosniff; SAMEORIGIN; strict-origin-when-cross-origin; CSP calibrat pe resursele reale, testat întâi Report-Only)."
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "key": "seo-offsite",
+      "name": "SEO off-site",
+      "lenses": {
+        "seo": "Backlink-urile, mențiunile și profilul Google Business rămân semnale de autoritate și de încredere.",
+        "ai": "Modelele AI recomandă afaceri pe baza surselor terțe — fără prezență off-site citabilă nu există materie primă pentru recomandare.",
+        "users": "Recenziile și mențiunile în presă sunt validarea socială căutată înainte de alegere."
+      },
+      "checks": [
+        {
+          "id": "4.1",
+          "question": "Există profil Google Business activ, cu recenzii și răspunsuri la recenzii?",
+          "source": {
+            "type": "manual",
+            "note": "Google Maps / GBP"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "GBP e semnalul local dominant pentru pachetul de hărți.",
+            "ai": "Recenziile GBP sunt sursă directă pentru recomandările AI locale.",
+            "users": "Profilul activ cu răspunsuri arată o afacere vie."
+          },
+          "recommendationTemplate": "Completează integral profilul GBP (categorie principală corectă, program, telefon, site, fotografii) și răspunde la fiecare recenzie în maximum 7 zile, inclusiv la cele negative."
+        },
+        {
+          "id": "4.2",
+          "question": "Există listări în directoarele relevante ale domeniului?",
+          "source": {
+            "type": "web",
+            "note": "căutări web manuale"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Listările consistente construiesc citations și încredere de entitate.",
+            "ai": "Directoarele sunt printre sursele cel mai des citate de modele la recomandări.",
+            "users": "Prezența în directoarele de nișă e un canal direct de descoperire."
+          },
+          "recommendationTemplate": "Înscrie [BRAND] în directoarele relevante identificate în raport (listate nominal, cu URL-ul de înscriere), cu NAP identic cu site-ul."
+        },
+        {
+          "id": "4.3",
+          "question": "Există mențiuni în presă / articole comparative?",
+          "source": {
+            "type": "web",
+            "note": "căutări web manuale"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Mențiunile editoriale sunt backlink-urile cu cea mai mare greutate.",
+            "ai": "Articolele comparative sunt materia primă din care modelele construiesc „top X\".",
+            "users": "Presa terță validează mai puternic decât orice text propriu."
+          },
+          "recommendationTemplate": "Țintește mențiuni în publicațiile și comparativele identificate în raport pentru interogările „[categoria] recomandate\" / „cel mai bun [KEYWORD] România\"."
+        },
+        {
+          "id": "4.4",
+          "question": "Profilele sociale există și au NAP consecvent cu site-ul?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "NAP inconsecvent fragmentează entitatea în ochii motoarelor.",
+            "ai": "Modelele reconciliază brandul între surse după NAP; nepotrivirile creează dubii.",
+            "users": "Datele de contact diferite între platforme derutează și pierd clienți."
+          },
+          "recommendationTemplate": "Aliniază Nume, Adresă, Telefon caracter-cu-caracter pe site, GBP și toate profilele sociale (tabel platformă | NAP actual | NAP corect în raport)."
+        },
+        {
+          "id": "4.5",
+          "question": "Există backlink-uri de la surse relevante?",
+          "sources": [
+            {
+              "type": "gsc",
+              "note": "raport Linkuri"
+            },
+            {
+              "type": "manual"
+            }
+          ],
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Backlink-urile relevante rămân semnal central de autoritate.",
+            "ai": "Sursele care linkează spre site sunt aceleași pe care modelele le citesc despre brand.",
+            "users": "Indirect: autoritatea câștigată aduce vizibilitate organică."
+          },
+          "recommendationTemplate": "Construiește backlink-uri de la sursele relevante numite în raport (pornind de la golurile din raportul Linkuri GSC față de profilul concurenților)."
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "key": "cro",
+      "name": "CRO",
+      "lenses": {
+        "seo": "O pagină care convertește justifică investiția în trafic, iar semnalele de engagement susțin clasarea.",
+        "ai": "Asistenții AI preiau promisiunile explicite (timp de răspuns, preț, canal de contact) când descriu afacerea.",
+        "users": "Lentila principală: CRO este reducerea fricțiunii dintre intenție și acțiune."
+      },
+      "checks": [
+        {
+          "id": "5.1",
+          "question": "Propunerea de valoare e clară în hero (ce, pentru cine, de ce voi)?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Hero-ul aliniat pe intenție reduce bounce-ul de pe traficul organic.",
+            "ai": "Propunerea explicită e descrierea pe care modelele o preiau despre afacere.",
+            "users": "În 5 secunde vizitatorul decide dacă rămâne."
+          },
+          "recommendationTemplate": "Rescrie hero-ul pe formula: „[Ce oferi] pentru [cine] — [diferențiatorul concret]\" + sub-headline cu beneficiul principal cuantificat."
+        },
+        {
+          "id": "5.2",
+          "question": "Există un CTA primar unic și consecvent pe tot funnel-ul?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Fără impact direct — igienă de conversie.",
+            "ai": "Acțiunea unică și numită e cea pe care asistenții o transmit utilizatorului.",
+            "users": "Un singur buton dominant elimină paralizia deciziei."
+          },
+          "recommendationTemplate": "Definește un singur CTA primar cu textul „[CTA — ex. Solicită ofertă]\", identic pe tot funnel-ul; retrogradează vizual toate celelalte butoane la stil secundar."
+        },
+        {
+          "id": "5.3",
+          "question": "Formularele afișează o promisiune de timp de răspuns?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Promisiunea scrisă („răspuns în X ore\") e citabilă de asistenți la comparații.",
+            "users": "Incertitudinea „când mă contactează?\" e o frică reală care blochează submit-ul."
+          },
+          "recommendationTemplate": "Adaugă lângă butonul de submit textul: „Răspundem în maximum [X] ore lucrătoare.\" — și respectă promisiunea operațional."
+        },
+        {
+          "id": "5.4",
+          "question": "Există canal instant (chat/WhatsApp)?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Canalul instant apare în recomandările AI ca modalitate de contact imediat.",
+            "users": "Segmentul care nu completează formulare primește o cale directă."
+          },
+          "recommendationTemplate": "Adaugă butonul WhatsApp cu link https://wa.me/40[număr] și mesaj precompletat despre [KEYWORD] (snippet complet în METODOLOGIE.md §05)."
+        },
+        {
+          "id": "5.5",
+          "question": "Există dovezi sociale lângă punctele de decizie?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Recenziile on-site pot alimenta rich results de rating.",
+            "ai": "Dovezile concrete (cifre, nume) sunt exact ce citează modelele despre reputație.",
+            "users": "Validarea în punctul de decizie, nu într-o pagină separată, mută acul."
+          },
+          "recommendationTemplate": "Plasează minimum un element de dovadă (recenzie cu nume, cifră verificabilă, logo client) lângă fiecare CTA/formular/pas de checkout."
+        },
+        {
+          "id": "5.6",
+          "question": "Prețurile sau intervalele sunt vizibile înainte de captarea lead-ului?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Prețul pe pagină acoperă interogările „cât costă [KEYWORD]\".",
+            "ai": "Asistenții răspund la „cât costă\" doar din surse care publică prețul.",
+            "users": "Prețul ascuns e percepția de preț mare + un lead pierdut."
+          },
+          "recommendationTemplate": "Publică prețul sau intervalul „de la [X] lei\" înainte de orice câmp de formular; dacă prețul variază, publică intervalul și factorii care îl influențează."
+        },
+        {
+          "id": "5.7",
+          "question": "Formularele sunt fără câmpuri inutile?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Fără impact direct.",
+            "users": "Fiecare câmp în plus taie măsurabil din rata de completare."
+          },
+          "recommendationTemplate": "Redu formularul la câmpurile folosite efectiv în primul răspuns (țintă 3–4: nume, contact, mesaj); orice alt câmp devine opțional sau se elimină."
+        },
+        {
+          "id": "5.8",
+          "question": "Există pagină de mulțumire cu pașii următori?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Fără impact direct.",
+            "users": "Confirmarea + pașii următori transformă anxietatea post-submit în încredere."
+          },
+          "recommendationTemplate": "Creează pagina de mulțumire cu URL propriu: confirmarea, promisiunea de timp reluată („te contactăm în [X] ore\"), pașii următori și 2–3 linkuri utile."
+        },
+        {
+          "id": "5.9",
+          "question": "Există evenimente GA4 pe conversii (formulare, click-uri contact)?",
+          "sources": [
+            {
+              "type": "ga4"
+            },
+            {
+              "type": "manual",
+              "note": "verificare GTM"
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Fără măsurare nu se poate demonstra valoarea traficului organic.",
+            "ai": "Fără impact direct.",
+            "users": "Indirect: deciziile de optimizare se iau pe date, nu pe păreri."
+          },
+          "recommendationTemplate": "Configurează în GA4/GTM evenimente distincte per conversie (generate_lead la submit, contact_click pe tel:/mailto:/WhatsApp), marcate ca evenimente cheie."
+        },
+        {
+          "id": "5.10",
+          "question": "(e-commerce) Există guest checkout?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "DEV",
+          "applicability": "ecommerce",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Fără impact direct.",
+            "users": "Obligativitatea contului e printre primele cauze de abandon de coș."
+          },
+          "recommendationTemplate": "Activează guest checkout; oferă crearea contului opțional după plasarea comenzii, nu înainte."
+        },
+        {
+          "id": "5.11",
+          "question": "(e-commerce) Costul total e vizibil devreme în checkout?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "DEV",
+          "applicability": "ecommerce",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Costul de livrare publicat e citabil la întrebări de cumpărare.",
+            "users": "Costurile-surpriză la final sunt cauza #1 de abandon."
+          },
+          "recommendationTemplate": "Afișează costul total estimat (cu livrare) din primul pas al checkout-ului; publică pragul de livrare gratuită dacă există."
+        },
+        {
+          "id": "5.12",
+          "question": "(e-commerce) Există trust badges la checkout?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "applicability": "ecommerce",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Fără impact direct.",
+            "users": "Semnalele de siguranță lângă butonul de plată reduc frica de card."
+          },
+          "recommendationTemplate": "Adaugă în checkout, lângă butonul de plată: badge plată securizată, politica de retur linkată, sigla ANPC/SOL (obligatorii legal în România)."
+        },
+        {
+          "id": "5.13",
+          "question": "(e-commerce) Există recenzii pe paginile de produs?",
+          "source": {
+            "type": "manual"
+          },
+          "team": "CONTINUT",
+          "applicability": "ecommerce",
+          "lenses": {
+            "seo": "Recenziile alimentează aggregateRating și rich results cu stele.",
+            "ai": "Modelele citează volumul și tonul recenziilor la recomandări de produs.",
+            "users": "Recenziile sunt criteriul de decizie dominant la cumpărare."
+          },
+          "recommendationTemplate": "Implementează sistem de recenzii pe paginile de produs; adaugă aggregateRating în schema Product doar dacă recenziile există vizibil pe pagină."
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "key": "llm-aeo-geo",
+      "name": "LLM / AEO / GEO",
+      "userAgents": [
+        "GPTBot",
+        "OAI-SearchBot",
+        "ChatGPT-User",
+        "ClaudeBot",
+        "Claude-User",
+        "PerplexityBot",
+        "Google-Extended",
+        "bingbot"
+      ],
+      "lenses": {
+        "seo": "Aceleași fundamente (HTML fără dependență de JS, Bing indexat, entitate consecventă) susțin și căutarea clasică.",
+        "ai": "Lentila principală: dacă crawlerele AI sunt blocate sau conținutul e invizibil fără JavaScript, site-ul nu există în răspunsurile asistenților.",
+        "users": "Un segment în creștere își începe căutarea într-un asistent AI; prezența acolo este prezență în fața lor."
+      },
+      "checks": [
+        {
+          "id": "6.1",
+          "question": "robots.txt permite toți cei 8 user-agenți AI?",
+          "source": {
+            "type": "fetch",
+            "target": "/robots.txt",
+            "note": "parsare reguli per UA"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "bingbot din listă e și crawler clasic de căutare.",
+            "ai": "Disallow pe GPTBot/ClaudeBot/PerplexityBot scoate site-ul din răspunsurile AI.",
+            "users": "Indirect: absența din răspunsurile AI e absență din fața lor."
+          },
+          "recommendationTemplate": "Adaugă în /robots.txt blocurile Allow pentru toți cei 8 user-agenți AI (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-User, PerplexityBot, Google-Extended, bingbot) — snippet complet în METODOLOGIE.md §6.1."
+        },
+        {
+          "id": "6.2",
+          "question": "Serverul/WAF-ul NU blochează user-agenții AI (testat efectiv)?",
+          "source": {
+            "type": "fetch",
+            "note": "curl -A per UA (200 vs 403/challenge)"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "WAF-ul care blochează bingbot rupe și indexarea Bing clasică.",
+            "ai": "robots.txt permisiv nu ajută dacă WAF-ul răspunde 403 la user-agenții AI.",
+            "users": "Indirect: blocajul tehnic e invizibil până dispar recomandările."
+          },
+          "recommendationTemplate": "Rulează bucla curl -A pe cei 8 user-agenți (comanda gata de lipit în METODOLOGIE.md §6.2); pentru fiecare răspuns non-200, adaugă whitelist în regulile WAF pentru user-agentul [UA]."
+        },
+        {
+          "id": "6.3",
+          "question": "Conținutul critic e prezent în HTML-ul inițial, fără dependență de JS?",
+          "sources": [
+            {
+              "type": "sf_export",
+              "note": "dublu-crawl: Text Only vs JavaScript rendering — diff Word Count/H1"
+            },
+            {
+              "type": "fetch",
+              "note": "HTML brut"
+            }
+          ],
+          "team": "DEV",
+          "lenses": {
+            "seo": "Randarea JS întârzie și poate rata indexarea conținutului.",
+            "ai": "Majoritatea crawlerelor AI nu execută JavaScript — conținutul doar-JS e invizibil pentru ele.",
+            "users": "HTML-ul servit direct e și cel mai rapid perceput."
+          },
+          "recommendationTemplate": "Livrează server-side (SSR sau pre-rendering) conținutul critic lipsă din HTML-ul inițial pe template-urile listate ([URL] | Word Count fără JS | cu JS | elemente lipsă)."
+        },
+        {
+          "id": "6.4",
+          "question": "Indexarea e confirmată în Bing Webmaster Tools?",
+          "source": {
+            "type": "bing",
+            "note": "verificare manuală în Bing WT"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Bing e al doilea motor clasic ca volum.",
+            "ai": "Bing alimentează ChatGPT și Copilot — fără index Bing, invizibil acolo.",
+            "users": "Indirect: acoperire pe toate canalele de căutare."
+          },
+          "recommendationTemplate": "Verifică site-ul în Bing Webmaster Tools (import direct din GSC), trimite sitemap-ul și confirmă indexarea paginilor importante."
+        },
+        {
+          "id": "6.5",
+          "question": "llms.txt există și e curat?",
+          "source": {
+            "type": "fetch",
+            "target": "/llms.txt"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Fără impact direct pe căutarea clasică.",
+            "ai": "llms.txt e rezumatul curat al site-ului oferit direct modelelor.",
+            "users": "Fără impact direct."
+          },
+          "recommendationTemplate": "Publică /llms.txt în Markdown curat: numele + o frază despre afacere, paginile principale cu descrieri de o frază, contactul (șablon complet în METODOLOGIE.md §6.5)."
+        },
+        {
+          "id": "6.6",
+          "question": "Schema de entitate e consecventă (Organization pe homepage, sameAs către profiluri)?",
+          "source": {
+            "type": "fetch",
+            "note": "JSON-LD homepage/contact"
+          },
+          "team": "DEV",
+          "lenses": {
+            "seo": "Entitatea consolidată susține knowledge panel-ul și brandul în SERP.",
+            "ai": "sameAs leagă brandul de profilurile verificabile — baza reconcilierii de entitate.",
+            "users": "Indirect: datele de contact corecte apar consecvent peste tot."
+          },
+          "recommendationTemplate": "Adaugă pe homepage JSON-LD Organization cu name, url, logo, contactPoint și sameAs către toate profilurile reale (snippet complet în METODOLOGIE.md §6.6); datele identice cu cele vizibile și cu GBP."
+        },
+        {
+          "id": "6.7",
+          "question": "Există FAQ conversațional pe paginile cheie (întrebări cum le-ar pune un om)?",
+          "source": {
+            "type": "manual",
+            "note": "leagă de 2.8"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Întrebările naturale acoperă interogările long-tail vocale și conversaționale.",
+            "ai": "Întrebarea formulată ca în chat se potrivește exact cu prompturile utilizatorilor.",
+            "users": "Găsesc întrebarea lor, nu eticheta corporate."
+          },
+          "recommendationTemplate": "Reformulează întrebările FAQ de pe [URL] conversațional („cât costă să...\", „care e diferența dintre...\"), pe baza interogărilor GSC și a întrebărilor reale din suport."
+        },
+        {
+          "id": "6.8",
+          "question": "Există rezumat răspuns-direct la începutul paginilor importante?",
+          "source": {
+            "type": "manual",
+            "note": "pe template-uri"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Paragraful-răspuns e candidatul natural pentru featured snippet.",
+            "ai": "Modelele extrag exact acest format ca răspuns direct.",
+            "users": "Esența în primele 3 fraze, fără scroll."
+          },
+          "recommendationTemplate": "Adaugă la începutul paginii [URL] un paragraf de 2–3 fraze pe formula: „[KEYWORD] este/oferă [esența]. [Pentru cine + beneficiul]. [Diferențiatorul/dovada].\""
+        },
+        {
+          "id": "6.9",
+          "question": "Există prezență off-site citabilă de către LLM-uri?",
+          "source": {
+            "type": "web",
+            "note": "căutări web (leagă de 04)"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Aceleași surse terțe sunt și backlink-uri/mențiuni clasice.",
+            "ai": "Modelele recomandă din directoare, recenzii și comparative — fără ele, nimic de citat.",
+            "users": "Sursele terțe sunt cele pe care le verifică și oamenii."
+          },
+          "recommendationTemplate": "Confirmă că sursele identificate la 4.2–4.3 sunt accesibile crawlerelor și menționează [BRAND] cu date corecte; golurile devin ținte de PR/listare, numite în raport."
+        },
+        {
+          "id": "6.10",
+          "question": "Există set de prompturi de monitorizare definit pe categoriile de interes?",
+          "source": {
+            "type": "manual",
+            "note": "livrabil produs de auditor"
+          },
+          "team": "CONTINUT",
+          "lenses": {
+            "seo": "Fără impact direct.",
+            "ai": "Fără monitorizare nu se vede dacă prezența în răspunsurile AI crește sau scade.",
+            "users": "Indirect: optimizarea urmărește ce văd efectiv utilizatorii de asistenți."
+          },
+          "recommendationTemplate": "Definește setul de prompturi pe 4 categorii (recomandare directă, comparație, intenție de cumpărare, informațional — structura în METODOLOGIE.md §6.10), rulat lunar pe ChatGPT/Claude/Perplexity/Gemini, cu prezența/absența și citatul arhivate per prompt."
+        }
+      ]
+    }
+  ]
+}
