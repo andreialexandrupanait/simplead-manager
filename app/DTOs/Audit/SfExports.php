@@ -26,4 +26,15 @@ final readonly class SfExports
     {
         return $this->files[$label] ?? null;
     }
+
+    /**
+     * Always returns an SfExportFile for the label — a synthetic
+     * "not requested, absent" one when the label was not part of the crawl set.
+     * Port of exportOf() (src/lib/evaluation/v2/exports.ts).
+     */
+    public function exportOf(string $label): SfExportFile
+    {
+        return $this->files[$label]
+            ?? new SfExportFile($label, requested: false, present: false, fileName: null, rows: [], parseTruncated: false);
+    }
 }

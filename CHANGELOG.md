@@ -8,6 +8,19 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3a) — deterministic Screaming Frog evaluators.** The engine that
+  turns the ingested crawl (D2a) into a verdict per SF-covered check. Ported
+  **verbatim** from the audit repo's `evaluators.ts`: the `combineFilters` base
+  semantic (an empty SF filter is **positive** evidence — all filters empty →
+  EXISTA, any populated → NU_EXISTA with the affected URLs capped at 500), plus
+  every per-check evaluator (`2.1.x`–`3.10`) with their exact filter lists, notes,
+  and evidence shapes — including the special cases: indexable-only rows, the
+  parameters/canonical cross-check (2.1.3), non-200 indexable pages (2.2.5),
+  orphan pages (2.2.6), the "Pagina X - " pagination-title prefix (2.7.5), the
+  structured-data precondition sentinel (2.11.4), and pagination self-canonical
+  (2.12.1). Checks that can't be proven from SF alone carry SF context but stay
+  `state=null` for the auditor. No scores/weights anywhere. PSI + fetch checks +
+  the orchestrator land in D3b; AI eval/draft in D3c/D3d. *(Faza D, val D3a.)*
 - **Faza D (D1) — unified SEO/Audit module: schema + seed.** The foundation of
   the new audit module built on the 82-check methodology from the `simplead-audit`
   repo. `methodology-v2/checks.js` is converted verbatim to
