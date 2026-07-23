@@ -8,6 +8,20 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3, AI pipeline) — the crawl now runs the AI tier end-to-end.** Two
+  pieces close the loop from a crawl to persisted AI findings. (1) The
+  **page-content collector** (`PageContentCollector`, port of `page-content.ts`
+  cheerio→DOMXPath): representative-page selection (homepage + one of each
+  type, filtered to indexable 200 HTML) and the qualitative-signal extraction the
+  AI needs — visible text, headings, CTAs, forms, FAQ, prices, social proof,
+  JSON-LD types, chat/WhatsApp — compact and capped. (2) The **`AuditAiPipeline`**,
+  invoked by `RunSfCrawl` **only when `ANTHROPIC_API_KEY` is set** (an AI failure
+  never fails the crawl — the deterministic results already stand): per module it
+  collects pages, AI-evaluates the still-unknown qualitative checks (updating them
+  to `state_set_by=ai`), then drafts `audit_cards` for the NU_EXISTA gaps with the
+  every-gap-covered fallback. Regeneration replaces only DRAFT_AI cards, keeping
+  human-touched ones. Faked in tests — no real API, no key. Real PSI collection
+  (3.5/3.6) is the one remaining C1 follow-up. *(Faza D, val D3 wiring.)*
 - **Faza D (D3d) — AI drafting of recommendation cards.** `AiCardDrafter` turns a
   module's NU_EXISTA gaps into recommendation cards (title, diagnosis, per-URL
   table, code blocks, callouts) via a forced strict tool call — **ported verbatim**
