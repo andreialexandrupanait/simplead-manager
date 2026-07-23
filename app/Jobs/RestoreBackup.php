@@ -118,6 +118,16 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->attempts() > 1 && $freshStatus !== BackupStatus::Pending) {
+            // C-09: before refusing, reconcile — a redelivered async restore may
+            // have been fully completed by the CONNECTOR while the transport (or
+            // the worker) died. If every expected async operation is 'done' on the
+            // connector, the restore genuinely finished: mark it complete instead
+            // of hard-failing (never "new files + old database"). Anything less
+            // stays a hard refusal (P0-06) — we never auto-resume a partial restore.
+            if ($freshStatus === BackupStatus::InProgress && $this->tryReconcileAsyncRestore()) {
+                return;
+            }
+
             $this->fail(new \RuntimeException(
                 "Restore of backup {$this->backup->id} was redelivered after a prior attempt that did "
                 ."not complete cleanly (status: {$freshStatus?->value}); not re-running automatically. "
@@ -1029,6 +1039,74 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             'file_mode' => $fileMode,
         ], [], 1800);
         $result->throw();
+    }
+
+    /**
+     * C-09: reconcile a redelivered in-progress async restore against the
+     * connector's own state. Returns true (and marks the restore Completed) ONLY
+     * when every expected async operation (files and/or database) has a cached
+     * in-flight token whose connector task reports 'done' — i.e. the restore
+     * really finished and only the manager's transport/worker died. Any missing
+     * or not-yet-done operation returns false, leaving the P0-06 hard refusal in
+     * place so a partial restore is never auto-resumed.
+     */
+    protected function tryReconcileAsyncRestore(): bool
+    {
+        if (! $this->shouldUseAsyncRestore()) {
+            return false;
+        }
+
+        $expected = array_values(array_filter([
+            $this->restoreFiles ? 'files' : null,
+            $this->restoreDatabase ? 'database' : null,
+        ]));
+        if ($expected === []) {
+            return false;
+        }
+
+        $api = app(WordPressApiServiceFactory::class)->make($this->backup->site);
+
+        foreach ($expected as $type) {
+            $token = Cache::get("restore-async:{$this->backup->id}:{$type}");
+            if (! is_string($token) || ! $this->restoreTaskIsDone($api, $token)) {
+                return false;
+            }
+        }
+
+        foreach ($expected as $type) {
+            Cache::forget("restore-async:{$this->backup->id}:{$type}");
+        }
+
+        $this->backup->update([
+            'restore_status' => BackupStatus::Completed,
+            'restore_stage' => 'completed',
+            'restore_progress_percent' => 100,
+            'restore_progress_message' => 'Reconciled: the connector completed the restore after a transport interruption.',
+            'last_restored_at' => now(),
+        ]);
+        Log::info("Restore of backup {$this->backup->id} reconciled from connector state after a redelivered attempt.");
+        SyncWordPressSite::dispatch($this->backup->site);
+
+        return true;
+    }
+
+    /**
+     * One-shot check (no poll loop) of whether a connector restore task is 'done'.
+     * A transport error or a missing task reads as not-done (fail-safe).
+     */
+    protected function restoreTaskIsDone(WordPressApiServiceInterface $api, string $connectorToken): bool
+    {
+        try {
+            $response = $api->request('POST', '/backup/restore-status', ['token' => $connectorToken], [], 30);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if ($response->status() === 404) {
+            return false;
+        }
+
+        return (string) ($response->json()['status'] ?? '') === 'done';
     }
 
     /**

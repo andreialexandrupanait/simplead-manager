@@ -7,6 +7,16 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Fixed
+- **C-09 follow-up (Faza C audit P2)** — a redelivered in-progress async restore
+  was hard-refused by the P0-06 re-run guard before the reconciliation branch
+  could run, so a restore the connector actually finished (only the manager's
+  transport/worker died) required a manual re-trigger. `RestoreBackup` now
+  reconciles first: if **every** expected async operation (files and/or database)
+  has a cached in-flight token whose connector task reports `done`, it marks the
+  restore complete instead of failing. Anything less keeps the P0-06 hard refusal
+  — a partial restore is never auto-resumed ("new files + old database").
+
 ### Added
 - **C-09 (wave 2 — manager) — async restore transport.** When the connector
   advertises `async_restore` (C-10 capability gate) and the fleet-wide
