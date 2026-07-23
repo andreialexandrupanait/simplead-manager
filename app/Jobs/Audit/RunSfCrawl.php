@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Jobs\Audit;
 
+use App\DTOs\Audit\SfExports;
 use App\Enums\AuditRunStatus;
 use App\Enums\AuditStatus;
+use App\Enums\CheckState;
 use App\Enums\CrawlSource;
+use App\Enums\ProspectProfile;
 use App\Models\Audit;
+use App\Models\AuditCheck;
+use App\Models\AuditCheckResult;
 use App\Models\AuditRun;
+use App\Services\Audit\AuditEvaluator;
 use App\Services\Audit\SfCrawlLoader;
 use App\Services\Audit\SfCrawlRunner;
 use Illuminate\Bus\Queueable;
@@ -121,6 +127,8 @@ class RunSfCrawl implements ShouldQueue
                 $present, $total, $manifest['unmatched'],
             ));
 
+            $this->evaluateAndPersist($audit, $exports);
+
             $this->run->update([
                 'status' => AuditRunStatus::Done,
                 'finished_at' => now(),
@@ -138,6 +146,45 @@ class RunSfCrawl implements ShouldQueue
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Run the v2 evaluators over the ingested crawl and persist one result per
+     * check (state + cited evidence). Deterministic sources only for now — PSI
+     * collection is wired in a follow-up (psiMobile stays null, so 3.5/3.6 remain
+     * manual). state_set_by=auto; the auditor overrides in the editor.
+     */
+    private function evaluateAndPersist(Audit $audit, SfExports $exports): void
+    {
+        $checks = AuditCheck::query()->get(['id', 'key', 'applicability']);
+        $checkList = $checks->map(static fn (AuditCheck $c): array => [
+            'key' => $c->key,
+            'applicability' => $c->applicability,
+        ])->all();
+        $profile = $audit->prospect?->profile;
+        $clientProfile = $profile instanceof ProspectProfile ? $profile->value : '';
+
+        $evaluations = (new AuditEvaluator)->evaluate($exports, $audit->url, $clientProfile, $checkList);
+
+        $idByKey = $checks->pluck('id', 'key');
+        $now = now();
+        $counts = ['EXISTA' => 0, 'NU_EXISTA' => 0, 'NU_SE_APLICA' => 0, 'manual' => 0];
+        foreach ($evaluations as $key => $eval) {
+            $checkId = $idByKey[$key] ?? null;
+            if ($checkId === null) {
+                continue;
+            }
+            AuditCheckResult::updateOrCreate(
+                ['audit_id' => $audit->id, 'audit_check_id' => $checkId],
+                ['state' => $eval->state, 'evidence' => $eval->evidence, 'state_set_by' => 'auto', 'collected_at' => $now],
+            );
+            $counts[$eval->state instanceof CheckState ? $eval->state->value : 'manual']++;
+        }
+
+        $this->log(sprintf(
+            'Evaluated %d checks: %d EXISTA, %d NU_EXISTA, %d NU_SE_APLICA, %d left manual.',
+            count($evaluations), $counts['EXISTA'], $counts['NU_EXISTA'], $counts['NU_SE_APLICA'], $counts['manual'],
+        ));
     }
 
     public function failed(Throwable $e): void

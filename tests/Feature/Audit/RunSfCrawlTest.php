@@ -9,6 +9,7 @@ use App\Enums\AuditStatus;
 use App\Enums\CrawlSource;
 use App\Jobs\Audit\RunSfCrawl;
 use App\Models\Audit;
+use App\Models\AuditCheckResult;
 use App\Services\Audit\ScreamingFrogCrawlRunner;
 use App\Services\Audit\SfCrawlLoader;
 use App\Services\Audit\SfCrawlRunner;
@@ -16,6 +17,7 @@ use App\Services\Audit\SfExportRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -35,6 +37,8 @@ class RunSfCrawlTest extends TestCase
         parent::setUp();
         $this->tmpBase = sys_get_temp_dir().'/audit-crawls-'.bin2hex(random_bytes(6));
         config(['audit.crawls_base_dir' => $this->tmpBase]);
+        // The evaluation step runs the fetch-based checks — keep them off the network.
+        Http::fake();
     }
 
     protected function tearDown(): void
@@ -78,6 +82,10 @@ class RunSfCrawlTest extends TestCase
             ['present' => 5, 'absent' => 59, 'unmatched' => 1, 'total' => 64],
             $run->manifest,
         );
+
+        // The crawl also evaluates + persists one result per methodology check.
+        $this->assertSame(82, AuditCheckResult::where('audit_id', $audit->id)->count());
+        $this->assertSame(82, AuditCheckResult::where('audit_id', $audit->id)->where('state_set_by', 'auto')->count());
     }
 
     public function test_manual_upload_source_ingests_without_running_the_crawler(): void
