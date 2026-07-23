@@ -45,6 +45,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Audit\SfCrawlRunner::class,
             \App\Services\Audit\ScreamingFrogCrawlRunner::class,
         );
+
+        // Faza D: the audit AI client (Anthropic HTTP impl; faked in tests).
+        $this->app->bind(
+            \App\Services\Audit\Ai\AuditAiClient::class,
+            \App\Services\Audit\Ai\HttpAuditAiClient::class,
+        );
     }
 
     /**

@@ -8,6 +8,22 @@ WordPress sites.
 ## [Unreleased]
 
 ### Added
+- **Faza D (D3c) — AI evaluation of qualitative check states.** `AiCheckEvaluator`
+  judges the ~48 qualitative checks nothing deterministic can reach (CRO, content,
+  LLM, off-site) STRICTLY from the representative pages' content, via a forced
+  strict tool call. The system prompt is **ported verbatim**, and the
+  **anti-fabrication guarantee is enforced structurally in code**, not just asked
+  for: `checkKey` is an enum of the module's own keys (the model can't touch other
+  checks), NECUNOSCUT → `state=null` + de-verificat, and any EXISTA/NU_EXISTA/
+  NU_SE_APLICA verdict whose citation (`dovada`) is shorter than 8 chars is
+  **demoted to null** — a verdict without cited evidence is never accepted.
+  Unknown-key and duplicate evaluations are dropped with a warning; a missing
+  evaluation is flagged. The Anthropic call goes through an injectable
+  `AuditAiClient` (HTTP impl reuses the shared `ANTHROPIC_API_KEY`; **faked in
+  tests — no real API, no key**), model pinned to `claude-sonnet-5`, one call per
+  module + a single max-tokens retry. Page-content collection + wiring the AI tier
+  into the crawl job come next (needs the page-content collector); D4 (applying AI
+  fixes) still needs the key in prod. *(Faza D, val D3c.)*
 - **Faza D (D3b, orchestrator) — evaluation assembled + persisted end-to-end.**
   The keystone that turns a crawl into stored verdicts: `AuditEvaluator` merges the
   four sources — deterministic SF (D3a), fetch checks (D3b), **PSI** (3.5 modern

@@ -29,4 +29,22 @@ return [
         'timeout' => (int) env('SF_TIMEOUT_SECONDS', 1800),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | AI (Anthropic) — qualitative evaluation + card drafting
+    |--------------------------------------------------------------------------
+    | Reuses the shared ANTHROPIC_API_KEY. The model is pinned to the current
+    | Sonnet line (best quality/cost for the per-module judgement); do not change
+    | it without re-checking cost and strict tool-use behavior. When the key is
+    | absent the AI tier is simply skipped (deterministic results stand).
+    */
+    'ai' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('AUDIT_AI_MODEL', 'claude-sonnet-5'),
+        'base_url' => env('AUDIT_AI_BASE_URL', 'https://api.anthropic.com/v1/messages'),
+        'anthropic_version' => '2023-06-01',
+        'timeout' => (int) env('AUDIT_AI_TIMEOUT', 120),
+        'eval_max_tokens' => 8000,
+    ],
+
 ];
