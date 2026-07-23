@@ -1,7 +1,32 @@
 # STATUS program — corectare completă + modul SEO/Audit unificat
 
-**Ultima actualizare:** 22 iulie 2026
+**Ultima actualizare:** 23 iulie 2026
 **Promptul-program:** `docs/plan/program-prompt.md` (v1.1) — sursa de adevăr pentru faze, reguli, acceptanță.
+
+---
+## ▶ RELUARE (inclusiv pe alt calculator) — CITEȘTE ÎNTÂI
+
+**Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** Următorul pas de
+program e **FAZA D** (modulul SEO/Audit unificat) — dar e la un **STOP-point**: pornește-o doar după OK-ul
+lui Andrei (el a zis „continuăm ulterior").
+
+**Ce citești ca să reiei:** acest fișier + `docs/plan/program-prompt.md` + `docs/plan/propuneri.md`
+(scope aprobat) + `docs/plan/r4-metodologie.md` (planul de port al Fazei D) + `docs/plan/raport-faza-C.md` (audit).
+
+**Mediu (fără PHP pe host — tot prin docker):**
+- Teste/lint: `docker run --rm --network host -v <repo>:/work -w /work --entrypoint ./vendor/bin/{phpunit|pint|phpstan} simplead-app:latest ...` (test DB = `sam-test-pgsql`/`sam-test-redis` pe 127.0.0.1 via phpunit.xml; PHPStan `--memory-limit=1G`). Suita full ~15–21 min.
+- Composer: imaginea `composer:2` cu `--ignore-platform-req=ext-pcntl --ignore-platform-req=ext-gd --ignore-platform-req=ext-redis`; **NU** `--ignore-platform-req=php` (a pus symfony v8/PHP 8.4 în lock → CI roșu). `config.platform.php=8.3.32` e pinat; `laravel/pint=1.27.1` pinat.
+- Deploy: `./deploy.sh` (git pull + gate CI care AȘTEAPTĂ + `migrate --database=pgsql_direct` + restart pgbouncer + nginx ultimul). pg_dump prod: `docker exec simplead-pgsql sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > out.dump`.
+- **tinker LIPSEȘTE în prod.** Rulare ad-hoc: `docker compose -f docker-compose.prod.yml exec -T app php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); ...'`.
+- **Faza D precondiție:** cheia Anthropic în `.env` prod (D4 fix-uri AI). Clona metodologiei: `git clone https://github.com/andreialexandrupanait/simplead-audit.git ../simplead-audit` (@ 9aeb9f4). Site piloți: notificarialimente.ro (id 41) + universulsacru.ro (id 23).
+
+**Rămas mărunt (P2/P3 din audit + follow-ups):**
+- **P2-1 (deschis):** env vars noi Faza C de adăugat în `.env.example` (hook `protect-env-files.sh` blochează scrierea prin Claude — Andrei le lipește; listă în CHANGELOG / raport-faza-C).
+- P2-2 REZOLVAT (#119: reconciliere async înainte de hard-fail).
+- 5× P3 în `raport-faza-C.md` (netblocante).
+- Faza F backlog: descompunere god-objects (RestoreBackup/CreateBackup — protejate de e2e C-13), reducere phpstan-baseline + level 6, i18n scăpări, multi-locație uptime, upgrade Pint 1.29 + reformat, regenerare `pgsql-schema.sql`, C-08 val 2 (dashboard proof + provizionare sandbox live pe dasher).
+- Reconciliere async cross-job-death completă = follow-up când async se activează pe TOATĂ flota (acum doar 2 site test).
+---
 
 ## Unde suntem
 
@@ -12,7 +37,10 @@
   notificarialimente.ro + universulsacru.ro; E1 redefinit (conversie imagini PRIN CONECTOR, la
   cerere, fără plugin extern); E2 = linkuri moarte + IndexNow + scanare fișiere + SSO;
   scoase: Branda-light, Cloudflare geo/WAF (manual de Andrei)
-- [x] **Faza C — COMPLETĂ, MERGE-UITĂ ȘI ÎN PRODUCȚIE (C1 + C2).**
+- [x] **Faza C — COMPLETĂ, ÎN PRODUCȚIE, AUDIT TRECUT** (auditor #118: VERDICT TRECE, 0 P0/P1). C1 + C2.
+- [ ] **Faza D — modulul SEO/Audit unificat (D1–D6)** ← URMĂTORUL (la STOP-point, așteaptă OK Andrei)
+- [ ] Faza E — webp/conversie imagini prin conector + integrări bifate (linkuri moarte, IndexNow, scanare fișiere, SSO)
+- [ ] Faza F — șlefuire & datorie
   - **C-09 WAVE 3 FĂCUT (23 iul):** deploy prod C-09 (0 erori, healthy); conector 2.18.0 împins pe
     site-urile test 23 (universulsacru.ro 2.17.1→2.18.0) + 41 (notificarialimente.ro 2.17.0→2.18.0);
     sync → ambele anunță `async_restore=true` + `staged_restore=true`; ambele rămân conectate + homepage 200.
@@ -55,9 +83,8 @@
   - Apoi subagent AUDITOR fază C → remediere → STOP → OK Andrei → Faza D.
   - C-08 val 2 (follow-up): dashboard global proof + validare live pe dasher după provizionarea sandbox-ului.
   - **Follow-up opțional (Faza F):** upgrade Pint 1.27→1.29 + reformat codebase (amânat deliberat).
-- [ ] Faza D — Modulul SEO/Audit unificat (D1–D6)
-- [ ] Faza E — webp-uploads + integrări bifate
-- [ ] Faza F — Șlefuire & datorie
+  - **AUDIT: #118 raport-faza-C.md VERDICT TRECE** (0 P0/P1, 2 P2, 5 P3). P2-1 env deschis (Andrei lipește);
+    P2-2 rezolvat (#119 reconciliere async). C-09 wave 3 live: conector 2.18.0 pe site 23+41, `async_restore=true`.
 
 ## PR-uri — TOATE MERGE-UITE PE MAIN
 #94, #96, #97, #98, #99, #100, #103, #101, #104, #105, #106 — toate în `main` (HEAD `e6df429`).
