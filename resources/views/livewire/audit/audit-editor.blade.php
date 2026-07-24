@@ -262,6 +262,15 @@
                                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ $card->recommendation }}</p>
                             @endif
                             <p class="mt-1 text-xs text-gray-400">{{ $card->evidence_text }}</p>
+                            @php $fix = $this->fixFor($card); @endphp
+                            @if (! empty($fix['changes']))
+                                <div class="mt-2 inline-flex items-center gap-2 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-500 dark:bg-gray-700/40 dark:text-gray-400">
+                                    <span class="font-medium">{{ __('Fix propus') }}:</span>
+                                    <span>{{ $fix['kind']->label() }}</span>
+                                    <span>· {{ count($fix['changes']) }} {{ __('modificări') }}</span>
+                                    <span class="text-gray-400" title="{{ __('Aplicarea prin conector vine într-un val viitor.') }}">· {{ __('aplicare prin conector — în curând') }}</span>
+                                </div>
+                            @endif
                         </div>
                         @unless ($this->readOnly())
                             <div class="flex flex-none items-center gap-1">
