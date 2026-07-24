@@ -1,10 +1,39 @@
 # STATUS program — corectare completă + modul SEO/Audit unificat
 
-**Ultima actualizare:** 23 iulie 2026
+**Ultima actualizare:** 24 iulie 2026
 **Promptul-program:** `docs/plan/program-prompt.md` (v1.1) — sursa de adevăr pentru faze, reguli, acceptanță.
 
 ---
-## ▶ RELUARE (inclusiv pe alt calculator) — CITEȘTE ÎNTÂI
+## ▶ RELUARE (24 iul 2026) — CITEȘTE ÎNTÂI
+
+**FAZA D — TOT codul (D1–D6) e pe main ȘI DEPLOYAT în producție (24 iul).** Sesiunea din 24 iul a livrat 9 PR-uri
+(toate merged, CI verde) + deploy prod reușit:
+- **#130** — colectarea PSI reală: `PsiRunner` (port `psi.ts`: extract lab+CrUX+opportunities/insights Lighthouse 12+ & legacy + lcp-discovery; median-of-3), reutilizează `PageSpeedService` (`fetchRaw`/`buildParams`), excepții `PsiQuota/ApiException`, wiring în `RunSfCrawl` (PSI mobil → 3.5/3.6, non-fatal).
+- **#131** — `AuditEditorPresenter` (port `v2-editor.ts`: grupare sub-secțiuni, contoare, rezumat dovezi, tabel prefill, etichetă surse, ordonare carduri) + `CheckState::label()`.
+- **#132** — UI 2b-i: `AuditIndex`/`AuditCreate`/`AuditShow` (rute `audits.*`, nav „Audits", `AuditStatus::label()/badge()`, `Audit::latestRun()`, factory-uri AuditRun/CheckResult/Card).
+- **#133** — UI 2b-ii: `AuditEditorMutations` (setCheckState/upsertRecommendation/setValidation) + Livewire `AuditEditor` (panou stări + carduri aprobă/editează/respinge + tabel per-URL).
+- **#134** — auto-approve: `AuditAutoApprover` (port `auto-approve.ts`) + `approveAllSafe` + auto-aprobare la generare în `AuditAiPipeline` + buton editor.
+- **#135** — **FIX cheie:** `AuditConfigServiceProvider` hidratează `audit.ai.api_key` din setarea DB `ai_anthropic_api_key` (Settings→Integrations), ca incident-response. Cheia din UI alimentează auditul — **nu mai trebuie în `.env`**.
+- **#136** — D5 monitorizare/delta (NET-NEW, nu era în clonă): `AuditImplementationCounter` (port `v2.ts`), `AuditDeltaService` (gol închis NU_EXISTA→EXISTA=implementat, invers=regresie), `Audit::previousForTarget()`, delta+contor în `AuditShow`, comanda `audit:monitor` (opt-in, NU programată).
+- **#137** — D6 raport public: `AuditReportSlug`/`AuditReportBuilder`/`PublishAuditReport` + view `reports/audit.blade.php` + `PublicAuditReportController` rută `/raport/{slug}` (token opțional) + buton publică în `AuditShow`. **PDF amânat** (dar containerul `simplead-gotenberg` EXISTĂ deja în prod → PDF activabil fără infra nouă).
+- **#138** — D4 SCHELET: `AuditFixKind` + `AuditFixProposer` (fix propus din tabel, preview în editor) — `isConnectorApplicable()=false` peste tot; **fără aplicare reală**.
+
+**DEPLOY prod FĂCUT (24 iul):** pg_dump 333M luat înainte (`/var/www/backup-pre-faza-d-20260724-173032.dump`); `./deploy.sh`
+(gate CI verde + build + recreate + 2 migrări Faza D batch 81 + restart pgbouncer + nginx); toate containerele healthy.
+Confirmat: `ANTHROPIC=SET` (via #135) + `PAGESPEED=SET` → **AI real + PSI real merg**. Suita audit ~181 teste verzi.
+
+**RĂMÂNE în Faza D (nimic nu blochează codul — sunt infra/decizii):**
+1. **Screaming Frog în mediul de crawl** — `RunSfCrawl` rulează SF ca proces LOCAL (`Process::run([binary,...])`) în containerul `horizon`; imaginea NU are SF/Java/Xvfb. Fără el, crawl automat nu merge — dar **upload manual CSV** funcționează cap-coadă (evaluatoare+PSI+AI+editor+raport). De ales: (a) coc SF+Java+Xvfb+licență în imaginea horizon, sau (b) worker `audit` pe dasher cu SF. Piloți: notificarialimente.ro (41) + universulsacru.ro (23).
+2. **D6 subdomeniu** `rapoarte.simplead.ro` → nginx map la ruta `/raport/{slug}` (ruta e gata pe path). Migrare 11MB din audit.simplead.ro + sunset SEO vechi = pași manuali.
+3. **D4 aplicare reală** — endpoint-uri conector (meta/redirect/alt) + push conector + WP de test. Scheletul Manager e sus.
+4. **PDF D6** (opțional) — Gotenberg deja rulează; de legat clientul + flag.
+5. **AUDITOR Faza D** (NEFĂCUT) → `docs/plan/raport-faza-D.md` (P0–P3, context curat, criterii din `faza-D-plan.md`) → remediere P0/P1 → STOP → OK Andrei.
+
+**Următorul pas natural:** rulează AUDITOR-ul Fazei D (subagent context curat) SAU atacă SF-în-container (opțiunea a/b) pentru crawl automat. Vezi promptul de continuare la finalul sesiunii.
+
+---
+
+### (istoric — starea de la 23 iul)
 
 **Fazele A, B, C sunt COMPLETE, în producție și cu audit trecut (VERDICT TRECE).** **FAZA D în curs**
 (Andrei: „hai să continuăm și cu faza D"). Pe main, TOATE îmbinate: **D1** (#121, schema + seed 82) +
