@@ -171,4 +171,31 @@
             @endif
         </x-ui.card>
     @endif
+
+    {{-- Public report (Faza D6) --}}
+    @if ($counts['total'] > 0)
+        <x-ui.card>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Raport public') }}</h2>
+                    @if ($this->report())
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{ __('Versiunea') }} {{ $this->report()->version }} ·
+                            <a href="{{ route('audit-report.public', ['slug' => $this->report()->slug]) }}" target="_blank" rel="noopener" class="text-accent-600 hover:underline dark:text-accent-400">
+                                /raport/{{ $this->report()->slug }}
+                            </a>
+                        </p>
+                    @else
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Publică recomandările validate ca raport pentru client.') }}</p>
+                    @endif
+                </div>
+                @unless (auth()->user()?->isViewer())
+                    <x-ui.button wire:click="publishReport" variant="primary" wire:loading.attr="disabled" wire:target="publishReport">
+                        <span wire:loading.remove wire:target="publishReport">{{ $this->report() ? __('Re-publică raport') : __('Publică raport') }}</span>
+                        <span wire:loading wire:target="publishReport">{{ __('Se publică…') }}</span>
+                    </x-ui.button>
+                @endunless
+            </div>
+        </x-ui.card>
+    @endif
 </div>
