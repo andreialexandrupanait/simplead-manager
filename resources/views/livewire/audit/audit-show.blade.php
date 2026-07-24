@@ -111,9 +111,11 @@
                     <div class="text-xl font-semibold text-yellow-800 dark:text-yellow-200">{{ $counts['manual'] }}</div>
                 </div>
             </div>
-            <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                {{ __('Editorul de validare (stări + carduri) vine în valul următor.') }}
-            </p>
+            <div class="mt-4">
+                <x-ui.button :href="route('audits.editor', $audit)" variant="secondary" wire:navigate>
+                    {{ __('Deschide editorul de validare') }}
+                </x-ui.button>
+            </div>
         </x-ui.card>
     @endif
 </div>

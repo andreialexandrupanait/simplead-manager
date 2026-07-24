@@ -161,6 +161,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     Route::get('/audits', Audit\AuditIndex::class)->name('audits.index');
     Route::get('/audits/create', Audit\AuditCreate::class)->name('audits.create');
     Route::get('/audits/{audit}', Audit\AuditShow::class)->name('audits.show');
+    Route::get('/audits/{audit}/editor', Audit\AuditEditor::class)->name('audits.editor');
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');
