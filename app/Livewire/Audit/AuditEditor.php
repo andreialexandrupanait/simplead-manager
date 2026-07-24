@@ -14,6 +14,7 @@ use App\Models\AuditCheckResult;
 use App\Services\Audit\AuditAutoApprover;
 use App\Services\Audit\AuditEditorMutations;
 use App\Services\Audit\AuditEditorPresenter;
+use App\Services\Audit\AuditFixProposer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -497,6 +498,16 @@ class AuditEditor extends Component
     private function clearComputed(): void
     {
         unset($this->sectionCounts, $this->subsectionGroups, $this->cards, $this->gapOptions, $this->safeDraftCount);
+    }
+
+    /**
+     * The proposed connector fix for a card (Faza D4 skeleton — preview only).
+     *
+     * @return array{kind: \App\Enums\AuditFixKind, applicable: bool, changes: list<array{url: string, current: string, proposed: string}>}
+     */
+    public function fixFor(AuditCard $card): array
+    {
+        return app(AuditFixProposer::class)->propose($card);
     }
 
     public function render(): View
