@@ -12,6 +12,13 @@
             </h1>
             <x-ui.badge :variant="$audit->status->badge()">{{ $audit->status->label() }}</x-ui.badge>
             <span class="text-xs text-gray-400">{{ __('metodologia v2 — fără scoruri') }}</span>
+            <div class="flex-1"></div>
+            @if (! $this->readOnly() && $this->safeDraftCount() > 0)
+                <x-ui.button wire:click="approveAllSafe" variant="secondary" size="sm"
+                    title="{{ __('Auto-aprobă recomandările deterministe cu dovezi din surse SF, fetch sau PSI.') }}">
+                    {{ __('Aprobă tot ce e sigur') }} ({{ $this->safeDraftCount() }})
+                </x-ui.button>
+            @endif
         </div>
     </div>
 

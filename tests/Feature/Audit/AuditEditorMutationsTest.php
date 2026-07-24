@@ -10,6 +10,7 @@ use App\Models\Audit;
 use App\Models\AuditCard;
 use App\Models\AuditCheck;
 use App\Models\AuditCheckResult;
+use App\Services\Audit\AuditAutoApprover;
 use App\Services\Audit\AuditEditorMutations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -154,6 +155,31 @@ class AuditEditorMutationsTest extends TestCase
 
         // But it can be rejected.
         $this->assertNull($this->mut->setValidation($audit, $draft->id, 'RESPINS'));
+    }
+
+    public function test_approve_all_safe_only_approves_deterministic_drafts(): void
+    {
+        $audit = Audit::factory()->create(['status' => AuditStatus::InValidare]);
+
+        // Find a fully-deterministic check key and a non-deterministic one from the seed.
+        $detKey = AuditCheck::query()->get(['key', 'sources'])
+            ->first(static fn (AuditCheck $c): bool => AuditAutoApprover::isDeterministicCheck($c->sources))?->key;
+        $nonDetKey = AuditCheck::query()->get(['key', 'sources'])
+            ->first(static fn (AuditCheck $c): bool => ! AuditAutoApprover::isDeterministicCheck($c->sources))?->key;
+        $this->assertNotNull($detKey);
+        $this->assertNotNull($nonDetKey);
+
+        $safe = AuditCard::factory()->for($audit)->validation('DRAFT_AI')->create(['check_ids' => [$detKey]]);
+        $judgement = AuditCard::factory()->for($audit)->validation('DRAFT_AI')->create(['check_ids' => [$nonDetKey]]);
+        $toVerify = AuditCard::factory()->for($audit)->validation('DRAFT_AI')->needsVerification()->create(['check_ids' => [$detKey]]);
+
+        $result = $this->mut->approveAllSafe($audit);
+
+        $this->assertSame(['approved' => 1, 'skipped' => 2], $result);
+        $this->assertSame('APROBAT', $safe->fresh()->validation);
+        $this->assertTrue($safe->fresh()->auto_approved);
+        $this->assertSame('DRAFT_AI', $judgement->fresh()->validation);
+        $this->assertSame('DRAFT_AI', $toVerify->fresh()->validation);
     }
 
     public function test_editing_a_needs_verification_card_requires_confirmation(): void

@@ -13,6 +13,7 @@ use App\Models\AuditCard;
 use App\Models\AuditCheck;
 use App\Models\AuditCheckResult;
 use App\Models\User;
+use App\Services\Audit\AuditAutoApprover;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -116,6 +117,23 @@ class AuditEditorTest extends TestCase
             ->call('approveCard', $draft->id);
 
         $this->assertSame('APROBAT', $draft->fresh()->validation);
+    }
+
+    public function test_approve_all_safe_approves_deterministic_drafts(): void
+    {
+        $audit = Audit::factory()->create(['status' => AuditStatus::InValidare]);
+        $detKey = AuditCheck::query()->get(['key', 'sources'])
+            ->first(static fn (AuditCheck $c): bool => AuditAutoApprover::isDeterministicCheck($c->sources))?->key;
+        $this->assertNotNull($detKey);
+        $card = AuditCard::factory()->for($audit)->validation('DRAFT_AI')->create(['check_ids' => [$detKey]]);
+
+        Livewire::actingAs($this->manager())
+            ->test(AuditEditor::class, ['audit' => $audit])
+            ->call('approveAllSafe')
+            ->assertDispatched('notify');
+
+        $this->assertSame('APROBAT', $card->fresh()->validation);
+        $this->assertTrue($card->fresh()->auto_approved);
     }
 
     public function test_viewers_cannot_set_state(): void

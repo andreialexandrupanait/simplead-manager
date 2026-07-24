@@ -11,6 +11,7 @@ use App\Models\Audit;
 use App\Models\AuditCard;
 use App\Models\AuditCheck;
 use App\Models\AuditCheckResult;
+use App\Services\Audit\AuditAutoApprover;
 use App\Services\Audit\AuditEditorMutations;
 use App\Services\Audit\AuditEditorPresenter;
 use Illuminate\Contracts\View\View;
@@ -113,6 +114,43 @@ class AuditEditor extends Component
     }
 
     // -- cards ---------------------------------------------------------------
+
+    /** How many DRAFT_AI cards could auto-approve (deterministic, with evidence). */
+    #[Computed]
+    public function safeDraftCount(): int
+    {
+        $drafts = $this->audit->cards()->where('validation', 'DRAFT_AI')->get(['needs_verification', 'check_ids']);
+        if ($drafts->isEmpty()) {
+            return 0;
+        }
+        $deterministicKeys = AuditAutoApprover::deterministicKeysOf(
+            AuditCheck::query()->get(['key', 'sources'])
+                ->map(static fn (AuditCheck $c): array => ['key' => (string) $c->key, 'sources' => $c->sources]),
+        );
+
+        return $drafts->filter(static fn (AuditCard $d): bool => AuditAutoApprover::isAutoApprovable([
+            'needsVerification' => (bool) $d->needs_verification,
+            'checkIds' => array_values(array_map('strval', is_array($d->check_ids) ? $d->check_ids : [])),
+        ], $deterministicKeys))->count();
+    }
+
+    public function approveAllSafe(): void
+    {
+        $this->guardWritable();
+        $result = app(AuditEditorMutations::class)->approveAllSafe($this->audit->fresh());
+        if (isset($result['error'])) {
+            $this->dispatch('notify', type: 'error', message: $result['error']);
+
+            return;
+        }
+        $this->audit->refresh();
+        $this->clearComputed();
+        $message = "{$result['approved']} recomandări auto-aprobate (dovezi deterministe).";
+        if ($result['skipped'] > 0) {
+            $message .= " {$result['skipped']} rămân pentru verificarea ta.";
+        }
+        $this->dispatch('notify', type: 'success', message: $message);
+    }
 
     public function approveCard(int $cardId): void
     {
@@ -458,7 +496,7 @@ class AuditEditor extends Component
 
     private function clearComputed(): void
     {
-        unset($this->sectionCounts, $this->subsectionGroups, $this->cards, $this->gapOptions);
+        unset($this->sectionCounts, $this->subsectionGroups, $this->cards, $this->gapOptions, $this->safeDraftCount);
     }
 
     public function render(): View

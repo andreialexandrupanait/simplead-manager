@@ -31,11 +31,11 @@ final class AuditAiPipeline
     ) {}
 
     /**
-     * @return array{pages: int, cards: int, input_tokens: int, output_tokens: int, warnings: list<string>}
+     * @return array{pages: int, cards: int, auto_approved: int, input_tokens: int, output_tokens: int, warnings: list<string>}
      */
     public function run(Audit $audit, SfExports $exports): array
     {
-        $summary = ['pages' => 0, 'cards' => 0, 'input_tokens' => 0, 'output_tokens' => 0, 'warnings' => []];
+        $summary = ['pages' => 0, 'cards' => 0, 'auto_approved' => 0, 'input_tokens' => 0, 'output_tokens' => 0, 'warnings' => []];
 
         $pages = $this->collectPages($audit, $exports);
         $summary['pages'] = count($pages);
@@ -52,11 +52,24 @@ final class AuditAiPipeline
         $checks = AuditCheck::query()->orderBy('sort_order')->get();
         $resultByCheckId = $audit->checkResults()->get()->keyBy('audit_check_id');
 
+        // Deterministic check keys — a drafted card whose gaps are all deterministic
+        // (and not "de verificat") auto-approves at creation (integrity net).
+        $deterministicKeys = AuditAutoApprover::deterministicKeysOf(
+            $checks->map(static fn (AuditCheck $c): array => ['key' => (string) $c->key, 'sources' => $c->sources]),
+        );
+
         $evaluator = new AiCheckEvaluator($this->client);
         $drafter = new AiCardDrafter($this->client);
 
-        // Regeneration: drop the AI drafts, keep human-touched cards.
-        $audit->cards()->where('validation', 'DRAFT_AI')->delete();
+        // Regeneration: drop the AI drafts AND the previously auto-approved cards
+        // (they are re-derived), keeping human-touched cards (EDITAT/RESPINS and
+        // manually-approved cards with auto_approved=false).
+        $audit->cards()
+            ->where(function ($q): void {
+                $q->where('validation', 'DRAFT_AI')
+                    ->orWhere(fn ($q2) => $q2->where('validation', 'APROBAT')->where('auto_approved', true));
+            })
+            ->delete();
 
         foreach ($checks->groupBy('section_key') as $sectionChecks) {
             $first = $sectionChecks->first();
@@ -110,6 +123,10 @@ final class AuditAiPipeline
 
             $findings = AiCardDrafter::ensureEveryGapCovered(AiCardDrafter::gapChecks($draftChecks), $draft->findings);
             foreach ($findings as $f) {
+                $autoApproved = AuditAutoApprover::isAutoApprovable(
+                    ['needsVerification' => $f->needsVerification, 'checkIds' => $f->checkIds],
+                    $deterministicKeys,
+                );
                 $audit->cards()->create([
                     'title' => $f->title,
                     'team' => $f->team,
@@ -119,13 +136,16 @@ final class AuditAiPipeline
                     'evidence_text' => $f->evidenceText,
                     'check_ids' => $f->checkIds,
                     'payload' => $f->payload,
-                    'validation' => 'DRAFT_AI',
+                    'validation' => $autoApproved ? 'APROBAT' : 'DRAFT_AI',
                     'implementation' => 'NEIMPLEMENTAT',
                     'needs_verification' => $f->needsVerification,
-                    'auto_approved' => false,
+                    'auto_approved' => $autoApproved,
                     'sort_order' => $f->sortOrder,
                 ]);
                 $summary['cards']++;
+                if ($autoApproved) {
+                    $summary['auto_approved']++;
+                }
             }
         }
 

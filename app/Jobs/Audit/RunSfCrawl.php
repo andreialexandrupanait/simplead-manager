@@ -238,8 +238,8 @@ class RunSfCrawl implements ShouldQueue
         try {
             $summary = app(AuditAiPipeline::class)->run($audit, $exports);
             $this->log(sprintf(
-                'AI tier: %d pages, %d cards drafted (%d in / %d out tokens).',
-                $summary['pages'], $summary['cards'], $summary['input_tokens'], $summary['output_tokens'],
+                'AI tier: %d pages, %d cards drafted (%d auto-approved) (%d in / %d out tokens).',
+                $summary['pages'], $summary['cards'], $summary['auto_approved'], $summary['input_tokens'], $summary['output_tokens'],
             ));
         } catch (Throwable $e) {
             $this->log('AI tier failed (deterministic results kept): '.$e->getMessage());
