@@ -72,7 +72,7 @@ final class AuditReportBuilder
         return [
             'id' => $recId,
             'title' => (string) $card->title,
-            'team' => $card->team instanceof \App\Enums\AuditTeam ? $card->team->value : (string) $card->team,
+            'team' => (string) $card->team,
             'impact' => (string) $card->impact,
             'effort' => (string) $card->effort,
             'recommendation' => (string) $card->recommendation,
