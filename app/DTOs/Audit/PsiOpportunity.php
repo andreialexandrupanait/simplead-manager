@@ -11,7 +11,7 @@ namespace App\DTOs\Audit;
 final readonly class PsiOpportunity
 {
     /**
-     * @param  list<array{url: string, wastedBytes?: int|null, totalBytes?: int|null}>  $items
+     * @param  list<array{url: string, wastedBytes?: int|null, totalBytes?: int|null, reason?: string|null}>  $items
      */
     public function __construct(
         public string $id,

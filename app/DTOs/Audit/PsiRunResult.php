@@ -14,7 +14,7 @@ final readonly class PsiRunResult
      * @param  array{performance?: float|null, lcp?: float|null, cls?: float|null, tbt?: float|null, fcp?: float|null, si?: float|null}  $lighthouse  lab metrics (LCP/CLS in ms/score)
      * @param  array{lcp?: float|null, cls?: float|null, inp?: float|null, overall?: string|null}|null  $crux  field data (CrUX)
      * @param  array<string, PsiOpportunity>  $opportunities  keyed by audit id
-     * @param  array{eagerlyLoaded?: bool|null}|null  $lcpDiscovery  the lcp-discovery-insight checklist
+     * @param  array{eagerlyLoaded?: bool|null, priorityHinted?: bool|null, requestDiscoverable?: bool|null}|null  $lcpDiscovery  the lcp-discovery-insight checklist
      */
     public function __construct(
         public array $lighthouse,
