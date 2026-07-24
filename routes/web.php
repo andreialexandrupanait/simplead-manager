@@ -11,6 +11,7 @@ use App\Http\Controllers\ReportDownloadController;
 use App\Http\Controllers\ReportViewController;
 use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
+use App\Livewire\Audit;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
@@ -155,6 +156,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // SEO
     Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
     Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
+
+    // Audit — unified SEO/audit module (Faza D)
+    Route::get('/audits', Audit\AuditIndex::class)->name('audits.index');
+    Route::get('/audits/create', Audit\AuditCreate::class)->name('audits.create');
+    Route::get('/audits/{audit}', Audit\AuditShow::class)->name('audits.show');
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');

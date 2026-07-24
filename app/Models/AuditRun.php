@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\AuditRunStatus;
 use App\Enums\CrawlSource;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -20,6 +21,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditRun extends Model
 {
+    /** @use HasFactory<\Database\Factories\AuditRunFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'audit_id', 'source', 'status', 'crawl_dir',
         'started_at', 'finished_at', 'duration_ms', 'manifest', 'log', 'error',

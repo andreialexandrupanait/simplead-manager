@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\CheckState;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,6 +19,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditCheckResult extends Model
 {
+    /** @use HasFactory<\Database\Factories\AuditCheckResultFactory> */
+    use HasFactory;
+
     protected $fillable = ['audit_id', 'audit_check_id', 'state', 'evidence', 'state_set_by', 'collected_at'];
 
     protected $casts = [
