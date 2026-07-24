@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class PageSpeedService
@@ -19,6 +20,32 @@ class PageSpeedService
 
     public function analyze(string $url, string $device): array
     {
+        $response = $this->fetchRaw($url, $device);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException(
+                'PageSpeed API error: '.($response->json('error.message') ?? $response->body())
+            );
+        }
+
+        return $this->parseResults($response->json());
+    }
+
+    /**
+     * The raw PSI HTTP call (endpoint + API key + params), returning the HTTP
+     * response for the caller to classify. Shared by analyze() and the audit
+     * module's PsiRunner, which needs the raw Lighthouse JSON + status code.
+     */
+    public function fetchRaw(string $url, string $device): Response
+    {
+        return Http::timeout(120)->get(self::API_URL, $this->buildParams($url, $device));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildParams(string $url, string $device): array
+    {
         $params = [
             'url' => $url,
             'strategy' => strtoupper($device) === 'DESKTOP' ? 'DESKTOP' : 'MOBILE',
@@ -29,15 +56,7 @@ class PageSpeedService
             $params['key'] = $this->apiKey;
         }
 
-        $response = Http::timeout(120)->get(self::API_URL, $params);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException(
-                'PageSpeed API error: '.($response->json('error.message') ?? $response->body())
-            );
-        }
-
-        return $this->parseResults($response->json());
+        return $params;
     }
 
     public function parseResults(array $data): array

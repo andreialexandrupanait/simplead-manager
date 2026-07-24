@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Jobs\Audit;
 
+use App\DTOs\Audit\PsiRunResult;
 use App\DTOs\Audit\SfExports;
 use App\Enums\AuditRunStatus;
 use App\Enums\AuditStatus;
 use App\Enums\CheckState;
 use App\Enums\CrawlSource;
 use App\Enums\ProspectProfile;
+use App\Exceptions\Audit\PsiQuotaException;
 use App\Models\Audit;
 use App\Models\AuditCheck;
 use App\Models\AuditCheckResult;
 use App\Models\AuditRun;
 use App\Services\Audit\AuditAiPipeline;
 use App\Services\Audit\AuditEvaluator;
+use App\Services\Audit\PsiRunner;
 use App\Services\Audit\SfCrawlLoader;
 use App\Services\Audit\SfCrawlRunner;
 use Illuminate\Bus\Queueable;
@@ -151,9 +154,8 @@ class RunSfCrawl implements ShouldQueue
 
     /**
      * Run the v2 evaluators over the ingested crawl and persist one result per
-     * check (state + cited evidence). Deterministic sources only for now — PSI
-     * collection is wired in a follow-up (psiMobile stays null, so 3.5/3.6 remain
-     * manual). state_set_by=auto; the auditor overrides in the editor.
+     * check (state + cited evidence). Deterministic sources + PSI (3.5/3.6).
+     * state_set_by=auto; the auditor overrides in the editor.
      */
     private function evaluateAndPersist(Audit $audit, SfExports $exports): void
     {
@@ -165,7 +167,9 @@ class RunSfCrawl implements ShouldQueue
         $profile = $audit->prospect?->profile;
         $clientProfile = $profile instanceof ProspectProfile ? $profile->value : '';
 
-        $evaluations = (new AuditEvaluator)->evaluate($exports, $audit->url, $clientProfile, $checkList);
+        [$psiMobile, $psiNote] = $this->collectPsi($audit->url);
+
+        $evaluations = (new AuditEvaluator)->evaluate($exports, $audit->url, $clientProfile, $checkList, $psiMobile, $psiNote);
 
         $idByKey = $checks->pluck('id', 'key');
         $now = now();
@@ -188,6 +192,33 @@ class RunSfCrawl implements ShouldQueue
         ));
 
         $this->runAiTier($audit, $exports);
+    }
+
+    /**
+     * Collect PageSpeed Insights (mobile, median-of-3) for the audit URL, feeding
+     * checks 3.5 (modern images) and 3.6 (lazy-load). PSI never fails the crawl:
+     * on quota/error we return (null, note) so 3.5/3.6 stay manual with the reason
+     * cited in evidence (the deterministic results already stand).
+     *
+     * @return array{0: ?PsiRunResult, 1: ?string}
+     */
+    private function collectPsi(string $url): array
+    {
+        try {
+            $psi = app(PsiRunner::class)->medianRun($url, 'mobile');
+            $this->log('PSI collected (mobile, median-of-3).');
+
+            return [$psi, null];
+        } catch (PsiQuotaException $e) {
+            $this->log('PSI skipped — quota exceeded: '.$e->getMessage());
+
+            return [null, 'PSI indisponibil — cota PageSpeed Insights epuizată; 3.5/3.6 rămân manuale.'];
+        } catch (Throwable $e) {
+            $this->log('PSI failed (3.5/3.6 left manual): '.$e->getMessage());
+            Log::warning("RunSfCrawl PSI failed for audit {$this->auditId}: {$e->getMessage()}");
+
+            return [null, 'PSI indisponibil — eroare la colectare; 3.5/3.6 rămân manuale.'];
+        }
     }
 
     /**
