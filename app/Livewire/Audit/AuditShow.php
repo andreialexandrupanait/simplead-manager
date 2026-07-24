@@ -8,6 +8,8 @@ use App\Enums\AuditRunStatus;
 use App\Jobs\Audit\RunSfCrawl;
 use App\Models\Audit;
 use App\Models\AuditCheckResult;
+use App\Services\Audit\AuditDeltaService;
+use App\Services\Audit\AuditImplementationCounter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -67,6 +69,34 @@ class AuditShow extends Component
             'nu_se_aplica' => $nuSeAplica,
             'manual' => $total - $exista - $nuExista - $nuSeAplica,
         ];
+    }
+
+    /**
+     * The "X of Y recommendations implemented" aggregation (v2's only aggregation).
+     *
+     * @return array{implemented: int, total: int}
+     */
+    #[Computed]
+    public function implementation(): array
+    {
+        return AuditImplementationCounter::forAudit($this->audit);
+    }
+
+    /**
+     * The delta vs. the previous audit of the same target (Faza D5). Null when
+     * this is the target's first audit.
+     *
+     * @return array{previous: Audit, result: array<string, mixed>}|null
+     */
+    #[Computed]
+    public function delta(): ?array
+    {
+        $previous = $this->audit->previousForTarget();
+        if ($previous === null) {
+            return null;
+        }
+
+        return ['previous' => $previous, 'result' => app(AuditDeltaService::class)->compare($this->audit, $previous)];
     }
 
     public function startCrawl(): void

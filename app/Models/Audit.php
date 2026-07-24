@@ -84,4 +84,23 @@ class Audit extends Model
     {
         return $this->site ?? $this->prospect;
     }
+
+    /**
+     * The most recent earlier audit of the SAME target that has collected results
+     * — the baseline for the run-to-run delta (Faza D5). Null when this is the
+     * target's first audit.
+     */
+    public function previousForTarget(): ?self
+    {
+        return self::query()
+            ->where('id', '<', $this->id)
+            ->when(
+                $this->site_id !== null,
+                fn ($q) => $q->where('site_id', $this->site_id),
+                fn ($q) => $q->where('prospect_id', $this->prospect_id),
+            )
+            ->whereHas('checkResults')
+            ->latest('id')
+            ->first();
+    }
 }
