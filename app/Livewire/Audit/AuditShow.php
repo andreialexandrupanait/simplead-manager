@@ -8,8 +8,10 @@ use App\Enums\AuditRunStatus;
 use App\Jobs\Audit\RunSfCrawl;
 use App\Models\Audit;
 use App\Models\AuditCheckResult;
+use App\Models\AuditReport;
 use App\Services\Audit\AuditDeltaService;
 use App\Services\Audit\AuditImplementationCounter;
+use App\Services\Audit\PublishAuditReport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -97,6 +99,22 @@ class AuditShow extends Component
         }
 
         return ['previous' => $previous, 'result' => app(AuditDeltaService::class)->compare($this->audit, $previous)];
+    }
+
+    #[Computed]
+    public function report(): ?AuditReport
+    {
+        return $this->audit->report()->first();
+    }
+
+    public function publishReport(): void
+    {
+        abort_if((bool) Auth::user()?->isViewer(), 403, 'Viewers cannot publish a report.');
+
+        $report = app(PublishAuditReport::class)->publish($this->audit->fresh());
+        $this->audit->refresh();
+        unset($this->report);
+        $this->dispatch('notify', type: 'success', message: 'Raport publicat: '.route('audit-report.public', ['slug' => $report->slug]));
     }
 
     public function startCrawl(): void

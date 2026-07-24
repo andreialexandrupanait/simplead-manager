@@ -69,6 +69,11 @@ Route::get('/r/{report}/{token}', ReportViewController::class)
     ->name('reports.view.public')
     ->middleware('throttle:60,1');
 
+// Public audit report (Faza D6) — served by slug (behind rapoarte.simplead.ro).
+Route::get('/raport/{slug}', [\App\Http\Controllers\PublicAuditReportController::class, 'show'])
+    ->name('audit-report.public')
+    ->middleware('throttle:60,1');
+
 // Plugin download via signed URL (for WP self-update — no auth required)
 Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)
     ->name('download.connector-plugin.signed')
