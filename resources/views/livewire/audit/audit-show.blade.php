@@ -111,11 +111,64 @@
                     <div class="text-xl font-semibold text-yellow-800 dark:text-yellow-200">{{ $counts['manual'] }}</div>
                 </div>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 flex flex-wrap items-center gap-4">
                 <x-ui.button :href="route('audits.editor', $audit)" variant="secondary" wire:navigate>
                     {{ __('Deschide editorul de validare') }}
                 </x-ui.button>
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ __('Recomandări implementate') }}:
+                    <span class="font-semibold text-gray-800 dark:text-gray-100">{{ $this->implementation()['implemented'] }} / {{ $this->implementation()['total'] }}</span>
+                </span>
             </div>
+        </x-ui.card>
+    @endif
+
+    {{-- Delta vs. previous audit (Faza D5 — monitoring) --}}
+    @if ($this->delta())
+        @php $d = $this->delta()['result']; @endphp
+        <x-ui.card>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Evoluție față de auditul anterior') }}</h2>
+                <a href="{{ route('audits.show', $this->delta()['previous']) }}" wire:navigate class="text-xs text-gray-500 hover:underline dark:text-gray-400">
+                    {{ __('audit anterior') }} #{{ $this->delta()['previous']->id }} · {{ $this->delta()['previous']->created_at?->format('d.m.Y') }}
+                </a>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div class="rounded-lg bg-green-50 p-3 dark:bg-green-500/10">
+                    <div class="text-xs uppercase tracking-wider text-green-700 dark:text-green-300">{{ __('Implementate (gol închis)') }}</div>
+                    <div class="text-xl font-semibold text-green-800 dark:text-green-200">+{{ $d['implemented'] }}</div>
+                </div>
+                <div class="rounded-lg bg-red-50 p-3 dark:bg-red-500/10">
+                    <div class="text-xs uppercase tracking-wider text-red-700 dark:text-red-300">{{ __('Regresii') }}</div>
+                    <div class="text-xl font-semibold text-red-800 dark:text-red-200">{{ $d['regressed'] }}</div>
+                </div>
+                <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-500/10">
+                    <div class="text-xs uppercase tracking-wider text-blue-700 dark:text-blue-300">{{ __('Alte schimbări') }}</div>
+                    <div class="text-xl font-semibold text-blue-800 dark:text-blue-200">{{ $d['changed'] }}</div>
+                </div>
+                <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/40">
+                    <div class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Neschimbate') }}</div>
+                    <div class="text-xl font-semibold text-gray-700 dark:text-gray-200">{{ $d['unchanged'] }}</div>
+                </div>
+            </div>
+            @if (! empty($d['changes']))
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400">{{ __('Verificări schimbate') }} ({{ count($d['changes']) }})</summary>
+                    <ul class="mt-2 space-y-1 text-xs">
+                        @foreach ($d['changes'] as $c)
+                            <li class="flex items-center gap-2">
+                                <span class="font-mono text-gray-400">{{ $c['key'] }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $c['from'] ?? '—' }} → {{ $c['to'] ?? '—' }}</span>
+                                @if ($c['kind'] === 'implemented')
+                                    <x-ui.badge variant="green">{{ __('implementat') }}</x-ui.badge>
+                                @elseif ($c['kind'] === 'regressed')
+                                    <x-ui.badge variant="red">{{ __('regresie') }}</x-ui.badge>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            @endif
         </x-ui.card>
     @endif
 </div>
