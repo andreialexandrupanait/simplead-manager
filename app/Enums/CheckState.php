@@ -14,4 +14,14 @@ enum CheckState: string
     case Exista = 'EXISTA';
     case NuExista = 'NU_EXISTA';
     case NuSeAplica = 'NU_SE_APLICA';
+
+    /** The displayed label (with diacritics). Port of V2_STATE_LABELS. */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Exista => 'EXISTĂ',
+            self::NuExista => 'NU EXISTĂ',
+            self::NuSeAplica => 'NU SE APLICĂ',
+        };
+    }
 }
