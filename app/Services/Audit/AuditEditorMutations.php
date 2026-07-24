@@ -167,6 +167,50 @@ final class AuditEditorMutations
     }
 
     /**
+     * "Approve all safe" — the retroactive safety net: flip to APROBAT
+     * (auto_approved=true) every DRAFT_AI card of the audit that is deterministic
+     * with evidence (needs_verification=false AND all covered checks have
+     * deterministic sources). AI/manual-judgement or "de verificat" drafts are
+     * skipped. Port of applyApproveAllSafe.
+     *
+     * @return array{approved: int, skipped: int}|array{error: string}
+     */
+    public function approveAllSafe(Audit $audit): array
+    {
+        if (! $this->isEditable($audit)) {
+            return ['error' => 'Auditul nu mai e editabil (doar în colectare, draft sau validare).'];
+        }
+
+        $drafts = AuditCard::query()
+            ->where('audit_id', $audit->id)
+            ->where('validation', 'DRAFT_AI')
+            ->get(['id', 'needs_verification', 'check_ids']);
+
+        $deterministicKeys = AuditAutoApprover::deterministicKeysOf(
+            AuditCheck::query()->get(['key', 'sources'])
+                ->map(static fn (AuditCheck $c): array => ['key' => (string) $c->key, 'sources' => $c->sources]),
+        );
+
+        $safeIds = [];
+        foreach ($drafts as $draft) {
+            $finding = [
+                'needsVerification' => (bool) $draft->needs_verification,
+                'checkIds' => array_values(array_map('strval', is_array($draft->check_ids) ? $draft->check_ids : [])),
+            ];
+            if (AuditAutoApprover::isAutoApprovable($finding, $deterministicKeys)) {
+                $safeIds[] = $draft->id;
+            }
+        }
+
+        if ($safeIds !== []) {
+            AuditCard::query()->whereIn('id', $safeIds)->update(['validation' => 'APROBAT', 'auto_approved' => true]);
+        }
+        $this->advanceStatus($audit);
+
+        return ['approved' => count($safeIds), 'skipped' => $drafts->count() - count($safeIds)];
+    }
+
+    /**
      * The severity derived from impact (data consistency only — never shown in v2).
      */
     public static function severityFromImpact(string $impact): string
