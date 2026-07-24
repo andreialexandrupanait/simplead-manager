@@ -65,6 +65,12 @@ class Audit extends Model
         return $this->hasMany(AuditRun::class);
     }
 
+    /** @return HasOne<AuditRun, $this> */
+    public function latestRun(): HasOne
+    {
+        return $this->hasOne(AuditRun::class)->latestOfMany();
+    }
+
     /** @return HasOne<AuditReport, $this> */
     public function report(): HasOne
     {

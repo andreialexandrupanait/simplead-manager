@@ -34,6 +34,14 @@
     </x-sidebar.sidebar-item>
 
     <x-sidebar.sidebar-item
+        :href="route('audits.index')"
+        icon="target"
+        :active="request()->routeIs('audits.*')"
+    >
+        {{ __('Audits') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
         :href="route('seo.index')"
         icon="search"
         :active="request()->routeIs('seo.*')"

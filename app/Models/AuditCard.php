@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +18,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AuditCard extends Model
 {
+    /** @use HasFactory<\Database\Factories\AuditCardFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'audit_id', 'title', 'team', 'impact', 'effort', 'recommendation',
         'evidence_text', 'check_ids', 'payload', 'validation', 'implementation',
