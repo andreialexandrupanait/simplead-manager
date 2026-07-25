@@ -283,7 +283,9 @@ services:
   # manager-gotenberg — sidecar PDF intern. Fără port public.
   # ==========================================================================
   manager-gotenberg:
-    image: gotenberg/gotenberg:8
+    # Pinned to the version running in production (source drifted-free). The
+    # floating :8 tag moved to a build that FATALs on telemetry log-level config.
+    image: gotenberg/gotenberg:8.26.0
     container_name: manager-gotenberg
     restart: unless-stopped
     command:
