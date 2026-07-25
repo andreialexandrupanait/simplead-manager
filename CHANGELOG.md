@@ -7,6 +7,24 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Security
+- **Connector 2.19.0 — authenticated IP auto-whitelisting.** Until 2.18.0 the
+  connector's permission chain was *IP whitelist → rate limit → HMAC*, and `/info`
+  auto-added the calling IP. Every synced site therefore held a whitelist containing
+  exactly one address: the manager's. Moving the manager to a new IP returned
+  `403 IP_NOT_WHITELISTED` on **every** route including `/info`, so the
+  self-bootstrapping auto-whitelist could never run from the new address and the IP
+  change was unrecoverable without editing all 40 sites by hand. The chain is now
+  *rate limit → **HMAC** → record the authenticated IP*. The whitelist is not removed
+  and authentication is not weakened — the list is simply **written only after** a
+  request has proven it holds the site's API key and secret, so a missing, expired,
+  replayed or forged signature is rejected and cannot touch it. Existing entries
+  (plain IPs and operator CIDR ranges) are never removed, IPv6 textual variants are
+  deduplicated via `inet_pton`, and `update_option()` runs only on a real change. The
+  redundant `/info`-only auto-whitelist was removed. Unblocks the
+  `manager.simplead.ro` server migration — until this lands, moving the manager
+  would have required editing all 40 client sites by hand.
+
 ### Added
 - **Faza D (D3, AI pipeline) — the crawl now runs the AI tier end-to-end.** Two
   pieces close the loop from a crawl to persisted AI findings. (1) The

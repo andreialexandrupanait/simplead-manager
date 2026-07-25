@@ -14,8 +14,79 @@ class SAM_IP_Whitelist {
     private const OPTION_KEY = 'sam_ip_whitelist';
 
     /**
+     * Outcomes of allow_authenticated_ip().
+     */
+    public const RESULT_ADDED           = 'added';
+    public const RESULT_ALREADY_ALLOWED = 'already_allowed';
+    public const RESULT_INVALID_IP      = 'invalid_ip';
+
+    /**
+     * Record the IP of an ALREADY-AUTHENTICATED request in the whitelist.
+     *
+     * Callers MUST have validated the HMAC signature (SAM_Authentication::validate())
+     * before calling this. Nothing here authenticates anything: it is the write side
+     * of the whitelist, and an unsigned or badly signed request must never reach it.
+     *
+     * Additive and idempotent:
+     *   - existing entries are never removed, including operator-managed CIDR ranges;
+     *   - an address already covered by an exact entry, an equivalent textual form of
+     *     the same address (IPv6), or a CIDR range is not added a second time;
+     *   - update_option() runs only when the stored list actually changes.
+     *
+     * This is what makes a legitimate manager IP change self-healing: the first
+     * correctly signed request from the new address adds it, and the old address
+     * stays in the list so a rollback keeps working.
+     *
+     * @return string One of the RESULT_* constants.
+     */
+    public static function allow_authenticated_ip(string $ip): string {
+        $ip = trim($ip);
+
+        // Accepts IPv4 and IPv6; rejects '0.0.0.0' sentinels, CIDR and garbage.
+        if (!filter_var($ip, FILTER_VALIDATE_IP) || $ip === '0.0.0.0') {
+            return self::RESULT_INVALID_IP;
+        }
+
+        $stored     = self::get_whitelist();
+        $normalised = self::normalize_entries($stored);
+
+        foreach ($normalised as $entry) {
+            // ip_matches() covers exact string equality and CIDR ranges;
+            // same_address() covers a different textual form of the same address.
+            if (self::ip_matches($ip, $entry) || self::same_address($ip, $entry)) {
+                // Only persist if normalisation itself changed the stored value.
+                if ($normalised !== $stored) {
+                    update_option(self::OPTION_KEY, $normalised);
+                }
+
+                return self::RESULT_ALREADY_ALLOWED;
+            }
+        }
+
+        $normalised[] = $ip;
+        update_option(self::OPTION_KEY, $normalised);
+
+        // Log the fact only. Never the API key, the secret or the signature.
+        if (class_exists('SAM_Audit_Logger')) {
+            SAM_Audit_Logger::log(
+                'ip_whitelist_auto_add',
+                'security',
+                $ip,
+                'Authenticated manager IP added to the connector REST API whitelist.'
+            );
+        }
+
+        return self::RESULT_ADDED;
+    }
+
+    /**
      * Check if the current request IP is whitelisted.
      * Returns true if allowed, WP_Error if blocked.
+     *
+     * Since 2.19.0 this is NO LONGER the pre-authentication gate for the REST API
+     * (see SAM_Endpoint_Base::check_permission) — evaluating it before the HMAC made
+     * a manager IP change unrecoverable. It is retained as the pure IP verdict for
+     * the admin UI and for any caller that wants the raw check.
      *
      * @return true|WP_Error
      */
@@ -91,6 +162,51 @@ class SAM_IP_Whitelist {
         $whitelist = self::get_whitelist();
         $whitelist = array_values(array_diff($whitelist, [trim($ip)]));
         update_option(self::OPTION_KEY, $whitelist);
+    }
+
+    /**
+     * Trim, drop empty/non-scalar values and collapse exact duplicates, without
+     * reordering or rewriting the entries that survive — an operator-managed CIDR
+     * range must come out of here byte-identical to how it went in.
+     *
+     * @param  array<int|string, mixed> $entries
+     * @return list<string>
+     */
+    private static function normalize_entries(array $entries): array {
+        $clean = [];
+
+        foreach ($entries as $entry) {
+            if (!is_string($entry) && !is_numeric($entry)) {
+                continue;
+            }
+
+            $entry = trim((string) $entry);
+
+            if ($entry === '' || in_array($entry, $clean, true)) {
+                continue;
+            }
+
+            $clean[] = $entry;
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Whether two plain-IP strings denote the same address. Compares the packed
+     * binary form, so '2001:db8::1' and '2001:0DB8:0:0:0:0:0:1' are recognised as
+     * one address and never produce a duplicate entry. CIDR entries are handled by
+     * ip_matches(), not here.
+     */
+    private static function same_address(string $ip, string $entry): bool {
+        if (strpos($entry, '/') !== false || !filter_var($entry, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        $a = @inet_pton($ip);
+        $b = @inet_pton($entry);
+
+        return $a !== false && $b !== false && $a === $b;
     }
 
     /**

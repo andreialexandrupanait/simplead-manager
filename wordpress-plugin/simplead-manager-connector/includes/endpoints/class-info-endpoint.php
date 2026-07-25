@@ -20,10 +20,11 @@ class SAM_Info_Endpoint extends SAM_Endpoint_Base {
     public function get_info(WP_REST_Request $request): WP_REST_Response {
         global $wpdb, $wp_version;
 
-        // Auto-whitelist the requesting IP on successful /info call
-        // This enables self-bootstrapping: when the Laravel app first connects,
-        // its IP gets whitelisted automatically.
-        $this->auto_whitelist_ip();
+        // 2.19.0: the /info-only auto-whitelist was removed. Recording the
+        // authenticated IP now happens once, for every endpoint, in
+        // SAM_Endpoint_Base::check_permission() — doing it here as well would add
+        // the same address twice per sync and leave the bootstrap dependent on a
+        // single route.
 
         // Check for core updates
         $core_update_available = false;
@@ -82,25 +83,5 @@ class SAM_Info_Endpoint extends SAM_Endpoint_Base {
         ];
 
         return $this->success($data);
-    }
-
-    /**
-     * Auto-whitelist the requesting IP if not already in the list.
-     */
-    private function auto_whitelist_ip(): void {
-        $ip = SAM_Request_Logger::get_client_ip();
-
-        if ($ip === '0.0.0.0') {
-            return;
-        }
-
-        $whitelist = SAM_IP_Whitelist::get_whitelist();
-
-        // Already whitelisted (exact match check is sufficient for auto-add)
-        if (in_array($ip, $whitelist, true)) {
-            return;
-        }
-
-        SAM_IP_Whitelist::add_ip($ip);
     }
 }

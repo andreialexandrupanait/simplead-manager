@@ -9,6 +9,16 @@ return [
                 'Fix: .htaccess multi-setting apply now snapshots the pristine file exactly once before any change and, if the post-write self-check fails, rolls back to that true original instead of a partially-modified intermediate — a failed batch can no longer leave a client site 500ing (P0-12)',
             ],
         ],
+        '2.19.0' => [
+            'date' => '2026-07-25',
+            'changes' => [
+                'Security: authenticated IP auto-whitelisting — the request IP is recorded only after full HMAC validation (key, timestamp, nonce, signature); an unsigned or forged request can no longer reach the whitelist at all',
+                'Fix: HMAC validation now runs BEFORE the IP whitelist decision — until 2.18.0 the whitelist was evaluated first, so a new manager IP got 403 IP_NOT_WHITELISTED on every route including /info and could never bootstrap itself',
+                'Feature: migration support for manager IP changes — the first correctly signed request from a new manager address adds it automatically, on every endpoint, not just /info',
+                'Existing whitelist entries are preserved: plain IPs and operator-managed CIDR ranges are never removed, IPv6 textual variants of an address already present are not duplicated, and the option is rewritten only when the list actually changes',
+                'Removed the /info-only auto-whitelist, now redundant — the IP is recorded once per request in the shared permission callback instead of twice per sync',
+            ],
+        ],
         '2.17.0' => [
             'date' => '2026-07-11',
             'changes' => [
