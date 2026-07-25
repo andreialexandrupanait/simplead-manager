@@ -91,23 +91,41 @@ abstract class SAM_Endpoint_Base {
     abstract public function register_routes(): void;
 
     /**
-     * Standard permission callback: IP Whitelist → Rate Limiter → HMAC Auth
+     * Standard permission callback: Rate Limiter → HMAC Auth → whitelist record.
+     *
+     * ORDER IS SECURITY-CRITICAL AND CHANGED IN 2.19.0.
+     *
+     * Up to 2.18.0 the IP whitelist was evaluated FIRST, before authentication. Because
+     * /info auto-adds the calling IP, every synced site ended up with a whitelist holding
+     * exactly one address — the manager's. Moving the manager to a new address therefore
+     * produced 403 IP_NOT_WHITELISTED on every route including /info, so the
+     * self-bootstrapping auto-whitelist could never run from the new address. The IP
+     * change was unrecoverable without editing each site by hand.
+     *
+     * The whitelist is not removed and authentication is not weakened. What changed is
+     * that the list is now WRITTEN only after a request has proven it holds this site's
+     * API key and secret: rate limit → full HMAC validation (key, timestamp, nonce,
+     * signature) → record the authenticated IP. A request with a missing, expired,
+     * replayed or forged signature is rejected and cannot touch the list.
      */
     public function check_permission(WP_REST_Request $request) {
-        // IP whitelist check first (cheapest — array lookup)
-        $ip_check = SAM_IP_Whitelist::check();
-        if (is_wp_error($ip_check)) {
-            return $ip_check;
-        }
-
-        // Rate limit check (transient lookup)
+        // 1. Rate limit (transient lookup, keyed on the presented API key).
         $rate_check = SAM_Rate_Limiter::check($request);
         if (is_wp_error($rate_check)) {
             return $rate_check;
         }
 
-        // HMAC authentication (crypto — most expensive)
-        return SAM_Authentication::validate($request);
+        // 2. HMAC authentication (crypto). Nothing below runs unless this passes.
+        $auth_check = SAM_Authentication::validate($request);
+        if (is_wp_error($auth_check)) {
+            return $auth_check;
+        }
+
+        // 3. Authenticated — record this IP so the whitelist follows a legitimate
+        //    manager IP change. Additive: existing entries are preserved.
+        SAM_IP_Whitelist::allow_authenticated_ip(SAM_Request_Logger::get_client_ip());
+
+        return true;
     }
 
     /**
