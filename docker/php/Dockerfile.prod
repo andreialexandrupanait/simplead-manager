@@ -146,6 +146,11 @@ COPY --from=builder --chown=appuser:appuser /var/www/html /var/www/html
 # Writable directories: storage and bootstrap/cache must be 775 so FPM can write
 RUN chmod -R 775 storage bootstrap/cache
 
+# Public storage symlink (equivalent of `php artisan storage:link`). Not in the
+# repo; source created it at runtime. Baked here so /storage/* resolves to the
+# mounted storage volume (storage/app/public) in both the app and nginx images.
+RUN ln -sf ../storage/app/public public/storage
+
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
