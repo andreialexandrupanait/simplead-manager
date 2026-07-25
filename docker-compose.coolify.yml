@@ -288,11 +288,15 @@ services:
     image: gotenberg/gotenberg:8.26.0
     container_name: manager-gotenberg
     restart: unless-stopped
+    # Coolify injects ALL app env vars into every compose service, so gotenberg
+    # inherits Laravel's LOG_LEVEL=warning — but gotenberg only accepts
+    # error|warn|info|debug and FATALs on "warning". Unset it before launch so
+    # only the explicit --log-level flag applies.
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - "gotenberg"
-      - "--chromium-disable-javascript=true"
-      - "--api-timeout=120s"
-      - "--log-level=warn"
+      - |
+        unset LOG_LEVEL
+        exec gotenberg --chromium-disable-javascript=true --api-timeout=120s --log-level=warn
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
