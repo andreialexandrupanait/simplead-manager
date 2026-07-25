@@ -1,0 +1,5 @@
+composite_recomputed 110da55b0bfa243b689d4b0a3530cfeb9f12f78b575314c922fcb477bd235c45 manifest 110da55b0bfa243b689d4b0a3530cfeb9f12f78b575314c922fcb477bd235c45 MATCH
+extract error /opt/apps/simplead-manager/spike/scratch/restore-files-med1/zips/1.zip File is not a zip file
+extract error /opt/apps/simplead-manager/spike/scratch/restore-files-med1/zips/12.zip File is not a zip file
+restore-oracle: ok=56624 missing=0 mismatch=0
+RESULT: PASS

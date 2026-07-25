@@ -29,19 +29,22 @@ larger-scale confirmations must complete before fleet rollout.
    Because a snapshot only holds within one connection, the **chunked-DB-across-HTTP-requests model
    must change**: dump the whole DB in one transaction/process, streaming output to S3 (chunk the
    *byte stream*, not the *table reads*). Change-journal only as a MyISAM/multi-connection fallback.
-2. **Exercise the real S3 multipart path** (`S3Driver` presign-per-part + `abortMultipartUpload` +
-   `ListMultipartUploads`=0 dangling), and shorten presigned-URL TTL from the current `+4h`. This
-   run used `mc` (multipart under the hood); the manager's presign/abort semantics and the
-   presigned-expiry injection were not exercised.
+2. **Real S3 multipart path** — ✅ **VALIDATED in pass 2** (see
+   [`CONTINUATION-RESULTS.md`](CONTINUATION-RESULTS.md)): initiate / upload-part / list /
+   **abort → 0 dangling** / complete, and **presigned-URL expiry** (3 s TTL → HTTP 403; fresh →
+   200) all correct against S3-compatible storage. Remaining action is a product decision: **shorten
+   the `S3Driver` presigned TTL from `+4h`** to a short, per-part just-in-time value.
 
 ## Complete-before-production checklist (not blockers to *start*, blockers to *ship*)
 
-- Medium + large profiles (100k/500k files, 2/10 GB DB, 1–5 GB single files).
-- Full WooCommerce/HPOS multi-table desync + Multisite (`wp_N_*`) DB-consistency runs; `mariadb:11`.
-- Remaining 8 failure injections (WP/worker restart, S3 cut, MinIO pause, presigned expiry,
-  disk-full, overlapping-session lock).
-- Wire exclusions into `prepare-init` (so excluded files are never read) + config UI.
-- LOW/NORMAL/FAST tuned from medium/large latency plots; auto-pause control loop.
+- ✅ Medium profile (71k files/8.9 GB) done; ⬜ **large** (500k files, 10 GB DB, 1–5 GB files) with
+  **incompressible** content for representative chunk sizes.
+- ✅ Real WooCommerce/HPOS single-writer desync done; ⬜ full multi-table desync at high write rate +
+  Multisite (`wp_N_*`) + `mariadb:11`.
+- ✅ WP-container restart, MinIO pause, real multipart/abort, presigned expiry done; ⬜ manager-side
+  disk-full guard + overlapping-session lock wired end-to-end (unit-tested today).
+- ⬜ Wire exclusions into `prepare-init` (so excluded files are never read) + config UI.
+- ⬜ LOW/NORMAL/FAST tuned from medium/large latency plots; auto-pause control loop.
 
 ## Components to REUSE (validated as sound)
 

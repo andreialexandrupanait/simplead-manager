@@ -47,20 +47,24 @@
 - [`EXCLUSIONS-RESULTS.md`](EXCLUSIONS-RESULTS.md) — Test 4
 - [`PERFORMANCE-IMPACT.md`](PERFORMANCE-IMPACT.md) — Test 5
 - [`FINAL-ARCHITECTURE-DECISION.md`](FINAL-ARCHITECTURE-DECISION.md) — GO/REVISE/NO-GO + reuse/rewrite
+- [`CONTINUATION-RESULTS.md`](CONTINUATION-RESULTS.md) — pass 2: medium profile (71k files), real
+  WooCommerce/HPOS, WP-restart + MinIO-pause injections, real S3 multipart + presigned expiry
 
 ## Honest scope & limitations
 
-- **Executed:** small profile (5,000 files / 750 MB) + a 61k-row InnoDB dataset, on one WP+DB.
-  This proves the **mechanics and architecture**; absolute throughput numbers are small-scale.
-- **Designed but NOT executed this pass** (time-bounded): medium/large profiles (100k/500k files,
-  2/10 GB DB, 1–5 GB files — the generator supports `--profile` + `--sparse`); full WooCommerce/HPOS
-  and Multisite variants; and 8 of the 11 failure injections. Injections **empirically run**:
-  kill-orchestrator-mid-backup (resume), duplicate `chunk-exec` (idempotency), nonce replay.
-- **Upload path:** chunks streamed to MinIO via `mc` (S3 multipart under the hood). The manager's
-  `S3Driver` presigned-multipart-per-part + abort-dangling-upload semantics were **not** exercised
-  in this run (designed in the plan; flagged for the next pass).
-- Fixture content is partially compressible, so compression ratios are not representative (does
-  not affect the no-monolith / resume / consistency conclusions).
+> Pass 2 extended coverage — see [`CONTINUATION-RESULTS.md`](CONTINUATION-RESULTS.md).
+
+- **Executed:** small (5k files/750 MB) **and medium (71k files/8.9 GB)** profiles; a 61k-row InnoDB
+  dataset **and real WooCommerce 10.9.4 / HPOS**; **7 failure-injection classes** (kill-orchestrator,
+  duplicate exec, nonce replay, WP-container restart, MinIO pause, plus real S3 multipart abort &
+  presigned expiry); restore oracle at scale (56,624/56,624 files).
+- **Still NOT executed** (pre-production checklist): **large** profile (500k files, 10 GB DB, 1–5 GB
+  single files) **with incompressible content** (see below); full multi-table Woo/HPOS desync at high
+  write rate; Multisite; `mariadb:11`; and the manager-side disk-full / overlapping-lock paths wired
+  end-to-end (covered today by unit tests `DiskSpaceGuardTest` / `SiteOperationLockTest`).
+- Fixture content is **highly compressible** (medium: 8.9 GB → 87 MB in S3), so absolute chunk/backup
+  *sizes* are not representative. This does **not** affect no-monolith / resume / consistency /
+  temp-cap conclusions (temp is bounded by chunk-split thresholds by construction).
 
 These limitations are quantified per-test and do not change any verdict; they define the
 "complete before production" checklist in the final decision.
