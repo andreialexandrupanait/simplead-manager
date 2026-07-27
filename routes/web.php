@@ -149,6 +149,15 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Backups — global view
     Route::get('/backups', Backups\BackupsOverview::class)->name('backups.index');
 
+    // Backup engine V2 console (P5) — flag-gated + admin-only, isolated from the
+    // V1 backup UI. With config('backup_v2.ui_enabled') false every route 404s, so
+    // the console is invisible in production with the default flags.
+    Route::prefix('/backup-v2')->middleware('backup-v2.ui')->group(function () {
+        Route::get('/', \App\Livewire\Backup\V2\BackupV2Overview::class)->name('backup-v2.index');
+        Route::get('/sites/{site}', \App\Livewire\Backup\V2\SiteBackupV2::class)->name('backup-v2.site');
+        Route::get('/sessions/{session}', \App\Livewire\Backup\V2\BackupV2Detail::class)->name('backup-v2.detail');
+    });
+
     // Backup download (signed URL for local storage)
     Route::get('/backups/{backup}/download', BackupDownloadController::class)->name('backups.download')->middleware(['signed', 'throttle:10,1']);
 

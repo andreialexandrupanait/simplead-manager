@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
             '2fa.challenge' => \App\Http\Middleware\RequireTwoFactorChallenge::class,
             '2fa.enforce' => \App\Http\Middleware\EnforceTwoFactorEnrollment::class,
+            'backup-v2.ui' => \App\Http\Middleware\EnsureBackupV2Ui::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

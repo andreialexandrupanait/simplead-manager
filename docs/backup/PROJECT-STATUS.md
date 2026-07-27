@@ -17,7 +17,7 @@
 | P2 | Plugin simplead-backup + backup de bază (nucleul) | ✅ | **backup FULL end-to-end** condus de FSM: DB consistent (0 orfani) + fișiere (oracle) + multipart întărit + manifest+`_COMPLETE`; restore-oracle 41/41 + DB 0 erori; resume-fără-dublare; 32 teste E2E |
 | P3 | Incremental + chain-uri + retenție | ✅ | incremental fișiere (changed/new/tombstones) + chain (full+2inc restore-oracle 0/0, chain rupt detectat) + retenție chain-safe; suita 87 teste (784 aserțiuni) |
 | P4 | Restore (full + selectiv + rollback) | ✅ | restore full (MIRROR+SAFE_MERGE) + din chain + selectiv + **kill-mid-restore→rollback (site byte-identic)** + swap atomic DB/fișiere; suita 98 teste (861 aserțiuni) |
-| P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
+| P5 | UI Manager + UI plugin + alerte + cote | ✅ | UI Livewire V2 (global/per-site/detail) gated de flag + UI plugin (diagnostice, support-package redactat) + cote + alerte; 122 teste (918 aserțiuni) |
 | P6 | Verificare + proven restore + import legacy | ⬜ | — |
 | P7 | Pregătire rollout + raport final | ⬜ | — |
 
@@ -29,6 +29,18 @@ Toate ⬜ până sunt demonstrate prin teste. Se completează pe măsură ce faz
 Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md) (secțiunea DEFINITION OF DONE).
 
 ## Jurnal de faze (cel mai recent sus)
+
+### P5 — UI + alerte + cote ✅ (poartă trecută)
+- Livewire V2 izolat: `BackupV2Overview` (health/sesiuni/destinații/storage+cote/orfani/proven-restore/alerte),
+  `SiteBackupV2` (acțiuni backup/restore/retry/resume/pause/cancel/protect/delete + scope/excluderi/preview),
+  `BackupV2Detail` (state/stage/progress/chain/manifest/objects/checksums/verification). Views Tailwind în stilul existent.
+- Gating dublu: middleware `EnsureBackupV2Ui` (404 = invizibil când flag off) + `mount()` per-componentă (admin-only).
+  Rute `/backup-v2` + alias middleware = strict aditive; UI/rutele V1 neatinse.
+- `SessionActions` (seam de acțiuni), `QuotaService` (enforce pe `used_bytes` reconciliat, gated), `BackupV2Notifier`
+  + mail-uri (succes + limită storage), toate default off.
+- Plugin: pagină admin (diagnostice read-only + support-package cu **redactare secrete**).
+- **Rerulat de mine (izolat):** 122 teste (918 aserțiuni), gating dovedit (flag off → ascuns, non-admin → ascuns),
+  cote (depășire → blocat), notificări (Mail::fake). Pint + PHPStan curat. V2 invizibil în producție cu flag-urile false.
 
 ### P4 — Restore ✅ (poartă trecută)
 - Plugin v0.4.0: `class-restore-engine.php` (staging + swap ATOMIC fișiere journaled + DB `sambk_stg_*`/`sambk_old_*`

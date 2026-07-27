@@ -26,6 +26,16 @@ final class SAM_Backup_Plugin {
 
     public function boot(): void {
         add_action('rest_api_init', array($this, 'register_routes'));
+
+        // Minimal local admin page (read-only diagnostics + redacted support package).
+        // A broken admin page must never take down the REST engine, so guard it.
+        if (is_admin() && class_exists('SAM_Backup_Admin_Page')) {
+            try {
+                (new SAM_Backup_Admin_Page())->register();
+            } catch (\Throwable $e) {
+                SAM_Backup_Logger::error('admin page registration failed', array('error' => $e->getMessage()));
+            }
+        }
     }
 
     public function register_routes(): void {

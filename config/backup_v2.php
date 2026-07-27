@@ -154,4 +154,61 @@ return [
         'bucket' => (string) env('BACKUP_ENGINE_V2_LAB_S3_BUCKET', 'backups'),
         'use_path_style_endpoint' => true,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | UI Manager (P5) — Livewire V2 backup console gating
+    |--------------------------------------------------------------------------
+    | The V2 manager UI (App\Livewire\Backup\V2\*) lives under its OWN route
+    | prefix (/backup-v2) behind this flag AND an admin role check. With the
+    | default FALSE, the routes 404 for everyone and the console is invisible in
+    | production — the V1 UI is the only backup UI users can reach. It defaults
+    | to the master 'enabled' flag so turning V2 on also exposes its console,
+    | while still allowing the UI to be dark-launched independently.
+    */
+    'ui_enabled' => (bool) env(
+        'BACKUP_ENGINE_V2_UI_ENABLED',
+        (bool) env('BACKUP_ENGINE_V2_ENABLED', false),
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storage quotas (P5)
+    |--------------------------------------------------------------------------
+    | Enforced on a StorageDestination's RECONCILED used_bytes (the truth job in
+    | App\Backup\V2\Jobs\ReconcileUsedBytesJob). A new backup that would push a
+    | destination past its quota_bytes is refused with a clear message.
+    |
+    | SAFETY: enforcement is gated. With 'enforce' FALSE the QuotaService still
+    | REPORTS usage (the UI shows it) but never blocks a backup — so a production
+    | build that has not opted into V2 is never affected. warn_threshold_percent
+    | drives the "storage limit reached" alert.
+    */
+    'quota' => [
+        'enforce' => (bool) env(
+            'BACKUP_ENGINE_V2_QUOTA_ENFORCE',
+            (bool) env('BACKUP_ENGINE_V2_ENABLED', false),
+        ),
+        'warn_threshold_percent' => (int) env('BACKUP_ENGINE_V2_QUOTA_WARN_PERCENT', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Alerts (P5)
+    |--------------------------------------------------------------------------
+    | Backup-success + storage-limit-reached mail. Reuses the app mail stack;
+    | recipients fall back to the app "from" address when none are configured.
+    | Gated so nothing is ever sent unless V2 is enabled.
+    */
+    'notifications' => [
+        'enabled' => (bool) env(
+            'BACKUP_ENGINE_V2_NOTIFICATIONS_ENABLED',
+            (bool) env('BACKUP_ENGINE_V2_ENABLED', false),
+        ),
+        'notify_on_success' => (bool) env('BACKUP_ENGINE_V2_NOTIFY_ON_SUCCESS', true),
+        'recipients' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('BACKUP_ENGINE_V2_ALERT_RECIPIENTS', ''))
+        ), static fn ($v) => $v !== '')),
+    ],
 ];

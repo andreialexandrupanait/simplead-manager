@@ -54,6 +54,7 @@ $sam_backup_files = array(
     'includes/endpoints/class-database-endpoint.php',
     'includes/endpoints/class-files-endpoint.php',
     'includes/endpoints/class-restore-endpoint.php',
+    'includes/admin/class-admin-page.php',
     'includes/class-backup-plugin.php',
 );
 foreach ($sam_backup_files as $sam_backup_rel) {
