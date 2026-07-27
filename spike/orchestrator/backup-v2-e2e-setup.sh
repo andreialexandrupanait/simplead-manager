@@ -21,17 +21,17 @@ docker exec "$WP" sh -lc '
   echo "  key set"
 '
 
-log "deploying plugin files into $WP"
-docker cp "$REPO/wordpress-plugin/simplead-backup/simplead-backup.php" "$WP:$PLUGIN_DST/simplead-backup.php"
-docker cp "$REPO/wordpress-plugin/simplead-backup/includes/endpoints/class-database-endpoint.php" \
-          "$WP:$PLUGIN_DST/includes/endpoints/class-database-endpoint.php"
-docker exec "$WP" sh -lc "chown -R 1000:1000 $PLUGIN_DST"
+log "deploying plugin (full sync) into $WP"
+# remove-then-copy: docker cp into an existing dir nests it (simplead-backup/simplead-backup).
+docker exec "$WP" rm -rf "$PLUGIN_DST" >/dev/null 2>&1 || true
+docker cp "$REPO/wordpress-plugin/simplead-backup" "$WP:$PLUGIN_DST" >/dev/null
+docker exec "$WP" sh -lc "chown -R www-data:www-data $PLUGIN_DST 2>/dev/null || chown -R 1000:1000 $PLUGIN_DST"
 
 log "generating deterministic file fixture in $WP"
 docker cp "$REPO/spike/orchestrator/backup-v2-gen-fixture.php" "$WP:/tmp/gen-fixture.php"
 docker exec "$WP" sh -lc 'php /tmp/gen-fixture.php /var/www/html'
 
-log "verifying the new DB chunk-download route is registered"
-docker exec "$WP" sh -lc 'wp eval "\$s=rest_get_server();echo in_array(\"/simplead-backup/v1/database/chunk-download\", array_keys(\$s->get_routes()))?\"  route OK\n\":\"  route MISSING\n\";" --allow-root'
+log "verifying DB chunk-download + restore routes are registered"
+docker exec "$WP" sh -lc 'wp eval "\$s=rest_get_server();\$r=array_keys(\$s->get_routes());foreach([\"/simplead-backup/v1/database/chunk-download\",\"/simplead-backup/v1/restore/prepare\",\"/simplead-backup/v1/restore/stage-chunk\",\"/simplead-backup/v1/restore/apply\",\"/simplead-backup/v1/restore/rollback\"] as \$route){echo (in_array(\$route,\$r)?\"  OK   \":\"  MISS \").\$route.\"\n\";}" --allow-root'
 
 log "done — run: docker compose -p sam_lab -f lab/docker-compose.lab.yml exec -T lab-php sh -lc 'cd /work && php artisan test tests/Feature/Backup/V2'"

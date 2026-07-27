@@ -1,0 +1,438 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Backup\V2\Restore;
+
+use App\Backup\V2\Chain\BrokenChainException;
+use App\Backup\V2\Chain\ChainResolver;
+use App\Backup\V2\Chain\ManifestReader;
+use App\Backup\V2\Enums\BackupErrorCode;
+use App\Backup\V2\Enums\RestoreMode;
+use App\Backup\V2\Enums\RestoreSessionState as S;
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Models\RestoreSession;
+use App\Backup\V2\Storage\ObjectLayout;
+use App\Backup\V2\Support\BackupLogger;
+use Aws\S3\S3Client;
+use Closure;
+use RuntimeException;
+use Throwable;
+
+/**
+ * Drives a single RestoreSession through the V2 restore FSM to a terminal state — the piece that
+ * ties chain resolution, the pre-restore safety backup, the S3→plugin staged transfer, the atomic
+ * swap and post-restore validation (with guaranteed rollback) together.
+ *
+ * FSM path (every transition goes through RestoreSession::transitionTo — no shortcuts):
+ *   requested → validating_backup → pre_restore_backup → downloading → decrypting → verifying →
+ *   maintenance → database_restore → file_restore → cleanup → post_restore_validation → completed
+ *   (post_restore_validation → rollback → failed on a failed health-check)
+ *
+ * State ↔ work:
+ *   validating_backup     resolve target + chain (BrokenChain → refuse), assert _COMPLETE, build plan
+ *   pre_restore_backup    take a safety backup of the live site (MANDATORY for MIRROR)
+ *   downloading           pull each planned object from S3 and PUSH it to plugin staging (resumable)
+ *   decrypting            (placeholder — objects are stored plaintext in the lab)
+ *   verifying             assert every planned chunk staged with a matching sha256
+ *   maintenance→db→file   restore/apply: DB import+RENAME swap + journaled file swap (atomic window)
+ *   cleanup               free manager-side temp (plugin rollback data is KEPT until validation)
+ *   post_restore_validation  health-check → commit (drop old/trash) OR rollback (reverse) → failed
+ *
+ * Invariant: the site is NEVER left broken. apply() self-rolls-back a mid-swap failure; a failed
+ * validation triggers restore/rollback (+ the pre-restore backup as a backstop).
+ */
+final class RestoreRunner
+{
+    /** Ordered happy path — used to skip already-passed phases on a resumed run. */
+    private const ORDER = [
+        S::Requested->value,
+        S::ValidatingBackup->value,
+        S::PreRestoreBackup->value,
+        S::Downloading->value,
+        S::Decrypting->value,
+        S::Verifying->value,
+        S::Maintenance->value,
+        S::DatabaseRestore->value,
+        S::FileRestore->value,
+        S::Cleanup->value,
+        S::PostRestoreValidation->value,
+        S::Completed->value,
+    ];
+
+    private readonly BackupLogger $logger;
+
+    /**
+     * @param  Closure(BackupSession):ObjectLayout  $layoutFor  resolves a session's S3 key prefix
+     * @param  (Closure(RestoreSession):?int)|null  $preRestoreBackup  takes a safety backup, returns its id
+     * @param  (Closure(RestoreSession,RestorePlan):bool)|null  $healthCheck  post-restore site/DB health
+     * @param  (Closure(string):void)|null  $fault  test seam: crash injection by phase name
+     */
+    public function __construct(
+        private readonly RestoreSession $session,
+        private readonly RestoreClient $client,
+        private readonly S3Client $s3,
+        private readonly string $bucket,
+        private readonly ChainResolver $resolver,
+        private readonly ManifestReader $reader,
+        private readonly Closure $layoutFor,
+        private readonly ?Closure $preRestoreBackup = null,
+        private readonly ?Closure $healthCheck = null,
+        ?BackupLogger $logger = null,
+        private readonly ?Closure $fault = null,
+    ) {
+        $this->logger = ($logger ?? new BackupLogger)->forSession(
+            'restore',
+            $this->session->id,
+            $this->session->site_id,
+        );
+    }
+
+    public function run(): RestoreSession
+    {
+        if ($this->session->state->isTerminal()) {
+            return $this->session;
+        }
+
+        try {
+            $target = $this->resolveTarget();
+            $plan = $this->buildPlanOrRefuse($target);
+
+            $this->phase(S::ValidatingBackup, 'validating backup + chain', function () use ($target, $plan): void {
+                $this->validate($target, $plan);
+            });
+            $this->phase(S::PreRestoreBackup, 'pre-restore safety backup', fn () => $this->preRestore());
+            $this->phase(S::Downloading, 'staging objects to plugin', fn () => $this->download($plan));
+            $this->phase(S::Decrypting, 'decrypting staged objects', fn () => $this->decrypt());
+            $this->phase(S::Verifying, 'verifying staged objects', fn () => $this->verify($plan));
+            $this->phase(S::Maintenance, 'entering maintenance window', fn () => $this->enterMaintenance());
+            $this->phase(S::DatabaseRestore, 'applying database restore', fn () => $this->apply($plan));
+            $this->phase(S::FileRestore, 'applying file restore', fn () => $this->recordFileRestore());
+            $this->phase(S::Cleanup, 'freeing manager-side temp', fn () => $this->cleanup());
+            $this->postRestoreValidation($plan);
+        } catch (BrokenChainException $e) {
+            $this->fail(BackupErrorCode::BrokenChain, $e->getMessage());
+        } catch (RestoreRolledBack $e) {
+            // Already handled (site returned to pre-apply); session is Failed.
+            $this->logger->warning('restore rolled back', ['reason' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            $this->handleMutatingFailure($e);
+        }
+
+        return $this->session;
+    }
+
+    // ── phase dispatch ───────────────────────────────────────────────────
+
+    private function phase(S $target, string $stage, callable $work): void
+    {
+        if ($this->orderIndex($this->session->state) > $this->orderIndex($target)) {
+            return; // already past this phase on a resumed run
+        }
+        $this->session->transitionTo($target, $stage);
+        $this->session->heartbeat();
+        $work();
+    }
+
+    private function orderIndex(S $state): int
+    {
+        $i = array_search($state->value, self::ORDER, true);
+
+        return $i === false ? PHP_INT_MAX : (int) $i;
+    }
+
+    // ── phases ───────────────────────────────────────────────────────────
+
+    private function resolveTarget(): BackupSession
+    {
+        $target = $this->session->backupSession;
+        if (! $target instanceof BackupSession) {
+            throw new RuntimeException("RestoreSession {$this->session->id} has no V2 backup_session target.");
+        }
+
+        return $target;
+    }
+
+    private function buildPlanOrRefuse(BackupSession $target): RestorePlan
+    {
+        return RestorePlan::build($target, $this->resolver, $this->reader, $this->session->scope);
+    }
+
+    private function validate(BackupSession $target, RestorePlan $plan): void
+    {
+        // Every chain member must be a whole backup (_COMPLETE present) before any restore work.
+        foreach ($this->resolver->resolveChain($target) as $member) {
+            $this->assertComplete($member);
+        }
+
+        $this->mergeCheckpoint([
+            'token' => $this->token(),
+            'plan' => [
+                'file_chunks' => count($plan->fileChunks),
+                'db_chunks' => count($plan->dbChunks),
+                'keep_paths' => count($plan->keepPaths),
+                'tombstones' => count($plan->tombstones),
+                'mirror_roots' => $plan->mirrorRoots,
+                'include_database' => $plan->includeDatabase,
+                'include_files' => $plan->includeFiles,
+            ],
+        ]);
+    }
+
+    private function preRestore(): void
+    {
+        $backupId = $this->preRestoreBackup !== null
+            ? ($this->preRestoreBackup)($this->session)
+            : null;
+
+        if ($this->mode()->requiresPreRestoreBackup() && $backupId === null) {
+            throw new RuntimeException('MIRROR restore requires a pre-restore safety backup, but none was produced.');
+        }
+
+        if ($backupId !== null) {
+            $this->session->pre_restore_backup_id = $backupId;
+            $this->session->save();
+            $this->mergeCheckpoint(['pre_restore_backup_id' => $backupId]);
+        }
+    }
+
+    private function download(RestorePlan $plan): void
+    {
+        // restore/prepare is idempotent — re-running on resume simply re-asserts the plan.
+        $this->client->restorePrepare($this->token(), [
+            'mode' => $this->mode()->value,
+            'scope' => (array) ($this->session->scope ?? []),
+            'mirror_roots' => $plan->mirrorRoots,
+            'keep_paths' => $plan->keepPaths,
+            'db_tables' => $plan->dbTables,
+            'tombstones' => $plan->tombstones,
+        ]);
+
+        foreach ($plan->dbChunks as $chunk) {
+            $this->stageOne('database', (int) $chunk['seq'], (string) $chunk['key']);
+        }
+        foreach ($plan->fileChunks as $chunk) {
+            $this->stageOne('files', (int) $chunk['seq'], (string) $chunk['key']);
+        }
+    }
+
+    private function stageOne(string $kind, int $seq, string $key): void
+    {
+        $id = $kind.':'.$seq;
+        $staged = (array) ($this->checkpoint()['staged'] ?? []);
+        if (isset($staged[$id])) {
+            return; // already staged on a prior run — never re-pull/re-push
+        }
+
+        $tmp = (string) tempnam(sys_get_temp_dir(), 'v2restore_');
+        try {
+            $this->s3->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
+            $localSha = (string) hash_file('sha256', $tmp);
+            $result = $this->client->restoreStageChunk($this->token(), $kind, $seq, $tmp);
+        } finally {
+            @unlink($tmp);
+        }
+
+        $staged[$id] = [
+            'key' => $key,
+            'sha256' => $localSha,
+            'staged_sha256' => (string) ($result['sha256'] ?? ''),
+            'size' => (int) ($result['size'] ?? 0),
+        ];
+        $this->mergeCheckpoint(['staged' => $staged]);
+        $this->session->heartbeat();
+    }
+
+    private function decrypt(): void
+    {
+        // Placeholder: the lab stores objects in the clear. When client-side encryption lands,
+        // decryption happens here (the plugin still verifies sha256 of the decrypted staged bytes).
+    }
+
+    private function verify(RestorePlan $plan): void
+    {
+        $staged = (array) ($this->checkpoint()['staged'] ?? []);
+        $expected = [];
+        foreach ($plan->dbChunks as $c) {
+            $expected[] = 'database:'.(int) $c['seq'];
+        }
+        foreach ($plan->fileChunks as $c) {
+            $expected[] = 'files:'.(int) $c['seq'];
+        }
+
+        foreach ($expected as $id) {
+            if (! isset($staged[$id])) {
+                throw new RestoreVerifyException("planned chunk {$id} was not staged");
+            }
+            $local = (string) $staged[$id]['sha256'];
+            $remote = (string) $staged[$id]['staged_sha256'];
+            if ($remote !== '' && ! hash_equals($local, $remote)) {
+                throw new RestoreVerifyException("staged chunk {$id} sha256 mismatch (local {$local} vs staged {$remote})");
+            }
+        }
+    }
+
+    private function enterMaintenance(): void
+    {
+        // The plugin owns the maintenance flag for the exact apply/swap window (restore/apply).
+        // This state records that the manager is about to enter the critical window.
+        $this->mergeCheckpoint(['critical_window' => true]);
+    }
+
+    private function apply(RestorePlan $plan): void
+    {
+        $this->fault('before_apply');
+        $result = $this->client->restoreApply($this->token());
+        $this->fault('after_apply');
+
+        $this->mergeCheckpoint(['apply' => [
+            'db' => $result['db'] ?? null,
+            'files' => $result['files'] ?? null,
+            'applied' => (bool) ($result['applied'] ?? false),
+        ]]);
+    }
+
+    private function recordFileRestore(): void
+    {
+        // apply() performed the DB+file swap atomically inside one maintenance window; this state
+        // records the file half for observability. Nothing further to call.
+    }
+
+    private function cleanup(): void
+    {
+        // Manager-side temp is already freed per chunk (pull-and-free). The plugin's rollback data
+        // (trash + sambk_old_* tables) is intentionally KEPT until post-restore validation decides.
+        $this->fault('at_cleanup');
+    }
+
+    private function postRestoreValidation(RestorePlan $plan): void
+    {
+        $this->phase(S::PostRestoreValidation, 'validating restored site', function () use ($plan): void {
+            $this->fault('at_validation');
+
+            $ok = $this->healthCheck !== null
+                ? (bool) ($this->healthCheck)($this->session, $plan)
+                : true;
+
+            if (! $ok) {
+                $this->rollback('post-restore health-check failed');
+
+                throw new RestoreRolledBack('post-restore health-check failed');
+            }
+
+            // Confirmed good — let the plugin drop the retained pre-apply tables + trash.
+            $this->client->restoreCommit($this->token());
+            $this->session->transitionTo(S::Completed, 'restore complete');
+        });
+    }
+
+    // ── failure handling / rollback ──────────────────────────────────────
+
+    private function handleMutatingFailure(Throwable $e): void
+    {
+        $state = $this->session->state;
+
+        // If we never started mutating, just fail (site untouched).
+        if (! in_array($state, S::mutating(), true)) {
+            $this->fail(BackupErrorCode::RestoreApplyFailed, $e->getMessage());
+
+            return;
+        }
+
+        // Mutating states: the plugin apply() self-rolls-back a mid-swap failure, but call
+        // restore/rollback regardless (idempotent no-op if nothing was applied) so the site is
+        // guaranteed at its pre-apply state, then fail.
+        try {
+            $this->rollback('restore failed: '.$e->getMessage());
+        } catch (Throwable $re) {
+            $this->logger->error('rollback after failure also failed', ['error' => $re->getMessage()]);
+            $this->session->recordError(BackupErrorCode::RestoreApplyFailed, $e->getMessage());
+            $this->session->transitionTo(S::Failed);
+        }
+    }
+
+    private function rollback(string $reason): void
+    {
+        $this->session->recordError(BackupErrorCode::PostRestoreValidationFailed, $reason);
+        $this->session->transitionTo(S::Rollback, 'rolling back');
+        $this->session->heartbeat();
+
+        // 1) Reverse the plugin's journal + DB swap (return to pre-apply).
+        try {
+            $this->client->restoreRollback($this->token());
+        } catch (Throwable $e) {
+            $this->logger->error('plugin rollback failed', ['error' => $e->getMessage()]);
+        }
+
+        // 2) Backstop: a pre-restore safety backup was taken for exactly this case. The dispatcher
+        //    can restore it if the journaled rollback was insufficient (recorded for the operator).
+        $this->mergeCheckpoint(['rolled_back' => true, 'rollback_reason' => $reason]);
+
+        $this->session->transitionTo(S::Failed, 'rolled back to pre-apply');
+    }
+
+    private function fail(BackupErrorCode $code, string $message): void
+    {
+        $this->session->recordError($code, $message);
+        if ($this->session->state !== S::Failed) {
+            $this->session->transitionTo(S::Failed);
+        }
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────
+
+    private function assertComplete(BackupSession $session): void
+    {
+        $layout = ($this->layoutFor)($session);
+        try {
+            $this->s3->headObject(['Bucket' => $this->bucket, 'Key' => $layout->completeMarker()]);
+        } catch (Throwable $e) {
+            throw BrokenChainException::missingManifest($session->id, '_COMPLETE marker missing: '.$e->getMessage());
+        }
+    }
+
+    private function mode(): RestoreMode
+    {
+        return RestoreMode::tryFrom((string) $this->session->mode) ?? RestoreMode::SafeMerge;
+    }
+
+    private function token(): string
+    {
+        $cp = $this->checkpoint();
+        if (isset($cp['token']) && $cp['token'] !== '') {
+            return (string) $cp['token'];
+        }
+        $token = 'restore_'.$this->session->id.'_'.substr((string) $this->session->idempotency_key, 0, 8);
+        $token = (string) preg_replace('/[^A-Za-z0-9_\-]/', '', $token);
+        $this->mergeCheckpoint(['token' => $token]);
+
+        return $token;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkpoint(): array
+    {
+        $this->session->refresh();
+
+        return $this->session->checkpoint ?? [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private function mergeCheckpoint(array $patch): void
+    {
+        $this->session->refresh();
+        $this->session->checkpoint = array_merge($this->session->checkpoint ?? [], $patch);
+        $this->session->save();
+    }
+
+    private function fault(string $phase): void
+    {
+        if ($this->fault !== null) {
+            ($this->fault)($phase);
+        }
+    }
+}

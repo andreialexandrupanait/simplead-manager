@@ -16,7 +16,7 @@
 | P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
 | P2 | Plugin simplead-backup + backup de bază (nucleul) | ✅ | **backup FULL end-to-end** condus de FSM: DB consistent (0 orfani) + fișiere (oracle) + multipart întărit + manifest+`_COMPLETE`; restore-oracle 41/41 + DB 0 erori; resume-fără-dublare; 32 teste E2E |
 | P3 | Incremental + chain-uri + retenție | ✅ | incremental fișiere (changed/new/tombstones) + chain (full+2inc restore-oracle 0/0, chain rupt detectat) + retenție chain-safe; suita 87 teste (784 aserțiuni) |
-| P4 | Restore (full + selectiv + rollback) | ⬜ | — |
+| P4 | Restore (full + selectiv + rollback) | ✅ | restore full (MIRROR+SAFE_MERGE) + din chain + selectiv + **kill-mid-restore→rollback (site byte-identic)** + swap atomic DB/fișiere; suita 98 teste (861 aserțiuni) |
 | P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
 | P6 | Verificare + proven restore + import legacy | ⬜ | — |
 | P7 | Pregătire rollout + raport final | ⬜ | — |
@@ -29,6 +29,18 @@ Toate ⬜ până sunt demonstrate prin teste. Se completează pe măsură ce faz
 Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md) (secțiunea DEFINITION OF DONE).
 
 ## Jurnal de faze (cel mai recent sus)
+
+### P4 — Restore ✅ (poartă trecută)
+- Plugin v0.4.0: `class-restore-engine.php` (staging + swap ATOMIC fișiere journaled + DB `sambk_stg_*`/`sambk_old_*`
+  RENAME multi-tabel, rollback garantat, tombstones, moduri, scope), endpoint-uri `restore/prepare|stage-chunk|apply|commit|rollback|status` (HMAC+nonce). Fără shell_exec.
+- Laravel: `Restore\RestoreRunner` (FSM complet: validating_backup→pre_restore_backup→downloading→verifying→
+  maintenance→db/file restore→post_restore_validation→completed / rollback→failed), `RestorePlan`, `RestoreMode`
+  (safe_merge/mirror), job inert `RunRestoreSessionJob` (dublă poartă enabled+restore_enabled).
+- Maintenance DOAR pe fereastra de apply; verify-before-apply; pre-restore safety backup obligatoriu la MIRROR;
+  transfer autentificat (stage-chunk = body RAW semnat HMAC).
+- **Rerulat de mine:** restore full round-trip (MIRROR reproduce exact, SAFE_MERGE păstrează adăugările), din chain
+  (full+2inc, tombstones aplicate), selectiv (scope respectat), **kill-mid-restore → site byte-identic cu pre-apply
+  prin reverse-journal**, DB oracle real (round-trip/selectiv/rollback). **98 teste (861 aserțiuni), Pint + PHPStan curat.**
 
 ### P3 — Incremental + chain + retenție ✅ (poartă trecută)
 - Plugin v0.3.0: `class-file-diff.php` (changed/new/tombstones; fast-path unchanged pe size+mtime, sha256 autoritativ);

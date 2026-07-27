@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Plugin;
 
+use App\Backup\V2\Restore\RestoreClient;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Site;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -26,7 +27,7 @@ use Throwable;
  * Headers use the plugin's own X-SAM-Backup-* names (the plugin also accepts the
  * connector's X-SAM-* as a fallback; we send the dedicated ones).
  */
-final class SimpleadBackupClient implements PluginClient
+final class SimpleadBackupClient implements PluginClient, RestoreClient
 {
     private const NAMESPACE = 'simplead-backup/v1';
 
@@ -119,6 +120,78 @@ final class SimpleadBackupClient implements PluginClient
         ], $chunkIndex, 'v2files_');
     }
 
+    // ── restore (RestoreClient) ────────────────────────────────────────────
+
+    public function restorePrepare(string $token, array $opts): array
+    {
+        return $this->json('POST', 'restore/prepare', array_merge(['token' => $token], $opts));
+    }
+
+    public function restoreStageChunk(string $token, string $kind, int $seq, string $localPath): array
+    {
+        if (! is_file($localPath)) {
+            throw new PluginClientException("restore chunk source not found: {$localPath}");
+        }
+
+        // The raw chunk bytes ARE the signed body (METHOD|ROUTE|TS|NONCE|BODY), so a tampered
+        // chunk fails the plugin's HMAC. Metadata rides as query params (not part of get_route()).
+        $body = (string) file_get_contents($localPath);
+        $sha = (string) hash_file('sha256', $localPath);
+        $query = http_build_query([
+            'token' => $token,
+            'kind' => $kind,
+            'seq' => $seq,
+            'sha256' => $sha,
+        ]);
+
+        [$url, , $headers] = $this->sign('POST', 'restore/stage-chunk', [], $body);
+
+        try {
+            $response = $this->http
+                ->withHeaders($headers)
+                ->timeout($this->timeout)
+                ->connectTimeout(15)
+                ->withBody($body, 'application/octet-stream')
+                ->send('POST', $url.'?'.$query);
+        } catch (Throwable $e) {
+            throw new PluginClientException("simplead-backup restore/stage-chunk transport error: {$e->getMessage()}");
+        }
+
+        $decoded = $response->json();
+        if (! is_array($decoded)) {
+            $decoded = [];
+        }
+        if ($response->failed()) {
+            throw new PluginClientException(
+                "simplead-backup restore/stage-chunk returned HTTP {$response->status()}",
+                $response->status(),
+                $decoded,
+            );
+        }
+
+        return $decoded;
+    }
+
+    public function restoreApply(string $token): array
+    {
+        return $this->json('POST', 'restore/apply', ['token' => $token]);
+    }
+
+    public function restoreCommit(string $token): array
+    {
+        return $this->json('POST', 'restore/commit', ['token' => $token]);
+    }
+
+    public function restoreRollback(string $token): array
+    {
+        return $this->json('POST', 'restore/rollback', ['token' => $token]);
+    }
+
+    public function restoreStatus(string $token): array
+    {
+        return $this->json('POST', 'restore/status', ['token' => $token]);
+    }
+
     // ── internals ────────────────────────────────────────────────────────
 
     /**
@@ -205,13 +278,16 @@ final class SimpleadBackupClient implements PluginClient
     /**
      * Build (url, body, headers) with a fresh timestamp + nonce + HMAC signature.
      *
+     * When $rawBody is provided it is signed verbatim (used for the octet-stream
+     * restore chunk upload, where the body is the chunk bytes, not JSON params).
+     *
      * @param  array<string, mixed>  $params
      * @return array{0:string,1:string,2:array<string,string>}
      */
-    private function sign(string $method, string $path, array $params): array
+    private function sign(string $method, string $path, array $params, ?string $rawBody = null): array
     {
         $route = '/'.self::NAMESPACE.'/'.ltrim($path, '/');
-        $body = $params === [] ? '' : (string) json_encode($params, JSON_UNESCAPED_SLASHES);
+        $body = $rawBody ?? ($params === [] ? '' : (string) json_encode($params, JSON_UNESCAPED_SLASHES));
 
         $timestamp = (string) time();
         $nonce = bin2hex(random_bytes(16));

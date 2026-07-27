@@ -23,6 +23,11 @@ enum BackupErrorCode: string
     case UploadFailed = 'upload_failed';
     case CallbackLost = 'callback_lost';
 
+    // Restore-side failures.
+    case BrokenChain = 'broken_chain';
+    case RestoreApplyFailed = 'restore_apply_failed';
+    case PostRestoreValidationFailed = 'post_restore_validation_failed';
+
     /**
      * Whether this class of error is generally worth retrying (transient) vs a
      * hard failure. Advisory only — the caller decides the actual policy.
@@ -31,7 +36,8 @@ enum BackupErrorCode: string
     {
         return match ($this) {
             self::HostTimeout, self::UploadFailed, self::CallbackLost, self::SnapshotUnavailable => true,
-            self::ObjectMissing, self::ChecksumMismatch, self::DiskFull, self::ManifestInvalid => false,
+            self::ObjectMissing, self::ChecksumMismatch, self::DiskFull, self::ManifestInvalid,
+            self::BrokenChain, self::RestoreApplyFailed, self::PostRestoreValidationFailed => false,
         };
     }
 
@@ -46,6 +52,9 @@ enum BackupErrorCode: string
             self::SnapshotUnavailable => 'Snapshot unavailable',
             self::UploadFailed => 'Upload failed',
             self::CallbackLost => 'Callback lost',
+            self::BrokenChain => 'Backup chain is broken',
+            self::RestoreApplyFailed => 'Restore apply failed',
+            self::PostRestoreValidationFailed => 'Post-restore validation failed',
         };
     }
 }

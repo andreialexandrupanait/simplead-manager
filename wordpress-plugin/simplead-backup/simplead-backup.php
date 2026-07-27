@@ -3,7 +3,7 @@
  * Plugin Name: Simplead Backup
  * Plugin URI: https://simplead.io
  * Description: Snapshot-parity backup engine for SimpleAd Manager. Consistent logical DB dumps + incremental file backups, uploaded to S3 in resumable chunks. Independent REST namespace, version and release cycle from the connector.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Keep the header Version: and this constant in lock-step.
-define('SAM_BACKUP_VERSION', '0.3.0');
+define('SAM_BACKUP_VERSION', '0.4.0');
 define('SAM_BACKUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_BACKUP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_BACKUP_PLUGIN_FILE', __FILE__);
@@ -48,10 +48,12 @@ $sam_backup_files = array(
     'includes/files/class-inventory.php',
     'includes/files/class-file-chunker.php',
     'includes/files/class-file-diff.php',
+    'includes/restore/class-restore-engine.php',
     'includes/endpoints/class-rest-controller.php',
     'includes/endpoints/class-capabilities-endpoint.php',
     'includes/endpoints/class-database-endpoint.php',
     'includes/endpoints/class-files-endpoint.php',
+    'includes/endpoints/class-restore-endpoint.php',
     'includes/class-backup-plugin.php',
 );
 foreach ($sam_backup_files as $sam_backup_rel) {
