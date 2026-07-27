@@ -107,6 +107,8 @@ class BackupV2CommandsTest extends TestCase
         Config::set('backup_v2.enabled', true);
 
         $site = Site::factory()->create();
+        // Deep-verify now enforces the site allowlist (BackupV2Gate::siteAllowed).
+        Config::set('backup_v2.site_ids', [(string) $site->id]);
         $session = BackupSession::create([
             'site_id' => $site->id,
             'type' => 'full',

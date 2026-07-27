@@ -61,15 +61,36 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     }
 
     /**
-     * Production factory (TODO P2/P3): the per-site plugin key/secret must be
-     * decrypted from the Site row (mirroring the connector credential handling),
-     * not read from config. Until then the lab config creds are used as a fallback
-     * — inert in production because config('backup_v2.enabled') gates any run.
+     * Production factory: signs against the site's own WordPress host with the
+     * site's stored credentials.
+     *
+     * Base URL is `$site->url` (the plugin REST namespace `/wp-json/simplead-backup/v1/…`
+     * is appended by sign()). Credentials come from the Site row: `api_key` /
+     * `api_secret` are cast `encrypted`, so `$site->api_key` / `$site->api_secret`
+     * are ALREADY decrypted on read — no manual decrypt() here, and no secret is
+     * duplicated in code or config.
+     *
+     * Credential note: the simplead-backup plugin accepts the CONNECTOR credentials
+     * (`sam_api_key` / `sam_api_secret`, the same pair the manager already HMAC-signs
+     * connector calls with) as a fallback for its `X-SAM-Backup-*` auth. That is what
+     * this factory uses today. Dedicated per-site plugin keys
+     * (`sam_backup_api_key` / `sam_backup_api_secret`, stored separately from the
+     * connector pair) are a follow-up: once the plugin provisions them they should be
+     * resolved here in preference to the connector pair. Until then the connector
+     * credentials authenticate the backup namespace.
      */
     public static function forSite(Site $site, ?BackupLogger $logger = null): self
     {
-        // TODO: resolve + decrypt the site's dedicated simplead-backup credentials.
-        return self::lab(rtrim($site->url, '/'), $logger);
+        return new self(
+            http: app(HttpFactory::class),
+            baseUrl: rtrim($site->url, '/'),
+            key: (string) $site->api_key,
+            secret: (string) $site->api_secret,
+            timeout: (int) config('backup_v2.plugin.timeout', 120),
+            dbTimeBudget: (int) config('backup_v2.plugin.db_time_budget', 90),
+            dbSegmentBytes: (int) config('backup_v2.plugin.db_segment_bytes', 8388608),
+            logger: $logger,
+        );
     }
 
     public function capabilities(): array

@@ -8,6 +8,7 @@ use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Support\BackupV2Gate;
 use App\Backup\V2\Verification\DeepVerifyService;
 use Illuminate\Console\Command;
 
@@ -50,6 +51,19 @@ class DeepVerifyCommand extends Command
 
         $results = [];
         foreach ($this->sessions() as $session) {
+            // Allowlist enforcement: only deep-verify sessions whose site is on the
+            // config('backup_v2.site_ids') allowlist.
+            if (! BackupV2Gate::siteAllowed((int) $session->site_id)) {
+                $results[] = [
+                    'session_id' => $session->id,
+                    'status' => 'skipped',
+                    'sample_size' => 0,
+                    'error' => 'not_allowlisted',
+                ];
+
+                continue;
+            }
+
             $layout = $this->layoutFor($session);
             $verification = $service->deepVerify($session, $s3, $bucket, $layout, $sample);
             $results[] = [

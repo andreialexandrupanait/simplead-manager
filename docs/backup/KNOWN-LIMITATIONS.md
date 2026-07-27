@@ -6,29 +6,41 @@ knowledge. None of them breaks the production-isolation contract (all V2 code is
 inert behind default-false flags), but the **production-resolver** items are hard
 prerequisites before any real client site is enrolled.
 
-## 1. Production credential + S3 resolvers not wired (BLOCKS real-site enrolment)
+## 1. Production credential + S3 resolvers — WIRED (still flag-gated, pending re-review)
 
-- `S3ClientFactory` only has `::lab()` (MinIO from `config('backup_v2.lab_s3.*')`).
-  The `::forDestination($site->...)` path that decrypts the site's real
-  `StorageDestination` (endpoint/key/secret/region/bucket, as `S3Driver` does) is
-  a documented TODO and **not implemented**.
-- `SimpleadBackupClient::forSite()` falls back to `::lab()` with lab HMAC creds;
-  it does **not** yet decrypt per-site plugin key/secret from the Site row.
-- `RunBackupSessionJob` / `RunRestoreSessionJob` therefore currently target lab
-  MinIO + lab creds even on the (gated) production path.
-- **Consequence:** a premature flag-flip in production would fail to reach real
-  storage rather than corrupt it, but the engine cannot back up a real client
-  site until these resolvers are implemented and independently re-reviewed.
+Closed on `feature/simplead-backup-production-ready` (additive, behind default-false flags):
 
-## 2. Restore pre-restore-backup + health-check closures not wired in the job
+- `S3ClientFactory::forDestination(StorageDestination)` builds the client from a
+  site's real destination, decrypting `key`/`secret` with the EXACT `decrypt()` the
+  V1 `S3Driver` uses and resolving endpoint/region/bucket through the same
+  `StorageFactory::endpointFor()` map (Hetzner/Backblaze; plain AWS `s3` stays
+  region-native). `::lab()` is retained for the lab/tests. No secret is duplicated
+  in code.
+- `SimpleadBackupClient::forSite(Site)` signs the plugin namespace at `$site->url`
+  with the site's stored connector credentials (`api_key`/`api_secret`, `encrypted`
+  cast → auto-decrypted). **Follow-up:** dedicated per-site plugin keys
+  (`sam_backup_api_key`/`sam_backup_api_secret`) are not yet provisioned by the
+  plugin; the connector pair is accepted as the plugin's documented fallback.
+- `RunBackupSessionJob` / `RunRestoreSessionJob` now resolve the real destination +
+  per-site plugin client (no lab creds on the production path) and are gated by
+  `BackupV2Gate::allowsSite()` (enabled AND on the `backup_v2.site_ids` allowlist);
+  the allowlist is also enforced by the deep-verify / proven-restore commands.
+- **Consequence:** the resolvers exist and are unit-tested, but nothing runs until
+  the owner both flips `backup_v2.enabled` and lists a site id. Independent
+  re-review of the credential path is still a prerequisite before enrolling a real
+  client site.
 
-`RunRestoreSessionJob` constructs `RestoreRunner` with `preRestoreBackup: null`
-and `healthCheck: null` (TODO). The orchestration and rollback logic are fully
-tested with injected closures, but the production dispatcher must supply:
-- a real safety-backup dispatch (a `BackupRunner` run returning its id), and
-- a real post-restore probe (site HTTP + expected DB tables/rows).
-Until then the guaranteed-rollback backstop relies solely on the plugin's
-journaled swap, not the additional safety backup.
+## 2. Restore pre-restore-backup + health-check closures — WIRED (real, no longer null)
+
+`RunRestoreSessionJob` now supplies both closures to `RestoreRunner`:
+- `PreRestoreSafetyBackup` — takes a real FULL backup of the live site through
+  `BackupRunner` and returns its `BackupSession` id (MANDATORY for MIRROR; a
+  non-completing safety backup returns null so the runner refuses the MIRROR).
+- `RestoreHealthCheck` — a real post-restore probe: the site root must respond
+  (2xx/3xx) AND the connector's `database-health` endpoint must report the expected
+  core tables present with a plausible (> 0) total row count. A failure returns
+  false, which drives the runner's guaranteed rollback. The previous trivially-
+  passing `null` is gone.
 
 ## 3. Encryption at rest is a placeholder
 

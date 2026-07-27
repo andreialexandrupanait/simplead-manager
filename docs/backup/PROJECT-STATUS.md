@@ -4,10 +4,12 @@
 > Design: [`TARGET-ARCHITECTURE.md`](TARGET-ARCHITECTURE.md) · Roadmap: [`IMPLEMENTATION-ROADMAP.md`](IMPLEMENTATION-ROADMAP.md)
 > Acceptanță: [`ACCEPTANCE-TESTS.md`](ACCEPTANCE-TESTS.md) · Decizii: [`DECISION-LOG.md`](DECISION-LOG.md)
 
-**Verdict curent:** ✅ **READY FOR PILOT (lab/staging)** — motorul V2 complet și dovedit end-to-end în laborator;
-audit independent de securitate + calitate APROBAT (0 critice, 0 majore). Precondiție înainte de un site CLIENT
-real (nu blochează pilotul gated de owner): resolvere de credențiale/S3 de producție + wiring healthCheck/
-preRestoreBackup — vezi `KNOWN-LIMITATIONS.md`. Pilotul real pornește DOAR la instrucțiunea owner `DA PILOT BACKUP V2`.
+**Verdict curent:** ✅ **READY FOR PILOT** — motorul V2 complet și dovedit end-to-end în laborator; audit independent
+APROBAT (0 critice, 0 majore); **precondițiile de producție ÎNCHISE** (resolvere creds S3 din `StorageDestination` +
+plugin din `Site`; `BackupV2Gate` allowlist fail-closed; `healthCheck`/`preRestoreBackup` reale). Suita: **151 teste
+(1014 aserțiuni), 0 failed**. Rămâne recomandat un re-review al căii de credențiale + provizionarea cheilor proprii de
+plugin înainte de scalare. Motorul rămâne inert cu flag-urile default false. Pilotul real pornește DOAR la instrucțiunea
+owner **`DA PILOT BACKUP V2`**.
 **Branch:** `feature/simplead-backup-production-ready` (din `feature/snapshot-parity-backup-engine` + merge spike).
 **Producție:** neatinsă. V2 dezactivat implicit (toate flag-urile `config/backup_v2.php` = false).
 

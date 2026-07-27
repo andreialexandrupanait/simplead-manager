@@ -7,6 +7,7 @@ namespace App\Backup\V2\Console;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\ProvenRestore\ProvenRestoreService;
+use App\Backup\V2\Support\BackupV2Gate;
 use App\Models\Site;
 use Closure;
 use Illuminate\Console\Command;
@@ -48,6 +49,14 @@ class ProvenRestoreCommand extends Command
 
         $results = [];
         foreach ($this->sites() as $site) {
+            // Allowlist enforcement: a proven-restore actually restores a site's backup
+            // into a sandbox — refuse any site not on config('backup_v2.site_ids').
+            if (! BackupV2Gate::siteAllowed((int) $site->id)) {
+                $results[] = ['site_id' => $site->id, 'status' => 'skipped', 'reason' => 'not_allowlisted'];
+
+                continue;
+            }
+
             $backup = $service->latestValidBackup((int) $site->id);
             if (! $backup instanceof BackupSession) {
                 $results[] = ['site_id' => $site->id, 'status' => 'skipped', 'reason' => 'no_valid_backup'];
