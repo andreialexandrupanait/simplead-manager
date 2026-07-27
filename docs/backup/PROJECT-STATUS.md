@@ -4,7 +4,10 @@
 > Design: [`TARGET-ARCHITECTURE.md`](TARGET-ARCHITECTURE.md) · Roadmap: [`IMPLEMENTATION-ROADMAP.md`](IMPLEMENTATION-ROADMAP.md)
 > Acceptanță: [`ACCEPTANCE-TESTS.md`](ACCEPTANCE-TESTS.md) · Decizii: [`DECISION-LOG.md`](DECISION-LOG.md)
 
-**Verdict curent:** IN PROGRESS (nu READY FOR PILOT).
+**Verdict curent:** ✅ **READY FOR PILOT (lab/staging)** — motorul V2 complet și dovedit end-to-end în laborator;
+audit independent de securitate + calitate APROBAT (0 critice, 0 majore). Precondiție înainte de un site CLIENT
+real (nu blochează pilotul gated de owner): resolvere de credențiale/S3 de producție + wiring healthCheck/
+preRestoreBackup — vezi `KNOWN-LIMITATIONS.md`. Pilotul real pornește DOAR la instrucțiunea owner `DA PILOT BACKUP V2`.
 **Branch:** `feature/simplead-backup-production-ready` (din `feature/snapshot-parity-backup-engine` + merge spike).
 **Producție:** neatinsă. V2 dezactivat implicit (toate flag-urile `config/backup_v2.php` = false).
 
@@ -19,7 +22,7 @@
 | P4 | Restore (full + selectiv + rollback) | ✅ | restore full (MIRROR+SAFE_MERGE) + din chain + selectiv + **kill-mid-restore→rollback (site byte-identic)** + swap atomic DB/fișiere; suita 98 teste (861 aserțiuni) |
 | P5 | UI Manager + UI plugin + alerte + cote | ✅ | UI Livewire V2 (global/per-site/detail) gated de flag + UI plugin (diagnostice, support-package redactat) + cote + alerte; 122 teste (918 aserțiuni) |
 | P6 | Verificare + proven restore + import legacy | ✅ | verificare la creare + deep-verify + **proven restore real (scrie rând `passed` — defectul 0-rânduri închis)** + import legacy read-only; suita 137 teste (989 aserțiuni) |
-| P7 | Pregătire rollout + raport final | ⬜ | — |
+| P7 | Pregătire rollout + raport final | ✅ | 14 documente producție (incl. SECURITY-REVIEW/TEST-EVIDENCE/KNOWN-LIMITATIONS + runbook-uri rollout/rollback); ZIP plugin + sha256; audit final APROBAT |
 
 Legendă: ✅ trecut poartă · 🟡 în lucru · ⬜ neînceput · ❌ blocat
 
