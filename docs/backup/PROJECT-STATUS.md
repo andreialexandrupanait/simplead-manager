@@ -18,7 +18,7 @@
 | P3 | Incremental + chain-uri + retenție | ✅ | incremental fișiere (changed/new/tombstones) + chain (full+2inc restore-oracle 0/0, chain rupt detectat) + retenție chain-safe; suita 87 teste (784 aserțiuni) |
 | P4 | Restore (full + selectiv + rollback) | ✅ | restore full (MIRROR+SAFE_MERGE) + din chain + selectiv + **kill-mid-restore→rollback (site byte-identic)** + swap atomic DB/fișiere; suita 98 teste (861 aserțiuni) |
 | P5 | UI Manager + UI plugin + alerte + cote | ✅ | UI Livewire V2 (global/per-site/detail) gated de flag + UI plugin (diagnostice, support-package redactat) + cote + alerte; 122 teste (918 aserțiuni) |
-| P6 | Verificare + proven restore + import legacy | ⬜ | — |
+| P6 | Verificare + proven restore + import legacy | ✅ | verificare la creare + deep-verify + **proven restore real (scrie rând `passed` — defectul 0-rânduri închis)** + import legacy read-only; suita 137 teste (989 aserțiuni) |
 | P7 | Pregătire rollout + raport final | ⬜ | — |
 
 Legendă: ✅ trecut poartă · 🟡 în lucru · ⬜ neînceput · ❌ blocat
@@ -29,6 +29,18 @@ Toate ⬜ până sunt demonstrate prin teste. Se completează pe măsură ce faz
 Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md) (secțiunea DEFINITION OF DONE).
 
 ## Jurnal de faze (cel mai recent sus)
+
+### P6 — Verificare + proven restore + import legacy ✅ (poartă trecută)
+- `Verification\BackupVerifier` (verificare la creare: manifest+`_COMPLETE`+obiecte size/sha256 → record `backup_verifications`),
+  `Verification\DeepVerifyService` + `backup:v2-deep-verify` (sampled: deschide arhive + parse SQL + composite).
+- `ProvenRestore\ProvenRestoreService` + `backup:v2-proven-restore`: restore în sandbox + health-check → **scrie rând
+  real `ProvenRestore`** (închide defectul „proven_restores gol / 0 rânduri").
+- `Legacy\LegacyImportService` + `backup:v2-import-legacy`: clasifică backup-urile legacy (A–F) + index read-only
+  (`legacy_backup_index`), FĂRĂ mutare/ștergere; restore legacy gated de `legacy_restore_enabled`.
+- Migrări aditive `000004_backup_verifications` + `000005_legacy_backup_index`. Comenzi inerte fără flag.
+- **Rerulat de mine:** proven restore backup bun → rând `passed`, backup corupt → rând `failed`; verificarea prinde
+  corupția; import legacy read-only. **137 teste (989 aserțiuni), Pint PASS.** (24 eșecuri inițiale = izolare DB între
+  teste, reparate; connector neatins.)
 
 ### P5 — UI + alerte + cote ✅ (poartă trecută)
 - Livewire V2 izolat: `BackupV2Overview` (health/sesiuni/destinații/storage+cote/orfani/proven-restore/alerte),

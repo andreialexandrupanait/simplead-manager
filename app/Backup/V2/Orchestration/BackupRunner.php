@@ -474,6 +474,18 @@ final class BackupRunner
         $this->assertObjectPresent($this->layout->completeMarker());
 
         $this->session->transitionTo(S::Completed, 'backup complete');
+
+        // Verify-at-creation (P6): the moment a backup reaches `completed`, produce
+        // its create-verification record and — on pass — stamp verified_at, which
+        // retention reads for keep-last-verified. Deliberately non-fatal: a verifier
+        // failure records a failed/corrupt verification but never un-completes an
+        // already-whole backup (verify-before-complete has already guaranteed it).
+        try {
+            (new \App\Backup\V2\Verification\BackupVerifier)
+                ->verifyOnComplete($this->session, $this->s3, $this->bucket, $this->layout);
+        } catch (Throwable $e) {
+            $this->logger->warning('create-verification threw (non-fatal)', ['error' => $e->getMessage()]);
+        }
     }
 
     // ── manifest assembly ────────────────────────────────────────────────
