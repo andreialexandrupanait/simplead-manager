@@ -42,8 +42,11 @@ FK aditive spre `sites`/`backups`, `full_base_id` self-ref pentru chain. `down()
   compresate limitate vs multipart-per-segment. Criterii: impact minim, restore eficient, număr
   rezonabil de obiecte S3, reluare per segment, checksum, streaming, temp redus, fișiere foarte mari.
 - **D-005 (P2) — Dimensiune parte multipart + TTL presigned:** din benchmark de throughput/rată de eșec.
-- **D-006 (P2) — Metodă dump DB consistent portabilă:** confirmă metoda din spike (single-connection
-  `START TRANSACTION WITH CONSISTENT SNAPSHOT`) pe MySQL 8 + MariaDB 10/11 + Woo + Multisite, întărită
-  cu ORDER BY stabil și hex pentru binar. Fără binlog/WAL în v1.
+- **D-006 (P2) — ÎNCHIS:** dump DB consistent implementat în `simplead-backup` (`class-consistent-dumper.php`):
+  o singură conexiune mysqli, `SET SESSION REPEATABLE READ` + `START TRANSACTION WITH CONSISTENT SNAPSHOT`,
+  `ORDER BY` pe PK real, binar/BLOB ca hex `0x...`, snapshotul e DOAR mecanism de citire (textul de restore
+  = DDL+INSERT, fără statement-urile de snapshot), output segmentat gzip. **Dovedit în lab: 0 orfani pe
+  MySQL 8.0.46 ȘI MariaDB 11.8** (contrast paged: 60/62 orfani), CRC32 binar identic, cu Woo/HPOS + Multisite.
+  Fără binlog/WAL în v1. Reluarea cross-request = repornire (snapshot nou), documentat onest.
 - **D-007 (P1/P2) — Profile de resurse:** valorile finale LOW/NORMAL/FAST din capability discovery +
   benchmark de latență, nu hardcodate.

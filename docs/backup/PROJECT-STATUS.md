@@ -14,7 +14,7 @@
 |---|---|---|---|
 | P0 | Setup branch / bază / laborator / flags | ✅ | branch + spike merge; `config/backup_v2.php`; lab Laravel (Laravel 12.64, migrări OK, teste rulează) |
 | P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
-| P2 | Plugin simplead-backup + backup de bază (nucleul) | ⬜ | — |
+| P2 | Plugin simplead-backup + backup de bază (nucleul) | 🟡 în lucru | scaffold plugin + capabilities + **dump DB consistent dovedit (0 orfani MySQL8+MariaDB11)** |
 | P3 | Incremental + chain-uri + retenție | ⬜ | — |
 | P4 | Restore (full + selectiv + rollback) | ⬜ | — |
 | P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
@@ -29,6 +29,23 @@ Toate ⬜ până sunt demonstrate prin teste. Se completează pe măsură ce faz
 Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md) (secțiunea DEFINITION OF DONE).
 
 ## Jurnal de faze (cel mai recent sus)
+
+### P2 — Nucleul 🟡 (în lucru — bucata 1 din N livrată)
+**Livrat & dovedit (bucata 1 — WORDPRESS-ENGINE):**
+- Plugin NOU `wordpress-plugin/simplead-backup/` independent: header + `SAM_BACKUP_VERSION`, REST namespace
+  propriu `simplead-backup/v1`, opțiuni proprii `sam_backup_*`, temp propriu, log + diagnostic proprii,
+  auth HMAC-SHA256 + timestamp + **nonce OBLIGATORIU** + anti-replay. Connectorul NU e atins.
+- Endpoint `capabilities` (PHP/WP/DB/extensii/disk/multisite/snapshot-supported; `shell_exec` doar raportat, niciodată folosit).
+- **Dump DB consistent** (`class-consistent-dumper.php`): o conexiune, `START TRANSACTION WITH CONSISTENT
+  SNAPSHOT`, ORDER BY pe PK, binar→hex, output segmentat gzip. **REVIEW independent (rerulat de mine):
+  0 orfani pe MySQL 8.0.46 ȘI MariaDB 11.8** (contrast paged 60/62), CRC32 binar identic, Woo/HPOS + Multisite.
+- Sintaxă PHP OK pe toate fișierele; connectorul neatins.
+
+**Rămâne în P2 (bucățile următoare):** inventar fișiere + excluderi aplicate înainte de citire; chunking
+fișiere + format segment (benchmark); upload S3 multipart întărit (retry/checksum/resume per parte + reaper);
+`manifest.json`+`metadata.json`+`checksums.json`+`_COMPLETE` obligatoriu; contract empty-chunk; orchestrare
+FSM în Laravel (jobs care conduc sesiunea capability→inventory→db_export→…→completed); shim în connector;
+full/db-only/files-only end-to-end; fallback non-InnoDB; DiskSpaceGuard înainte de dump.
 
 ### P1 — Fundația Laravel ✅ (poartă trecută)
 - Namespace izolat `App\Backup\V2\*` (Enums, StateMachine, Models, Support, Console, Jobs, Legacy).
