@@ -15,7 +15,7 @@
 | P0 | Setup branch / bază / laborator / flags | ✅ | branch + spike merge; `config/backup_v2.php`; lab Laravel (Laravel 12.64, migrări OK, teste rulează) |
 | P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
 | P2 | Plugin simplead-backup + backup de bază (nucleul) | ✅ | **backup FULL end-to-end** condus de FSM: DB consistent (0 orfani) + fișiere (oracle) + multipart întărit + manifest+`_COMPLETE`; restore-oracle 41/41 + DB 0 erori; resume-fără-dublare; 32 teste E2E |
-| P3 | Incremental + chain-uri + retenție | ⬜ | — |
+| P3 | Incremental + chain-uri + retenție | ✅ | incremental fișiere (changed/new/tombstones) + chain (full+2inc restore-oracle 0/0, chain rupt detectat) + retenție chain-safe; suita 87 teste (784 aserțiuni) |
 | P4 | Restore (full + selectiv + rollback) | ⬜ | — |
 | P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
 | P6 | Verificare + proven restore + import legacy | ⬜ | — |
@@ -29,6 +29,18 @@ Toate ⬜ până sunt demonstrate prin teste. Se completează pe măsură ce faz
 Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md) (secțiunea DEFINITION OF DONE).
 
 ## Jurnal de faze (cel mai recent sus)
+
+### P3 — Incremental + chain + retenție ✅ (poartă trecută)
+- Plugin v0.3.0: `class-file-diff.php` (changed/new/tombstones; fast-path unchanged pe size+mtime, sha256 autoritativ);
+  `files/inventory` acceptă `base_manifest` → plan doar changed+new + tombstones.
+- Laravel: `Chain\ChainResolver` (resolveChain ordonat + `materialize` full→inc→inc cu latest-wins + tombstones;
+  `BrokenChainException` la chain rupt), `Retention\ChainRetentionService` (nu șterge bază cu incrementale dependente,
+  ultimul full valid, `protected`, ultimul verificat; dry-run implicit + dublă poartă force+enabled).
+- `BackupRunner` cale incrementală (`baseManifestProvider`); migrare aditivă `000003_add_retention_fields` (redenumită
+  de mine din 000002 ca să evit coliziunea cu create_restore_sessions; migrate:fresh + ordinea verificate).
+- DB = full dump la fiecare backup (nu incremental DB).
+- **Rerulat de mine:** restore-din-chain (full+2inc) **0 lipsă/0 nepotriviri + tombstones aplicate**, chain rupt
+  detectat, retenția păstrează bazele dependente. **87 teste (784 aserțiuni), Pint + PHPStan L5 curat.**
 
 ### P2 — Nucleul ✅ (poartă trecută — BACKUP FULL end-to-end dovedit restaurabil)
 **Bucata 4 — orchestrare FSM end-to-end (LARAVEL-ORCHESTRATOR) — REVIEW independent PASS (32 teste, 285 aserțiuni):**

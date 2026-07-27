@@ -65,6 +65,36 @@ obiectele confirmate cu ETag+mtime neschimbate (0 re-upload)**. **DB restore-ora
 (`spike/orchestrator/verify-db-restore.sh`): import în MySQL 8.0 nou = **0 erori, 59/59 tabele** (incl.
 WooCommerce/HPOS `wp_wc_orders`). Pint curat, PHPStan 0 erori pe `app/Backup/V2`.
 
+## D-012 — Incremental FIȘIERE + chain-uri + retenție chain-safe (P3, dovedit în lab)
+**Decizie:** incrementalul este **DOAR fișiere**; **DB = full dump la FIECARE backup** (respectă D din
+`TARGET-ARCHITECTURE.md` — fără „incremental DB" falsificat, universal restaurabil pe hosturi heterogene).
+- **Diff plugin-side (`SAM_Backup_File_Diff`, v0.3.0):** endpoint-ul `files/inventory` acceptă `base_manifest`
+  (`{p,sha256,s,m}` din manifestul bazei) și produce **changed / new / tombstones**; DOAR changed+new intră
+  în plan (aceleași reguli STORE + fișier-mare=chunk-propriu + empty-chunk skip). Detectare: **fast-path
+  unchanged** când size ȘI mtime identice (fără hash — de aceea manifestul poartă acum `m`); altfel confirmare
+  **autoritativă cu sha256** (un `touch` fără schimbare de conținut → 0 re-upload). Neschimbatele NU se re-urcă.
+- **Chain (`App\Backup\V2\Chain\ChainResolver`):** `resolveChain` ordonează `[full, inc1, …, target]` din
+  `full_base_id`+`chain_position`; `materialize` aplică full apoi fiecare incremental (new/changed suprascriu,
+  tombstones șterg) → starea finală exactă pentru restore/oracle; `baseFileState` = base_manifest pentru un
+  incremental în curs. Chain rupt (bază lipsă/incompletă, gap/duplicat de poziție, manifest lipsă/corupt) →
+  **`BrokenChainException` ÎNAINTE de orice restore**. `ManifestReader` abstract (S3 în lab/prod, in-memory în teste).
+- **BackupRunner:** calea incrementală cere baza (materializată din chain), o trimite la `files/inventory`, urcă
+  doar changed+new, scrie **tombstones + `full_base_id`+`chain_position`+`base_manifest_ref`** în manifest. Full
+  nou = chain nou. DB = full dump ca de obicei.
+- **Retenție chain-safe (`App\Backup\V2\Retention\ChainRetentionService`):** unitatea atomică = chain-ul; NU
+  șterge o bază cu incrementale dependente încă în fereastră, nici ultimul full valid, nici ultimul verificat,
+  nici `protected`; selectează doar chain-uri complet-expirate. **Dry-run implicit** (`backup_v2.retention_dry_run`,
+  log-only ca V1); ștergerea reală cere `apply(force:true)` ȘI `backup_v2.enabled`. Câmpuri noi aditive pe
+  `backup_sessions`: `protected`, `verified_at`, `expires_at` (migrare reversibilă, tabelă proprie V2 — zero impact V1).
+**Dovedit în lab** (`tests/Feature/Backup/V2/`, MinIO real + clasele reale ale pluginului + spike-wp real):
+`IncrementalChainE2ETest` — incremental urcă DOAR changed+new (neschimbatele NU), tombstones înregistrate,
+`full_base_id`+`chain_position` corecte; **restore din full+2 incrementale = identic la bit (0 lipsă / 0
+nepotriviri), tombstones aplicate (fișierele șterse NU apar)**; chain rupt detectat (bază incompletă →
+`resolveChain`; manifest bază șters → `materialize`). `IncrementalHttpE2ETest` (spike-wp real, HTTP) —
+incremental peste fixture NESCHIMBAT urcă **0 chunk-uri fișiere** dar **full DB dump** (DB full/backup).
+`ChainResolverTest`/`ChainRetentionServiceTest` — algebra chain + selecția retenției. Plus harness CLI plugin
+`tests/files-diff-harness.php` (0/0). **Pint curat, PHPStan 0 erori pe `app/Backup/V2`.** V2 inert în prod (flag-uri false).
+
 ## D-004 — Format chunk fișiere: zip-per-chunk, compresie STORE (P2, măsurat)
 **Decizie:** partea de FIȘIERE se împachetează ca **un `ZipArchive` per chunk** (`files/chunk_N.zip`),
 grupat pe director (localitate) sub un prag configurabil (implicit 100 MiB), cu **compresie STORE**

@@ -50,6 +50,11 @@ return [
     // (reports drift only); it never mutates rows or storage.
     'reconciliation_writes_enabled' => (bool) env('BACKUP_RECONCILIATION_WRITES_ENABLED', false),
 
+    // Chain-safe retention (App\Backup\V2\Retention\ChainRetentionService) runs log-only until
+    // observed. True = dry-run (select + log, delete nothing); an actual delete additionally
+    // requires apply(force: true) AND 'enabled'. Mirrors V1 config('backups.retention_dry_run').
+    'retention_dry_run' => (bool) env('BACKUP_ENGINE_V2_RETENTION_DRY_RUN', true),
+
     /*
     |--------------------------------------------------------------------------
     | Resource profiles (LOW_IMPACT / NORMAL / FAST)

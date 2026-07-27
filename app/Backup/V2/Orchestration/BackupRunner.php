@@ -75,6 +75,10 @@ final class BackupRunner
      * @param  int|null  $dbSegmentBytes  uncompressed bytes per DB segment (null → client default)
      * @param  Closure(string $kind, int $index, int $confirmedCount):void|null  $faultAfterObject
      *                                                                                              Test seam: invoked AFTER an object is durably confirmed (crash injection for the resume test).
+     * @param  Closure(BackupSession):(list<array{p:string,sha256:string,s:int,m?:int}>|null)|null  $baseManifestProvider
+     *                                                                                                                     Incremental only: returns the materialised base file-state (from ChainResolver) to diff
+     *                                                                                                                     against, or null for a full/no-baseline run. Wired by the dispatcher/test so the runner stays
+     *                                                                                                                     decoupled from where base manifests live.
      */
     public function __construct(
         private readonly BackupSession $session,
@@ -87,6 +91,7 @@ final class BackupRunner
         private readonly ?int $dbSegmentBytes = null,
         private readonly string $compression = 'store',
         private readonly ?Closure $faultAfterObject = null,
+        private readonly ?Closure $baseManifestProvider = null,
     ) {
         $this->logger = ($logger ?? new BackupLogger)->forSession(
             'backup',
@@ -191,6 +196,14 @@ final class BackupRunner
             $options['threshold'] = $this->fileChunkThreshold;
         }
 
+        // Incremental: hand the plugin the materialised base file-state so it plans ONLY changed+new
+        // files and reports tombstones. A full (or a run with no baseline) sends no base_manifest and
+        // the plugin plans the whole tree exactly as before.
+        $baseManifest = $this->resolveBaseManifest();
+        if ($baseManifest !== null) {
+            $options['base_manifest'] = $baseManifest;
+        }
+
         $inv = $this->client->filesInventory($this->pluginSessionId(), $this->rules(), $options);
 
         $this->session->exclusion_policy_hash = (string) ($inv['exclusion_policy_hash'] ?? '');
@@ -205,8 +218,35 @@ final class BackupRunner
                 'excluded_bytes' => (int) ($inv['excluded_bytes'] ?? 0),
                 'chunk_count' => (int) ($inv['chunk_count'] ?? 0),
                 'compression' => (string) ($inv['compression'] ?? $this->compression),
+                'mode' => (string) ($inv['mode'] ?? ($baseManifest !== null ? 'incremental' : 'full')),
             ],
         ]);
+
+        if ($baseManifest !== null) {
+            $this->mergeCheckpoint([
+                'incremental' => [
+                    'base_file_count' => count($baseManifest),
+                    'tombstones' => array_values(array_map('strval', (array) ($inv['tombstones'] ?? []))),
+                    'diff' => $inv['diff'] ?? null,
+                ],
+            ]);
+        }
+    }
+
+    /**
+     * Materialised base file-state for an incremental (or null for a full/no-baseline run).
+     *
+     * @return list<array{p:string,sha256:string,s:int,m?:int}>|null
+     */
+    private function resolveBaseManifest(): ?array
+    {
+        if ($this->session->type !== 'incremental' || $this->baseManifestProvider === null) {
+            return null;
+        }
+
+        $base = ($this->baseManifestProvider)($this->session);
+
+        return is_array($base) ? $base : null;
     }
 
     private function databaseExport(): void
@@ -284,9 +324,17 @@ final class BackupRunner
 
     private function fileDiff(): void
     {
-        // Full backup: no incremental baseline to diff against. Recorded for the
-        // manifest chain fields; incremental diffing is a later P3 piece.
-        $this->mergeCheckpoint(['file_diff' => ['baseline' => null, 'mode' => $this->session->type]]);
+        // For a full there is no baseline. For an incremental the plugin already did the diff at
+        // inventory time (only changed+new were planned; tombstones reported); this phase records the
+        // outcome for the manifest chain fields. DB is a full dump regardless (see databaseExport()).
+        $incremental = $this->checkpoint()['incremental'] ?? null;
+
+        $this->mergeCheckpoint(['file_diff' => [
+            'mode' => $this->session->type,
+            'baseline' => $incremental !== null ? ($this->session->full_base_id ?? null) : null,
+            'tombstone_count' => is_array($incremental) ? count((array) ($incremental['tombstones'] ?? [])) : 0,
+            'diff' => is_array($incremental) ? ($incremental['diff'] ?? null) : null,
+        ]]);
     }
 
     private function chunking(): void
@@ -466,6 +514,10 @@ final class BackupRunner
             'exclusion_policy_hash' => $this->session->exclusion_policy_hash,
             'full_base_id' => $this->session->full_base_id,
             'chain_position' => $this->session->chain_position,
+            // For an incremental this points at the base full whose materialised state was diffed
+            // against (the chain root); null for a full. resolveChain() rebuilds the ordered chain
+            // from full_base_id + chain_position, so this is a human-facing back-reference.
+            'base_manifest_ref' => $this->session->type === 'incremental' ? $this->session->full_base_id : null,
             'objects' => $objects,
             'files' => [
                 'included' => $fileEntries,
@@ -474,6 +526,8 @@ final class BackupRunner
                 'excluded_bytes' => (int) ($cp['files_inventory']['excluded_bytes'] ?? 0),
                 'total_bytes' => (int) ($cp['files_inventory']['total_bytes'] ?? 0),
                 'skipped_empty_chunks' => array_values($cp['skipped_empty_chunks'] ?? []),
+                // Paths present in the base but deleted in this incremental — restore removes them.
+                'tombstones' => array_values(array_map('strval', (array) ($cp['incremental']['tombstones'] ?? []))),
             ],
             'database' => [
                 'name' => $cp['db']['database'] ?? null,
@@ -642,6 +696,7 @@ final class BackupRunner
             $existing[] = [
                 'p' => $e['p'] ?? null,
                 's' => (int) ($e['s'] ?? 0),
+                'm' => (int) ($e['m'] ?? 0),
                 'sha256' => $e['sha256'] ?? null,
                 'chunk_index' => (int) ($e['chunk_index'] ?? 0),
             ];

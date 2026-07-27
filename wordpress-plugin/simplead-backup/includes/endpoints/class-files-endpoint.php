@@ -35,6 +35,9 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
                     'threshold'        => array('type' => 'integer', 'required' => false),
                     'compression'      => array('type' => 'string',  'required' => false),
                     'preview'          => array('type' => 'boolean', 'required' => false),
+                    // Incremental: the base manifest file list [{p,sha256,s,m?}, ...]. When present
+                    // (and non-empty) the plan holds ONLY changed+new files and tombstones are recorded.
+                    'base_manifest'    => array('type' => 'array',   'required' => false),
                 ),
             ),
         ));
@@ -91,7 +94,37 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
 
         $inv     = $inventory->build();
         $chunker = new SAM_Backup_File_Chunker($root, $threshold, $compression);
-        $plan    = $chunker->plan($inv['files']);
+
+        // Incremental: when a base manifest is supplied, only changed+new files are chunked and
+        // uploaded; unchanged files are never re-read, and deleted paths become tombstones. The DB
+        // is dumped in full every backup by the manager — this diff is FILES only.
+        $base_manifest = $request->get_param('base_manifest');
+        $base_manifest = is_array($base_manifest) ? $base_manifest : array();
+        $incremental   = !empty($base_manifest);
+
+        $tombstones = array();
+        $diff_summary = null;
+        if ($incremental) {
+            $diff = new SAM_Backup_File_Diff($root);
+            $d = $diff->diff($inv['files'], $base_manifest);
+            $tombstones = $d['tombstones'];
+            $plan_files = array_merge($d['changed'], $d['new']);
+            usort($plan_files, static function (array $a, array $b): int {
+                return strcmp((string) $a['p'], (string) $b['p']);
+            });
+            $plan = $chunker->plan($plan_files);
+            $diff_summary = array(
+                'mode'               => 'incremental',
+                'base_file_count'    => count($base_manifest),
+                'changed_count'      => $d['changed_count'],
+                'new_count'          => $d['new_count'],
+                'unchanged_count'    => $d['unchanged_count'],
+                'tombstone_count'    => $d['tombstone_count'],
+                'hash_confirmations' => $d['hash_confirmations'],
+            );
+        } else {
+            $plan = $chunker->plan($inv['files']);
+        }
 
         $session_id = (string) ($request->get_param('session_id') ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
         $files_dir  = SAM_Backup_Temp::session_dir($session_id) . '/files';
@@ -106,12 +139,15 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
             'threshold'             => $threshold,
             'compression'           => $chunker->compression(),
             'exclusion_policy_hash' => $inv['exclusion_policy_hash'],
+            'mode'                  => $incremental ? 'incremental' : 'full',
             'total_files'           => $inv['total_files'],
             'total_bytes'           => $inv['total_bytes'],
             'excluded_files'        => $inv['excluded_files'],
             'excluded_bytes'        => $inv['excluded_bytes'],
             'chunk_count'           => count($plan),
             'chunks'                => $plan,
+            'tombstones'            => $tombstones,
+            'diff'                  => $diff_summary,
         );
         file_put_contents($files_dir . '/plan.json', wp_json_encode_maybe($plan_doc));
 
@@ -145,6 +181,7 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
             'threshold'             => $threshold,
             'compression'           => $chunker->compression(),
             'exclusion_policy_hash' => $inv['exclusion_policy_hash'],
+            'mode'                  => $incremental ? 'incremental' : 'full',
             'total_files'           => $inv['total_files'],
             'total_bytes'           => $inv['total_bytes'],
             'excluded_files'        => $inv['excluded_files'],
@@ -153,6 +190,9 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
             // temp is bounded by the single largest chunk (pull-and-free), not the total.
             'expected_temp_peak'    => $largest_chunk,
             'chunks'                => $chunks_summary,
+            // Incremental diff outcome (null for a full backup).
+            'diff'                  => $diff_summary,
+            'tombstones'            => $tombstones,
         ), 200);
     }
 

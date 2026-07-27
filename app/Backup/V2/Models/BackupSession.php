@@ -42,6 +42,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $format_version
  * @property int|null $full_base_id
  * @property int|null $chain_position
+ * @property bool $protected
+ * @property \Illuminate\Support\Carbon|null $verified_at
+ * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $started_at
  * @property \Illuminate\Support\Carbon|null $completed_at
  */
@@ -74,6 +77,9 @@ class BackupSession extends Model
         'format_version',
         'full_base_id',
         'chain_position',
+        'protected',
+        'verified_at',
+        'expires_at',
         'started_at',
         'completed_at',
     ];
@@ -89,8 +95,11 @@ class BackupSession extends Model
         'attempt' => 'integer',
         'retry_count' => 'integer',
         'chain_position' => 'integer',
+        'protected' => 'boolean',
         'heartbeat_at' => 'datetime',
         'next_retry_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'expires_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
     ];

@@ -122,7 +122,7 @@ final class SAM_Backup_File_Chunker {
      * @param array{files:array<int,array{p:string,s:int}>} $chunk one plan entry
      * @return array{
      *   index:int, empty:bool, zip:?string, size:int, sha256:?string,
-     *   file_count:int, files:array<int,array{p:string,s:int,sha256:string}>, skipped:bool
+     *   file_count:int, files:array<int,array{p:string,s:int,m:int,sha256:string}>, skipped:bool
      * }
      */
     public function exec_chunk(string $session_files_dir, int $index, array $chunk): array {
@@ -175,9 +175,11 @@ final class SAM_Backup_File_Chunker {
             if (method_exists($zip, 'setCompressionName')) {
                 $zip->setCompressionName($rel, $store ? ZipArchive::CM_STORE : ZipArchive::CM_DEFLATE);
             }
-            // Streaming per-file checksum for the restore-oracle-grade manifest.
+            // Streaming per-file checksum for the restore-oracle-grade manifest. mtime is carried
+            // too so the NEXT incremental can take the fast size+mtime unchanged path (see
+            // SAM_Backup_File_Diff) instead of re-hashing every unchanged file.
             $sha = hash_file('sha256', $real);
-            $entries[] = array('p' => $rel, 's' => (int) filesize($real), 'sha256' => $sha);
+            $entries[] = array('p' => $rel, 's' => (int) filesize($real), 'm' => (int) @filemtime($real), 'sha256' => $sha);
             $added++;
         }
 
