@@ -12,8 +12,8 @@
 
 | Fază | Titlu | Stare | Dovezi |
 |---|---|---|---|
-| P0 | Setup branch / bază / laborator / flags | 🟡 în lucru | branch creat; spike merge-uit; `config/backup_v2.php`; acest fișier |
-| P1 | Fundația Laravel (FSM, migrări, observabilitate) | ⬜ | — |
+| P0 | Setup branch / bază / laborator / flags | ✅ | branch + spike merge; `config/backup_v2.php`; lab Laravel (Laravel 12.64, migrări OK, teste rulează) |
+| P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
 | P2 | Plugin simplead-backup + backup de bază (nucleul) | ⬜ | — |
 | P3 | Incremental + chain-uri + retenție | ⬜ | — |
 | P4 | Restore (full + selectiv + rollback) | ⬜ | — |
@@ -30,7 +30,22 @@ Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-bac
 
 ## Jurnal de faze (cel mai recent sus)
 
-### P0 — Setup (în lucru)
+### P1 — Fundația Laravel ✅ (poartă trecută)
+- Namespace izolat `App\Backup\V2\*` (Enums, StateMachine, Models, Support, Console, Jobs, Legacy).
+- FSM: `BackupSessionState` (17 stări) + `RestoreSessionState` (14 stări) cu tranziții legale explicite,
+  `IllegalStateTransition` pe muchii ilegale, no-op idempotent la self-transition.
+- Migrări aditive/reversibile `backup_sessions` + `restore_sessions` (jsonb, idempotency_key unic,
+  self-ref chain). Verificat: migrate → rollback(step=2) → re-migrate curat pe Postgres.
+- Modele cu casts jsonb/enum + `transitionTo()`/`heartbeat()`/`recordError()`; logging structurat pe
+  canal `backup_v2`; `BackupErrorCode` (8 coduri). Provider înregistrează DOAR comanda (fără scheduler/queue).
+- Comanda read-only `backup:reconcile-storage` (nu scrie fără `reconciliation_writes_enabled`) +
+  `ReconcileUsedBytesJob` (inert fără flag) + `LegacyBackupReader` (v2/v3 read-only).
+- **REVIEW independent (rulat de mine):** 34 teste passed (450 assert), 0 failed; Pint PASS; migrări
+  reversibile. Doar cod aditiv — niciun fișier V1 modificat (excepții aditive: `config/logging.php`
+  canal nou, `bootstrap/providers.php` provider V2).
+- Warning cosmetic `.env` lipsă în lab (afectează testele Feature din tot repo-ul, nu codul V2).
+
+### P0 — Setup (✅)
 - Branch `feature/simplead-backup-production-ready` creat din `snapshot-parity` (docs) + merge `spike/...` (cod validat).
 - `config/backup_v2.php`: feature flags izolate, toate `false` (V2 inert în producție); profile de resurse seed; contract manifest/completion.
 - Directiva copiată în repo: `docs/backup/DIRECTIVE-simplead-backup.md`.

@@ -20,6 +20,23 @@ de ambele la un loc. main e ancestor al snapshot-parity (merge curat, fără ati
 zicea vechiul CLAUDE.md). Fără upgrade de framework în această muncă.
 **De ce:** evităm să combinăm un upgrade de framework cu construcția motorului.
 
+## D-008 — Namespace izolat `App\Backup\V2\*` (P1)
+**Decizie:** tot codul V2 sub `App\Backup\V2\` (Enums/StateMachine/Models/Support/Console/Jobs/Legacy),
+înregistrat printr-un `BackupV2ServiceProvider` care expune DOAR comanda read-only (fără scheduler/queue).
+**De ce:** blast radius zero pe V1; activare/dezactivare independentă; namespace curat.
+
+## D-009 — FSM cu graf explicit + tranziții idempotente (P1)
+**Decizie:** state machine cu hartă explicită de muchii legale; `assertTransition` aruncă
+`IllegalStateTransition` pe muchii ilegale; self-transition = no-op permis (pentru redelivery idempotent).
+`rollback → failed` (niciodată completed): un rollback reușit = restore eșuat cu site salvat la pre-restore.
+`corrupt` accesibil doar din `upload_verifying`/`finalizing`. `isActive() = !isTerminal()`.
+**De ce:** callback-uri duplicate/redelivery trebuie să fie no-op; tranziții ilegale trebuie prinse tare.
+
+## D-010 — Migrări aditive/reversibile, jsonb, self-ref chain (P1)
+**Decizie:** tabele NOI `backup_sessions`/`restore_sessions`, coloane `jsonb`, `idempotency_key` unic,
+FK aditive spre `sites`/`backups`, `full_base_id` self-ref pentru chain. `down()` dă drop curat.
+**Măsurători:** migrate → rollback(step=2) → re-migrate curat pe PostgreSQL 16 (verificat în lab).
+
 ## Decizii deschise (se închid prin benchmark în fazele următoare)
 - **D-004 (P2) — Format de segment/chunk:** object-per-file vs pack/TAR-stream vs segmente
   compresate limitate vs multipart-per-segment. Criterii: impact minim, restore eficient, număr
