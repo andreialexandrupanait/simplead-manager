@@ -59,7 +59,15 @@ cu sha256, restore-oracle **5001/5001, 0 lipsă / 0 nepotriviri**, ZipArchive st
 Rămâne deschis DOAR agregarea la nivel de backup (manifest global + `_COMPLETE`) — bucata de upload/orchestrare.
 
 ## Decizii deschise (se închid prin benchmark în fazele următoare)
-- **D-005 (P2) — Dimensiune parte multipart + TTL presigned:** din benchmark de throughput/rată de eșec.
+- **D-005 (P2) — ÎNCHIS:** upload S3 multipart întărit `App\Backup\V2\Storage\HardenedMultipartUploader`:
+  model **pull server-side** (managerul deține creds, urcă local; WP rămâne subțire — fără creds/URL-uri lungi),
+  cu `presignPartUrl()` păstrat la **TTL scurt** (`presigned_ttl_seconds`, nu 4h) pentru viitoarea cale push.
+  Părți mici (**16 MiB** default, din benchmark: 16 MiB = ~93% throughput-ul de la 64 MiB dar resume 4× mai
+  fin, retry blast-radius 4× mai mic), retry per-parte backoff+jitter, checksum per parte (sha256 + Content-MD5
+  + ETag verificat), resume din `confirmed_parts` jsonb (same UploadId, nu reîncarcă părți confirmate), reaper
+  `ListMultipartUploads` (filtrat client-side — MinIO ignoră Prefix), abort curat fără dangling. Concurrency 1
+  (simplifică resume/checksum; bounded = hardening viitor). **Dovedit pe MinIO real: 13 teste, 69 aserțiuni,
+  resume-fără-reîncărcare + reaper-fără-dangling + failure-injection.**
 - **D-006 (P2) — ÎNCHIS:** dump DB consistent implementat în `simplead-backup` (`class-consistent-dumper.php`):
   o singură conexiune mysqli, `SET SESSION REPEATABLE READ` + `START TRANSACTION WITH CONSISTENT SNAPSHOT`,
   `ORDER BY` pe PK real, binar/BLOB ca hex `0x...`, snapshotul e DOAR mecanism de citire (textul de restore

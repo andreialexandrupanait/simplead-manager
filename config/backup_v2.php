@@ -61,28 +61,28 @@ return [
     */
     'profiles' => [
         'low_impact' => [
-            'step_seconds'        => 8,    // wall-clock budget per WP step (well under CF ~100s)
-            'memory_budget_mb'    => 64,   // soft cap; suspend if the host memory_limit is tighter
-            'min_free_disk_mb'    => 512,  // disk guard floor
-            'file_batch'          => 200,  // files processed per step
-            'pause_ms'            => 400,  // adaptive pause between steps
-            'max_concurrency'     => 1,
+            'step_seconds' => 8,    // wall-clock budget per WP step (well under CF ~100s)
+            'memory_budget_mb' => 64,   // soft cap; suspend if the host memory_limit is tighter
+            'min_free_disk_mb' => 512,  // disk guard floor
+            'file_batch' => 200,  // files processed per step
+            'pause_ms' => 400,  // adaptive pause between steps
+            'max_concurrency' => 1,
         ],
         'normal' => [
-            'step_seconds'        => 20,
-            'memory_budget_mb'    => 128,
-            'min_free_disk_mb'    => 512,
-            'file_batch'          => 1000,
-            'pause_ms'            => 100,
-            'max_concurrency'     => 2,
+            'step_seconds' => 20,
+            'memory_budget_mb' => 128,
+            'min_free_disk_mb' => 512,
+            'file_batch' => 1000,
+            'pause_ms' => 100,
+            'max_concurrency' => 2,
         ],
         'fast' => [ // VPS/dedicated only, explicit opt-in
-            'step_seconds'        => 45,
-            'memory_budget_mb'    => 256,
-            'min_free_disk_mb'    => 1024,
-            'file_batch'          => 4000,
-            'pause_ms'            => 0,
-            'max_concurrency'     => 4,
+            'step_seconds' => 45,
+            'memory_budget_mb' => 256,
+            'min_free_disk_mb' => 1024,
+            'file_batch' => 4000,
+            'pause_ms' => 0,
+            'max_concurrency' => 4,
         ],
     ],
     'default_profile' => (string) env('BACKUP_ENGINE_V2_DEFAULT_PROFILE', 'low_impact'),
@@ -94,10 +94,17 @@ return [
     | Placeholder defaults; the real format + part size are locked by measured
     | comparison (object-per-file vs pack/TAR-stream vs multipart-per-segment).
     */
-    'file_chunk_target_mb'    => (int) env('BACKUP_ENGINE_V2_FILE_CHUNK_MB', 100),
-    'db_chunk_target_mb'      => (int) env('BACKUP_ENGINE_V2_DB_CHUNK_MB', 50),
-    'multipart_part_mb'       => (int) env('BACKUP_ENGINE_V2_MULTIPART_PART_MB', 16),
-    'presigned_ttl_seconds'   => (int) env('BACKUP_ENGINE_V2_PRESIGNED_TTL', 600),
+    'file_chunk_target_mb' => (int) env('BACKUP_ENGINE_V2_FILE_CHUNK_MB', 100),
+    'db_chunk_target_mb' => (int) env('BACKUP_ENGINE_V2_DB_CHUNK_MB', 50),
+    'multipart_part_mb' => (int) env('BACKUP_ENGINE_V2_MULTIPART_PART_MB', 16),
+    'presigned_ttl_seconds' => (int) env('BACKUP_ENGINE_V2_PRESIGNED_TTL', 600),
+
+    // Per-part retry policy for HardenedMultipartUploader (exponential backoff +
+    // full jitter). A failed PART is retried in place; the whole object is never
+    // restarted. See App\Backup\V2\Storage\HardenedMultipartUploader.
+    'multipart_max_attempts' => (int) env('BACKUP_ENGINE_V2_MULTIPART_MAX_ATTEMPTS', 5),
+    'multipart_retry_base_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_BASE_MS', 200),
+    'multipart_retry_max_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_MAX_MS', 15000),
 
     // Manifest / completion contract
     'format_version' => 'simplead-backup/1',

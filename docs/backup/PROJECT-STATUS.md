@@ -30,7 +30,15 @@ Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-bac
 
 ## Jurnal de faze (cel mai recent sus)
 
-### P2 — Nucleul 🟡 (în lucru — bucata 1 din N livrată)
+### P2 — Nucleul 🟡 (în lucru — bucățile 1–3 livrate; rămâne orchestrarea FSM end-to-end)
+**Bucata 3 — upload S3 multipart întărit (STORAGE) — REVIEW independent PASS (13 teste, 69 aserțiuni pe MinIO):**
+- `App\Backup\V2\Storage\HardenedMultipartUploader` + `ObjectLayout` + progress stores (in-memory + `confirmed_parts` jsonb).
+- Model pull server-side; părți 16 MiB (D-005); retry/backoff/jitter per parte; checksum per parte; resume din jsonb
+  (același UploadId, fără reîncărcare); reaper fără dangling; abort curat; TTL presigned scurt. D-005 închis.
+- **Rerulat de mine:** resume-fără-reîncărcare ✓, reaper-fără-dangling ✓, checksum mismatch ✓, failure-injection ✓, Pint PASS.
+- Notă lab: `lab-php` conectat la `sam_spike_net` (`docker network connect`) ca să vadă `spike-minio` — efemer (re-conectează după recreate; alternativ serviciu `lab-minio` în compose). `.env` minimal de lab adăugat (gitignored) → rulări curate.
+
+
 **Livrat & dovedit (bucata 1 — WORDPRESS-ENGINE):**
 - Plugin NOU `wordpress-plugin/simplead-backup/` independent: header + `SAM_BACKUP_VERSION`, REST namespace
   propriu `simplead-backup/v1`, opțiuni proprii `sam_backup_*`, temp propriu, log + diagnostic proprii,
