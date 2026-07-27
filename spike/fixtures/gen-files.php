@@ -31,6 +31,10 @@ $profiles = [
     'small'  => ['files' => 5000,   'big' => []],
     'medium' => ['files' => 100000, 'big' => [200 * 1048576 => 5]],
     'large'  => ['files' => 500000, 'big' => [1073741824 => 3, 3 * 1073741824 => 2]],
+    // Targeted "large" for the single-big-file round (NEXT-STEPS): a realistic spread
+    // of incompressible small files PLUS one 2 GB single file, larger than any chunk
+    // threshold, so it becomes ONE chunk → temp = file size, one 2 GB multipart.
+    'large-single' => ['files' => 8000, 'big' => [2 * 1073741824 => 1]],
 ];
 if (! isset($profiles[$profile])) {
     fwrite(STDERR, "unknown profile: $profile\n");
@@ -56,47 +60,48 @@ function rngFor(int $seed, string $path): int
     return (int) hexdec(substr(hash('sha256', $seed . '|' . $path), 0, 12));
 }
 
-/** Write a small file with deterministic content; return sha256. */
-function writeSmall(string $path, int $size, int $seed): string
+/**
+ * Fill a stream with truly-incompressible, deterministic content and hash it.
+ *
+ * Every 32-byte segment is a FRESH sha256 of (seed | path | counter), so no block
+ * ever repeats — the output has full entropy (gzip/deflate cannot shrink it) while
+ * staying a pure function of (seed, path) and memory-flat (≤1 MB working buffer).
+ */
+function fillIncompressible($fp, $ctx, int $size, int $seed, string $path): void
 {
-    // Content = position-varying seeded hash blocks → effectively incompressible,
-    // deterministic, and memory-flat (realistic media-like payload).
-    $ctx = hash_init('sha256');
-    $fp = fopen($path, 'wb');
     $written = 0;
-    $i = 0;
+    $counter = 0;
     while ($written < $size) {
-        $n = min(65536, $size - $written);
-        $seedBlock = hash('sha256', $seed . '|' . $path . '|' . $i, true); // 32 bytes, varies per block
-        $chunk = substr(str_repeat($seedBlock, (int) ceil($n / 32)), 0, $n);
+        $target = (int) min(1048576, $size - $written); // build ≤1 MB at a time
+        $buf = '';
+        while (strlen($buf) < $target) {
+            $buf .= hash('sha256', $seed . '|' . $path . '|' . $counter, true); // 32 fresh bytes
+            $counter++;
+        }
+        $chunk = substr($buf, 0, $target);
         fwrite($fp, $chunk);
         hash_update($ctx, $chunk);
-        $written += $n;
-        $i++;
+        $written += $target;
     }
+}
+
+/** Write a small file with deterministic, incompressible content; return sha256. */
+function writeSmall(string $path, int $size, int $seed): string
+{
+    $ctx = hash_init('sha256');
+    $fp = fopen($path, 'wb');
+    fillIncompressible($fp, $ctx, $size, $seed, $path);
     fclose($fp);
 
     return hash_final($ctx);
 }
 
-/** Stream a huge file via seeded keystream; return sha256. */
+/** Stream a huge file via the same seeded, incompressible keystream; return sha256. */
 function writeHuge(string $path, int $size, int $seed, bool $sparse): string
 {
     $ctx = hash_init('sha256');
     $fp = fopen($path, 'wb');
-    $blockSize = 1048576; // 1 MB
-    $written = 0;
-    $i = 0;
-    while ($written < $size) {
-        $n = (int) min($blockSize, $size - $written);
-        // Seeded, position-dependent block.
-        $block = hash('sha256', $seed . '|' . $path . '|' . $i, true);
-        $chunk = substr(str_repeat($block, (int) ceil($n / 32)), 0, $n);
-        fwrite($fp, $chunk);
-        hash_update($ctx, $chunk);
-        $written += $n;
-        $i++;
-    }
+    fillIncompressible($fp, $ctx, $size, $seed, $path);
     fclose($fp);
 
     return hash_final($ctx);

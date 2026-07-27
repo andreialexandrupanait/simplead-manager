@@ -11,11 +11,13 @@ SCRATCH="$(cd "$(dirname "$0")/.." && pwd)/scratch"
 R="$SCRATCH/restore-$(basename "$PREFIX")"
 rm -rf "$R"; mkdir -p "$R/zips" "$R/tree"
 
-# 1) download manifest + all chunks
+# 1) download manifest + all chunks.
+# Iterate the manifest's ACTUAL object indices (not seq 0..N-1): empty chunks are
+# skipped by the manager, so indices are non-contiguous (e.g. no 1, no 12).
 $COMPOSE exec -T spike-mc mc cp -q "spike/backups/$PREFIX/manifest.json" "/scratch/.m.json" >/dev/null 2>&1
 cp "$SCRATCH/.m.json" "$R/manifest.json"; rm -f "$SCRATCH/.m.json"
-N=$(python3 -c "import json;print(json.load(open('$R/manifest.json'))['total_chunks'])")
-for i in $(seq 0 $((N-1))); do
+IDXS=$(python3 -c "import json;print(' '.join(str(o['index']) for o in json.load(open('$R/manifest.json'))['objects']))")
+for i in $IDXS; do
   $COMPOSE exec -T spike-mc mc cp -q "spike/backups/$PREFIX/chunks/$i.zip" "/scratch/.c$i.zip" >/dev/null 2>&1
   cp "$SCRATCH/.c$i.zip" "$R/zips/$i.zip"; rm -f "$SCRATCH/.c$i.zip"
 done

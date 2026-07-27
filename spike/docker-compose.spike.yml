@@ -13,6 +13,7 @@ volumes:
   spike_minio_data:
   spike_wp_data:
   spike_wp_tmp:        # WP /tmp on a named volume so resume-after-restart is measurable
+  spike_mariadb_data:  # separate volume for the MariaDB 11 sidecar (existing volumes untouched)
 
 services:
   spike-minio:
@@ -75,6 +76,29 @@ services:
     networks: [sam_spike_net]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pspikeroot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # MariaDB 11 sidecar — added for the single-big-file round to validate the DB
+  # consistent-snapshot finding on MariaDB 11 with a WordPress Multisite (wp_N_*) schema.
+  # Separate service + separate volume: the existing mysql:8.0 (spike-db) volume is untouched.
+  spike-mariadb:
+    image: mariadb:11
+    command: --max_allowed_packet=256M
+    environment:
+      MARIADB_ROOT_PASSWORD: spikeroot
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wp
+      MARIADB_PASSWORD: wp
+      TZ: UTC
+    ports:
+      - "127.0.0.1:13307:3306"
+    volumes:
+      - spike_mariadb_data:/var/lib/mysql
+    networks: [sam_spike_net]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
       timeout: 3s
       retries: 30

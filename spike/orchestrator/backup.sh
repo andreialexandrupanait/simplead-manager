@@ -76,10 +76,21 @@ for i in $(seq 0 $((TOTAL-1))); do
   ok=$(echo "$EXEC" | python3 -c "import json,sys;print(json.load(sys.stdin).get('success',False))" 2>/dev/null)
   if [ "$ok" != "True" ]; then log "chunk $i exec FAILED: $EXEC"; exit 2; fi
 
+  # Empty-chunk contract: connector returns chunk_size=0 (and deletes the zip) for a
+  # chunk that matched no files (e.g. empty wp-content/upgrade). There is nothing to
+  # download — prepare-chunk-download would 404. Skip it: do NOT pull, upload, or add
+  # it to the manifest. (Production manager must do the same; a naive "non-empty body"
+  # puller would otherwise store the 404 error JSON as if it were chunk data.)
+  csize=$(echo "$EXEC" | python3 -c "import json,sys;print(json.load(sys.stdin).get('chunk_size',-1))" 2>/dev/null)
+  if [ "$csize" = "0" ]; then log "chunk $i empty (0 files) — skip, not in manifest"; continue; fi
+
   local_file="$WORK/chunk_${i}.${ext}"
   dbody="{\"token\":\"${TOKEN}\",\"chunk_index\":${i},\"delete\":true}"
   sign_call "/simplead/v1/backup/prepare-chunk-download" "$dbody" "$local_file" "$WORK/hdr_${i}.txt"
   if [ ! -s "$local_file" ]; then log "chunk $i download empty"; exit 3; fi
+  # Reject a non-2xx body masquerading as chunk data (defence in depth vs the 404-as-chunk trap).
+  hstatus=$(awk 'toupper($1) ~ /^HTTP/ {code=$2} END{print code}' "$WORK/hdr_${i}.txt" 2>/dev/null)
+  if [ -n "$hstatus" ] && [ "$hstatus" != "200" ]; then log "chunk $i download HTTP $hstatus (not chunk data)"; exit 3; fi
   sha=$(sha256sum "$local_file" | cut -d' ' -f1)
   sz=$(stat -c%s "$local_file")
 
