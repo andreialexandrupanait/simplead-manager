@@ -9,12 +9,15 @@ if (!defined('ABSPATH')) {
 /**
  * Database + diagnostic endpoints for simplead-backup/v1.
  *
- *   POST simplead-backup/v1/database/dump   — run a consistent logical dump into a session
- *                                             dir, return the segment manifest.
- *   GET  simplead-backup/v1/diagnostic      — plugin health, temp status, recent log lines.
+ *   POST simplead-backup/v1/database/dump           — run a consistent logical dump into a session
+ *                                                     dir, return the segment manifest.
+ *   POST simplead-backup/v1/database/chunk-download  — stream one dumped segment (chunk_N.sql.gz);
+ *                                                     `delete=true` frees it after (pull-and-free →
+ *                                                     manager temp/WP temp both stay bounded).
+ *   GET  simplead-backup/v1/diagnostic              — plugin health, temp status, recent log lines.
  *
- * This is the P2 seam the Laravel orchestrator will drive. Chunked file inventory, exclusions,
- * multipart upload and manifest/_COMPLETE are later P2 pieces (see TODO in the endpoint).
+ * This is the P2 seam the Laravel orchestrator drives: database/dump → for each segment
+ * { database/chunk-download delete=1 } → upload to S3. Symmetric with the files half.
  */
 final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
 
@@ -29,6 +32,19 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
                     'time_budget'   => array('type' => 'number', 'required' => false),
                     'segment_bytes' => array('type' => 'integer', 'required' => false),
                     'exclude_tables'=> array('type' => 'array', 'required' => false),
+                ),
+            ),
+        ));
+
+        register_rest_route($this->namespace(), '/database/chunk-download', array(
+            array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'chunk_download'),
+                'permission_callback' => array($this, 'check_permission'),
+                'args'                => array(
+                    'session_id'  => array('type' => 'string',  'required' => true),
+                    'chunk_index' => array('type' => 'integer', 'required' => true),
+                    'delete'      => array('type' => 'boolean', 'required' => false),
                 ),
             ),
         ));
@@ -72,6 +88,56 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
         ));
 
         return new WP_REST_Response($manifest, $manifest['done'] ? 200 : 202);
+    }
+
+    /**
+     * Stream one dumped DB segment (chunk_N.sql.gz) to the manager; delete=true frees
+     * it afterwards so WP temp stays bounded (pull-and-free), symmetric with files.
+     */
+    public function chunk_download(WP_REST_Request $request) {
+        $session_id   = (string) $request->get_param('session_id');
+        $chunk_index  = (int) $request->get_param('chunk_index');
+        $delete_after = (bool) $request->get_param('delete');
+
+        if ($session_id === '') {
+            return new WP_REST_Response(array('ok' => false, 'error' => array('code' => 'NOT_FOUND', 'message' => 'Missing session_id.')), 404);
+        }
+
+        $db_dir  = SAM_Backup_Temp::session_dir($session_id) . '/database';
+        $segment = $db_dir . '/chunk_' . $chunk_index . '.sql.gz';
+        $real    = realpath($segment);
+
+        // Path guard: the resolved file must stay inside this session's database dir.
+        if ($real === false || strpos($real, realpath($db_dir) . '/') !== 0 || !is_file($real)) {
+            return new WP_REST_Response(array('ok' => false, 'error' => array('code' => 'NOT_FOUND', 'message' => "Segment {$chunk_index} not found.")), 404);
+        }
+
+        $size = filesize($real);
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/gzip');
+        header('Content-Length: ' . $size);
+        header('X-SAM-Chunk-Index: ' . $chunk_index);
+        header('X-SAM-Chunk-Sha256: ' . (string) hash_file('sha256', $real));
+
+        $fh = fopen($real, 'rb');
+        if ($fh !== false) {
+            while (!feof($fh)) {
+                $buf = fread($fh, 524288);
+                if ($buf === false) {
+                    break;
+                }
+                echo $buf;
+            }
+            fclose($fh);
+        }
+
+        if ($delete_after) {
+            @unlink($real); // free WP session temp; manifest fragment already returned by dump
+        }
+        exit;
     }
 
     public function diagnostic(WP_REST_Request $request): WP_REST_Response {

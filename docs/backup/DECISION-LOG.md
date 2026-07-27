@@ -37,6 +37,34 @@ zicea vechiul CLAUDE.md). Fără upgrade de framework în această muncă.
 FK aditive spre `sites`/`backups`, `full_base_id` self-ref pentru chain. `down()` dă drop curat.
 **Măsurători:** migrate → rollback(step=2) → re-migrate curat pe PostgreSQL 16 (verificat în lab).
 
+## D-011 — Orchestrare backup FULL end-to-end condusă de FSM (P2, dovedit în lab)
+**Decizie:** `App\Backup\V2\Orchestration\BackupRunner` conduce o `BackupSession` prin **întreg** graful
+FSM (fiecare tranziție prin `transitionTo`, fără scurtături): `capability_check` → `capabilities()`;
+`inventory` → `files/inventory` (salvează `exclusion_policy_hash` + `scope_hash` + plan); `database_export`
+→ `database/dump` + **pull-and-free** per segment; `uploading` → `files/chunk-exec`+`chunk-download`
+(pull-and-free) per chunk; `upload_verifying` → `headObject` (size) + re-download & sha256 per obiect;
+`finalizing` → `manifest.json`/`checksums.json`/`metadata.json` apoi **`_COMPLETE` scris ULTIMUL**, abia
+apoi `completed`. Client HMAC `App\Backup\V2\Plugin\SimpleadBackupClient` (semnătură
+`METHOD|ROUTE|TS|NONCE|BODY`, nonce obligatoriu, headere `X-SAM-Backup-*`), factory S3 lab
+`App\Backup\V2\Storage\S3ClientFactory` (MinIO; prod = din `StorageDestination`, TODO), job inert
+`RunBackupSessionJob` (gate pe `backup_v2.enabled`).
+- **Sub-decizie D-011a — endpoint NOU `database/chunk-download` în `simplead-backup`** (v0.2.0): pluginul
+  nu avea cale de a servi segmentele DB dumpuite; adăugat simetric cu `files/chunk-download` (auth HMAC,
+  `delete=1` = pull-and-free, path-guard). Fără el nu există backup FULL end-to-end din manager.
+- **Sub-decizie D-011b — idempotență/resume prin `confirmed_objects` (jsonb) + `checkpoint.db_done`:** un
+  obiect confirmat nu se re-pull-uiește/re-urcă niciodată (pull-and-free face re-pull imposibil oricum);
+  dump-ul DB se short-circuit-ează după ce toate segmentele sunt confirmate. Resume mid-fază = re-intrare
+  în starea curentă (self-transition idempotent).
+- **Sub-decizie D-011c — verify-before-complete:** orice obiect lipsă/nepotrivit (size sau sha256) →
+  `corrupt`, NICIODATĂ `completed`; dump `done=false`/`consistent=false` → `corrupt`.
+**Dovedit în lab** (`tests/Feature/Backup/V2/BackupRunnerE2ETest.php`, plugin + MinIO reale, 3 teste /
+192 aserțiuni): backup FULL `completed` cu `_COMPLETE` scris ultimul, toate obiectele `database/`+`files/`
+verificate size+sha256; **restore-oracle fișiere 41/41, 0 lipsă / 0 nepotriviri**; **empty-chunk skip-uit**
+(nu se descarcă, nu apare în manifest); **resume după crash injectat — fiecare chunk pull-uit exact o dată,
+obiectele confirmate cu ETag+mtime neschimbate (0 re-upload)**. **DB restore-oracle real**
+(`spike/orchestrator/verify-db-restore.sh`): import în MySQL 8.0 nou = **0 erori, 59/59 tabele** (incl.
+WooCommerce/HPOS `wp_wc_orders`). Pint curat, PHPStan 0 erori pe `app/Backup/V2`.
+
 ## D-004 — Format chunk fișiere: zip-per-chunk, compresie STORE (P2, măsurat)
 **Decizie:** partea de FIȘIERE se împachetează ca **un `ZipArchive` per chunk** (`files/chunk_N.zip`),
 grupat pe director (localitate) sub un prag configurabil (implicit 100 MiB), cu **compresie STORE**

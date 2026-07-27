@@ -14,7 +14,7 @@
 |---|---|---|---|
 | P0 | Setup branch / bază / laborator / flags | ✅ | branch + spike merge; `config/backup_v2.php`; lab Laravel (Laravel 12.64, migrări OK, teste rulează) |
 | P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
-| P2 | Plugin simplead-backup + backup de bază (nucleul) | 🟡 în lucru | scaffold + capabilities + **DB dump consistent (0 orfani)** + **inventar/excluderi/chunking fișiere (oracle 5001/5001, temp bounded)** |
+| P2 | Plugin simplead-backup + backup de bază (nucleul) | ✅ | **backup FULL end-to-end** condus de FSM: DB consistent (0 orfani) + fișiere (oracle) + multipart întărit + manifest+`_COMPLETE`; restore-oracle 41/41 + DB 0 erori; resume-fără-dublare; 32 teste E2E |
 | P3 | Incremental + chain-uri + retenție | ⬜ | — |
 | P4 | Restore (full + selectiv + rollback) | ⬜ | — |
 | P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
@@ -30,7 +30,22 @@ Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-bac
 
 ## Jurnal de faze (cel mai recent sus)
 
-### P2 — Nucleul 🟡 (în lucru — bucățile 1–3 livrate; rămâne orchestrarea FSM end-to-end)
+### P2 — Nucleul ✅ (poartă trecută — BACKUP FULL end-to-end dovedit restaurabil)
+**Bucata 4 — orchestrare FSM end-to-end (LARAVEL-ORCHESTRATOR) — REVIEW independent PASS (32 teste, 285 aserțiuni):**
+- `App\Backup\V2\Orchestration\BackupRunner` conduce `BackupSession` prin tot graful FSM (fiecare tranziție prin
+  `transitionTo`): capability_check→inventory→database_export→uploading→upload_verifying→finalizing→completed.
+- Client HMAC `SimpleadBackupClient` (nonce obligatoriu), `S3ClientFactory` (MinIO lab; prod=StorageDestination TODO),
+  endpoint plugin NOU `database/chunk-download` (v0.2.0), job inert `RunBackupSessionJob`.
+- Verify-before-complete: orice obiect lipsă/nepotrivit sau dump inconsistent → `corrupt` (nu `completed`); `_COMPLETE` ultimul.
+- **Rerulat de mine:** backup FULL `completed` (obiecte size+sha256 verificate), restore-oracle fișiere **41/41 (0/0)**,
+  DB import real **0 erori / 59 tabele** (Woo/HPOS), **empty-chunk skip**, **resume după crash — fiecare chunk o dată,
+  0 re-upload**. Pint + PHPStan (level 5) 0 erori pe `app/Backup/V2`.
+
+**Rămâne (hardening, se poate face în P3+):** resolvers de producție (`S3ClientFactory::forDestination` decrypt +
+`SimpleadBackupClient::forSite`); fallback non-InnoDB; `DiskSpaceGuard` pre-dump; verificare sha256 la `upload_verifying`
+prin S3 checksum în loc de re-download (obiecte mari); shim connector.
+
+
 **Bucata 3 — upload S3 multipart întărit (STORAGE) — REVIEW independent PASS (13 teste, 69 aserțiuni pe MinIO):**
 - `App\Backup\V2\Storage\HardenedMultipartUploader` + `ObjectLayout` + progress stores (in-memory + `confirmed_parts` jsonb).
 - Model pull server-side; părți 16 MiB (D-005); retry/backoff/jitter per parte; checksum per parte; resume din jsonb

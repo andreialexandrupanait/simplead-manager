@@ -113,4 +113,40 @@ return [
 
     // S3 object layout root (per TARGET-ARCHITECTURE.md). Tenant-isolated.
     'object_prefix' => 'clients/{client_id}/sites/{site_id}/backups/{backup_id}',
+
+    /*
+    |--------------------------------------------------------------------------
+    | simplead-backup plugin HMAC client (lab defaults)
+    |--------------------------------------------------------------------------
+    | Credentials the Laravel orchestrator (App\Backup\V2\Plugin\SimpleadBackupClient)
+    | uses to sign requests to the WP plugin. In PRODUCTION the key/secret and base
+    | URL come per-site (decrypted from the Site row) — these config values are only
+    | the lab fallback (the plugin's own options are set to the connector's spike
+    | creds). Inert in prod: nothing signs a request unless a V2 backup runs.
+    */
+    'plugin' => [
+        'key' => (string) env('BACKUP_ENGINE_V2_PLUGIN_KEY', 'spikekey12345'),
+        'secret' => (string) env('BACKUP_ENGINE_V2_PLUGIN_SECRET', 'spikesecret67890'),
+        'timeout' => (int) env('BACKUP_ENGINE_V2_PLUGIN_TIMEOUT', 120),
+        // DB dump soft time budget + gzip segment target handed to the plugin.
+        'db_time_budget' => (int) env('BACKUP_ENGINE_V2_DB_TIME_BUDGET', 90),
+        'db_segment_bytes' => (int) env('BACKUP_ENGINE_V2_DB_SEGMENT_BYTES', 8 * 1024 * 1024),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lab S3 (MinIO) destination — used ONLY by the local lab tests/harness.
+    |--------------------------------------------------------------------------
+    | In production the S3 target is resolved from the site's StorageDestination
+    | (decrypted exactly like App\Services\...\S3Driver) — see the TODO in
+    | App\Backup\V2\Storage\S3ClientFactory. These values point at the spike MinIO.
+    */
+    'lab_s3' => [
+        'endpoint' => (string) env('BACKUP_ENGINE_V2_LAB_S3_ENDPOINT', 'http://spike-minio:9000'),
+        'region' => (string) env('BACKUP_ENGINE_V2_LAB_S3_REGION', 'us-east-1'),
+        'key' => (string) env('BACKUP_ENGINE_V2_LAB_S3_KEY', 'spikeadmin'),
+        'secret' => (string) env('BACKUP_ENGINE_V2_LAB_S3_SECRET', 'spikeadmin123'),
+        'bucket' => (string) env('BACKUP_ENGINE_V2_LAB_S3_BUCKET', 'backups'),
+        'use_path_style_endpoint' => true,
+    ],
 ];
