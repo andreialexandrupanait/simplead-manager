@@ -54,3 +54,6 @@ Thumbs.db
 /*.gif
 /*.webp
 /*.bmp
+
+# lab dev secrets (throwaway)
+lab/.lab-app-key

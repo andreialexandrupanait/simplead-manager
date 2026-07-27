@@ -1,0 +1,75 @@
+# simplead-backup DEV/TEST lab — Laravel side.
+# Fully isolated from production (own project name sam_lab, own network/volumes,
+# private host ports). Reuses the built app image ONLY as a PHP 8.3 runtime
+# (php + extensions + vendor) — it does NOT run the production entrypoint.
+# The WordPress/MinIO side of the lab is the spike stack (sam_spike).
+name: sam_lab
+
+networks:
+  sam_lab_net:
+    driver: bridge
+
+volumes:
+  lab_pg_data:
+
+services:
+  lab-pg:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: simplead
+      POSTGRES_PASSWORD: simplead
+      POSTGRES_DB: simplead_test
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - lab_pg_data:/var/lib/postgresql/data
+    networks: [sam_lab_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simplead -d simplead_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  lab-redis:
+    image: redis:7
+    networks: [sam_lab_net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # PHP CLI runtime for artisan / phpunit. Mounts the repo at /work and symlinks
+  # the image's baked vendor/ (composer.lock is unchanged vs the built image).
+  lab-php:
+    image: simplead-manager-app:latest
+    entrypoint: ["/bin/sh", "-lc"]
+    # vendor/ is installed on the host (with dev deps) and mounted at /work/vendor.
+    command: ["exec tail -f /dev/null"]
+    working_dir: /work
+    depends_on:
+      lab-pg:
+        condition: service_healthy
+      lab-redis:
+        condition: service_healthy
+    volumes:
+      - ..:/work
+    environment:
+      APP_ENV: testing
+      APP_KEY: "base64:ce/DUfRPFI1H3jzlDmLBLJwNk4aTnuG0FyuUNDxwf+M="
+      APP_DEBUG: "true"
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: lab-pg
+      DB_PORT: "5432"
+      DB_DATABASE: simplead_test
+      DB_USERNAME: simplead
+      DB_PASSWORD: simplead
+      REDIS_HOST: lab-redis
+      REDIS_PORT: "6379"
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      BCRYPT_ROUNDS: "4"
+    networks: [sam_lab_net]
