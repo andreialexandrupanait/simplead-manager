@@ -37,10 +37,28 @@ zicea vechiul CLAUDE.md). Fără upgrade de framework în această muncă.
 FK aditive spre `sites`/`backups`, `full_base_id` self-ref pentru chain. `down()` dă drop curat.
 **Măsurători:** migrate → rollback(step=2) → re-migrate curat pe PostgreSQL 16 (verificat în lab).
 
+## D-004 — Format chunk fișiere: zip-per-chunk, compresie STORE (P2, măsurat)
+**Decizie:** partea de FIȘIERE se împachetează ca **un `ZipArchive` per chunk** (`files/chunk_N.zip`),
+grupat pe director (localitate) sub un prag configurabil (implicit 100 MiB), cu **compresie STORE**
+(nu DEFLATE) implicit, suprascriabilă per-site de manager. Un fișier mai mare decât pragul devine
+**singur un chunk** (fără split intra-file în v1). Chunk gol → nu se produce (contract empty-chunk).
+Implementat în `simplead-backup/includes/files/{class-exclusions,class-inventory,class-file-chunker}.php`
++ endpoint `files/inventory|chunk-exec|chunk-download`.
+**De ce STORE:** payload-ul WP e dominat de media deja-comprimată (jpg/png/mp4/pdf/woff) → DEFLATE
+arde CPU pentru câștig ~0 și pe date incompresibile face arhiva **mai mare**.
+**Măsurători (lab, fișier incompresibil 300 MB, `tests/files-test.sh`):**
+| Metodă | Timp | Output | Ratio |
+|---|---|---|---|
+| STORE | **0.44 s** | 314,572,900 B | 1.0000 |
+| DEFLATE | 5.88 s | 314,623,491 B | 1.0002 (mai mare) |
+→ STORE de ~13× mai rapid și output mai mic pe incompresibil. **STORE ales ca default.**
+**Restul dovedit în lab (0/0, temp bounded):** inventar determinist (hash + count/bytes identice pe 2
+rulări), 6/6 excluderi corecte (0 scurgeri în plan), fișier mare = chunk propriu (314,572,954 B ≈ dim.
+fișier), **temp peak 315 MB ≈ cel mai mare chunk** (pull-and-free, NU totalul de 1.02 GB), fiecare chunk
+cu sha256, restore-oracle **5001/5001, 0 lipsă / 0 nepotriviri**, ZipArchive streaming (fără buffering RAM).
+Rămâne deschis DOAR agregarea la nivel de backup (manifest global + `_COMPLETE`) — bucata de upload/orchestrare.
+
 ## Decizii deschise (se închid prin benchmark în fazele următoare)
-- **D-004 (P2) — Format de segment/chunk:** object-per-file vs pack/TAR-stream vs segmente
-  compresate limitate vs multipart-per-segment. Criterii: impact minim, restore eficient, număr
-  rezonabil de obiecte S3, reluare per segment, checksum, streaming, temp redus, fișiere foarte mari.
 - **D-005 (P2) — Dimensiune parte multipart + TTL presigned:** din benchmark de throughput/rată de eșec.
 - **D-006 (P2) — ÎNCHIS:** dump DB consistent implementat în `simplead-backup` (`class-consistent-dumper.php`):
   o singură conexiune mysqli, `SET SESSION REPEATABLE READ` + `START TRANSACTION WITH CONSISTENT SNAPSHOT`,

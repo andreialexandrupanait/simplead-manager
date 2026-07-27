@@ -32,6 +32,7 @@ final class SAM_Backup_Plugin {
         $classes = array(
             'SAM_Backup_Capabilities_Endpoint',
             'SAM_Backup_Database_Endpoint',
+            'SAM_Backup_Files_Endpoint',
         );
         foreach ($classes as $class) {
             try {

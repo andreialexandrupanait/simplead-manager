@@ -59,6 +59,8 @@ final class SAM_Backup_Options {
             'nonce_window'      => 300,      // anti-replay window in seconds
             'segment_bytes'     => 8388608,  // 8 MiB uncompressed target per gzip segment
             'time_budget'       => 90,       // soft per-run wall-clock budget (Cloudflare-aware)
+            'files_chunk_bytes' => 104857600,// 100 MiB target per file chunk (single big file → own chunk)
+            'files_compression' => 'store',  // STORE by default: WP payload is incompressible-dominated
         );
         foreach ($defaults as $key => $value) {
             if (self::get($key, null) === null) {

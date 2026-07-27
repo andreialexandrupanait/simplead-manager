@@ -44,9 +44,13 @@ $sam_backup_files = array(
     'includes/support/class-logger.php',
     'includes/support/class-auth.php',
     'includes/db/class-consistent-dumper.php',
+    'includes/files/class-exclusions.php',
+    'includes/files/class-inventory.php',
+    'includes/files/class-file-chunker.php',
     'includes/endpoints/class-rest-controller.php',
     'includes/endpoints/class-capabilities-endpoint.php',
     'includes/endpoints/class-database-endpoint.php',
+    'includes/endpoints/class-files-endpoint.php',
     'includes/class-backup-plugin.php',
 );
 foreach ($sam_backup_files as $sam_backup_rel) {

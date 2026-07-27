@@ -14,7 +14,7 @@
 |---|---|---|---|
 | P0 | Setup branch / bază / laborator / flags | ✅ | branch + spike merge; `config/backup_v2.php`; lab Laravel (Laravel 12.64, migrări OK, teste rulează) |
 | P1 | Fundația Laravel (FSM, migrări, observabilitate) | ✅ | 34 teste passed (450 assert); migrări reversibile; Pint PASS; `app/Backup/V2/*` |
-| P2 | Plugin simplead-backup + backup de bază (nucleul) | 🟡 în lucru | scaffold plugin + capabilities + **dump DB consistent dovedit (0 orfani MySQL8+MariaDB11)** |
+| P2 | Plugin simplead-backup + backup de bază (nucleul) | 🟡 în lucru | scaffold + capabilities + **DB dump consistent (0 orfani)** + **inventar/excluderi/chunking fișiere (oracle 5001/5001, temp bounded)** |
 | P3 | Incremental + chain-uri + retenție | ⬜ | — |
 | P4 | Restore (full + selectiv + rollback) | ⬜ | — |
 | P5 | UI Manager + UI plugin + alerte + cote | ⬜ | — |
@@ -41,11 +41,21 @@ Vezi lista completă în [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-bac
   0 orfani pe MySQL 8.0.46 ȘI MariaDB 11.8** (contrast paged 60/62), CRC32 binar identic, Woo/HPOS + Multisite.
 - Sintaxă PHP OK pe toate fișierele; connectorul neatins.
 
-**Rămâne în P2 (bucățile următoare):** inventar fișiere + excluderi aplicate înainte de citire; chunking
-fișiere + format segment (benchmark); upload S3 multipart întărit (retry/checksum/resume per parte + reaper);
-`manifest.json`+`metadata.json`+`checksums.json`+`_COMPLETE` obligatoriu; contract empty-chunk; orchestrare
-FSM în Laravel (jobs care conduc sesiunea capability→inventory→db_export→…→completed); shim în connector;
-full/db-only/files-only end-to-end; fallback non-InnoDB; DiskSpaceGuard înainte de dump.
+**Bucata 2 — inventar + excluderi + chunking fișiere (WORDPRESS-ENGINE) — REVIEW independent PASS:**
+- `class-exclusions.php` (folder/file/glob/ext/prefix/size/age + include-only; `exclusion_policy_hash` stabil;
+  path-traversal guard), `class-inventory.php` (walk cu excludere-înainte-de-citire; determinist),
+  `class-file-chunker.php` (grupare pe director, fișier mare = chunk propriu, ZipArchive STORE streaming,
+  empty-chunk skip, pull-and-free), endpoint `files/inventory|chunk-exec|chunk-download`.
+- Benchmark: STORE vs DEFLATE pe incompresibil → **STORE** (13× mai rapid, output mai mic). D-004 închis.
+- **Rerulat de mine:** excluderi 6/6 (0 scurgeri), inventar hash stabil pe 2 rulări, temp peak 315 MB ≈ cel
+  mai mare chunk (nu 1.02 GB total), restore-oracle **5001/5001 (0 missing, 0 mismatch)**.
+
+**Rămâne în P2 (bucata 3+):** upload S3 multipart întărit (part mic, retry/backoff/jitter/checksum/resume per
+parte + reaper abandonate; TTL presigned scurt — D-005); agregare `manifest.json`+`metadata.json`+`checksums.json`
++ `_COMPLETE` (verify-before-complete); orchestrare FSM în Laravel (jobs capability→inventory→db_export→chunking
+→uploading→upload_verifying→finalizing→completed) cu skip idempotent `chunk_size==0` + validare arhivă;
+agregare reguli excludere pe niveluri (manager-side); shim connector; full/db-only/files-only end-to-end;
+fallback non-InnoDB; DiskSpaceGuard înainte de dump.
 
 ### P1 — Fundația Laravel ✅ (poartă trecută)
 - Namespace izolat `App\Backup\V2\*` (Enums, StateMachine, Models, Support, Console, Jobs, Legacy).
