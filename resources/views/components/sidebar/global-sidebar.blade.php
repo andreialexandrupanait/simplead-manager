@@ -33,14 +33,6 @@
         {{ __('Security') }}
     </x-sidebar.sidebar-item>
 
-    <x-sidebar.sidebar-item
-        :href="route('audits.index')"
-        icon="target"
-        :active="request()->routeIs('audits.*')"
-    >
-        {{ __('Audits') }}
-    </x-sidebar.sidebar-item>
-
 </x-sidebar.sidebar-section>
 
 <x-sidebar.sidebar-section :title="__('Operations')">

@@ -36,20 +36,20 @@
 </style>
 </head>
 <body>
-  <h1>Faza 1 — Ștergeri &nbsp;<span class="state ruleaza">● RULEAZĂ — 1.2</span></h1>
-  <div class="sub">Ramură <code>faza-1-stergeri</code> · ultima actualizare 2026-07-28 18:05</div>
+  <h1>Faza 1 — Ștergeri &nbsp;<span class="state ruleaza">● RULEAZĂ — 1.3</span></h1>
+  <div class="sub">Ramură <code>faza-1-stergeri</code> · ultima actualizare 2026-07-28 18:38</div>
 
   <div class="grid">
-    <div class="metric"><div class="n">1.2</div><div class="l">Sub-pas (din 5)</div></div>
-    <div class="metric green"><div class="n">1128</div><div class="l">Teste verzi (0 roșii)</div></div>
-    <div class="metric green"><div class="n">90</div><div class="l">Modele (−7)</div></div>
-    <div class="metric"><div class="n">157</div><div class="l">Rute (−3 SEO)</div></div>
+    <div class="metric"><div class="n">1.3</div><div class="l">Sub-pas (din 5)</div></div>
+    <div class="metric green"><div class="n">948</div><div class="l">Teste verzi (0 roșii)</div></div>
+    <div class="metric green"><div class="n">83</div><div class="l">Modele (−14)</div></div>
+    <div class="metric"><div class="n">152</div><div class="l">Rute (−8)</div></div>
   </div>
 
   <div class="steps">
-    <div class="step"><span class="dot gata"></span><span class="name">1.1</span><span class="desc">Motorul SEO — <b>GATA</b>: 43 fișiere șterse, migrare drop, 1128 teste verzi. Auditor: 2 orfani prinși & rezolvați.</span></div>
-    <div class="step"><span class="dot lucru"></span><span class="name">1.2</span><span class="desc">Modulul de audit (Services/Audit, Prospect, rapoarte publice) — <b>în lucru</b></span></div>
-    <div class="step"><span class="dot astept"></span><span class="name">1.3</span><span class="desc">Modele financiare (ClientCost, ClientRevenue, profitabilitate)</span></div>
+    <div class="step"><span class="dot gata"></span><span class="name">1.1</span><span class="desc">Motorul SEO — <b>GATA</b>: 43 fișiere, migrare drop, 1128 verzi. Auditor: 2 orfani prinși & rezolvați.</span></div>
+    <div class="step"><span class="dot gata"></span><span class="name">1.2</span><span class="desc">Modulul de audit — <b>GATA</b>: 104 fișiere, migrare drop, 948 verzi. Auditor: CURAT.</span></div>
+    <div class="step"><span class="dot lucru"></span><span class="name">1.3</span><span class="desc">Modele financiare (ClientCost, ClientRevenue, profitabilitate) — <b>în lucru</b></span></div>
     <div class="step"><span class="dot astept"></span><span class="name">1.4</span><span class="desc">Status pages + portal client + invitații</span></div>
     <div class="step"><span class="dot astept"></span><span class="name">1.5</span><span class="desc">Remediere automată (IncidentResponse, AuditAutoApprover)</span></div>
   </div>
@@ -66,7 +66,11 @@
     <div class="ev ok"><span class="t">19:44</span><span>Auditor: ștergerea SEO curată + migrare exactă, DAR a găsit 2 orfani ratați de grep-ul „Seo" (tabel <code>seo_audits</code>, minusculă): <code>RetentionPolicyService</code> (categorie fantomă) + <code>RetentionCleanupResilienceTest</code> (RUPE suita).</span></div>
     <div class="ev"><span class="t">19:46</span><span>Fix: scos categoria de retenție SEO; rescris fixture-ul testului pe <code>activity_logs</code> fără a slăbi aserția.</span></div>
     <div class="ev ok"><span class="t">18:03</span><span>✅ 1.1 GATA: JUnit 1128 teste · 0 erori · 0 eșecuri · 32 skip. RetentionResilience rescris → PASS. Commit.</span></div>
-    <div class="ev"><span class="t">18:05</span><span>Start 1.2 — modulul de audit (Services/Audit, Prospect, PublicAuditReportController, rapoarte publice, joburi audit).</span></div>
+    <div class="ev"><span class="t">18:05</span><span>Start 1.2 — modulul de audit.</span></div>
+    <div class="ev"><span class="t">18:12</span><span>1.2 șters: 7 modele, 30 servicii, DTOs/Audit, Exceptions/Audit, 4 Livewire, RunSfCrawl, 5 enum, PublicAuditReportController, MonitorAudits, AuditConfigServiceProvider, 5 factories, config/audit, 29 teste (104 fișiere). Modele 90→83.</span></div>
+    <div class="ev"><span class="t">18:13</span><span>Cuplaje prinse la inventar: binding-uri audit în <code>AppServiceProvider</code>, provider în <code>bootstrap/providers.php</code>, seeder chemat de migrarea de create (rescris pe query builder, păstrat), nav Audits, rute. Toate rezolvate.</span></div>
+    <div class="ev ok"><span class="t">18:37</span><span>✅ 1.2 GATA: JUnit 948 teste · 0 erori · 0 eșecuri · 32 skip. <b>Auditor: CURAT</b> (zero orfani). Commit.</span></div>
+    <div class="ev"><span class="t">18:38</span><span>Start 1.3 — modele financiare (ClientCost, ClientRevenue, ClientProfitability, ClientForm; verific prețuri în MaintenancePlan).</span></div>
   </div>
 </body>
 </html>

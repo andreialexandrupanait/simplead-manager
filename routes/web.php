@@ -11,7 +11,6 @@ use App\Http\Controllers\ReportDownloadController;
 use App\Http\Controllers\ReportViewController;
 use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
-use App\Livewire\Audit;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
@@ -66,11 +65,6 @@ Route::get('/reports/{report}/download/signed', ReportDownloadController::class)
 // Permanent report view link (token-protected, no auth)
 Route::get('/r/{report}/{token}', ReportViewController::class)
     ->name('reports.view.public')
-    ->middleware('throttle:60,1');
-
-// Public audit report (Faza D6) — served by slug (behind rapoarte.simplead.ro).
-Route::get('/raport/{slug}', [\App\Http\Controllers\PublicAuditReportController::class, 'show'])
-    ->name('audit-report.public')
     ->middleware('throttle:60,1');
 
 // Plugin download via signed URL (for WP self-update — no auth required)
@@ -155,12 +149,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
 
     // Performance — global view
     Route::get('/performance', Performance\PerformanceOverview::class)->name('performance.index');
-
-    // Audit — unified SEO/audit module (Faza D)
-    Route::get('/audits', Audit\AuditIndex::class)->name('audits.index');
-    Route::get('/audits/create', Audit\AuditCreate::class)->name('audits.create');
-    Route::get('/audits/{audit}', Audit\AuditShow::class)->name('audits.show');
-    Route::get('/audits/{audit}/editor', Audit\AuditEditor::class)->name('audits.editor');
 
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');

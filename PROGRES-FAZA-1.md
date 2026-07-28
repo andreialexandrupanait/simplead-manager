@@ -74,3 +74,27 @@ Stare: **OPRIT la 1.1 — aștept decizie de scope înainte de prima ștergere.*
 **Verdict auditor:** ștergere curată + migrare exactă 1:1; cele 2 probleme semnalate — rezolvate înainte de commit.
 
 **Lăsat intenționat:** coloana `seo_issues_count` din `SiteMonthlySnapshot` (tabel de agregare păstrat, cu date istorice) — nu e referință spre ceva șters, doar o coloană rămasă nepopulată; dropul ei ar fi refactor riscant peste scope.
+
+### Rezultat 1.2 — GATA ✅ (modulul de audit SEO/CRO)
+
+| Măsură | Înainte (1.1) | După (1.2) | Δ |
+|---|---|---|---|
+| Modele | 90 | 83 | −7 |
+| Servicii | 156 | 126 | −30 |
+| Componente Livewire | 111 | 107 | −4 |
+| Joburi | 55 | 54 | −1 |
+| Rute | 157 | 152 | −5 |
+| Teste verzi (JUnit) | 1128 · 0 roșii | **948 · 0 roșii** · 32 skip | −180 (teste audit) |
+
+- Șters (**104 fișiere**): 7 modele (Audit*, Prospect), `Services/Audit/` (30), `DTOs/Audit/`, `Exceptions/Audit/`, `Livewire/Audit/` (4), `Jobs/Audit/RunSfCrawl`, 5 enum-uri, `PublicAuditReportController`, `MonitorAudits`, `AuditConfigServiceProvider`, 5 factories, `config/audit.php`, blade-uri, 29 fișiere de test.
+- Curățat cod păstrat: `AppServiceProvider` (2 binding-uri audit), `bootstrap/providers.php` (înregistrare provider), `routes/web.php` (import + 5 rute), `global-sidebar` (item Audits), `DatabaseSeeder` (apel seeder).
+- Migrare drop: `2026_07_28_000002_drop_audit_module_tables` (7 tabele).
+
+**Cuplaje surpriză (informația valoroasă):**
+1. Modulul de audit era **auto-conținut** — spre deosebire de SEO, ZERO cuplaj în feature-uri de mentenanță (Rapoarte/Redirecturi). Referințele „din afară" erau doar mai multe fișiere ale modulului (DTOs, Exceptions).
+2. **Cuplaj în infrastructură, nu în feature-uri:** binding-uri de container în `AppServiceProvider`, un `AuditConfigServiceProvider` înregistrat în `bootstrap/providers.php`, și — cel mai delicat — **migrarea de create `2026_07_23_000001` cheamă `AuditChecksSeeder->run()` în `up()`**, care folosea modelul `AuditCheck`. Regula „nu edita migrări existente" + „șterge modelul" păreau în conflict.
+3. **Rezolvare fără a edita migrarea:** `AuditChecksSeeder` rescris să folosească `DB::table('audit_checks')->upsert()` (fără model) și **păstrat** ca plumbărie de migrare (+ `database/data/audit-checks-v2.json`); apelul scos din `DatabaseSeeder` ca `db:seed` să nu atingă tabelul dropat. Migrarea de create rulează neschimbată; tabelele se creează, se seedează, apoi se dropează de migrarea 1.2.
+
+**Verdict auditor: CURAT** — nicio referință orfană, migrare exactă 1:1, seeder rescris corect nu rupe migrarea de create, niciun test slăbit. Notă cosmetică: 4 comentarii-cod în migrările de create numesc enum-uri șterse (inofensive; nu se ating — regula „nu edita migrări").
+
+**Lăsat intenționat:** coloana `sites.is_prospect` + scope-ul `scopePortfolio` (`where('is_prospect', false)`) — coloană activă pe tabel păstrat; dropul ar fi refactor riscant peste scope.

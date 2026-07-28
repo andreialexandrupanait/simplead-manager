@@ -39,18 +39,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SecuritySettingsService::class);
         $this->app->singleton(\App\Services\SecurityActivityService::class);
         $this->app->singleton(\App\Services\SecurityPresetService::class);
-
-        // Faza D: the SF crawl runner (production impl; faked in tests).
-        $this->app->bind(
-            \App\Services\Audit\SfCrawlRunner::class,
-            \App\Services\Audit\ScreamingFrogCrawlRunner::class,
-        );
-
-        // Faza D: the audit AI client (Anthropic HTTP impl; faked in tests).
-        $this->app->bind(
-            \App\Services\Audit\Ai\AuditAiClient::class,
-            \App\Services\Audit\Ai\HttpAuditAiClient::class,
-        );
     }
 
     /**
