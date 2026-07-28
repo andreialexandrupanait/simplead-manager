@@ -170,13 +170,6 @@
             Performance
         </x-sidebar.sidebar-item>
 
-        <x-sidebar.sidebar-item
-            :href="route('sites.seo', $site)"
-            icon="search"
-            :active="request()->routeIs('sites.seo*')"
-        >
-            SEO Audit
-        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section title="Analytics">

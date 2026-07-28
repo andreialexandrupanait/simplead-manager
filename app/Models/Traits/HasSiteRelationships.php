@@ -35,8 +35,6 @@ use App\Models\SecurityPreset;
 use App\Models\SecurityRecommendation;
 use App\Models\SecurityScan;
 use App\Models\SecuritySetting;
-use App\Models\SeoAudit;
-use App\Models\SeoMonitor;
 use App\Models\SiteCloudflare;
 use App\Models\SiteHealthState;
 use App\Models\SiteMonthlySnapshot;
@@ -331,20 +329,5 @@ trait HasSiteRelationships
     public function incidentResponses(): HasMany
     {
         return $this->hasMany(IncidentResponse::class);
-    }
-
-    public function seoMonitor(): HasOne
-    {
-        return $this->hasOne(SeoMonitor::class);
-    }
-
-    public function seoAudits(): HasMany
-    {
-        return $this->hasMany(SeoAudit::class);
-    }
-
-    public function latestSeoAudit(): HasOne
-    {
-        return $this->hasOne(SeoAudit::class)->latestOfMany('scanned_at');
     }
 }

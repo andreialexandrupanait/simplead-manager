@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Jobs;
 
 use App\Jobs\RetentionCleanup;
-use App\Models\Site;
+use App\Models\ActivityLog;
 use App\Services\RetentionPolicyService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,20 +42,16 @@ class RetentionCleanupResilienceTest extends TestCase
 
     public function test_missing_table_does_not_abort_the_nightly_run(): void
     {
-        $site = Site::factory()->create();
-
-        // A row in a LATE category (SEO is the final category) that must be pruned.
-        $oldAuditId = DB::table('seo_audits')->insertGetId([
-            'site_id' => $site->id,
-            'status' => 'completed',
+        // A row in a LATER category (activity_logs, default 180d retention) that
+        // must be pruned — its age (400d) is well past the cutoff.
+        $oldLog = ActivityLog::factory()->create([
             'created_at' => now()->subDays(400),
-            'updated_at' => now()->subDays(400),
         ]);
 
         // Simulate the P0-01 crash condition: a table listed in an EARLY
         // category is gone (as security_commands was in production). Uptime is
         // the first category iterated, so if a missing table aborted the run,
-        // the SEO category below would never prune.
+        // the later activity_logs category would never prune.
         DB::statement('DROP TABLE IF EXISTS uptime_checks CASCADE');
 
         (new RetentionCleanup('scheduled'))->handle(
@@ -64,7 +60,7 @@ class RetentionCleanupResilienceTest extends TestCase
         );
 
         // The run completed end-to-end (later categories still pruned)...
-        $this->assertDatabaseMissing('seo_audits', ['id' => $oldAuditId]);
+        $this->assertDatabaseMissing('activity_logs', ['id' => $oldLog->id]);
 
         // ...and it persisted a completion timestamp rather than dying mid-run.
         $this->assertNotNull(app(SettingsService::class)->get('retention_last_run_at'));

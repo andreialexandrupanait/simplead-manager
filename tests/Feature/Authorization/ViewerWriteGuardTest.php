@@ -11,7 +11,6 @@ use App\Livewire\ErrorLogs\ErrorLogsOverview;
 use App\Livewire\MaintenancePlans;
 use App\Livewire\Reports\ReportsOverview;
 use App\Livewire\Security\PresetManager;
-use App\Livewire\Seo\SeoQuickAudit;
 use App\Livewire\Sites\CreateSiteWizard;
 use App\Livewire\Sites\Detail\ReportRecommendationsManager;
 use App\Livewire\Sites\Detail\Security\SecurityIpManagement;
@@ -300,22 +299,6 @@ class ViewerWriteGuardTest extends TestCase
             ->assertForbidden();
 
         $this->assertFalse($log->fresh()->is_resolved);
-    }
-
-    public function test_viewer_blocked_on_seo_quick_audit_actions(): void
-    {
-        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
-
-        Livewire::actingAs($viewer)
-            ->test(SeoQuickAudit::class)
-            ->set('url', 'https://example.com')
-            ->call('runQuickAudit')
-            ->assertForbidden();
-
-        Livewire::actingAs($viewer)
-            ->test(SeoQuickAudit::class)
-            ->call('deleteProspect', 1)
-            ->assertForbidden();
     }
 
     public function test_viewer_blocked_on_create_site_and_client(): void

@@ -53,19 +53,4 @@
             <p class="text-sm text-gray-400">No redirects yet.</p>
         @endforelse
     </div>
-
-    {{-- Broken-link suggestions --}}
-    @if($this->brokenLinks->isNotEmpty())
-        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
-            <h3 class="text-sm font-semibold text-gray-900 mb-1">Broken links found</h3>
-            <p class="text-xs text-gray-400 mb-3">From the latest SEO crawl. Click to prefill a redirect for one.</p>
-            @foreach($this->brokenLinks as $link)
-                <div class="flex items-center gap-3 border-b border-gray-100 py-2 text-sm last:border-0">
-                    <span class="min-w-0 flex-1 truncate text-gray-600">{{ $link->target_url }}</span>
-                    <span class="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-600">{{ $link->status_code ?? 'broken' }}</span>
-                    <x-ui.button size="sm" variant="secondary" wire:click="prefillFromBroken(@js($link->target_url))">Fix</x-ui.button>
-                </div>
-            @endforeach
-        </div>
-    @endif
 </div>

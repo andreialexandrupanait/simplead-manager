@@ -1,12 +1,10 @@
 <?php
 
 use App\Dispatchers\BackupDispatcher;
-use App\Dispatchers\BrokenResourceDispatcher;
 use App\Dispatchers\DataSyncDispatcher;
 use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
-use App\Dispatchers\SeoAuditDispatcher;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -92,18 +90,6 @@ Schedule::call(function () {
     ->everyFifteenMinutes()
     ->name('incident-response-stale-sweep')
     ->onOneServer();
-
-Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping(10)->onOneServer();
-
-// Daily broken links/images re-check (lightweight, no re-crawl)
-Schedule::call(new BrokenResourceDispatcher)->dailyAt('02:00')->name('broken-resource-dispatcher')->withoutOverlapping()->onOneServer();
-
-// Daily keyword ranking fetch from Search Console
-Schedule::call(function () {
-    \App\Models\Site::query()
-        ->whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
-        ->each(fn ($site) => \App\Jobs\FetchKeywordRankings::dispatch($site)->delay(now()->addSeconds(rand(0, 60))));
-})->dailyAt('04:00')->name('keyword-rankings-fetch')->onOneServer();
 
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();

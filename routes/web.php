@@ -22,7 +22,6 @@ use App\Livewire\Notifications;
 use App\Livewire\Performance;
 use App\Livewire\Reports;
 use App\Livewire\Security;
-use App\Livewire\Seo;
 use App\Livewire\Settings;
 use App\Livewire\Sites;
 use App\Livewire\StatusPages;
@@ -126,7 +125,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         Route::get('/security/admin-ux', fn (Site $site) => redirect()->route('sites.tweaks.admin-ux', $site));
         Route::get('/security/content-media', fn (Site $site) => redirect()->route('sites.tweaks.content-media', $site));
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
-        Route::get('/seo', Sites\Detail\SiteSeoAudit::class)->name('sites.seo');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
@@ -157,10 +155,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
 
     // Performance — global view
     Route::get('/performance', Performance\PerformanceOverview::class)->name('performance.index');
-
-    // SEO
-    Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
-    Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
 
     // Audit — unified SEO/audit module (Faza D)
     Route::get('/audits', Audit\AuditIndex::class)->name('audits.index');

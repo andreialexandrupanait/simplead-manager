@@ -100,15 +100,6 @@ class RetentionPolicyService
                 ['table' => 'failed_jobs', 'column' => 'failed_at', 'col_type' => 'timestamp', 'label' => 'Failed jobs', 'condition' => null],
             ],
         ],
-        'seo' => [
-            'label' => 'SEO Audits',
-            'default' => 90,
-            'min' => 30,
-            'max' => 365,
-            'tables' => [
-                ['table' => 'seo_audits', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'SEO audits', 'condition' => ['status', '=', 'completed']],
-            ],
-        ],
         // P2-43: previously-unpruned, growing (jsonb-heavy) tables. Gated behind
         // config('backups.retention_dry_run'): while the flag is on, the nightly
         // job LOGS how many rows it *would* prune without deleting anything, so
