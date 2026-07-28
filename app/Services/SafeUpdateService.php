@@ -447,8 +447,19 @@ class SafeUpdateService
             $api = $this->apiFactory->make($site);
             $result = $api->healthCheck();
 
-            $checks = $result['checks'] ?? [];
-            $passed = ($result['status'] ?? 'unknown') === 'ok';
+            // The connector reports post-update health as
+            // {healthy: true, database_ok: …, ssl_active: …} — it has NO `status`
+            // key. Checking `status === 'ok'` therefore ALWAYS failed, so every
+            // safe update rolled back regardless of the real site state (surfaced
+            // by the Faza-2 pilot, see E2E-VERIFICAT Bug 1). Accept the connector's
+            // `healthy` flag, keeping the legacy `status === 'ok'` shape as a
+            // fallback so an older contract never silently regresses.
+            $passed = ($result['healthy'] ?? null) === true
+                || ($result['status'] ?? null) === 'ok';
+
+            // Make health_check_results diagnostic rather than empty when the
+            // connector sends discrete signals instead of an explicit `checks` array.
+            $checks = $result['checks'] ?? $this->deriveHealthChecks($result);
 
             return ['passed' => $passed, 'checks' => $checks];
         } catch (RequestException|\RuntimeException $e) {
@@ -457,6 +468,26 @@ class SafeUpdateService
                 'checks' => [['name' => 'health_endpoint', 'status' => 'error', 'message' => $e->getMessage()]],
             ];
         }
+    }
+
+    /**
+     * Build a checks array from the connector's discrete boolean health signals
+     * when it does not return an explicit `checks` list. `cron_disabled` is left
+     * out on purpose — a disabled WP-cron (system cron in use) is not unhealthy.
+     *
+     * @param  array<string, mixed>  $result
+     * @return list<array{name: string, status: string}>
+     */
+    private function deriveHealthChecks(array $result): array
+    {
+        $checks = [];
+        foreach (['healthy', 'database_ok', 'uploads_writable', 'ssl_active'] as $signal) {
+            if (array_key_exists($signal, $result)) {
+                $checks[] = ['name' => $signal, 'status' => $result[$signal] ? 'ok' : 'error'];
+            }
+        }
+
+        return $checks;
     }
 
     protected function captureScreenshot(\App\Models\Site $site, SafeUpdate $safeUpdate, string $label): ?string
