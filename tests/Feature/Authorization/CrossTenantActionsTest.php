@@ -8,10 +8,8 @@ use App\Enums\UserRole;
 use App\Livewire\Backups\BackupsOverview;
 use App\Livewire\MaintenancePlans;
 use App\Models\Backup;
-use App\Models\RollbackPoint;
 use App\Models\Site;
 use App\Models\User;
-use App\Services\IncidentResponse\IncidentActionExecutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -62,37 +60,5 @@ class CrossTenantActionsTest extends TestCase
             ->test(MaintenancePlans::class)
             ->call('applyPlanToAll', 999)
             ->assertForbidden();
-    }
-
-    public function test_incident_rollback_is_scoped_to_the_incident_site(): void
-    {
-        $siteA = Site::factory()->create();
-        $siteB = Site::factory()->create();
-        $pointOnB = RollbackPoint::factory()->create(['site_id' => $siteB->id, 'status' => 'available']);
-
-        $executor = app(IncidentActionExecutor::class);
-        $method = new \ReflectionMethod($executor, 'rollbackPlugin');
-        $method->setAccessible(true);
-
-        // A rollback point belonging to another site must never resolve.
-        $result = $method->invoke($executor, $siteA, ['rollback_point_id' => $pointOnB->id]);
-
-        $this->assertFalse($result['success']);
-        $this->assertStringContainsString('not found for this site', $result['error']);
-    }
-
-    public function test_incident_rollback_rejects_a_used_point(): void
-    {
-        $site = Site::factory()->create();
-        $usedPoint = RollbackPoint::factory()->create(['site_id' => $site->id, 'status' => 'used']);
-
-        $executor = app(IncidentActionExecutor::class);
-        $method = new \ReflectionMethod($executor, 'rollbackPlugin');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($executor, $site, ['rollback_point_id' => $usedPoint->id]);
-
-        $this->assertFalse($result['success']);
-        $this->assertStringContainsString('not available', $result['error']);
     }
 }

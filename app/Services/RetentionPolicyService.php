@@ -134,18 +134,6 @@ class RetentionPolicyService
                 ['table' => 'in_app_notifications', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'In-app notifications', 'condition' => null],
             ],
         ],
-        'incident_responses' => [
-            'label' => 'Incident Responses',
-            'default' => 180,
-            'min' => 30,
-            'max' => 730,
-            'dry_run' => true,
-            'tables' => [
-                // Only prune terminal incidents; an in-flight response must never
-                // be deleted out from under the runner.
-                ['table' => 'incident_responses', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Incident responses', 'condition' => ['status', 'in', ['resolved', 'failed', 'escalated']]],
-            ],
-        ],
         // P3-23: generated report PDFs. Pruning is file-aware (the PDF on disk is
         // deleted alongside its row), so RetentionCleanup handles this category via
         // its dedicated cleanExpiredReports() path rather than the generic table

@@ -36,14 +36,14 @@
 </style>
 </head>
 <body>
-  <h1>Faza 1 — Ștergeri &nbsp;<span class="state ruleaza">● RULEAZĂ — 1.5</span></h1>
-  <div class="sub">Ramură <code>faza-1-stergeri</code> · ultima actualizare 2026-07-28 19:45</div>
+  <h1>Faza 1 — Ștergeri &nbsp;<span class="state gata">● GATA — toate 5 sub-pașuri</span></h1>
+  <div class="sub">Ramură <code>faza-1-stergeri</code> · ultima actualizare 2026-07-28 20:10</div>
 
   <div class="grid">
-    <div class="metric"><div class="n">1.5</div><div class="l">Sub-pas (din 5)</div></div>
-    <div class="metric green"><div class="n">924</div><div class="l">Teste verzi (0 roșii)</div></div>
-    <div class="metric green"><div class="n">75</div><div class="l">Modele (−22)</div></div>
-    <div class="metric"><div class="n">137</div><div class="l">Rute (−23)</div></div>
+    <div class="metric green"><div class="n">5/5</div><div class="l">Sub-pași comiși</div></div>
+    <div class="metric green"><div class="n">840</div><div class="l">Teste verzi (0 roșii)</div></div>
+    <div class="metric green"><div class="n">73</div><div class="l">Modele (97 → 73)</div></div>
+    <div class="metric green"><div class="n">136</div><div class="l">Rute (160 → 136)</div></div>
   </div>
 
   <div class="steps">
@@ -51,7 +51,7 @@
     <div class="step"><span class="dot gata"></span><span class="name">1.2</span><span class="desc">Modulul de audit — <b>GATA</b>: 104 fișiere, migrare drop, 948 verzi. Auditor: CURAT.</span></div>
     <div class="step"><span class="dot gata"></span><span class="name">1.3</span><span class="desc">Modele financiare — <b>GATA</b>: 7 fișiere, migrare drop, 943 verzi. Auditor: 2 blade orfane prinse & șterse.</span></div>
     <div class="step"><span class="dot gata"></span><span class="name">1.4</span><span class="desc">Status pages + portal + invitații — <b>GATA</b>: 32 fișiere, migrare drop, 924 verzi. Auditor: CURAT.</span></div>
-    <div class="step"><span class="dot lucru"></span><span class="name">1.5</span><span class="desc">Remediere automată (IncidentResponse, AuditAutoApprover) — <b>în lucru</b></span></div>
+    <div class="step"><span class="dot gata"></span><span class="name">1.5</span><span class="desc">Remediere automată — <b>GATA</b>: 38 fișiere, migrare drop, 840 verzi. Auditor: CURAT (PluginRisk protejat intact).</span></div>
   </div>
 
   <div class="journal">
@@ -79,7 +79,12 @@
     <div class="ev"><span class="t">19:41</span><span>Granița livrare-rapoarte păstrată: <code>ReportViewController</code> + <code>/r/{report}/{token}</code> + blade report.blade rămân (portal curățat din ele). Portal scos din Client, ClientDetail, SiteReports, 2 UI-uri rapoarte, ActivityLogger.</span></div>
     <div class="ev"><span class="t">19:42</span><span>Curățat: rate limiters status-page, tab-uri settings (Users/Status Pages), JobQueueAssignmentTest (2 joburi șterse). Migrare drop 6 tabele. Boot OK: 137 rute.</span></div>
     <div class="ev ok"><span class="t">19:44</span><span>✅ 1.4 GATA: JUnit 924 teste · 0 erori · 0 eșecuri · 32 skip. <b>Auditor: CURAT</b> (auth/2FA/roluri intacte, livrare rapoarte păstrată). Commit.</span></div>
-    <div class="ev"><span class="t">19:45</span><span>Start 1.5 — remediere automată (IncidentResponse*, Services/IncidentResponse, AuditAutoApprover — deja plecat la 1.2, ecran setări răspuns automat).</span></div>
+    <div class="ev"><span class="t">19:45</span><span>Start 1.5 — remediere automată.</span></div>
+    <div class="ev"><span class="t">20:05</span><span>1.5 șters: 2 modele, Services/IncidentResponse (11), 2 enum, dispatcher, 2 listeners, RunIncidentResponse, AiIncidentResponseSettings+blade, 2 factories, 17 teste (38 fișiere). Modele 75→73.</span></div>
+    <div class="ev ok"><span class="t">20:06</span><span>Granițe delicate rezolvate: UPTIME (NotifyIncident, UptimeIncident) PĂSTRAT (alt sistem); <b>config/incident-response.php + provider PĂSTRATE</b> — le folosește <code>PluginRiskAssessmentService</code> (protejat, Faza 6) pt. cheia AI.</span></div>
+    <div class="ev"><span class="t">20:07</span><span>Curățat: SiteTodoService, RetentionPolicyService (categorie), 2 teste păstrate (CrossTenant, RetentionNew), rute web+console, HasSiteRelationships. Migrare drop 2 tabele. Boot OK: 136 rute; PluginRisk config rezolvă.</span></div>
+    <div class="ev ok"><span class="t">20:10</span><span>✅ 1.5 GATA: JUnit 840 teste · 0 erori · 0 eșecuri · 32 skip. <b>Auditor: CURAT</b>.</span></div>
+    <div class="ev ok"><span class="t">20:11</span><span>🏁 <b>FAZA 1 COMPLETĂ.</b> Modele 97→73, servicii 162→114, rute 160→136, ~224 fișiere șterse. Suita verde la fiecare sub-pas. Raport final în PROGRES-FAZA-1.md. Housekeeping deferat: supervizori Horizon orfani + regenerare pgsql-schema.</span></div>
   </div>
 </body>
 </html>

@@ -142,3 +142,96 @@ Stare: **OPRIT la 1.1 — aștept decizie de scope înainte de prima ștergere.*
 **Verdict auditor: CURAT** — auth/2FA/UserRole intacte, zero referințe orfane (rute, câmpuri portal, listeners auto-descoperiți, policy), migrare exactă 6 tabele, niciun test slăbit.
 
 **Lăsat intenționat:** coloanele `clients.portal_token`/`portal_enabled` (tabel păstrat); `pgsql-schema.sql` squash-uit conține încă tabelele dropate — corect la runtime (schema încarcă → migrarea de drop elimină), doar igienă de regenerat la ocazie.
+
+### Rezultat 1.5 — GATA ✅ (remediere automată)
+
+| Măsură | Înainte (1.4) | După (1.5) | Δ |
+|---|---|---|---|
+| Modele | 75 | 73 | −2 |
+| Servicii | 125 | 114 | −11 |
+| Componente Livewire | 101 | 100 | −1 |
+| Joburi | 52 | 51 | −1 |
+| Enum-uri | 17 | 15 | −2 |
+| Rute | 137 | 136 | −1 |
+| Teste verzi (JUnit) | 924 · 0 roșii | **840 · 0 roșii** · 32 skip | −84 (17 fișiere + metode) |
+
+- Șters (**38 fișiere**): `IncidentResponse`, `IncidentResponseAction`, `Services/IncidentResponse/` (11 incl. Playbooks/Contracts/AI), `IncidentResponseStatus` + `IncidentTriggerType` enum, `IncidentResponseDispatcher`, listeners `TriggerIncidentResponse` + `RecordIncidentRecovery`, jobul `RunIncidentResponse`, `AiIncidentResponseSettings` + blade, 2 factories, 17 fișiere de test.
+- Curățat cod păstrat: `SiteTodoService` (bloc todo incident), `RetentionPolicyService` (categorie), rute web (`ai-incident-response`) + console (dispatcher + stale-sweep), `HasSiteRelationships` (relație), 2 teste păstrate (`CrossTenantActionsTest` −2 metode, `RetentionNewCategoriesTest` −aserție).
+- Migrare drop: `2026_07_28_000005_drop_incident_response_tables` (2 tabele).
+
+**Cuplaj-cheie (atinge lista „Ce NU se atinge"):** motorul de remediere automată **partaja configul AI** (`config/incident-response.php`, `ai.api_key`+`ai.model`) cu `PluginRiskAssessmentService` — serviciu **protejat** (se conectează în Faza 6). Ștergerea configului + a `IncidentResponseConfigServiceProvider` (care hidratează cheia din SettingsService) ar fi **rupt serviciul protejat**. **Decizie:** ambele PĂSTRATE ca plumbărie de config AI; verificat că `config('incident-response.ai.model')` rezolvă la boot.
+
+**A doua capcană:** cuvântul „incident" acoperă DOUĂ sisteme — **uptime** (`UptimeIncident`, jobul `NotifyIncident`, monitorizare — PĂSTRAT) vs **incident-response** (auto-remediere — ȘTERS). Distinse cu grijă; `NotifyIncident` (constructor `UptimeIncident`) a fost cât pe ce să fie șters greșit.
+
+**Verdict auditor: CURAT** — PluginRiskAssessmentService + config rezolvă, uptime/auth/2FA/Rollback intacte, migrare exactă 2 tabele, slăbiri de test legitime.
+
+**Lăsat intenționat (housekeeping de review):** supervizorii Horizon orfani `supervisor-incident-response` (din 1.5) și `supervisor-audit` (din 1.2) în `config/horizon.php` — cozi goale, workeri idle inofensivi. Nu i-am șters în fluxul automat: editarea config-ului de cozi de PRODUCȚIE în 4+ locuri (defaults + 3 medii + waits) e risc disproporționat față de beneficiu (o greșeală rupe procesarea cozilor). Recomand curățare într-o schimbare dedicată, revizuită manual.
+
+---
+
+## Raport final — Faza 1 (ștergeri) încheiată
+
+### 1. Cifre înainte / după
+
+| Măsură | Baseline (Faza 0) | După Faza 1 | Δ |
+|---|---|---|---|
+| Modele | 97 | **73** | −24 |
+| Servicii | 162 | **114** | −48 |
+| Componente Livewire | 114 | **100** | −14 |
+| Joburi | 62 | **51** | −11 |
+| Rute | 160 | **136** | −24 |
+| Teste verzi (JUnit) | 1158 · 0 roșii | **840 · 0 roșii** · 32 skip | −318 |
+| Fișiere șterse (total) | — | **~224** | (43+104+7+32+38) |
+
+Suita a rămas **verde la fiecare sub-pas** (0 erori, 0 eșecuri), confirmat autoritar prin JUnit după fiecare fază.
+
+> **Notă la criteriul „~57 modele":** estimarea din brief (§14.3, „~40 modele") a presupus mai multe modele per modul. Amprenta reală a fost dominată de servicii/DTOs/teste, nu modele — de aici 73, nu ~57. S-a șters **exact** ce cereau listele explicite ale sub-pașilor; reducerea de FIȘIERE (~224) e masivă.
+
+### 2. Ce s-a rupt neașteptat și cum am rezolvat
+
+- **1.1** — `tearDown` MinIO + fixture Vite erau deja reparate în Faza 0; ștergerea SEO a rupt `RetentionCleanupResilienceTest` (insera în `seo_audits` dropat) și lăsa o categorie fantomă în `RetentionPolicyService`. **Prins de auditor** (grep pe `seo_audits` cu litere mici — ratat de grep-ul meu `Seo`). Rezolvat: categorie scoasă, fixture mutat pe `activity_logs`.
+- **1.2** — migrarea de create `2026_07_23_000001` cheamă `AuditChecksSeeder` (folosea modelul șters). Rezolvat fără a edita migrarea: seeder rescris pe `DB::table`.
+- **1.3** — 2 view-uri blade orfane (clasa Livewire ștearsă, blade uitat). Prins de auditor, șterse.
+- **1.4** — portalul client era țesut în sistemul de livrare a rapoartelor (blade partajat cu `ReportViewController` păstrat). Granița trasată chirurgical.
+- **1.5** — configul AI partajat cu serviciul protejat `PluginRiskAssessmentService`; „incident" ambiguu (uptime vs auto-remediere). Rezolvate prin păstrarea plumbăriei de config + distincție atentă.
+
+### 3. Ce a semnalat fiecare auditor independent
+
+| Sub-pas | Verdict | Ce a prins |
+|---|---|---|
+| 1.1 | PROBLEME | 2 orfani `seo_audits` (litere mici) ratați de grep — reparați |
+| 1.2 | CURAT | — |
+| 1.3 | PROBLEME | 2 view-uri blade orfane — șterse |
+| 1.4 | CURAT | (notă: `pgsql-schema.sql` neregenerat — cosmetic) |
+| 1.5 | CURAT | (notă: supervizori Horizon orfani — deferați) |
+
+Auditul independent (diff + spec + lista de protejat, fără raționamentul meu) și-a dovedit valoarea la 1.1 și 1.3 — a prins regresii reale pe care grep-ul meu case-sensitive le ratase.
+
+### 4. Cuplaje descoperite (cea mai valoroasă informație — arhitectura reală)
+
+1. **Motorul SEO era țesut în module de mentenanță păstrate:** `SiteRedirects::brokenLinks()` (Redirecturi, Faza 7) și secțiunea SEO a raportului lunar (`SeoGatherer`). Nu era izolat.
+2. **`FetchKeywordRankings`** (job SEO) era programat în scheduler sub un nume fără „Seo" — invizibil unui grep pe „Seo".
+3. **Modulul de audit se auto-însămânța prin migrare:** `AuditChecksSeeder` invocat din `up()`-ul migrării de create — cuplaj cod↔migrare.
+4. **Portalul client == livrarea de rapoarte, parțial:** blade-ul `client-portal/report` e partajat între portalul (șters) și `ReportViewController` (livrare rapoarte, păstrat) prin flagul `isPublicView`.
+5. **Remedierea automată partaja configul AI cu `PluginRiskAssessmentService`** (protejat) — `config('incident-response.ai.*')`. Ștergerea „completă" ar fi rupt un serviciu de pe lista de protejat.
+6. **Ambiguitatea „incident":** uptime (păstrat) vs incident-response (șters) — două sisteme cu nume similare, ușor de confundat.
+
+**Pattern recurent:** grep-ul case-sensitive pe numele clasei (`Seo`, `Audit`) ratează consecvent (a) nume de TABELE cu litere mici (`seo_audits`), (b) consumatori cu nume fără prefixul modulului (`FetchKeywordRankings`, `NotifyIncident`). Baleierea trebuie să includă mereu numele de tabele + numele de clase individuale, nu doar prefixul modulului.
+
+### 5. Ce am lăsat nerezolvat și de ce
+
+| Element | De ce |
+|---|---|
+| Supervizori Horizon orfani (`supervisor-incident-response`, `supervisor-audit`) | Config de cozi de PRODUCȚIE; editare în 4+ locuri, risc de a rupe procesarea; auditor: non-blocant |
+| `pgsql-schema.sql` neregenerat (conține tabele dropate) | Auto-generat, se auto-corectează la runtime (schema încarcă → drop elimină); regenerarea cere migrate complet + risc de drift |
+| Coloane moarte: `sites.is_prospect`, `clients.portal_token/portal_enabled`, `site_monthly_snapshots.seo_issues_count` | Drop de coloană pe tabele PĂSTRATE cu date istorice — refactor riscant peste scope-ul fazei |
+| Enum-uri istorice: `ActivityType::{Seo, SeoFix, IncidentResponse}` | String-backed; scoaterea ar rupe citirea rândurilor vechi din `activity_logs` |
+| `ClientPolicy::create/update` | Metode nefolosite acum, dar parte din politica de client păstrată; nefracturate |
+
+### 6. Recomandare pentru Faza 2 (un singur site, cap-coadă)
+
+- **Alege un site simplu real** (nu cel mai important) și demonstrează lanțul complet: conectare → monitorizare → un update cu rollback → un backup restaurat → un raport livrat pe email. Livrabil: `E2E-VERIFICAT.md`.
+- **Regenerează `pgsql-schema.sql`** ca prim pas de igienă (acum, cât cele 5 migrări de drop sunt proaspete) — pe o bază de test, apoi `schema:dump`. Elimină toate tabelele dropate din dump dintr-o mișcare.
+- **Curăță supervizorii Horizon orfani** într-o schimbare mică, dedicată, revizuită manual (nu în fluxul E2E).
+- **Verifică fluxul de raport** cu atenție la `ReportViewController` + blade-ul `client-portal/report` partajat — e singura zonă unde granița ștergerii a fost subtilă.
+- **Nu porni Faza 3** (navigație) până când toți cei 5 pași E2E nu merg fără intervenție, conform briefului.

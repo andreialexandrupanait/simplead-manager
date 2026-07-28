@@ -15,7 +15,6 @@ use App\Models\CoreFileCheck;
 use App\Models\DatabaseCleanup;
 use App\Models\DatabaseCleanupConfig;
 use App\Models\DatabaseHealthCheck;
-use App\Models\IncidentResponse;
 use App\Models\MaintenancePlan;
 use App\Models\PerformanceMonitor;
 use App\Models\Report;
@@ -324,10 +323,5 @@ trait HasSiteRelationships
     public function securityBannedIps(): HasMany
     {
         return $this->hasMany(SecurityBannedIp::class);
-    }
-
-    public function incidentResponses(): HasMany
-    {
-        return $this->hasMany(IncidentResponse::class);
     }
 }

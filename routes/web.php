@@ -215,9 +215,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         // WordPress
         Route::get('/wordpress', Settings\WordPressSettings::class)->name('settings.wordpress');
 
-        // AI Incident Response
-        Route::get('/ai-incident-response', Settings\AiIncidentResponseSettings::class)->name('settings.ai-incident-response');
-
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 

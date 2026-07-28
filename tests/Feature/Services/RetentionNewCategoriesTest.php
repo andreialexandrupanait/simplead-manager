@@ -18,7 +18,7 @@ use Tests\TestCase;
 
 /**
  * P2-43: previously-unpruned growing tables (dns_changes, php_error_logs,
- * in_app_notifications, incident_responses) must be registered for retention.
+ * in_app_notifications) must be registered for retention.
  * They are gated behind config('backups.retention_dry_run'): while it is on the
  * job LOGS the count it would prune without deleting; once flipped off it prunes.
  */
@@ -53,20 +53,13 @@ class RetentionNewCategoriesTest extends TestCase
         $this->assertArrayHasKey('dns_history', $categories);
         $this->assertArrayHasKey('php_error_logs', $categories);
         $this->assertArrayHasKey('in_app_notifications', $categories);
-        $this->assertArrayHasKey('incident_responses', $categories);
 
         $this->assertSame('dns_changes', $categories['dns_history']['tables'][0]['table']);
         $this->assertSame('detected_at', $categories['dns_history']['tables'][0]['column']);
         $this->assertSame('last_seen_at', $categories['php_error_logs']['tables'][0]['column']);
 
-        // incident_responses only prunes terminal incidents.
-        $this->assertSame(
-            ['status', 'in', ['resolved', 'failed', 'escalated']],
-            $categories['incident_responses']['tables'][0]['condition'],
-        );
-
-        // All four are dry-run gated.
-        foreach (['dns_history', 'php_error_logs', 'in_app_notifications', 'incident_responses'] as $key) {
+        // All three are dry-run gated.
+        foreach (['dns_history', 'php_error_logs', 'in_app_notifications'] as $key) {
             $this->assertTrue($categories[$key]['dry_run'] ?? false, "{$key} must be dry-run gated");
         }
     }
