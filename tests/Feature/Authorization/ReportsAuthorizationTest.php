@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Authorization;
 
 use App\Enums\UserRole;
-use App\Livewire\Clients\ClientProfitability;
 use App\Livewire\Reports\ReportsOverview;
-use App\Models\Client;
 use App\Models\Report;
 use App\Models\Site;
 use App\Models\User;
@@ -16,8 +14,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Regression coverage for the report/client authorization findings
- * (E-37 report IDOR trio, E-38 client financials).
+ * Regression coverage for the report authorization findings (E-37 report IDOR trio).
  */
 class ReportsAuthorizationTest extends TestCase
 {
@@ -50,40 +47,5 @@ class ReportsAuthorizationTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('reports', ['id' => $report->id]);
-    }
-
-    public function test_viewer_cannot_add_a_client_cost(): void
-    {
-        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
-        $client = Client::factory()->create();
-        // Viewer may VIEW this client (assigned via pivot) but still must not
-        // WRITE financials — P2-39 gates the view; addCost gates the write.
-        $viewer->assignedClients()->attach($client);
-
-        Livewire::actingAs($viewer)
-            ->test(ClientProfitability::class, ['client' => $client])
-            ->set('costDescription', 'Hosting')
-            ->set('costAmount', '10')
-            ->call('addCost')
-            ->assertForbidden();
-
-        $this->assertDatabaseCount('client_costs', 0);
-    }
-
-    public function test_manager_can_add_a_client_cost(): void
-    {
-        $manager = User::factory()->create(['role' => UserRole::Manager]);
-        $client = Client::factory()->create();
-        // Manager may access this client (assigned via pivot) — P2-39 view gate.
-        $manager->assignedClients()->attach($client);
-
-        Livewire::actingAs($manager)
-            ->test(ClientProfitability::class, ['client' => $client])
-            ->set('costDescription', 'Hosting')
-            ->set('costAmount', '10')
-            ->call('addCost')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseCount('client_costs', 1);
     }
 }

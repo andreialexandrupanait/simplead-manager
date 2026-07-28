@@ -182,9 +182,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Clients
     Route::prefix('clients')->group(function () {
         Route::get('/', Clients\ClientsList::class)->name('clients.index');
-        Route::get('/create', Clients\ClientForm::class)->name('clients.create');
         Route::get('/{client}', Clients\ClientDetail::class)->name('clients.show');
-        Route::get('/{client}/edit', Clients\ClientForm::class)->name('clients.edit');
     });
 
     // Reports

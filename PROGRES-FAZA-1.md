@@ -98,3 +98,24 @@ Stare: **OPRIT la 1.1 — aștept decizie de scope înainte de prima ștergere.*
 **Verdict auditor: CURAT** — nicio referință orfană, migrare exactă 1:1, seeder rescris corect nu rupe migrarea de create, niciun test slăbit. Notă cosmetică: 4 comentarii-cod în migrările de create numesc enum-uri șterse (inofensive; nu se ating — regula „nu edita migrări").
 
 **Lăsat intenționat:** coloana `sites.is_prospect` + scope-ul `scopePortfolio` (`where('is_prospect', false)`) — coloană activă pe tabel păstrat; dropul ar fi refactor riscant peste scope.
+
+### Rezultat 1.3 — GATA ✅ (modele financiare de client)
+
+| Măsură | Înainte (1.2) | După (1.3) | Δ |
+|---|---|---|---|
+| Modele | 83 | 81 | −2 |
+| Componente Livewire | 107 | 104 | −3 |
+| Rute | 152 | 150 | −2 |
+| Teste verzi (JUnit) | 948 · 0 roșii | **943 · 0 roșii** · 32 skip | −5 (metode de test) |
+
+- Șters (**7 fișiere**): `ClientCost`, `ClientRevenue`, `ClientProfitability`, `ClientForm`, `ClientFormData`, + 2 blade-uri orfane (`client-form`, `client-profitability`).
+- Curățat cod păstrat: relațiile `Client::costs()/revenues()`, rutele `clients.create`/`clients.edit`, blade-uri (butoane Add/Edit + secțiune Profitabilitate), 5 metode de test (funcționalitate ștearsă), docblock stale.
+- Migrare drop: `2026_07_28_000003_drop_client_financials_tables` (client_costs, client_revenues).
+
+**Verificare `MaintenancePlan`:** nu are câmpuri de preț (fillable: name, description, is_default, sort_order, security_settings, tweak_settings, include_*, source_site_id, created_by) — deja strict configurare tehnică. **Neatins**, conform briefului.
+
+**Cuplaje (informația valoroasă):** modelele financiare erau bine izolate — singurele consumatoare erau `ClientProfitability` (ștearsă) și relațiile de pe `Client`. Clienții rămân **doar-citire** (View + changeStatus + Delete păstrate; create/edit scoase).
+
+**Verdict auditor: curat funcțional** — nimic din spec rupt, zero referințe orfane, migrare exactă, teste neslăbite. A prins **2 view-uri blade orfane** (componentele Livewire au clasă PHP + blade; ștersesem doar clasa) — **șterse** înainte de commit.
+
+**Lăsat intenționat:** `ClientPolicy::create/update` (metode nefolosite acum, dar nefracturate — parte din politica de client păstrată).

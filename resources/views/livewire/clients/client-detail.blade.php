@@ -51,9 +51,6 @@
                             </x-ui.button>
                         </a>
                     @endif
-                    <a href="{{ route('clients.edit', $client) }}">
-                        <x-ui.button variant="secondary">{{ __('Edit') }}</x-ui.button>
-                    </a>
                     <x-ui.button variant="danger" wire:click="confirmDelete">{{ __('Delete') }}</x-ui.button>
                 </div>
             </div>
@@ -154,12 +151,6 @@
                 <p class="text-sm text-gray-500">{{ __('No sites assigned to this client.') }}</p>
             @endif
         </x-ui.card>
-    </div>
-
-    {{-- Profitability --}}
-    <div class="mt-6">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ __('Profitability') }}</h2>
-        <livewire:clients.client-profitability :client="$client" />
     </div>
 
     {{-- Client Portal --}}

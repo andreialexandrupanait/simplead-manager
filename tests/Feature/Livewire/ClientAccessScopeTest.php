@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\UserRole;
-use App\Livewire\Clients\ClientProfitability;
 use App\Livewire\Clients\ClientsList;
 use App\Models\Client;
 use App\Models\Site;
@@ -19,8 +18,6 @@ use Tests\TestCase;
  * pivot in addition to clients they own through a site (admins see all). It
  * previously only matched owned sites and hid assigned clients.
  *
- * P2-39: ClientProfitability (sensitive financials) must be gated by ClientPolicy
- * so a user cannot open the profitability view for a client they may not access;
  * ClientsList's user-supplied sortBy must be whitelisted so it can never reach a
  * raw orderBy (SQL error / injection surface).
  */
@@ -89,36 +86,5 @@ class ClientAccessScopeTest extends TestCase
             ->set('sortBy', 'name"; DROP TABLE clients; --')
             ->assertOk()
             ->assertSee('Sortable Client');
-    }
-
-    public function test_profitability_forbidden_for_unrelated_user(): void
-    {
-        $user = User::factory()->create(['role' => UserRole::Manager]);
-        $client = $this->client('Private Financials Client');
-
-        Livewire::actingAs($user)
-            ->test(ClientProfitability::class, ['client' => $client])
-            ->assertForbidden();
-    }
-
-    public function test_profitability_allowed_for_assigned_user(): void
-    {
-        $user = User::factory()->create(['role' => UserRole::Manager]);
-        $client = $this->client('Assigned Financials Client');
-        $user->assignedClients()->attach($client);
-
-        Livewire::actingAs($user)
-            ->test(ClientProfitability::class, ['client' => $client])
-            ->assertOk();
-    }
-
-    public function test_profitability_allowed_for_admin(): void
-    {
-        $admin = User::factory()->create(['role' => UserRole::Admin]);
-        $client = $this->client('Admin Financials Client');
-
-        Livewire::actingAs($admin)
-            ->test(ClientProfitability::class, ['client' => $client])
-            ->assertOk();
     }
 }
