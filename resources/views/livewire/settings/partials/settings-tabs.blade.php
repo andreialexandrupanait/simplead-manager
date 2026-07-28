@@ -13,11 +13,9 @@
                     ['route' => 'settings.email', 'label' => __('Email')],
                     ['route' => 'settings.integrations', 'label' => __('Integrations')],
                     ['route' => 'settings.wordpress', 'label' => __('WordPress')],
-                    ['route' => 'settings.status-pages', 'label' => __('Status Pages')],
                     ['route' => 'settings.report-templates', 'label' => __('Report Templates')],
                     ['route' => 'settings.data-retention', 'label' => __('Data Retention')],
                     ['route' => 'settings.application-backup', 'label' => __('Application Backup')],
-                    ['route' => 'settings.users', 'label' => __('Users')],
                 ], $tabs);
             }
         @endphp

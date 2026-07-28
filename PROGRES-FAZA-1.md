@@ -119,3 +119,26 @@ Stare: **OPRIT la 1.1 — aștept decizie de scope înainte de prima ștergere.*
 **Verdict auditor: curat funcțional** — nimic din spec rupt, zero referințe orfane, migrare exactă, teste neslăbite. A prins **2 view-uri blade orfane** (componentele Livewire au clasă PHP + blade; ștersesem doar clasa) — **șterse** înainte de commit.
 
 **Lăsat intenționat:** `ClientPolicy::create/update` (metode nefolosite acum, dar nefracturate — parte din politica de client păstrată).
+
+### Rezultat 1.4 — GATA ✅ (status pages + portal client + invitații)
+
+| Măsură | Înainte (1.3) | După (1.4) | Δ |
+|---|---|---|---|
+| Modele | 81 | 75 | −6 |
+| Componente Livewire | 104 | 101 | −3 |
+| Servicii | 126 | 125 | −1 |
+| Joburi | 54 | 52 | −2 |
+| Rute | 150 | 137 | −13 |
+| Teste verzi (JUnit) | 943 · 0 roșii | **924 · 0 roșii** · 32 skip | −19 (3 fișiere + 2 metode) |
+
+- Șters (**32 fișiere**): 5 modele StatusPage* + Invitation, 2 Livewire StatusPages + UserManagement, StatusPageController + ClientPortalController + AcceptInvitationController, 2 joburi incident + 2 listeners, StatusPageService, UserInvitationMail, StatusPagePolicy, blade-uri (status-page, client-portal/show, accept-invitation, invitation-expired, user-invitation, user-management, layout status-page), 3 fișiere de test.
+- Curățat cod păstrat: rutele (users, status-pages ×3, portal ×3, invitation ×2, status ×4), rate limiters status-page, tab-uri settings (Users + Status Pages), `Client` (câmpuri/scope/hook portal), `ClientDetail` (2 metode portal), `SiteReports` + 2 UI-uri rapoarte (link-uri portal), `ActivityLogger` (3 metode), `JobQueueAssignmentTest` (2 joburi șterse).
+- Migrare drop: `2026_07_28_000004_drop_status_page_and_portal_tables` (6 tabele).
+
+**Cuplaj-cheie (informația cea mai valoroasă din fază):** portalul client era **țesut în sistemul de livrare a rapoartelor** — blade-ul `client-portal/report.blade.php` e PARTAJAT între `ClientPortalController` (șters, `isPublicView=false`) și `ReportViewController` (**păstrat** — linkul public per-raport `/r/{report}/{token}`, `isPublicView=true`). Granița: portalul multi-raport per-client se șterge; livrarea single-raport rămâne. Blade-ul + controllerul păstrate, curățate de link-urile portal.
+
+**Decizie de scope:** rolurile (`UserRole`, coloana `users.role`, policies pe rol) **NU** sunt în lista 1.4 și sunt folosite de `RequireRole` + policies → **păstrate**. S-au scos doar UI-ul de gestiune utilizatori + invitațiile. Autentificarea și 2FA — intacte.
+
+**Verdict auditor: CURAT** — auth/2FA/UserRole intacte, zero referințe orfane (rute, câmpuri portal, listeners auto-descoperiți, policy), migrare exactă 6 tabele, niciun test slăbit.
+
+**Lăsat intenționat:** coloanele `clients.portal_token`/`portal_enabled` (tabel păstrat); `pgsql-schema.sql` squash-uit conține încă tabelele dropate — corect la runtime (schema încarcă → migrarea de drop elimină), doar igienă de regenerat la ocazie.

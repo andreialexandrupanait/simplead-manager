@@ -23,7 +23,6 @@ use App\Livewire\Reports;
 use App\Livewire\Security;
 use App\Livewire\Settings;
 use App\Livewire\Sites;
-use App\Livewire\StatusPages;
 use App\Livewire\Updates;
 use App\Livewire\Uptime;
 use App\Models\Site;
@@ -222,16 +221,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 
-        // Users & Invitations
-        Route::get('/users', Settings\UserManagement::class)->name('settings.users');
-
         // Maintenance Plans (redirect to standalone page)
         Route::redirect('/site-presets', '/maintenance-plans')->name('settings.maintenance-plans');
-
-        // Status Pages
-        Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('settings.status-pages');
-        Route::get('/status-pages/create', StatusPages\StatusPageEdit::class)->name('settings.status-pages.create');
-        Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('settings.status-pages.edit');
 
         // App backup download (signed URL for local storage)
         Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware(['signed', 'throttle:10,1']);
@@ -250,22 +241,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
 Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'redirect'])->name('auth.google')->middleware('guest');
 Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'callback'])->name('auth.google.callback')->middleware('guest');
 
-// Public status pages (no auth)
 // Notification acknowledgment (public, token-based).
 // P1-23: GET only shows a confirm page (crawler-safe); POST mutates.
 Route::get('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'show'])->name('notifications.ack')->middleware('throttle:30,1');
 Route::post('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'confirm'])->name('notifications.ack.confirm')->middleware('throttle:30,1');
-
-// Client Portal (public, token-based)
-Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');
-Route::get('/portal/{token}/reports/{report}', [\App\Http\Controllers\ClientPortalController::class, 'viewReport'])->name('client-portal.report')->middleware('throttle:60,1');
-Route::get('/portal/{token}/reports/{report}/download', [\App\Http\Controllers\ClientPortalController::class, 'downloadReport'])->name('client-portal.download')->middleware('throttle:10,1');
-
-// Invitation accept (public)
-Route::get('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'show'])->name('invitation.accept');
-Route::post('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'store'])->middleware('throttle:10,1');
-
-Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show')->middleware('throttle:status-page');
-Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:status-page-auth');
-Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api')->middleware('throttle:status-page');
-Route::get('/status/{slug}/badge.svg', [\App\Http\Controllers\StatusPageController::class, 'badge'])->name('status-page.badge')->middleware('throttle:status-page');

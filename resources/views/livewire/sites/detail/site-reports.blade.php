@@ -172,14 +172,6 @@
                                title="Preview">
                                 <x-icons.search class="h-3.5 w-3.5" />
                             </a>
-                            @if(($portalToken ?? null) && $report->data_snapshot)
-                                <a href="{{ route('client-portal.report', [$portalToken, $report]) }}"
-                                   target="_blank"
-                                   class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
-                                   title="View online">
-                                    <x-icons.globe class="h-3.5 w-3.5" />
-                                </a>
-                            @endif
                             <a href="{{ route('reports.download', $report) }}"
                                class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
                                title="Download">
@@ -259,14 +251,6 @@
                                            title="Preview">
                                             <x-icons.search class="h-3.5 w-3.5" />
                                         </a>
-                                        @if(($portalToken ?? null) && $report->data_snapshot)
-                                            <a href="{{ route('client-portal.report', [$portalToken, $report]) }}"
-                                               target="_blank"
-                                               class="inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 transition"
-                                               title="View online">
-                                                <x-icons.globe class="h-3.5 w-3.5" />
-                                            </a>
-                                        @endif
                                         <a href="{{ route('reports.download', $report) }}"
                                            class="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
                                            title="Download">
