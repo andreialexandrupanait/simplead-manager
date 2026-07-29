@@ -143,6 +143,9 @@ class AppServiceProvider extends ServiceProvider
         // Fleet sidebar severity counters (SPEC §3.1): updates / security / errors.
         View::composer('components.sidebar.global-sidebar', SidebarComposer::class);
 
+        // Site-context sidebar (SPEC §3.2/§3.3): site switcher list + per-site badges.
+        View::composer('components.sidebar.site-sidebar', \App\View\Composers\SiteSwitcherComposer::class);
+
         // Guest layout slideshow data (View::share because anonymous Blade components don't trigger View::composer)
         View::composer('auth.*', function (\Illuminate\View\View $view) {
             $unsplash = app(\App\Services\UnsplashService::class);
