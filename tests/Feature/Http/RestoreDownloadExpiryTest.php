@@ -22,6 +22,10 @@ class RestoreDownloadExpiryTest extends TestCase
     {
         parent::setUp();
 
+        // Error pages (errors/404.blade.php) use @vite; no built manifest exists
+        // in the test image, so neutralise Vite to render them without assets.
+        $this->withoutVite();
+
         $this->token = bin2hex(random_bytes(32));
         $this->path = storage_path("app/temp/restore-{$this->token}");
 
