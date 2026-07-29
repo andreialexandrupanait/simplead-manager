@@ -236,7 +236,7 @@ html.no-transitions *::after {
     .dark .text-red-600,    .dark .text-red-700,    .dark .text-red-800,    .dark .text-red-900    { color: #fca5a5 !important; }
     .dark .text-yellow-600, .dark .text-yellow-700, .dark .text-yellow-800, .dark .text-yellow-900 { color: #fde047 !important; }
     .dark .text-orange-600, .dark .text-orange-700                                                  { color: #fdba74 !important; }
-    .dark .text-accent-600, .dark .text-accent-700, .dark .text-accent-800, .dark .text-accent-900 { color: #c4b5fd !important; }
+    .dark .text-accent-600, .dark .text-accent-700, .dark .text-accent-800, .dark .text-accent-900 { color: #7cb3dd !important; }
 
     /* Slightly stronger blue/green/red/yellow icons — keep the 600 weight a tad darker */
     .dark .text-blue-600   { color: #60a5fa !important; }
@@ -257,9 +257,9 @@ html.no-transitions *::after {
     /* Focus ring offset (the gap inside ring) */
     .dark .focus\:ring-offset-2          { --tw-ring-offset-color: var(--surface-card) !important; }
     .dark .focus-visible\:ring-offset-2  { --tw-ring-offset-color: var(--surface-card) !important; }
-    .dark .focus\:border-accent-500      { border-color: var(--accent-500, #7B68EE) !important; }
-    .dark .focus\:ring-accent-500        { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
-    .dark .focus-visible\:ring-accent-500 { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
+    .dark .focus\:border-accent-500      { border-color: var(--accent-500, #2271b1) !important; }
+    .dark .focus\:ring-accent-500        { --tw-ring-color: var(--accent-500, #2271b1) !important; }
+    .dark .focus-visible\:ring-accent-500 { --tw-ring-color: var(--accent-500, #2271b1) !important; }
 
     /* Table */
     .dark table thead { background-color: var(--surface-card) !important; }
@@ -273,7 +273,7 @@ html.no-transitions *::after {
         --tw-prose-body:          var(--text-secondary);
         --tw-prose-headings:      var(--text-primary);
         --tw-prose-lead:          var(--text-secondary);
-        --tw-prose-links:         #c4b5fd;
+        --tw-prose-links:         #7cb3dd;
         --tw-prose-bold:          var(--text-primary);
         --tw-prose-counters:      var(--text-faint);
         --tw-prose-bullets:       var(--text-faint);
