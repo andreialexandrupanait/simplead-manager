@@ -34,7 +34,7 @@ class SitesListPanouTest extends TestCase
         Site::factory()->create(['name' => 'healthy-site', 'is_up' => true, 'is_connected' => true, 'health_score' => 95]);
 
         Livewire::test(SitesList::class)
-            ->assertSee('Needs attention')
+            ->assertSee('need attention')
             ->assertSee('Acme')
             ->assertSee('down-site')
             // the healthy one is not in band 1; it is counted in band 3 ("operating normally")

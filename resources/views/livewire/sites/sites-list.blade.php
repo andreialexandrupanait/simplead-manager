@@ -18,42 +18,64 @@
 
     {{-- SPEC §4.5 — Panou: three bands, no charts, no decorative widgets --}}
     @php($panou = $this->panou)
-    <div class="mb-6 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-700">
-        {{-- Band 1 — who needs attention, grouped by client, ordered by severity --}}
-        <div class="p-4">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Needs attention') }}</h2>
-            @forelse($panou['attention'] as $group)
-                <div class="mt-3">
-                    <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ $group['client'] }}</div>
-                    <ul class="mt-1 space-y-1">
-                        @foreach($group['sites'] as $s)
-                            <li class="flex items-center gap-2 text-sm">
-                                <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $s['severity'] === 0 ? 'bg-red-500' : 'bg-amber-500' }}"></span>
-                                <a href="{{ $s['url'] }}" class="font-medium text-gray-800 hover:text-accent-600 dark:text-gray-100">{{ $s['name'] }}</a>
-                                <span class="truncate text-gray-400">— {{ $s['reasons'] }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @empty
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing needs attention right now.') }}</p>
-            @endforelse
+    @php($attentionSites = collect($panou['attention'])->sum(fn ($g) => count($g['sites'])))
+    <div class="mb-6">
+        {{-- Summary — three numbers, in order --}}
+        <div class="mb-4 flex flex-wrap gap-8 border-b border-gray-200 pb-3 dark:border-gray-700">
+            <div>
+                <p class="text-xl font-medium {{ $attentionSites > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ $attentionSites }}</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('need attention') }}</p>
+            </div>
+            <div>
+                <p class="text-xl font-medium text-gray-900 dark:text-gray-100">{{ $panou['awaiting'] }}</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('await approval') }}</p>
+            </div>
+            <div>
+                <p class="text-xl font-medium text-green-600 dark:text-green-400">{{ $panou['resting'] }}</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('healthy') }}</p>
+            </div>
         </div>
 
-        {{-- Band 2 — what awaits approval --}}
-        <div class="flex items-center justify-between p-4">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Awaiting approval') }}</h2>
-            @if($panou['awaiting'] > 0)
-                <a href="{{ route('updates.index') }}" class="text-sm font-medium text-accent-600 hover:underline dark:text-accent-400">
+        {{-- Band 1 — a card per client, ordered by severity --}}
+        @forelse($panou['attention'] as $group)
+            <div class="mb-2 rounded-lg border bg-white p-3 shadow-sm dark:bg-gray-800/40
+                        {{ $group['severity'] === 0 ? 'border-red-300 dark:border-red-500/40' : 'border-gray-200 dark:border-gray-700' }}">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {{ $group['client'] }}
+                        <span class="text-[11px] font-normal text-gray-400">· {{ trans_choice(':n site|:n sites', count($group['sites']), ['n' => count($group['sites'])]) }}</span>
+                    </p>
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px]
+                                 {{ $group['severity'] === 0 ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' }}">
+                        {{ $group['severity'] === 0 ? __('critical') : __('attention') }}
+                    </span>
+                </div>
+                @foreach($group['sites'] as $s)
+                    <div class="flex items-center gap-2 py-0.5 text-[13px]">
+                        <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $s['severity'] === 0 ? 'bg-red-500' : 'bg-amber-500' }}"></span>
+                        <a href="{{ $s['url'] }}" class="font-medium text-gray-800 hover:text-accent-600 dark:text-gray-100">{{ $s['name'] }}</a>
+                        <span class="truncate text-gray-400">— {{ $s['reasons'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @empty
+            <div class="mb-2 rounded-lg border border-gray-200 p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                {{ __('Nothing needs attention right now.') }}
+            </div>
+        @endforelse
+
+        {{-- Band 2 — what awaits approval (only when there is something) --}}
+        @if($panou['awaiting'] > 0)
+            <div class="mb-2 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-800/40">
+                <span class="text-gray-600 dark:text-gray-300">{{ __('Awaiting approval') }}</span>
+                <a href="{{ route('updates.index') }}" class="font-medium text-accent-600 hover:underline dark:text-accent-400">
                     {{ trans_choice(':count update|:count updates', $panou['awaiting'], ['count' => $panou['awaiting']]) }}
                 </a>
-            @else
-                <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing pending') }}</span>
-            @endif
-        </div>
+            </div>
+        @endif
 
-        {{-- Band 3 — the rest, one line --}}
-        <div class="p-4 text-sm text-gray-500 dark:text-gray-400">
+        {{-- Band 3 — the rest, one collapsed line --}}
+        <div class="rounded-lg bg-gray-50 px-4 py-2.5 text-sm text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
             {{ trans_choice(':count site operating normally|:count sites operating normally', $panou['resting'], ['count' => $panou['resting']]) }}
         </div>
     </div>
