@@ -26,6 +26,22 @@
    Future components can reference these directly via `bg-[var(--surface-card)]`.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
+    /* Accent — WordPress-admin blue (#2271b1), per REFERINTA-VIZUALA §13bis.
+       The Tailwind `accent-*` scale reads these vars (see tailwind.config.js),
+       so defining them here retints every accent-* utility across the whole app. */
+    --accent-50:  #e8f1f9;
+    --accent-100: #d3e6f4;
+    --accent-200: #a8cde9;
+    --accent-300: #7cb3dd;
+    --accent-400: #4e93c9;
+    --accent-500: #2271b1;
+    --accent-600: #1d6098;
+    --accent-700: #184e7c;
+    --accent-800: #143f64;
+    --accent-900: #12324e;
+    --accent-950: #0b2135;
+    --accent-light: rgba(34, 113, 177, 0.2);
+
     /* Surfaces (warm-neutral) */
     --surface-app:       #FAFAFA;   /* body bg */
     --surface-card:      #FFFFFF;   /* cards, raised */
@@ -59,7 +75,7 @@
     --rgb-success: 34, 197, 94;     /* green-500 */
     --rgb-warning: 234, 179, 8;     /* yellow-500 */
     --rgb-danger:  239, 68, 68;     /* red-500 */
-    --rgb-accent:  123, 104, 238;   /* ClickUp #7B68EE */
+    --rgb-accent:  34, 113, 177;    /* WordPress admin blue #2271b1 */
 }
 
 .dark {
