@@ -84,21 +84,40 @@ host memory envelope discovered by capability discovery.
 
 ## 7. Coverage the spike/tests do NOT yet prove
 
-Carried forward honestly from `spike/CONTINUATION-RESULTS.md` and the suite:
-- **MariaDB 11** consistent dump — no measured result (container exists, untested).
-- **Multisite** (`wp_N_*`) backup/restore end-to-end — not exercised.
-- **Large profile / incompressible content** at real chunk sizes.
-- Manager-side **disk-full guard** and **overlapping-session lock** wired through
-  V2 (only V1 unit coverage today).
-- Full multi-table Woo/HPOS desync at sustained high write rate.
+**2026-07-29 lab update** — the spike lab was rebuilt and the full lab-gated suite
+re-run; several items below are now CLOSED (see `LAB-EVIDENCE-2026-07-29.md`):
+- ✅ **MariaDB 11** consistent dump — CLOSED. `db-consistency-test.sh` on
+  `mariadb:11.8.8`: consistent dumper = **0 orphans** under a 20 s concurrent
+  writer (paged contrast = 62), BLOB CRC32 round-trip intact.
+- ✅ **Multisite** (`wp_N_*`) + Woo/HPOS backup — CLOSED for consistency. Same
+  harness on both MySQL 8.0.46 and MariaDB 11.8.8 with `wp_2_*`/`wp_3_*` +
+  `wp_wc_orders`: 0 orphan_meta / 0 orphan_items. Restore round-trip proven by
+  `RestoreRunnerE2ETest` (mirror/safe-merge/chain) + `RestoreHttpE2ETest` (real
+  plugin over HTTP).
+- ✅ **Large / incompressible content** — CLOSED. `files-test.sh` on a 1.1 GB set
+  with a 300 MB incompressible file: it becomes its own chunk (STORE), temp peak
+  ≤ largest chunk + slack, restore-oracle 5001/5001 (0 missing / 0 mismatch).
+- ⬜ Manager-side **disk-full guard** + **overlapping-session lock** wired through
+  V2 — STILL OPEN (only V1 unit coverage today).
+- ⬜ **Multisite per-subsite domain search-replace on restore** — STILL OPEN
+  (consistency proven for same-host restore, not cross-domain migration).
+- ⬜ Woo/HPOS desync at *sustained* high write over long windows (only a 20 s
+  writer measured).
 
 ## 8. Minor security hardenings (from SECURITY-REVIEW.md)
 
-- Nonce anti-replay has a sub-millisecond concurrency edge on hosts with **no
-  persistent object cache** (sequential replay is fully blocked).
-- `keep_paths` / `tombstones` in the restore engine lack an explicit `..` reject
-  (inputs are HMAC-authenticated and derived from realpath-guarded inventory, so
-  not currently exploitable, but belt-and-braces is recommended).
+**2026-07-29 re-review** (`backup-v2-security-rereview-2026-07-29.md`): a MAJOR
+tombstone path-traversal was found and FIXED (commit `b98aea8`), plus:
+- ✅ `tombstones` (and `mirror_roots`) in the restore engine now REJECT `..`/NUL
+  via `SAM_Backup_Restore_Engine::is_safe_relative()`, mirroring the zip-extract
+  guard — CLOSED.
+- ✅ Nonce TTL raised to `2 × TIMESTAMP_TOLERANCE` so a nonce cannot expire while
+  its signed timestamp is still valid (clock-skew replay) — CLOSED.
+- ⬜ Nonce anti-replay still has a sub-millisecond concurrency edge on hosts with
+  **no persistent object cache** (needs a DB-atomic nonce claim) — STILL OPEN.
+- ⬜ restore/stage-chunk metadata (token/kind/seq/sha256) rides outside the HMAC
+  signature — STILL OPEN (two-sided signed-protocol change; deferred pending
+  lab-verified rollout).
 
 ---
 
