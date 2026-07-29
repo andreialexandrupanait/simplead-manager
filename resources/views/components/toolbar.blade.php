@@ -26,18 +26,17 @@
         <div
             role="toolbar"
             aria-label="Acțiuni în masă pentru site-urile selectate"
-            class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-3 py-2 backdrop-blur
-                   dark:border-gray-700 dark:bg-gray-800/95"
+            class="sad-toolbar flex flex-wrap items-center gap-2 rounded-lg bg-gray-900 text-white px-3.5 py-2.5"
         >
             {{-- Contor selecție --}}
             <div class="flex items-center gap-2 pr-1">
                 <x-ui.badge variant="purple">{{ $count }}</x-ui.badge>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                <span class="text-sm font-medium text-white/90">
                     {{ $count === 1 ? 'selectat' : 'selectate' }}
                 </span>
             </div>
 
-            <span class="mx-1 hidden h-6 w-px bg-gray-200 dark:bg-gray-700 sm:block" aria-hidden="true"></span>
+            <span class="mx-1 hidden h-6 w-px bg-white/20 sm:block" aria-hidden="true"></span>
 
             {{-- Acțiuni în masă --}}
             <div class="flex flex-wrap items-center gap-1.5">
