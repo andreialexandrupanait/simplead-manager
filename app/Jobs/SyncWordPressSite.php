@@ -248,12 +248,22 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 FetchSiteFavicon::dispatch($this->site);
             }
 
-            // SPEC §13 — apply the "Standard SimpleAD" preset package once, on the
-            // first successful connect. Plugins are synced by now, so WooCommerce
-            // detection (the conditional group) is accurate. Later manual tweaks
-            // on the Tweaks screens still override the package (per-site deviations).
+            // SPEC §13 + §10 step 6 — on the FIRST successful connect (once), set
+            // the site up end-to-end: apply the "Standard SimpleAD" preset package
+            // (plugins are synced by now, so WooCommerce detection is accurate),
+            // run the reference security scan, and take the first backup when a
+            // storage destination is configured. Later manual tweaks still override
+            // the package (per-site deviations).
             if ($this->site->standard_preset_applied_at === null) {
                 ApplySitePresetJob::dispatch($this->site, null);
+
+                // §10 step 6 — reference scan + first backup.
+                RunSecurityScan::dispatch($this->site);
+                $backupConfig = $this->site->backupConfig;
+                if ($backupConfig && $backupConfig->storage_destination_id) {
+                    CreateBackup::dispatch($this->site, 'full', 'onboarding', $backupConfig->storage_destination_id);
+                }
+
                 $this->site->update(['standard_preset_applied_at' => now()]);
             }
 
