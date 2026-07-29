@@ -161,6 +161,62 @@ class SafeUpdateServiceTest extends TestCase
         $this->assertNotNull($safeUpdate->completed_at);
     }
 
+    /**
+     * Regression for E2E-VERIFICAT Bug 1: the real connector reports health as
+     * {healthy: true, database_ok: …} with NO `status` key. runHealthChecks used
+     * to require status === 'ok', so every safe update failed its health check and
+     * rolled back regardless of the site being healthy. This test feeds the actual
+     * connector contract (no `status`) and asserts the update COMPLETES and records
+     * the discrete signals — it fails against the pre-fix code.
+     */
+    public function test_health_check_accepts_the_real_connector_healthy_contract(): void
+    {
+        Queue::fake();
+
+        $api = $this->createMockApi();
+        $api->method('updatePlugins')->willReturn([
+            'results' => ['yoast-seo' => ['success' => true, 'to_version' => '21.0']],
+        ]);
+        // Exact connector shape: `healthy` flag, discrete signals, NO `status`, NO `checks`.
+        $api->method('healthCheck')->willReturn([
+            'success' => true,
+            'healthy' => true,
+            'database_ok' => true,
+            'uploads_writable' => true,
+            'ssl_active' => true,
+            'cron_disabled' => true,
+        ]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        $rollbackService->method('createRollbackPoint')->willReturn(
+            \App\Models\RollbackPoint::factory()->make(['id' => 1])
+        );
+
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn(null);
+
+        $service = $this->serviceWithCompletedBackup($rollbackService, $api, $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'yoast-seo',
+            'name' => 'Yoast SEO',
+            'from_version' => '20.0',
+            'to_version' => '21.0',
+            'status' => 'pending',
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $safeUpdate->refresh();
+        $this->assertSame('completed', $safeUpdate->status);
+        // Discrete signals are surfaced instead of an empty array.
+        $names = array_column($safeUpdate->health_check_results ?? [], 'name');
+        $this->assertContains('healthy', $names);
+        $this->assertContains('database_ok', $names);
+    }
+
     public function test_run_safe_update_fails_on_health_check_failure(): void
     {
         $api = $this->createMockApi();
