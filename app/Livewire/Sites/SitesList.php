@@ -7,6 +7,7 @@ namespace App\Livewire\Sites;
 use App\Enums\HealthLevel;
 use App\Jobs\CheckUptime;
 use App\Jobs\CreateBackup;
+use App\Jobs\QueueSiteSafeUpdatesJob;
 use App\Livewire\Traits\WithBulkSiteActions;
 use App\Livewire\Traits\WithRateLimiting;
 use App\Livewire\Traits\WithTableFilters;
@@ -238,13 +239,57 @@ class SitesList extends Component
     // bulkBackup() and bulkCheckUptime() are provided by WithBulkSiteActions.
 
     /**
-     * TODO: no per-site "update everything" job exists — safe updates are
-     * created per plugin/theme via SafeUpdateService (see WithPluginManagement).
-     * Surface a toast instead of failing until a bulk-update flow is designed.
+     * SPEC §2 (bulk-first) / §4.4 — fleet bulk update. Fans out one
+     * QueueSiteSafeUpdatesJob per selected site; each site then queues a SAFE
+     * update (backup → update → health-check → auto-rollback) for every pending
+     * plugin/theme. Sites that are disconnected or do not have safe updates
+     * enabled are skipped, so a one-click fleet action never runs an unprotected
+     * inline update.
      */
     public function bulkUpdate(): void
     {
-        $this->dispatch('notify', type: 'info', message: 'Actualizarea în masă nu este disponibilă încă.');
+        abort_unless(auth()->user()->canManageSites(), 403);
+
+        if (! $this->rateLimit('bulk-update-fleet', auth()->id(), 3, 3600)) {
+            $this->dispatch('notify', type: 'error', message: __('Too many bulk updates. Please wait a moment.'));
+
+            return;
+        }
+
+        $sites = $this->scopedSiteQuery($this->selectedSites)->get();
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: __('No sites selected.'));
+
+            return;
+        }
+
+        $queued = 0;
+        $skipped = 0;
+        foreach ($sites as $site) {
+            if ($site->is_connected && $site->safe_updates_enabled) {
+                QueueSiteSafeUpdatesJob::dispatch($site, auth()->id());
+                $queued++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $this->selectedSites = [];
+
+        $message = trans_choice(
+            'Safe update queued for :count site.|Safe updates queued for :count sites.',
+            $queued,
+            ['count' => $queued],
+        );
+        if ($skipped > 0) {
+            $message .= ' '.__(':n skipped (disconnected or safe updates off).', ['n' => $skipped]);
+        }
+
+        $this->dispatch(
+            'notify',
+            type: $queued === 0 ? 'warning' : 'success',
+            message: $message,
+        );
     }
 
     /**
