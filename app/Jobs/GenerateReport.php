@@ -15,7 +15,9 @@ use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
 use App\Services\Backup\Storage\StorageFactory;
 use App\Services\JobTracker;
+use App\Services\Notifications\NotificationService;
 use App\Services\ReportGeneratorService;
+use App\Services\Reports\ReportSendGate;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -194,11 +196,30 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
 
             JobTracker::complete($this->trackerKey(), 'Report generated successfully');
 
+            // SPEC §12.3 safety barriers — evaluated before any auto-send.
+            $sendGate = app(ReportSendGate::class)->evaluate($report);
+
             // Guard: skip email if already sent (idempotency on retry)
             if ($report->was_sent) {
                 Log::info("Report #{$report->id} emails already sent, skipping", [
                     'site_id' => $this->site->id,
                 ]);
+            } elseif (! $sendGate['send']) {
+                // A tripped barrier HOLDS the report for manual review instead of
+                // auto-sending bad data (SPEC §12.3). It never leaves silently: the
+                // reason is recorded and the operator is notified.
+                $reason = implode('; ', $sendGate['reasons']);
+                $report->update(['send_held_reason' => $reason, 'send_held_at' => now()]);
+                Log::warning("Report #{$report->id} held from auto-send (SPEC §12.3): {$reason}", [
+                    'site_id' => $this->site->id,
+                ]);
+                NotificationService::notifyAppEvent(
+                    event: 'report_send_held:'.$report->id,
+                    title: 'Report held — not sent',
+                    message: "The report for {$this->site->name} was generated but NOT sent automatically: {$reason}. Review it and send it by hand if appropriate.",
+                    fields: ['site' => $this->site->name, 'report_id' => $report->id, 'reasons' => $sendGate['reasons']],
+                    severity: 'warning',
+                );
             } else {
                 // Send emails (best-effort — don't fail the report if email fails).
                 // Each recipient (client + admin if send_copy_to_admin) gets a separate
