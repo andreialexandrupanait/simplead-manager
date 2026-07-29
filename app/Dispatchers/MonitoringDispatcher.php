@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dispatchers;
 
+use App\Jobs\CheckCoreFileIntegrity;
 use App\Jobs\CheckDns;
 use App\Jobs\CheckSsl;
 use App\Jobs\CheckUptime;
@@ -124,6 +125,12 @@ class MonitoringDispatcher
                 /** @var \App\Models\Site $site */
                 $site = $monitor->site;
                 RunSecurityScan::dispatch($site);
+                // Core file integrity is a compromise signal like a vulnerability
+                // scan and needs the same connected-site gate. It used to run only
+                // on a manual click from the Security tab (so it was never produced
+                // for a site nobody opened); ride the security cadence here.
+                // ShouldBeUnique keeps it from piling up across minutes.
+                CheckCoreFileIntegrity::dispatch($site);
             });
     }
 
