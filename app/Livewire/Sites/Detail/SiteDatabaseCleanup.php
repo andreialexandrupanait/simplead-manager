@@ -79,6 +79,7 @@ class SiteDatabaseCleanup extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('database_cleanup', $this->site->id, auth()->id());
         $this->initJobTracking();
     }
 

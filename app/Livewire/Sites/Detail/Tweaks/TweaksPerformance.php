@@ -79,6 +79,7 @@ class TweaksPerformance extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('tweaks:performance', $this->site->id, auth()->id());
         $this->loadCurrentState();
     }
 

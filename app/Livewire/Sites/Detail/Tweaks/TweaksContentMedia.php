@@ -55,6 +55,7 @@ class TweaksContentMedia extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('tweaks:content_media', $this->site->id, auth()->id());
         $this->loadCurrentState();
     }
 

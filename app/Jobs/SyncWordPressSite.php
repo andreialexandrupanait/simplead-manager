@@ -261,7 +261,14 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 
             // Auto-check plugin conflicts after sync
             try {
-                PluginConflictService::checkSite($this->site);
+                $conflictResult = PluginConflictService::checkSite($this->site);
+
+                // Faza 7 instrumentation — PluginConflict has no user-facing page,
+                // so we record the module as "used" only when the engine actually
+                // flags a conflict (keeps volume meaningful for the 60-day decision).
+                if (($conflictResult['total'] ?? 0) > 0) {
+                    app(\App\Services\ModuleUsageTracker::class)->record('plugin_conflict', $this->site->id, null);
+                }
             } catch (\Exception $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }

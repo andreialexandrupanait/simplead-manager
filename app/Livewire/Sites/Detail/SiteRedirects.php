@@ -28,6 +28,7 @@ class SiteRedirects extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('redirects', $this->site->id, auth()->id());
     }
 
     #[Computed]
