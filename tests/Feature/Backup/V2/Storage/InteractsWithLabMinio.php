@@ -37,6 +37,14 @@ trait InteractsWithLabMinio
     {
         $this->testPrefix = 'v2-hardened-tests/'.uniqid('', true);
 
+        // When the test runner is on the host network (bin/test uses --network host)
+        // rather than joined to sam_spike_net, point at the lab MinIO's host-published
+        // port instead of the internal spike-minio:9000 alias.
+        $endpoint = getenv('BACKUP_ENGINE_V2_LAB_S3_ENDPOINT');
+        if (is_string($endpoint) && $endpoint !== '') {
+            $this->minioEndpoint = $endpoint;
+        }
+
         try {
             $this->minioClient()->headBucket(['Bucket' => $this->bucket]);
         } catch (Throwable $e) {
