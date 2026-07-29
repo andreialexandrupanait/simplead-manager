@@ -55,3 +55,6 @@ Thumbs.db
 /*.webp
 /*.bmp
 migration-data/
+
+# Coolify deploy token (local secret, never commit)
+.coolify-deploy-token
