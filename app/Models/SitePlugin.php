@@ -32,6 +32,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $is_closed
  * @property string|null $closed_reason
  * @property \Illuminate\Support\Carbon|null $abandoned_checked_at
+ * @property string|null $license_key
+ * @property string|null $license_status
+ * @property \Illuminate\Support\Carbon|null $license_expires_at
+ * @property \Illuminate\Support\Carbon|null $license_alert_sent_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -65,6 +69,7 @@ class SitePlugin extends Model
         'license_key',
         'license_expires_at',
         'license_status',
+        'license_alert_sent_at',
     ];
 
     protected $casts = [
@@ -78,13 +83,18 @@ class SitePlugin extends Model
         'abandoned_checked_at' => 'datetime',
         'license_key' => 'encrypted',
         'license_expires_at' => 'datetime',
+        'license_alert_sent_at' => 'datetime',
     ];
 
     public function isLicenseExpiring(int $daysThreshold = 30): bool
     {
+        // Carbon 3's diffInDays is SIGNED, so diffing a future date back to now
+        // yields a NEGATIVE value that would satisfy `<= $daysThreshold` for ANY
+        // future date. Compute days-until-expiry from now → expiry (positive) so
+        // the threshold means "within N days", not "any time in the future".
         return $this->license_expires_at !== null
             && $this->license_expires_at->isFuture()
-            && $this->license_expires_at->diffInDays(now()) <= $daysThreshold;
+            && now()->diffInDays($this->license_expires_at) <= $daysThreshold;
     }
 
     public function isLicenseExpired(): bool

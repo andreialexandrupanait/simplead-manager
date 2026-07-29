@@ -248,6 +248,14 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
+// Faza 5.4 — premium license-expiry alerting. Cheap once-daily sweep of licensed
+// plugins carrying an expiry date; alerts (with per-plugin weekly dedup) when a
+// license has expired or is within 30 days of expiring.
+Schedule::job(new \App\Jobs\CheckLicenseExpiry)
+    ->dailyAt('06:00')
+    ->name('check-license-expiry')
+    ->onOneServer();
+
 // Backfill DNS monitors for any connected site still missing one — a safety net
 // for sites onboarded before DNS was a plan default (P1-56). The command only
 // touches sites with no monitor, so this is idempotent.
