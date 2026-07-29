@@ -41,7 +41,7 @@
            x-ref="trigger"
            @mouseenter="if (!sidebarOpen && window.innerWidth >= 1024) { showTooltip = true; $nextTick(() => reposition()); }"
            @mouseleave="showTooltip = false"
-           class="flex items-center gap-2 px-3 rounded-lg py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-all duration-200"
+           class="flex items-center gap-2 px-3 rounded-lg py-2 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 transition-all duration-200"
            :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
             <x-icons.arrow-left class="h-4 w-4 shrink-0" />
             <span class="whitespace-nowrap transition-all duration-300"
@@ -75,15 +75,15 @@
     <x-ui.dropdown align="left" width="64">
         <x-slot:trigger>
             <button type="button"
-                    class="flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-3 text-left transition-all duration-200 hover:bg-white/10"
+                    class="flex w-full items-center gap-3 rounded-lg bg-gray-50 px-3 py-3 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800"
                     :class="sidebarOpen ? '' : 'lg:justify-center lg:px-2'">
                 <x-site-favicon :site="$site" />
                 <div class="min-w-0 flex-1 whitespace-nowrap transition-all duration-300"
                      :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                    <p class="truncate text-sm font-medium text-white">{{ $site->name }}</p>
-                    <p class="truncate text-xs text-white/50">{{ parse_url($site->url, PHP_URL_HOST) ?? $site->url }}</p>
+                    <p class="truncate text-sm font-medium text-gray-900">{{ $site->name }}</p>
+                    <p class="truncate text-xs text-gray-500">{{ parse_url($site->url, PHP_URL_HOST) ?? $site->url }}</p>
                 </div>
-                <x-icons.chevron-right class="h-4 w-4 shrink-0 rotate-90 text-white/40 transition-all duration-300"
+                <x-icons.chevron-right class="h-4 w-4 shrink-0 rotate-90 text-gray-400 transition-all duration-300"
                                        ::class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'" />
             </button>
         </x-slot:trigger>
