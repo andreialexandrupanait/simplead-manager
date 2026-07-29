@@ -75,7 +75,7 @@ class SiteSwitcherComposer
     /** Pending plugin + theme updates for a single site (mirrors SidebarComposer). */
     private function updatesCount(Site $site): int
     {
-        return Cache::remember("sidebar:site_updates_count:{$site->id}", 60, function () use ($site) {
+        return (int) Cache::remember("sidebar:site_updates_count:{$site->id}", 60, function () use ($site) {
             $plugins = SitePlugin::where('site_id', $site->id)->where('has_update', true)->count();
             $themes = SiteTheme::where('site_id', $site->id)->where('has_update', true)->count();
 
@@ -86,7 +86,7 @@ class SiteSwitcherComposer
     /** Active critical security issues for a single site. */
     private function securityCount(Site $site): int
     {
-        return Cache::remember("sidebar:site_security_count:{$site->id}", 60, function () use ($site) {
+        return (int) Cache::remember("sidebar:site_security_count:{$site->id}", 60, function () use ($site) {
             return SecurityIssue::query()
                 ->active()
                 ->severity('critical')

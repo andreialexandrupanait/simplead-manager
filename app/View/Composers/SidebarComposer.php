@@ -54,7 +54,7 @@ class SidebarComposer
      */
     private function updatesCount(User $user): int
     {
-        return Cache::remember("sidebar:updates_count:user:{$user->id}", 60, function () use ($user) {
+        return (int) Cache::remember("sidebar:updates_count:user:{$user->id}", 60, function () use ($user) {
             $connectedVisibleSite = fn ($q) => $q
                 ->where('is_connected', true)
                 ->visibleTo($user);
@@ -77,7 +77,7 @@ class SidebarComposer
      */
     private function securityCount(User $user): int
     {
-        return Cache::remember("sidebar:security_count:user:{$user->id}", 60, function () use ($user) {
+        return (int) Cache::remember("sidebar:security_count:user:{$user->id}", 60, function () use ($user) {
             return SecurityIssue::query()
                 ->active()
                 ->severity('critical')
@@ -93,7 +93,7 @@ class SidebarComposer
      */
     private function errorLogsCount(User $user): int
     {
-        return Cache::remember("sidebar:error_logs_count:user:{$user->id}", 60, function () use ($user) {
+        return (int) Cache::remember("sidebar:error_logs_count:user:{$user->id}", 60, function () use ($user) {
             return PhpErrorLog::query()
                 ->unresolved()
                 ->whereHas('site', fn ($q) => $q->visibleTo($user))
