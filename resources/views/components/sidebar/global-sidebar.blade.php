@@ -1,10 +1,31 @@
 <div class="space-y-1">
+    {{-- SPEC §3.1 VEDERE — Panou + Alerte --}}
     <x-sidebar.sidebar-item
         :href="route('dashboard')"
         icon="home"
-        :active="request()->routeIs('dashboard')"
+        :active="request()->routeIs('dashboard') && ! request()->has('tab')"
     >
-        {{ __('Dashboard') }}
+        {{ __('Panou') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('dashboard', ['tab' => 'alerts'])"
+        icon="alert-triangle"
+        :active="request()->query('tab') === 'alerts'"
+        :count="$alertsCount ?? 0"
+        count-tone="danger"
+    >
+        {{ __('Alerts') }}
+    </x-sidebar.sidebar-item>
+
+    <x-sidebar.sidebar-item
+        :href="route('sites.index')"
+        icon="globe"
+        :active="request()->routeIs('sites.index')"
+        :count="$sitesCount ?? 0"
+        count-tone="accent"
+    >
+        {{ __('Sites') }}
     </x-sidebar.sidebar-item>
 </div>
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\View\Composers;
 
+use App\Enums\HealthLevel;
 use App\Models\PhpErrorLog;
 use App\Models\SecurityIssue;
+use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Models\User;
@@ -35,6 +37,8 @@ class SidebarComposer
                 'updatesCount' => 0,
                 'securityCount' => 0,
                 'errorLogsCount' => 0,
+                'sitesCount' => 0,
+                'alertsCount' => 0,
             ]);
 
             return;
@@ -44,7 +48,30 @@ class SidebarComposer
             'updatesCount' => $this->updatesCount($user),
             'securityCount' => $this->securityCount($user),
             'errorLogsCount' => $this->errorLogsCount($user),
+            'sitesCount' => $this->sitesCount($user),
+            'alertsCount' => $this->alertsCount($user),
         ]);
+    }
+
+    /** Total sites the user may see (SPEC §3.1 "Site-uri [58]"). */
+    private function sitesCount(User $user): int
+    {
+        return (int) Cache::remember("sidebar:sites_count:user:{$user->id}", 60, function () use ($user) {
+            return Site::query()->visibleTo($user)->count();
+        });
+    }
+
+    /** Sites with an active alert — down, disconnected or critical health (SPEC §3.1 "Alerte"). */
+    private function alertsCount(User $user): int
+    {
+        return (int) Cache::remember("sidebar:alerts_count:user:{$user->id}", 60, function () use ($user) {
+            return Site::query()->visibleTo($user)
+                ->where(fn ($q) => $q
+                    ->where('is_up', false)
+                    ->orWhere('is_connected', false)
+                    ->orWhere('health_score', '<', HealthLevel::WARNING_THRESHOLD))
+                ->count();
+        });
     }
 
     /**
