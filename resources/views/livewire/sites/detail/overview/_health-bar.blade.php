@@ -3,6 +3,7 @@
     $score = $dims['healthScore'];
     $barColor = $score >= 75 ? 'bg-green-500' : ($score >= 50 ? 'bg-yellow-500' : 'bg-red-500');
     $scoreTextColor = $score >= 75 ? 'text-green-700' : ($score >= 50 ? 'text-yellow-700' : 'text-red-700');
+    $healthTone = $score >= 75 ? 'ok' : ($score >= 50 ? 'warn' : 'bad');
 
     $indicators = [
         ['key' => 'uptime', 'label' => 'Uptime'],
@@ -14,21 +15,12 @@
     ];
 @endphp
 
-<x-ui.card :padding="false">
-    {{-- Card Header --}}
-    <div class="flex items-center justify-between border-b border-gray-100 px-3 py-2.5">
-        <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                <svg aria-hidden="true" class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-semibold text-gray-900">Health Score</h3>
-        </div>
+<x-ui.module-card title="Health Score" icon="check-circle" :tone="$healthTone">
+    <x-slot:actions>
         <span class="text-xl font-bold {{ $scoreTextColor }}">{{ $score }}<span class="text-xs font-normal text-gray-400">/100</span></span>
-    </div>
+    </x-slot:actions>
 
-    <div class="p-3 space-y-3">
+    <div class="space-y-3">
         {{-- Progress Bar --}}
         <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
             <div class="h-full rounded-full transition-all {{ $barColor }}" style="width: {{ min($score, 100) }}%"></div>
@@ -51,8 +43,8 @@
         @php
             $breakdown = $this->healthBreakdown;
         @endphp
-        <div class="border-t border-gray-100 pt-3 space-y-2">
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Score Breakdown</p>
+        <div class="space-y-2 border-t border-gray-100 pt-3">
+            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Score Breakdown</p>
             @foreach($breakdown['components'] as $component)
                 @php
                     $pct = $component['max'] > 0 ? round(($component['score'] / $component['max']) * 100) : 0;
@@ -60,7 +52,7 @@
                     $compTextColor = $pct >= 75 ? 'text-green-700' : ($pct >= 50 ? 'text-yellow-700' : 'text-red-600');
                 @endphp
                 <div>
-                    <div class="flex items-center justify-between mb-0.5">
+                    <div class="mb-0.5 flex items-center justify-between">
                         <span class="text-xs text-gray-600">{{ $component['label'] }}</span>
                         <span class="text-xs font-semibold {{ $compTextColor }}">{{ $component['score'] }}<span class="font-normal text-gray-400">/{{ $component['max'] }}</span></span>
                     </div>
@@ -77,8 +69,8 @@
         @endphp
         @if(!empty($trend['history']))
             <div class="border-t border-gray-100 pt-3">
-                <div class="flex items-center justify-between mb-1.5">
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">30-day Trend</p>
+                <div class="mb-1.5 flex items-center justify-between">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">30-day Trend</p>
                     @php
                         $trendIcon = match($trend['direction']) {
                             'up'   => '&#8593;',
@@ -97,7 +89,7 @@
                 </div>
 
                 {{-- Mini sparkline bars --}}
-                <div class="flex items-end gap-0.5 h-8">
+                <div class="flex h-8 items-end gap-0.5">
                     @foreach($trend['history'] as $point)
                         @php
                             $barPct = max(10, min(100, $point));
@@ -109,4 +101,4 @@
             </div>
         @endif
     </div>
-</x-ui.card>
+</x-ui.module-card>

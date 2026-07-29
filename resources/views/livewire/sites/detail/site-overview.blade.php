@@ -6,38 +6,27 @@
         <x-slot:actions>
             @if($site->is_connected)
                 <x-ui.wp-admin-button :site="$site" />
-                <button wire:click="clearCache"
-                        wire:confirm="{{ __('Clear all caches on this site?') }}"
-                        wire:loading.attr="disabled"
-                        wire:target="clearCache"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
-                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
+                <x-ui.button variant="secondary" size="sm"
+                             wire:click="clearCache"
+                             wire:confirm="{{ __('Clear all caches on this site?') }}"
+                             wire:loading.attr="disabled"
+                             wire:target="clearCache">
+                    <x-icons.trash class="h-4 w-4" />
                     <span wire:loading.remove wire:target="clearCache">{{ __('Clear Cache') }}</span>
                     <span wire:loading wire:target="clearCache">{{ __('Clearing...') }}</span>
-                </button>
-                <button wire:click="syncNow"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                </x-ui.button>
+                <x-ui.button variant="secondary" size="sm" wire:click="syncNow">
                     <x-icons.refresh-cw class="h-4 w-4" />
                     {{ __('Sync Now') }}
-                </button>
-                <button wire:click="openConnectModal"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition"
-                        title="{{ __('Plugin Settings') }}">
-                    <svg aria-hidden="true" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                </button>
+                </x-ui.button>
+                <x-ui.button variant="secondary" size="sm" wire:click="openConnectModal" title="{{ __('Plugin Settings') }}">
+                    <x-icons.settings class="h-4 w-4" />
+                </x-ui.button>
             @else
-                <button wire:click="openConnectModal"
-                        class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-accent-500 transition">
-                    <svg aria-hidden="true" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-                    </svg>
+                <x-ui.button variant="primary" size="sm" wire:click="openConnectModal">
+                    <x-icons.link class="h-4 w-4" />
                     {{ __('Connect Plugin') }}
-                </button>
+                </x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -50,32 +39,36 @@
 
     <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
-    {{-- Two-column layout --}}
-    <div class="grid gap-4 lg:grid-cols-4">
+    {{-- REFERINTA-VIZUALA „Prezentare site" — grid pe 3 coloane de module-cards
+         (.cols3 din referință). Fiecare coloană stivuiește carduri, cu spațiere
+         uniformă și aliniere la vârf. --}}
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
 
-        {{-- Main Content (left, 3/4 width) --}}
-        <div class="lg:col-span-3 space-y-6">
-            <livewire:sites.detail.site-plugins :site="$site" :embedded="true" />
-            @include('livewire.sites.detail.overview._database-card')
-            @include('livewire.sites.detail.overview._analytics-performance-card')
-            @include('livewire.sites.detail.overview._search-console-card')
-            @include('livewire.sites.detail.overview._recent-activity-card')
+        {{-- Coloana 1 — identitate & sănătate --}}
+        <div class="flex flex-col gap-4">
+            @include('livewire.sites.detail.overview._health-bar')
+            @include('livewire.sites.detail.overview._site-info-card')
+            @include('livewire.sites.detail.overview._server-resources-card')
+            @include('livewire.sites.detail.overview._client-card')
         </div>
 
-        {{-- Overview Sidebar (right, 1/3 width) --}}
-        <div>
-            <div class="sticky top-20 space-y-4">
-                @include('livewire.sites.detail.overview._health-bar')
-                @include('livewire.sites.detail.overview._site-info-card')
-                @include('livewire.sites.detail.overview._server-resources-card')
-                @include('livewire.sites.detail.overview._uptime-card')
-                @include('livewire.sites.detail.overview._backups-card')
-                @include('livewire.sites.detail.overview._security-card')
-                @include('livewire.sites.detail.overview._reports-card')
-                @include('livewire.sites.detail.overview._dns-card')
-                @include('livewire.sites.detail.overview._error-logs-card')
-                @include('livewire.sites.detail.overview._client-card')
-            </div>
+        {{-- Coloana 2 — mentenanță & securitate --}}
+        <div class="flex flex-col gap-4">
+            <livewire:sites.detail.site-plugins :site="$site" :embedded="true" />
+            @include('livewire.sites.detail.overview._security-card')
+            @include('livewire.sites.detail.overview._database-card')
+            @include('livewire.sites.detail.overview._error-logs-card')
+            @include('livewire.sites.detail.overview._dns-card')
+        </div>
+
+        {{-- Coloana 3 — monitorizare & date --}}
+        <div class="flex flex-col gap-4">
+            @include('livewire.sites.detail.overview._uptime-card')
+            @include('livewire.sites.detail.overview._backups-card')
+            @include('livewire.sites.detail.overview._analytics-performance-card')
+            @include('livewire.sites.detail.overview._search-console-card')
+            @include('livewire.sites.detail.overview._reports-card')
+            @include('livewire.sites.detail.overview._recent-activity-card')
         </div>
 
     </div>
@@ -139,10 +132,9 @@
                         <div></div>
                     @endif
 
-                    <button type="submit"
-                            class="inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-500 transition">
+                    <x-ui.button type="submit" variant="primary">
                         {{ __('Save & Connect') }}
-                    </button>
+                    </x-ui.button>
                 </div>
             </form>
         </div>

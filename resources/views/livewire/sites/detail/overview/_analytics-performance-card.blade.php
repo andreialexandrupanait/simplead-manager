@@ -2,23 +2,14 @@
     $perfData = $this->performanceData;
 @endphp
 
-<x-ui.card :padding="false">
-    {{-- Card Header --}}
-    <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-100">
-                <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-semibold text-gray-900">Analytics & Performance</h3>
-        </div>
+<x-ui.module-card title="Analytics & Performance" icon="bar-chart-2" tone="dark">
+    <x-slot:actions>
         <a href="{{ route('sites.analytics', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
             View Analytics →
         </a>
-    </div>
+    </x-slot:actions>
 
-    <div class="p-4 space-y-4">
+    <div class="space-y-4">
         {{-- Analytics Section --}}
         <div>
             {{-- Period Selector --}}
@@ -46,7 +37,7 @@
                 @endphp
 
                 {{-- Metrics Row --}}
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     @foreach($metrics as $metric)
                         @php
                             $current = $overview[$metric['key']] ?? 0;
@@ -56,7 +47,7 @@
                             $invert = $metric['invert'] ?? false;
                             $isPositive = $invert ? ($change <= 0) : ($change >= 0);
                         @endphp
-                        <div class="rounded-lg border border-gray-100 p-3 text-center">
+                        <div class="rounded-lg bg-gray-50 p-3 text-center dark:bg-white/5">
                             <div class="text-xs text-gray-500">{{ $metric['label'] }}</div>
                             <div class="mt-1 text-lg font-bold text-gray-900">
                                 @if($suffix)
@@ -94,7 +85,7 @@
 
         {{-- Performance Section --}}
         <div class="border-t border-gray-100 pt-4">
-            <div class="flex items-center justify-between mb-3">
+            <div class="mb-3 flex items-center justify-between">
                 <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Performance</h4>
                 <a href="{{ route('sites.performance', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
                     Details →
@@ -123,7 +114,7 @@
                         {{-- Mobile Score --}}
                         <div>
                             <button @click="showMobile = !showMobile; showDesktop = false"
-                                class="w-full rounded-lg border border-gray-100 p-3 text-center hover:border-gray-200 hover:bg-gray-50 transition cursor-pointer">
+                                class="w-full cursor-pointer rounded-lg bg-gray-50 p-3 text-center transition hover:bg-gray-100 dark:bg-white/5">
                                 <div class="text-xs text-gray-500">Mobile</div>
                                 @php
                                     $mScore = $perfData['mobile_score'];
@@ -137,7 +128,7 @@
                         {{-- Desktop Score --}}
                         <div>
                             <button @click="showDesktop = !showDesktop; showMobile = false"
-                                class="w-full rounded-lg border border-gray-100 p-3 text-center hover:border-gray-200 hover:bg-gray-50 transition cursor-pointer">
+                                class="w-full cursor-pointer rounded-lg bg-gray-50 p-3 text-center transition hover:bg-gray-100 dark:bg-white/5">
                                 <div class="text-xs text-gray-500">Desktop</div>
                                 @php
                                     $dScore = $perfData['desktop_score'];
@@ -151,12 +142,12 @@
 
                     {{-- Mobile Metrics Panel --}}
                     @if($perfData['mobile_metrics'])
-                        <div x-show="showMobile" x-cloak x-transition class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                            <div class="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile Metrics</div>
+                        <div x-show="showMobile" x-cloak x-transition class="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
+                            <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Mobile Metrics</div>
                             <div class="grid grid-cols-2 gap-2">
                                 @foreach($metricLabels as $key => $label)
                                     @php $m = $perfData['mobile_metrics'][$key] ?? null; @endphp
-                                    <div class="flex items-center justify-between rounded bg-white px-2 py-1.5">
+                                    <div class="flex items-center justify-between rounded bg-white px-2 py-1.5 dark:bg-gray-800">
                                         <span class="text-xs text-gray-600">{{ $label }}</span>
                                         <span class="text-xs font-semibold {{ $colorClasses[$m['color'] ?? 'gray'] }}">{{ $m['value'] ?? '—' }}</span>
                                     </div>
@@ -167,12 +158,12 @@
 
                     {{-- Desktop Metrics Panel --}}
                     @if($perfData['desktop_metrics'])
-                        <div x-show="showDesktop" x-cloak x-transition class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                            <div class="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Desktop Metrics</div>
+                        <div x-show="showDesktop" x-cloak x-transition class="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
+                            <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Desktop Metrics</div>
                             <div class="grid grid-cols-2 gap-2">
                                 @foreach($metricLabels as $key => $label)
                                     @php $m = $perfData['desktop_metrics'][$key] ?? null; @endphp
-                                    <div class="flex items-center justify-between rounded bg-white px-2 py-1.5">
+                                    <div class="flex items-center justify-between rounded bg-white px-2 py-1.5 dark:bg-gray-800">
                                         <span class="text-xs text-gray-600">{{ $label }}</span>
                                         <span class="text-xs font-semibold {{ $colorClasses[$m['color'] ?? 'gray'] }}">{{ $m['value'] ?? '—' }}</span>
                                     </div>
@@ -195,4 +186,4 @@
             @endif
         </div>
     </div>
-</x-ui.card>
+</x-ui.module-card>

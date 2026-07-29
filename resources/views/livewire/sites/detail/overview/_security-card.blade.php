@@ -1,59 +1,39 @@
 @php
     $securityMonitor = $site->securityMonitor;
     $isActive = $securityMonitor?->is_active ?? false;
+    $secTone = $isActive ? ($site->core_update_version ? 'warn' : 'ok') : 'dark';
 @endphp
 
-<x-ui.card :padding="false" class="flex flex-col">
-    {{-- Card Header --}}
-    <div class="flex items-center justify-between border-b border-gray-100 px-3 py-2.5">
-        <div class="flex items-center gap-2">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100">
-                <svg aria-hidden="true" class="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-            </div>
-            <h3 class="text-sm font-semibold text-gray-900">Security</h3>
-        </div>
-        <a href="{{ route('sites.security', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
-            View Details →
-        </a>
-    </div>
+<x-ui.module-card title="Security" icon="shield-check" :tone="$secTone">
+    @if($isActive)
+        {{-- Monitoring Status --}}
+        <x-ui.info-row label="Monitoring">
+            <span class="mval-ok">Active</span>
+        </x-ui.info-row>
 
-    {{-- Card Content --}}
-    <div class="flex flex-1 flex-col p-3">
-        @if($isActive)
-            <div class="space-y-2">
-                {{-- Monitoring Status --}}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Monitoring</span>
-                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Active</span>
-                </div>
+        {{-- WordPress Version --}}
+        <x-ui.info-row label="WordPress">
+            @if($site->core_update_version)
+                <span class="mval-warn">Update Available</span>
+            @else
+                <span class="mval-ok">Up to Date</span>
+            @endif
+        </x-ui.info-row>
 
-                {{-- WordPress Version --}}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">WordPress</span>
-                    @if($site->core_update_version)
-                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Update Available</span>
-                    @else
-                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Up to Date</span>
-                    @endif
-                </div>
-
-                {{-- Last Scan --}}
-                @if($securityMonitor->last_scan_at)
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Last Scan</span>
-                        <span class="text-xs text-gray-500">{{ $securityMonitor->last_scan_at->diffForHumans() }}</span>
-                    </div>
-                @endif
-            </div>
-        @else
-            <div class="py-2 text-center">
-                <p class="text-sm text-gray-500">Security monitoring is not active</p>
-                <a href="{{ route('sites.security', $site) }}" class="mt-2 inline-block text-xs text-accent-600 hover:text-accent-700">
-                    Enable Security →
-                </a>
-            </div>
+        {{-- Last Scan --}}
+        @if($securityMonitor->last_scan_at)
+            <x-ui.info-row label="Last Scan">
+                {{ $securityMonitor->last_scan_at->diffForHumans() }}
+            </x-ui.info-row>
         @endif
-    </div>
-</x-ui.card>
+
+        <a href="{{ route('sites.security', $site) }}" class="mact">View Details →</a>
+    @else
+        <div class="py-2 text-center">
+            <p class="text-sm text-gray-500">Security monitoring is not active</p>
+            <a href="{{ route('sites.security', $site) }}" class="mt-2 inline-block text-xs text-accent-600 hover:text-accent-700">
+                Enable Security →
+            </a>
+        </div>
+    @endif
+</x-ui.module-card>
