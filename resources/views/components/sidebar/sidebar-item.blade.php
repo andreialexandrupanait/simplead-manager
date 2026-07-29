@@ -43,7 +43,7 @@
     @endif
 
     <span class="flex flex-1 items-center gap-2 whitespace-nowrap transition-all duration-300"
-          :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+          :class="sidebarOpen ? '' : 'lg:flex-none lg:opacity-0 lg:w-0 lg:overflow-hidden'">
         <span class="flex-1">{{ $slot }}</span>
         @if($inactive)
             <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-400 dark:bg-gray-800">Off</span>

@@ -98,7 +98,7 @@
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-                   sidebarOpen ? 'lg:w-64' : 'lg:w-16'
+                   sidebarOpen ? 'lg:w-64 sidebar-open' : 'lg:w-16'
                ]">
 
             {{-- Logo area --}}
@@ -109,7 +109,7 @@
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="max-h-10 w-auto object-contain dark:brightness-0 dark:invert">
+                             class="max-h-14 w-auto object-contain dark:brightness-0 dark:invert">
                     @else
                         <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif

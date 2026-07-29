@@ -72,7 +72,7 @@
 
     {{-- Site switcher (SPEC §3.3: the site name is a commutator, not a title).
          Clicking swaps the active site without leaving the site context. --}}
-    <x-ui.dropdown align="left" width="64">
+    <x-ui.dropdown align="left" width="56">
         <x-slot:trigger>
             <button type="button"
                     class="flex w-full items-center gap-3 rounded-lg bg-gray-50 px-3 py-3 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800"
@@ -354,15 +354,6 @@
             {{-- TODO: rută inexistentă — Programare (tab în sites.reports) --}}
         </x-sidebar.sidebar-group>
     </x-sidebar.sidebar-section>
-
-    {{-- Setări site --}}
-    <x-sidebar.sidebar-section title="">
-        <x-sidebar.sidebar-item
-            :href="route('sites.settings', $site)"
-            icon="settings"
-            :active="request()->routeIs('sites.settings')"
-        >
-            Setări site
-        </x-sidebar.sidebar-item>
-    </x-sidebar.sidebar-section>
+    {{-- „Setări site" eliminat din nav: setările globale sunt deja în footer-ul
+         sidebar-ului (Settings). --}}
 </div>

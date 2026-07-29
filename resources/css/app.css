@@ -134,6 +134,15 @@
     background: rgba(255, 255, 255, 0.12) !important;
 }
 
+/* REFERINTA-VIZUALA .sbsub — submenu items: smaller label, and when the sidebar
+   is expanded they drop the leading icon (the collapsed icon-rail keeps it so
+   nothing becomes unreachable). The group divider line is removed in the blade. */
+.sad-submenu > a { font-size: 13px; }
+.sidebar-open .sad-submenu > a > svg:first-child { display: none; }
+
+/* Lighter, more refined sidebar iconography (closer to the reference icon set). */
+[data-sidebar] nav svg { stroke-width: 1.75; }
+
 /* Suppress transitions during initial Alpine hydration */
 html.no-transitions *,
 html.no-transitions *::before,

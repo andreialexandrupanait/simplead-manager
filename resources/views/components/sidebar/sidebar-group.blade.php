@@ -53,7 +53,7 @@
         @endif
 
         <span class="flex flex-1 items-center gap-2 whitespace-nowrap transition-all duration-300"
-              :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+              :class="sidebarOpen ? '' : 'lg:flex-none lg:opacity-0 lg:w-0 lg:overflow-hidden'">
             <span class="flex-1 text-left">{{ $title }}</span>
             @if($hasCount)
                 <span class="min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none {{ $toneClasses }}">{{ (int) $count > 99 ? '99+' : (int) $count }}</span>
@@ -70,8 +70,8 @@
          x-transition:enter="transition ease-out duration-150"
          x-transition:enter-start="opacity-0 -translate-y-1"
          x-transition:enter-end="opacity-100 translate-y-0"
-         class="mt-0.5 space-y-0.5 border-l border-gray-200 dark:border-gray-800 ml-[1.4rem] pl-2"
-         :class="sidebarOpen ? '' : 'lg:ml-0 lg:pl-0 lg:border-0'">
+         class="sad-submenu mt-0.5 space-y-0.5 ml-[1.4rem] pl-2"
+         :class="sidebarOpen ? '' : 'lg:ml-0 lg:pl-0'">
         {{ $slot }}
     </div>
 </div>
