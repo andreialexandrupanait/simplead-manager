@@ -40,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SecuritySettingsService::class);
         $this->app->singleton(\App\Services\SecurityActivityService::class);
         $this->app->singleton(\App\Services\SecurityPresetService::class);
+
+        // Faza 4: the operation registry must be shared so runtime key → class
+        // registrations persist across resolutions within a request/worker.
+        $this->app->singleton(\App\Operations\OperationRegistry::class);
     }
 
     /**

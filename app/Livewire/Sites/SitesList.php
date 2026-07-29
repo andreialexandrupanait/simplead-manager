@@ -12,6 +12,8 @@ use App\Livewire\Traits\WithRateLimiting;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use App\Models\Tag;
+use App\Operations\OperationRunner;
+use App\Operations\Operations\PurgeCloudflareCacheOperation;
 use App\Services\SettingsService;
 use App\Services\WordPressApiServiceFactory;
 use Livewire\Attributes\Computed;
@@ -153,11 +155,34 @@ class SitesList extends Component
     }
 
     /**
-     * TODO: no cache-purge job exists on the connector yet.
+     * Purge each selected site's Cloudflare edge cache via the shared operations
+     * engine (Faza 4). Sites without an active Cloudflare zone are skipped inside
+     * the operation, so the fleet-wide selection can be run as-is.
      */
     public function bulkPurgeCache(): void
     {
-        $this->dispatch('notify', type: 'info', message: 'Golirea cache-ului în masă nu este disponibilă încă.');
+        abort_unless(auth()->user()->canManageSites(), 403);
+
+        $sites = $this->scopedSiteQuery($this->selectedSites)
+            ->with('siteCloudflare.cloudflareConnection')
+            ->get();
+
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: 'Niciun site selectat.');
+
+            return;
+        }
+
+        $handle = app(OperationRunner::class)->run(
+            app(PurgeCloudflareCacheOperation::class),
+            $sites,
+            [],
+            auth()->id(),
+        );
+
+        $count = $sites->count();
+        $this->selectedSites = [];
+        $this->dispatch('notify', type: 'success', message: "Golire cache pusă în coadă pentru {$count} site-uri (run {$handle->runId}).");
     }
 
     /** Clear the current selection (bound by the toolbar's "deselectează tot"). */
