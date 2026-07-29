@@ -24,6 +24,9 @@ export default {
                 // cards, hovers). Default Tailwind gray-900 is #111827 (navy-tinted);
                 // we want pure dark gray. Keeps lighter shades (50-600) untouched.
                 gray: {
+                    // Light-mode app background — WordPress gray (REFERINTA-VIZUALA --bg).
+                    50: '#f0f1f3',
+                    // Dark-mode surfaces (unchanged): body / cards / hovers.
                     700: '#3C3C3C',
                     800: '#232323',
                     900: '#1A1A1A',
