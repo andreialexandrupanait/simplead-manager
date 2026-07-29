@@ -99,6 +99,17 @@
             class="w-full sm:ml-auto sm:w-64"
         />
 
+        {{-- SPEC §4.4 — grupare pe client --}}
+        <button type="button" wire:click="toggleGroupByClient"
+                aria-pressed="{{ $groupBy === 'client' ? 'true' : 'false' }}"
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition
+                       {{ $groupBy === 'client'
+                           ? 'border-accent-500 bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400'
+                           : 'border-gray-200 text-gray-500 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400' }}">
+            <x-icons.users class="h-4 w-4" />
+            {{ $groupBy === 'client' ? __('Grouped: client') : __('Group: client') }}
+        </button>
+
         {{-- Comutator vedere listă / grid --}}
         <div class="inline-flex shrink-0 rounded-lg border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="{{ __('View mode') }}">
             <button type="button" wire:click="setViewMode('list')"
@@ -125,9 +136,19 @@
     {{-- Sites --}}
     @if($sites->count())
         @if($viewMode === 'list')
-            {{-- Vedere LISTĂ densă (SPEC §4.1) --}}
+            {{-- Vedere LISTĂ densă (SPEC §4.1), grupată opțional pe client (§4.4) --}}
             <div class="overflow-hidden rounded-lg border border-gray-200 divide-y divide-gray-100 dark:divide-gray-800 dark:border-gray-700">
+                @php($currentClient = null)
                 @foreach($sites as $site)
+                    @if($groupBy === 'client')
+                        @php($clientName = $site->client?->name ?? __('No client'))
+                        @if($clientName !== $currentClient)
+                            @php($currentClient = $clientName)
+                            <div class="bg-gray-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                                {{ $currentClient }}
+                            </div>
+                        @endif
+                    @endif
                     <x-site-row :site="$site" :key="$site->id" />
                 @endforeach
             </div>

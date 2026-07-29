@@ -43,8 +43,18 @@ class SitesList extends Component
     #[Url]
     public string $tab = 'all';
 
+    /** SPEC §4.4 grouping: none | client. */
+    #[Url]
+    public string $groupBy = 'none';
+
     public function updatedTab(): void
     {
+        $this->resetPage();
+    }
+
+    public function toggleGroupByClient(): void
+    {
+        $this->groupBy = $this->groupBy === 'client' ? 'none' : 'client';
         $this->resetPage();
     }
 
@@ -430,6 +440,11 @@ class SitesList extends Component
             })
             ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection', 'tags')
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
+            // SPEC §4.4 — group by client: order by client name so rows are
+            // contiguous per client and the view can emit a header per group.
+            ->when($this->groupBy === 'client', fn ($q) => $q->orderBy(
+                \App\Models\Client::select('name')->whereColumn('clients.id', 'sites.client_id')
+            ))
             ->paginate((int) app(SettingsService::class)->get('sites_per_page', 16));
 
         return view('livewire.sites.sites-list', compact('sites'))
