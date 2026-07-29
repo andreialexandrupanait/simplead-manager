@@ -248,6 +248,15 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 FetchSiteFavicon::dispatch($this->site);
             }
 
+            // SPEC §13 — apply the "Standard SimpleAD" preset package once, on the
+            // first successful connect. Plugins are synced by now, so WooCommerce
+            // detection (the conditional group) is accurate. Later manual tweaks
+            // on the Tweaks screens still override the package (per-site deviations).
+            if ($this->site->standard_preset_applied_at === null) {
+                ApplySitePresetJob::dispatch($this->site, null);
+                $this->site->update(['standard_preset_applied_at' => now()]);
+            }
+
             // Update pending updates count
             $pendingCount = $this->site->sitePlugins()->where('has_update', true)->count()
                 + $this->site->siteThemes()->where('has_update', true)->count()

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Sites;
 
 use App\Enums\HealthLevel;
+use App\Jobs\ApplySitePresetJob;
 use App\Jobs\CheckUptime;
 use App\Jobs\CreateBackup;
 use App\Jobs\QueueSiteSafeUpdatesJob;
@@ -302,11 +303,51 @@ class SitesList extends Component
     }
 
     /**
-     * TODO: no "presets" job/model exists in the codebase yet (SPEC §14.5).
+     * SPEC §13 — apply the curated "Standard SimpleAD" preset package to the
+     * selected sites: fans out one ApplySitePresetJob per connected site (the
+     * auto group everywhere, the Woo group only where WooCommerce is detected).
+     * Per-site deviations are preserved — a later manual tweak still wins.
      */
     public function bulkApplyPresets(): void
     {
-        $this->dispatch('notify', type: 'info', message: 'Aplicarea presetărilor nu este disponibilă încă.');
+        abort_unless(auth()->user()->canManageSites(), 403);
+
+        if (! $this->rateLimit('bulk-presets-fleet', auth()->id(), 3, 3600)) {
+            $this->dispatch('notify', type: 'error', message: __('Too many bulk actions. Please wait a moment.'));
+
+            return;
+        }
+
+        $sites = $this->scopedSiteQuery($this->selectedSites)->get();
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: __('No sites selected.'));
+
+            return;
+        }
+
+        $queued = 0;
+        $skipped = 0;
+        foreach ($sites as $site) {
+            if ($site->is_connected) {
+                ApplySitePresetJob::dispatch($site, auth()->id());
+                $queued++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $this->selectedSites = [];
+
+        $message = trans_choice(
+            'Standard SimpleAD preset queued for :count site.|Standard SimpleAD preset queued for :count sites.',
+            $queued,
+            ['count' => $queued],
+        );
+        if ($skipped > 0) {
+            $message .= ' '.__(':n skipped (not connected).', ['n' => $skipped]);
+        }
+
+        $this->dispatch('notify', type: $queued === 0 ? 'warning' : 'success', message: $message);
     }
 
     /**
