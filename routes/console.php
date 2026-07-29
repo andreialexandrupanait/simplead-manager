@@ -306,6 +306,18 @@ Schedule::job(new \App\Jobs\SendDailyDigest)
     ->name('daily-digest')
     ->onOneServer();
 
+// Faza 5.3 — broken-link sweep (connector /content-urls + Manager HEAD-check, diff-based).
+Schedule::job(new \App\Jobs\CheckBrokenLinks)
+    ->monthlyOn(1, '02:00')
+    ->name('check-broken-links')
+    ->onOneServer();
+
+// Faza 5.2 — WooCommerce health (only sites with Woo detected; skips cleanly otherwise).
+Schedule::job(new \App\Jobs\CheckWooHealth)
+    ->dailyAt('05:30')
+    ->name('check-woo-health')
+    ->onOneServer();
+
 // ==========================================================================
 // Security Hardening
 // ==========================================================================

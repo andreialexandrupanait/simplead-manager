@@ -37,6 +37,9 @@ class SAM_REST_API {
             'SAM_Posts_Endpoint',
             'SAM_Error_Logs_Endpoint',
             'SAM_Key_Rotation_Endpoint',
+            'SAM_Content_Urls_Endpoint',
+            'SAM_Woo_Endpoint',
+            'SAM_Form_Test_Endpoint',
         ];
 
         foreach ($classes as $class) {
