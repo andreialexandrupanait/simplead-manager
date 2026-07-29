@@ -10,6 +10,67 @@
         </a>
     </div>
 
+    {{-- SPEC §4.5 — Panou: three bands, no charts, no decorative widgets --}}
+    @php($panou = $this->panou)
+    <div class="mb-6 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-700">
+        {{-- Band 1 — who needs attention, grouped by client, ordered by severity --}}
+        <div class="p-4">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Needs attention') }}</h2>
+            @forelse($panou['attention'] as $group)
+                <div class="mt-3">
+                    <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ $group['client'] }}</div>
+                    <ul class="mt-1 space-y-1">
+                        @foreach($group['sites'] as $s)
+                            <li class="flex items-center gap-2 text-sm">
+                                <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $s['severity'] === 0 ? 'bg-red-500' : 'bg-amber-500' }}"></span>
+                                <a href="{{ $s['url'] }}" class="font-medium text-gray-800 hover:text-accent-600 dark:text-gray-100">{{ $s['name'] }}</a>
+                                <span class="truncate text-gray-400">— {{ $s['reasons'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @empty
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing needs attention right now.') }}</p>
+            @endforelse
+        </div>
+
+        {{-- Band 2 — what awaits approval --}}
+        <div class="flex items-center justify-between p-4">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Awaiting approval') }}</h2>
+            @if($panou['awaiting'] > 0)
+                <a href="{{ route('updates.index') }}" class="text-sm font-medium text-accent-600 hover:underline dark:text-accent-400">
+                    {{ trans_choice(':count update|:count updates', $panou['awaiting'], ['count' => $panou['awaiting']]) }}
+                </a>
+            @else
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('Nothing pending') }}</span>
+            @endif
+        </div>
+
+        {{-- Band 3 — the rest, one line --}}
+        <div class="p-4 text-sm text-gray-500 dark:text-gray-400">
+            {{ trans_choice(':count site operating normally|:count sites operating normally', $panou['resting'], ['count' => $panou['resting']]) }}
+        </div>
+    </div>
+
+    {{-- SPEC §4.4 — primary tabs: Toate · Actualizări · Alerte · Planuri --}}
+    <div class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700">
+        @php($tabs = ['all' => __('All'), 'updates' => __('Updates'), 'alerts' => __('Alerts'), 'plans' => __('Plans')])
+        @foreach($tabs as $key => $label)
+            <button type="button" wire:click="$set('tab', '{{ $key }}')"
+                    class="-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition
+                           {{ $tab === $key
+                               ? 'border-accent-500 text-accent-600 dark:text-accent-400'
+                               : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200' }}">
+                {{ $label }}
+                @if($key === 'updates' && $this->tabCounts['updates'] > 0)
+                    <span class="rounded-full bg-gray-100 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $this->tabCounts['updates'] }}</span>
+                @elseif($key === 'alerts' && $this->tabCounts['alerts'] > 0)
+                    <span class="rounded-full bg-red-100 px-1.5 text-xs text-red-700 dark:bg-red-500/15 dark:text-red-400">{{ $this->tabCounts['alerts'] }}</span>
+                @endif
+            </button>
+        @endforeach
+    </div>
+
     {{-- Search & Filter Bar --}}
     <div class="mb-6 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs

@@ -13,7 +13,6 @@ use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
-use App\Livewire\Dashboard;
 use App\Livewire\Dns;
 use App\Livewire\ErrorLogs;
 use App\Livewire\MaintenancePlans;
@@ -85,12 +84,12 @@ Route::middleware(['auth'])->group(function () {
 // Authenticated routes — gated behind the 2FA challenge + admin enrollment.
 Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge', '2fa.enforce'])->group(function () {
 
-    // Dashboard
-    Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
+    // Main screen (SPEC §4): the WPMU-Hub site list + the three-band Panou.
+    Route::get('/', Sites\SitesList::class)->name('dashboard');
     Route::get('/dashboard/widgets', fn () => redirect()->route('dashboard'))->name('dashboard.widgets');
 
-    // Sites — global list (redirects to dashboard)
-    Route::get('/sites', fn () => redirect()->route('dashboard'))->name('sites.index');
+    // Sites — global list (same §4 screen).
+    Route::get('/sites', Sites\SitesList::class)->name('sites.index');
     Route::get('/sites/create', Sites\CreateSiteWizard::class)->name('sites.create');
 
     // Sites — site-context (uses {site} parameter)

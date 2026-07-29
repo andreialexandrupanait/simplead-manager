@@ -37,10 +37,120 @@ class SitesList extends Component
     /** Site IDs selected via the dense list rows (bound with wire:model.live). */
     public array $selectedSites = [];
 
+    /** SPEC §4.4 primary tab: all | updates | alerts | plans. */
+    #[Url]
+    public string $tab = 'all';
+
+    public function updatedTab(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function availableTags()
     {
         return Tag::orderBy('name')->get();
+    }
+
+    /**
+     * SPEC §4.5 — the three-band Panou (no charts, no decorative widgets):
+     *   1. who needs attention, grouped by client, ordered by severity
+     *   2. what awaits approval
+     *   3. the rest, collapsed to one line (a count)
+     *
+     * @return array{attention: array<int, array<string,mixed>>, awaiting: int, resting: int}
+     */
+    #[Computed]
+    public function panou(): array
+    {
+        $user = auth()->user();
+
+        $sites = Site::query()
+            ->visibleTo($user)
+            ->with('client')
+            ->get();
+
+        $attention = [];
+        $resting = 0;
+
+        foreach ($sites as $site) {
+            $isDown = $site->is_up === false;
+            $isDisconnected = $site->is_connected === false;
+            $criticalHealth = $site->health_score !== null
+                && (int) $site->health_score < HealthLevel::WARNING_THRESHOLD;
+
+            if (! $isDown && ! $isDisconnected && ! $criticalHealth) {
+                $resting++;
+
+                continue;
+            }
+
+            // Severity: down/disconnected = critical (0), poor-health-only = warning (1).
+            $severity = ($isDown || $isDisconnected) ? 0 : 1;
+            $reasons = [];
+            if ($isDown) {
+                $reasons[] = __('down');
+            }
+            if ($isDisconnected) {
+                $reasons[] = __('disconnected');
+            }
+            if ($criticalHealth && ! $isDown && ! $isDisconnected) {
+                $reasons[] = __('health :n', ['n' => (int) $site->health_score]);
+            }
+
+            $clientName = $site->client?->name ?? __('No client');
+            $attention[$clientName]['client'] = $clientName;
+            $attention[$clientName]['severity'] = min($attention[$clientName]['severity'] ?? 9, $severity);
+            $attention[$clientName]['sites'][] = [
+                'id' => $site->id,
+                'name' => $site->name,
+                'severity' => $severity,
+                'reasons' => implode(' · ', $reasons),
+                'url' => route('sites.overview', $site),
+            ];
+        }
+
+        // Sort clients by their worst severity, and sites within each client by severity.
+        foreach ($attention as &$group) {
+            usort($group['sites'], fn ($a, $b) => $a['severity'] <=> $b['severity']);
+        }
+        unset($group);
+        uasort($attention, fn ($a, $b) => $a['severity'] <=> $b['severity']);
+
+        return [
+            'attention' => array_values($attention),
+            'awaiting' => $this->awaitingApprovalCount(),
+            'resting' => $resting,
+        ];
+    }
+
+    /** SPEC §4.4 tab counters — sites with updates / with an active alert. */
+    #[Computed]
+    public function tabCounts(): array
+    {
+        $user = auth()->user();
+        $warning = HealthLevel::WARNING_THRESHOLD;
+
+        return [
+            'updates' => Site::query()->visibleTo($user)
+                ->whereHas('sitePlugins', fn ($q) => $q->where('has_update', true))->count(),
+            'alerts' => Site::query()->visibleTo($user)
+                ->where(fn ($q) => $q->where('is_up', false)->orWhere('is_connected', false)
+                    ->orWhere('health_score', '<', $warning))->count(),
+        ];
+    }
+
+    /** Updates held for a batch approval decision (SPEC §4.5 band 2 / §2 principle 4). */
+    private function awaitingApprovalCount(): int
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('safe_updates', 'approval_required')) {
+            return 0;
+        }
+
+        return \App\Models\SafeUpdate::query()
+            ->where('approval_required', true)
+            ->whereHas('site', fn ($q) => $q->visibleTo(auth()->user()))
+            ->count();
     }
 
     public function updatedTagId(): void
@@ -219,6 +329,17 @@ class SitesList extends Component
                         $q->where('health_score', '<', HealthLevel::WARNING_THRESHOLD)->orWhere('is_up', false);
                     }),
                     default => $q,
+                };
+            })
+            ->when($this->tab !== 'all', function ($q) {
+                // SPEC §4.4 primary tabs (orthogonal to the health filter).
+                return match ($this->tab) {
+                    'updates' => $q->whereHas('sitePlugins', fn ($p) => $p->where('has_update', true)),
+                    'alerts' => $q->where(fn ($aq) => $aq
+                        ->where('is_up', false)
+                        ->orWhere('is_connected', false)
+                        ->orWhere('health_score', '<', HealthLevel::WARNING_THRESHOLD)),
+                    default => $q, // 'plans' is a grouping, not a row filter
                 };
             })
             ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection', 'tags')
