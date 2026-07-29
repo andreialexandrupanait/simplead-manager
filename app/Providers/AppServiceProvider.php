@@ -9,6 +9,7 @@ use App\Models\Backup;
 use App\Observers\BackupObserver;
 use App\Services\Notifications\NotificationService;
 use App\Services\SettingsService;
+use App\View\Composers\SidebarComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
@@ -138,6 +139,9 @@ class AppServiceProvider extends ServiceProvider
                 'failures_in_window' => $failures,
             ]);
         });
+
+        // Fleet sidebar severity counters (SPEC §3.1): updates / security / errors.
+        View::composer('components.sidebar.global-sidebar', SidebarComposer::class);
 
         // Guest layout slideshow data (View::share because anonymous Blade components don't trigger View::composer)
         View::composer('auth.*', function (\Illuminate\View\View $view) {

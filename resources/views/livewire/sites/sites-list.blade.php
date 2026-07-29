@@ -31,15 +31,50 @@
             placeholder="{{ __('Search sites...') }}"
             class="w-full sm:ml-auto sm:w-64"
         />
+
+        {{-- Comutator vedere listă / grid --}}
+        <div class="inline-flex shrink-0 rounded-lg border border-gray-200 p-0.5 dark:border-gray-700" role="group" aria-label="{{ __('View mode') }}">
+            <button type="button" wire:click="setViewMode('list')"
+                    aria-pressed="{{ $viewMode === 'list' ? 'true' : 'false' }}"
+                    title="{{ __('List view') }}"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-md transition
+                           {{ $viewMode === 'list'
+                               ? 'bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400'
+                               : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300' }}">
+                <x-icons.menu class="h-4 w-4" />
+            </button>
+            <button type="button" wire:click="setViewMode('grid')"
+                    aria-pressed="{{ $viewMode === 'grid' ? 'true' : 'false' }}"
+                    title="{{ __('Grid view') }}"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-md transition
+                           {{ $viewMode === 'grid'
+                               ? 'bg-accent-50 text-accent-600 dark:bg-accent-500/10 dark:text-accent-400'
+                               : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300' }}">
+                <x-icons.layout-dashboard class="h-4 w-4" />
+            </button>
+        </div>
     </div>
 
-    {{-- Sites Grid --}}
+    {{-- Sites --}}
     @if($sites->count())
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            @foreach($sites as $site)
-                <livewire:components.site-card :site="$site" :key="$site->id" />
-            @endforeach
-        </div>
+        @if($viewMode === 'list')
+            {{-- Vedere LISTĂ densă (SPEC §4.1) --}}
+            <div class="overflow-hidden rounded-lg border border-gray-200 divide-y divide-gray-100 dark:divide-gray-800 dark:border-gray-700">
+                @foreach($sites as $site)
+                    <x-site-row :site="$site" :key="$site->id" />
+                @endforeach
+            </div>
+
+            {{-- Bară acțiuni în masă (SPEC §4.4) --}}
+            <x-toolbar :count="count($selectedSites)" />
+        @else
+            {{-- Vedere GRID (existentă) --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                @foreach($sites as $site)
+                    <livewire:components.site-card :site="$site" :key="$site->id" />
+                @endforeach
+            </div>
+        @endif
 
         <div class="mt-6">
             {{ $sites->links() }}

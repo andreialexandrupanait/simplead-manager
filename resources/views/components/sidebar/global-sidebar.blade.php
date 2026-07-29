@@ -29,6 +29,8 @@
         :href="route('security.index')"
         icon="shield-check"
         :active="request()->routeIs('security.*')"
+        :count="$securityCount ?? 0"
+        count-tone="danger"
     >
         {{ __('Security') }}
     </x-sidebar.sidebar-item>
@@ -40,6 +42,8 @@
         :href="route('updates.index')"
         icon="refresh-cw"
         :active="request()->routeIs('updates.*')"
+        :count="$updatesCount ?? 0"
+        count-tone="accent"
     >
         {{ __('Updates') }}
     </x-sidebar.sidebar-item>
@@ -82,6 +86,8 @@
         :href="route('error-logs.index')"
         icon="alert-triangle"
         :active="request()->routeIs('error-logs.*')"
+        :count="$errorLogsCount ?? 0"
+        count-tone="warning"
     >
         {{ __('Error Logs') }}
     </x-sidebar.sidebar-item>

@@ -1,5 +1,5 @@
 <div>
-    <a href="{{ route('sites.show', $site) }}" class="block">
+    <a href="{{ route('sites.overview', $site) }}" class="block">
         <x-ui.card :padding="false" class="transition hover:shadow-md hover:ring-gray-950/10">
             <div class="p-4">
                 {{-- Header: Favicon + Name + Status --}}
