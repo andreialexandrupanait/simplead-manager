@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array|null $health_check_results
  * @property string|null $error_message
  * @property bool $auto_rollback
+ * @property bool $approval_required
  * @property int|null $ai_risk_score
  * @property array|null $ai_risk_assessment
  * @property string|null $screenshot_before_path
@@ -48,6 +49,7 @@ class SafeUpdate extends Model
         'health_check_results',
         'error_message',
         'auto_rollback',
+        'approval_required',
         'ai_risk_score',
         'ai_risk_assessment',
         'screenshot_before_path',
@@ -62,6 +64,8 @@ class SafeUpdate extends Model
         'ai_risk_assessment' => 'array',
         'visual_regression_results' => 'array',
         'auto_rollback' => 'boolean',
+        'approval_required' => 'boolean',
+        'ai_risk_score' => 'integer',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
     ];

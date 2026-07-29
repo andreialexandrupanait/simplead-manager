@@ -32,6 +32,36 @@
         </x-ui.card>
     </div>
 
+    {{-- Faza 6 — safe updates held for approval by the smart update engine. Only
+         appears when the smart-rules flag is on and something is actually held. --}}
+    @if (count($this->awaitingApprovals) > 0)
+        <x-ui.card class="mb-6 border-yellow-300 dark:border-yellow-700">
+            <h3 class="text-sm font-semibold text-yellow-700 dark:text-yellow-400 mb-3">
+                {{ __('Awaiting approval') }}
+            </h3>
+            <div class="space-y-2">
+                @foreach ($this->awaitingApprovals as $held)
+                    <div class="flex items-center justify-between gap-3 rounded border border-gray-200 dark:border-gray-700 px-3 py-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $held->name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {{ $held->site?->name ?? '—' }} · {{ $held->from_version }} → {{ $held->to_version }}
+                                @if ($held->ai_risk_score !== null)
+                                    · {{ __('risk') }} {{ $held->ai_risk_score }}
+                                @endif
+                            </p>
+                        </div>
+                        <button wire:click="approveUpdate({{ $held->id }})"
+                                wire:confirm="{{ __('Approve and run this update now?') }}"
+                                class="shrink-0 rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700">
+                            {{ __('Approve') }}
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.card>
+    @endif
+
     {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs

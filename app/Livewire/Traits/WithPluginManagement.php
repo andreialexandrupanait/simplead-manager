@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Traits;
 
+use App\Enums\UpdateRoute;
 use App\Jobs\CreateBackup;
 use App\Models\SitePlugin;
 use App\Models\UpdateLog;
@@ -11,6 +12,8 @@ use App\Services\PluginManagerService;
 
 trait WithPluginManagement
 {
+    use WithSmartUpdateRouting;
+
     public ?int $confirmingDeleteId = null;
 
     public ?string $confirmingDeleteName = null;
@@ -59,6 +62,18 @@ trait WithPluginManagement
             $plugin->version ?? '', $plugin->update_version ?? '',
             $plugin->file, // connector identifier (see AUDIT PM-P0-1)
         );
+
+        // Faza 6 — smart update rules (flag-gated, default OFF). With the flag off
+        // the block below is skipped entirely and behaviour is EXACTLY as before:
+        // dispatch RunSafeUpdate immediately. With the flag on, an AwaitApproval
+        // route holds the update (no dispatch) until an operator approves it.
+        if ($this->smartUpdateRulesEnabled()
+            && $this->decideSafeUpdateRoute($safeUpdate, $plugin) === UpdateRoute::AwaitApproval) {
+            $this->dispatch('notify', type: 'warning',
+                message: "Update for {$plugin->name} needs approval before it runs — review it on the Updates page.");
+
+            return;
+        }
 
         \App\Jobs\RunSafeUpdate::dispatch($safeUpdate, auth()->id());
 

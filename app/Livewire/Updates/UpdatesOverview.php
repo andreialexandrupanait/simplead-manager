@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Updates;
 
+use App\Enums\UpdateRoute;
 use App\Jobs\CreateBackup;
 use App\Jobs\RunSafeUpdate;
 use App\Livewire\Traits\WithSiteAuthorization;
+use App\Livewire\Traits\WithSmartUpdateRouting;
 use App\Livewire\Traits\WithVisibleSites;
+use App\Models\SafeUpdate;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
@@ -19,7 +22,7 @@ use Livewire\Component;
 
 class UpdatesOverview extends Component
 {
-    use WithSiteAuthorization, WithVisibleSites;
+    use WithSiteAuthorization, WithSmartUpdateRouting, WithVisibleSites;
 
     public string $filter = 'all';
 
@@ -176,15 +179,30 @@ class UpdatesOverview extends Component
         // regression → auto-rollback) — the global page used to bypass it
         // entirely and update with no safety net (P0-08).
         if ($site->safe_updates_enabled) {
-            $this->queueSafeUpdateForItem($site, $type, $item);
-            $this->updateResults[$key] = [
-                'success' => true,
-                'queued' => true,
-                'message' => "Safe update queued for {$item->name}.",
-                'version' => null,
-            ];
-            $this->dispatch('notify', type: 'success',
-                message: "Safe update queued for {$item->name} — it will back up, health-check and roll back automatically if anything breaks.");
+            $dispatched = $this->queueSafeUpdateForItem($site, $type, $item);
+
+            if ($dispatched) {
+                $this->updateResults[$key] = [
+                    'success' => true,
+                    'queued' => true,
+                    'message' => "Safe update queued for {$item->name}.",
+                    'version' => null,
+                ];
+                $this->dispatch('notify', type: 'success',
+                    message: "Safe update queued for {$item->name} — it will back up, health-check and roll back automatically if anything breaks.");
+            } else {
+                // Faza 6 AwaitApproval — held, not dispatched, until approved.
+                $this->updateResults[$key] = [
+                    'success' => true,
+                    'queued' => false,
+                    'awaiting_approval' => true,
+                    'message' => "Update for {$item->name} needs approval before it runs.",
+                    'version' => null,
+                ];
+                $this->dispatch('notify', type: 'warning',
+                    message: "Update for {$item->name} needs approval before it runs — approve it to proceed.");
+            }
+
             unset($this->updates, $this->stats);
 
             return;
@@ -239,10 +257,10 @@ class UpdatesOverview extends Component
         // instead of bulk-updating inline with no backup/rollback (P0-08).
         if ($site->safe_updates_enabled) {
             $queued = 0;
+            $awaiting = 0;
             /** @var SitePlugin $plugin */
             foreach ($plugins as $plugin) {
-                $this->queueSafeUpdateForItem($site, 'plugin', $plugin);
-                $queued++;
+                $this->queueSafeUpdateForItem($site, 'plugin', $plugin) ? $queued++ : $awaiting++;
             }
             /** @var SiteTheme $theme */
             foreach ($themes as $theme) {
@@ -250,8 +268,12 @@ class UpdatesOverview extends Component
                 $queued++;
             }
 
-            $this->dispatch('notify', type: 'success',
-                message: "{$queued} safe update(s) queued for {$site->name} — each backs up, health-checks and auto-rolls-back.");
+            $message = "{$queued} safe update(s) queued for {$site->name} — each backs up, health-checks and auto-rolls-back.";
+            if ($awaiting > 0) {
+                $message .= " {$awaiting} held awaiting approval.";
+            }
+
+            $this->dispatch('notify', type: $awaiting > 0 ? 'warning' : 'success', message: $message);
             unset($this->updates, $this->stats);
 
             return;
@@ -320,6 +342,7 @@ class UpdatesOverview extends Component
         $failed = 0;
         $skipped = 0;
         $queued = 0;
+        $awaiting = 0;
 
         foreach ($plugins as $plugin) {
             $site = $plugin->site;
@@ -340,8 +363,7 @@ class UpdatesOverview extends Component
             // Route safe-update sites through the safety pipeline; the fleet-wide
             // action used to update every site inline with no backup (P0-08).
             if ($site->safe_updates_enabled) {
-                $this->queueSafeUpdateForItem($site, 'plugin', $plugin);
-                $queued++;
+                $this->queueSafeUpdateForItem($site, 'plugin', $plugin) ? $queued++ : $awaiting++;
 
                 continue;
             }
@@ -376,13 +398,16 @@ class UpdatesOverview extends Component
         if ($queued > 0) {
             $message .= " {$queued} queued as safe update(s).";
         }
+        if ($awaiting > 0) {
+            $message .= " {$awaiting} held awaiting approval.";
+        }
         if ($skipped > 0) {
             $message .= " {$skipped} skipped (no access).";
         }
 
         $this->dispatch(
             'notify',
-            type: ($failed > 0 || $skipped > 0) ? 'warning' : 'success',
+            type: ($failed > 0 || $skipped > 0 || $awaiting > 0) ? 'warning' : 'success',
             message: $message,
         );
 
@@ -395,10 +420,73 @@ class UpdatesOverview extends Component
     }
 
     /**
+     * Faza 6 — safe updates the decision engine held for a human (AwaitApproval).
+     * Only pending, not-yet-dispatched rows on sites the current user can see.
+     *
+     * @return array<int, \App\Models\SafeUpdate>
+     */
+    #[Computed]
+    public function awaitingApprovals(): array
+    {
+        $ids = $this->visibleSiteIds();
+
+        return SafeUpdate::query()
+            ->where('approval_required', true)
+            ->where('status', 'pending')
+            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids))
+            ->with('site')
+            ->orderByDesc('id')
+            ->get()
+            ->all();
+    }
+
+    /**
+     * Faza 6 — approve a held (AwaitApproval) safe update: clear the approval flag
+     * and dispatch it through the normal safe-update pipeline. Authorization is
+     * enforced exactly like the other mutating actions (site-scoped, no viewers).
+     */
+    public function approveUpdate(int $safeUpdateId): void
+    {
+        /** @var SafeUpdate $safeUpdate */
+        $safeUpdate = SafeUpdate::with('site')->findOrFail($safeUpdateId);
+
+        $site = $safeUpdate->site;
+        if (! $site) {
+            $this->dispatch('notify', type: 'error', message: 'Site not found.');
+
+            return;
+        }
+
+        $this->authorizeSiteModification($site);
+
+        // Only genuinely-held, not-yet-dispatched updates can be approved — guards
+        // against double-dispatch or approving an already-running/finished row.
+        if (! $safeUpdate->approval_required || $safeUpdate->status !== 'pending') {
+            $this->dispatch('notify', type: 'error', message: 'This update is not awaiting approval.');
+
+            return;
+        }
+
+        $safeUpdate->update(['approval_required' => false]);
+
+        RunSafeUpdate::dispatch($safeUpdate, auth()->id());
+
+        $this->dispatch('notify', type: 'success',
+            message: "Approved — safe update queued for {$safeUpdate->name}.");
+
+        unset($this->updates, $this->stats);
+    }
+
+    /**
      * Queue a single plugin/theme through the safe-update pipeline for a site
      * that has opted into safe updates.
+     *
+     * Returns true when the update was dispatched, false when it was held for
+     * approval (Faza 6 AwaitApproval route). With the smart-rules flag OFF, or
+     * for themes/core (which the engine never touches), it always dispatches and
+     * returns true — behaviour identical to before.
      */
-    private function queueSafeUpdateForItem(Site $site, string $type, SitePlugin|SiteTheme $item): void
+    private function queueSafeUpdateForItem(Site $site, string $type, SitePlugin|SiteTheme $item): bool
     {
         $safeUpdate = app(SafeUpdateService::class)->createSafeUpdate(
             $site,
@@ -412,7 +500,18 @@ class UpdatesOverview extends Component
             $type === 'plugin' ? $item->file : null,
         );
 
+        // Faza 6 — smart update rules (flag-gated, default OFF). Only plugins are
+        // routed by the engine; themes/core and the flag-off path always dispatch.
+        if ($type === 'plugin'
+            && $item instanceof SitePlugin
+            && $this->smartUpdateRulesEnabled()
+            && $this->decideSafeUpdateRoute($safeUpdate, $item) === UpdateRoute::AwaitApproval) {
+            return false;
+        }
+
         RunSafeUpdate::dispatch($safeUpdate, auth()->id());
+
+        return true;
     }
 
     /**

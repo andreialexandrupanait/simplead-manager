@@ -13,6 +13,7 @@ use App\Services\DashboardService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -117,6 +118,9 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityBannedIp> $securityBannedIps
  * @property int|null $wp_admin_user_id
  * @property-read \App\Models\SiteUser|null $wpAdminUser
+ * @property string|null $smoke_canary_selector
+ * @property int|null $smoke_dom_reference
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteRiskyPlugin> $riskyPlugins
  */
 class Site extends Model
 {
@@ -173,6 +177,8 @@ class Site extends Model
         'backup_strategy',
         'wp_admin_user_id',
         'ai_context',
+        'smoke_canary_selector',
+        'smoke_dom_reference',
     ];
 
     protected $casts = [
@@ -203,6 +209,7 @@ class Site extends Model
         'backup_capabilities' => 'array',
         'backup_capabilities_checked_at' => 'datetime',
         'wp_admin_user_id' => 'integer',
+        'smoke_dom_reference' => 'integer',
     ];
 
     protected static function booted(): void
@@ -309,5 +316,17 @@ class Site extends Model
     public function getScreenshotUrlAttribute(): ?string
     {
         return $this->screenshot_path ? Storage::disk('public')->url($this->screenshot_path) : null;
+    }
+
+    /**
+     * Faza 6 — this site's per-plugin "do not auto-update" list. A plugin present
+     * here (is_risky = true) is forced onto the AwaitApproval route by the update
+     * decision engine.
+     *
+     * @return HasMany<\App\Models\SiteRiskyPlugin, $this>
+     */
+    public function riskyPlugins(): HasMany
+    {
+        return $this->hasMany(SiteRiskyPlugin::class);
     }
 }
