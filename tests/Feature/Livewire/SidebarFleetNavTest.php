@@ -36,5 +36,12 @@ class SidebarFleetNavTest extends TestCase
         // Badges: 5 visible sites, 2 alerting.
         $this->assertStringContainsString('>5<', str_replace([' ', "\n"], '', $html));
         $this->assertStringContainsString('>2<', str_replace([' ', "\n"], '', $html));
+
+        // The slim §3.1 set keeps Updates/Reports/Activity/Settings...
+        $this->assertStringContainsString(route('updates.index'), $html);
+        $this->assertStringContainsString(route('settings.general'), $html);
+        // ...and drops the per-site modules from the fleet nav (routes still exist).
+        $this->assertStringNotContainsString(route('uptime.index'), $html);
+        $this->assertStringNotContainsString(route('security.index'), $html);
     }
 }
