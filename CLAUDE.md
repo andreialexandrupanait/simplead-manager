@@ -4,7 +4,7 @@
 - Laravel 11 / PHP 8.3 app managing multiple WordPress sites via connector plugin
 - Docker production: app, horizon, scheduler, nginx, pgsql, pgbouncer, redis
 - WordPress connector plugin: `wordpress-plugin/simplead-manager-connector/`
-- Deploy: `./deploy.sh` (git pull → npm build → docker build → recreate → migrations)
+- Deploy: **Coolify** (manual, from the `migration/coolify` branch) — see the numbered **Deployment procedure** below. `deploy.sh` is stale (pre-Coolify).
 - Frontend: Livewire 4 + Blade + Tailwind CSS + Vite
 
 ## Project Structure
@@ -44,18 +44,27 @@
 ## Quick Commands (user shortcuts)
 When the user says any of these, execute immediately without asking:
 
-- **"deploy"** or **"deploy prod"** — Run steps manually: DOCKER_BUILDKIT=1 docker compose -f docker-compose.prod.yml build app nginx (frontend assets built inside Docker multi-stage), then horizon:terminate, artisan down, `up -d --force-recreate --remove-orphans app horizon scheduler`, wait for healthy, migrate --force, queue:restart, artisan up, `up -d --force-recreate nginx`
+- **"deploy"** or **"deploy prod"** — Follow the numbered **Deployment procedure** below (Coolify). Do NOT run `deploy.sh` or `docker compose -f docker-compose.prod.yml …` — see the warning there.
 - **"logs"** — Show last 50 error-level entries from today's production Laravel log
-- **"status"** — Show `docker compose -f docker-compose.prod.yml ps`
+- **"status"** — Show `docker ps --filter 'label=coolify.applicationId=6' --format '{{.Names}} {{.Status}}'`
 
-### Deployment workflow
-1. Modify code locally
-2. Commit + push when satisfied
-3. `deploy` → production via https://manager.simplead.ro
+### Deployment procedure (Coolify — READ THIS)
+
+Production `manager.simplead.ro` is **Coolify-managed** and deploys from the **`migration/coolify`** branch (NOT `main`). Coolify runs locally (UI on `:8000`); app = `managersimpleadro`, resource UUID `y12jcr1kywwdseq7i1cevtjv`, `coolify.applicationId=6`.
+
+1. **Make the change on a branch off `migration/coolify`** (not `main` — `main` is not deployed). e.g. `git checkout migration/coolify && git pull && git checkout -b hotfix/<name>`.
+2. **Push the branch and merge it into `migration/coolify`** via a PR whose **base is `migration/coolify`** (compare link: `https://github.com/andreialexandrupanait/simplead-manager/compare/migration/coolify...<branch>?expand=1`). Direct pushes to `main`/prod are protected/blocked; feature-branch pushes are fine.
+3. **Trigger the deploy in the Coolify UI** — click **Deploy/Redeploy** on the app. **Coolify does NOT auto-deploy on push/merge.** The multi-stage build (npm + composer) takes ~4 min, then it recreates the containers.
+4. **⚠️ Run migrations MANUALLY — Coolify does NOT run them.** After the deploy, inside the running app container:
+   ```
+   docker exec -i $(docker ps --filter name=manager-app --format '{{.Names}}') php artisan migrate:status   # check
+   docker exec -i $(docker ps --filter name=manager-app --format '{{.Names}}') php artisan migrate --force   # run pending
+   ```
+   `migrate` writes to the DB (not the read-only FS), so it works. Check status with a grep on the exact `Pending$` status column, not the migration name. **New code that references a not-yet-run migration's columns/tables will break at runtime**, so never skip this step.
+5. **Verify from the server:** `docker ps --filter 'label=coolify.applicationId=6'` (containers recreated + `healthy`), `docker exec <app> sh -lc 'echo $SOURCE_COMMIT'` (new commit hash), and grep the changed code / check the new schema in the live container.
 
 ## Other Commands
-- Full deploy script: `./deploy.sh` (includes git pull — use for deploy after push)
-- Live logs: `docker compose logs -f app`
-- Queue: managed by Horizon (`docker compose logs -f horizon`)
-- Build assets: `npm run build`
-- Dev server: `npm run dev`
+- ⚠️ `./deploy.sh` and `docker compose -f docker-compose.prod.yml …` are **STALE (pre-Coolify)** — they build/recreate under a different compose project than the live Coolify one (`docker compose -f docker-compose.prod.yml ps` is empty), so they would spawn conflicting containers and break prod. Deploy via Coolify (procedure above).
+- Live logs: `docker logs -f $(docker ps --filter name=manager-app --format '{{.Names}}')` (or `manager-horizon` for the queue)
+- Queue: managed by Horizon (container `manager-horizon-…`)
+- Build assets: `npm run build`  ·  Dev server: `npm run dev`
