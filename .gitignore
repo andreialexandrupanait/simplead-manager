@@ -58,3 +58,6 @@ migration-data/
 
 # Coolify deploy token (local secret, never commit)
 .coolify-deploy-token
+
+# Prod DB dumps (local, never commit)
+db-backups/
