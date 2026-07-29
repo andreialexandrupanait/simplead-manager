@@ -68,9 +68,18 @@ class RestoreRunnerE2ETest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->backupClient->cleanup();
-        $this->restoreClient->cleanup();
-        $this->rrmdir($this->liveRoot);
+        // setUp() can markTestSkipped mid-way (lab MinIO absent) before these
+        // typed properties are assigned; guard so tearDown skips cleanly instead
+        // of erroring on an uninitialized property.
+        if (isset($this->backupClient)) {
+            $this->backupClient->cleanup();
+        }
+        if (isset($this->restoreClient)) {
+            $this->restoreClient->cleanup();
+        }
+        if (isset($this->liveRoot)) {
+            $this->rrmdir($this->liveRoot);
+        }
         $this->cleanupMinio();
         parent::tearDown();
     }

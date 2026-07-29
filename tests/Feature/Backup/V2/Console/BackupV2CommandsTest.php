@@ -44,7 +44,11 @@ class BackupV2CommandsTest extends TestCase
     protected function tearDown(): void
     {
         $this->cleanupMinio();
-        $this->deleteDir($this->storageDir);
+        // setUp() can markTestSkipped mid-way (lab MinIO absent) before
+        // $storageDir is assigned; guard so tearDown skips cleanly.
+        if (isset($this->storageDir)) {
+            $this->deleteDir($this->storageDir);
+        }
         parent::tearDown();
     }
 

@@ -42,8 +42,12 @@ class DatabaseDumpOffsiteCommandTest extends TestCase
 
     protected function tearDown(): void
     {
-        @unlink($this->dumpFile);
-        if (is_dir($this->remoteDir)) {
+        // setUp() can markTestSkipped mid-way before these typed properties are
+        // assigned; guard so tearDown skips cleanly.
+        if (isset($this->dumpFile)) {
+            @unlink($this->dumpFile);
+        }
+        if (isset($this->remoteDir) && is_dir($this->remoteDir)) {
             exec('rm -rf '.escapeshellarg($this->remoteDir));
         }
         parent::tearDown();

@@ -25,7 +25,11 @@ if (!defined('ABSPATH')) {
 final class SAM_Backup_Auth {
 
     private const TIMESTAMP_TOLERANCE = 300; // seconds
-    private const NONCE_TTL           = 300; // must be >= tolerance so a replayed nonce stays blocked
+    // >= 2x tolerance: a timestamp is accepted over [ts-tol, ts+tol] (a 2*tol span),
+    // so the nonce must outlive that whole window regardless of manager/site clock
+    // skew, else a captured request could be replayed after the nonce expired but
+    // while its signed timestamp is still valid.
+    private const NONCE_TTL           = 2 * self::TIMESTAMP_TOLERANCE;
 
     /**
      * @return true|WP_Error

@@ -674,6 +674,17 @@ final class SAM_Backup_Restore_Engine {
     // ── File apply / rollback ────────────────────────────────────────────────
 
     /**
+     * A relative path (tombstone / mirror root) is safe to act on only if it
+     * carries no traversal segment or NUL byte — the same rule extract_zip_into()
+     * applies to zip entries. Tombstones/roots ride in from the S3 backup manifest
+     * verbatim, so without this a poisoned manifest could unlink or move a file
+     * outside the restore staging area / webroot (e.g. '../wp-config.php').
+     */
+    private function is_safe_relative(string $rel): bool {
+        return $rel !== '' && strpos($rel, '..') === false && strpos($rel, "\0") === false;
+    }
+
+    /**
      * @param array<string,mixed> $plan
      * @return array<string,mixed> {staging_dir, trash_dir, journal, mirror}
      */
@@ -706,7 +717,11 @@ final class SAM_Backup_Restore_Engine {
             }
         }
         foreach ($tombstones as $tomb) {
-            @unlink($staging_dir . '/' . ltrim((string) $tomb, '/'));
+            $tomb = ltrim((string) $tomb, '/');
+            if (!$this->is_safe_relative($tomb)) {
+                continue; // reject traversal / NUL from a poisoned manifest
+            }
+            @unlink($staging_dir . '/' . $tomb);
         }
         $staged = $this->relative_files($staging_dir); // recompute after pruning
         $staged_set = array_flip($staged);
@@ -719,6 +734,10 @@ final class SAM_Backup_Restore_Engine {
         if ($mode === self::MODE_MIRROR) {
             foreach ($mirror_roots as $root) {
                 $root = trim((string) $root, '/');
+                // Empty root = whole webroot (legit); reject only traversal / NUL.
+                if (strpos($root, '..') !== false || strpos($root, "\0") !== false) {
+                    continue;
+                }
                 $live_root = $this->abspath . '/' . $root;
                 foreach ($this->relative_files($live_root) as $rel_under) {
                     $rel = ($root === '' ? '' : $root . '/') . $rel_under;
@@ -733,7 +752,7 @@ final class SAM_Backup_Restore_Engine {
             // Explicit tombstones under no mirror_root are still honoured in MIRROR.
             foreach ($tombstones as $tomb) {
                 $tomb = ltrim((string) $tomb, '/');
-                if ($tomb !== '' && !isset($staged_set[$tomb]) && is_file($this->abspath . '/' . $tomb)) {
+                if ($this->is_safe_relative($tomb) && !isset($staged_set[$tomb]) && is_file($this->abspath . '/' . $tomb)) {
                     $delete_units[] = $tomb;
                 }
             }

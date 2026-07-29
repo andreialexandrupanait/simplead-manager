@@ -62,7 +62,11 @@ class IncrementalChainE2ETest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->client->cleanup();
+        // setUp() can markTestSkipped mid-way (lab MinIO absent) before $client
+        // is assigned; guard so tearDown skips cleanly.
+        if (isset($this->client)) {
+            $this->client->cleanup();
+        }
         $this->cleanupMinio();
         parent::tearDown();
     }

@@ -71,9 +71,17 @@ class ProvenRestoreServiceTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->backupClient->cleanup();
-        $this->rrmdir($this->liveRoot);
-        $this->rrmdir($this->sandboxRoot);
+        // setUp() can markTestSkipped mid-way (lab MinIO absent) before these
+        // typed properties are assigned; guard so tearDown skips cleanly.
+        if (isset($this->backupClient)) {
+            $this->backupClient->cleanup();
+        }
+        if (isset($this->liveRoot)) {
+            $this->rrmdir($this->liveRoot);
+        }
+        if (isset($this->sandboxRoot)) {
+            $this->rrmdir($this->sandboxRoot);
+        }
         $this->cleanupMinio();
         parent::tearDown();
     }
