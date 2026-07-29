@@ -2,12 +2,18 @@
     {{-- Header with Add Button --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header title="{{ __('Sites') }}" subtitle="{{ __('Manage all your WordPress sites') }}" />
-        <a href="{{ route('sites.create') }}">
-            <x-ui.button>
-                <x-icons.plus class="h-4 w-4" />
-                {{ __('Add Site') }}
-            </x-ui.button>
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('dashboard.classic') }}"
+               class="text-sm text-gray-500 hover:text-accent-600 dark:text-gray-400 dark:hover:text-accent-400">
+                {{ __('Classic dashboard') }}
+            </a>
+            <a href="{{ route('sites.create') }}">
+                <x-ui.button>
+                    <x-icons.plus class="h-4 w-4" />
+                    {{ __('Add Site') }}
+                </x-ui.button>
+            </a>
+        </div>
     </div>
 
     {{-- SPEC §4.5 — Panou: three bands, no charts, no decorative widgets --}}

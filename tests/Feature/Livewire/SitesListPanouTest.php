@@ -54,6 +54,15 @@ class SitesListPanouTest extends TestCase
         $this->assertCount(1, collect($panou['attention'])->flatMap->sites ?? collect());
     }
 
+    public function test_classic_dashboard_is_kept_as_a_backup_route_and_linked(): void
+    {
+        // The pre-§4 widget dashboard stays reachable as a backup view...
+        \Livewire\Livewire::test(\App\Livewire\Dashboard\GlobalDashboard::class)->assertOk();
+
+        // ...and the new main screen links to it.
+        Livewire::test(SitesList::class)->assertSee(route('dashboard.classic'), false);
+    }
+
     public function test_updates_tab_filters_to_sites_with_pending_plugin_updates(): void
     {
         $withUpdate = Site::factory()->create(['name' => 'needs-update', 'is_up' => true, 'is_connected' => true]);

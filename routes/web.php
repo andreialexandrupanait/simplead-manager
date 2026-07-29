@@ -13,6 +13,7 @@ use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
+use App\Livewire\Dashboard;
 use App\Livewire\Dns;
 use App\Livewire\ErrorLogs;
 use App\Livewire\MaintenancePlans;
@@ -87,6 +88,8 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Main screen (SPEC §4): the WPMU-Hub site list + the three-band Panou.
     Route::get('/', Sites\SitesList::class)->name('dashboard');
     Route::get('/dashboard/widgets', fn () => redirect()->route('dashboard'))->name('dashboard.widgets');
+    // Classic widget dashboard — kept as a backup view (the pre-§4 landing).
+    Route::get('/dashboard/classic', Dashboard\GlobalDashboard::class)->name('dashboard.classic');
 
     // Sites — global list (same §4 screen).
     Route::get('/sites', Sites\SitesList::class)->name('sites.index');
