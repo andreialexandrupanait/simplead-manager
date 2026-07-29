@@ -257,6 +257,10 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             if ($this->site->standard_preset_applied_at === null) {
                 ApplySitePresetJob::dispatch($this->site, null);
 
+                // §7.5 — seed the key-URL set (homepage now; top GSC pages fill in
+                // once Search Console data lands, via FetchSearchConsoleData).
+                app(\App\Services\KeyUrlService::class)->deriveAndStore($this->site);
+
                 // §10 step 6 — reference scan + first backup.
                 RunSecurityScan::dispatch($this->site);
                 $backupConfig = $this->site->backupConfig;
