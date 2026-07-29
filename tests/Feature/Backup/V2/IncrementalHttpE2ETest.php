@@ -38,7 +38,12 @@ class IncrementalHttpE2ETest extends TestCase
     use InteractsWithLabMinio;
     use RefreshDatabase;
 
-    private const WP_HOST = 'http://sam_spike-spike-wp-1';
+    private static function wpHost(): string
+    {
+        // Default is the sam_spike_net container alias; override to the host-published
+        // port (http://127.0.0.1:18080) when the runner is on the host network.
+        return getenv('BACKUP_ENGINE_V2_LAB_WP_HOST') ?: 'http://sam_spike-spike-wp-1';
+    }
 
     private const FILE_CHUNK_THRESHOLD = 524288;
 
@@ -147,7 +152,7 @@ class IncrementalHttpE2ETest extends TestCase
 
     private function realClient(): SimpleadBackupClient
     {
-        return SimpleadBackupClient::lab(self::WP_HOST);
+        return SimpleadBackupClient::lab(self::wpHost());
     }
 
     private function layoutFor(BackupSession $session): ObjectLayout
@@ -196,11 +201,11 @@ class IncrementalHttpE2ETest extends TestCase
         try {
             $caps = $client->capabilities();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::WP_HOST.': '.$e->getMessage());
+            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
         }
 
         if (($caps['plugin']['name'] ?? null) !== 'simplead-backup') {
-            $this->markTestSkipped('simplead-backup plugin not active on '.self::WP_HOST);
+            $this->markTestSkipped('simplead-backup plugin not active on '.self::wpHost());
         }
 
         try {

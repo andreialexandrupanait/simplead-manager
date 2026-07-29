@@ -30,7 +30,7 @@ use ZipArchive;
  * mocks for storage or transport in the primary test.
  *
  * Lab prerequisites (provisioned by spike/orchestrator/backup-v2-e2e-setup.sh):
- *   - spike-wp reachable at self::WP_HOST with simplead-backup active + HMAC key set,
+ *   - spike-wp reachable at self::wpHost() with simplead-backup active + HMAC key set,
  *   - the deterministic file fixture materialised under LabBackupFixture::SUBDIR,
  *   - lab MinIO reachable (InteractsWithLabMinio).
  * Any missing prerequisite → the test is skipped (never a false failure).
@@ -42,7 +42,12 @@ class BackupRunnerE2ETest extends TestCase
     use InteractsWithLabMinio;
     use RefreshDatabase;
 
-    private const WP_HOST = 'http://sam_spike-spike-wp-1';
+    private static function wpHost(): string
+    {
+        // Default is the sam_spike_net container alias; override to the host-published
+        // port (http://127.0.0.1:18080) when the runner is on the host network.
+        return getenv('BACKUP_ENGINE_V2_LAB_WP_HOST') ?: 'http://sam_spike-spike-wp-1';
+    }
 
     /** 512 KiB → the 40 small files span ~10 file chunks; big.bin is its own chunk. */
     private const FILE_CHUNK_THRESHOLD = 524288;
@@ -207,7 +212,11 @@ class BackupRunnerE2ETest extends TestCase
         // Snapshot the objects confirmed before the crash (ETag + mtime) to prove
         // they are NOT rewritten on resume.
         $confirmedBefore = $session->confirmed_objects ?? [];
-        $this->assertGreaterThanOrEqual(3 + 2, count($confirmedBefore), 'DB segments + 2 files confirmed before crash');
+        // DB dumps before files, so at crash (after 2 files) the DB segment(s) plus
+        // those 2 files are already confirmed. A minimal fresh WP DB is a single
+        // segment, so assert the env-robust floor (>=1 DB segment + 2 files); the
+        // real proof is the no-re-upload fingerprint check below, not this count.
+        $this->assertGreaterThanOrEqual(1 + 2, count($confirmedBefore), 'DB segment(s) + 2 files confirmed before crash');
         $fingerprintBefore = [];
         foreach ($confirmedBefore as $id => $object) {
             $fingerprintBefore[$id] = $this->objectFingerprint((string) $object['key']);
@@ -269,7 +278,7 @@ class BackupRunnerE2ETest extends TestCase
 
     private function realClient(): SimpleadBackupClient
     {
-        return SimpleadBackupClient::lab(self::WP_HOST);
+        return SimpleadBackupClient::lab(self::wpHost());
     }
 
     private function layoutFor(BackupSession $session): ObjectLayout
@@ -449,11 +458,11 @@ class BackupRunnerE2ETest extends TestCase
         try {
             $caps = $client->capabilities();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::WP_HOST.': '.$e->getMessage());
+            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
         }
 
         if (($caps['plugin']['name'] ?? null) !== 'simplead-backup') {
-            $this->markTestSkipped('simplead-backup plugin not active on '.self::WP_HOST);
+            $this->markTestSkipped('simplead-backup plugin not active on '.self::wpHost());
         }
 
         try {

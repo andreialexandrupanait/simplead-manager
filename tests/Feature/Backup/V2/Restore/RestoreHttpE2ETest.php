@@ -24,7 +24,12 @@ use ZipArchive;
 #[Group('restore')]
 class RestoreHttpE2ETest extends TestCase
 {
-    private const WP_HOST = 'http://sam_spike-spike-wp-1';
+    private static function wpHost(): string
+    {
+        // Default is the sam_spike_net container alias; override to the host-published
+        // port (http://127.0.0.1:18080) when the runner is on the host network.
+        return getenv('BACKUP_ENGINE_V2_LAB_WP_HOST') ?: 'http://sam_spike-spike-wp-1';
+    }
 
     private const DIR = 'wp-content/sam-http-restore-test';
 
@@ -36,7 +41,7 @@ class RestoreHttpE2ETest extends TestCase
 
     public function test_authenticated_http_restore_lands_a_file_on_the_host(): void
     {
-        $client = SimpleadBackupClient::lab(self::WP_HOST);
+        $client = SimpleadBackupClient::lab(self::wpHost());
         $token = 'httprestore'.bin2hex(random_bytes(4));
         $rel = self::DIR.'/hello_'.bin2hex(random_bytes(3)).'.txt';
         $content = 'restored-over-http-'.bin2hex(random_bytes(8));
@@ -130,12 +135,12 @@ class RestoreHttpE2ETest extends TestCase
     private function skipUnlessPluginReady(): void
     {
         try {
-            $caps = SimpleadBackupClient::lab(self::WP_HOST)->capabilities();
+            $caps = SimpleadBackupClient::lab(self::wpHost())->capabilities();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::WP_HOST.': '.$e->getMessage());
+            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
         }
         if (($caps['plugin']['name'] ?? null) !== 'simplead-backup') {
-            $this->markTestSkipped('simplead-backup plugin not active on '.self::WP_HOST);
+            $this->markTestSkipped('simplead-backup plugin not active on '.self::wpHost());
         }
     }
 }
