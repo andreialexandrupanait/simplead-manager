@@ -61,3 +61,8 @@ migration-data/
 
 # Prod DB dumps (local, never commit)
 db-backups/
+
+# Backup-v2 lab/spike + baseline artifacts (local only, never commit — spike/ e 14GB/35k fișiere)
+spike/
+lab/
+.baseline-artifacts/
