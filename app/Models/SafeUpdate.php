@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $screenshot_before_path
  * @property string|null $screenshot_after_path
  * @property array|null $visual_regression_results
+ * @property array|null $smoke_check_results
  * @property \Illuminate\Support\Carbon|null $started_at
  * @property \Illuminate\Support\Carbon|null $completed_at
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -55,6 +56,7 @@ class SafeUpdate extends Model
         'screenshot_before_path',
         'screenshot_after_path',
         'visual_regression_results',
+        'smoke_check_results',
         'started_at',
         'completed_at',
     ];
@@ -63,6 +65,7 @@ class SafeUpdate extends Model
         'health_check_results' => 'array',
         'ai_risk_assessment' => 'array',
         'visual_regression_results' => 'array',
+        'smoke_check_results' => 'array',
         'auto_rollback' => 'boolean',
         'approval_required' => 'boolean',
         'ai_risk_score' => 'integer',

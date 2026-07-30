@@ -43,6 +43,78 @@ class UpdateSmokeCheckService
     /** Allowed relative deviation of the DOM node count from its reference (±20%). */
     private const DOM_TOLERANCE = 0.20;
 
+    /** Upper bound on key URLs probed per run (SPEC §7.4: "3-5 URL-uri cheie"). */
+    private const MAX_KEY_URLS = 5;
+
+    /**
+     * SPEC §7.4 etapa 1 in full: probe every derived key URL (§7.5), not just the
+     * homepage, and fold the results into one verdict. Each URL keeps its OWN DOM
+     * reference in `sites.smoke_dom_references` (a page with a different amount of
+     * markup than the homepage must not be judged against the homepage's count);
+     * the homepage seeds from the legacy single-value `smoke_dom_reference` so an
+     * already-captured baseline survives.
+     *
+     * The updated references are RETURNED, not persisted — the caller decides
+     * whether a run deserves to become the new baseline (a failed update should
+     * not overwrite the reference it just failed against).
+     *
+     * @return array{passed: bool, urls: list<array{url: string, passed: bool, signals: array<int, array{name: string, passed: bool, detail: string}>}>, dom_references: array<string, int>}
+     */
+    public function runKeyUrls(Site $site): array
+    {
+        $references = (array) ($site->smoke_dom_references ?? []);
+        $home = (string) $site->url;
+
+        // Seed the homepage from the pre-jsonb column so its history carries over.
+        // KeyUrlService writes the homepage WITH a trailing slash while the legacy
+        // column was measured against $site->url without one — seed both spellings,
+        // otherwise the carried-over baseline would never match anything.
+        if ($site->smoke_dom_reference !== null) {
+            foreach ([$home, rtrim($home, '/').'/'] as $spelling) {
+                if (! isset($references[$spelling])) {
+                    $references[$spelling] = (int) $site->smoke_dom_reference;
+                }
+            }
+        }
+
+        $urls = array_values(array_filter(
+            (array) ($site->key_urls ?? []),
+            fn ($url): bool => is_string($url) && $url !== '',
+        ));
+
+        // A site with no derived key URLs still gets checked — on its homepage.
+        if ($urls === []) {
+            $urls = [$home];
+        }
+
+        $urls = array_slice($urls, 0, self::MAX_KEY_URLS);
+
+        $passed = true;
+        $results = [];
+
+        foreach ($urls as $url) {
+            $reference = isset($references[$url]) ? (int) $references[$url] : null;
+            $outcome = $this->run($site, $reference, $site->smoke_canary_selector, $url);
+
+            if ($outcome['dom_reference'] !== null) {
+                $references[$url] = $outcome['dom_reference'];
+            }
+
+            $passed = $passed && $outcome['passed'];
+            $results[] = [
+                'url' => $url,
+                'passed' => $outcome['passed'],
+                'signals' => $outcome['signals'],
+            ];
+        }
+
+        return [
+            'passed' => $passed,
+            'urls' => $results,
+            'dom_references' => $references,
+        ];
+    }
+
     /**
      * Run the smoke check against the site's public URL.
      *
@@ -51,16 +123,20 @@ class UpdateSmokeCheckService
      *                                  against; null triggers a baseline run.
      * @param  string|null  $canarySelector  an HTML fragment (id/class/markup) that
      *                                       must be present; null falls back to '<body'.
+     * @param  string|null  $url  a specific page to probe (one of the site's key
+     *                            URLs); null probes the homepage ($site->url).
      * @return array{passed: bool, signals: array<int, array{name: string, passed: bool, detail: string}>, dom_reference: int|null}
      */
-    public function run(Site $site, ?int $domReference = null, ?string $canarySelector = null): array
+    public function run(Site $site, ?int $domReference = null, ?string $canarySelector = null, ?string $url = null): array
     {
+        $target = ($url !== null && $url !== '') ? $url : $site->url;
+
         try {
             $response = Http::timeout(self::HTTP_TIMEOUT)
                 ->withOptions(['allow_redirects' => true])
-                ->get($site->url);
+                ->get($target);
         } catch (\Throwable $e) {
-            Log::warning("Smoke check unreachable for site {$site->id} ({$site->url}): {$e->getMessage()}");
+            Log::warning("Smoke check unreachable for site {$site->id} ({$target}): {$e->getMessage()}");
 
             return [
                 'passed' => false,

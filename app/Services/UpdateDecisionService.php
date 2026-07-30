@@ -8,6 +8,7 @@ use App\DTOs\UpdateDecision;
 use App\Enums\UpdateRoute;
 use App\Models\SitePlugin;
 use App\Models\SiteRiskyPlugin;
+use App\Models\UptimeIncident;
 use App\Models\VulnerabilityAlert;
 use App\Support\Semver;
 
@@ -27,7 +28,9 @@ use App\Support\Semver;
  *       Security trumps the approval gate.
  *   (b) AwaitApproval  — a major version bump, OR the plugin is on this site's
  *       risky list, OR the AI risk level is {risky, unknown} (including when
- *       assessment failed / threw).
+ *       assessment failed / threw), OR the site has no recovery path right now
+ *       (no backup newer than 24h, or an open uptime incident) — the two
+ *       site-level preconditions SPEC §7.2 Rule 1 attaches to auto-apply.
  *   (c) AutoMinor      — everything else: a small, low-risk, non-flagged bump.
  */
 class UpdateDecisionService
@@ -82,6 +85,10 @@ class UpdateDecisionService
             $holdReasons[] = "AI risk level is \"{$level}\".";
         }
 
+        foreach ($this->siteRecoveryPreconditions($plugin) as $unmet) {
+            $holdReasons[] = $unmet;
+        }
+
         if ($holdReasons !== []) {
             return new UpdateDecision(
                 UpdateRoute::AwaitApproval,
@@ -118,6 +125,49 @@ class UpdateDecisionService
 
                 return Semver::atLeast($to, $alert->fixed_in_version);
             });
+    }
+
+    /**
+     * SPEC §7.2 Rule 1 does not only ask whether the UPDATE is small — it also
+     * asks whether the SITE can be recovered if the update goes wrong: a backup
+     * newer than 24h must exist, and the site must not already be in an open
+     * incident. Either one unmet makes auto-apply irresponsible, so the update
+     * is held for approval instead.
+     *
+     * Fail-safe like the rest of the engine: an unknown last-backup timestamp
+     * counts as "no recent backup".
+     *
+     * @return list<string> unmet preconditions, empty when Rule 1 is satisfied
+     */
+    private function siteRecoveryPreconditions(SitePlugin $plugin): array
+    {
+        $site = $plugin->site;
+
+        if ($site === null) {
+            return ['Site record unavailable — cannot confirm a recovery path.'];
+        }
+
+        $unmet = [];
+
+        $lastBackup = $site->last_backup_at;
+        if ($lastBackup === null || $lastBackup->lt(now()->subDay())) {
+            $unmet[] = $lastBackup === null
+                ? 'No backup on record — Rule 1 requires one newer than 24h.'
+                : "Most recent backup is from {$lastBackup->diffForHumans()} — Rule 1 requires one newer than 24h.";
+        }
+
+        // Incidents hang off the uptime monitor (uptime_incidents.monitor_id →
+        // uptime_monitors.site_id), not off the site directly.
+        $openIncidents = UptimeIncident::query()
+            ->whereNull('resolved_at')
+            ->whereHas('monitor', fn ($q) => $q->where('site_id', $site->id))
+            ->count();
+
+        if ($openIncidents > 0) {
+            $unmet[] = "Site has {$openIncidents} open uptime incident(s).";
+        }
+
+        return $unmet;
     }
 
     private function isFlaggedRisky(SitePlugin $plugin): bool

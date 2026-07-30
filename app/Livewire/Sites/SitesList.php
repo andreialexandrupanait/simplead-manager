@@ -16,6 +16,7 @@ use App\Models\Site;
 use App\Models\Tag;
 use App\Operations\OperationRunner;
 use App\Operations\Operations\PurgeCloudflareCacheOperation;
+use App\Services\CanaryRolloutService;
 use App\Services\SettingsService;
 use App\Services\WordPressApiServiceFactory;
 use Livewire\Attributes\Computed;
@@ -274,18 +275,37 @@ class SitesList extends Component
             return;
         }
 
-        $queued = 0;
-        $skipped = 0;
-        foreach ($sites as $site) {
-            if ($site->is_connected && $site->safe_updates_enabled) {
-                QueueSiteSafeUpdatesJob::dispatch($site, auth()->id());
-                $queued++;
-            } else {
-                $skipped++;
-            }
-        }
+        $eligible = $sites->filter(fn (Site $site): bool => $site->is_connected && $site->safe_updates_enabled);
+        $skipped = $sites->count() - $eligible->count();
 
         $this->selectedSites = [];
+
+        // SPEC §7.2 Rule 1 — with smart rules on, a fleet update is staged: two
+        // canaries now, the rest only after they survive 30 minutes and a smoke
+        // check. With the flag off this is the same immediate fan-out as before.
+        $rollout = app(CanaryRolloutService::class);
+
+        if ($rollout->enabled() && $eligible->count() > CanaryRolloutService::CANARY_COUNT) {
+            $groups = $rollout->start($eligible, auth()->id());
+
+            $this->dispatch(
+                'notify',
+                type: 'success',
+                message: __('Staged rollout started: :canaries canary site(s) now, :deferred more after a :minutes-minute smoke check.', [
+                    'canaries' => count($groups['canaries']),
+                    'deferred' => count($groups['deferred']),
+                    'minutes' => CanaryRolloutService::OBSERVATION_MINUTES,
+                ]),
+            );
+
+            return;
+        }
+
+        $queued = 0;
+        foreach ($eligible as $site) {
+            QueueSiteSafeUpdatesJob::dispatch($site, auth()->id());
+            $queued++;
+        }
 
         $message = trans_choice(
             'Safe update queued for :count site.|Safe updates queued for :count sites.',

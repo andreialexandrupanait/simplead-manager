@@ -187,4 +187,83 @@ class UpdateDecisionServiceTest extends TestCase
         $this->assertSame(UpdateRoute::AwaitApproval, $decision->route);
         $this->assertSame(50, $decision->score());
     }
+
+    /**
+     * SPEC §7.2 Rule 1 also requires a recovery path before anything auto-applies:
+     * a backup newer than 24h and no open incident on the site.
+     */
+    public function test_a_stale_backup_holds_an_otherwise_automatic_update(): void
+    {
+        $this->site->forceFill(['last_backup_at' => now()->subDays(3)])->saveQuietly();
+        $plugin = $this->plugin('1.2.0', '1.2.1');
+
+        $decision = $this->service(['score' => 5, 'level' => 'safe', 'reasons' => []])->decide($plugin);
+
+        $this->assertSame(UpdateRoute::AwaitApproval, $decision->route);
+        $this->assertTrue(
+            collect($decision->reasons)->contains(fn (string $r): bool => str_contains($r, '24h')),
+            'The operator must be told WHY it is being held.'
+        );
+    }
+
+    public function test_no_backup_at_all_holds_an_otherwise_automatic_update(): void
+    {
+        $this->site->forceFill(['last_backup_at' => null])->saveQuietly();
+        $plugin = $this->plugin('1.2.0', '1.2.1');
+
+        $decision = $this->service(['score' => 5, 'level' => 'safe', 'reasons' => []])->decide($plugin);
+
+        $this->assertSame(UpdateRoute::AwaitApproval, $decision->route);
+    }
+
+    public function test_an_open_incident_holds_an_otherwise_automatic_update(): void
+    {
+        $monitor = \App\Models\UptimeMonitor::factory()->for($this->site)->create();
+        \App\Models\UptimeIncident::factory()->create([
+            'monitor_id' => $monitor->id,
+            'resolved_at' => null,
+        ]);
+
+        $plugin = $this->plugin('1.2.0', '1.2.1');
+
+        $decision = $this->service(['score' => 5, 'level' => 'safe', 'reasons' => []])->decide($plugin);
+
+        $this->assertSame(UpdateRoute::AwaitApproval, $decision->route);
+    }
+
+    public function test_a_resolved_incident_does_not_hold_an_update(): void
+    {
+        $monitor = \App\Models\UptimeMonitor::factory()->for($this->site)->create();
+        \App\Models\UptimeIncident::factory()->create([
+            'monitor_id' => $monitor->id,
+            'resolved_at' => now()->subHour(),
+        ]);
+
+        $plugin = $this->plugin('1.2.0', '1.2.1');
+
+        $decision = $this->service(['score' => 5, 'level' => 'safe', 'reasons' => []])->decide($plugin);
+
+        $this->assertSame(UpdateRoute::AutoMinor, $decision->route);
+    }
+
+    /**
+     * A critical vulnerability is the one thing allowed to skip the gate — the
+     * preconditions must not be able to veto it (SPEC §7.2 Rule 3).
+     */
+    public function test_a_critical_vulnerability_bypasses_even_without_a_recent_backup(): void
+    {
+        $this->site->forceFill(['last_backup_at' => null])->saveQuietly();
+        $plugin = $this->plugin('1.0.0', '1.0.1');
+
+        VulnerabilityAlert::factory()->for($this->site)->create([
+            'software_slug' => $plugin->slug,
+            'severity' => 'critical',
+            'status' => 'active',
+            'fixed_in_version' => '1.0.1',
+        ]);
+
+        $decision = $this->service(['score' => 5, 'level' => 'safe', 'reasons' => []])->decide($plugin);
+
+        $this->assertSame(UpdateRoute::CriticalBypass, $decision->route);
+    }
 }

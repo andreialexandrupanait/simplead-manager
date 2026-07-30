@@ -28,6 +28,24 @@ class SafeUpdateServiceTest extends TestCase
     }
 
     /**
+     * A smoke check that always passes without touching the network. These tests
+     * predate the §7.4 wiring and assert the health/visual/rollback stages, so the
+     * smoke stage is held neutral here; its own behaviour is covered in
+     * UpdateSmokeCheckWiringTest.
+     */
+    private function passingSmokeChecks(): \App\Services\UpdateSmokeCheckService
+    {
+        $smoke = $this->createMock(\App\Services\UpdateSmokeCheckService::class);
+        $smoke->method('runKeyUrls')->willReturn([
+            'passed' => true,
+            'urls' => [],
+            'dom_references' => [],
+        ]);
+
+        return $smoke;
+    }
+
+    /**
      * Build a service whose pre-update backup is stubbed to a verified-completed
      * Backup so tests can exercise the update/health/rollback stages. A real
      * backup config is created so the P1-17 no-config abort is not triggered.
@@ -39,7 +57,7 @@ class SafeUpdateServiceTest extends TestCase
     ): SafeUpdateService {
         \App\Models\BackupConfig::factory()->create(['site_id' => $this->site->id]);
 
-        return new class($rollbackService, $this->createMockApiFactory($api), $screenshotService) extends SafeUpdateService
+        return new class($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks()) extends SafeUpdateService
         {
             protected function runPreUpdateBackup(\App\Models\Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?\App\Models\Backup
             {
@@ -52,7 +70,7 @@ class SafeUpdateServiceTest extends TestCase
     {
         $rollbackService = $this->createMock(RollbackService::class);
         $screenshotService = $this->createMock(ScreenshotService::class);
-        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory(), $screenshotService);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory(), $screenshotService, $this->passingSmokeChecks());
 
         $update = $service->createSafeUpdate($this->site, 'plugin', 'yoast-seo', 'Yoast SEO', '20.0', '21.0');
 
@@ -66,7 +84,7 @@ class SafeUpdateServiceTest extends TestCase
     {
         $rollbackService = $this->createMock(RollbackService::class);
         $screenshotService = $this->createMock(ScreenshotService::class);
-        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory(), $screenshotService);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory(), $screenshotService, $this->passingSmokeChecks());
 
         $update = $service->createSafeUpdate(
             $this->site, 'plugin', 'akismet', 'Akismet', '5.0', '5.1', 'akismet/akismet.php'
@@ -337,7 +355,7 @@ class SafeUpdateServiceTest extends TestCase
         $site = $this->site;
         \App\Models\BackupConfig::factory()->create(['site_id' => $site->id]);
 
-        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService) extends SafeUpdateService
+        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks()) extends SafeUpdateService
         {
             protected function runPreUpdateBackup(\App\Models\Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?\App\Models\Backup
             {
@@ -389,7 +407,7 @@ class SafeUpdateServiceTest extends TestCase
         $site = $this->site;
         \App\Models\BackupConfig::factory()->create(['site_id' => $site->id]);
 
-        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService) extends SafeUpdateService
+        $service = new class($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks()) extends SafeUpdateService
         {
             protected function runPreUpdateBackup(\App\Models\Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?\App\Models\Backup
             {
@@ -423,7 +441,7 @@ class SafeUpdateServiceTest extends TestCase
 
         $rollbackService = $this->createMock(RollbackService::class);
         $screenshotService = $this->createMock(ScreenshotService::class);
-        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks());
 
         // $this->site intentionally has NO backupConfig.
         $safeUpdate = SafeUpdate::factory()->create([
@@ -463,7 +481,7 @@ class SafeUpdateServiceTest extends TestCase
         $screenshotService = $this->createMock(ScreenshotService::class);
         \App\Models\BackupConfig::factory()->create(['site_id' => $this->site->id]);
 
-        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks());
 
         $safeUpdate = SafeUpdate::factory()->create([
             'site_id' => $this->site->id,
@@ -738,7 +756,7 @@ class SafeUpdateServiceTest extends TestCase
 
         $rollbackService = $this->createMock(RollbackService::class);
         $screenshotService = $this->createMock(ScreenshotService::class);
-        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService);
+        $service = new SafeUpdateService($rollbackService, $this->createMockApiFactory($api), $screenshotService, $this->passingSmokeChecks());
 
         $result = $service->runHealthChecks($this->site);
 

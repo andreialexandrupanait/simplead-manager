@@ -23,6 +23,7 @@ class SafeUpdateService
         protected RollbackService $rollbackService,
         protected WordPressApiServiceFactory $apiFactory,
         protected ScreenshotService $screenshotService,
+        protected UpdateSmokeCheckService $smokeChecks,
     ) {}
 
     public function createSafeUpdate(
@@ -187,6 +188,20 @@ class SafeUpdateService
             $safeUpdate->update(['status' => 'health_checking']);
             $healthResults = $this->runHealthChecks($site);
 
+            // Step 5b: Smoke check on the key URLs (SPEC §7.4 etapa 1).
+            //
+            // The connector health check above is answered from INSIDE WordPress; it
+            // cannot see a white screen a visitor gets. The smoke check hits the
+            // public key URLs the way a visitor does.
+            //
+            // It always RUNS and is always RECORDED, but it only gets a VOTE on the
+            // rollback decision when smart update rules are enabled. Enforcing it
+            // unconditionally would let a transient 502 on one key URL roll back a
+            // perfectly good update on day one; the flag makes turning it into a gate
+            // a deliberate act, exactly like the rest of Faza 6.
+            $smokeResults = $this->runSmokeChecks($site, $safeUpdate);
+            $smokeEnforced = (bool) config('updates.smart_rules_enabled', false);
+
             // Step 6: Visual regression check
             $visualResults = null;
             if ($beforeScreenshot) {
@@ -195,8 +210,9 @@ class SafeUpdateService
 
             $healthPassed = $healthResults['passed'];
             $visualPassed = ! $visualResults || ($visualResults['diff_percent'] ?? 0) < self::VISUAL_DIFF_THRESHOLD;
+            $smokePassed = ! $smokeEnforced || $smokeResults === null || ($smokeResults['passed'] ?? true);
 
-            if ($healthPassed && $visualPassed) {
+            if ($healthPassed && $visualPassed && $smokePassed) {
                 $safeUpdate->update([
                     'status' => 'completed',
                     'health_check_results' => $healthResults['checks'],
@@ -216,6 +232,9 @@ class SafeUpdateService
                 }
                 if (! $visualPassed) {
                     $errorParts[] = 'Visual regression detected significant changes ('.($visualResults['diff_percent'] ?? '?').'% different)';
+                }
+                if (! $smokePassed) {
+                    $errorParts[] = 'Smoke check failed on '.$this->failedSmokeUrls($smokeResults);
                 }
 
                 $errorMessage = implode('. ', $errorParts);
@@ -468,6 +487,59 @@ class SafeUpdateService
                 'checks' => [['name' => 'health_endpoint', 'status' => 'error', 'message' => $e->getMessage()]],
             ];
         }
+    }
+
+    /**
+     * SPEC §7.4 etapa 1 — probe the site's key URLs the way a visitor would and
+     * record what was seen on the safe update itself.
+     *
+     * Never throws: an update must not fail because the smoke check could not run.
+     * A null return means "no verdict" and is treated as a pass by the caller.
+     *
+     * The measured DOM counts become the new per-URL reference ONLY when every URL
+     * passed — otherwise a broken page would quietly become the baseline that the
+     * next update is compared against.
+     *
+     * @return array{passed: bool, urls: list<array{url: string, passed: bool, signals: array<int, array{name: string, passed: bool, detail: string}>}>}|null
+     */
+    protected function runSmokeChecks(Site $site, SafeUpdate $safeUpdate): ?array
+    {
+        try {
+            $result = $this->smokeChecks->runKeyUrls($site);
+        } catch (\Throwable $e) {
+            Log::warning("Smoke check could not run for safe update {$safeUpdate->id} on site {$site->id}: {$e->getMessage()}");
+
+            return null;
+        }
+
+        $safeUpdate->update(['smoke_check_results' => [
+            'passed' => $result['passed'],
+            'urls' => $result['urls'],
+            'enforced' => (bool) config('updates.smart_rules_enabled', false),
+            'checked_at' => now()->toIso8601String(),
+        ]]);
+
+        if ($result['passed'] && $result['dom_references'] !== []) {
+            $site->forceFill(['smoke_dom_references' => $result['dom_references']])->saveQuietly();
+        }
+
+        return ['passed' => $result['passed'], 'urls' => $result['urls']];
+    }
+
+    /**
+     * Human-readable list of the key URLs that failed, for the operator-facing
+     * error message.
+     *
+     * @param  array{passed: bool, urls: list<array{url: string, passed: bool}>}|null  $smokeResults
+     */
+    private function failedSmokeUrls(?array $smokeResults): string
+    {
+        $failed = array_column(
+            array_filter($smokeResults['urls'] ?? [], fn (array $u): bool => ! $u['passed']),
+            'url'
+        );
+
+        return $failed === [] ? 'the key URLs' : implode(', ', $failed);
     }
 
     /**

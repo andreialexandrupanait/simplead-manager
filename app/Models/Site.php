@@ -121,6 +121,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\SiteUser|null $wpAdminUser
  * @property string|null $smoke_canary_selector
  * @property int|null $smoke_dom_reference
+ * @property array|null $smoke_dom_references
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteRiskyPlugin> $riskyPlugins
  */
 class Site extends Model
@@ -182,6 +183,7 @@ class Site extends Model
         'ai_context',
         'smoke_canary_selector',
         'smoke_dom_reference',
+        'smoke_dom_references',
     ];
 
     protected $casts = [
@@ -215,6 +217,7 @@ class Site extends Model
         'backup_capabilities_checked_at' => 'datetime',
         'wp_admin_user_id' => 'integer',
         'smoke_dom_reference' => 'integer',
+        'smoke_dom_references' => 'array',
     ];
 
     protected static function booted(): void
