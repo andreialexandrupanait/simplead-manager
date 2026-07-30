@@ -69,7 +69,7 @@ class AlertsOverview extends Component
                 $reasons[] = __('health :n', ['n' => (int) $site->health_score]);
             }
 
-            $client = $site->client?->name ?? __('No client');
+            $client = $site->client !== null ? $site->client->name : __('No client');
 
             $groups[$client]['client'] = $client;
             $groups[$client]['severity'] = min($groups[$client]['severity'] ?? 9, $severity);

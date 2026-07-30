@@ -1,6 +1,4 @@
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <form wire:submit="save" class="space-y-6" x-data="{ ready: false }" x-init="$nextTick(() => ready = true)" x-show="ready" x-cloak>
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">

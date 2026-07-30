@@ -15,7 +15,7 @@ class DropboxAuthController extends Controller
         $appKey = config('services.dropbox.app_key');
 
         if (empty($appKey)) {
-            return redirect()->route('settings.integrations')
+            return redirect()->route('settings.data')
                 ->with('error', 'Dropbox App Key is not configured. Add your API credentials in Integrations settings.');
         }
 
@@ -37,7 +37,7 @@ class DropboxAuthController extends Controller
     public function callback(Request $request)
     {
         if ($request->has('error')) {
-            return redirect()->route('settings.integrations')
+            return redirect()->route('settings.data')
                 ->with('error', 'Dropbox authorization was denied: '.$request->input('error_description', 'Unknown error'));
         }
 
@@ -57,7 +57,7 @@ class DropboxAuthController extends Controller
         ]);
 
         if ($response->failed()) {
-            return redirect()->route('settings.integrations')
+            return redirect()->route('settings.data')
                 ->with('error', 'Failed to exchange Dropbox authorization code for tokens.');
         }
 
@@ -145,7 +145,7 @@ class DropboxAuthController extends Controller
             ]);
         }
 
-        return redirect()->route('settings.integrations')
+        return redirect()->route('settings.data')
             ->with('success', 'Dropbox storage connected successfully.');
     }
 }

@@ -285,7 +285,7 @@ class ActivityLogger
             description: "{$fileName} ({$sizeMb} MB)",
             metadata: ['file_name' => $fileName, 'file_size' => $fileSize],
             icon: 'hard-drive',
-            url: route('settings.application-backup'),
+            url: route('settings.data'),
         );
     }
 
@@ -298,7 +298,7 @@ class ActivityLogger
             description: $error,
             metadata: ['error' => $error],
             icon: 'hard-drive',
-            url: route('settings.application-backup'),
+            url: route('settings.data'),
         );
     }
 
@@ -311,7 +311,7 @@ class ActivityLogger
             description: "Restored from backup dated {$backupDate}",
             metadata: ['backup_date' => $backupDate],
             icon: 'hard-drive',
-            url: route('settings.application-backup'),
+            url: route('settings.data'),
         );
     }
 
@@ -402,7 +402,7 @@ class ActivityLogger
             description: $description,
             metadata: $results,
             icon: 'trash-2',
-            url: route('settings.data-retention'),
+            url: route('settings.data'),
         );
     }
 

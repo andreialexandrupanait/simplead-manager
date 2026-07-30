@@ -128,7 +128,9 @@ class TwoFactorAuthTest extends TestCase
     {
         $admin = User::factory()->admin()->create(['two_factor_grace_started_at' => now()->subDays(30)]);
 
-        $this->actingAs($admin)->get('/')->assertRedirect(route('settings.two-factor'));
+        // Enrollment lives on the Account tab now; /settings/two-factor is a
+        // redirect to it.
+        $this->actingAs($admin)->get('/')->assertRedirect(route('settings.account'));
     }
 
     public function test_admin_within_grace_is_allowed_through(): void

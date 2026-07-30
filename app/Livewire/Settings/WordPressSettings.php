@@ -154,7 +154,6 @@ class WordPressSettings extends Component
 
     public function render()
     {
-        return view('livewire.settings.wordpress-settings')
-            ->layout('components.layouts.app', ['title' => 'WordPress Settings']);
+        return view('livewire.settings.wordpress-settings');
     }
 }

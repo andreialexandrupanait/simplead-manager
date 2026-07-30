@@ -143,7 +143,6 @@ class EmailSettings extends Component
 
     public function render()
     {
-        return view('livewire.settings.email-settings')
-            ->layout('components.layouts.app', ['title' => 'Email Settings']);
+        return view('livewire.settings.email-settings');
     }
 }

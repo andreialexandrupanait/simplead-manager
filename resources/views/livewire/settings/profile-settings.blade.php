@@ -1,6 +1,4 @@
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <div class="space-y-6">
         {{-- Profile Section --}}
         <form wire:submit="saveProfile">

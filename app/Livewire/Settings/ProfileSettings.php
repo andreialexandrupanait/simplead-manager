@@ -246,7 +246,6 @@ class ProfileSettings extends Component
 
     public function render()
     {
-        return view('livewire.settings.profile-settings')
-            ->layout('components.layouts.app', ['title' => 'Profile']);
+        return view('livewire.settings.profile-settings');
     }
 }

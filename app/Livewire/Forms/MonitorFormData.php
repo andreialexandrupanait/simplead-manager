@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Forms;
 
+use App\Services\SettingsService;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
 
@@ -73,17 +74,25 @@ class MonitorFormData extends Form
         $this->alert_after_failures = $monitor->alert_after_failures ?? 3;
     }
 
+    /**
+     * A new monitor starts from the values set in Settings → General →
+     * Monitoring Defaults. That section has been writable since it was built
+     * and read by nothing, so whatever you typed there had no effect on the
+     * next monitor you created. The hard-coded numbers stay as the fallback.
+     */
     public function resetFormData(): void
     {
+        $settings = app(SettingsService::class);
+
         $this->url = '';
         $this->type = 'http';
-        $this->interval_minutes = 5;
-        $this->timeout = 30;
+        $this->interval_minutes = (int) $settings->get('default_interval', 5);
+        $this->timeout = (int) $settings->get('default_timeout', 30);
         $this->http_method = 'GET';
         $this->follow_redirects = true;
         $this->keyword = '';
         $this->keyword_type = 'exists';
         $this->keyword_case_sensitive = false;
-        $this->alert_after_failures = 3;
+        $this->alert_after_failures = (int) $settings->get('alert_after_failures', 3);
     }
 }

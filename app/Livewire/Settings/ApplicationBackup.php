@@ -415,7 +415,6 @@ class ApplicationBackup extends Component
 
         return view('livewire.settings.application-backup', [
             'backups' => $query->paginate(15),
-        ])
-            ->layout('components.layouts.app', ['title' => 'Application Backup']);
+        ]);
     }
 }

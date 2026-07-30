@@ -15,12 +15,15 @@ use Livewire\Component;
 
 class NotificationSettings extends Component
 {
-    // Notification preferences
+    // Notification preferences. Each of these gates a real sender: notify_down
+    // and notify_recovery in NotifyIncident, notify_ssl_expiring in CheckSsl.
+    // A fourth toggle, "Degraded Performance", was offered here for an event
+    // nothing ever emits — it is gone rather than left pretending.
     public bool $notifyDown = true;
 
     public bool $notifyRecovery = true;
 
-    public bool $notifyDegraded = false;
+    public bool $notifySslExpiring = true;
 
     // Quiet hours
     public bool $quietHoursEnabled = false;
@@ -33,7 +36,7 @@ class NotificationSettings extends Component
     {
         $this->notifyDown = (bool) $settings->get('notify_down', true);
         $this->notifyRecovery = (bool) $settings->get('notify_recovery', true);
-        $this->notifyDegraded = (bool) $settings->get('notify_degraded', false);
+        $this->notifySslExpiring = (bool) $settings->get('notify_ssl_expiring', true);
         $this->quietHoursEnabled = (bool) $settings->get('quiet_hours_enabled', false);
         $this->quietHoursStart = $settings->get('quiet_hours_start', '22:00');
         $this->quietHoursEnd = $settings->get('quiet_hours_end', '07:00');
@@ -43,7 +46,7 @@ class NotificationSettings extends Component
     {
         $settings->set('notify_down', $this->notifyDown, 'notifications', 'boolean');
         $settings->set('notify_recovery', $this->notifyRecovery, 'notifications', 'boolean');
-        $settings->set('notify_degraded', $this->notifyDegraded, 'notifications', 'boolean');
+        $settings->set('notify_ssl_expiring', $this->notifySslExpiring, 'notifications', 'boolean');
         $settings->set('quiet_hours_enabled', $this->quietHoursEnabled, 'notifications', 'boolean');
         $settings->set('quiet_hours_start', $this->quietHoursStart, 'notifications', 'string');
         $settings->set('quiet_hours_end', $this->quietHoursEnd, 'notifications', 'string');
@@ -202,7 +205,6 @@ class NotificationSettings extends Component
 
     public function render()
     {
-        return view('livewire.settings.notification-settings')
-            ->layout('components.layouts.app', ['title' => 'Notification Settings']);
+        return view('livewire.settings.notification-settings');
     }
 }

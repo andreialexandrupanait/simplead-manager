@@ -158,7 +158,6 @@ class DataRetentionSettings extends Component
 
     public function render()
     {
-        return view('livewire.settings.data-retention-settings')
-            ->layout('components.layouts.app', ['title' => 'Data Retention']);
+        return view('livewire.settings.data-retention-settings');
     }
 }

@@ -81,10 +81,10 @@
         $settingsTitle = match($routeName) {
             'settings.general' => __('General'),
             'settings.notifications' => __('Notifications'),
-            'settings.profile' => __('Profile'),
             'settings.integrations' => __('Integrations'),
-            'settings.report-templates' => __('Report Templates'),
-            'settings.application-backup' => __('Application Backup'),
+            'settings.data' => __('Backup & Data'),
+            'settings.report-templates' => __('Reports'),
+            'settings.account' => __('Account'),
             default => $title,
         };
 

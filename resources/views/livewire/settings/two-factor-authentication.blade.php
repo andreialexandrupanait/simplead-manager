@@ -1,6 +1,4 @@
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <div class="space-y-6 max-w-2xl">
         <x-ui.card>
             <div class="flex items-center justify-between mb-4">

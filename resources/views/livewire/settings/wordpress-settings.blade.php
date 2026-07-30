@@ -1,6 +1,4 @@
 <div @if($pluginPushRunning) wire:poll.2s="checkPushProgress" @endif>
-    @include('livewire.settings.partials.settings-tabs')
-
     {{-- Connector Plugin --}}
     <x-ui.card>
         <div class="flex items-center justify-between mb-4">
