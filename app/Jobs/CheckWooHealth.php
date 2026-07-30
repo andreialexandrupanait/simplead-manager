@@ -47,6 +47,9 @@ class CheckWooHealth implements ShouldBeUnique, ShouldQueue
     /** Age (hours) beyond which a still-pending order counts as stuck. */
     private const PENDING_THRESHOLD_HOURS = 24;
 
+    /** Connector release that introduced the /woo-health endpoint. */
+    private const MIN_CONNECTOR_VERSION = '2.19.2';
+
     public function __construct()
     {
         $this->onQueue('default');
@@ -73,6 +76,14 @@ class CheckWooHealth implements ShouldBeUnique, ShouldQueue
 
     private function processSite(Site $site): void
     {
+        // Sites still on an older connector have no /woo-health route: calling it
+        // returns 404, which used to be recorded as a check error and logged every
+        // morning. That is a deployment gap, not a store problem — skip silently
+        // until the connector push reaches the site.
+        if (! $site->connectorAtLeast(self::MIN_CONNECTOR_VERSION)) {
+            return;
+        }
+
         try {
             $api = app(WordPressApiServiceFactory::class)->make($site);
             $response = $api->request('GET', '/woo-health', [], [

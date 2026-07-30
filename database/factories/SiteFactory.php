@@ -32,6 +32,10 @@ class SiteFactory extends Factory
             'health_score' => fake()->numberBetween(60, 100),
             'type' => 'wordpress',
             'is_connected' => true,
+            // A freshly-synced site runs the connector shipped with this repo, so the
+            // default must satisfy version gates like Site::connectorAtLeast(). Tests
+            // exercising an out-of-date site override this explicitly.
+            'connector_version' => '2.19.2',
             'last_synced_at' => fake()->dateTimeBetween('-1 day', 'now'),
             'wp_version' => fake()->randomElement(['6.4.3', '6.5', '6.5.1', '6.5.2', '6.6']),
             'php_version' => fake()->randomElement(['8.1', '8.2', '8.3']),

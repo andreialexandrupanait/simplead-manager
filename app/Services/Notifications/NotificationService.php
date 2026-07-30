@@ -422,9 +422,19 @@ class NotificationService
      * Check per-event per-channel preference for a user.
      * Returns true (send) when no preference row exists (default enabled) or when enabled=true.
      * Returns false (skip) only when an explicit preference exists with enabled=false.
+     *
+     * $userId is nullable because a Site may have no owner (sites.user_id is
+     * nullable). With no user there is no preference to consult, so the default
+     * — enabled — applies, exactly as for a user without a preference row.
+     * Before this guard the null threw a TypeError that killed the whole
+     * notification (uptime alerts for owner-less sites never went out).
      */
-    protected static function isEventEnabledForChannel(int $userId, int $channelId, string $event): bool
+    protected static function isEventEnabledForChannel(?int $userId, int $channelId, string $event): bool
     {
+        if ($userId === null) {
+            return true;
+        }
+
         $preference = NotificationEventPreference::where('user_id', $userId)
             ->where('notification_channel_id', $channelId)
             ->where('event', $event)

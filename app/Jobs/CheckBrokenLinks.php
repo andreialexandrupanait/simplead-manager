@@ -32,6 +32,9 @@ class CheckBrokenLinks implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 3600;
 
+    /** Connector release that introduced the /content-urls endpoint. */
+    private const MIN_CONNECTOR_VERSION = '2.19.2';
+
     public function __construct()
     {
         $this->onQueue('default');
@@ -47,6 +50,12 @@ class CheckBrokenLinks implements ShouldBeUnique, ShouldQueue
         Site::query()
             ->where('is_connected', true)
             ->each(function (Site $site) use ($checker): void {
+                // /content-urls only exists from 2.19.2 on — an older connector would
+                // 404 and produce a failed run row instead of a clean skip.
+                if (! $site->connectorAtLeast(self::MIN_CONNECTOR_VERSION)) {
+                    return;
+                }
+
                 try {
                     $checker->check($site);
                 } catch (\Throwable $e) {

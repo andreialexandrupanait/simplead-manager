@@ -10,6 +10,7 @@ use App\Models\Traits\HasDomainExtraction;
 use App\Models\Traits\HasSiteRelationships;
 use App\Models\Traits\HasSiteScopes;
 use App\Services\DashboardService;
+use App\Support\Semver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -305,6 +306,19 @@ class Site extends Model
     public function connectorSupports(string $capability): bool
     {
         return (bool) ($this->backup_capabilities[$capability] ?? false);
+    }
+
+    /**
+     * Whether this site's installed connector is at least $version — the gate for
+     * endpoints that only exist from a given plugin release onwards (e.g. the
+     * 2.19.2 /woo-health and /content-urls routes).
+     *
+     * Fail-closed: a null or unparseable `connector_version` reads as "too old",
+     * so a job skips the site cleanly instead of calling an endpoint that 404s.
+     */
+    public function connectorAtLeast(string $version): bool
+    {
+        return Semver::atLeast((string) $this->connector_version, $version);
     }
 
     public function getOverallStatusAttribute(): string
