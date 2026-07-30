@@ -55,12 +55,18 @@ class NotifyIncident implements ShouldQueue
         $event = $isDown ? 'site_down' : 'site_recovered';
         $severity = $isDown ? 'critical' : 'success';
 
+        // Written as sentences, not Slack log lines. The in-app notification is
+        // built by stripping the mrkdwn out of this string, so anything terse
+        // here reads as terse there — and "🔴 Site down · *name* — cause" is not
+        // something a person says.
         if ($isDown) {
-            $cause = $this->incident->cause ?? 'unknown cause';
-            $summary = "\xF0\x9F\x94\xB4 Site down · *{$site->name}* — {$cause}";
+            $cause = $this->incident->cause;
+            $summary = $cause
+                ? "Your site *{$site->domain}* has gone down. {$cause}"
+                : "Your site *{$site->domain}* has gone down.";
             $deepLink = '<'.route('sites.uptime', $site).'|Open uptime →>';
         } else {
-            $summary = "\xE2\x9C\x85 *{$site->name}* recovered after {$this->incident->duration}";
+            $summary = "Your site *{$site->domain}* is back up. It was down for {$this->incident->duration}.";
             $deepLink = null;
         }
 

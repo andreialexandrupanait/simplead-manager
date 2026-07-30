@@ -4,41 +4,17 @@
         <x-ui.page-header title="{{ __('Notifications') }}" subtitle="{{ __('All in-app notifications and alerts') }}" />
     </div>
 
-    {{-- Stats --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $this->totalCount }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Total') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-accent-600">{{ $this->unreadCount }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Unread') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-green-600">{{ $this->totalCount - $this->unreadCount }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Read') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-gray-400 dark:text-gray-500">
-                    {{ now()->format('M j') }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Today') }}</p>
-            </div>
-        </x-ui.card>
-    </div>
-
     {{-- Filters & Bulk Actions --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         {{-- Filter tabs --}}
+        {{-- The counts ride on the tabs. They used to be four stat cards above the
+             list, one of which showed today's date — a number that counted nothing. --}}
         <x-ui.filter-tabs
-            :options="['all' => __('All'), 'unread' => __('Unread'), 'read' => __('Read')]"
+            :options="[
+                'all' => __('All').' ('.$this->totalCount.')',
+                'unread' => __('Unread').' ('.$this->unreadCount.')',
+                'read' => __('Read').' ('.($this->totalCount - $this->unreadCount).')',
+            ]"
             :selected="$filter"
             wire="filter"
         />
@@ -139,9 +115,16 @@
                 {{-- Content --}}
                 <div class="min-w-0 flex-1">
                     <div class="flex items-start justify-between gap-2">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white {{ !$notification->isRead() ? 'font-semibold' : '' }}">
-                            {{ $notification->title }}
-                        </p>
+                        @if($url = ($notification->data['url'] ?? null))
+                            <a href="{{ $url }}" wire:navigate
+                               class="text-sm font-medium text-gray-900 hover:text-accent-600 dark:text-white dark:hover:text-accent-400 {{ !$notification->isRead() ? 'font-semibold' : '' }}">
+                                {{ $notification->title }}
+                            </a>
+                        @else
+                            <p class="text-sm font-medium text-gray-900 dark:text-white {{ !$notification->isRead() ? 'font-semibold' : '' }}">
+                                {{ $notification->title }}
+                            </p>
+                        @endif
                         @if(!$notification->isRead())
                             <span class="shrink-0 inline-block h-2 w-2 rounded-full bg-accent-500 mt-1.5" title="{{ __('Unread') }}"></span>
                         @endif

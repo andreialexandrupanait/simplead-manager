@@ -483,7 +483,7 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
             NotificationService::notifySiteEventSlim(
                 site: $this->site,
                 event: 'new_admin_user',
-                summary: "\xF0\x9F\x91\xA4 New WordPress administrator on *{$this->site->name}*: {$names}",
+                summary: "A new WordPress administrator appeared on *{$this->site->domain}*: {$names}.",
                 deepLink: '<'.route('sites.overview', $this->site).'|Open site →>',
                 severity: 'critical',
             );

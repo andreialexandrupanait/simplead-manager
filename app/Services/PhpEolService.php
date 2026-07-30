@@ -151,7 +151,7 @@ class PhpEolService
         NotificationService::notifySiteEventSlim(
             site: $site,
             event: 'php_eol',
-            summary: "\xE2\x9A\xA0\xEF\xB8\x8F PHP end-of-life · *{$site->name}* — {$message}",
+            summary: "*{$site->domain}* runs an unsupported PHP. {$message}",
             severity: 'warning',
         );
     }

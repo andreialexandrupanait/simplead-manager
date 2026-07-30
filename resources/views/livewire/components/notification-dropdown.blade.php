@@ -8,7 +8,7 @@
         <button @click="open = !open"
                 @mouseenter="if (!sidebarOpen && window.innerWidth >= 1024) { showSidebarTooltip($el) }"
                 @mouseleave="hideSidebarTooltip()"
-                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full relative"
+                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 w-full relative"
                 :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
             <div class="relative shrink-0">
                 <x-icons.bell class="h-4 w-4" aria-hidden="true" />
@@ -55,8 +55,8 @@
          @endif
     >
         {{-- Header --}}
-        <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
+        <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('Notifications') }}</h3>
             @if($this->count > 0)
                 <button wire:click="dismissAll" wire:loading.attr="disabled" class="text-xs font-medium text-gray-400 hover:text-gray-600 transition disabled:opacity-50">
                     <span wire:loading.remove wire:target="dismissAll">Mark all as read</span>
@@ -137,30 +137,56 @@
 
             {{-- In-app notifications --}}
             @if($this->notifications->isNotEmpty())
-                <div class="border-t border-gray-100 px-4 py-2">
+                <div class="border-t border-gray-100 px-4 py-2 dark:border-gray-700">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold text-gray-500 uppercase">Recent</span>
+                        <span class="text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">{{ __('Recent') }}</span>
                         @if($this->unreadCount > 0)
                             <button wire:click="markAllNotificationsRead" class="text-xs text-gray-400 hover:text-gray-600">Mark all read</button>
                         @endif
                     </div>
                 </div>
                 @foreach($this->notifications as $notif)
-                    <div class="flex items-start gap-3 border-b border-gray-50 px-4 py-2.5 {{ !$notif->isRead() ? 'bg-accent-50/30' : '' }}" wire:key="notif-{{ $notif->id }}">
-                        <div class="mt-0.5 shrink-0">
-                            <span @class([
-                                'h-2 w-2 rounded-full inline-block',
-                                'bg-red-500' => $notif->type === 'critical' || $notif->type === 'warning',
-                                'bg-blue-500' => $notif->type === 'info',
-                                'bg-gray-400' => !in_array($notif->type, ['critical', 'warning', 'info']),
-                            ])></span>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-gray-900 truncate {{ !$notif->isRead() ? 'font-semibold' : '' }}">{{ $notif->title }}</p>
-                            @if($notif->message)
-                                <p class="text-xs text-gray-500 line-clamp-2">{{ $notif->message }}</p>
+                    @php
+                        // A round, coloured mark reads as state at a glance; a 2px
+                        // dot does not. Green = recovered, red = broken, amber =
+                        // needs looking at.
+                        $event = $notif->data['event'] ?? null;
+                        $isRecovery = $event === 'site_recovered' || $notif->type === 'success';
+                        $isBad = in_array($notif->type, ['critical', 'warning'], true);
+                        [$markBg, $markFg] = match (true) {
+                            $isRecovery => ['bg-green-500', 'text-white'],
+                            $isBad => ['bg-red-500', 'text-white'],
+                            default => ['bg-amber-400', 'text-white'],
+                        };
+                        $notifUrl = $notif->data['url'] ?? null;
+                    @endphp
+                    <div class="flex items-start gap-3 border-b border-gray-50 px-4 py-3 dark:border-gray-700/60 {{ !$notif->isRead() ? 'bg-accent-50/30 dark:bg-accent-500/5' : '' }}" wire:key="notif-{{ $notif->id }}">
+                        <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full {{ $markBg }}">
+                            @if($isRecovery)
+                                <x-icons.check-circle class="h-4 w-4 {{ $markFg }}" aria-hidden="true" />
+                            @elseif($isBad)
+                                <x-icons.alert-triangle class="h-4 w-4 {{ $markFg }}" aria-hidden="true" />
+                            @else
+                                <x-icons.bell class="h-4 w-4 {{ $markFg }}" aria-hidden="true" />
                             @endif
-                            <span class="text-xs text-gray-400">{{ $notif->created_at->diffForHumans() }}</span>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            {{-- The sentence is the link; there is no separate "View"
+                                 to hunt for. --}}
+                            @if($notifUrl)
+                                <a href="{{ $notifUrl }}" wire:navigate
+                                   class="text-[13px] leading-snug text-gray-800 hover:text-accent-600 dark:text-gray-200 dark:hover:text-accent-400 {{ !$notif->isRead() ? 'font-medium text-gray-900 dark:text-white' : '' }}">
+                                    {{ $notif->title }}
+                                </a>
+                            @else
+                                <p class="text-[13px] leading-snug text-gray-800 dark:text-gray-200 {{ !$notif->isRead() ? 'font-medium text-gray-900 dark:text-white' : '' }}">
+                                    {{ $notif->title }}
+                                </p>
+                            @endif
+                            @if($notif->message)
+                                <p class="text-xs text-gray-500 line-clamp-2 dark:text-gray-400">{{ $notif->message }}</p>
+                            @endif
+                            <span class="text-xs text-gray-400 dark:text-gray-500">{{ $notif->created_at->diffForHumans() }}</span>
                         </div>
                         <div class="flex shrink-0 gap-1">
                             @if(!$notif->isRead())
@@ -176,5 +202,12 @@
                 @endforeach
             @endif
         </div>
+
+        {{-- The notification archive has existed at /notifications the whole
+             time with nothing in the app linking to it. --}}
+        <a href="{{ route('notifications.index') }}" wire:navigate
+           class="block border-t border-gray-100 px-4 py-2.5 text-center text-sm font-medium text-accent-600 hover:bg-gray-50 dark:border-gray-700 dark:text-accent-400 dark:hover:bg-gray-800">
+            {{ __('View all') }}
+        </a>
     </div>
 </div>
