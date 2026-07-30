@@ -43,6 +43,7 @@ trait WithTemplateForm
         'uptime' => 'technical_stability',
         'updates' => 'updates',
         'backups' => 'backups',
+        'tasks' => 'tasks',
         'analytics' => 'analytics',
         'search_console' => 'search_console',
         'performance' => 'performance',
@@ -262,7 +263,7 @@ trait WithTemplateForm
         $this->editingTemplateId = null;
         $this->name = '';
         $this->description = '';
-        $this->sections = ['overview', 'updates', 'uptime', 'infrastructure', 'backups', 'analytics', 'search_console', 'performance', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks', 'recommendations'];
+        $this->sections = ['overview', 'updates', 'uptime', 'infrastructure', 'backups', 'tasks', 'analytics', 'search_console', 'performance', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks', 'recommendations'];
         $this->section_overrides = [];
         $this->section_options = [];
         $this->expandedSections = [];

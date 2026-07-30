@@ -31,6 +31,7 @@ return [
     'section_updates' => 'Updates',
     'section_uptime' => 'Uptime Monitoring',
     'section_backups' => 'Backups',
+    'section_tasks' => 'Work carried out',
     'section_analytics' => 'Analytics',
     'section_search_console' => 'Google Search Console',
     'section_performance' => 'Performance',
@@ -125,6 +126,12 @@ return [
     'backups_total_stored' => 'Total stored size',
     'backups_not_configured' => 'Backups are not configured.',
     'backups_no_backups' => 'No backups during this period.',
+    'tasks_none' => 'No work completed in this period.',
+    'tasks_completed_count' => 'task completed|tasks completed',
+    'tasks_name' => 'Task',
+    'tasks_assignee' => 'Done by',
+    'tasks_completed_at' => 'Completed',
+    'tasks_truncated' => 'and :n more.',
 
     // Analytics section
     'analytics_pageviews' => 'Pageviews',

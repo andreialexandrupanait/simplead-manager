@@ -31,6 +31,7 @@ return [
     'section_updates' => 'Actualizări',
     'section_uptime' => 'Monitorizare timp de funcționare',
     'section_backups' => 'Copii de rezervă',
+    'section_tasks' => 'Lucrări efectuate',
     'section_analytics' => 'Analitică',
     'section_search_console' => 'Google Console de Căutare',
     'section_performance' => 'Performanță',
@@ -125,6 +126,12 @@ return [
     'backups_total_stored' => 'Dimensiune totală stocată',
     'backups_not_configured' => 'Copiile de rezervă nu sunt configurate.',
     'backups_no_backups' => 'Nicio copie de rezervă în această perioadă.',
+    'tasks_none' => 'Nicio lucrare finalizată în această perioadă.',
+    'tasks_completed_count' => 'lucrare finalizată|lucrări finalizate|de lucrări finalizate',
+    'tasks_name' => 'Lucrare',
+    'tasks_assignee' => 'Realizată de',
+    'tasks_completed_at' => 'Finalizată',
+    'tasks_truncated' => 'și încă :n lucrări.',
 
     // Analytics section
     'analytics_pageviews' => 'Pagini vizualizate',

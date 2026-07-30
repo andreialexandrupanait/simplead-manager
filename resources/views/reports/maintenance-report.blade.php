@@ -72,6 +72,16 @@
         </div>
     @endif
 
+    {{-- Lucrări efectuate (app.simplead.ro) — SPEC §12.2 pct. 3: partea din
+         „Mentenanță efectuată" care arată munca făcută, nu doar că nu s-a stricat
+         nimic. Apare doar dacă site-ul e legat de un proiect. --}}
+    @if(in_array('tasks', $sections) && ($data['tasks']['available'] ?? false))
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.tasks')
+        </div>
+    @endif
+
     {{-- Plugin & Theme Inventory --}}
     @if(in_array('plugin_inventory', $sections) && isset($data['plugin_inventory']))
         @php $sectionNumber++; @endphp

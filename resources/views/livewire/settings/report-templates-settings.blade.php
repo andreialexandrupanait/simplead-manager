@@ -182,6 +182,7 @@
                         'uptime'           => ['label' => __('Uptime & Stability'),       'optionsKey' => 'technical_stability'],
                         'infrastructure'   => ['label' => __('Infrastructure'),            'optionsKey' => 'infrastructure'],
                         'backups'          => ['label' => __('Backup Status'),             'optionsKey' => 'backups'],
+                        'tasks'            => ['label' => __('Work carried out (app.simplead.ro)'), 'optionsKey' => 'tasks'],
                         'analytics'        => ['label' => __('Google Analytics'),          'optionsKey' => 'analytics'],
                         'search_console'   => ['label' => __('Search Console'),            'optionsKey' => 'search_console'],
                         'performance'      => ['label' => __('Performance (PageSpeed)'),   'optionsKey' => 'performance'],
