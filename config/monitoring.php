@@ -79,4 +79,34 @@ return [
     | events; set to false to restore immediate per-site delivery.
     */
     'aggregate_alert_storms' => (bool) env('ALERT_STORM_AGGREGATION', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Second observation point (SPEC §5.1)
+    |--------------------------------------------------------------------------
+    | "Două eșecuri consecutive înainte de a deschide un incident, ideal din două
+    | locații. Altfel o sincopă de rețea pe VPS declanșează downtime fals pe toată
+    | flota."
+    |
+    | Every check we run leaves from the same Hetzner box, so a hiccup on its
+    | uplink is indistinguishable from the whole fleet going down. `url` points at
+    | the Cloudflare Worker in workers/uptime-probe — a genuinely different network
+    | path — which answers only "can YOU reach this?".
+    |
+    | Unset = no second opinion, and the engine falls back to the consecutive-
+    | failure rule alone. A second location that cannot be reached NEVER suppresses
+    | an incident: silence from the probe is not evidence the site is fine.
+    */
+    'second_location' => [
+        'url' => env('UPTIME_SECOND_LOCATION_URL'),
+        'secret' => env('UPTIME_SECOND_LOCATION_SECRET'),
+        'timeout' => (int) env('UPTIME_SECOND_LOCATION_TIMEOUT', 12),
+    ],
+
+    /*
+    | Consecutive failures required before an incident is OPENED (as opposed to
+    | alerted on, which stays with the monitor's own alert_after_failures). The
+    | spec's floor is two; a monitor asking for more is honoured.
+    */
+    'incident_after_failures' => (int) env('UPTIME_INCIDENT_AFTER_FAILURES', 2),
 ];

@@ -13,6 +13,7 @@ use App\Models\UptimeMonitor;
 use App\Services\CircuitBreakerService;
 use App\Services\HealthScoreService;
 use App\Services\JobTracker;
+use App\Services\SecondLocationProbe;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,6 +21,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CheckUptime implements ShouldBeUnique, ShouldQueue
 {
@@ -428,9 +430,42 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
         $incident = $this->monitor->ongoingIncident;
 
         if (! $incident) {
+            // SPEC §5.1 — "două eșecuri consecutive înainte de a deschide un
+            // incident". A single failed probe is a blip; opening an incident on
+            // it is how a network hiccup on our own box becomes fleet-wide false
+            // downtime.
+            $required = max(2, (int) config('monitoring.incident_after_failures', 2));
+
+            if ($this->monitor->consecutive_failures < $required) {
+                return;
+            }
+
+            // "…ideal din două locații." Before declaring a site down, ask the
+            // second observation point. If IT can reach the site, the thing that
+            // is broken is the path from here — not the client's site.
+            $secondOpinion = app(SecondLocationProbe::class)->check((string) $this->monitor->url);
+
+            if ($secondOpinion !== null && $secondOpinion['ok']) {
+                Log::warning('Uptime failure not escalated: the second location reached the site.', [
+                    'monitor_id' => $this->monitor->id,
+                    'url' => $this->monitor->url,
+                    'local_reason' => $result['failure_reason'],
+                    'second_location' => $secondOpinion,
+                ]);
+
+                return;
+            }
+
+            $cause = $result['failure_reason'];
+            if ($secondOpinion !== null) {
+                // Recording the corroboration makes the incident defensible later:
+                // two independent networks saw the same thing.
+                $cause = trim((string) $cause).' (confirmed from '.($secondOpinion['colo'] ?? 'second location').')';
+            }
+
             $incident = $this->monitor->incidents()->create([
                 'status' => 'ongoing',
-                'cause' => $result['failure_reason'],
+                'cause' => $cause,
                 'started_at' => now(),
             ]);
         }

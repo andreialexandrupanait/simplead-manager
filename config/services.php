@@ -66,4 +66,18 @@ return [
         'access_key' => env('UNSPLASH_ACCESS_KEY'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | app.simplead.ro — tasks per site (SPEC §11)
+    |--------------------------------------------------------------------------
+    | Read-only and one-directional: Manager pulls what work was done on a site,
+    | and never writes back. Financial fields in the upstream payload are dropped
+    | on ingest — money lives in SAD Hub (SPEC §1), not here.
+    */
+    'simplead_app' => [
+        'base_url' => env('SIMPLEAD_APP_URL', 'https://app.simplead.ro'),
+        'token' => env('SIMPLEAD_APP_TOKEN'),
+        'timeout' => (int) env('SIMPLEAD_APP_TIMEOUT', 20),
+    ],
+
 ];

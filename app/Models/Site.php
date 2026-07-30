@@ -122,6 +122,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $smoke_canary_selector
  * @property int|null $smoke_dom_reference
  * @property array|null $smoke_dom_references
+ * @property string|null $external_project_id
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteRiskyPlugin> $riskyPlugins
  */
 class Site extends Model
@@ -184,6 +185,7 @@ class Site extends Model
         'smoke_canary_selector',
         'smoke_dom_reference',
         'smoke_dom_references',
+        'external_project_id',
     ];
 
     protected $casts = [

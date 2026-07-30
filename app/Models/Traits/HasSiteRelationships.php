@@ -324,4 +324,14 @@ trait HasSiteRelationships
     {
         return $this->hasMany(SecurityBannedIp::class);
     }
+
+    /**
+     * SPEC §11 — tasks pulled from app.simplead.ro for this site (read-only).
+     *
+     * @return HasMany<\App\Models\SiteTask, $this>
+     */
+    public function siteTasks(): HasMany
+    {
+        return $this->hasMany(\App\Models\SiteTask::class);
+    }
 }

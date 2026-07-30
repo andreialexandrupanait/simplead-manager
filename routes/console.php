@@ -227,6 +227,14 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
+// SPEC §11 — pull per-site tasks from app.simplead.ro (read-only). No-op until
+// SIMPLEAD_APP_TOKEN is configured.
+Schedule::job(new \App\Jobs\SyncSiteTasks)
+    ->dailyAt('06:15')
+    ->name('sync-site-tasks')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Daily vulnerability check across all sites (Wordfence Intelligence API)
 Schedule::job(new \App\Jobs\CheckPluginVulnerabilities)
     ->dailyAt('05:00')
