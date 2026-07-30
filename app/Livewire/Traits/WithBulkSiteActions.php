@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Traits;
 
 use App\Jobs\CheckUptime;
-use App\Jobs\CreateBackup;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Site;
 use Illuminate\Support\Str;
@@ -63,6 +62,11 @@ trait WithBulkSiteActions
         $this->dispatch('notify', type: 'success', message: "Sync queued for {$count} sites.");
     }
 
+    /**
+     * SPEC §6.2 — fleet backup through the shared operations engine, so a site
+     * with no backup destination is skipped with that reason instead of quietly
+     * producing nothing, and the batch runs on the long-duration queue.
+     */
     public function bulkBackup(): void
     {
         abort_unless(auth()->user()->canManageSites(), 403);
@@ -72,9 +76,20 @@ trait WithBulkSiteActions
         }
 
         $sites = $this->scopedSiteQuery($this->selectedSites)->get();
-        foreach ($sites as $site) {
-            CreateBackup::dispatch($site, 'full', 'manual');
+
+        if ($sites->isEmpty()) {
+            $this->dispatch('notify', type: 'warning', message: __('No sites selected.'));
+
+            return;
         }
+
+        app(\App\Operations\OperationRunner::class)->run(
+            app(\App\Operations\Operations\CreateBackupOperation::class),
+            $sites,
+            ['type' => 'full'],
+            auth()->id(),
+        );
+
         $count = $sites->count();
         $this->selectedSites = [];
         $this->dispatch('notify', type: 'success', message: "Backup queued for {$count} sites.");

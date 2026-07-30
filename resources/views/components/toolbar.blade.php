@@ -1,5 +1,6 @@
 @props([
     'count' => 0,
+    'plans' => null,
 ])
 
 {{--
@@ -8,11 +9,12 @@
     evenimente Livewire pe componenta părinte (ex. GlobalDashboard),
     care furnizează $selectedSites și metodele bulk*.
 
-    Metode existente în App\Livewire\Traits\WithBulkSiteActions:
-      - bulkBackup()        → „backup"
-      - bulkCheckUptime()   → „verifică acum"
-      - clearSelection()    → „deselectează tot"
-    Restul acțiunilor încă nu există în trait — vezi {{-- TODO --}} mai jos.
+    Din WithBulkSiteActions: bulkBackup(), bulkCheckUptime(), clearSelection().
+    Din SitesList (rutate prin motorul de operațiuni, SPEC §6.2): bulkUpdate(),
+    bulkApplyPlan(), bulkApplyPresets(), bulkPurgeCache().
+
+    „Aplică plan" are nevoie de un plan ales: dă componentei părinte proprietatea
+    $bulkPlanId și pasează :plans ca să apară selectorul.
 --}}
 
 @if ($count > 0)
@@ -51,19 +53,29 @@
                     <span>Backup</span>
                 </x-ui.button>
 
-                {{-- TODO: bulkApplyPlan() nu există încă în WithBulkSiteActions --}}
+                @if ($plans !== null && count($plans) > 0)
+                    <select
+                        wire:model="bulkPlanId"
+                        aria-label="Planul de aplicat"
+                        class="h-8 rounded-md border border-white/25 bg-transparent px-2 text-[13px] text-white"
+                    >
+                        <option value="">Plan…</option>
+                        @foreach ($plans as $plan)
+                            <option class="text-gray-900" value="{{ $plan->id }}">{{ $plan->name }}</option>
+                        @endforeach
+                    </select>
+                @endif
+
                 <x-ui.button variant="secondary" size="sm" wire:click="bulkApplyPlan" wire:loading.attr="disabled">
                     <x-icons.layers class="h-4 w-4" />
                     <span>Aplică plan</span>
                 </x-ui.button>
 
-                {{-- TODO: bulkApplyPresets() nu există încă în WithBulkSiteActions --}}
                 <x-ui.button variant="secondary" size="sm" wire:click="bulkApplyPresets" wire:loading.attr="disabled">
                     <x-icons.sliders class="h-4 w-4" />
                     <span>Aplică presetări</span>
                 </x-ui.button>
 
-                {{-- TODO: bulkPurgeCache() nu există încă în WithBulkSiteActions --}}
                 <x-ui.button variant="secondary" size="sm" wire:click="bulkPurgeCache" wire:loading.attr="disabled">
                     <x-icons.zap class="h-4 w-4" />
                     <span>Golește cache</span>

@@ -6,11 +6,13 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\UserRole;
 use App\Jobs\QueueSiteSafeUpdatesJob;
+use App\Jobs\RunOperationJob;
 use App\Jobs\RunSafeUpdate;
 use App\Livewire\Sites\SitesList;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\User;
+use App\Operations\Operations\QueueSafeUpdatesOperation;
 use App\Services\SafeUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -43,9 +45,11 @@ class SitesBulkUpdateTest extends TestCase
             ->set('selectedSites', [$eligible->id, $disconnected->id, $unsafe->id])
             ->call('bulkUpdate');
 
-        // Only the connected + safe-updates-enabled site gets a fan-out job.
-        Queue::assertPushed(QueueSiteSafeUpdatesJob::class, 1);
-        Queue::assertPushed(fn (QueueSiteSafeUpdatesJob $j) => $j->site->id === $eligible->id);
+        // The fan-out now goes through the operations engine (SPEC §6.2): one
+        // RunOperationJob for the single eligible site, none for the other two.
+        Queue::assertPushed(RunOperationJob::class, 1);
+        Queue::assertPushed(fn (RunOperationJob $j): bool => $j->siteId === $eligible->id
+            && $j->operationClass === QueueSafeUpdatesOperation::class);
     }
 
     public function test_the_fanout_job_queues_one_safe_update_per_pending_item(): void

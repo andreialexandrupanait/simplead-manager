@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\EvaluateCanaryRollout;
-use App\Jobs\QueueSiteSafeUpdatesJob;
 use App\Models\Site;
+use App\Operations\OperationRunner;
+use App\Operations\Operations\QueueSafeUpdatesOperation;
 use Illuminate\Support\Collection;
 
 /**
@@ -34,7 +35,24 @@ class CanaryRolloutService
 
     public function __construct(
         private readonly UpdateSmokeCheckService $smokeChecks,
+        private readonly OperationRunner $runner,
     ) {}
+
+    /**
+     * Run the safe-update operation over a set of sites through the shared
+     * engine — the single path both the canary group and the released remainder
+     * take, so a staged rollout is tracked exactly like an unstaged one.
+     *
+     * @param  Collection<int, Site>  $sites
+     */
+    public function dispatchUpdates(Collection $sites, ?int $userId = null): void
+    {
+        if ($sites->isEmpty()) {
+            return;
+        }
+
+        $this->runner->run(app(QueueSafeUpdatesOperation::class), $sites, [], $userId ?? 0);
+    }
 
     public function enabled(): bool
     {
@@ -55,9 +73,7 @@ class CanaryRolloutService
         $canaries = $ordered->take(self::CANARY_COUNT);
         $deferred = $ordered->slice(self::CANARY_COUNT);
 
-        foreach ($canaries as $site) {
-            QueueSiteSafeUpdatesJob::dispatch($site, $userId);
-        }
+        $this->dispatchUpdates($canaries, $userId);
 
         $canaryIds = $canaries->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
         $deferredIds = $deferred->pluck('id')->map(fn ($id) => (int) $id)->values()->all();

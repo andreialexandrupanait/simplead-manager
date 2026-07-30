@@ -71,9 +71,7 @@ class EvaluateCanaryRollout implements ShouldQueue
             ->where('safe_updates_enabled', true)
             ->get();
 
-        foreach ($deferred as $site) {
-            QueueSiteSafeUpdatesJob::dispatch($site, $this->userId);
-        }
+        $rollout->dispatchUpdates($deferred, $this->userId);
 
         Log::info('Canary rollout: canaries healthy, fanning out to the rest of the batch.', [
             'canary_site_ids' => $this->canarySiteIds,

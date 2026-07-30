@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Services;
 
 use App\Enums\UserRole;
-use App\Jobs\ApplySitePresetJob;
+use App\Jobs\RunOperationJob;
 use App\Livewire\Sites\SitesList;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\User;
+use App\Operations\Operations\ApplySitePresetOperation;
 use App\Services\SitePresetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -59,7 +60,7 @@ class SitePresetServiceTest extends TestCase
         ]);
     }
 
-    public function test_bulk_apply_presets_fans_out_a_job_per_connected_site(): void
+    public function test_bulk_apply_presets_fans_out_a_job_per_selected_site(): void
     {
         Queue::fake();
         $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
@@ -71,7 +72,15 @@ class SitePresetServiceTest extends TestCase
             ->set('selectedSites', [$connected->id, $offline->id])
             ->call('bulkApplyPresets');
 
-        Queue::assertPushed(ApplySitePresetJob::class, 1);
-        Queue::assertPushed(fn (ApplySitePresetJob $j) => $j->site->id === $connected->id);
+        // Presets now run through the operations engine (SPEC §6.2): a job per
+        // selected site, with the disconnected one skipped inside the operation's
+        // prepare() so the batch reports the reason instead of dropping it.
+        Queue::assertPushed(RunOperationJob::class, 2);
+        Queue::assertPushed(fn (RunOperationJob $j): bool => $j->operationClass === ApplySitePresetOperation::class);
+
+        $offlineResult = app(ApplySitePresetOperation::class)->prepare(
+            new \App\Operations\OperationContext($offline, 1, [], 'run', 'tracker')
+        );
+        $this->assertTrue($offlineResult->isSkipped());
     }
 }

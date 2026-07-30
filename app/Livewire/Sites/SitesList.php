@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Sites;
 
 use App\Enums\HealthLevel;
-use App\Jobs\ApplySitePresetJob;
 use App\Jobs\CheckUptime;
 use App\Jobs\CreateBackup;
-use App\Jobs\QueueSiteSafeUpdatesJob;
 use App\Livewire\Traits\WithBulkSiteActions;
 use App\Livewire\Traits\WithRateLimiting;
 use App\Livewire\Traits\WithTableFilters;
@@ -40,6 +38,9 @@ class SitesList extends Component
     /** Site IDs selected via the dense list rows (bound with wire:model.live). */
     public array $selectedSites = [];
 
+    /** Maintenance plan chosen in the bulk toolbar's picker (§9). */
+    public ?int $bulkPlanId = null;
+
     /** SPEC §4.4 primary tab: all | updates | alerts | plans. */
     #[Url]
     public string $tab = 'all';
@@ -63,6 +64,13 @@ class SitesList extends Component
     public function availableTags()
     {
         return Tag::orderBy('name')->get();
+    }
+
+    /** Plans offered by the bulk toolbar's "apply plan" picker (§9). */
+    #[Computed]
+    public function availablePlans()
+    {
+        return \App\Models\MaintenancePlan::orderBy('name')->get(['id', 'name']);
     }
 
     /**
@@ -251,12 +259,14 @@ class SitesList extends Component
     // bulkBackup() and bulkCheckUptime() are provided by WithBulkSiteActions.
 
     /**
-     * SPEC §2 (bulk-first) / §4.4 — fleet bulk update. Fans out one
-     * QueueSiteSafeUpdatesJob per selected site; each site then queues a SAFE
-     * update (backup → update → health-check → auto-rollback) for every pending
-     * plugin/theme. Sites that are disconnected or do not have safe updates
-     * enabled are skipped, so a one-click fleet action never runs an unprotected
-     * inline update.
+     * SPEC §2 (bulk-first) / §4.4 — fleet bulk update, through the shared
+     * operations engine (§6.2). Each selected site queues a SAFE update
+     * (backup → update → health check → smoke check → auto-rollback) for every
+     * pending plugin/theme. Sites that are disconnected or do not have safe
+     * updates enabled are skipped, so a one-click fleet action never runs an
+     * unprotected inline update.
+     *
+     * With smart rules on, the fan-out is staged behind two canaries (§7.2).
      */
     public function bulkUpdate(): void
     {
@@ -301,10 +311,17 @@ class SitesList extends Component
             return;
         }
 
-        $queued = 0;
-        foreach ($eligible as $site) {
-            QueueSiteSafeUpdatesJob::dispatch($site, auth()->id());
-            $queued++;
+        // Immediate (unstaged) fan-out runs through the shared engine, so the batch
+        // gets a progress tracker, a per-site result and the long-duration queue.
+        $queued = $eligible->count();
+
+        if ($queued > 0) {
+            app(OperationRunner::class)->run(
+                app(\App\Operations\Operations\QueueSafeUpdatesOperation::class),
+                $eligible,
+                [],
+                auth()->id(),
+            );
         }
 
         $message = trans_choice(
@@ -324,19 +341,36 @@ class SitesList extends Component
     }
 
     /**
-     * TODO: ApplyPlanToSite requires a chosen MaintenancePlan; the toolbar has
-     * no plan picker yet, so this cannot dispatch a real job.
+     * SPEC §6.2 / §9 — apply a maintenance plan to the selection through the
+     * shared engine. The plan comes from the toolbar's picker ($bulkPlanId); the
+     * operation skips any site whose plan cannot be resolved.
      */
     public function bulkApplyPlan(): void
     {
-        $this->dispatch('notify', type: 'info', message: 'Aplicarea planului în masă nu este disponibilă încă.');
+        abort_unless(auth()->user()->canManageSites(), 403);
+
+        if (! $this->bulkPlanId) {
+            $this->dispatch('notify', type: 'warning', message: __('Choose a plan first.'));
+
+            return;
+        }
+
+        $this->runOperationOnSelection(
+            'plan.apply',
+            ['plan_id' => $this->bulkPlanId],
+            fn (int $count): string => trans_choice(
+                'Plan queued for :count site.|Plan queued for :count sites.',
+                $count,
+                ['count' => $count],
+            ),
+        );
     }
 
     /**
      * SPEC §13 — apply the curated "Standard SimpleAD" preset package to the
-     * selected sites: fans out one ApplySitePresetJob per connected site (the
-     * auto group everywhere, the Woo group only where WooCommerce is detected).
-     * Per-site deviations are preserved — a later manual tweak still wins.
+     * selected sites through the operations engine: the auto group everywhere,
+     * the Woo group only where WooCommerce is detected. Per-site deviations are
+     * preserved — a later manual tweak still wins.
      */
     public function bulkApplyPresets(): void
     {
@@ -348,36 +382,53 @@ class SitesList extends Component
             return;
         }
 
+        // The disconnected-site gate now lives in the operation's prepare(), so a
+        // site skipped here reports its reason in the batch instead of vanishing
+        // from a counter.
+        $this->runOperationOnSelection(
+            'presets.apply',
+            [],
+            fn (int $count): string => trans_choice(
+                'Standard SimpleAD preset queued for :count site.|Standard SimpleAD preset queued for :count sites.',
+                $count,
+                ['count' => $count],
+            ),
+        );
+    }
+
+    /**
+     * Shared tail for the toolbar's engine-backed bulk actions (SPEC §6.2): scope
+     * the selection, hand it to the runner, clear the selection and report.
+     *
+     * An operation that requires approval comes back as a pending handle — the
+     * batch is persisted and nothing is dispatched until it is approved.
+     *
+     * @param  array<string, mixed>  $params
+     * @param  callable(int): string  $message
+     */
+    protected function runOperationOnSelection(string $operationKey, array $params, callable $message): void
+    {
         $sites = $this->scopedSiteQuery($this->selectedSites)->get();
+
         if ($sites->isEmpty()) {
             $this->dispatch('notify', type: 'warning', message: __('No sites selected.'));
 
             return;
         }
 
-        $queued = 0;
-        $skipped = 0;
-        foreach ($sites as $site) {
-            if ($site->is_connected) {
-                ApplySitePresetJob::dispatch($site, auth()->id());
-                $queued++;
-            } else {
-                $skipped++;
-            }
-        }
+        $operation = app(\App\Operations\OperationRegistry::class)->resolve($operationKey);
+        $handle = app(OperationRunner::class)->run($operation, $sites, $params, auth()->id());
 
+        $count = $sites->count();
         $this->selectedSites = [];
 
-        $message = trans_choice(
-            'Standard SimpleAD preset queued for :count site.|Standard SimpleAD preset queued for :count sites.',
-            $queued,
-            ['count' => $queued],
-        );
-        if ($skipped > 0) {
-            $message .= ' '.__(':n skipped (not connected).', ['n' => $skipped]);
+        if ($handle->status === 'pending_approval') {
+            $this->dispatch('notify', type: 'warning', message: __('Waiting for approval before running on :count site(s).', ['count' => $count]));
+
+            return;
         }
 
-        $this->dispatch('notify', type: $queued === 0 ? 'warning' : 'success', message: $message);
+        $this->dispatch('notify', type: 'success', message: $message($count));
     }
 
     /**

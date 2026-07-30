@@ -176,7 +176,7 @@
             </div>
 
             {{-- Bară acțiuni în masă (SPEC §4.4) --}}
-            <x-toolbar :count="count($selectedSites)" />
+            <x-toolbar :count="count($selectedSites)" :plans="$this->availablePlans" />
         @else
             {{-- Vedere GRID (existentă) --}}
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

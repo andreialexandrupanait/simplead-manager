@@ -210,7 +210,7 @@ class SafeUpdateService
 
             $healthPassed = $healthResults['passed'];
             $visualPassed = ! $visualResults || ($visualResults['diff_percent'] ?? 0) < self::VISUAL_DIFF_THRESHOLD;
-            $smokePassed = ! $smokeEnforced || $smokeResults === null || ($smokeResults['passed'] ?? true);
+            $smokePassed = ! $smokeEnforced || $smokeResults === null || $smokeResults['passed'];
 
             if ($healthPassed && $visualPassed && $smokePassed) {
                 $safeUpdate->update([

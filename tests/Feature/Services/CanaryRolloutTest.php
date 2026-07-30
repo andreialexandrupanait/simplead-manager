@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Services;
 
 use App\Jobs\EvaluateCanaryRollout;
-use App\Jobs\QueueSiteSafeUpdatesJob;
+use App\Jobs\RunOperationJob;
 use App\Livewire\Sites\SitesList;
 use App\Models\SafeUpdate;
 use App\Models\Site;
@@ -61,7 +61,8 @@ class CanaryRolloutTest extends TestCase
             ->set('selectedSites', $sites->pluck('id')->all())
             ->call('bulkUpdate');
 
-        Queue::assertPushed(QueueSiteSafeUpdatesJob::class, 5);
+        // One engine job per site, nothing held back.
+        Queue::assertPushed(RunOperationJob::class, 5);
         Queue::assertNotPushed(EvaluateCanaryRollout::class);
     }
 
@@ -78,7 +79,7 @@ class CanaryRolloutTest extends TestCase
             ->call('bulkUpdate');
 
         // Only the two canaries go now; the other three wait for the evaluation.
-        Queue::assertPushed(QueueSiteSafeUpdatesJob::class, 2);
+        Queue::assertPushed(RunOperationJob::class, 2);
         Queue::assertPushed(EvaluateCanaryRollout::class, function (EvaluateCanaryRollout $job): bool {
             return count($job->canarySiteIds) === 2 && count($job->deferredSiteIds) === 3;
         });
@@ -96,7 +97,7 @@ class CanaryRolloutTest extends TestCase
             ->set('selectedSites', $sites->pluck('id')->all())
             ->call('bulkUpdate');
 
-        Queue::assertPushed(QueueSiteSafeUpdatesJob::class, 2);
+        Queue::assertPushed(RunOperationJob::class, 2);
         Queue::assertNotPushed(EvaluateCanaryRollout::class);
     }
 
@@ -136,7 +137,7 @@ class CanaryRolloutTest extends TestCase
             $deferred->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ))->handle(app(CanaryRolloutService::class));
 
-        Queue::assertPushed(QueueSiteSafeUpdatesJob::class, 3);
+        Queue::assertPushed(RunOperationJob::class, 3);
     }
 
     public function test_a_failed_update_on_a_canary_holds_the_batch(): void
@@ -157,7 +158,7 @@ class CanaryRolloutTest extends TestCase
             $deferred->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ))->handle(app(CanaryRolloutService::class));
 
-        Queue::assertNotPushed(QueueSiteSafeUpdatesJob::class);
+        Queue::assertNotPushed(RunOperationJob::class);
     }
 
     public function test_a_broken_key_url_on_a_canary_holds_the_batch(): void
@@ -174,7 +175,7 @@ class CanaryRolloutTest extends TestCase
             $deferred->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ))->handle(app(CanaryRolloutService::class));
 
-        Queue::assertNotPushed(QueueSiteSafeUpdatesJob::class);
+        Queue::assertNotPushed(RunOperationJob::class);
     }
 
     public function test_missing_canaries_hold_the_batch_rather_than_releasing_it(): void
@@ -187,6 +188,6 @@ class CanaryRolloutTest extends TestCase
             $deferred->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ))->handle(app(CanaryRolloutService::class));
 
-        Queue::assertNotPushed(QueueSiteSafeUpdatesJob::class);
+        Queue::assertNotPushed(RunOperationJob::class);
     }
 }
