@@ -122,19 +122,6 @@ class SitesList extends Component
         ];
     }
 
-    /** Updates held for a batch approval decision (SPEC §4.5 band 2 / §2 principle 4). */
-    private function awaitingApprovalCount(): int
-    {
-        if (! \Illuminate\Support\Facades\Schema::hasColumn('safe_updates', 'approval_required')) {
-            return 0;
-        }
-
-        return \App\Models\SafeUpdate::query()
-            ->where('approval_required', true)
-            ->whereHas('site', fn ($q) => $q->visibleTo(auth()->user()))
-            ->count();
-    }
-
     public function updatedTagId(): void
     {
         $this->resetPage();

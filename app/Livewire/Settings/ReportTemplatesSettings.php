@@ -49,6 +49,6 @@ class ReportTemplatesSettings extends Component
             'nextRunDates' => $nextRunDates,
             'sectionSubOptions' => static::sectionSubOptions(),
             'assignSites' => $assignSites,
-        ])->layout('components.layouts.app', ['title' => 'Report Templates']);
+        ]);
     }
 }

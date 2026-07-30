@@ -22,6 +22,10 @@ class EnforceTwoFactorEnrollment
      * ways out — so enforcement can never lock someone out of fixing it.
      */
     private const EXEMPT_ROUTES = [
+        // Enrollment lives on the Account tab; `settings.two-factor` is the old
+        // URL, now a redirect to it — exempt both, or the redirect bounces off
+        // this middleware and loops.
+        'settings.account',
         'settings.two-factor',
         'two-factor.*',
         'logout',
@@ -52,7 +56,7 @@ class EnforceTwoFactorEnrollment
             ->addDays((int) config('twofactor.admin_grace_days', 7));
 
         if (now()->greaterThanOrEqualTo($deadline)) {
-            return redirect()->route('settings.two-factor')
+            return redirect()->route('settings.account')
                 ->with('error', __('Two-factor authentication is required for admins. Enroll now to continue.'));
         }
 

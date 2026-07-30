@@ -218,32 +218,31 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     Route::get('/download/connector-plugin', ConnectorPluginDownloadController::class)
         ->name('download.connector-plugin');
 
-    // Settings — Profile & 2FA accessible to all roles
+    // Settings — Account (profile + 2FA) accessible to all roles.
+    // Each page is a view composing the Livewire components that belong on it,
+    // so a tab can hold more than one of them.
     Route::prefix('/settings')->group(function () {
-        Route::get('/profile', Settings\ProfileSettings::class)->name('settings.profile');
-        Route::get('/two-factor', Settings\TwoFactorAuthentication::class)->name('settings.two-factor');
+        Route::view('/account', 'settings.account')->name('settings.account');
+
+        // Both used to be tabs of their own.
+        Route::redirect('/profile', '/settings/account')->name('settings.profile');
+        Route::redirect('/two-factor', '/settings/account')->name('settings.two-factor');
     });
 
     // Settings — Admin-only pages
     Route::prefix('/settings')->middleware('role:admin')->group(function () {
-        Route::get('/', Settings\GeneralSettings::class)->name('settings.general');
-        Route::get('/notifications', Settings\NotificationSettings::class)->name('settings.notifications');
-        Route::get('/email', Settings\EmailSettings::class)->name('settings.email');
+        Route::view('/', 'settings.general')->name('settings.general');
+        Route::view('/notifications', 'settings.notifications')->name('settings.notifications');
+        Route::view('/integrations', 'settings.integrations')->name('settings.integrations');
+        Route::view('/data', 'settings.data')->name('settings.data');
+        Route::view('/report-templates', 'settings.reports')->name('settings.report-templates');
 
-        // Integrations
-        Route::get('/integrations', Settings\IntegrationsSettings::class)->name('settings.integrations');
-
-        // Report Templates
-        Route::get('/report-templates', Settings\ReportTemplatesSettings::class)->name('settings.report-templates');
-
-        // Data Retention
-        Route::get('/data-retention', Settings\DataRetentionSettings::class)->name('settings.data-retention');
-
-        // WordPress
-        Route::get('/wordpress', Settings\WordPressSettings::class)->name('settings.wordpress');
-
-        // Application Backup
-        Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
+        // Tabs that were folded into the six above. Kept as redirects so
+        // bookmarks and old links still land somewhere sensible.
+        Route::redirect('/email', '/settings/notifications')->name('settings.email');
+        Route::redirect('/wordpress', '/settings')->name('settings.wordpress');
+        Route::redirect('/data-retention', '/settings/data')->name('settings.data-retention');
+        Route::redirect('/application-backup', '/settings/data')->name('settings.application-backup');
 
         // Maintenance Plans (redirect to standalone page)
         Route::redirect('/site-presets', '/maintenance-plans')->name('settings.maintenance-plans');

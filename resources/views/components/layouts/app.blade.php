@@ -147,7 +147,7 @@
                     <a href="{{ route('settings.general') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.account') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span class="whitespace-nowrap transition-opacity duration-200"
@@ -158,10 +158,10 @@
                     @endif
 
                     {{-- Profile --}}
-                    <a href="{{ route('settings.profile') }}"
+                    <a href="{{ route('settings.account') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.account') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <div class="h-5 w-5 rounded-full bg-accent-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
                             @if(auth()->user()->avatar_path)

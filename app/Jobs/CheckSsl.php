@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\Site;
 use App\Models\UptimeMonitor;
 use App\Services\Notifications\NotificationService;
+use App\Services\SettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -223,6 +224,12 @@ class CheckSsl implements ShouldBeUnique, ShouldQueue
         $fresh = $this->monitor->fresh() ?? $this->monitor;
 
         if (! $fresh->sslIsExpired() && ! $fresh->sslIsExpiringSoon()) {
+            return;
+        }
+
+        // Settings has offered an "SSL Expiring" toggle all along; nothing read
+        // it, so turning it off changed nothing. Default on, as before.
+        if (! (bool) app(SettingsService::class)->get('notify_ssl_expiring', true)) {
             return;
         }
 

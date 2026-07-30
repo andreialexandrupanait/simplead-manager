@@ -1,6 +1,4 @@
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <div class="space-y-6">
         {{-- Notification Channels --}}
         <x-ui.card>
@@ -123,13 +121,6 @@
                         <input type="checkbox" wire:model="notifySslExpiring" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                     </label>
 
-                    <label class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">{{ __('Degraded Performance') }}</p>
-                            <p class="text-xs text-gray-400">{{ __('Notify when a site shows degraded performance') }}</p>
-                        </div>
-                        <input type="checkbox" wire:model="notifyDegraded" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                    </label>
                 </div>
             </x-ui.card>
 

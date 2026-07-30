@@ -1,6 +1,4 @@
 <div @if($this->activeBackup || $awaitingBackup) wire:poll.2s="refreshProgress" @endif>
-    @include('livewire.settings.partials.settings-tabs')
-
     {{-- Status Overview --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {{-- Last Backup --}}

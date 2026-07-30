@@ -14,8 +14,6 @@
     $defaultIcon = ['icon' => 'clock', 'bg' => 'bg-gray-100', 'ring' => 'ring-gray-200', 'text' => 'text-gray-600'];
 @endphp
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <div @if($hasRunningJobs) wire:poll.3s="checkJobProgress" @endif>
 
         {{-- Job Progress --}}

@@ -1,6 +1,4 @@
 <div>
-    @include('livewire.settings.partials.settings-tabs')
-
     <form wire:submit="save" class="space-y-6">
         {{-- Branding --}}
         <x-ui.card>
