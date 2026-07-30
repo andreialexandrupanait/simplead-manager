@@ -35,7 +35,7 @@ class NotifyBackupFailed implements ShouldQueue
     public function handle(): void
     {
         $error = str_replace(['`', "\n"], ['\'', ' '], $this->errorMessage);
-        $summary = "\xF0\x9F\x92\xBE\xE2\x9D\x8C Backup failed · *{$this->site->name}* — `{$error}`";
+        $summary = "The backup of *{$this->site->domain}* failed. {$error}";
         $deepLink = '<'.route('sites.backups', $this->site).'|Open backups →>';
 
         $webhookPayload = [

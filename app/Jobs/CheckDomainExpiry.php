@@ -72,7 +72,7 @@ class CheckDomainExpiry implements ShouldBeUnique, ShouldQueue
         $when = $expiresAt
             ? ($expiresAt->isPast() ? 'expired '.$expiresAt->diffForHumans() : 'expires '.$expiresAt->diffForHumans())
             : 'is expiring';
-        $summary = "\xF0\x9F\x8C\x90 Domain · *{$this->site->name}* — the domain {$when}.";
+        $summary = "The domain *{$this->site->domain}* {$when}.";
 
         NotificationService::notifySiteEventSlim(
             site: $this->site,

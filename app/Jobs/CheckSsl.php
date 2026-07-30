@@ -240,7 +240,7 @@ class CheckSsl implements ShouldBeUnique, ShouldQueue
         NotificationService::notifySiteEventSlim(
             site: $site,
             event: 'ssl_expiring',
-            summary: "\xF0\x9F\x94\x92 SSL · *{$site->name}* — the TLS certificate {$when}.",
+            summary: "The TLS certificate for *{$site->domain}* {$when}.",
             deepLink: '<'.route('sites.overview', $site).'|Open site →>',
             severity: $expiresAt->isPast() ? 'critical' : 'warning',
         );

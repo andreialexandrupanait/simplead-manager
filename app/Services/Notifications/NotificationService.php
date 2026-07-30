@@ -109,14 +109,20 @@ class NotificationService
         // Create in-app notification for the site owner.
         // When title is empty (slim format), derive a clean in-app title from the message.
         try {
-            [$inAppTitle, $inAppMessage] = static::deriveInAppText($title, $message);
+            [$inAppTitle, $inAppMessage, $inAppUrl] = static::deriveInAppText($title, $message);
 
             \App\Models\InAppNotification::create([
                 'user_id' => $site->user_id,
                 'type' => $severity,
                 'title' => $inAppTitle,
                 'message' => $inAppMessage,
-                'data' => ['event' => $event, 'site_id' => $site->id, 'site_name' => $site->name, 'fields' => $fields],
+                'data' => array_filter([
+                    'event' => $event,
+                    'site_id' => $site->id,
+                    'site_name' => $site->name,
+                    'fields' => $fields,
+                    'url' => $inAppUrl,
+                ], static fn ($v) => $v !== null),
             ]);
         } catch (\Throwable) {
             // Don't fail the notification if in-app creation fails
@@ -127,16 +133,28 @@ class NotificationService
      * Strip Slack mrkdwn markers so in-app notifications stay readable.
      * When the slim format is in use, `$title` is empty and `$message` contains
      * the full mrkdwn one-liner — split it into a plain title and any deep-link.
+     *
+     * The deep-link comes back as a URL rather than as body text: rendering
+     * `<https://…|Open uptime →>` as the literal words "Open uptime →" left the
+     * in-app rows with a paragraph that looked like a link but wasn't one. The
+     * URL is stored on the notification instead, so the whole row can carry it.
+     *
+     * @return array{0: string, 1: string, 2: string|null} [title, message, url]
      */
     protected static function deriveInAppText(string $title, string $message): array
     {
         if ($title !== '') {
-            return [$title, $message];
+            return [$title, $message, null];
         }
 
         $lines = preg_split('/\r?\n/', $message) ?: [];
         $first = $lines[0] ?? '';
         $rest = array_slice($lines, 1);
+
+        $url = null;
+        if (preg_match('/<(https?:\/\/[^|>]+)\|[^>]*>/', $message, $m) === 1) {
+            $url = $m[1];
+        }
 
         $plain = static fn (string $s): string => trim(preg_replace(
             ['/<([^|>]+)\|([^>]+)>/', '/[*_`]/'],
@@ -144,7 +162,13 @@ class NotificationService
             $s,
         ) ?? $s);
 
-        return [$plain($first), implode("\n", array_map($plain, $rest))];
+        // Any line that was nothing but the deep-link is now redundant.
+        $body = array_values(array_filter(
+            array_map($plain, $rest),
+            static fn (string $s): bool => $s !== '' && ! str_ends_with($s, '→'),
+        ));
+
+        return [$plain($first), implode("\n", $body), $url];
     }
 
     /**

@@ -99,11 +99,13 @@ class CheckLicenseExpiry implements ShouldBeUnique, ShouldQueue
         }
 
         $expiresAt = $plugin->license_expires_at;
+        // The rest of the notifications are in English (config('app.locale')
+        // is 'en'); this one was the odd Romanian message out.
         $when = $expiresAt->isPast()
-            ? 'a expirat '.$expiresAt->diffForHumans()
-            : 'expiră '.$expiresAt->diffForHumans();
+            ? 'expired '.$expiresAt->diffForHumans()
+            : 'expires '.$expiresAt->diffForHumans();
 
-        $summary = "\xF0\x9F\x94\x91 Licență · *{$plugin->name}* pe *{$site->name}* — {$when}.";
+        $summary = "The *{$plugin->name}* licence on *{$site->domain}* {$when}.";
 
         NotificationService::notifySiteEventSlim(
             site: $site,
