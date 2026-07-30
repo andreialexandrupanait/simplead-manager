@@ -52,6 +52,43 @@ class ErrorLogsOverview extends Component
         ];
     }
 
+    /**
+     * SPEC §5.6 point 4 — "Buton de oprire de la distanță, din Manager."
+     *
+     * A collector that misbehaves on one site must be silenceable without anyone
+     * logging into that site's wp-admin. Only offered for sites whose connector
+     * actually has the collector (2.20.0+); older ones have nothing to switch.
+     */
+    public function toggleCollection(int $siteId, bool $enabled): void
+    {
+        $site = \App\Models\Site::findOrFail($siteId);
+        abort_unless((bool) auth()->user()?->canManageSites(), 403);
+
+        $ids = $this->visibleSiteIds();
+        abort_if($ids !== null && ! in_array($site->id, $ids, true), 403);
+
+        if (! $site->connectorAtLeast(self::COLLECTOR_MIN_VERSION)) {
+            $this->dispatch('notify', type: 'warning', message: __('This site\'s connector is older than :v — it has no collector to switch.', ['v' => self::COLLECTOR_MIN_VERSION]));
+
+            return;
+        }
+
+        try {
+            app(\App\Services\WordPressApiServiceFactory::class)->make($site)->togglePhpErrorCollection($enabled);
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: __('Could not reach the site: :error', ['error' => $e->getMessage()]));
+
+            return;
+        }
+
+        $this->dispatch('notify', type: 'success', message: $enabled
+            ? __('PHP error collection re-enabled on :site.', ['site' => $site->name])
+            : __('PHP error collection stopped on :site.', ['site' => $site->name]));
+    }
+
+    /** Connector release that has the own-handler collector. */
+    private const COLLECTOR_MIN_VERSION = '2.20.0';
+
     public function resolve(int $id): void
     {
         $log = PhpErrorLog::with('site')->findOrFail($id);

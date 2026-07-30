@@ -115,7 +115,10 @@ class AggregateMonthlySnapshotsCloudflareTest extends TestCase
             $this->assertNull($snapshot->cloudflare_requests);
         }
 
-        // The gatherer omits the whole section when the site has no Cloudflare zone.
+        // The gatherer omits the section when the site has no Cloudflare zone — but
+        // it now says WHY (SPEC §12.3 barrier 3): "not configured", which is a
+        // deliberate omission, as opposed to "configured but returned nothing",
+        // which holds the report.
         $result = (new CloudflareGatherer)->gather(
             $site,
             Carbon::create(2026, 6, 1),
@@ -126,7 +129,14 @@ class AggregateMonthlySnapshotsCloudflareTest extends TestCase
             'en',
         );
 
-        $this->assertSame([], $result);
+        $marker = $result[\App\Services\Reports\BaseReportSectionGatherer::INTEGRATION_KEY] ?? null;
+
+        $this->assertIsArray($marker);
+        $this->assertFalse($marker['configured']);
+        $this->assertTrue($marker['ok'], 'A Cloudflare-less site is not a failed integration.');
+
+        // No actual data keys — the section still renders as absent.
+        $this->assertSame([\App\Services\Reports\BaseReportSectionGatherer::INTEGRATION_KEY], array_keys($result));
     }
 
     public function test_gatherer_formats_populated_snapshot_columns(): void

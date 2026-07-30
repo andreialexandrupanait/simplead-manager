@@ -98,8 +98,24 @@ class PerformanceMonitor extends Model
     {
         // 'manual' (and any non-recurring value) leaves next_test_at null so the
         // dispatcher never auto-runs it — tests only fire when triggered by hand.
-        if (! in_array($this->frequency, ['daily', 'weekly'], true)) {
+        if (! in_array($this->frequency, ['daily', 'weekly', 'monthly'], true)) {
             return null;
+        }
+
+        // SPEC §5.5 — "PageSpeed și Core Web Vitals, lunar, nu continuu". A monthly
+        // monitor lands on the same day-of-month as its anchor, at test_time; the
+        // day is clamped so the 31st does not skip February.
+        if ($this->frequency === 'monthly') {
+            $anchor = $this->last_tested_at ?? now();
+            $next = now()->addMonthNoOverflow();
+            $next->day(min((int) $anchor->day, $next->daysInMonth));
+
+            if ($this->test_time) {
+                [$hour, $minute] = array_pad(explode(':', $this->test_time), 2, '0');
+                $next->setTime((int) $hour, (int) $minute);
+            }
+
+            return $next;
         }
 
         // P3-19: a weekly monitor pins to its configured day-of-week (0=Sunday..

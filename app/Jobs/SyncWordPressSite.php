@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Services\CircuitBreakerService;
 use App\Services\JobTracker;
 use App\Services\Notifications\NotificationService;
+use App\Services\PhpEolService;
 use App\Services\PluginConflictService;
 use App\Services\SecurityRecommendationService;
 use App\Services\WordPressApiServiceFactory;
@@ -192,6 +193,17 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 if (! is_array($userList) || $userList === []) {
                     Log::warning("User reconcile skipped for site {$this->site->id}: connector returned an empty/invalid user inventory");
                 } else {
+                    // SPEC §5.2 "Utilizatori administratori noi" — snapshot the admins
+                    // we already knew about, so the sync below can tell a genuinely new
+                    // administrator (a compromise signal) from one we have simply seen
+                    // before. `$hadUsers` suppresses the alert on a site's first sync,
+                    // where every user is new by definition.
+                    $hadUsers = $this->site->siteUsers()->exists();
+                    $knownAdminIds = $this->site->siteUsers()
+                        ->where('role', 'administrator')
+                        ->pluck('wp_user_id')
+                        ->all();
+
                     $existingWpUserIds = [];
 
                     foreach ($userList as $user) {
@@ -235,6 +247,8 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                     $this->site->siteUsers()
                         ->whereNotIn('wp_user_id', $existingWpUserIds)
                         ->delete();
+
+                    $this->alertOnNewAdministrators($hadUsers, $knownAdminIds);
                 }
             } catch (RequestException|\RuntimeException $e) {
                 // Users endpoint may not exist on older connector versions â skip silently
@@ -269,6 +283,19 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 }
 
                 $this->site->update(['standard_preset_applied_at' => now()]);
+            }
+
+            // SPEC §7.3 — keep the per-site risk list populated from the plugin
+            // inventory (page builders, commerce, payments, forms, cache) and from
+            // this site's own failed-update history. Runs on every sync, not just
+            // the first: a plugin installed later must land on the list too.
+            // Manual pins are never overwritten.
+            try {
+                $populator = app(\App\Services\RiskyPluginPopulator::class);
+                $populator->populate($this->site);
+                $populator->populateFromIncidents($this->site);
+            } catch (\Throwable $e) {
+                Log::info("Risky-plugin population skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Update pending updates count
@@ -308,6 +335,14 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 WordPressEolService::check($this->site);
             } catch (\Exception $e) {
                 Log::info("WordPress EOL check skipped for site {$this->site->id}: {$e->getMessage()}");
+            }
+
+            // SPEC §5.3 — the other half of "EOL WordPress și PHP": a site running a
+            // PHP branch past its security-support date gets no patches at all.
+            try {
+                PhpEolService::check($this->site);
+            } catch (\Exception $e) {
+                Log::info("PHP EOL check skipped for site {$this->site->id}: {$e->getMessage()}");
             }
 
             // Pull security activity logs from WordPress
@@ -413,5 +448,47 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
         }
 
         return null;
+    }
+
+    /**
+     * SPEC §5.2 — an administrator account that was not on the site at the last
+     * sync is one of the loudest compromise signals there is, and it was being
+     * synced silently into the users table.
+     *
+     * Alerts only when we have seen this site's users before, so importing an
+     * existing site does not fire on its whole admin list. Never throws: a failed
+     * alert must not fail the sync that already stored the data.
+     *
+     * @param  list<int|string>  $knownAdminIds  admin wp_user_ids before this sync
+     */
+    private function alertOnNewAdministrators(bool $hadUsers, array $knownAdminIds): void
+    {
+        if (! $hadUsers) {
+            return;
+        }
+
+        try {
+            $new = $this->site->siteUsers()
+                ->where('role', 'administrator')
+                ->whereNotIn('wp_user_id', $knownAdminIds ?: [0])
+                ->get(['username', 'email']);
+
+            if ($new->isEmpty()) {
+                return;
+            }
+
+            $names = $new->map(fn ($u) => trim(($u->username ?: 'unknown').($u->email ? " <{$u->email}>" : '')))
+                ->implode(', ');
+
+            NotificationService::notifySiteEventSlim(
+                site: $this->site,
+                event: 'new_admin_user',
+                summary: "\xF0\x9F\x91\xA4 New WordPress administrator on *{$this->site->name}*: {$names}",
+                deepLink: '<'.route('sites.overview', $this->site).'|Open site →>',
+                severity: 'critical',
+            );
+        } catch (\Throwable $e) {
+            Log::info("New-admin alert skipped for site {$this->site->id}: {$e->getMessage()}");
+        }
     }
 }

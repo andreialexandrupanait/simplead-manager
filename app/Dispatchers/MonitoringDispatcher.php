@@ -7,6 +7,7 @@ namespace App\Dispatchers;
 use App\Jobs\CheckCoreFileIntegrity;
 use App\Jobs\CheckDns;
 use App\Jobs\CheckSsl;
+use App\Jobs\CheckThemeIntegrity;
 use App\Jobs\CheckUptime;
 use App\Jobs\RunPerformanceTest;
 use App\Jobs\RunSecurityScan;
@@ -87,7 +88,9 @@ class MonitoringDispatcher
             // check below would otherwise treat as "due" every single minute —
             // a PSI test loop that burns the API quota. Manual monitors run only
             // when triggered from the UI.
-            ->whereIn('frequency', ['daily', 'weekly'])
+            // 'monthly' is the cadence SPEC §5.5 actually asks for; it computes a
+            // real next_test_at like the others, so it belongs in this gate.
+            ->whereIn('frequency', ['daily', 'weekly', 'monthly'])
             ->where(fn ($q) => $q->whereNull('next_test_at')->orWhere('next_test_at', '<=', now()))
             ->whereHas('site', fn ($q) => $q
                 ->whereNull('deleted_at')
@@ -131,6 +134,16 @@ class MonitoringDispatcher
                 // for a site nobody opened); ride the security cadence here.
                 // ShouldBeUnique keeps it from piling up across minutes.
                 CheckCoreFileIntegrity::dispatch($site);
+
+                // SPEC §5.2 also lists THEME file integrity, which until now only
+                // ran from a manual click. Only the active theme is checked: it is
+                // the code every visitor executes, and checking dormant themes would
+                // multiply the connector calls for signal nobody acts on.
+                /** @var \App\Models\SiteTheme|null $activeTheme */
+                $activeTheme = $site->siteThemes()->where('is_active', true)->first();
+                if ($activeTheme !== null && $activeTheme->slug) {
+                    CheckThemeIntegrity::dispatch($site, $activeTheme->slug);
+                }
             });
     }
 

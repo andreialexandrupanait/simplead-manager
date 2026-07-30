@@ -93,7 +93,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
 
     // Sites — global list (same §4 screen).
     Route::get('/sites', Sites\SitesList::class)->name('sites.index');
-    Route::get('/sites/create', Sites\CreateSiteWizard::class)->name('sites.create');
+    // SPEC §10 — "Un singur ecran, nu un wizard." The four-step CreateSiteWizard
+    // stays routable for now (it is the fallback for a site added before its
+    // connector exists), but the primary path is the single screen.
+    Route::get('/sites/create', Sites\ConnectSite::class)->name('sites.create');
+    Route::get('/sites/create/wizard', Sites\CreateSiteWizard::class)->name('sites.create.wizard');
 
     // Sites — site-context (uses {site} parameter)
     Route::prefix('/sites/{site}')->group(function () {
@@ -108,8 +112,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         Route::get('/security/activity', Sites\Detail\Security\SecurityActivity::class)->name('sites.security.activity');
         Route::get('/security/users', Sites\Detail\Security\SecurityUsers::class)->name('sites.security.users');
         Route::get('/security/ip-management', Sites\Detail\Security\SecurityIpManagement::class)->name('sites.security.ip-management');
+        // SPEC §13 — the curated ten. This is the tweak surface now; /tweaks/* keeps
+        // the full connector catalogue for the rare case that needs it.
+        Route::get('/presets', Sites\Detail\SitePresets::class)->name('sites.presets');
         // Tweaks merged into the Security & Tweaks hub — keep the name for old links
-        Route::get('/tweaks', fn (Site $site) => redirect()->route('sites.security', $site))->name('sites.tweaks');
+        Route::get('/tweaks', fn (Site $site) => redirect()->route('sites.presets', $site))->name('sites.tweaks');
         Route::get('/tweaks/performance', Sites\Detail\Tweaks\TweaksPerformance::class)->name('sites.tweaks.performance');
         Route::get('/tweaks/site-control', Sites\Detail\Tweaks\TweaksSiteControl::class)->name('sites.tweaks.site-control');
         Route::get('/tweaks/admin-ux', Sites\Detail\Tweaks\TweaksAdminUx::class)->name('sites.tweaks.admin-ux');

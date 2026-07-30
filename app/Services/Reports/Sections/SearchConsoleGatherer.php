@@ -28,7 +28,11 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
         // than always reading the rolling 28-day cache.
         $dateRange = $this->resolveDateRange($site, $periodStart, $periodEnd);
         if ($dateRange === null) {
-            return [];
+            return $this->integrationStatus(
+                configured: $site->searchConsoleConnection()->exists(),
+                hasData: false,
+                reason: 'no Search Console window cached for the report period',
+            );
         }
 
         $caches = SearchConsoleCache::where('site_id', $site->id)
@@ -38,7 +42,11 @@ class SearchConsoleGatherer extends BaseReportSectionGatherer
 
         $overviewCache = $caches->get('overview');
         if (! $overviewCache) {
-            return [];
+            return $this->integrationStatus(
+                configured: $site->searchConsoleConnection()->exists(),
+                hasData: false,
+                reason: 'Search Console overview data is missing',
+            );
         }
 
         $overviewData = $overviewCache->data ?? [];

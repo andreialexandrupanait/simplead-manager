@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.19.2
+ * Version: 2.20.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,12 +17,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.19.2');
+define('SAM_VERSION', '2.20.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
 define('SAM_REST_NAMESPACE', 'simplead/v1');
 define('SAM_PLUGIN_BASENAME', plugin_basename(__FILE__));
+
+// SPEC §5.6 — the PHP error collector has to install its handlers as early as
+// possible, before any other plugin gets a chance to throw. It is deliberately
+// the first thing loaded, and boot() is wrapped in try/catch internally so a
+// failure here can never keep the plugin (or the site) from loading.
+require_once SAM_PLUGIN_DIR . 'includes/class-error-collector.php';
+SAM_Error_Collector::boot();
 
 // Always-needed core classes (need hooks registered at boot)
 require_once SAM_PLUGIN_DIR . 'includes/class-audit-logger.php';
@@ -77,6 +84,8 @@ spl_autoload_register(function ($class) {
         'SAM_Content_Urls_Endpoint'  => 'endpoints/class-content-urls-endpoint.php',
         'SAM_Woo_Endpoint'           => 'endpoints/class-woo-endpoint.php',
         'SAM_Form_Test_Endpoint'     => 'endpoints/class-form-test-endpoint.php',
+        'SAM_Php_Errors_Endpoint'    => 'endpoints/class-php-errors-endpoint.php',
+        'SAM_Error_Collector'        => 'class-error-collector.php',
         // Direct upload helper
         'SAM_Direct_Uploader'       => 'class-direct-uploader.php',
         // Admin

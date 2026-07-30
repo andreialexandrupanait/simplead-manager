@@ -73,9 +73,25 @@
                         @if($error->site)
                             <a href="{{ route('sites.overview', $error->site) }}" class="text-accent-500 hover:underline" wire:navigate>{{ $error->site->name }}</a>
                         @endif
+                        {{-- SPEC §5.6 — attribution comes from the file path, matched
+                             to the inventory: which plugin actually produced this. --}}
+                        @if($error->source_slug)
+                            <span class="text-gray-500">{{ $error->source_type }}: <span class="text-gray-900 dark:text-white">{{ $error->source_slug }}</span></span>
+                        @endif
                         <span>{{ __('Last seen') }}: {{ $error->last_seen_at->diffForHumans() }}</span>
                         <span>{{ __('First seen') }}: {{ $error->first_seen_at->diffForHumans() }}</span>
                     </div>
+
+                    {{-- SPEC §5.6 point 4 — remote kill switch, per site. --}}
+                    @if($error->site)
+                        <button
+                            wire:click="toggleCollection({{ $error->site->id }}, false)"
+                            wire:confirm="{{ __('Stop collecting PHP errors on this site?') }}"
+                            class="mt-1 text-[11px] text-gray-400 hover:text-red-600 transition"
+                        >
+                            {{ __('Oprește colectarea pe acest site') }}
+                        </button>
+                    @endif
                 </div>
 
                 @unless($error->is_resolved)

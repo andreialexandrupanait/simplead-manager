@@ -8,6 +8,7 @@ use App\Models\Report;
 use App\Models\Site;
 use App\Models\UptimeIncident;
 use App\Models\UptimeMonitor;
+use App\Services\Reports\BaseReportSectionGatherer;
 use App\Services\Reports\ReportSendGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -99,5 +100,74 @@ class ReportSendGateTest extends TestCase
         $report = Report::factory()->create(['site_id' => $site->id, 'data_snapshot' => []]);
 
         $this->assertTrue($this->gate->evaluate($report)['send']);
+    }
+
+    // ── Barrier 3: a section empty because its integration failed (§12.3) ──
+
+    public function test_a_configured_integration_that_returned_nothing_holds_the_report(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        $report = $this->reportFor($site, [
+            'analytics' => [BaseReportSectionGatherer::INTEGRATION_KEY => [
+                'section' => 'analytics',
+                'configured' => true,
+                'ok' => false,
+                'reason' => 'no Analytics data cached for the report period',
+            ]],
+        ]);
+
+        $result = $this->gate->evaluate($report);
+
+        $this->assertFalse($result['send'], 'A hole where a paid-for section should be must not go out silently.');
+        $this->assertStringContainsString('analytics', implode(' | ', $result['reasons']));
+    }
+
+    public function test_an_integration_that_was_never_configured_does_not_hold_the_report(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        // Cloudflare simply is not set up for this client — the section is absent
+        // by design, which is not a failure.
+        $report = $this->reportFor($site, [
+            'cloudflare' => [BaseReportSectionGatherer::INTEGRATION_KEY => [
+                'section' => 'cloudflare',
+                'configured' => false,
+                'ok' => true,
+                'reason' => null,
+            ]],
+        ]);
+
+        $this->assertTrue($this->gate->evaluate($report)['send']);
+    }
+
+    public function test_sections_without_an_integration_marker_are_ignored(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        // Locally-sourced sections (updates, backups…) carry no marker and can
+        // never trip barrier 3.
+        $report = $this->reportFor($site, ['updates' => ['applied' => 0], 'backups' => []]);
+
+        $this->assertTrue($this->gate->evaluate($report)['send']);
+    }
+
+    public function test_every_failed_section_is_named(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        $report = $this->reportFor($site, [
+            'analytics' => [BaseReportSectionGatherer::INTEGRATION_KEY => [
+                'section' => 'analytics', 'configured' => true, 'ok' => false, 'reason' => 'GA4 fetch failed',
+            ]],
+            'search_console' => [BaseReportSectionGatherer::INTEGRATION_KEY => [
+                'section' => 'search_console', 'configured' => true, 'ok' => false, 'reason' => 'GSC fetch failed',
+            ]],
+        ]);
+
+        $reasons = implode(' | ', $this->gate->evaluate($report)['reasons']);
+
+        $this->assertStringContainsString('analytics', $reasons);
+        $this->assertStringContainsString('search_console', $reasons);
     }
 }

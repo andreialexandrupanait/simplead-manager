@@ -443,6 +443,23 @@ class FakeWordPressApiService implements WordPressApiServiceInterface
         return $this->respond('getErrorLogs', func_get_args());
     }
 
+    // SPEC §5.6 — own-handler collector (connector >= 2.20.0)
+
+    public function getPhpErrors(): array
+    {
+        return $this->respond('getPhpErrors', func_get_args());
+    }
+
+    public function acknowledgePhpErrors(array $signatures = []): array
+    {
+        return $this->respond('acknowledgePhpErrors', func_get_args());
+    }
+
+    public function togglePhpErrorCollection(bool $enabled): array
+    {
+        return $this->respond('togglePhpErrorCollection', func_get_args());
+    }
+
     // Key management
 
     public function rotateApiKeys(): array

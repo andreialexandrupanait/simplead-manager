@@ -15,11 +15,41 @@ abstract class BaseReportSectionGatherer implements ReportSectionGathererInterfa
      */
     protected const GOOGLE_STALE_AFTER_DAYS = 7;
 
+    /**
+     * Key under which every integration-backed section reports whether its source
+     * actually answered. SPEC §12.3 barrier 3 reads it.
+     */
+    public const INTEGRATION_KEY = '_integration';
+
     protected string $sectionKey = '';
 
     public function supports(string $sectionKey): bool
     {
         return $this->sectionKey === $sectionKey;
+    }
+
+    // ─── Integration availability (SPEC §12.3 barrier 3) ─────────────
+
+    /**
+     * A report must not go out with a section silently empty because an
+     * integration broke — but it MAY go out with a section absent because the
+     * integration was never set up. Nothing could tell those two apart, so every
+     * integration-backed section now states which case it is in.
+     *
+     * @param  bool  $configured  is this integration set up for the site at all?
+     * @param  bool  $hasData  did it actually yield data for this period?
+     * @param  string|null  $reason  operator-facing explanation when it did not
+     * @return array{_integration: array{section: string, configured: bool, ok: bool, reason: string|null}}
+     */
+    protected function integrationStatus(bool $configured, bool $hasData, ?string $reason = null): array
+    {
+        return [self::INTEGRATION_KEY => [
+            'section' => $this->sectionKey,
+            'configured' => $configured,
+            // Not configured is not a failure — there is nothing to fail.
+            'ok' => ! $configured || $hasData,
+            'reason' => $configured && ! $hasData ? ($reason ?? 'no data returned for the period') : null,
+        ]];
     }
 
     // ─── Google Data Freshness (P2-03) ───────────────────────────────

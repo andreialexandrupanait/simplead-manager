@@ -69,6 +69,8 @@ class NotificationTemplate extends Model
         'connector_update_failed' => 'Connector Update Failed',
         'theme_files_modified' => 'Theme Files Modified',
         'wordpress_version_eol' => 'WordPress Version EOL',
+        'php_eol' => 'PHP Version EOL',
+        'new_admin_user' => 'New WordPress Administrator',
         'app_backup_completed' => 'App Backup Completed',
         'app_backup_failed' => 'App Backup Failed',
         'app_backup_degraded' => 'App Backup Degraded (Local-Only)',

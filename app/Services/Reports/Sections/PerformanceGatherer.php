@@ -25,14 +25,19 @@ class PerformanceGatherer extends BaseReportSectionGatherer
     ): array {
         $monitor = $site->performanceMonitor;
         if (! $monitor) {
-            return [];
+            return $this->integrationStatus(configured: false, hasData: false);
         }
 
         $mobileTest = $monitor->latestMobileTest;
         $desktopTest = $monitor->latestDesktopTest;
 
         if (! $mobileTest && ! $desktopTest) {
-            return [];
+            // A monitor exists but neither run produced a result — PageSpeed failed.
+            return $this->integrationStatus(
+                configured: true,
+                hasData: false,
+                reason: 'no PageSpeed result for either mobile or desktop',
+            );
         }
 
         $cur = $currentSnapshot;

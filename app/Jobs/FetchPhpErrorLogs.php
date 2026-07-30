@@ -38,6 +38,9 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
         return 'fetch-php-errors-'.$this->site->id;
     }
 
+    /** Connector release that introduced the own-handler collector (SPEC §5.6). */
+    private const COLLECTOR_MIN_VERSION = '2.20.0';
+
     public function handle(): void
     {
         if (! $this->site->is_connected) {
@@ -45,6 +48,16 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
         }
 
         $api = app(WordPressApiServiceFactory::class)->make($this->site);
+
+        // SPEC §5.6 — prefer the connector's own error handler, which reports a
+        // deduplicated aggregate with per-signature counts and attribution. The
+        // debug.log path below stays for sites still on an older connector; it is
+        // the thing the spec wants replaced, not a second source to merge.
+        if ($this->site->connectorAtLeast(self::COLLECTOR_MIN_VERSION)) {
+            $this->ingestFromCollector($api);
+
+            return;
+        }
 
         // P2-47: a broken connector endpoint / auth failure throws here
         // (getErrorLogs() calls $response->throw()). Do NOT swallow it — surface
@@ -119,6 +132,109 @@ class FetchPhpErrorLogs implements ShouldBeUnique, ShouldQueue
             if (($entry['level'] ?? '') === 'fatal') {
                 $newFatals++;
             }
+        }
+
+        if ($newFatals > 0) {
+            NotificationService::notifySiteEvent(
+                $this->site,
+                'php_fatal_error',
+                'New PHP Fatal Error(s)',
+                "{$newFatals} new fatal error(s) detected on {$this->site->name}.",
+                ['Site' => $this->site->name, 'New Fatal Errors' => $newFatals],
+                'critical'
+            );
+
+            ActivityLogger::log(
+                type: 'error_log',
+                severity: 'critical',
+                title: "{$newFatals} new PHP fatal error(s) detected",
+                site: $this->site,
+                icon: 'alert-triangle',
+            );
+        }
+    }
+
+    /**
+     * SPEC §5.6 ingestion: pull the aggregate the connector's own handler built,
+     * store it with attribution, then acknowledge exactly the signatures that
+     * were stored.
+     *
+     * The site keeps anything we did not confirm, so a half-finished transfer
+     * costs a duplicate next time rather than losing the errors entirely.
+     */
+    private function ingestFromCollector(\App\Contracts\WordPressApiServiceInterface $api): void
+    {
+        try {
+            $payload = $api->getPhpErrors();
+        } catch (\Throwable $e) {
+            Log::error("PHP error collector fetch failed for site {$this->site->name}: {$e->getMessage()}", [
+                'site_id' => $this->site->id,
+                'exception' => $e::class,
+            ]);
+
+            throw $e;
+        }
+
+        $errors = $payload['errors'] ?? [];
+
+        if (! is_array($errors) || $errors === []) {
+            return;
+        }
+
+        $stored = [];
+        $newFatals = 0;
+
+        foreach ($errors as $entry) {
+            if (! is_array($entry) || empty($entry['signature'])) {
+                continue;
+            }
+
+            $signature = (string) $entry['signature'];
+            $source = is_array($entry['source'] ?? null) ? $entry['source'] : [];
+            $count = max(1, (int) ($entry['count'] ?? 1));
+            $lastSeen = $this->parseTimestamp($entry['last_seen'] ?? null) ?? now();
+
+            $existing = PhpErrorLog::where('site_id', $this->site->id)
+                ->where('message_hash', $signature)
+                ->first();
+
+            if ($existing !== null) {
+                // The site's counter is per-collection-window and reset on ack, so
+                // occurrences ADD here rather than replacing — this is the total
+                // for the reporting period.
+                $existing->update([
+                    'count' => $existing->count + $count,
+                    'last_seen_at' => $lastSeen,
+                    'is_resolved' => false,
+                ]);
+            } else {
+                PhpErrorLog::create([
+                    'site_id' => $this->site->id,
+                    'level' => mb_substr((string) ($entry['level'] ?? 'other'), 0, 255),
+                    'message' => mb_substr((string) ($entry['message'] ?? ''), 0, 2000),
+                    'file' => mb_substr((string) ($entry['file'] ?? ''), 0, 255),
+                    'line' => isset($entry['line']) ? (int) $entry['line'] : null,
+                    'message_hash' => $signature,
+                    'count' => $count,
+                    'first_seen_at' => $this->parseTimestamp($entry['first_seen'] ?? null) ?? now(),
+                    'last_seen_at' => $lastSeen,
+                    'source_type' => mb_substr((string) ($source['type'] ?? 'unknown'), 0, 20),
+                    'source_slug' => isset($source['slug']) ? mb_substr((string) $source['slug'], 0, 191) : null,
+                ]);
+
+                if (($entry['level'] ?? '') === 'fatal') {
+                    $newFatals++;
+                }
+            }
+
+            $stored[] = $signature;
+        }
+
+        // Only now does the site forget them.
+        try {
+            $api->acknowledgePhpErrors($stored);
+        } catch (\Throwable $e) {
+            Log::warning("PHP error acknowledgement failed for site {$this->site->id}: {$e->getMessage()}");
         }
 
         if ($newFatals > 0) {

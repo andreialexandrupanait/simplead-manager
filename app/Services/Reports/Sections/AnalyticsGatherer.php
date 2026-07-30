@@ -27,7 +27,13 @@ class AnalyticsGatherer extends BaseReportSectionGatherer
         $cache = $this->resolveCache($site, $periodStart, $periodEnd);
 
         if (! $cache) {
-            return [];
+            // A site with a GA4 connection but no cached data means the fetch broke;
+            // a site without one simply has no analytics section (§12.3 barrier 3).
+            return $this->integrationStatus(
+                configured: $site->analyticsConnection()->exists(),
+                hasData: false,
+                reason: 'no Analytics data cached for the report period',
+            );
         }
 
         $raw = $cache->data;

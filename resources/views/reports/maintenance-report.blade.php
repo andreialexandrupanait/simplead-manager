@@ -19,6 +19,13 @@
 
     @php $sectionNumber = 0; @endphp
 
+    {{-- Section order follows SPEC §12.2, in the client's order of importance:
+         1. Rezumat · 2. Disponibilitate · 3. Mentenanță efectuată · 4. Securitate
+         · 5. Performanță · 6. Trafic. Security used to sit near the end, after
+         traffic — the opposite of what the client cares about. Sections outside
+         the spec's six ride with the one they belong to (Cloudflare's cache-hit
+         rate is a performance figure per §12.2 point 5). --}}
+
     {{-- Executive Summary (always first when overview is enabled) --}}
     @if(in_array('overview', $sections) && isset($data['executive_snapshot']))
         @php $sectionNumber++; @endphp
@@ -65,30 +72,6 @@
         </div>
     @endif
 
-    {{-- Analytics --}}
-    @if(in_array('analytics', $sections) && isset($data['analytics']) && $data['analytics'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.analytics-1')
-        </div>
-    @endif
-
-    {{-- Search Console --}}
-    @if(in_array('search_console', $sections) && isset($data['search_console']) && $data['search_console'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.search-console-1')
-        </div>
-    @endif
-
-    {{-- Performance --}}
-    @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.performance')
-        </div>
-    @endif
-
     {{-- Plugin & Theme Inventory --}}
     @if(in_array('plugin_inventory', $sections) && isset($data['plugin_inventory']))
         @php $sectionNumber++; @endphp
@@ -105,14 +88,6 @@
         </div>
     @endif
 
-    {{-- Cloudflare / CDN --}}
-    @if(in_array('cloudflare', $sections) && isset($data['cloudflare']) && $data['cloudflare'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.cloudflare')
-        </div>
-    @endif
-
     {{-- WordPress Users --}}
     @if(in_array('wp_users', $sections) && isset($data['wp_users']) && $data['wp_users'])
         @php $sectionNumber++; @endphp
@@ -126,6 +101,38 @@
         @php $sectionNumber++; @endphp
         <div class="report-section">
             @include('reports.partials.security-checks')
+        </div>
+    @endif
+
+    {{-- Performance --}}
+    @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.performance')
+        </div>
+    @endif
+
+    {{-- Cloudflare / CDN --}}
+    @if(in_array('cloudflare', $sections) && isset($data['cloudflare']) && $data['cloudflare'])
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.cloudflare')
+        </div>
+    @endif
+
+    {{-- Analytics --}}
+    @if(in_array('analytics', $sections) && isset($data['analytics']) && $data['analytics'])
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.analytics-1')
+        </div>
+    @endif
+
+    {{-- Search Console --}}
+    @if(in_array('search_console', $sections) && isset($data['search_console']) && $data['search_console'])
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.search-console-1')
         </div>
     @endif
 

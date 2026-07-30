@@ -51,7 +51,7 @@ class PerformanceSettingsTest extends TestCase
 
         Livewire::actingAs($manager)
             ->test(SitePerformance::class, ['site' => $site])
-            ->set('settingsFrequency', 'monthly')
+            ->set('settingsFrequency', 'fortnightly')
             ->set('settingsTestTime', '04:00')
             ->set('settingsThreshold', 10)
             ->call('updateSettings')

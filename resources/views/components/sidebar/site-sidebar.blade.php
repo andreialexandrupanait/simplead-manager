@@ -251,6 +251,15 @@
             >
                 Hardening
             </x-sidebar.sidebar-item>
+            {{-- SPEC §13 — cele zece setări curate; catalogul complet al conectorului
+                 rămâne accesibil dintr-un link din interiorul ecranului. --}}
+            <x-sidebar.sidebar-item
+                :href="route('sites.presets', $site)"
+                icon="sliders"
+                :active="request()->routeIs('sites.presets') || request()->routeIs('sites.tweaks*')"
+            >
+                Presetări
+            </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
         {{-- Performanță ▾ — spec: PageSpeed · Core Web Vitals (ambele pe același ecran). --}}

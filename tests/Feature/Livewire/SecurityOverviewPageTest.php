@@ -57,13 +57,15 @@ class SecurityOverviewPageTest extends TestCase
             ->assertDontSee('Looking for Performance & Site Control?');
     }
 
-    public function test_old_tweaks_overview_url_redirects_to_the_hub(): void
+    public function test_old_tweaks_overview_url_redirects_to_the_curated_presets(): void
     {
+        // SPEC §13 — /tweaks now lands on the ten curated settings rather than the
+        // security hub; the full connector catalogue lives one link deeper.
         [$site, $manager] = $this->siteWithManager();
 
         $this->actingAs($manager)
             ->get(route('sites.tweaks', $site))
-            ->assertRedirect(route('sites.security', $site));
+            ->assertRedirect(route('sites.presets', $site));
     }
 
     public function test_scanning_card_counts_open_critical_and_high_issues_only(): void

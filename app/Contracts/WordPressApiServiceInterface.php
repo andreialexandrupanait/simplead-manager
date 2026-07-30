@@ -127,6 +127,14 @@ interface WordPressApiServiceInterface
     // Error logs
     public function getErrorLogs(int $limit = 100): array;
 
+    // SPEC §5.6 — deduplicated aggregate from the connector's own handler
+    public function getPhpErrors(): array;
+
+    /** @param  list<string>  $signatures */
+    public function acknowledgePhpErrors(array $signatures = []): array;
+
+    public function togglePhpErrorCollection(bool $enabled): array;
+
     // Key management
     public function rotateApiKeys(): array;
 

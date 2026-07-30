@@ -29,6 +29,8 @@ class PhpErrorLog extends Model
     protected $fillable = [
         'site_id', 'level', 'message', 'file', 'line', 'message_hash',
         'count', 'first_seen_at', 'last_seen_at', 'is_resolved',
+        // SPEC §5.6 — which plugin/theme the file path belongs to.
+        'source_type', 'source_slug',
     ];
 
     protected $casts = [

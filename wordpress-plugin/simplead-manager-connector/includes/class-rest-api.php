@@ -40,6 +40,7 @@ class SAM_REST_API {
             'SAM_Content_Urls_Endpoint',
             'SAM_Woo_Endpoint',
             'SAM_Form_Test_Endpoint',
+            'SAM_Php_Errors_Endpoint',
         ];
 
         foreach ($classes as $class) {

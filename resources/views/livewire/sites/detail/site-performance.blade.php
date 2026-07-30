@@ -482,6 +482,8 @@
                         <option value="manual">{{ __('Manual only') }}</option>
                         <option value="daily">{{ __('Daily') }}</option>
                         <option value="weekly">{{ __('Weekly') }}</option>
+                        {{-- SPEC §5.5: PageSpeed/CWV are a monthly measure, not a continuous one. --}}
+                        <option value="monthly">{{ __('Monthly') }}</option>
                     </x-ui.select>
                 </div>
 

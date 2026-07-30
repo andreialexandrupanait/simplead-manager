@@ -20,12 +20,14 @@ use App\Models\UptimeIncident;
  *      the site being down right now);
  *   2. an out-of-range headline value — uptime below {@see self::MIN_UPTIME_PCT}.
  *
- * Deferred (documented in E2E-VERIFICAT.md — need design/data not yet available):
- *   - "a section has no data because an integration failed": report sections carry
- *     no uniform failure marker today (uptime has `available`, analytics/GSC do
- *     not), so a failed integration cannot be told apart from a not-configured one
- *     without per-gatherer error surfacing.
- *   - "traffic jumped several times": needs prior-period comparison data.
+ * Barrier 3 ("a section has no data because an integration failed") is now live:
+ * every integration-backed gatherer stamps a uniform marker
+ * ({@see BaseReportSectionGatherer::INTEGRATION_KEY}) saying whether its source is
+ * configured and whether it answered, which is what separates a broken integration
+ * from one that was never set up.
+ *
+ * Still deferred: "traffic jumped several times" — needs prior-period comparison
+ * data that the snapshot does not carry yet.
  */
 class ReportSendGate
 {
@@ -71,6 +73,18 @@ class ReportSendGate
                 );
             }
 
+            // Barrier 3 — a section is empty because its integration failed.
+            // "mai bine omisă decât afișată cu zero": a configured integration that
+            // returned nothing is a hole in the report, while an integration that
+            // was never set up is simply a section the client does not get.
+            foreach ($this->failedIntegrations($data) as $failure) {
+                $reasons[] = sprintf(
+                    'the %s section has no data (%s)',
+                    $failure['section'],
+                    $failure['reason'],
+                );
+            }
+
             $reasons = array_values(array_unique($reasons));
 
             return ['send' => $reasons === [], 'reasons' => $reasons];
@@ -78,5 +92,39 @@ class ReportSendGate
             // Fail-safe: an evaluation we cannot finish must never green-light a send.
             return ['send' => false, 'reasons' => ['safety-barrier evaluation failed: '.$e->getMessage()]];
         }
+    }
+
+    /**
+     * Sections whose integration is configured but produced nothing.
+     *
+     * Each integration-backed gatherer stamps {@see BaseReportSectionGatherer::INTEGRATION_KEY}
+     * into its slice of the snapshot; anything without the marker (a section that
+     * reads only local data) cannot fail this way and is ignored.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array{section: string, reason: string}>
+     */
+    private function failedIntegrations(array $data): array
+    {
+        $failures = [];
+
+        foreach ($data as $sectionKey => $section) {
+            if (! is_array($section)) {
+                continue;
+            }
+
+            $marker = $section[BaseReportSectionGatherer::INTEGRATION_KEY] ?? null;
+
+            if (! is_array($marker) || ($marker['ok'] ?? true) !== false) {
+                continue;
+            }
+
+            $failures[] = [
+                'section' => (string) ($marker['section'] ?? $sectionKey),
+                'reason' => (string) ($marker['reason'] ?? 'integration returned no data'),
+            ];
+        }
+
+        return $failures;
     }
 }

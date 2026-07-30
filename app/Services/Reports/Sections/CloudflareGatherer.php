@@ -27,7 +27,8 @@ class CloudflareGatherer extends BaseReportSectionGatherer
         $cf = SiteCloudflare::where('site_id', $site->id)->first();
 
         if (! $cf || ! $cf->is_active) {
-            return [];
+            // Not configured (or deliberately inactive) — not a failure (§12.3).
+            return $this->integrationStatus(configured: false, hasData: false);
         }
 
         $cur = $currentSnapshot;
