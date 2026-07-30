@@ -17,7 +17,7 @@
                 {{ $attributes->wire('click') }}
             @endif
             @class([
-                'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
+                'shrink-0 rounded-md px-2.5 py-1 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
                 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' => $selected === $value,
                 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200' => $selected !== $value,
             ])

@@ -81,14 +81,6 @@
         </div>
     @endif
 
-    {{-- SEO --}}
-    @if(in_array('seo', $sections) && isset($data['seo']) && $data['seo'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.seo')
-        </div>
-    @endif
-
     {{-- Performance --}}
     @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
         @php $sectionNumber++; @endphp
@@ -134,14 +126,6 @@
         @php $sectionNumber++; @endphp
         <div class="report-section">
             @include('reports.partials.security-checks')
-        </div>
-    @endif
-
-    {{-- SEO Audit --}}
-    @if(in_array('seo', $sections) && isset($data['seo']) && $data['seo'])
-        @php $sectionNumber++; @endphp
-        <div class="report-section">
-            @include('reports.partials.seo')
         </div>
     @endif
 

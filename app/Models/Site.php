@@ -10,9 +10,11 @@ use App\Models\Traits\HasDomainExtraction;
 use App\Models\Traits\HasSiteRelationships;
 use App\Models\Traits\HasSiteScopes;
 use App\Services\DashboardService;
+use App\Support\Semver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -117,6 +119,10 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SecurityBannedIp> $securityBannedIps
  * @property int|null $wp_admin_user_id
  * @property-read \App\Models\SiteUser|null $wpAdminUser
+ * @property string|null $smoke_canary_selector
+ * @property int|null $smoke_dom_reference
+ * @property array|null $smoke_dom_references
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\SiteRiskyPlugin> $riskyPlugins
  */
 class Site extends Model
 {
@@ -133,6 +139,8 @@ class Site extends Model
         'sort_order',
         'health_score',
         'safe_updates_enabled',
+        'standard_preset_applied_at',
+        'key_urls',
         'domain_expires_at',
         'domain_registrar',
         'domain_status',
@@ -173,6 +181,9 @@ class Site extends Model
         'backup_strategy',
         'wp_admin_user_id',
         'ai_context',
+        'smoke_canary_selector',
+        'smoke_dom_reference',
+        'smoke_dom_references',
     ];
 
     protected $casts = [
@@ -186,6 +197,8 @@ class Site extends Model
         'last_backup_at' => 'datetime',
         'last_synced_at' => 'datetime',
         'domain_expires_at' => 'datetime',
+        'standard_preset_applied_at' => 'datetime',
+        'key_urls' => 'array',
         'domain_checked_at' => 'datetime',
         'domain_status' => \App\Enums\DomainStatus::class,
         'safe_updates_enabled' => 'boolean',
@@ -203,6 +216,8 @@ class Site extends Model
         'backup_capabilities' => 'array',
         'backup_capabilities_checked_at' => 'datetime',
         'wp_admin_user_id' => 'integer',
+        'smoke_dom_reference' => 'integer',
+        'smoke_dom_references' => 'array',
     ];
 
     protected static function booted(): void
@@ -296,6 +311,19 @@ class Site extends Model
         return (bool) ($this->backup_capabilities[$capability] ?? false);
     }
 
+    /**
+     * Whether this site's installed connector is at least $version — the gate for
+     * endpoints that only exist from a given plugin release onwards (e.g. the
+     * 2.19.2 /woo-health and /content-urls routes).
+     *
+     * Fail-closed: a null or unparseable `connector_version` reads as "too old",
+     * so a job skips the site cleanly instead of calling an endpoint that 404s.
+     */
+    public function connectorAtLeast(string $version): bool
+    {
+        return Semver::atLeast((string) $this->connector_version, $version);
+    }
+
     public function getOverallStatusAttribute(): string
     {
         return HealthLevel::fromScore($this->health_score, $this->is_up)->value;
@@ -309,5 +337,17 @@ class Site extends Model
     public function getScreenshotUrlAttribute(): ?string
     {
         return $this->screenshot_path ? Storage::disk('public')->url($this->screenshot_path) : null;
+    }
+
+    /**
+     * Faza 6 — this site's per-plugin "do not auto-update" list. A plugin present
+     * here (is_risky = true) is forced onto the AwaitApproval route by the update
+     * decision engine.
+     *
+     * @return HasMany<\App\Models\SiteRiskyPlugin, $this>
+     */
+    public function riskyPlugins(): HasMany
+    {
+        return $this->hasMany(SiteRiskyPlugin::class);
     }
 }

@@ -11,7 +11,6 @@ use App\Http\Controllers\ReportDownloadController;
 use App\Http\Controllers\ReportViewController;
 use App\Http\Controllers\WebhookController;
 use App\Livewire\Activity;
-use App\Livewire\Audit;
 use App\Livewire\Backups;
 use App\Livewire\Clients;
 use App\Livewire\Dashboard;
@@ -22,10 +21,8 @@ use App\Livewire\Notifications;
 use App\Livewire\Performance;
 use App\Livewire\Reports;
 use App\Livewire\Security;
-use App\Livewire\Seo;
 use App\Livewire\Settings;
 use App\Livewire\Sites;
-use App\Livewire\StatusPages;
 use App\Livewire\Updates;
 use App\Livewire\Uptime;
 use App\Models\Site;
@@ -69,11 +66,6 @@ Route::get('/r/{report}/{token}', ReportViewController::class)
     ->name('reports.view.public')
     ->middleware('throttle:60,1');
 
-// Public audit report (Faza D6) — served by slug (behind rapoarte.simplead.ro).
-Route::get('/raport/{slug}', [\App\Http\Controllers\PublicAuditReportController::class, 'show'])
-    ->name('audit-report.public')
-    ->middleware('throttle:60,1');
-
 // Plugin download via signed URL (for WP self-update — no auth required)
 Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)
     ->name('download.connector-plugin.signed')
@@ -93,12 +85,14 @@ Route::middleware(['auth'])->group(function () {
 // Authenticated routes — gated behind the 2FA challenge + admin enrollment.
 Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge', '2fa.enforce'])->group(function () {
 
-    // Dashboard
-    Route::get('/', Dashboard\GlobalDashboard::class)->name('dashboard');
+    // Main screen (SPEC §4): the WPMU-Hub site list + the three-band Panou.
+    Route::get('/', Sites\SitesList::class)->name('dashboard');
     Route::get('/dashboard/widgets', fn () => redirect()->route('dashboard'))->name('dashboard.widgets');
+    // Classic widget dashboard — kept as a backup view (the pre-§4 landing).
+    Route::get('/dashboard/classic', Dashboard\GlobalDashboard::class)->name('dashboard.classic');
 
-    // Sites — global list (redirects to dashboard)
-    Route::get('/sites', fn () => redirect()->route('dashboard'))->name('sites.index');
+    // Sites — global list (same §4 screen).
+    Route::get('/sites', Sites\SitesList::class)->name('sites.index');
     Route::get('/sites/create', Sites\CreateSiteWizard::class)->name('sites.create');
 
     // Sites — site-context (uses {site} parameter)
@@ -126,7 +120,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         Route::get('/security/admin-ux', fn (Site $site) => redirect()->route('sites.tweaks.admin-ux', $site));
         Route::get('/security/content-media', fn (Site $site) => redirect()->route('sites.tweaks.content-media', $site));
         Route::get('/performance', Sites\Detail\SitePerformance::class)->name('sites.performance');
-        Route::get('/seo', Sites\Detail\SiteSeoAudit::class)->name('sites.seo');
         Route::get('/backups', Sites\Detail\SiteBackups::class)->name('sites.backups');
         Route::get('/uptime', Sites\Detail\SiteUptime::class)->name('sites.uptime');
         Route::get('/analytics', Sites\Detail\SiteAnalytics::class)->name('sites.analytics');
@@ -167,16 +160,6 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Performance — global view
     Route::get('/performance', Performance\PerformanceOverview::class)->name('performance.index');
 
-    // SEO
-    Route::get('/seo', Seo\SeoOverview::class)->name('seo.index');
-    Route::get('/seo/quick-audit', Seo\SeoQuickAudit::class)->name('seo.quick-audit');
-
-    // Audit — unified SEO/audit module (Faza D)
-    Route::get('/audits', Audit\AuditIndex::class)->name('audits.index');
-    Route::get('/audits/create', Audit\AuditCreate::class)->name('audits.create');
-    Route::get('/audits/{audit}', Audit\AuditShow::class)->name('audits.show');
-    Route::get('/audits/{audit}/editor', Audit\AuditEditor::class)->name('audits.editor');
-
     // Security — global views
     Route::get('/security', Security\SecurityDashboard::class)->name('security.index');
     Route::get('/security/presets', Security\PresetManager::class)->name('security.presets')->middleware('role:admin');
@@ -209,9 +192,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Clients
     Route::prefix('clients')->group(function () {
         Route::get('/', Clients\ClientsList::class)->name('clients.index');
-        Route::get('/create', Clients\ClientForm::class)->name('clients.create');
         Route::get('/{client}', Clients\ClientDetail::class)->name('clients.show');
-        Route::get('/{client}/edit', Clients\ClientForm::class)->name('clients.edit');
     });
 
     // Reports
@@ -245,22 +226,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         // WordPress
         Route::get('/wordpress', Settings\WordPressSettings::class)->name('settings.wordpress');
 
-        // AI Incident Response
-        Route::get('/ai-incident-response', Settings\AiIncidentResponseSettings::class)->name('settings.ai-incident-response');
-
         // Application Backup
         Route::get('/application-backup', Settings\ApplicationBackup::class)->name('settings.application-backup');
 
-        // Users & Invitations
-        Route::get('/users', Settings\UserManagement::class)->name('settings.users');
-
         // Maintenance Plans (redirect to standalone page)
         Route::redirect('/site-presets', '/maintenance-plans')->name('settings.maintenance-plans');
-
-        // Status Pages
-        Route::get('/status-pages', StatusPages\StatusPagesList::class)->name('settings.status-pages');
-        Route::get('/status-pages/create', StatusPages\StatusPageEdit::class)->name('settings.status-pages.create');
-        Route::get('/status-pages/{statusPage}/edit', StatusPages\StatusPageEdit::class)->name('settings.status-pages.edit');
 
         // App backup download (signed URL for local storage)
         Route::get('/app-backups/{appBackup}/download', AppBackupDownloadController::class)->name('app-backups.download')->middleware(['signed', 'throttle:10,1']);
@@ -279,22 +249,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
 Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'redirect'])->name('auth.google')->middleware('guest');
 Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleSsoController::class, 'callback'])->name('auth.google.callback')->middleware('guest');
 
-// Public status pages (no auth)
 // Notification acknowledgment (public, token-based).
 // P1-23: GET only shows a confirm page (crawler-safe); POST mutates.
 Route::get('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'show'])->name('notifications.ack')->middleware('throttle:30,1');
 Route::post('/notifications/ack/{token}', [\App\Http\Controllers\NotificationAckController::class, 'confirm'])->name('notifications.ack.confirm')->middleware('throttle:30,1');
-
-// Client Portal (public, token-based)
-Route::get('/portal/{token}', [\App\Http\Controllers\ClientPortalController::class, 'show'])->name('client-portal.show')->middleware('throttle:60,1');
-Route::get('/portal/{token}/reports/{report}', [\App\Http\Controllers\ClientPortalController::class, 'viewReport'])->name('client-portal.report')->middleware('throttle:60,1');
-Route::get('/portal/{token}/reports/{report}/download', [\App\Http\Controllers\ClientPortalController::class, 'downloadReport'])->name('client-portal.download')->middleware('throttle:10,1');
-
-// Invitation accept (public)
-Route::get('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'show'])->name('invitation.accept');
-Route::post('/invitation/{token}', [\App\Http\Controllers\Auth\AcceptInvitationController::class, 'store'])->middleware('throttle:10,1');
-
-Route::get('/status/{slug}', [\App\Http\Controllers\StatusPageController::class, '__invoke'])->name('status-page.show')->middleware('throttle:status-page');
-Route::post('/status/{slug}/auth', [\App\Http\Controllers\StatusPageController::class, 'authenticate'])->name('status-page.auth')->middleware('throttle:status-page-auth');
-Route::get('/api/status/{slug}', [\App\Http\Controllers\StatusPageController::class, 'api'])->name('status-page.api')->middleware('throttle:status-page');
-Route::get('/status/{slug}/badge.svg', [\App\Http\Controllers\StatusPageController::class, 'badge'])->name('status-page.badge')->middleware('throttle:status-page');

@@ -9,6 +9,7 @@ use App\Models\Backup;
 use App\Observers\BackupObserver;
 use App\Services\Notifications\NotificationService;
 use App\Services\SettingsService;
+use App\View\Composers\SidebarComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
@@ -40,17 +41,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SecurityActivityService::class);
         $this->app->singleton(\App\Services\SecurityPresetService::class);
 
-        // Faza D: the SF crawl runner (production impl; faked in tests).
-        $this->app->bind(
-            \App\Services\Audit\SfCrawlRunner::class,
-            \App\Services\Audit\ScreamingFrogCrawlRunner::class,
-        );
-
-        // Faza D: the audit AI client (Anthropic HTTP impl; faked in tests).
-        $this->app->bind(
-            \App\Services\Audit\Ai\AuditAiClient::class,
-            \App\Services\Audit\Ai\HttpAuditAiClient::class,
-        );
+        // Faza 4: the operation registry must be shared so runtime key → class
+        // registrations persist across resolutions within a request/worker.
+        $this->app->singleton(\App\Operations\OperationRegistry::class);
     }
 
     /**
@@ -74,16 +67,6 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('authenticated', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
-        });
-
-        RateLimiter::for('status-page', function (Request $request) {
-            return Limit::perMinute(30)->by($request->ip());
-        });
-
-        RateLimiter::for('status-page-auth', function (Request $request) {
-            $slug = $request->route('slug', 'unknown');
-
-            return Limit::perMinute(5)->by($slug.'|'.$request->ip());
         });
 
         // Load Google API credentials from DB if not set in env
@@ -160,6 +143,12 @@ class AppServiceProvider extends ServiceProvider
                 'failures_in_window' => $failures,
             ]);
         });
+
+        // Fleet sidebar severity counters (SPEC §3.1): updates / security / errors.
+        View::composer('components.sidebar.global-sidebar', SidebarComposer::class);
+
+        // Site-context sidebar (SPEC §3.2/§3.3): site switcher list + per-site badges.
+        View::composer('components.sidebar.site-sidebar', \App\View\Composers\SiteSwitcherComposer::class);
 
         // Guest layout slideshow data (View::share because anonymous Blade components don't trigger View::composer)
         View::composer('auth.*', function (\Illuminate\View\View $view) {

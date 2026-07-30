@@ -43,17 +43,6 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    @if($client->portal_enabled && $client->portal_token)
-                        <a href="{{ route('client-portal.show', $client->portal_token) }}" target="_blank" rel="noopener">
-                            <x-ui.button variant="secondary">
-                                <svg aria-hidden="true" class="mr-1.5 h-4 w-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                {{ __('Open Portal') }}
-                            </x-ui.button>
-                        </a>
-                    @endif
-                    <a href="{{ route('clients.edit', $client) }}">
-                        <x-ui.button variant="secondary">{{ __('Edit') }}</x-ui.button>
-                    </a>
                     <x-ui.button variant="danger" wire:click="confirmDelete">{{ __('Delete') }}</x-ui.button>
                 </div>
             </div>
@@ -155,37 +144,6 @@
             @endif
         </x-ui.card>
     </div>
-
-    {{-- Profitability --}}
-    <div class="mt-6">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ __('Profitability') }}</h2>
-        <livewire:clients.client-profitability :client="$client" />
-    </div>
-
-    {{-- Client Portal --}}
-    <x-ui.card class="mt-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Client Portal') }}</h3>
-        <p class="text-sm text-gray-500 mb-3">{{ __('Share a link with your client so they can view reports and site status without logging in.') }}</p>
-
-        <div class="flex items-center gap-3">
-            <label class="flex items-center gap-2">
-                <input type="checkbox" wire:click="togglePortal" @checked($client->portal_enabled)
-                       class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                <span class="text-sm text-gray-700">{{ __('Enable portal') }}</span>
-            </label>
-        </div>
-
-        @if($client->portal_enabled && $client->portal_token)
-            <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('Portal URL') }}</label>
-                <div class="flex items-center gap-2">
-                    <code class="flex-1 rounded bg-white border px-3 py-1.5 text-xs font-mono text-gray-900 select-all truncate">{{ route('client-portal.show', $client->portal_token) }}</code>
-                    <button wire:click="regeneratePortalToken" wire:confirm="{{ __('Regenerate token? The old link will stop working.') }}"
-                            class="text-xs text-gray-500 hover:text-accent-600 whitespace-nowrap">{{ __('Regenerate') }}</button>
-                </div>
-            </div>
-        @endif
-    </x-ui.card>
 
     {{-- Delete Confirmation Modal --}}
     <x-ui.modal name="delete-client" maxWidth="sm">

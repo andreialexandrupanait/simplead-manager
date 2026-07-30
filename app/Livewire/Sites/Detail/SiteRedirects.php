@@ -28,36 +28,13 @@ class SiteRedirects extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('redirects', $this->site->id, auth()->id());
     }
 
     #[Computed]
     public function redirects()
     {
         return $this->site->redirects()->orderByDesc('created_at')->get();
-    }
-
-    #[Computed]
-    public function brokenLinks()
-    {
-        // Suggest fixes: distinct broken target URLs from the latest SEO audit.
-        /** @var \App\Models\SeoAudit|null $audit */
-        $audit = $this->site->seoAudits()->latest('scanned_at')->first();
-        if (! $audit) {
-            return collect();
-        }
-
-        return $audit->links()->where('is_broken', true)
-            ->orderBy('target_url')
-            ->get()
-            ->unique('target_url')
-            ->take(20)
-            ->values();
-    }
-
-    public function prefillFromBroken(string $url): void
-    {
-        $this->sourcePath = SiteRedirect::normalizePath($url);
-        $this->targetUrl = rtrim($this->site->url, '/').'/';
     }
 
     public function addRedirect(): void

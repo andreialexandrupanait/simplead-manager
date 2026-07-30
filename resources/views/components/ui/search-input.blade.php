@@ -24,9 +24,9 @@
     <input
         type="text"
         {{ $attributes->except(['class'])->merge([
-            'class' => 'block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 text-sm
+            'class' => 'block w-full rounded-lg border border-gray-300 py-1.5 pl-10 pr-3 text-[13px]
                        transition placeholder:text-gray-400
-                       focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500
+                       focus:border-accent-500 focus:outline-none focus:ring-0
                        dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500' . ($inputClasses ? ' ' . $inputClasses : ''),
             'placeholder' => $placeholder,
         ]) }}

@@ -106,6 +106,7 @@ return [
         'redis:reports' => 120,
         'redis:security' => 60,
         'redis:incident-response' => 120,
+        'redis:ops-instant' => 30,
     ],
 
     /*
@@ -305,6 +306,21 @@ return [
             'timeout' => 1900,
             'nice' => 0,
         ],
+        // Faza 4: dedicated fast lane for cheap, synchronous fleet operations
+        // (e.g. Cloudflare cache purge). Mirrors OperationDuration::Instant
+        // (queue 'ops-instant', tries 2, timeout 60).
+        'supervisor-ops-instant' => [
+            'connection' => 'redis',
+            'queue' => ['ops-instant'],
+            'balance' => 'simple',
+            'maxProcesses' => 3,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 2,
+            'timeout' => 60,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -336,6 +352,9 @@ return [
             ],
             'supervisor-audit' => [
                 'maxProcesses' => 1, // never more than one SF crawl
+            ],
+            'supervisor-ops-instant' => [
+                'maxProcesses' => (int) env('HORIZON_OPS_INSTANT_WORKERS', 3),
             ],
         ],
 
@@ -384,6 +403,9 @@ return [
             ],
             'supervisor-audit' => [
                 'maxProcesses' => 1,
+            ],
+            'supervisor-ops-instant' => [
+                'maxProcesses' => 3,
             ],
         ],
     ],

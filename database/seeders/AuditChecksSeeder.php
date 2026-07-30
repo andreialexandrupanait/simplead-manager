@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\AuditCheck;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Faza D: seed the 82 methodology checks from database/data/audit-checks-v2.json
- * (converted verbatim from simplead-audit's methodology-v2/checks.js — regenerate
- * with: node -e 'require("../simplead-audit/methodology-v2/checks.js")' → JSON).
- * Idempotent: upserts on the stable `key` ("2.1.1"), so re-running keeps results
- * intact and only refreshes definitions.
+ * Faza D: seed the 82 methodology checks from database/data/audit-checks-v2.json.
+ * Retained as migration plumbing only: the audit module (models, services, UI)
+ * was removed in Faza 1.2, but the create migration 2026_07_23_000001 still
+ * invokes this seeder in up(), so it must keep the audit_checks table populated
+ * on a fresh migrate. It writes via the query builder (no Eloquent model) since
+ * the AuditCheck model no longer exists; the table itself is dropped by the
+ * Faza-1.2 drop migration that runs afterwards. Idempotent: upserts on `key`.
  */
 class AuditChecksSeeder extends Seeder
 {
@@ -60,7 +62,7 @@ class AuditChecksSeeder extends Seeder
         // Upsert on the natural key so re-seeding refreshes definitions without
         // touching audit_check_results (which FK the check id, stable per key).
         foreach (array_chunk($rows, 100) as $chunk) {
-            AuditCheck::upsert(
+            DB::table('audit_checks')->upsert(
                 array_map(fn ($r) => $r + ['created_at' => now()], $chunk),
                 ['key'],
                 ['section_key', 'section_nr', 'section_name', 'subsection_id', 'subsection_name',

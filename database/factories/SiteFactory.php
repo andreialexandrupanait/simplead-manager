@@ -32,6 +32,10 @@ class SiteFactory extends Factory
             'health_score' => fake()->numberBetween(60, 100),
             'type' => 'wordpress',
             'is_connected' => true,
+            // A freshly-synced site runs the connector shipped with this repo, so the
+            // default must satisfy version gates like Site::connectorAtLeast(). Tests
+            // exercising an out-of-date site override this explicitly.
+            'connector_version' => '2.19.2',
             'last_synced_at' => fake()->dateTimeBetween('-1 day', 'now'),
             'wp_version' => fake()->randomElement(['6.4.3', '6.5', '6.5.1', '6.5.2', '6.6']),
             'php_version' => fake()->randomElement(['8.1', '8.2', '8.3']),
@@ -41,7 +45,10 @@ class SiteFactory extends Factory
             'is_up' => true,
             'pending_updates_count' => fake()->numberBetween(0, 5),
             'backup_ok' => true,
-            'last_backup_at' => fake()->dateTimeBetween('-1 day', 'now'),
+            // Deliberately well inside the 24h window Rule 1 (§7.2) requires: a
+            // value generated exactly at the -1 day boundary would drift out of it
+            // between creation and assertion and flake any auto-update test.
+            'last_backup_at' => fake()->dateTimeBetween('-6 hours', 'now'),
             'notes' => fake()->optional(0.3)->sentence(),
             'db_size_mb' => fake()->randomFloat(2, 10, 500),
             'uploads_size_mb' => fake()->randomFloat(2, 50, 5000),

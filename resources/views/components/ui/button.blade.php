@@ -5,11 +5,13 @@
 ])
 
 @php
+// REFERINTA-VIZUALA .btn / .btn-p / .btn-d — subtle outline buttons on tinted
+// backgrounds (no solid fills, no shadows): hierarchy from colour + 1px border.
 $classes = match($variant) {
-    'primary'   => 'bg-accent-500 text-white hover:bg-accent-600 focus-visible:ring-accent-500 shadow-sm',
-    'secondary' => 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus-visible:ring-gray-400 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600',
-    'danger'    => 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
-    'ghost'     => 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white',
+    'primary'   => 'bg-accent-50 text-accent-700 border border-accent-500 hover:bg-accent-100 focus-visible:ring-accent-500 dark:bg-accent-500/10 dark:text-accent-300',
+    'secondary' => 'bg-transparent text-gray-600 border border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus-visible:ring-gray-400 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800',
+    'danger'    => 'bg-red-50 text-red-700 border border-red-500 hover:bg-red-100 focus-visible:ring-red-500 dark:bg-red-500/10 dark:text-red-300',
+    'ghost'     => 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
 };
 
 $sizes = match($size) {

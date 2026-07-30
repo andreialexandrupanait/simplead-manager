@@ -63,6 +63,8 @@ class Report extends Model
         'data_snapshot',
         'view_token',
         'generated_at',
+        'send_held_reason',
+        'send_held_at',
     ];
 
     protected $casts = [
@@ -74,6 +76,7 @@ class Report extends Model
         'data_snapshot' => 'array',
         'generated_at' => 'datetime',
         'sent_at' => 'datetime',
+        'send_held_at' => 'datetime',
     ];
 
     public function site(): BelongsTo

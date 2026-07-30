@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
-use App\Jobs\CreateStatusPageIncident;
 use App\Jobs\ProcessNotificationEscalations;
-use App\Jobs\ResolveStatusPageIncident;
 use App\Jobs\RunSecurityScan;
 use App\Jobs\SendDailyDigest;
 use App\Models\Site;
@@ -32,20 +30,6 @@ class JobQueueAssignmentTest extends TestCase
         $this->assertSame('notifications', (new SendDailyDigest)->queue);
     }
 
-    public function test_create_status_page_incident_uses_notifications_queue(): void
-    {
-        $site = Site::factory()->create();
-
-        $this->assertSame('notifications', (new CreateStatusPageIncident($site, 'down'))->queue);
-    }
-
-    public function test_resolve_status_page_incident_uses_notifications_queue(): void
-    {
-        $site = Site::factory()->create();
-
-        $this->assertSame('notifications', (new ResolveStatusPageIncident($site))->queue);
-    }
-
     public function test_run_security_scan_uses_security_queue(): void
     {
         $site = Site::factory()->create();
@@ -60,8 +44,6 @@ class JobQueueAssignmentTest extends TestCase
         foreach ([
             new ProcessNotificationEscalations,
             new SendDailyDigest,
-            new CreateStatusPageIncident($site, 'down'),
-            new ResolveStatusPageIncident($site),
             new RunSecurityScan($site),
         ] as $job) {
             $this->assertNotSame('default', $job->queue, get_class($job).' must not run on the default queue');

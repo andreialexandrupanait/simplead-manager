@@ -83,19 +83,10 @@
                     <span class="text-sm font-semibold text-gray-700 flex-shrink-0">{{ $client->name }}</span>
                 @endif
                 <div class="min-w-0">
-                    @if(!$isPublicView && $client?->portal_token)
-                        <a href="{{ route('client-portal.show', $client->portal_token) }}" class="text-xs text-accent-600 hover:text-accent-800 font-medium">&larr; Back to portal</a>
-                    @endif
                     <h1 class="text-base font-semibold text-gray-900 truncate">{{ $report->title }}</h1>
                     <p class="text-[11px] text-gray-500">{{ $report->period_start->format('M j, Y') }} — {{ $report->period_end->format('M j, Y') }}</p>
                 </div>
             </div>
-            @if($report->file_path && !$isPublicView && $client?->portal_token)
-                <a href="{{ route('client-portal.download', [$client->portal_token, $report]) }}"
-                   class="no-print ml-4 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 transition flex-shrink-0">
-                    Download PDF
-                </a>
-            @endif
         </div>
     </header>
 

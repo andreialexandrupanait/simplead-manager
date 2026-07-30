@@ -26,6 +26,22 @@
    Future components can reference these directly via `bg-[var(--surface-card)]`.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
+    /* Accent — WordPress-admin blue (#2271b1), per REFERINTA-VIZUALA §13bis.
+       The Tailwind `accent-*` scale reads these vars (see tailwind.config.js),
+       so defining them here retints every accent-* utility across the whole app. */
+    --accent-50:  #e8f1f9;
+    --accent-100: #d3e6f4;
+    --accent-200: #a8cde9;
+    --accent-300: #7cb3dd;
+    --accent-400: #4e93c9;
+    --accent-500: #2271b1;
+    --accent-600: #1d6098;
+    --accent-700: #184e7c;
+    --accent-800: #143f64;
+    --accent-900: #12324e;
+    --accent-950: #0b2135;
+    --accent-light: rgba(34, 113, 177, 0.2);
+
     /* Surfaces (warm-neutral) */
     --surface-app:       #FAFAFA;   /* body bg */
     --surface-card:      #FFFFFF;   /* cards, raised */
@@ -59,7 +75,7 @@
     --rgb-success: 34, 197, 94;     /* green-500 */
     --rgb-warning: 234, 179, 8;     /* yellow-500 */
     --rgb-danger:  239, 68, 68;     /* red-500 */
-    --rgb-accent:  123, 104, 238;   /* ClickUp #7B68EE */
+    --rgb-accent:  34, 113, 177;    /* WordPress admin blue #2271b1 */
 }
 
 .dark {
@@ -97,6 +113,63 @@
 @tailwind utilities;
 
 [x-cloak] { display: none !important; }
+
+/* Reference §13bis — flat surfaces: hierarchy comes from 1px borders + spacing,
+   not shadows. Flatten the elevation utilities in light mode to a single hairline
+   lift; the .dark rules below (higher specificity) keep depth in dark mode. */
+.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06) !important;
+}
+
+/* REFERINTA-VIZUALA .toolbar — dark bulk-action bar: buttons are white with a
+   hairline border on the dark bar, regardless of their x-ui.button variant. */
+.sad-toolbar button,
+.sad-toolbar a {
+    background: transparent !important;
+    border-color: rgba(255, 255, 255, 0.24) !important;
+    color: #fff !important;
+}
+.sad-toolbar button:hover,
+.sad-toolbar a:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* REFERINTA-VIZUALA .sbsub — submenu items: smaller label, and when the sidebar
+   is expanded they drop the leading icon (the collapsed icon-rail keeps it so
+   nothing becomes unreachable). The group divider line is removed in the blade. */
+.sad-submenu > a { font-size: 13px; }
+.sidebar-open .sad-submenu > a > svg:first-child { display: none; }
+
+/* Lighter, more refined sidebar iconography (closer to the reference icon set). */
+[data-sidebar] nav svg { stroke-width: 1.75; }
+
+/* ── REFERINTA-VIZUALA module cards (per-site "Prezentare" dashboard) ──────
+   Faithful port of .mcard/.mhd/.mico/.mrow/.mbox/.mact so the site overview
+   renders exactly like the reference: round colour-coded header icons, soft
+   label/value pill rows and stat boxes. Consumed by x-ui.module-card etc. */
+.mcard { background: #fff; border: 1px solid #e6e8eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+.mhd { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+.mhd .mtitle { font-size: 15px; font-weight: 500; margin: 0; flex: 1; color: #1d2327; min-width: 0; }
+.mhd .mn { width: 16px; height: 16px; color: #9ba1a8; cursor: pointer; flex: none; stroke-width: 2; }
+.mhd .mn:hover { color: #646970; }
+.mico { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
+.mico svg { width: 15px; height: 15px; stroke-width: 2.1; }
+.mi-dark { background: #2c3338; } .mi-ok { background: #00b62e; } .mi-warn { background: #e8a800; } .mi-bad { background: #e0393c; } .mi-accent { background: #2271b1; }
+.mrow { display: flex; justify-content: space-between; align-items: center; background: #f6f7f8; border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; font-size: 13px; gap: 8px; color: #1d2327; }
+.mrow .lb { color: #646970; }
+.mbox { background: #f6f7f8; border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; }
+.mbox .k { font-size: 12px; color: #646970; margin: 0; }
+.mbox .v { font-size: 18px; margin: 3px 0 0; color: #1d2327; }
+.mact { display: block; text-align: center; font-size: 13px; color: #2271b1; padding-top: 12px; cursor: pointer; background: none; border: 0; width: 100%; }
+.mact:hover { text-decoration: underline; }
+.mg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.mg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.mval-ok { color: #0a8a2a; } .mval-warn { color: #b06a00; } .mval-bad { color: #c8262a; } .mval-accent { color: #2271b1; }
+/* dark adaptation (reference is light-only; keep the app usable in dark) */
+.dark .mcard { background: var(--surface-card, #1a1a1a); border-color: rgba(255, 255, 255, 0.08); }
+.dark .mhd .mtitle, .dark .mrow, .dark .mbox .v { color: #e5e7eb; }
+.dark .mrow, .dark .mbox { background: rgba(255, 255, 255, 0.04); }
+.dark .mrow .lb, .dark .mbox .k { color: #9ba1a8; }
 
 /* Suppress transitions during initial Alpine hydration */
 html.no-transitions *,
@@ -200,7 +273,7 @@ html.no-transitions *::after {
     .dark .text-red-600,    .dark .text-red-700,    .dark .text-red-800,    .dark .text-red-900    { color: #fca5a5 !important; }
     .dark .text-yellow-600, .dark .text-yellow-700, .dark .text-yellow-800, .dark .text-yellow-900 { color: #fde047 !important; }
     .dark .text-orange-600, .dark .text-orange-700                                                  { color: #fdba74 !important; }
-    .dark .text-accent-600, .dark .text-accent-700, .dark .text-accent-800, .dark .text-accent-900 { color: #c4b5fd !important; }
+    .dark .text-accent-600, .dark .text-accent-700, .dark .text-accent-800, .dark .text-accent-900 { color: #7cb3dd !important; }
 
     /* Slightly stronger blue/green/red/yellow icons — keep the 600 weight a tad darker */
     .dark .text-blue-600   { color: #60a5fa !important; }
@@ -221,9 +294,9 @@ html.no-transitions *::after {
     /* Focus ring offset (the gap inside ring) */
     .dark .focus\:ring-offset-2          { --tw-ring-offset-color: var(--surface-card) !important; }
     .dark .focus-visible\:ring-offset-2  { --tw-ring-offset-color: var(--surface-card) !important; }
-    .dark .focus\:border-accent-500      { border-color: var(--accent-500, #7B68EE) !important; }
-    .dark .focus\:ring-accent-500        { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
-    .dark .focus-visible\:ring-accent-500 { --tw-ring-color: var(--accent-500, #7B68EE) !important; }
+    .dark .focus\:border-accent-500      { border-color: var(--accent-500, #2271b1) !important; }
+    .dark .focus\:ring-accent-500        { --tw-ring-color: var(--accent-500, #2271b1) !important; }
+    .dark .focus-visible\:ring-accent-500 { --tw-ring-color: var(--accent-500, #2271b1) !important; }
 
     /* Table */
     .dark table thead { background-color: var(--surface-card) !important; }
@@ -237,7 +310,7 @@ html.no-transitions *::after {
         --tw-prose-body:          var(--text-secondary);
         --tw-prose-headings:      var(--text-primary);
         --tw-prose-lead:          var(--text-secondary);
-        --tw-prose-links:         #c4b5fd;
+        --tw-prose-links:         #7cb3dd;
         --tw-prose-bold:          var(--text-primary);
         --tw-prose-counters:      var(--text-faint);
         --tw-prose-bullets:       var(--text-faint);
@@ -279,12 +352,14 @@ html.no-transitions *::after {
 @layer utilities {
     .scrollbar-thin {
         scrollbar-width: thin;
-        scrollbar-color: rgba(255,255,255,0.2) transparent;
+        scrollbar-color: rgba(0,0,0,0.18) transparent;
     }
     .scrollbar-thin::-webkit-scrollbar { width: 4px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb {
-        background-color: rgba(255,255,255,0.2);
+        background-color: rgba(0,0,0,0.18);
         border-radius: 4px;
     }
+    .dark .scrollbar-thin { scrollbar-color: rgba(255,255,255,0.2) transparent; }
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); }
 }

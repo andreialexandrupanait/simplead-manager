@@ -21,7 +21,6 @@ use App\Services\Reports\Sections\PluginInventoryGatherer;
 use App\Services\Reports\Sections\SearchConsoleGatherer;
 use App\Services\Reports\Sections\SecurityChecksGatherer;
 use App\Services\Reports\Sections\SecurityGatherer;
-use App\Services\Reports\Sections\SeoGatherer;
 use App\Services\Reports\Sections\UpdatesGatherer;
 use App\Services\Reports\Sections\UptimeGatherer;
 use App\Services\Reports\Sections\WpUsersGatherer;
@@ -198,7 +197,6 @@ class ReportGeneratorService
             new ExecutiveSnapshotGatherer,
             new DnsGatherer,
             new ErrorLogGatherer,
-            new SeoGatherer,
         ];
     }
 

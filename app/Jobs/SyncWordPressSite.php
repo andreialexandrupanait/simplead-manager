@@ -248,6 +248,29 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 FetchSiteFavicon::dispatch($this->site);
             }
 
+            // SPEC §13 + §10 step 6 — on the FIRST successful connect (once), set
+            // the site up end-to-end: apply the "Standard SimpleAD" preset package
+            // (plugins are synced by now, so WooCommerce detection is accurate),
+            // run the reference security scan, and take the first backup when a
+            // storage destination is configured. Later manual tweaks still override
+            // the package (per-site deviations).
+            if ($this->site->standard_preset_applied_at === null) {
+                ApplySitePresetJob::dispatch($this->site, null);
+
+                // §7.5 — seed the key-URL set (homepage now; top GSC pages fill in
+                // once Search Console data lands, via FetchSearchConsoleData).
+                app(\App\Services\KeyUrlService::class)->deriveAndStore($this->site);
+
+                // §10 step 6 — reference scan + first backup.
+                RunSecurityScan::dispatch($this->site);
+                $backupConfig = $this->site->backupConfig;
+                if ($backupConfig && $backupConfig->storage_destination_id) {
+                    CreateBackup::dispatch($this->site, 'full', 'onboarding', $backupConfig->storage_destination_id);
+                }
+
+                $this->site->update(['standard_preset_applied_at' => now()]);
+            }
+
             // Update pending updates count
             $pendingCount = $this->site->sitePlugins()->where('has_update', true)->count()
                 + $this->site->siteThemes()->where('has_update', true)->count()
@@ -261,7 +284,14 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 
             // Auto-check plugin conflicts after sync
             try {
-                PluginConflictService::checkSite($this->site);
+                $conflictResult = PluginConflictService::checkSite($this->site);
+
+                // Faza 7 instrumentation — PluginConflict has no user-facing page,
+                // so we record the module as "used" only when the engine actually
+                // flags a conflict (keeps volume meaningful for the 60-day decision).
+                if (($conflictResult['total'] ?? 0) > 0) {
+                    app(\App\Services\ModuleUsageTracker::class)->record('plugin_conflict', $this->site->id, null);
+                }
             } catch (\Exception $e) {
                 Log::info("Plugin conflict check skipped for site {$this->site->id}: {$e->getMessage()}");
             }

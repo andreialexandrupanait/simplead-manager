@@ -1,6 +1,14 @@
 <div>
-    <a href="{{ route('sites.show', $site) }}" class="block">
+    <a href="{{ route('sites.overview', $site) }}" class="block">
         <x-ui.card :padding="false" class="transition hover:shadow-md hover:ring-gray-950/10">
+            {{-- SPEC §4.4 — auto-generated homepage thumbnail --}}
+            <div class="flex h-24 items-center justify-center overflow-hidden border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40">
+                @if($site->screenshot_url)
+                    <img src="{{ $site->screenshot_url }}" alt="" loading="lazy" class="h-full w-full object-cover object-top">
+                @else
+                    <x-icons.globe class="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                @endif
+            </div>
             <div class="p-4">
                 {{-- Header: Favicon + Name + Status --}}
                 <div class="flex items-start gap-3">

@@ -2,12 +2,6 @@
     {{-- Header with Add Button --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <x-ui.page-header :title="__('Clients')" :subtitle="__('Manage your clients and their sites')" />
-        <a href="{{ route('clients.create') }}">
-            <x-ui.button>
-                <x-icons.plus class="h-4 w-4" />
-                {{ __('Add Client') }}
-            </x-ui.button>
-        </a>
     </div>
 
     {{-- Search & Filter Bar --}}
@@ -66,7 +60,6 @@
                                 </x-slot:trigger>
 
                                 <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('View') }}</a>
-                                <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Edit') }}</a>
                                 <div class="my-1 border-t border-gray-100"></div>
                                 @if($client->status !== 'active')
                                     <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Active') }}</button>
@@ -183,7 +176,6 @@
                                     </x-slot:trigger>
 
                                     <a href="{{ route('clients.show', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('View') }}</a>
-                                    <a href="{{ route('clients.edit', $client) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Edit') }}</a>
                                     <div class="my-1 border-t border-gray-100"></div>
                                     @if($client->status !== 'active')
                                         <button wire:click="changeStatus({{ $client->id }}, 'active')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Set Active') }}</button>
@@ -211,18 +203,9 @@
     @else
         <x-ui.empty-state
             :title="__('No clients found')"
-            :description="__('Add your first client to get started.')"
+            :description="__('Clients appear here automatically as sites are connected.')"
             icon="users"
-        >
-            <x-slot:action>
-                <a href="{{ route('clients.create') }}">
-                    <x-ui.button>
-                        <x-icons.plus class="h-4 w-4" />
-                        {{ __('Add Client') }}
-                    </x-ui.button>
-                </a>
-            </x-slot:action>
-        </x-ui.empty-state>
+        />
     @endif
 
     {{-- Delete Confirmation Modal --}}

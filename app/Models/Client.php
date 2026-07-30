@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -33,23 +32,12 @@ use Illuminate\Support\Str;
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property string|null $portal_token
- * @property bool $portal_enabled
  * @property-read string|null $logo_path
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Site> $sites
  */
 class Client extends Model
 {
     use HasFactory, SoftDeletes;
-
-    protected static function booted(): void
-    {
-        static::creating(function (Client $client) {
-            if (! $client->portal_token) {
-                $client->portal_token = Str::random(64);
-            }
-        });
-    }
 
     protected $fillable = [
         'name',
@@ -69,33 +57,16 @@ class Client extends Model
         'logo',
         'notes',
         'status',
-        'portal_token',
-        'portal_enabled',
-    ];
-
-    protected $attributes = [
-        'portal_enabled' => true,
     ];
 
     protected $casts = [
         'deleted_at' => 'datetime',
-        'portal_enabled' => 'boolean',
         'vat_payer' => 'boolean',
     ];
 
     public function sites(): HasMany
     {
         return $this->hasMany(Site::class);
-    }
-
-    public function costs(): HasMany
-    {
-        return $this->hasMany(ClientCost::class);
-    }
-
-    public function revenues(): HasMany
-    {
-        return $this->hasMany(ClientRevenue::class);
     }
 
     /** @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<User, $this> */
@@ -132,16 +103,6 @@ class Client extends Model
             $inner->whereHas('sites', fn (Builder $sq) => $sq->where('user_id', $user->id))
                 ->orWhereHas('assignedUsers', fn (Builder $uq) => $uq->where('users.id', $user->id));
         });
-    }
-
-    /**
-     * Restrict to clients whose public portal is genuinely live — the portal
-     * feature is enabled AND the client is active. Archived/inactive clients
-     * must not keep a public portal (P2-06).
-     */
-    public function scopePortalAccessible(Builder $query): Builder
-    {
-        return $query->where('portal_enabled', true)->where('status', 'active');
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

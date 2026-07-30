@@ -18,6 +18,15 @@ class AgentAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The 404 error page uses @vite; no built manifest exists in the test
+        // image, so neutralise Vite to render it without assets.
+        $this->withoutVite();
+    }
+
     public function test_saving_api_key_keeps_the_lookup_hash_in_sync(): void
     {
         $site = Site::factory()->create(['api_key' => 'token-one']);

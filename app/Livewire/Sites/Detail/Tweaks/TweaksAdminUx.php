@@ -75,6 +75,7 @@ class TweaksAdminUx extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        app(\App\Services\ModuleUsageTracker::class)->record('tweaks:admin_ux', $this->site->id, auth()->id());
         $this->loadCurrentState();
     }
 

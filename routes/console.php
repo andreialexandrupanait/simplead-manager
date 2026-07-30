@@ -1,12 +1,9 @@
 <?php
 
 use App\Dispatchers\BackupDispatcher;
-use App\Dispatchers\BrokenResourceDispatcher;
 use App\Dispatchers\DataSyncDispatcher;
-use App\Dispatchers\IncidentResponseDispatcher;
 use App\Dispatchers\MonitoringDispatcher;
 use App\Dispatchers\ReportDispatcher;
-use App\Dispatchers\SeoAuditDispatcher;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -69,41 +66,6 @@ Schedule::call(new ReportDispatcher)
     ->name('report-dispatcher')
     ->withoutOverlapping(10)
     ->onOneServer();
-
-// Incident Response: proactive security/vulnerability detection
-Schedule::call(new IncidentResponseDispatcher)
-    ->everyFiveMinutes()
-    ->name('incident-response-dispatcher')
-    ->withoutOverlapping(10)
-    ->onOneServer();
-
-// Belt-and-braces for SEC-A2-11: a kill -9'd worker never runs failed(), so
-// sweep incidents stuck non-terminal past 2× the job timeout (900s) — they
-// silently extend the cooldown window otherwise.
-Schedule::call(function () {
-    \App\Models\IncidentResponse::whereIn('status', [
-        \App\Enums\IncidentResponseStatus::Pending,
-        \App\Enums\IncidentResponseStatus::Diagnosing,
-        \App\Enums\IncidentResponseStatus::Executing,
-    ])
-        ->where('created_at', '<', now()->subMinutes(30))
-        ->each(fn ($incident) => $incident->markFailed('Stale — worker died without cleanup (auto-swept).'));
-})
-    ->everyFifteenMinutes()
-    ->name('incident-response-stale-sweep')
-    ->onOneServer();
-
-Schedule::call(new SeoAuditDispatcher)->everyFiveMinutes()->name('seo-audit-dispatcher')->withoutOverlapping(10)->onOneServer();
-
-// Daily broken links/images re-check (lightweight, no re-crawl)
-Schedule::call(new BrokenResourceDispatcher)->dailyAt('02:00')->name('broken-resource-dispatcher')->withoutOverlapping()->onOneServer();
-
-// Daily keyword ranking fetch from Search Console
-Schedule::call(function () {
-    \App\Models\Site::query()
-        ->whereHas('searchConsoleConnection', fn ($q) => $q->where('is_active', true))
-        ->each(fn ($site) => \App\Jobs\FetchKeywordRankings::dispatch($site)->delay(now()->addSeconds(rand(0, 60))));
-})->dailyAt('04:00')->name('keyword-rankings-fetch')->onOneServer();
 
 // Daily health score snapshot
 Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-health-scores')->onOneServer();
@@ -286,6 +248,14 @@ Schedule::call(function () {
     ->withoutOverlapping()
     ->onOneServer();
 
+// Faza 5.4 — premium license-expiry alerting. Cheap once-daily sweep of licensed
+// plugins carrying an expiry date; alerts (with per-plugin weekly dedup) when a
+// license has expired or is within 30 days of expiring.
+Schedule::job(new \App\Jobs\CheckLicenseExpiry)
+    ->dailyAt('06:00')
+    ->name('check-license-expiry')
+    ->onOneServer();
+
 // Backfill DNS monitors for any connected site still missing one — a safety net
 // for sites onboarded before DNS was a plan default (P1-56). The command only
 // touches sites with no monitor, so this is idempotent.
@@ -334,6 +304,18 @@ Schedule::job(new \App\Jobs\FlushDeferredNotifications)
 Schedule::job(new \App\Jobs\SendDailyDigest)
     ->dailyAt('07:00')
     ->name('daily-digest')
+    ->onOneServer();
+
+// Faza 5.3 — broken-link sweep (connector /content-urls + Manager HEAD-check, diff-based).
+Schedule::job(new \App\Jobs\CheckBrokenLinks)
+    ->monthlyOn(1, '02:00')
+    ->name('check-broken-links')
+    ->onOneServer();
+
+// Faza 5.2 — WooCommerce health (only sites with Woo detected; skips cleanly otherwise).
+Schedule::job(new \App\Jobs\CheckWooHealth)
+    ->dailyAt('05:30')
+    ->name('check-woo-health')
     ->onOneServer();
 
 // ==========================================================================

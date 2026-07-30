@@ -2,24 +2,17 @@
     $activities = $this->recentActivity;
 @endphp
 
-<x-ui.card :padding="false">
-    {{-- Card Header --}}
-    <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-700">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-100 dark:bg-accent-900/40">
-            <svg aria-hidden="true" class="h-4 w-4 text-accent-600 dark:text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-        </div>
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h3>
-        <span class="ml-auto text-xs text-gray-400 dark:text-gray-500">Last 7 days</span>
-    </div>
+<x-ui.module-card title="Recent Activity" icon="activity" tone="dark">
+    <x-slot:actions>
+        <span class="text-xs text-gray-400">Last 7 days</span>
+    </x-slot:actions>
 
     @if($activities->isEmpty())
-        <div class="px-4 py-8 text-center">
-            <p class="text-sm text-gray-400 dark:text-gray-500">No activity in the last 7 days.</p>
+        <div class="py-6 text-center">
+            <p class="text-sm text-gray-400">No activity in the last 7 days.</p>
         </div>
     @else
-        <div class="divide-y divide-gray-50 dark:divide-gray-700/60">
+        <div class="-mt-1 divide-y divide-gray-100 dark:divide-gray-700/60">
             @foreach($activities as $activity)
                 @php
                     $dotColor = match($activity->severity?->value) {
@@ -35,7 +28,7 @@
                         default    => 'text-gray-500 dark:text-gray-400',
                     };
                 @endphp
-                <div class="flex items-start gap-3 px-4 py-3">
+                <div class="flex items-start gap-3 py-2.5">
                     {{-- Severity dot --}}
                     <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full {{ $dotColor }}"></span>
 
@@ -57,4 +50,4 @@
             @endforeach
         </div>
     @endif
-</x-ui.card>
+</x-ui.module-card>

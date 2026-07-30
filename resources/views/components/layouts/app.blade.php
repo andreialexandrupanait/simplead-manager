@@ -94,28 +94,27 @@
         <aside data-sidebar
                aria-label="{{ __('Main navigation') }}"
                style="will-change: width, transform;"
-               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar overflow-hidden transition-[width,transform] duration-300 ease-in-out
+               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200 dark:border-gray-800 overflow-hidden transition-[width,transform] duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-                   sidebarOpen ? 'lg:w-64' : 'lg:w-16'
+                   sidebarOpen ? 'lg:w-64 sidebar-open' : 'lg:w-16'
                ]">
 
             {{-- Logo area --}}
-            <div class="flex h-16 items-center gap-2 px-4 border-b border-white/10"
+            <div class="flex h-16 items-center gap-2 px-4 border-b border-gray-200 dark:border-gray-800"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 flex-1 min-w-0 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="w-auto object-contain"
-                             style="height: 170px; filter: brightness(0) invert(1);">
+                             class="max-h-14 w-auto object-contain dark:brightness-0 dark:invert">
                     @else
-                        <span class="text-lg font-semibold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
+                        <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
                 </a>
-                <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
+                <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-gray-400 hover:text-gray-700 transition"
                         :class="sidebarOpen ? '' : 'lg:ml-0'">
                     <x-icons.menu class="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -132,7 +131,7 @@
             </nav>
 
             {{-- Sidebar bottom section --}}
-            <div class="border-t border-white/10 mt-auto">
+            <div class="border-t border-gray-200 dark:border-gray-800 mt-auto">
                 {{-- Action buttons container --}}
                 <div class="p-2 space-y-0.5">
                     {{-- Settings (admin only) --}}
@@ -140,7 +139,7 @@
                     <a href="{{ route('settings.general') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-accent-500 text-white shadow-sm' : 'text-white/70 hover:text-white hover:bg-sidebar-hover' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.profile') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span class="whitespace-nowrap transition-opacity duration-200"
@@ -154,7 +153,7 @@
                     <a href="{{ route('settings.profile') }}"
                        @mouseenter="showSidebarTooltip($el)"
                        @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-accent-500 text-white shadow-sm' : 'text-white/70 hover:text-white hover:bg-sidebar-hover' }}"
+                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.profile') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
                        :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                         <div class="h-5 w-5 rounded-full bg-accent-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
                             @if(auth()->user()->avatar_path)
@@ -175,7 +174,7 @@
                         <button type="submit"
                                 @mouseenter="showSidebarTooltip($el)"
                                 @mouseleave="hideSidebarTooltip()"
-                                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white hover:bg-sidebar-hover rounded-lg transition-all duration-200 w-full"
+                                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 w-full"
                                 :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
                             <x-icons.log-out class="h-4 w-4 shrink-0" aria-hidden="true" />
                             <span class="whitespace-nowrap transition-all duration-300"
@@ -187,7 +186,7 @@
                 </div>
 
                 {{-- Live clock --}}
-                <div class="px-3 py-2 text-center border-t border-white/10"
+                <div class="px-3 py-2 text-center border-t border-gray-200 dark:border-gray-800"
                      x-data="{
                          datetime: '',
                          updateClock() {
@@ -205,7 +204,7 @@
 
                     {{-- When expanded --}}
                     <div x-show="sidebarOpen" class="transition-all duration-300">
-                        <div class="text-xs text-white/60 font-mono" x-text="datetime"></div>
+                        <div class="text-xs text-gray-400 font-mono" x-text="datetime"></div>
                     </div>
 
                     {{-- When collapsed --}}
@@ -213,7 +212,7 @@
                          @mouseenter="showSidebarTooltip($el)"
                          @mouseleave="hideSidebarTooltip()"
                          class="lg:flex hidden items-center justify-center">
-                        <x-icons.clock class="h-4 w-4 text-white/40" />
+                        <x-icons.clock class="h-4 w-4 text-gray-400" />
                         <span class="hidden" x-text="datetime"></span>
                     </div>
                 </div>

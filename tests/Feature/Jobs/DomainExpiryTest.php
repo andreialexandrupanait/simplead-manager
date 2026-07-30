@@ -107,4 +107,49 @@ class DomainExpiryTest extends TestCase
 
         $this->assertSame(DomainStatus::Active, $site->fresh()->domain_status);
     }
+
+    public function test_tld_without_rdap_is_unsupported_not_error(): void
+    {
+        // ROTLD (.ro) publishes neither RDAP nor a WHOIS expiry date, so rdap.org
+        // 404s. That is a registry limitation, not a failure: the signal must be
+        // Unsupported (gray), never Error (red), and any stale error must clear.
+        Queue::fake();
+        Http::fake(['rdap.org/domain/*' => Http::response('', 404)]);
+
+        $site = Site::factory()->create([
+            'url' => 'https://feaagalati.ro',
+            'domain_status' => DomainStatus::Error->value,
+            'domain_last_error' => 'RDAP returned HTTP 404 for feaagalati.ro.',
+        ]);
+
+        (new CheckDomainExpiry($site))->handle();
+
+        $fresh = $site->fresh();
+        $this->assertSame(DomainStatus::Unsupported, $fresh->domain_status);
+        $this->assertNull($fresh->domain_expires_at);
+        $this->assertNull($fresh->domain_last_error, 'A stale error must clear once we know the registry simply has no expiry.');
+        $this->assertNotNull($fresh->domain_checked_at, 'checked_at must advance — this is a settled state, not a transient failure.');
+    }
+
+    public function test_registry_answering_without_an_expiry_date_is_unsupported(): void
+    {
+        // Some ccTLDs answer RDAP but redact the expiration event: known registrar,
+        // unknown expiry → Unsupported, not Error.
+        Queue::fake();
+        Http::fake(['rdap.org/domain/acme.com' => Http::response([
+            'entities' => [[
+                'roles' => ['registrar'],
+                'vcardArray' => ['vcard', [['fn', (object) [], 'text', 'Acme Registrar']]],
+            ]],
+        ], 200)]);
+
+        $site = Site::factory()->create(['url' => 'https://acme.com']);
+
+        (new CheckDomainExpiry($site))->handle();
+
+        $fresh = $site->fresh();
+        $this->assertSame(DomainStatus::Unsupported, $fresh->domain_status);
+        $this->assertSame('Acme Registrar', $fresh->domain_registrar);
+        $this->assertNull($fresh->domain_expires_at);
+    }
 }

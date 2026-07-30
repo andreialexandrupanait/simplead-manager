@@ -54,6 +54,18 @@ Thumbs.db
 /*.gif
 /*.webp
 /*.bmp
+migration-data/
+
+# Coolify deploy token (local secret, never commit)
+.coolify-deploy-token
+
+# Prod DB dumps (local, never commit)
+db-backups/
+
+# Backup-v2 lab/spike + baseline artifacts (local only, never commit — spike/ e 14GB/35k fișiere)
+spike/
+lab/
+.baseline-artifacts/
 
 # lab dev secrets (throwaway)
 lab/.lab-app-key

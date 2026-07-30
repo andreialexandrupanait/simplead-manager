@@ -60,7 +60,10 @@ class DomainExpiryService
             return self::parse($response->json());
         }
 
-        return self::result(DomainStatus::Error, null, null, "No RDAP registry recognised {$host}.");
+        // No RDAP server answered for this TLD (e.g. ROTLD/.ro publishes neither
+        // RDAP nor a WHOIS expiry date). That is a registry limitation, not a
+        // failure of ours — report it as Unsupported so it never shows red.
+        return self::result(DomainStatus::Unsupported, null, null, "No registry publishes an expiry date for {$host}.");
     }
 
     /**
@@ -97,7 +100,9 @@ class DomainExpiryService
         }
 
         if (! $expiresAt) {
-            return self::result(DomainStatus::Error, null, $registrar, 'RDAP response had no expiration date.');
+            // The registry answered but omits the expiration event (some ccTLDs
+            // redact it). Known registrar, unknown expiry — Unsupported, not Error.
+            return self::result(DomainStatus::Unsupported, null, $registrar, 'Registry does not publish an expiration date.');
         }
 
         // Carbon 3 diffs are signed; expiry is in the future here (isPast handled

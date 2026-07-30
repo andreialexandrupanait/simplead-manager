@@ -19,7 +19,7 @@
     } else {
         // Auto-generated array (grouped by category)
         $recs = $data['recommendations'] ?? [];
-        foreach (['technical', 'performance', 'seo'] as $cat) {
+        foreach (['technical', 'performance'] as $cat) {
             foreach ($recs[$cat] ?? [] as $rec) {
                 $allRecs[] = array_merge($rec, ['category' => $cat]);
             }
