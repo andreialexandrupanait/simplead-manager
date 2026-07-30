@@ -1,0 +1,44 @@
+### syncing plugin into spike-wp ###
+
+============================================================
+===  ENGINE: MySQL 8  (spike-db / mysql)
+============================================================
+--- server: 8.0.46
+--- (re)create Multisite + Woo/HPOS + binary schema ---
+--- seed baseline (posts=5000/site, orders=5000, +binary media) ---
+    baseline: wp_2_posts=5000 wp_wc_orders=5000 media=200
+
+--- A) PAGED no-transaction dump under concurrent writes (connector model / contrast) ---
+A (paged):     posts=10042 postmeta=20134 orphan_meta=50 orders=5041 items=10094 orphan_items=12 orphans_total=62
+
+--- B) NEW consistent dumper under concurrent writes (target: 0 orphans) ---
+    dumper manifest (trimmed):
+      done=True consistent=True engine=mysql server=8.0.46 tables=21 rows=48068 segments=6 elapsed=0.21s
+    importing restorable SQL into verify_snap and running orphan oracle ...
+B (consistent): captured wp_2_posts=5197 wp_wc_orders=5197  orphan_meta=0 orphan_items=0
+    binary/BLOB round-trip (CRC32): source=200:413350554161:415943811557 dump=200:413350554161:415943811557 -> OK
+    live table now: wp_2_posts=5359 wp_wc_orders=5359
+>>> MySQL 8: PASS  (consistent dump 0 orphans, binary intact; paged contrast: posts=10042 postmeta=20134 orphan_meta=50 orders=5041 items=10094 orphan_items=12 orphans_total=62)
+
+============================================================
+===  ENGINE: MariaDB 11  (spike-mariadb / mariadb)
+============================================================
+--- server: 11.8.8-MariaDB-ubu2404
+--- (re)create Multisite + Woo/HPOS + binary schema ---
+--- seed baseline (posts=5000/site, orders=5000, +binary media) ---
+    baseline: wp_2_posts=5000 wp_wc_orders=5000 media=200
+
+--- A) PAGED no-transaction dump under concurrent writes (connector model / contrast) ---
+A (paged):     posts=10037 postmeta=20122 orphan_meta=48 orders=5038 items=10090 orphan_items=14 orphans_total=62
+
+--- B) NEW consistent dumper under concurrent writes (target: 0 orphans) ---
+    dumper manifest (trimmed):
+      done=True consistent=True engine=mariadb server=11.8.8-MariaDB-ubu2404 tables=7 rows=46667 segments=6 elapsed=0.153s
+    importing restorable SQL into verify_snap and running orphan oracle ...
+B (consistent): captured wp_2_posts=5163 wp_wc_orders=5163  orphan_meta=0 orphan_items=0
+    binary/BLOB round-trip (CRC32): source=200:423003218017:419990063021 dump=200:423003218017:419990063021 -> OK
+    live table now: wp_2_posts=5298 wp_wc_orders=5298
+>>> MariaDB 11: PASS  (consistent dump 0 orphans, binary intact; paged contrast: posts=10037 postmeta=20122 orphan_meta=48 orders=5038 items=10090 orphan_items=14 orphans_total=62)
+
+============================================================
+OVERALL: PASS — consistent dumper = 0 orphans on MySQL 8 AND MariaDB 11

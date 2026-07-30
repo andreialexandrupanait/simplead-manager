@@ -136,6 +136,18 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Dedicated channel for the V2 backup engine (simplead-backup). Isolated,
+        // JSON-formatted, structured context. Additive — does not alter existing
+        // channels. Inert until V2 code paths run (all backup_v2.* flags false).
+        'backup_v2' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/backup_v2.log'),
+            'level' => env('BACKUP_V2_LOG_LEVEL', 'debug'),
+            'days' => env('BACKUP_V2_LOG_DAYS', 30),
+            'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'replace_placeholders' => true,
+        ],
+
         'null' => [
             'driver' => 'monolog',
             'handler' => NullHandler::class,
