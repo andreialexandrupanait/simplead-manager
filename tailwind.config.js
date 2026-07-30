@@ -16,7 +16,12 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Inter Variable"', '"Inter"', 'system-ui', 'sans-serif'],
+                // 'Inter Fallback' (see app.css) carries Inter's metrics, so the
+                // swap from fallback to the real font moves nothing. Plain 'Inter'
+                // was removed: it is not self-hosted, so it only resolved on
+                // machines that happened to have Inter installed — making the
+                // rendering depend on whose computer it was.
+                sans: ['"Inter Variable"', '"Inter Fallback"', 'system-ui', 'sans-serif'],
             },
             colors: {
                 // Override Tailwind's cool blue-gray scale with warm neutrals for

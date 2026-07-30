@@ -1,11 +1,26 @@
-/* Inter Variable — latin + latin-ext only, font-display: optional to eliminate FOUT.
-   After first cached load, the font appears instantly; first-time visitors see the
-   system fallback for that single session (acceptable tradeoff for daily-use admins). */
+/* Inter Variable — latin + latin-ext, self-hosted.
+ *
+ * `font-display: swap`, NOT `optional`. `optional` gives the browser a ~100ms
+ * block period and NO swap period: if the woff2 is not already in cache when
+ * that window closes, the entire page load renders in the fallback and only a
+ * LATER navigation may use Inter. That is why the app appeared to render
+ * differently on every reload — it was genuinely alternating between two
+ * typefaces depending on cache warmth, hard reloads and post-deploy asset
+ * hashes. `swap` always ends up on Inter.
+ *
+ * The metric overrides below matter as much as the display mode: without them
+ * the fallback (system-ui) has different ascent/descent/width than Inter, so
+ * the swap re-flows line lengths and row heights — which reads as "the layout
+ * changed", not merely "the font changed". The values map Inter's metrics onto
+ * the fallback so the two occupy the same space.
+ *
+ * Paired with a <link rel="preload"> in layouts/app.blade.php so the download
+ * starts with the CSS rather than after first layout. */
 @font-face {
     font-family: 'Inter Variable';
     font-style: normal;
     font-weight: 100 900;
-    font-display: optional;
+    font-display: swap;
     src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -14,9 +29,20 @@
     font-family: 'Inter Variable';
     font-style: normal;
     font-weight: 100 900;
-    font-display: optional;
+    font-display: swap;
     src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2') format('woff2');
     unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Metric-matched fallback: used automatically while Inter loads, then swapped
+   out. Because it carries Inter's metrics, the swap does not move anything. */
+@font-face {
+    font-family: 'Inter Fallback';
+    src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+    size-adjust: 107%;
+    ascent-override: 90%;
+    descent-override: 22.5%;
+    line-gap-override: 0%;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

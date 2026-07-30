@@ -9,6 +9,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <title>{{ $title ?? ($brandingAppName ?? 'SimpleAd Manager') }}</title>
+    {{-- Start the font download with the stylesheet instead of after first
+         layout — paired with font-display:swap in app.css this is what stops the
+         typeface (and the line metrics) changing between reloads. --}}
+    @if($interFontHref = \App\Support\FontPreload::interHref())
+        <link rel="preload" as="font" type="font/woff2" href="{{ $interFontHref }}" crossorigin>
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
