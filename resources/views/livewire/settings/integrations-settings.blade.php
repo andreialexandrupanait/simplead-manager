@@ -1,320 +1,53 @@
 <div>
-    <x-ui.flash-alert type="success" key="success" />
-    <x-ui.flash-alert type="error" key="error" />
-
     @php
-        $googleConnected = $connections->isNotEmpty() && $googleClientId && $googleClientSecret;
-        $cloudflareConnected = $this->cloudflareConnections->isNotEmpty();
-        $dropboxConnected = $dropboxAppKey && $dropboxAppSecret;
-        $unsplashConnected = (bool) $unsplashAccessKey;
-        $openApiConnected = (bool) $openApiKey;
-        $anthropicConnected = (bool) $anthropicApiKey;
-        $openAiConnected = (bool) $openAiApiKey;
-        $postmarkConnected = $this->postmarkConfigured;
+        // One description of each integration, rendered by one loop. This was
+        // eight near-identical 35-line cards laid out in a 4-column grid — the
+        // only settings page in the app that used a grid, so switching to this
+        // tab changed the whole layout paradigm.
+        $ai = [
+            ['name' => 'anthropic', 'label' => 'Anthropic Claude', 'modal' => 'configure-anthropic',
+             'about' => __('AI content generation'),
+             'on' => (bool) $anthropicApiKey, 'detail' => __('Claude Sonnet, Opus, Haiku')],
+            ['name' => 'openai', 'label' => 'OpenAI', 'modal' => 'configure-openai-ai',
+             'about' => __('ChatGPT content generation'),
+             'on' => (bool) $openAiApiKey, 'detail' => __('API key required')],
+        ];
+
+        $services = [
+            ['name' => 'openapi', 'label' => 'OpenAPI.ro', 'modal' => 'configure-openapi',
+             'about' => __('Company data from ANAF, by VAT number'),
+             'on' => (bool) $openApiKey, 'detail' => __('Auto-fills client details')],
+            ['name' => 'google', 'label' => 'Google', 'modal' => 'configure-google',
+             'about' => __('Analytics and Search Console'),
+             'on' => $connections->isNotEmpty() && $googleClientId && $googleClientSecret,
+             'detail' => trans_choice(':n account connected|:n accounts connected', $connections->count(), ['n' => $connections->count()])],
+            ['name' => 'cloudflare', 'label' => 'Cloudflare', 'modal' => 'configure-cloudflare',
+             'about' => __('DNS, cache and analytics'),
+             'on' => $this->cloudflareConnections->isNotEmpty(),
+             'detail' => trans_choice(':n connection|:n connections', $this->cloudflareConnections->count(), ['n' => $this->cloudflareConnections->count()])],
+            ['name' => 'postmark', 'label' => 'Postmark', 'modal' => 'configure-postmark',
+             'about' => __('Transactional email delivery'),
+             'on' => $this->postmarkConfigured, 'detail' => __('Account token')],
+            ['name' => 'dropbox', 'label' => 'Dropbox', 'modal' => 'configure-dropbox',
+             'about' => __('Storage for backups and reports'),
+             'on' => $dropboxAppKey && $dropboxAppSecret, 'detail' => __('App key and secret')],
+            ['name' => 'unsplash', 'label' => 'Unsplash', 'modal' => 'configure-unsplash',
+             'about' => __('Images for reports'),
+             'on' => (bool) $unsplashAccessKey, 'detail' => __('Access key')],
+        ];
     @endphp
 
-    {{-- AI Providers Section --}}
-    <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('AI Providers') }}</h3>
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+    <div class="space-y-6">
+        <x-settings.section id="ai" :title="__('AI providers')"
+                            :subtitle="__('The models used to generate content.')">
+            <x-settings.integration-list :items="$ai" />
+        </x-settings.section>
 
-        {{-- Anthropic Claude Card --}}
-        <x-ui.card class="{{ $anthropicConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 shadow-sm ring-1 ring-amber-200">
-                        <svg aria-hidden="true" class="h-5 w-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Anthropic Claude</h3>
-                        <p class="text-xs text-gray-500">{{ __('AI content generation') }}</p>
-                    </div>
-                </div>
-                @if($anthropicConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($anthropicConnected)
-                    {{ __('Claude Sonnet, Opus, Haiku') }}
-                @else
-                    {{ __('API key required') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-anthropic')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- OpenAI Card --}}
-        <x-ui.card class="{{ $openAiConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 shadow-sm ring-1 ring-green-200">
-                        <svg aria-hidden="true" class="h-5 w-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">OpenAI</h3>
-                        <p class="text-xs text-gray-500">{{ __('ChatGPT content generation') }}</p>
-                    </div>
-                </div>
-                @if($openAiConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($openAiConnected)
-                    {{ __('GPT-4o, GPT-4o mini') }}
-                @else
-                    {{ __('API key required') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-openai-ai')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
+        <x-settings.section id="services" :title="__('Services')"
+                            :subtitle="__('The external accounts the application depends on.')">
+            <x-settings.integration-list :items="$services" />
+        </x-settings.section>
     </div>
-
-    {{-- Other Integrations --}}
-    <h3 class="text-base font-semibold text-gray-900 mb-3">{{ __('Services') }}</h3>
-
-    {{-- Integration Cards Grid --}}
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-
-        {{-- OpenAPI.ro Card --}}
-        <x-ui.card class="{{ $openApiConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
-                        <svg aria-hidden="true" class="h-5 w-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">OpenAPI.ro</h3>
-                        <p class="text-xs text-gray-500">{{ __('Romanian company lookup (ANAF)') }}</p>
-                    </div>
-                </div>
-                @if($openApiConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($openApiConnected)
-                    {{ __('Auto-fill client data by CUI') }}
-                @else
-                    {{ __('API key required for CUI lookup') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-openapi')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Google Card --}}
-        <x-ui.card class="{{ $googleConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-gray-200">
-                        <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Google</h3>
-                        <p class="text-xs text-gray-500">{{ __('Analytics & Search Console') }}</p>
-                    </div>
-                </div>
-                @if($googleConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($connections->isNotEmpty())
-                    {{ $connections->count() }} {{ Str::plural(__('account'), $connections->count()) }} {{ __('connected') }}
-                @else
-                    {{ __('No accounts connected') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-google')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Cloudflare Card --}}
-        <x-ui.card class="{{ $cloudflareConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 shadow-sm ring-1 ring-orange-200">
-                        <svg aria-hidden="true" class="h-5 w-5" fill="#F6821F" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Cloudflare</h3>
-                        <p class="text-xs text-gray-500">{{ __('DNS, security, cache') }}</p>
-                    </div>
-                </div>
-                @if($cloudflareConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($cloudflareConnected)
-                    {{ $this->cloudflareConnections->count() }} {{ Str::plural(__('connection'), $this->cloudflareConnections->count()) }}
-                @else
-                    {{ __('No connections') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-cloudflare')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Postmark Card --}}
-        <x-ui.card class="{{ $postmarkConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50 shadow-sm ring-1 ring-yellow-200">
-                        <svg aria-hidden="true" class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Postmark</h3>
-                        <p class="text-xs text-gray-500">{{ __('Auto-discover DKIM selectors') }}</p>
-                    </div>
-                </div>
-                @if($postmarkConnected)
-                    <x-ui.badge variant="green">{{ __('Connected') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($postmarkConnected)
-                    {{ __('DKIM selectors auto-discovered from Postmark domains') }}
-                @else
-                    {{ __('Account Token required for DKIM auto-discovery') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-postmark')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Dropbox Card --}}
-        <x-ui.card class="{{ $dropboxConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
-                        <svg aria-hidden="true" class="h-5 w-5" fill="#0061FE" viewBox="0 0 24 24"><path d="M6 2l6 3.75L6 9.5 0 5.75zm12 0l6 3.75-6 3.75-6-3.75zM0 13.25L6 9.5l6 3.75L6 17zm12-3.75l6-3.75 6 3.75-6 3.75zm-5.97 4.49L6 14l-.03-.01L0 17.24v1.52l6.03-3.75L12 18.76v-1.52l-5.97-3.25zm11.94 0L12 17.24v1.52l5.97-3.25L24 18.76v-1.52l-6.03-3.25z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Dropbox</h3>
-                        <p class="text-xs text-gray-500">{{ __('Backup storage') }}</p>
-                    </div>
-                </div>
-                @if($dropboxConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($dropboxConnected)
-                    {{ __('API credentials configured') }}
-                @else
-                    {{ __('API credentials required') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-dropbox')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-        {{-- Unsplash Card --}}
-        <x-ui.card class="{{ $unsplashConnected ? 'ring-2 ring-blue-500' : '' }}">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 shadow-sm ring-1 ring-gray-200">
-                        <svg aria-hidden="true" class="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900">Unsplash</h3>
-                        <p class="text-xs text-gray-500">{{ __('Login page slideshow') }}</p>
-                    </div>
-                </div>
-                @if($unsplashConnected)
-                    <x-ui.badge variant="green">{{ __('Configured') }}</x-ui.badge>
-                @else
-                    <x-ui.badge variant="red">{{ __('Not configured') }}</x-ui.badge>
-                @endif
-            </div>
-
-            <div class="mt-3 text-xs text-gray-500">
-                @if($unsplashConnected)
-                    {{ __('Background images active') }}
-                @else
-                    {{ __('Background images disabled') }}
-                @endif
-            </div>
-
-            <div class="mt-4 border-t border-gray-100 pt-4">
-                <button @click="$dispatch('open-modal-configure-unsplash')"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    <svg aria-hidden="true" class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    {{ __('Settings') }}
-                </button>
-            </div>
-        </x-ui.card>
-
-    </div>
-
 
     {{-- ===== Configuration Modals ===== --}}
 
@@ -354,7 +87,7 @@
                                     <div class="text-xs text-gray-500">
                                         {{ __('Connected') }} {{ $conn->created_at->format('d M Y') }}
                                         @if($conn->sites_using > 0)
-                                            &middot; {{ __('Used by') }} {{ $conn->sites_using }} {{ Str::plural(__('site'), $conn->sites_using) }}
+                                            &middot; {{ trans_choice('Used by :count site|Used by :count sites', $conn->sites_using, ['count' => $conn->sites_using]) }}
                                         @endif
                                     </div>
                                     @if($conn->scopes)
@@ -447,7 +180,7 @@
                                         <x-ui.badge :variant="$cfConn->is_valid ? 'green' : 'red'" class="ml-1">{{ $cfConn->is_valid ? __('Valid') : __('Invalid') }}</x-ui.badge>
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        {{ $cfConn->siteCloudflare->count() }} {{ Str::plural(__('zone'), $cfConn->siteCloudflare->count()) }} {{ __('connected') }}
+                                        {{ trans_choice(':count zone connected|:count zones connected', $cfConn->siteCloudflare->count(), ['count' => $cfConn->siteCloudflare->count()]) }}
                                         @if($cfConn->last_validated_at)
                                             &middot; {{ __('Tested') }} {{ $cfConn->last_validated_at->diffForHumans() }}
                                         @endif
@@ -456,9 +189,13 @@
                             </div>
                             <div class="flex items-center gap-1">
                                 <button wire:click="testCloudflareConnection({{ $cfConn->id }})"
-                                    class="rounded p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                    title="{{ __('Test Connection') }}">
-                                    <x-icons.check-circle class="w-4 h-4" />
+                                    wire:loading.attr="disabled" wire:target="testCloudflareConnection({{ $cfConn->id }})"
+                                    class="rounded p-1.5 text-gray-400 transition hover:bg-accent-50 hover:text-accent-600 disabled:opacity-50"
+                                    title="{{ __('Test connection') }}">
+                                    <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden"
+                                                  wire:target="testCloudflareConnection({{ $cfConn->id }})" />
+                                    <x-icons.check-circle class="w-4 h-4" wire:loading.class="hidden"
+                                                          wire:target="testCloudflareConnection({{ $cfConn->id }})" />
                                 </button>
                                 <button wire:click="confirmDeleteCloudflare({{ $cfConn->id }})"
                                     class="rounded p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50"
@@ -477,15 +214,19 @@
             <h4 class="text-sm font-medium text-gray-900 mb-4">{{ __('Add connection') }}</h4>
             <div class="flex items-end gap-3">
                 <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">API Token</label>
-                    <x-ui.input type="password" wire:model="cfApiToken" placeholder="{{ __('Enter Cloudflare API token') }}" />
+                    {{-- This field had no @error: submit an empty or short token
+                         and the button silently did nothing. --}}
+                    <x-ui.form-group :label="__('API token')" for="cfApiToken" error="cfApiToken">
+                        <x-ui.input type="password" id="cfApiToken" wire:model="cfApiToken"
+                                    placeholder="{{ __('Enter the Cloudflare token') }}" />
+                    </x-ui.form-group>
                 </div>
-                <button wire:click="addCloudflareConnection" wire:loading.attr="disabled"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90"
-                        style="background-color: #F6821F;">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16.51 15.45c.15-.51.08-.98-.2-1.34a1.13 1.13 0 0 0-.93-.42H7.64c-.1 0-.18-.04-.22-.12a.24.24 0 0 1 0-.24c.04-.08.12-.15.22-.17a.56.56 0 0 0 .1-.02h8.03c1.08-.05 2.24-.87 2.65-1.95l.52-1.37c.02-.05.03-.1.03-.16 0-.04.02-.08.02-.12a4.35 4.35 0 0 0-8.37-1.43 2.2 2.2 0 0 0-1.53-.36 2.26 2.26 0 0 0-1.93 1.88 3.27 3.27 0 0 0-2.84 3.2c0 .1.01.2.02.3h-.08A2.57 2.57 0 0 0 2 15.67c0 .13.01.25.03.37.02.1.1.17.2.17h13.85c.1 0 .2-.07.23-.17l.2-.59zM19.35 11.06a.17.17 0 0 0-.17.13l-.24.82c-.15.51-.08.98.2 1.34.24.31.63.47 1.07.48l1.53.04c.1 0 .18.04.22.12a.24.24 0 0 1 0 .24c-.04.08-.12.15-.22.17a.56.56 0 0 0-.1.02l-1.58.04c-1.08.05-2.24.87-2.65 1.95l-.14.39c-.03.08.02.15.1.15h5.2c.1 0 .17-.06.2-.15a5.26 5.26 0 0 0-3.42-5.74z"/></svg>
+                <x-ui.button wire:click="addCloudflareConnection" wire:loading.attr="disabled"
+                             wire:target="addCloudflareConnection">
+                    <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden"
+                                  wire:target="addCloudflareConnection" />
                     {{ __('Connect') }}
-                </button>
+                </x-ui.button>
             </div>
 
             <div x-data="{ showInstructions: false }" class="mt-4">
@@ -642,7 +383,10 @@
 
         <div class="mt-4 flex justify-end gap-2">
             <x-ui.button variant="secondary" @click="$dispatch('close-modal-disconnect-google')">{{ __('Cancel') }}</x-ui.button>
-            <x-ui.button variant="danger" wire:click="disconnectAccount">{{ __('Disconnect') }}</x-ui.button>
+            <x-ui.button variant="danger" wire:click="disconnectAccount" wire:loading.attr="disabled" wire:target="disconnectAccount">
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="disconnectAccount" />
+                {{ __('Disconnect') }}
+            </x-ui.button>
         </div>
     </x-ui.modal>
 
@@ -655,7 +399,10 @@
 
         <div class="mt-4 flex justify-end gap-2">
             <x-ui.button variant="secondary" @click="$dispatch('close-modal-delete-cloudflare')">{{ __('Cancel') }}</x-ui.button>
-            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection">{{ __('Delete') }}</x-ui.button>
+            <x-ui.button variant="danger" wire:click="deleteCloudflareConnection" wire:loading.attr="disabled" wire:target="deleteCloudflareConnection">
+                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="deleteCloudflareConnection" />
+                {{ __('Delete') }}
+            </x-ui.button>
         </div>
     </x-ui.modal>
 
@@ -753,8 +500,10 @@
             </div>
             <div class="flex items-center justify-between">
                 @if($this->postmarkConfigured)
-                    <button type="button" wire:click="disconnectPostmark" wire:confirm="{{ __('Disconnect Postmark and clear cached DKIM data?') }}"
-                            class="text-sm text-red-500 hover:text-red-700">
+                    <button type="button" wire:click="disconnectPostmark"
+                            wire:confirm="{{ __('Disconnect Postmark and clear cached DKIM data?') }}"
+                            wire:loading.attr="disabled" wire:target="disconnectPostmark"
+                            class="text-sm text-red-500 transition hover:text-red-700 disabled:opacity-50">
                         {{ __('Disconnect') }}
                     </button>
                 @else
@@ -783,3 +532,4 @@
         </div>
     </x-ui.modal>
 </div>
+

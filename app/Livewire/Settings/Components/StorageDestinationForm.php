@@ -101,6 +101,12 @@ class StorageDestinationForm extends Component
 
         $this->dispatch('close-modal-storage-form');
         $this->dispatch('storage-destination-saved');
+
+        // Saving used to close the modal and say nothing — indistinguishable
+        // from the modal being dismissed.
+        $this->dispatch('notify', type: 'success', message: $this->destinationId
+            ? __('Storage destination updated.')
+            : __('Storage destination added.'));
     }
 
     protected function buildS3Config(): array
@@ -182,7 +188,7 @@ class StorageDestinationForm extends Component
             : StorageDestination::where('type', 'dropbox')->first();
 
         if (! $destination || $destination->type !== 'dropbox') {
-            $this->browserError = 'No Dropbox connection found. Please connect Dropbox first.';
+            $this->browserError = __('No Dropbox connection found. Please connect Dropbox first.');
             $this->browserFolders = [];
 
             return;
@@ -193,18 +199,18 @@ class StorageDestinationForm extends Component
             $this->browserFolders = $driver->listFolders($path);
             $this->browserCurrentPath = $path;
         } catch (DecryptException) {
-            $this->browserError = 'Dropbox credentials could not be decrypted. Please reconnect Dropbox.';
+            $this->browserError = __('Dropbox credentials could not be decrypted. Please reconnect Dropbox.');
             $this->browserFolders = [];
         } catch (\Throwable $e) {
             $message = $e->getMessage();
             if (str_contains($message, 'could not be decrypted') || str_contains($message, 'payload is invalid')) {
-                $this->browserError = 'Dropbox credentials could not be decrypted. Please reconnect Dropbox.';
+                $this->browserError = __('Dropbox credentials could not be decrypted. Please reconnect Dropbox.');
             } elseif (str_contains($message, '401') || str_contains($message, 'expired')) {
-                $this->browserError = 'Dropbox token expired. Please reconnect Dropbox.';
+                $this->browserError = __('Dropbox token expired. Please reconnect Dropbox.');
             } elseif (str_contains($message, 'not_found')) {
-                $this->browserError = 'Folder not found.';
+                $this->browserError = __('Folder not found.');
             } else {
-                $this->browserError = 'Could not load folders: '.$message;
+                $this->browserError = __('Could not load folders: :error', ['error' => $message]);
             }
             $this->browserFolders = [];
         }

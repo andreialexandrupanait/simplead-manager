@@ -1,111 +1,105 @@
 <div>
-    <form wire:submit="save" class="space-y-6" x-data="{ ready: false }" x-init="$nextTick(() => ready = true)" x-show="ready" x-cloak>
-        <x-ui.card>
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 shadow-sm ring-1 ring-blue-200">
-                        <x-icons.mail class="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-gray-900">{{ __('SMTP Connection') }}</h3>
-                        <p class="mt-0.5 text-sm text-gray-500">{{ __('Mail server configuration') }}</p>
-                    </div>
-                </div>
-                <x-ui.badge variant="{{ $host ? 'green' : 'red' }}">{{ $host ? __('Configured') : __('Not set') }}</x-ui.badge>
-            </div>
+    {{-- No x-cloak gate here on purpose: the section used to be wrapped in
+         x-show="ready" and only appeared once Alpine had booted, which cost a
+         layout jump on every load and hid the whole form outright whenever
+         Alpine failed. --}}
+    <form wire:submit="save" class="space-y-6">
+        <x-settings.section id="smtp"
+                            :title="__('Email Delivery')"
+                            :subtitle="__('Mail server used for notifications and reports.')">
+            <x-slot:actions>
+                <x-ui.badge variant="{{ $host ? 'green' : 'red' }}">
+                    {{ $host ? __('Configured') : __('Not set') }}
+                </x-ui.badge>
+            </x-slot:actions>
 
             <div class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Mailer') }}</label>
-                        <x-ui.select wire:model.live="mailer" class="mt-1">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.form-group :label="__('Mailer')" for="mail-mailer" error="mailer">
+                        <x-ui.select id="mail-mailer" wire:model.live="mailer">
                             <option value="smtp">SMTP</option>
                             <option value="log">{{ __('Log (no emails sent)') }}</option>
                         </x-ui.select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Encryption') }}</label>
-                        <x-ui.select wire:model="encryption" class="mt-1">
-                            <option value="tls">TLS</option>
-                            <option value="ssl">SSL</option>
-                            <option value="none">None</option>
+                    </x-ui.form-group>
+
+                    <x-ui.form-group :label="__('Encryption')" for="mail-encryption" error="encryption"
+                                     :hint="__('STARTTLS is negotiated with the server; SMTPS connects over TLS from the first byte.')">
+                        <x-ui.select id="mail-encryption" wire:model="encryption">
+                            <option value="tls">{{ __('STARTTLS (recommended)') }}</option>
+                            <option value="ssl">{{ __('SSL / SMTPS (implicit TLS)') }}</option>
+                            {{-- "None" is kept because existing installs store it,
+                                 but it is not a plaintext mode: the transport
+                                 treats it exactly like STARTTLS. Labelled for what
+                                 it does rather than for what it says. --}}
+                            <option value="none">{{ __('None (behaves like STARTTLS)') }}</option>
                         </x-ui.select>
-                        @error('encryption') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                    </x-ui.form-group>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('SMTP Host') }}</label>
-                        <x-ui.input wire:model="host" placeholder="smtp.example.com" class="mt-1" />
-                        @error('host') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('SMTP Port') }}</label>
-                        <x-ui.input wire:model="port" type="number" min="1" max="65535" placeholder="587" class="mt-1" />
-                        @error('port') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
+                @if($mailer === 'smtp')
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.form-group :label="__('SMTP Host')" for="mail-host" error="host" required>
+                            <x-ui.input id="mail-host" wire:model="host" placeholder="smtp.example.com" />
+                        </x-ui.form-group>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Username') }}</label>
-                        <x-ui.input wire:model="username" autocomplete="off" class="mt-1" />
-                        @error('username') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        <x-ui.form-group :label="__('SMTP Port')" for="mail-port" error="port" required>
+                            <x-ui.input id="mail-port" wire:model="port" type="number" min="1" max="65535" placeholder="587" />
+                        </x-ui.form-group>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('Password') }}</label>
-                        <x-ui.input wire:model="password" type="password" autocomplete="new-password" placeholder="{{ $hasPassword ? '••••••••' : '' }}" class="mt-1" />
-                        @if($hasPassword && $password === '')
-                            <p class="mt-1 text-xs text-gray-400">{{ __('Leave blank to keep current password.') }}</p>
-                        @endif
-                        @error('password') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.form-group :label="__('Username')" for="mail-username" error="username">
+                            <x-ui.input id="mail-username" wire:model="username" autocomplete="off" />
+                        </x-ui.form-group>
+
+                        <x-ui.form-group :label="__('Password')" for="mail-password" error="password"
+                                         :hint="$hasPassword ? __('Leave blank to keep current password.') : null">
+                            <x-ui.input id="mail-password" wire:model="password" type="password"
+                                        autocomplete="new-password"
+                                        placeholder="{{ $hasPassword ? '••••••••' : '' }}" />
+                        </x-ui.form-group>
                     </div>
-                </div>
+                @else
+                    <p class="text-sm text-gray-500">{{ __('The log mailer writes emails to the application log instead of sending them.') }}</p>
+                @endif
             </div>
-        </x-ui.card>
+        </x-settings.section>
 
-        <x-ui.card>
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-50 shadow-sm ring-1 ring-accent-200">
-                        <x-icons.inbox class="h-5 w-5 text-accent-600" />
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-gray-900">{{ __('Sender Identity') }}</h3>
-                        <p class="mt-0.5 text-sm text-gray-500">{{ __('From address & name for outgoing emails') }}</p>
-                    </div>
-                </div>
-                <x-ui.badge variant="{{ $fromAddress ? 'green' : 'gray' }}">{{ $fromAddress ? __('Set') : __('Not set') }}</x-ui.badge>
+        <x-settings.section :title="__('Sender Identity')"
+                            :subtitle="__('From address and name used on outgoing emails.')">
+            <x-slot:actions>
+                <x-ui.badge variant="{{ $fromAddress ? 'green' : 'gray' }}">
+                    {{ $fromAddress ? __('Set') : __('Not set') }}
+                </x-ui.badge>
+            </x-slot:actions>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <x-ui.form-group :label="__('From Address')" for="mail-from-address" error="fromAddress" required>
+                    <x-ui.input id="mail-from-address" wire:model="fromAddress" type="email" placeholder="noreply@example.com" />
+                </x-ui.form-group>
+
+                <x-ui.form-group :label="__('From Name')" for="mail-from-name" error="fromName" required>
+                    <x-ui.input id="mail-from-name" wire:model="fromName" placeholder="SimpleAD Manager" />
+                </x-ui.form-group>
             </div>
+        </x-settings.section>
 
-            <div class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('From Address') }}</label>
-                        <x-ui.input wire:model="fromAddress" type="email" placeholder="noreply@example.com" class="mt-1" />
-                        @error('fromAddress') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">{{ __('From Name') }}</label>
-                        <x-ui.input wire:model="fromName" placeholder="SimpleAD Manager" class="mt-1" />
-                        @error('fromName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-            </div>
-        </x-ui.card>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <x-ui.button type="button" variant="secondary"
+                         wire:click="sendTestEmail"
+                         wire:loading.attr="disabled"
+                         wire:target="sendTestEmail">
+                <x-ui.spinner size="sm" class="hidden"
+                              wire:loading.class.remove="hidden" wire:target="sendTestEmail" />
+                <x-icons.mail class="h-4 w-4" aria-hidden="true"
+                              wire:loading.remove wire:target="sendTestEmail" />
+                {{ __('Send Test Email') }}
+            </x-ui.button>
 
-        <div class="flex items-center justify-between">
-            <button type="button" wire:click="sendTestEmail" wire:loading.attr="disabled" wire:target="sendTestEmail"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50">
-                <x-icons.mail class="h-4 w-4 text-gray-400" />
-                <span wire:loading.remove wire:target="sendTestEmail">{{ __('Send Test Email') }}</span>
-                <span wire:loading wire:target="sendTestEmail">{{ __('Sending...') }}</span>
-            </button>
-
-            <x-ui.button type="submit" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="save">{{ __('Save Settings') }}</span>
-                <span wire:loading wire:target="save">{{ __('Saving...') }}</span>
+            <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">
+                <x-ui.spinner size="sm" class="hidden"
+                              wire:loading.class.remove="hidden" wire:target="save" />
+                {{ __('Save Settings') }}
             </x-ui.button>
         </div>
     </form>

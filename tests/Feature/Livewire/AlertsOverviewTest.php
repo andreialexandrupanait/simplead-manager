@@ -68,7 +68,7 @@ class AlertsOverviewTest extends TestCase
         Site::factory()->count(3)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 95]);
 
         Livewire::test(AlertsOverview::class)
-            ->assertSee(__('Nicio alertă.'))
+            ->assertSee(__('No alerts.'))
             ->assertSee('3');
     }
 

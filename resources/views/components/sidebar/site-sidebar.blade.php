@@ -95,7 +95,7 @@
 
         <div x-data="{ q: '' }" class="max-h-[70vh] overflow-y-auto scrollbar-thin">
             <p class="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                {{ __('Comută site') }}
+                {{ __('Toggle site') }}
             </p>
 
             @if($switcherSites->count() > 6)
@@ -104,7 +104,7 @@
                            x-model="q"
                            @click.stop
                            @keydown.stop
-                           placeholder="{{ __('Caută site…') }}"
+                           placeholder="{{ __('Search sites…') }}"
                            class="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
                 </div>
             @endif

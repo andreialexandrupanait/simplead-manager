@@ -43,7 +43,7 @@ class ChannelForm extends Component
             try {
                 app(SsrfGuard::class)->assertPublicUrl($this->form->webhookUrl);
             } catch (SsrfException) {
-                $this->addError('form.webhookUrl', 'This webhook URL is not allowed — it points to a private or internal address.');
+                $this->addError('form.webhookUrl', __('This webhook URL is not allowed — it points to a private or internal address.'));
 
                 return;
             }
@@ -59,7 +59,9 @@ class ChannelForm extends Component
             'webhook' => array_filter([
                 'url' => $this->form->webhookUrl,
                 'method' => $this->form->webhookMethod,
-                'headers' => $this->form->webhookHeaders ? json_decode($this->form->webhookHeaders, true) : [],
+                // Validated as JSON above, so a decode failure can no longer be
+                // written to the config as a silent null.
+                'headers' => $this->form->webhookHeaders !== '' ? (json_decode($this->form->webhookHeaders, true) ?? []) : [],
                 'signing_secret' => $this->form->webhookSigningSecret ?: null,
             ]),
             default => [],
@@ -81,6 +83,9 @@ class ChannelForm extends Component
 
         $this->dispatch('close-modal-channel-form');
         $this->dispatch('channels-updated');
+        $this->dispatch('notify', type: 'success', message: $this->channelId
+            ? __('Channel :name updated.', ['name' => $this->form->name])
+            : __('Channel :name created.', ['name' => $this->form->name]));
     }
 
     public function render()

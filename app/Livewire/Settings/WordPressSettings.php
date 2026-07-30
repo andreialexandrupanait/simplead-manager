@@ -75,7 +75,7 @@ class WordPressSettings extends Component
     public function pushPluginToSelectedSites(): void
     {
         if (empty($this->selectedPushSiteIds)) {
-            $this->dispatch('notify', type: 'warning', message: 'No sites selected.');
+            $this->dispatch('notify', type: 'warning', message: __('No sites selected.'));
 
             return;
         }
@@ -83,7 +83,7 @@ class WordPressSettings extends Component
         $sites = Site::connected()->whereIn('id', $this->selectedPushSiteIds)->get();
 
         if ($sites->isEmpty()) {
-            $this->dispatch('notify', type: 'warning', message: 'No valid connected sites found in selection.');
+            $this->dispatch('notify', type: 'warning', message: __('No valid connected sites found in selection.'));
 
             return;
         }
@@ -99,7 +99,7 @@ class WordPressSettings extends Component
     private function pushPluginToSites($sites): void
     {
         if ($sites->isEmpty()) {
-            $this->dispatch('notify', type: 'warning', message: 'No connected sites found.');
+            $this->dispatch('notify', type: 'warning', message: __('No connected sites found.'));
 
             return;
         }
@@ -121,6 +121,12 @@ class WordPressSettings extends Component
         foreach ($sites as $site) {
             PushConnectorPlugin::dispatch($site, $downloadUrl, $this->pushId);
         }
+
+        $this->dispatch('notify', type: 'success', message: trans_choice(
+            '{1}Plugin push queued for :count site.|[2,*]Plugin push queued for :count sites.',
+            $this->pushTotal,
+            ['count' => $this->pushTotal],
+        ));
     }
 
     public function checkPushProgress(): void
@@ -143,7 +149,10 @@ class WordPressSettings extends Component
 
             $this->dispatch('notify',
                 type: $failed > 0 ? 'warning' : 'success',
-                message: "Plugin push complete: {$succeeded} updated, {$failed} failed."
+                message: __('Plugin push complete: :succeeded updated, :failed failed.', [
+                    'succeeded' => $succeeded,
+                    'failed' => $failed,
+                ])
             );
 
             Cache::forget("{$cacheKey}:results");

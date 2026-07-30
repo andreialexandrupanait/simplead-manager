@@ -60,9 +60,24 @@ class ChannelFormData extends Form
             'webhook' => array_merge($rules, [
                 'webhookUrl' => 'required|url|max:2048',
                 'webhookMethod' => 'required|in:GET,POST,PUT,PATCH',
+                // Custom headers were json_decode()d without ever being
+                // validated: malformed JSON became null and was written to the
+                // channel config. An empty textarea means "no custom headers",
+                // so only validate the field once something is typed.
+                'webhookHeaders' => $this->webhookHeaders === '' ? 'nullable' : 'json',
             ]),
             default => $rules,
         };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'webhookHeaders.json' => __('Custom headers must be valid JSON, e.g. {"Authorization": "Bearer token"}.'),
+        ];
     }
 
     public function setFromChannel($channel): void

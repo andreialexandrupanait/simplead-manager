@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Traits;
 
 use App\Models\ReportTemplate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 trait WithTemplateForm
 {
@@ -59,57 +61,61 @@ trait WithTemplateForm
 
     /**
      * Single source of truth for sub-section toggles per section.
+     *
+     * The values are the labels the settings screen prints, so they go through
+     * __() here — that keeps the literal keys where a translation extractor can
+     * find them instead of hiding them behind __($variable) in the blade.
      */
     public static function sectionSubOptions(): array
     {
         return [
             'executive_snapshot' => [
-                'show_uptime' => 'Uptime',
-                'show_downtime' => 'Downtime',
-                'show_updates' => 'Updates',
-                'show_backups' => 'Backups',
-                'show_desktop_perf' => 'Desktop Performance',
-                'show_mobile_perf' => 'Mobile Performance',
-                'show_users' => 'Users (Analytics)',
-                'show_impressions' => 'Impressions (Search Console)',
+                'show_uptime' => __('Uptime'),
+                'show_downtime' => __('Downtime'),
+                'show_updates' => __('Updates'),
+                'show_backups' => __('Backups'),
+                'show_desktop_perf' => __('Desktop Performance'),
+                'show_mobile_perf' => __('Mobile Performance'),
+                'show_users' => __('Users (Analytics)'),
+                'show_impressions' => __('Impressions (Search Console)'),
             ],
             'technical_stability' => [
-                'show_incidents_table' => 'Incidents Table',
-                'show_security' => 'Security Sub-card',
-                'show_database' => 'Database Sub-card',
+                'show_incidents_table' => __('Incidents Table'),
+                'show_security' => __('Security Sub-card'),
+                'show_database' => __('Database Sub-card'),
             ],
             'updates' => [
-                'show_breakdown_chart' => 'Breakdown Chart',
-                'show_log_table' => 'Update Log Table',
+                'show_breakdown_chart' => __('Breakdown Chart'),
+                'show_log_table' => __('Update Log Table'),
             ],
             'backups' => [
-                'show_chart' => 'Donut Chart',
-                'show_history_table' => 'Backup History Table',
+                'show_chart' => __('Donut Chart'),
+                'show_history_table' => __('Backup History Table'),
             ],
             'analytics' => [
-                'show_daily_chart' => 'Daily Users Chart',
-                'show_traffic_sources' => 'Traffic Sources Chart',
-                'show_top_pages' => 'Top Pages Table',
-                'show_devices' => 'Device Distribution',
-                'show_countries' => 'Top Countries',
+                'show_daily_chart' => __('Daily Users Chart'),
+                'show_traffic_sources' => __('Traffic Sources Chart'),
+                'show_top_pages' => __('Top Pages Table'),
+                'show_devices' => __('Device Distribution'),
+                'show_countries' => __('Top Countries'),
             ],
             'search_console' => [
-                'show_performance_chart' => 'Performance Chart',
-                'show_queries_table' => 'Top Queries Table',
+                'show_performance_chart' => __('Performance Chart'),
+                'show_queries_table' => __('Top Queries Table'),
             ],
             'performance' => [
-                'show_mobile' => 'Mobile Score',
-                'show_desktop' => 'Desktop Score',
+                'show_mobile' => __('Mobile Score'),
+                'show_desktop' => __('Desktop Score'),
             ],
             'infrastructure' => [
-                'show_ssl' => 'SSL Certificate',
-                'show_domain' => 'Domain Registration',
-                'show_email' => 'Email Deliverability',
+                'show_ssl' => __('SSL Certificate'),
+                'show_domain' => __('Domain Registration'),
+                'show_email' => __('Email Deliverability'),
             ],
             'recommendations' => [
-                'show_technical' => 'Technical Recommendations',
-                'show_performance' => 'Performance Recommendations',
-                'show_seo' => 'SEO Recommendations',
+                'show_technical' => __('Technical Recommendations'),
+                'show_performance' => __('Performance Recommendations'),
+                'show_seo' => __('SEO Recommendations'),
             ],
             'plugin_inventory' => [],
             'database_health' => [],
@@ -117,19 +123,19 @@ trait WithTemplateForm
             'wp_users' => [],
             'security_checks' => [],
             'seo' => [
-                'show_issues' => 'Issue Summary',
-                'show_recommendations' => 'Priority Recommendations',
-                'show_score_trend' => 'Score Trend Chart',
-                'show_ssl_status' => 'SSL Certificate',
-                'show_security_headers' => 'Security Headers',
-                'show_broken_links' => 'Broken Links',
-                'show_sitemap' => 'Sitemap Analysis',
-                'show_robots' => 'Robots.txt Analysis',
-                'show_top_pages' => 'Top Pages Overview',
-                'show_structured_data' => 'Structured Data',
-                'show_internal_linking' => 'Internal Linking',
-                'show_images' => 'Image Optimization',
-                'show_social' => 'Social Meta Coverage',
+                'show_issues' => __('Issue Summary'),
+                'show_recommendations' => __('Priority Recommendations'),
+                'show_score_trend' => __('Score Trend Chart'),
+                'show_ssl_status' => __('SSL Certificate'),
+                'show_security_headers' => __('Security Headers'),
+                'show_broken_links' => __('Broken Links'),
+                'show_sitemap' => __('Sitemap Analysis'),
+                'show_robots' => __('Robots.txt Analysis'),
+                'show_top_pages' => __('Top Pages Overview'),
+                'show_structured_data' => __('Structured Data'),
+                'show_internal_linking' => __('Internal Linking'),
+                'show_images' => __('Image Optimization'),
+                'show_social' => __('Social Meta Coverage'),
             ],
         ];
     }
@@ -169,8 +175,32 @@ trait WithTemplateForm
         }
     }
 
+    /**
+     * Resolve a template id that arrived from the browser.
+     *
+     * Every id-taking action here is triggered by a wire:click carrying a
+     * client-supplied integer, so an unknown id has to produce a message
+     * instead of a 404 page or a silent no-op.
+     */
+    protected function findTemplateOrNotify(int $id): ?ReportTemplate
+    {
+        $validator = Validator::make(
+            ['id' => $id],
+            ['id' => ['required', 'integer', 'exists:report_templates,id']]
+        );
+
+        if ($validator->fails()) {
+            $this->dispatch('notify', type: 'error', message: __('Template not found.'));
+
+            return null;
+        }
+
+        return ReportTemplate::find($id);
+    }
+
     public function openCreateForm(): void
     {
+        $this->resetValidation();
         $this->resetForm();
         $this->initializeSubOptionDefaults();
         $this->dispatch('open-modal-template-form');
@@ -178,7 +208,13 @@ trait WithTemplateForm
 
     public function editTemplate(int $id): void
     {
-        $template = ReportTemplate::findOrFail($id);
+        $template = $this->findTemplateOrNotify($id);
+
+        if (! $template) {
+            return;
+        }
+
+        $this->resetValidation();
         $this->editingTemplateId = $template->id;
         $this->name = $template->name;
         $this->description = $template->description ?? '';
@@ -215,11 +251,17 @@ trait WithTemplateForm
         ];
 
         if ($this->editingTemplateId) {
-            ReportTemplate::findOrFail($this->editingTemplateId)->update($data);
-            session()->flash('template-success', 'Template updated.');
+            $template = $this->findTemplateOrNotify($this->editingTemplateId);
+
+            if (! $template) {
+                return;
+            }
+
+            $template->update($data);
+            $this->dispatch('notify', type: 'success', message: __('Template updated.'));
         } else {
             ReportTemplate::create($data);
-            session()->flash('template-success', 'Template created.');
+            $this->dispatch('notify', type: 'success', message: __('Template created.'));
         }
 
         $this->dispatch('close-modal-template-form');
@@ -228,34 +270,55 @@ trait WithTemplateForm
 
     public function duplicateTemplate(int $id): void
     {
-        $template = ReportTemplate::findOrFail($id);
+        $template = $this->findTemplateOrNotify($id);
+
+        if (! $template) {
+            return;
+        }
+
         $new = $template->replicate();
         $new->name = $template->name.' (Copy)';
         $new->is_default = false;
         $new->save();
-        session()->flash('template-success', 'Template duplicated.');
+
+        $this->dispatch('notify', type: 'success', message: __('Template duplicated.'));
     }
 
     public function deleteTemplate(int $id): void
     {
-        $template = ReportTemplate::findOrFail($id);
+        $template = $this->findTemplateOrNotify($id);
+
+        if (! $template) {
+            return;
+        }
 
         if ($template->schedules()->exists() || $template->sites()->exists()) {
-            session()->flash('template-error', 'Cannot delete — this template is assigned to sites or schedules.');
+            $this->dispatch('notify', type: 'error', message: __('Cannot delete — this template is assigned to sites or schedules.'));
 
             return;
         }
 
         $template->delete();
-        session()->flash('template-success', 'Template deleted.');
+        $this->dispatch('notify', type: 'success', message: __('Template deleted.'));
         $this->resetPage();
     }
 
     public function setDefault(int $id): void
     {
-        ReportTemplate::where('is_default', true)->update(['is_default' => false]);
-        ReportTemplate::findOrFail($id)->update(['is_default' => true]);
-        session()->flash('template-success', 'Default template updated.');
+        $template = $this->findTemplateOrNotify($id);
+
+        if (! $template) {
+            return;
+        }
+
+        // Both writes have to land together: an interrupted pair would leave the
+        // install with no default template at all.
+        DB::transaction(function () use ($template): void {
+            ReportTemplate::where('is_default', true)->update(['is_default' => false]);
+            $template->update(['is_default' => true]);
+        });
+
+        $this->dispatch('notify', type: 'success', message: __('Default template updated.'));
     }
 
     public function resetForm(): void

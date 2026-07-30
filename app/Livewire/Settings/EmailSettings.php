@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Settings;
 
 use App\Services\SettingsService;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 
@@ -71,7 +73,7 @@ class EmailSettings extends Component
 
         $this->applyRuntimeConfig();
 
-        $this->dispatch('notify', type: 'success', message: 'Email settings saved.');
+        $this->dispatch('notify', type: 'success', message: __('Email settings saved.'));
     }
 
     public function sendTestEmail(): void
@@ -82,14 +84,14 @@ class EmailSettings extends Component
         $recipient = auth()->user()->email;
 
         try {
-            Mail::raw('This is a test email from SimpleAD Manager. If you received this, your SMTP settings are working correctly.', function ($message) use ($recipient) {
+            Mail::raw(__('This is a test email from SimpleAD Manager. If you received this, your SMTP settings are working correctly.'), function ($message) use ($recipient) {
                 $message->to($recipient)
-                    ->subject('SimpleAD Manager — Test Email');
+                    ->subject(__('SimpleAD Manager — Test Email'));
             });
 
-            $this->dispatch('notify', type: 'success', message: "Test email sent to {$recipient}.");
+            $this->dispatch('notify', type: 'success', message: __('Test email sent to :recipient.', ['recipient' => $recipient]));
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Failed to send test email: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Failed to send test email: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -108,7 +110,13 @@ class EmailSettings extends Component
             if ($encrypted) {
                 try {
                     $password = decrypt($encrypted);
-                } catch (\Exception $e) {
+                } catch (DecryptException $e) {
+                    // Swallowing this silently left an empty SMTP password and
+                    // an unexplained send failure much later — most often after
+                    // an APP_KEY rotation, which the log now names.
+                    Log::warning('Stored SMTP password could not be decrypted — re-enter it in Settings › Notifications.', [
+                        'exception' => $e->getMessage(),
+                    ]);
                 }
             }
             if ($password === '') {

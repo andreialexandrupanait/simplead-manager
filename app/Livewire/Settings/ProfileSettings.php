@@ -7,6 +7,7 @@ namespace App\Livewire\Settings;
 use App\Models\PersonalAccessToken;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -78,7 +79,7 @@ class ProfileSettings extends Component
 
         $user->save();
 
-        $this->dispatch('notify', type: 'success', message: 'Profile saved successfully.');
+        $this->dispatch('notify', type: 'success', message: __('Profile saved successfully.'));
     }
 
     public function changePassword(): void
@@ -90,7 +91,7 @@ class ProfileSettings extends Component
         ]);
 
         if (! Hash::check($this->currentPassword, Auth::user()->password)) {
-            $this->addError('currentPassword', 'The current password is incorrect.');
+            $this->addError('currentPassword', __('The current password is incorrect.'));
 
             return;
         }
@@ -101,7 +102,7 @@ class ProfileSettings extends Component
 
         $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
 
-        $this->dispatch('notify', type: 'success', message: 'Password changed successfully.');
+        $this->dispatch('notify', type: 'success', message: __('Password changed successfully.'));
     }
 
     public string $deleteAccountPassword = '';
@@ -113,7 +114,7 @@ class ProfileSettings extends Component
         ]);
 
         if (! Hash::check($this->deleteAccountPassword, Auth::user()->password)) {
-            $this->addError('deleteAccountPassword', 'The password is incorrect.');
+            $this->addError('deleteAccountPassword', __('The password is incorrect.'));
 
             return;
         }
@@ -133,9 +134,13 @@ class ProfileSettings extends Component
         $user = Auth::user();
         $zipPath = storage_path('app/temp/data-export-'.uniqid().'.zip');
 
+        // ZipArchive::CREATE does not create the parent directory; without this
+        // the export fails on a container whose storage/app/temp was never made.
+        File::ensureDirectoryExists(dirname($zipPath));
+
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
-            $this->dispatch('notify', type: 'error', message: 'Failed to create export archive.');
+            $this->dispatch('notify', type: 'error', message: __('Failed to create export archive.'));
 
             return response()->noContent();
         }
@@ -171,11 +176,11 @@ class ProfileSettings extends Component
         $zip->addFromString('reports.json', json_encode(
             $reports->map(fn (\App\Models\Report $r) => [
                 'title' => $r->title,
-                'period_start' => $r->period_start->toDateString(),
-                'period_end' => $r->period_end->toDateString(),
+                'period_start' => $this->exportDate($r->period_start),
+                'period_end' => $this->exportDate($r->period_end),
                 'trigger' => $r->trigger,
                 'status' => $r->status,
-                'created_at' => $r->created_at->toIso8601String(),
+                'created_at' => $r->created_at?->toIso8601String(),
             ])->toArray(),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         ));
@@ -204,6 +209,17 @@ class ProfileSettings extends Component
         return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
     }
 
+    /**
+     * Format an exported date column defensively.
+     *
+     * A report row whose period column is NULL (or never went through the date
+     * cast) used to fatal the whole export on ->toDateString().
+     */
+    private function exportDate(mixed $value): ?string
+    {
+        return $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : null;
+    }
+
     // --- API Tokens ---
 
     public string $newTokenName = '';
@@ -230,6 +246,8 @@ class ProfileSettings extends Component
         $this->newTokenPlainText = $plainText;
         $this->newTokenName = '';
         unset($this->apiTokens);
+
+        $this->dispatch('notify', type: 'success', message: __('Token created. Copy it now — it is shown only once.'));
     }
 
     public function dismissNewToken(): void
@@ -241,7 +259,8 @@ class ProfileSettings extends Component
     {
         PersonalAccessToken::where('user_id', auth()->id())->findOrFail($id)->delete();
         unset($this->apiTokens);
-        session()->flash('token-revoked', 'Token revoked.');
+
+        $this->dispatch('notify', type: 'success', message: __('Token revoked.'));
     }
 
     public function render()

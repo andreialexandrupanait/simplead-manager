@@ -110,7 +110,13 @@ class ApplicationBackup extends Component
     #[Computed]
     public function backupLogEntries(): array
     {
-        return $this->activeBackup->log ?? [];
+        // activeBackup() returns null whenever nothing is being tracked, and
+        // `$x->log ?? []` would dereference null before the coalesce ran.
+        // Bound to a local first: phpstan resolves the computed property
+        // through Livewire's __get and believes it can never be null.
+        $backup = $this->activeBackup;
+
+        return $backup instanceof AppBackup ? ($backup->log ?? []) : [];
     }
 
     #[Computed]
@@ -148,12 +154,18 @@ class ApplicationBackup extends Component
     public function saveConfig(): void
     {
         $this->validate([
+            'isEnabled' => 'boolean',
             'frequency' => 'required|in:daily,weekly,monthly',
             'time' => 'required|date_format:H:i',
             'dayOfWeek' => 'nullable|integer|between:0,6',
             'dayOfMonth' => 'nullable|integer|between:1,28',
             'timezone' => 'required|timezone',
             'type' => 'required|in:full,database,config,storage',
+            'components' => 'array',
+            'components.*' => 'in:database,env,storage',
+            // Written straight to the config below — an id pointing at a
+            // deleted destination used to be accepted silently.
+            'storageDestinationId' => 'nullable|exists:storage_destinations,id',
             'retentionType' => 'required|in:count,days',
             'retentionValue' => 'required|integer|min:1|max:365',
         ]);
@@ -183,7 +195,7 @@ class ApplicationBackup extends Component
 
         unset($this->config);
 
-        $this->dispatch('notify', type: 'success', message: 'Backup configuration saved.');
+        $this->dispatch('notify', type: 'success', message: __('Backup configuration saved.'));
     }
 
     public function openCreateModal(): void
@@ -199,7 +211,9 @@ class ApplicationBackup extends Component
     {
         $rateLimitKey = 'app-backup:'.auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
-            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
+            // Was a `backup-error` flash that no view on this page rendered, so
+            // hitting the limit looked like nothing happened at all.
+            $this->dispatch('notify', type: 'error', message: __('Too many backup requests. Please wait before trying again.'));
 
             return;
         }
@@ -223,7 +237,7 @@ class ApplicationBackup extends Component
 
         $this->showCreateModal = false;
 
-        $this->dispatch('notify', type: 'success', message: 'Backup job queued. It will start shortly.');
+        $this->dispatch('notify', type: 'success', message: __('Backup job queued. It will start shortly.'));
 
         // Set awaiting flag — polling will pick up the record once the job creates it
         $this->awaitingBackup = true;
@@ -236,7 +250,7 @@ class ApplicationBackup extends Component
         $backup = AppBackup::findOrFail($id);
 
         if (! $backup->storage_path) {
-            $this->dispatch('notify', type: 'error', message: 'Backup file not available for download.');
+            $this->dispatch('notify', type: 'error', message: __('Backup file not available for download.'));
 
             return null;
         }
@@ -262,7 +276,7 @@ class ApplicationBackup extends Component
         $url = $driver->temporaryUrl($backup->storage_path);
 
         if (! $url) {
-            $this->dispatch('notify', type: 'error', message: 'Could not generate download link.');
+            $this->dispatch('notify', type: 'error', message: __('Could not generate download link.'));
 
             return null;
         }
@@ -284,13 +298,13 @@ class ApplicationBackup extends Component
     {
         $rateLimitKey = 'app-restore:'.auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 3, fn () => true, 3600)) {
-            $this->dispatch('notify', type: 'error', message: 'Too many restore requests. Please wait before trying again.');
+            $this->dispatch('notify', type: 'error', message: __('Too many restore requests. Please wait before trying again.'));
 
             return;
         }
 
         if (! $this->restoreConfirmed) {
-            $this->dispatch('notify', type: 'error', message: 'Please confirm you understand the risks.');
+            $this->dispatch('notify', type: 'error', message: __('Please confirm you understand the risks.'));
 
             return;
         }
@@ -306,18 +320,23 @@ class ApplicationBackup extends Component
             $this->restoreVerification = $verification;
 
             if ($verification['status'] === 'ok') {
-                $msg = "Database restored successfully. All {$verification['tables_matched']} tables verified.";
+                $msg = __('Database restored successfully. All :count tables verified.', [
+                    'count' => $verification['tables_matched'],
+                ]);
                 $this->dispatch('notify', type: 'success', message: $msg);
             } elseif ($verification['status'] === 'warning') {
-                $msg = "Database restored. {$verification['tables_matched']} tables match, {$verification['tables_different']} differ.";
+                $msg = __('Database restored. :matched tables match, :different differ.', [
+                    'matched' => $verification['tables_matched'],
+                    'different' => $verification['tables_different'],
+                ]);
                 $this->dispatch('notify', type: 'warning', message: $msg);
             } else {
-                $this->dispatch('notify', type: 'success', message: 'Database restored successfully.');
+                $this->dispatch('notify', type: 'success', message: __('Database restored successfully.'));
             }
 
             $this->dispatch('open-modal-restore-verification');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Restore failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Restore failed: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -330,7 +349,7 @@ class ApplicationBackup extends Component
             $this->envContent = $service->viewEnv($backup);
             $this->dispatch('open-modal-view-env');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Could not read .env: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not read .env: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -348,6 +367,14 @@ class ApplicationBackup extends Component
             'is_locked' => ! $backup->is_locked,
             'lock_reason' => ! $backup->is_locked ? 'manual' : null,
         ]);
+
+        $this->dispatch(
+            'notify',
+            type: 'success',
+            message: $backup->is_locked
+                ? __('Backup locked — retention cleanup will keep it.')
+                : __('Backup unlocked.'),
+        );
     }
 
     public function deleteBackup(int $id): void
@@ -355,7 +382,7 @@ class ApplicationBackup extends Component
         $backup = AppBackup::findOrFail($id);
 
         if ($backup->is_locked) {
-            $this->dispatch('notify', type: 'error', message: 'Cannot delete a locked backup. Unlock it first.');
+            $this->dispatch('notify', type: 'error', message: __('Cannot delete a locked backup. Unlock it first.'));
 
             return;
         }
@@ -364,10 +391,10 @@ class ApplicationBackup extends Component
             $service = app(AppBackupService::class);
             $service->deleteBackup($backup);
             unset($this->totalStorageUsed, $this->lastBackup, $this->completedBackupCount);
-            $this->dispatch('notify', type: 'success', message: 'Backup deleted.');
+            $this->dispatch('notify', type: 'success', message: __('Backup deleted.'));
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Delete failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Delete failed: :error', ['error' => $e->getMessage()]));
         }
     }
 

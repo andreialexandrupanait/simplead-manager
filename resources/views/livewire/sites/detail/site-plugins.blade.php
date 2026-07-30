@@ -876,11 +876,11 @@
                                     'text-amber-600' => $soon,
                                     'text-gray-700' => ! $expired && ! $soon,
                                 ])>
-                                    {{ $expired ? __('Expirată') : __('Expiră') }} {{ $expires->format('d.m.Y') }}
+                                    {{ $expired ? __('Expired') : __('Expires') }} {{ $expires->format('d.m.Y') }}
                                 </p>
                                 <p class="text-xs text-gray-400">{{ $expires->diffForHumans() }}</p>
                             @else
-                                <p class="text-sm text-gray-400">{{ __('Fără dată de expirare') }}</p>
+                                <p class="text-sm text-gray-400">{{ __('No expiry date') }}</p>
                             @endif
                         </div>
 
@@ -892,7 +892,7 @@
                     </div>
                 @empty
                     <div class="px-4 py-12 text-center text-sm text-gray-500">
-                        {{ __('Niciun plugin cu licență premium detectat pe acest site.') }}
+                        {{ __('No premium-licensed plugin detected on this site.') }}
                     </div>
                 @endforelse
             </div>

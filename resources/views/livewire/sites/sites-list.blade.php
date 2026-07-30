@@ -26,9 +26,9 @@
         <a href="{{ route('alerts.index') }}" wire:navigate
            class="mb-6 mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm transition hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10">
             <span class="font-medium text-red-700 dark:text-red-400">
-                {{ trans_choice(':count site are nevoie de atenție|:count site-uri au nevoie de atenție', $attention, ['count' => $attention]) }}
+                {{ trans_choice(':count site needs attention|:count sites need attention', $attention, ['count' => $attention]) }}
             </span>
-            <span class="text-red-600 dark:text-red-400">{{ __('Vezi alertele') }} →</span>
+            <span class="text-red-600 dark:text-red-400">{{ __('View alerts') }} →</span>
         </a>
     @else
         <div class="mb-6 mt-4"></div>
@@ -171,21 +171,43 @@
     {{-- Rename modal — the rich row's ⋮ menu opens this. --}}
     <x-ui.modal name="rename-site" maxWidth="sm">
         <form wire:submit="renameSite">
-            <h2 id="modal-rename-site-title" class="text-lg font-semibold text-gray-900">{{ __('Redenumește site') }}</h2>
-            <p class="mt-1 text-sm text-gray-500">{{ __('Alege un nume nou pentru acest site.') }}</p>
+            <h2 id="modal-rename-site-title" class="text-lg font-semibold text-gray-900">{{ __('Rename site') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Choose a new name for this site.') }}</p>
 
             <div class="mt-4">
-                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">{{ __('Nume') }}</label>
+                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
                 <x-ui.input wire:model="renamingSiteName" id="renamingSiteName" class="mt-1" />
                 @error('renamingSiteName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-rename-site')">
-                    {{ __('Anulează') }}
+                    {{ __('Cancel') }}
                 </x-ui.button>
-                <x-ui.button type="submit">{{ __('Salvează') }}</x-ui.button>
+                <x-ui.button type="submit">{{ __('Save') }}</x-ui.button>
             </div>
         </form>
+    </x-ui.modal>
+
+    {{-- Delete modal — the same ⋮ menu offers Delete, and until now it called a
+         method this page did not have. --}}
+    <x-ui.modal name="delete-site" maxWidth="sm">
+        <div>
+            <h2 id="modal-delete-site-title" class="text-lg font-semibold text-gray-900">{{ __('Delete site') }}</h2>
+            <p class="mt-2 text-sm text-gray-600">
+                {{ __('Are you sure you want to delete') }}
+                <span class="font-medium text-gray-900">{{ $deletingSiteName }}</span>?
+                {{ __('This action cannot be undone.') }}
+            </p>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-delete-site')">
+                    {{ __('Cancel') }}
+                </x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="deleteSite">
+                    {{ __('Delete site') }}
+                </x-ui.button>
+            </div>
+        </div>
     </x-ui.modal>
 </div>

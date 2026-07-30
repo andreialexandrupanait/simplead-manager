@@ -260,6 +260,6 @@ class ConnectSite extends Component
     public function render()
     {
         return view('livewire.sites.connect-site')
-            ->layout('components.layouts.app', ['title' => __('Conectează un site')]);
+            ->layout('components.layouts.app', ['title' => __('Connect a site')]);
     }
 }

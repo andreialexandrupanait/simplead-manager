@@ -131,6 +131,6 @@ class AlertsOverview extends Component
     public function render()
     {
         return view('livewire.alerts.alerts-overview')
-            ->layout('components.layouts.app', ['title' => __('Alerte')]);
+            ->layout('components.layouts.app', ['title' => __('Alerts')]);
     }
 }

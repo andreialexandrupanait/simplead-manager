@@ -14,12 +14,15 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class IntegrationsSettings extends Component
 {
     public bool $showDisconnectModal = false;
 
+    /** Locked: this id is passed straight to delete(), so the client must not be able to set it. */
+    #[Locked]
     public ?int $disconnectingId = null;
 
     // Dropbox API Credentials
@@ -46,6 +49,8 @@ class IntegrationsSettings extends Component
     // Cloudflare
     public string $cfApiToken = '';
 
+    /** Locked: see $disconnectingId. */
+    #[Locked]
     public ?int $deletingCfId = null;
 
     // Postmark
@@ -131,7 +136,7 @@ class IntegrationsSettings extends Component
         $token = trim($this->postmarkAccountToken);
 
         if (! app(PostmarkService::class)->validateToken($token)) {
-            session()->flash('error', __('Postmark token rejected by API. Check that this is an Account Token (not Server).'));
+            $this->dispatch('notify', type: 'error', message: __('Postmark token rejected by API. Check that this is an Account Token (not Server).'));
 
             return;
         }
@@ -142,7 +147,7 @@ class IntegrationsSettings extends Component
         app(PostmarkService::class)->clearCache();
         unset($this->postmarkConfigured);
 
-        session()->flash('success', __('Postmark Account Token saved & verified.'));
+        $this->dispatch('notify', type: 'success', message: __('Postmark Account Token saved & verified.'));
     }
 
     public function disconnectPostmark(): void
@@ -154,7 +159,7 @@ class IntegrationsSettings extends Component
         $this->postmarkAccountToken = '';
         unset($this->postmarkConfigured);
 
-        session()->flash('success', __('Postmark disconnected.'));
+        $this->dispatch('notify', type: 'success', message: __('Postmark disconnected.'));
     }
 
     public function saveDropboxCredentials(): void
@@ -177,7 +182,7 @@ class IntegrationsSettings extends Component
             'services.dropbox.app_secret' => trim($this->dropboxAppSecret),
         ]);
 
-        session()->flash('success', 'Dropbox API credentials saved.');
+        $this->dispatch('notify', type: 'success', message: __('Dropbox API credentials saved.'));
         $this->dispatch('close-modal-configure-dropbox');
     }
 
@@ -194,7 +199,7 @@ class IntegrationsSettings extends Component
 
         \Illuminate\Support\Facades\Cache::forget('unsplash_slide_images');
 
-        session()->flash('success', 'Unsplash API credentials saved.');
+        $this->dispatch('notify', type: 'success', message: __('Unsplash access key saved.'));
         $this->dispatch('close-modal-configure-unsplash');
     }
 
@@ -207,7 +212,7 @@ class IntegrationsSettings extends Component
         $settings = app(SettingsService::class);
         $settings->set('openapi_key', encrypt(trim($this->openApiKey)), 'openapi');
 
-        session()->flash('success', __('OpenAPI.ro API key saved.'));
+        $this->dispatch('notify', type: 'success', message: __('OpenAPI.ro API key saved.'));
         $this->dispatch('close-modal-configure-openapi');
     }
 
@@ -217,12 +222,12 @@ class IntegrationsSettings extends Component
             $success = app(OpenApiService::class)->testConnection();
 
             if ($success) {
-                session()->flash('success', __('OpenAPI.ro connection successful!'));
+                $this->dispatch('notify', type: 'success', message: __('OpenAPI.ro connection successful!'));
             } else {
-                session()->flash('error', __('OpenAPI.ro connection test failed.'));
+                $this->dispatch('notify', type: 'error', message: __('OpenAPI.ro connection test failed.'));
             }
         } catch (\RuntimeException $e) {
-            session()->flash('error', $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: $e->getMessage());
         }
     }
 
@@ -247,7 +252,7 @@ class IntegrationsSettings extends Component
             'services.google.client_secret' => trim($this->googleClientSecret),
         ]);
 
-        session()->flash('success', 'Google API credentials saved.');
+        $this->dispatch('notify', type: 'success', message: __('Google API credentials saved.'));
         $this->dispatch('close-modal-configure-google');
     }
 
@@ -271,7 +276,7 @@ class IntegrationsSettings extends Component
         $this->dispatch('close-modal-disconnect-google');
         $this->disconnectingId = null;
 
-        session()->flash('success', 'Google account disconnected.');
+        $this->dispatch('notify', type: 'success', message: __('Google account disconnected.'));
     }
 
     // AI Provider methods
@@ -285,14 +290,14 @@ class IntegrationsSettings extends Component
         $settings = app(SettingsService::class);
         $settings->set('ai_anthropic_api_key', encrypt(trim($this->anthropicApiKey)), 'ai_providers');
 
-        session()->flash('success', __('Anthropic API key saved.'));
+        $this->dispatch('notify', type: 'success', message: __('Anthropic API key saved.'));
         $this->dispatch('close-modal-configure-anthropic');
     }
 
     public function testAnthropicConnection(): void
     {
         if (! $this->anthropicApiKey) {
-            session()->flash('error', __('Please enter an API key first.'));
+            $this->dispatch('notify', type: 'error', message: __('Please enter an API key first.'));
 
             return;
         }
@@ -309,13 +314,13 @@ class IntegrationsSettings extends Component
             ]);
 
             if ($response->successful()) {
-                session()->flash('success', __('Anthropic connection successful!'));
+                $this->dispatch('notify', type: 'success', message: __('Anthropic connection successful!'));
             } else {
                 $error = $response->json('error.message', 'Unknown error');
-                session()->flash('error', __('Anthropic connection failed: :error', ['error' => $error]));
+                $this->dispatch('notify', type: 'error', message: __('Anthropic connection failed: :error', ['error' => $error]));
             }
         } catch (\Throwable $e) {
-            session()->flash('error', __('Connection failed: :error', ['error' => $e->getMessage()]));
+            $this->dispatch('notify', type: 'error', message: __('Connection failed: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -328,14 +333,14 @@ class IntegrationsSettings extends Component
         $settings = app(SettingsService::class);
         $settings->set('ai_openai_api_key', encrypt(trim($this->openAiApiKey)), 'ai_providers');
 
-        session()->flash('success', __('OpenAI API key saved.'));
+        $this->dispatch('notify', type: 'success', message: __('OpenAI API key saved.'));
         $this->dispatch('close-modal-configure-openai-ai');
     }
 
     public function testOpenAiConnection(): void
     {
         if (! $this->openAiApiKey) {
-            session()->flash('error', __('Please enter an API key first.'));
+            $this->dispatch('notify', type: 'error', message: __('Please enter an API key first.'));
 
             return;
         }
@@ -351,13 +356,13 @@ class IntegrationsSettings extends Component
             ]);
 
             if ($response->successful()) {
-                session()->flash('success', __('OpenAI connection successful!'));
+                $this->dispatch('notify', type: 'success', message: __('OpenAI connection successful!'));
             } else {
                 $error = $response->json('error.message', 'Unknown error');
-                session()->flash('error', __('OpenAI connection failed: :error', ['error' => $error]));
+                $this->dispatch('notify', type: 'error', message: __('OpenAI connection failed: :error', ['error' => $error]));
             }
         } catch (\Throwable $e) {
-            session()->flash('error', __('Connection failed: :error', ['error' => $e->getMessage()]));
+            $this->dispatch('notify', type: 'error', message: __('Connection failed: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -393,12 +398,12 @@ class IntegrationsSettings extends Component
                         'account_email' => $zones[0]['account']['name'] ?? null,
                     ]);
                 }
-                session()->flash('success', 'Cloudflare connection added and verified.');
+                $this->dispatch('notify', type: 'success', message: __('Cloudflare connection added and verified.'));
             } else {
-                session()->flash('error', 'Cloudflare token validation failed. The connection was saved but may not work.');
+                $this->dispatch('notify', type: 'error', message: __('The Cloudflare token could not be validated. The connection was saved but may not work.'));
             }
         } catch (RequestException|\RuntimeException $e) {
-            session()->flash('error', 'Failed to validate token: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Token validation failed: :error', ['error' => $e->getMessage()]));
         }
 
         $this->cfApiToken = '';
@@ -413,9 +418,15 @@ class IntegrationsSettings extends Component
             $service = new CloudflareService($connection);
             $valid = $service->validateToken();
 
-            session()->flash('success', 'Cloudflare connection test '.($valid ? 'passed' : 'failed').'.');
+            $this->dispatch(
+                'notify',
+                type: $valid ? 'success' : 'error',
+                message: $valid
+                    ? __('The Cloudflare connection test passed.')
+                    : __('The Cloudflare connection test failed.'),
+            );
         } catch (RequestException|\RuntimeException $e) {
-            session()->flash('error', 'Test failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Test failed: :error', ['error' => $e->getMessage()]));
         }
 
         unset($this->cloudflareConnections);
@@ -436,7 +447,7 @@ class IntegrationsSettings extends Component
         $this->dispatch('close-modal-delete-cloudflare');
         $this->deletingCfId = null;
         unset($this->cloudflareConnections);
-        session()->flash('success', 'Cloudflare connection deleted.');
+        $this->dispatch('notify', type: 'success', message: __('Cloudflare connection deleted.'));
     }
 
     public function render()
