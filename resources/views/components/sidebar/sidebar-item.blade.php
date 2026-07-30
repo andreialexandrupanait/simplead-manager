@@ -1,6 +1,8 @@
 @props([
     'href',
-    'icon',
+    // Optional: sub-items inside a group render without one (the design hides
+    // submenu icons anyway — see .sidebar-open .sad-submenu rule in app.css).
+    'icon' => null,
     'active' => false,
     'inactive' => false,
     // Optional severity counter (SPEC §3.1 / §4.3): shows only when > 0,
@@ -33,7 +35,9 @@
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800') }}"
    :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
 
-    <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" aria-hidden="true" />
+    @if($icon)
+        <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" aria-hidden="true" />
+    @endif
 
     {{-- Collapsed-rail indicator: a bare dot so a non-zero counter is still visible when labels are hidden. --}}
     @if($hasCount)

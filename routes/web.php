@@ -102,7 +102,12 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Sites — site-context (uses {site} parameter)
     Route::prefix('/sites/{site}')->group(function () {
         Route::get('/', Sites\Detail\SiteOverview::class)->name('sites.overview');
+        // One screen, four addressable tabs — so the sidebar can link straight to
+        // themes / core / licences instead of dropping you on plugins every time.
         Route::get('/plugins', Sites\Detail\SitePlugins::class)->name('sites.plugins');
+        Route::get('/themes', Sites\Detail\SitePlugins::class)->name('sites.themes');
+        Route::get('/wordpress', Sites\Detail\SitePlugins::class)->name('sites.core');
+        Route::get('/licenses', Sites\Detail\SitePlugins::class)->name('sites.licenses');
         Route::get('/redirects', Sites\Detail\SiteRedirects::class)->name('sites.redirects');
         Route::get('/security', Sites\Detail\Security\SecurityOverview::class)->name('sites.security');
         Route::get('/security/hardening', Sites\Detail\Security\SecurityHardening::class)->name('sites.security.hardening');

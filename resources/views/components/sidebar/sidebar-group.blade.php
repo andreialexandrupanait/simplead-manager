@@ -24,14 +24,15 @@
     $dotClass = ['danger' => 'bg-red-500', 'warning' => 'bg-amber-400', 'accent' => 'bg-accent-500', 'muted' => 'bg-gray-400'][$countTone] ?? 'bg-red-500';
 @endphp
 
+{{-- Accordion, not sticky state.
+     The old behaviour saved every toggle to localStorage forever, so after a
+     few clicks every group in the sidebar stayed permanently expanded on every
+     page. Now the group holding the current route opens, the rest stay shut,
+     and a manual toggle only lasts for this navigation. --}}
 <div x-data="{
-        expanded: (() => {
-            let saved = localStorage.getItem('sidebar-group:{{ $storageKey }}');
-            return saved !== null ? saved === '1' : {{ $active ? 'true' : 'false' }};
-        })(),
+        expanded: {{ $active ? 'true' : 'false' }},
         toggle() {
             this.expanded = !this.expanded;
-            localStorage.setItem('sidebar-group:{{ $storageKey }}', this.expanded ? '1' : '0');
         }
      }">
     <button type="button"

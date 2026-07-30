@@ -34,13 +34,28 @@ class SitePluginFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    /** Cycles the list instead of picking randomly — see definition(). */
+    private static int $sequence = 0;
+
     public function definition(): array
     {
-        $plugin = fake()->randomElement(self::$plugins);
+        // `site_plugins.file` is unique per site. Picking randomly from ten
+        // entries meant two plugins created for the same site collided roughly
+        // one run in ten, which surfaced as an unrelated test failing at random.
+        // Cycling the list keeps the values realistic and guarantees the first
+        // ten are distinct; past that a suffix keeps them unique. A test that
+        // needs a specific file still overrides it.
+        $index = self::$sequence++;
+        $plugin = self::$plugins[$index % count(self::$plugins)];
+        $cycle = intdiv($index, count(self::$plugins));
+
+        $file = $cycle === 0
+            ? $plugin['file']
+            : str_replace('.php', "-{$cycle}.php", $plugin['file']);
 
         return [
             'site_id' => Site::factory(),
-            'file' => $plugin['file'],
+            'file' => $file,
             'slug' => $plugin['slug'],
             'name' => $plugin['name'],
             'version' => fake()->numerify('#.#.#'),

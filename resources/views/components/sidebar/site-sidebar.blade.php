@@ -6,7 +6,12 @@
     // Section-level "contains active route" helpers, used to expand the right
     // group by default and to highlight the parent. Only routes that actually
     // exist (see routes/web.php) are referenced here — never invent a route.
-    $inPlugins = request()->routeIs('sites.plugins');
+    // Plugins/themes/core/licences are four routes onto one screen — the group
+    // counts as active for any of them.
+    $inPlugins = request()->routeIs('sites.plugins')
+        || request()->routeIs('sites.themes')
+        || request()->routeIs('sites.core')
+        || request()->routeIs('sites.licenses');
     $inBackups = request()->routeIs('sites.backups');
     $inUptime = request()->routeIs('sites.uptime');
     $inSecurity = request()->routeIs('sites.security*') || request()->routeIs('sites.tweaks*');
@@ -144,9 +149,9 @@
 
     {{-- ─────────────── MENTENANȚĂ ─────────────── --}}
     <x-sidebar.sidebar-section title="Mentenanță">
-        {{-- Pluginuri și teme ▾ — spec sub-items: Pluginuri · Teme · Licențe premium.
-             Only "Pluginuri" has a real route (sites.plugins, which is the
-             "Plugins & Updates" screen, so the updates badge lives here). --}}
+        {{-- Pluginuri și teme ▾ — acum cu sub-pagini reale, una per zonă. Toate
+             patru sunt taburi ale aceluiași ecran, dar fiecare are rută proprie,
+             deci sidebar-ul poate duce direct unde vrei. --}}
         <x-sidebar.sidebar-group
             title="Pluginuri și teme"
             icon="puzzle"
@@ -157,58 +162,49 @@
         >
             <x-sidebar.sidebar-item
                 :href="route('sites.plugins', $site)"
-                icon="puzzle"
-                :active="$inPlugins"
+                :active="request()->routeIs('sites.plugins')"
             >
                 Pluginuri
             </x-sidebar.sidebar-item>
-            {{-- TODO: rută inexistentă — Teme (nu există rută dedicată încă) --}}
-            {{-- TODO: rută inexistentă — Licențe premium --}}
+            <x-sidebar.sidebar-item
+                :href="route('sites.themes', $site)"
+                :active="request()->routeIs('sites.themes')"
+            >
+                Teme
+            </x-sidebar.sidebar-item>
+            <x-sidebar.sidebar-item
+                :href="route('sites.core', $site)"
+                :active="request()->routeIs('sites.core')"
+            >
+                WordPress
+            </x-sidebar.sidebar-item>
+            <x-sidebar.sidebar-item
+                :href="route('sites.licenses', $site)"
+                :active="request()->routeIs('sites.licenses')"
+            >
+                Licențe
+            </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
-        {{-- TODO: grup "Actualizări ▾ [contor]" (Disponibile · Reguli automate ·
-             Ignorate · Istoric) — nu există rute dedicate; actualizările trăiesc
-             pe ecranul sites.plugins (badge-ul de update e mutat pe grupul de mai sus). --}}
-
-        {{-- Backupuri ▾ — spec: Listă · Restore verificat · Programare.
-             Doar "Listă" are rută (sites.backups); restul sunt tab-uri interne. --}}
-        <x-sidebar.sidebar-group
-            title="Backupuri"
+        {{-- Un singur ecran → link simplu, nu grup cu un element. --}}
+        <x-sidebar.sidebar-item
+            :href="route('sites.backups', $site)"
             icon="hard-drive"
-            key="backups"
             :active="$inBackups"
         >
-            <x-sidebar.sidebar-item
-                :href="route('sites.backups', $site)"
-                icon="hard-drive"
-                :active="$inBackups"
-            >
-                Listă
-            </x-sidebar.sidebar-item>
-            {{-- TODO: rută inexistentă — Restore verificat (tab în sites.backups) --}}
-            {{-- TODO: rută inexistentă — Programare (tab în sites.backups) --}}
-        </x-sidebar.sidebar-group>
+            Backupuri
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
     {{-- ─────────────── SUPRAVEGHERE ─────────────── --}}
     <x-sidebar.sidebar-section title="Supraveghere">
-        {{-- Uptime ▾ — spec: Panou · Incidente · SSL și domeniu. Doar Panou are rută. --}}
-        <x-sidebar.sidebar-group
-            title="Uptime"
+        <x-sidebar.sidebar-item
+            :href="route('sites.uptime', $site)"
             icon="activity"
-            key="uptime"
             :active="$inUptime"
         >
-            <x-sidebar.sidebar-item
-                :href="route('sites.uptime', $site)"
-                icon="activity"
-                :active="$inUptime"
-            >
-                Panou
-            </x-sidebar.sidebar-item>
-            {{-- TODO: rută inexistentă — Incidente --}}
-            {{-- TODO: rută inexistentă — SSL și domeniu --}}
-        </x-sidebar.sidebar-group>
+            Uptime
+        </x-sidebar.sidebar-item>
 
         {{-- Securitate ▾ [contor] — spec: Scanare · Vulnerabilități · Integritate ·
              Utilizatori · Hardening. Real: security(Panou), scanning, users, hardening. --}}
@@ -262,22 +258,13 @@
             </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
-        {{-- Performanță ▾ — spec: PageSpeed · Core Web Vitals (ambele pe același ecran). --}}
-        <x-sidebar.sidebar-group
-            title="Performanță"
+        <x-sidebar.sidebar-item
+            :href="route('sites.performance', $site)"
             icon="zap"
-            key="performance"
             :active="$inPerformance"
         >
-            <x-sidebar.sidebar-item
-                :href="route('sites.performance', $site)"
-                icon="zap"
-                :active="$inPerformance"
-            >
-                PageSpeed
-            </x-sidebar.sidebar-item>
-            {{-- TODO: rută inexistentă — Core Web Vitals (secțiune în sites.performance) --}}
-        </x-sidebar.sidebar-group>
+            Performanță
+        </x-sidebar.sidebar-item>
 
         {{-- Verificări ▾ — spec: Formulare · WooCommerce · Linkuri rupte · Erori PHP ·
              Cron · Bază de date. Real: Cron (sites.cron), Bază de date (sites.database). --}}
@@ -346,22 +333,13 @@
 
         {{-- TODO: „Sarcini" — element extern (din app.simplead.ro), fără rută locală. --}}
 
-        {{-- Rapoarte ▾ — spec: Generate · Programare. Doar "Generate" are rută. --}}
-        <x-sidebar.sidebar-group
-            title="Rapoarte"
+        <x-sidebar.sidebar-item
+            :href="route('sites.reports', $site)"
             icon="file-text"
-            key="reports"
             :active="$inReports"
         >
-            <x-sidebar.sidebar-item
-                :href="route('sites.reports', $site)"
-                icon="file-text"
-                :active="$inReports"
-            >
-                Generate
-            </x-sidebar.sidebar-item>
-            {{-- TODO: rută inexistentă — Programare (tab în sites.reports) --}}
-        </x-sidebar.sidebar-group>
+            Rapoarte
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
     {{-- „Setări site" eliminat din nav: setările globale sunt deja în footer-ul
          sidebar-ului (Settings). --}}

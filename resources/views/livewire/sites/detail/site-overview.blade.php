@@ -33,42 +33,41 @@
 
     <x-ui.circuit-breaker-banner :site="$site" />
 
-    <div class="mb-6">
-        <livewire:sites.detail.site-todo-feed :site="$site" :key="'todo-'.$site->id" />
-    </div>
-
     <x-ui.job-progress job-key="sync" :jobs="$trackedJobs" title="Syncing site data..." />
 
-    {{-- REFERINTA-VIZUALA „Prezentare site" — grid pe 3 coloane de module-cards
-         (.cols3 din referință). Fiecare coloană stivuiește carduri, cu spațiere
-         uniformă și aliniere la vârf. --}}
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+    {{-- Wide main column + sticky rail.
+         The three equal columns this replaced put Updates — the thing you
+         actually come here to act on — into a third of the width, and
+         `items-start` on unequal stacks left a ragged bottom edge that read as
+         masonry. One breakpoint, one wide column, one rail. --}}
+    <div class="grid gap-4 lg:grid-cols-4">
 
-        {{-- Coloana 1 — identitate & sănătate --}}
-        <div class="flex flex-col gap-4">
-            @include('livewire.sites.detail.overview._health-bar')
-            @include('livewire.sites.detail.overview._site-info-card')
-            @include('livewire.sites.detail.overview._server-resources-card')
-            @include('livewire.sites.detail.overview._client-card')
-        </div>
-
-        {{-- Coloana 2 — mentenanță & securitate --}}
-        <div class="flex flex-col gap-4">
+        {{-- Principal (75%) — ce faci pe site --}}
+        <div class="lg:col-span-3 space-y-6">
             <livewire:sites.detail.site-plugins :site="$site" :embedded="true" />
-            @include('livewire.sites.detail.overview._security-card')
             @include('livewire.sites.detail.overview._database-card')
-            @include('livewire.sites.detail.overview._error-logs-card')
-            @include('livewire.sites.detail.overview._dns-card')
-        </div>
-
-        {{-- Coloana 3 — monitorizare & date --}}
-        <div class="flex flex-col gap-4">
-            @include('livewire.sites.detail.overview._uptime-card')
-            @include('livewire.sites.detail.overview._backups-card')
             @include('livewire.sites.detail.overview._analytics-performance-card')
             @include('livewire.sites.detail.overview._search-console-card')
-            @include('livewire.sites.detail.overview._reports-card')
             @include('livewire.sites.detail.overview._recent-activity-card')
+        </div>
+
+        {{-- Rail (25%, lipicios) — starea site-ului dintr-o privire.
+             „De rezolvat" stă primul: e lista de acțiuni, dar ca un card printre
+             celelalte, nu o bandă pe toată lățimea înaintea conținutului. --}}
+        <div>
+            <div class="sticky top-20 space-y-4">
+                <livewire:sites.detail.site-todo-feed :site="$site" :key="'todo-'.$site->id" />
+                @include('livewire.sites.detail.overview._health-bar')
+                @include('livewire.sites.detail.overview._site-info-card')
+                @include('livewire.sites.detail.overview._server-resources-card')
+                @include('livewire.sites.detail.overview._uptime-card')
+                @include('livewire.sites.detail.overview._backups-card')
+                @include('livewire.sites.detail.overview._security-card')
+                @include('livewire.sites.detail.overview._reports-card')
+                @include('livewire.sites.detail.overview._dns-card')
+                @include('livewire.sites.detail.overview._error-logs-card')
+                @include('livewire.sites.detail.overview._client-card')
+            </div>
         </div>
 
     </div>

@@ -231,6 +231,18 @@
             <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->themeCounts['total'] }}</span>
         </button>
         @if(!$embedded)
+        {{-- Licenţe premium (SPEC §3.2). The data was already synced from the
+             connector (site_plugins.license_*) and CheckLicenseExpiry already
+             alerts on it — it just had nowhere to be looked at. --}}
+        <button
+            wire:click="setTab('licenses')"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'licenses' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+        >
+            {{ __('Licenses') }}
+            @if($this->licensedPlugins->count())
+                <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->licensedPlugins->count() }}</span>
+            @endif
+        </button>
         <button
             wire:click="setTab('users')"
             class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'users' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
@@ -836,6 +848,51 @@
                 @empty
                     <div class="p-8 text-center text-sm text-gray-500">
                         {{ __('No update history found') }}{{ $search ? ' ' . __('matching') . ' "' . $search . '"' : '' }}.
+                    </div>
+                @endforelse
+            </div>
+        @endif
+
+        {{-- Licenses tab (SPEC §3.2 "Licențe premium") --}}
+        @if($tab === 'licenses')
+            <div class="divide-y">
+                @forelse($this->licensedPlugins as $plugin)
+                    @php
+                        $expires = $plugin->license_expires_at;
+                        $expired = $expires && $expires->isPast();
+                        $soon = $expires && ! $expired && $expires->diffInDays(now()) <= 30;
+                    @endphp
+                    <div class="flex items-center justify-between gap-4 px-4 py-3 hover:bg-gray-50">
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium text-gray-900">{{ $plugin->name }}</p>
+                            <p class="truncate text-xs text-gray-500">{{ $plugin->slug }}</p>
+                        </div>
+
+                        <div class="shrink-0 text-right">
+                            @if($expires)
+                                <p @class([
+                                    'text-sm font-medium',
+                                    'text-red-600' => $expired,
+                                    'text-amber-600' => $soon,
+                                    'text-gray-700' => ! $expired && ! $soon,
+                                ])>
+                                    {{ $expired ? __('Expirată') : __('Expiră') }} {{ $expires->format('d.m.Y') }}
+                                </p>
+                                <p class="text-xs text-gray-400">{{ $expires->diffForHumans() }}</p>
+                            @else
+                                <p class="text-sm text-gray-400">{{ __('Fără dată de expirare') }}</p>
+                            @endif
+                        </div>
+
+                        @if($plugin->license_status)
+                            <x-ui.badge :variant="$plugin->license_status === 'active' ? 'green' : 'gray'">
+                                {{ $plugin->license_status }}
+                            </x-ui.badge>
+                        @endif
+                    </div>
+                @empty
+                    <div class="px-4 py-12 text-center text-sm text-gray-500">
+                        {{ __('Niciun plugin cu licență premium detectat pe acest site.') }}
                     </div>
                 @endforelse
             </div>

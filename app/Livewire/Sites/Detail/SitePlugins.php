@@ -56,12 +56,36 @@ class SitePlugins extends Component
         ];
     }
 
+    /**
+     * Route name => the tab it lands on.
+     *
+     * Plugins, themes, WordPress core and licences are tabs of this one screen,
+     * so the sidebar could previously only link to the first of them — every
+     * click dropped you on Plugins. Each now has its own route.
+     *
+     * The tab is derived from the route NAME rather than a route default or a
+     * mount parameter: `tab` is a public property, so Livewire would assign a
+     * same-named parameter straight onto it and skip any validation, and an
+     * extra route default confuses the container's mount-argument resolution.
+     */
+    private const TAB_ROUTES = [
+        'sites.themes' => 'themes',
+        'sites.core' => 'wordpress',
+        'sites.licenses' => 'licenses',
+    ];
+
     public function mount(Site $site, bool $embedded = false): void
     {
         $this->authorizeSiteAccess($site);
         $site->loadMissing('wpAdminUser');
         $this->site = $site;
         $this->embedded = $embedded;
+
+        $routeName = request()->route()?->getName();
+        if ($routeName !== null && isset(self::TAB_ROUTES[$routeName])) {
+            $this->tab = self::TAB_ROUTES[$routeName];
+        }
+
         $this->initJobTracking();
     }
 
@@ -180,6 +204,23 @@ class SitePlugins extends Component
     public function userCount()
     {
         return $this->site->siteUsers()->count();
+    }
+
+    /**
+     * Premium licences (SPEC §3.2). The connector already syncs
+     * site_plugins.license_* and CheckLicenseExpiry already alerts on them —
+     * until now there was simply nowhere to look at them.
+     *
+     * Soonest expiry first, so the one that needs renewing is at the top; those
+     * without a date sink to the bottom.
+     */
+    #[Computed]
+    public function licensedPlugins()
+    {
+        return $this->site->sitePlugins()
+            ->whereNotNull('license_key')
+            ->orderByRaw('license_expires_at IS NULL, license_expires_at ASC')
+            ->get();
     }
 
     #[Computed]
