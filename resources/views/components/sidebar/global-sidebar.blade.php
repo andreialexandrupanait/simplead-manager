@@ -7,15 +7,15 @@
         <x-sidebar.sidebar-item
             :href="route('dashboard')"
             icon="home"
-            :active="request()->routeIs('dashboard') && ! request()->has('tab')"
+            :active="request()->routeIs('dashboard')"
         >
             {{ __('Panou') }}
         </x-sidebar.sidebar-item>
 
         <x-sidebar.sidebar-item
-            :href="route('dashboard', ['tab' => 'alerts'])"
+            :href="route('alerts.index')"
             icon="bell"
-            :active="request()->query('tab') === 'alerts'"
+            :active="request()->routeIs('alerts.index')"
             :count="$alertsCount ?? 0"
             count-tone="danger"
         >
@@ -24,16 +24,6 @@
     </x-sidebar.sidebar-section>
 
     <x-sidebar.sidebar-section :title="__('Operations')">
-        <x-sidebar.sidebar-item
-            :href="route('sites.index')"
-            icon="globe"
-            :active="request()->routeIs('sites.index')"
-            :count="$sitesCount ?? 0"
-            count-tone="accent"
-        >
-            {{ __('Sites') }}
-        </x-sidebar.sidebar-item>
-
         <x-sidebar.sidebar-item
             :href="route('updates.index')"
             icon="refresh-cw"
@@ -63,13 +53,5 @@
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
-    <div class="mt-2 border-t border-gray-200 pt-2 dark:border-gray-700">
-        <x-sidebar.sidebar-item
-            :href="route('settings.general')"
-            icon="settings"
-            :active="request()->routeIs('settings.*')"
-        >
-            {{ __('Settings') }}
-        </x-sidebar.sidebar-item>
-    </div>
+    
 </div>

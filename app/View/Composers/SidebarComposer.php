@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\View\Composers;
 
-use App\Enums\HealthLevel;
 use App\Models\PhpErrorLog;
 use App\Models\SecurityIssue;
 use App\Models\Site;
@@ -65,12 +64,8 @@ class SidebarComposer
     private function alertsCount(User $user): int
     {
         return (int) Cache::remember("sidebar:alerts_count:user:{$user->id}", 60, function () use ($user) {
-            return Site::query()->visibleTo($user)
-                ->where(fn ($q) => $q
-                    ->where('is_up', false)
-                    ->orWhere('is_connected', false)
-                    ->orWhere('health_score', '<', HealthLevel::WARNING_THRESHOLD))
-                ->count();
+            // Same definition as the alerts page and the list's alerts tab.
+            return Site::query()->visibleTo($user)->needsAttention()->count();
         });
     }
 

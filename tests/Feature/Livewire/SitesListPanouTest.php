@@ -6,7 +6,6 @@ namespace Tests\Feature\Livewire;
 
 use App\Enums\UserRole;
 use App\Livewire\Sites\SitesList;
-use App\Models\Client;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +13,11 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * SPEC §4.4/§4.5 — the main screen's three-band Panou and the primary tabs.
+ * The landing screen: fleet numbers first, then the sites.
+ *
+ * It used to open with the three-band Panou — a wall of red listing every
+ * unhappy site before you could see your fleet. That list has its own screen
+ * now (/alerts) and the landing page keeps only the count as a way in.
  */
 class SitesListPanouTest extends TestCase
 {
@@ -23,43 +26,45 @@ class SitesListPanouTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Andrei is an admin → visibleTo returns the whole fleet (single-user app).
         $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
     }
 
-    public function test_panou_band_1_lists_sites_needing_attention_grouped_by_client(): void
+    public function test_the_landing_page_leads_with_the_fleet_numbers(): void
     {
-        $client = Client::factory()->create(['name' => 'Acme']);
-        $down = Site::factory()->create(['name' => 'down-site', 'client_id' => $client->id, 'is_up' => false, 'is_connected' => true]);
-        Site::factory()->create(['name' => 'healthy-site', 'is_up' => true, 'is_connected' => true, 'health_score' => 95]);
+        Site::factory()->count(3)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 95]);
 
         Livewire::test(SitesList::class)
-            ->assertSee('need attention')
-            ->assertSee('Acme')
-            ->assertSee('down-site')
-            // the healthy one is not in band 1; it is counted in band 3 ("operating normally")
-            ->assertSee('operating normally');
-
-        $this->assertNotNull($down);
+            ->assertSee(__('Sites'))
+            ->assertSee(__('Uptime'));
     }
 
-    public function test_panou_resting_counts_only_healthy_sites(): void
+    public function test_sites_needing_attention_are_a_link_not_a_list(): void
     {
-        Site::factory()->count(3)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 90]);
-        Site::factory()->create(['is_up' => false, 'is_connected' => true, 'health_score' => 90]);
+        Site::factory()->create(['name' => 'down-site', 'is_up' => false, 'is_connected' => true]);
 
-        $panou = Livewire::test(SitesList::class)->instance()->panou();
+        $component = Livewire::test(SitesList::class);
 
-        $this->assertSame(3, $panou['resting']);
-        $this->assertCount(1, collect($panou['attention'])->flatMap->sites ?? collect());
+        // The count and the way in are here…
+        $component->assertSee(route('alerts.index'), escape: false);
+
+        // …but the per-site breakdown is not; that is the alerts screen's job.
+        $this->assertSame(1, $component->instance()->attentionCount());
+    }
+
+    public function test_the_attention_link_is_absent_when_everything_is_healthy(): void
+    {
+        Site::factory()->count(2)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 95]);
+
+        $component = Livewire::test(SitesList::class);
+
+        $this->assertSame(0, $component->instance()->attentionCount());
+        $component->assertDontSee(route('alerts.index'), escape: false);
     }
 
     public function test_classic_dashboard_is_kept_as_a_backup_route_and_linked(): void
     {
-        // The pre-§4 widget dashboard stays reachable as a backup view...
         \Livewire\Livewire::test(\App\Livewire\Dashboard\GlobalDashboard::class)->assertOk();
 
-        // ...and the new main screen links to it.
         Livewire::test(SitesList::class)->assertSee(route('dashboard.classic'), false);
     }
 
@@ -74,5 +79,17 @@ class SitesListPanouTest extends TestCase
             ->set('tab', 'updates')
             ->assertSee('needs-update')
             ->assertDontSee('up-to-date');
+    }
+
+    public function test_the_whole_fleet_fits_on_one_page(): void
+    {
+        // 16 per page meant three pages for a 40-site fleet — pagination for its
+        // own sake. The default is 50 now.
+        Site::factory()->count(20)->create(['is_up' => true, 'is_connected' => true]);
+
+        $sites = Livewire::test(SitesList::class)->viewData('sites');
+
+        $this->assertSame(1, $sites->lastPage());
+        $this->assertSame(50, $sites->perPage());
     }
 }

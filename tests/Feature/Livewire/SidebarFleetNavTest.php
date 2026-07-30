@@ -12,13 +12,19 @@ use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
- * SPEC §3.1 — the fleet sidebar surfaces Panou, Alerte [count] and Site-uri [count].
+ * The fleet sidebar: one entry per destination, no entry that duplicates
+ * another.
+ *
+ * It used to carry "Sites" (the same component the landing page renders, so
+ * clicking it went nowhere new) and a second "Settings" beside the one already
+ * pinned in the rail footer — and that second one was not admin-gated, so a
+ * non-admin clicking it got a 403.
  */
 class SidebarFleetNavTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_fleet_sidebar_shows_panou_alerts_and_sites_with_counts(): void
+    public function test_the_fleet_sidebar_carries_panou_and_alerts_with_counts(): void
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
@@ -29,19 +35,39 @@ class SidebarFleetNavTest extends TestCase
 
         $this->assertStringContainsString('Panou', $html);
         $this->assertStringContainsString('Alerts', $html);
-        $this->assertStringContainsString('Sites', $html);
-        // Links point at the §4 screen (list + the Alerts tab).
-        $this->assertStringContainsString('tab=alerts', $html);
-        $this->assertStringContainsString(route('sites.index'), $html);
-        // Badges: 5 visible sites, 2 alerting.
-        $this->assertStringContainsString('>5<', str_replace([' ', "\n"], '', $html));
-        $this->assertStringContainsString('>2<', str_replace([' ', "\n"], '', $html));
 
-        // The slim §3.1 set keeps Updates/Reports/Activity/Settings...
+        // Alerts is its own screen now, not a tab on the landing page.
+        $this->assertStringContainsString(route('alerts.index'), $html);
+        $this->assertStringNotContainsString('tab=alerts', $html);
+
+        // Two of the five sites are down.
+        $this->assertStringContainsString('>2<', str_replace([' ', "\n"], '', $html));
+    }
+
+    public function test_it_does_not_repeat_the_landing_page_or_the_settings_link(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+        $html = Blade::render('<x-sidebar.global-sidebar />');
+
+        // `sites.index` renders the very same component as `dashboard`.
+        $this->assertStringNotContainsString(route('sites.index'), $html);
+
+        // Settings lives once, pinned in the rail footer (layouts/app.blade.php).
+        $this->assertStringNotContainsString(route('settings.general'), $html);
+    }
+
+    public function test_the_slim_set_keeps_records_and_drops_per_site_modules(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+        $html = Blade::render('<x-sidebar.global-sidebar />');
+
         $this->assertStringContainsString(route('updates.index'), $html);
-        $this->assertStringContainsString(route('settings.general'), $html);
-        // ...and drops the per-site modules from the fleet nav (routes still exist).
+        $this->assertStringContainsString(route('reports.index'), $html);
+        $this->assertStringContainsString(route('activity.index'), $html);
+
+        // Per-site modules live in the site context; their routes still exist.
         $this->assertStringNotContainsString(route('uptime.index'), $html);
-        $this->assertStringNotContainsString(route('security.index'), $html);
     }
 }

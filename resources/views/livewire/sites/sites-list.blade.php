@@ -16,69 +16,23 @@
         </div>
     </div>
 
-    {{-- SPEC §4.5 — Panou: three bands, no charts, no decorative widgets --}}
-    @php($panou = $this->panou)
-    @php($attentionSites = collect($panou['attention'])->sum(fn ($g) => count($g['sites'])))
-    <div class="mb-6">
-        {{-- Summary — three numbers, in order --}}
-        <div class="mb-4 flex flex-wrap gap-8 border-b border-gray-200 pb-3 dark:border-gray-700">
-            <div>
-                <p class="text-xl font-medium {{ $attentionSites > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' }}">{{ $attentionSites }}</p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('need attention') }}</p>
-            </div>
-            <div>
-                <p class="text-xl font-medium text-gray-900 dark:text-gray-100">{{ $panou['awaiting'] }}</p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('await approval') }}</p>
-            </div>
-            <div>
-                <p class="text-xl font-medium text-green-600 dark:text-green-400">{{ $panou['resting'] }}</p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ __('healthy') }}</p>
-            </div>
-        </div>
+    {{-- The fleet at a glance. What used to sit here was the attention band —
+         a wall of red before you could see your sites. That lives on /alerts
+         now; the count below is the way in. --}}
+    <x-dashboard.fleet-stats />
 
-        {{-- Band 1 — a card per client, ordered by severity --}}
-        @forelse($panou['attention'] as $group)
-            <div class="mb-2 rounded-lg border bg-white p-3 shadow-sm dark:bg-gray-800/40
-                        {{ $group['severity'] === 0 ? 'border-red-300 dark:border-red-500/40' : 'border-gray-200 dark:border-gray-700' }}">
-                <div class="mb-2 flex items-center justify-between gap-3">
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100">
-                        {{ $group['client'] }}
-                        <span class="text-[11px] font-normal text-gray-400">· {{ trans_choice(':n site|:n sites', count($group['sites']), ['n' => count($group['sites'])]) }}</span>
-                    </p>
-                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px]
-                                 {{ $group['severity'] === 0 ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' }}">
-                        {{ $group['severity'] === 0 ? __('critical') : __('attention') }}
-                    </span>
-                </div>
-                @foreach($group['sites'] as $s)
-                    <div class="flex items-center gap-2 py-0.5 text-[13px]">
-                        <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ $s['severity'] === 0 ? 'bg-red-500' : 'bg-amber-500' }}"></span>
-                        <a href="{{ $s['url'] }}" class="font-medium text-gray-800 hover:text-accent-600 dark:text-gray-100">{{ $s['name'] }}</a>
-                        <span class="truncate text-gray-400">— {{ $s['reasons'] }}</span>
-                    </div>
-                @endforeach
-            </div>
-        @empty
-            <div class="mb-2 rounded-lg border border-gray-200 p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                {{ __('Nothing needs attention right now.') }}
-            </div>
-        @endforelse
-
-        {{-- Band 2 — what awaits approval (only when there is something) --}}
-        @if($panou['awaiting'] > 0)
-            <div class="mb-2 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-800/40">
-                <span class="text-gray-600 dark:text-gray-300">{{ __('Awaiting approval') }}</span>
-                <a href="{{ route('updates.index') }}" class="font-medium text-accent-600 hover:underline dark:text-accent-400">
-                    {{ trans_choice(':count update|:count updates', $panou['awaiting'], ['count' => $panou['awaiting']]) }}
-                </a>
-            </div>
-        @endif
-
-        {{-- Band 3 — the rest, one collapsed line --}}
-        <div class="rounded-lg bg-gray-50 px-4 py-2.5 text-sm text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
-            {{ trans_choice(':count site operating normally|:count sites operating normally', $panou['resting'], ['count' => $panou['resting']]) }}
-        </div>
-    </div>
+    @php($attention = $this->attentionCount)
+    @if($attention > 0)
+        <a href="{{ route('alerts.index') }}" wire:navigate
+           class="mb-6 mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm transition hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10">
+            <span class="font-medium text-red-700 dark:text-red-400">
+                {{ trans_choice(':count site are nevoie de atenție|:count site-uri au nevoie de atenție', $attention, ['count' => $attention]) }}
+            </span>
+            <span class="text-red-600 dark:text-red-400">{{ __('Vezi alertele') }} →</span>
+        </a>
+    @else
+        <div class="mb-6 mt-4"></div>
+    @endif
 
     {{-- SPEC §4.4 — primary tabs: Toate · Actualizări · Alerte · Planuri --}}
     <div class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700">
@@ -171,7 +125,15 @@
                             </div>
                         @endif
                     @endif
-                    <x-site-row :site="$site" :key="$site->id" />
+                    {{-- The rich fleet row: real hovercards per signal, a health
+                         bar and the full ⋮ menu. The dense row it replaces
+                         hard-coded three of its eight icons to "not applicable". --}}
+                    <x-dashboard.site-row
+                        :site="$site"
+                        :selected-sites="$selectedSites"
+                        :site-statuses="$this->siteStatuses"
+                        :key="$site->id"
+                    />
                 @endforeach
             </div>
 
@@ -205,4 +167,25 @@
             </x-slot:action>
         </x-ui.empty-state>
     @endif
+
+    {{-- Rename modal — the rich row's ⋮ menu opens this. --}}
+    <x-ui.modal name="rename-site" maxWidth="sm">
+        <form wire:submit="renameSite">
+            <h2 id="modal-rename-site-title" class="text-lg font-semibold text-gray-900">{{ __('Redenumește site') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ __('Alege un nume nou pentru acest site.') }}</p>
+
+            <div class="mt-4">
+                <label for="renamingSiteName" class="block text-sm font-medium text-gray-700">{{ __('Nume') }}</label>
+                <x-ui.input wire:model="renamingSiteName" id="renamingSiteName" class="mt-1" />
+                @error('renamingSiteName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-rename-site')">
+                    {{ __('Anulează') }}
+                </x-ui.button>
+                <x-ui.button type="submit">{{ __('Salvează') }}</x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
 </div>

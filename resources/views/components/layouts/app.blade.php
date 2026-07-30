@@ -107,15 +107,17 @@
                    sidebarOpen ? 'lg:w-64 sidebar-open' : 'lg:w-16'
                ]">
 
-            {{-- Logo area --}}
+            {{-- Logo area. The bar is h-16 and the anchor adds py-2, so the logo
+                 has ~48px to live in — max-h-14 (56px) overflowed it and the mark
+                 was clipped by the bar's overflow-hidden. --}}
             <div class="flex h-16 items-center gap-2 px-4 border-b border-gray-200 dark:border-gray-800"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2 flex-1 min-w-0 transition-all duration-300"
+                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2.5 flex-1 min-w-0 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="max-h-14 w-auto object-contain dark:brightness-0 dark:invert">
+                             class="max-h-11 w-auto object-contain dark:brightness-0 dark:invert">
                     @else
                         <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif

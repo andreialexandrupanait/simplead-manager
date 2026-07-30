@@ -84,4 +84,22 @@ trait HasSiteScopes
     {
         return $query->where('pending_updates_count', '>', 0);
     }
+
+    /**
+     * Sites that need a human: down, disconnected, or with a critical health
+     * score.
+     *
+     * This one definition used to be written out three times — in the landing
+     * page's attention band, in its tab counter, and in the sidebar composer —
+     * so "alerts" could disagree with itself depending on which number you
+     * looked at. Everything that asks the question now asks it here.
+     */
+    public function scopeNeedsAttention(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->where('is_up', false)
+                ->orWhere('is_connected', false)
+                ->orWhere('health_score', '<', HealthLevel::WARNING_THRESHOLD);
+        });
+    }
 }

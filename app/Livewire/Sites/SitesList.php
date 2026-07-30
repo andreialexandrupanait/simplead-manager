@@ -9,6 +9,7 @@ use App\Jobs\CheckUptime;
 use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithBulkSiteActions;
 use App\Livewire\Traits\WithRateLimiting;
+use App\Livewire\Traits\WithSiteRowActions;
 use App\Livewire\Traits\WithTableFilters;
 use App\Models\Site;
 use App\Models\Tag;
@@ -24,7 +25,7 @@ use Livewire\Component;
 
 class SitesList extends Component
 {
-    use WithBulkSiteActions, WithRateLimiting, WithTableFilters;
+    use WithBulkSiteActions, WithRateLimiting, WithSiteRowActions, WithTableFilters;
 
     protected $listeners = ['site-deleted' => '$refresh'];
 
@@ -81,68 +82,30 @@ class SitesList extends Component
      *
      * @return array{attention: array<int, array<string,mixed>>, awaiting: int, resting: int}
      */
+    /**
+     * The five fleet numbers the landing page leads with — the same data the
+     * classic dashboard shows, so the two cannot drift apart.
+     */
     #[Computed]
-    public function panou(): array
+    public function stats(): array
     {
-        $user = auth()->user();
+        return app(\App\Services\DashboardService::class)->getStats();
+    }
 
-        $sites = Site::query()
-            ->visibleTo($user)
-            ->with('client')
-            ->get();
+    #[Computed]
+    public function trends(): array
+    {
+        return app(\App\Services\DashboardService::class)->getTrends();
+    }
 
-        $attention = [];
-        $resting = 0;
-
-        foreach ($sites as $site) {
-            $isDown = $site->is_up === false;
-            $isDisconnected = $site->is_connected === false;
-            $criticalHealth = $site->health_score !== null
-                && (int) $site->health_score < HealthLevel::WARNING_THRESHOLD;
-
-            if (! $isDown && ! $isDisconnected && ! $criticalHealth) {
-                $resting++;
-
-                continue;
-            }
-
-            // Severity: down/disconnected = critical (0), poor-health-only = warning (1).
-            $severity = ($isDown || $isDisconnected) ? 0 : 1;
-            $reasons = [];
-            if ($isDown) {
-                $reasons[] = __('down');
-            }
-            if ($isDisconnected) {
-                $reasons[] = __('disconnected');
-            }
-            if ($criticalHealth && ! $isDown && ! $isDisconnected) {
-                $reasons[] = __('health :n', ['n' => (int) $site->health_score]);
-            }
-
-            $clientName = $site->client?->name ?? __('No client');
-            $attention[$clientName]['client'] = $clientName;
-            $attention[$clientName]['severity'] = min($attention[$clientName]['severity'] ?? 9, $severity);
-            $attention[$clientName]['sites'][] = [
-                'id' => $site->id,
-                'name' => $site->name,
-                'severity' => $severity,
-                'reasons' => implode(' · ', $reasons),
-                'url' => route('sites.overview', $site),
-            ];
-        }
-
-        // Sort clients by their worst severity, and sites within each client by severity.
-        foreach ($attention as &$group) {
-            usort($group['sites'], fn ($a, $b) => $a['severity'] <=> $b['severity']);
-        }
-        unset($group);
-        uasort($attention, fn ($a, $b) => $a['severity'] <=> $b['severity']);
-
-        return [
-            'attention' => array_values($attention),
-            'awaiting' => $this->awaitingApprovalCount(),
-            'resting' => $resting,
-        ];
+    /**
+     * How many sites need a human. The list of them lives on /alerts now; this
+     * is only the way in.
+     */
+    #[Computed]
+    public function attentionCount(): int
+    {
+        return Site::query()->visibleTo(auth()->user())->needsAttention()->count();
     }
 
     /** SPEC §4.4 tab counters — sites with updates / with an active alert. */
@@ -150,14 +113,12 @@ class SitesList extends Component
     public function tabCounts(): array
     {
         $user = auth()->user();
-        $warning = HealthLevel::WARNING_THRESHOLD;
 
         return [
             'updates' => Site::query()->visibleTo($user)
                 ->whereHas('sitePlugins', fn ($q) => $q->where('has_update', true))->count(),
-            'alerts' => Site::query()->visibleTo($user)
-                ->where(fn ($q) => $q->where('is_up', false)->orWhere('is_connected', false)
-                    ->orWhere('health_score', '<', $warning))->count(),
+            // Same definition as the sidebar counter and the alerts page.
+            'alerts' => Site::query()->visibleTo($user)->needsAttention()->count(),
         ];
     }
 
@@ -502,21 +463,44 @@ class SitesList extends Component
                 // SPEC §4.4 primary tabs (orthogonal to the health filter).
                 return match ($this->tab) {
                     'updates' => $q->whereHas('sitePlugins', fn ($p) => $p->where('has_update', true)),
-                    'alerts' => $q->where(fn ($aq) => $aq
-                        ->where('is_up', false)
-                        ->orWhere('is_connected', false)
-                        ->orWhere('health_score', '<', HealthLevel::WARNING_THRESHOLD)),
+                    'alerts' => $q->needsAttention(),
                     default => $q, // 'plans' is a grouping, not a row filter
                 };
             })
-            ->with('client', 'uptimeMonitor', 'backupConfig', 'performanceMonitor', 'siteStatus', 'analyticsConnection', 'searchConsoleConnection', 'tags')
+            // The rich fleet row opens a hovercard per signal, so everything it
+            // reads is eager-loaded here — otherwise it is an N+1 across every
+            // row on the page. Mirrors DashboardService::getSitesOverview().
+            ->with([
+                'client',
+                'uptimeMonitor',
+                'uptimeMonitor.incidents' => fn ($q) => $q->orderByDesc('started_at')->limit(10),
+                'performanceMonitor',
+                'backupConfig',
+                'latestCompletedBackup',
+                'sitePlugins' => fn ($q) => $q->where('has_update', true),
+                'siteThemes' => fn ($q) => $q->where('has_update', true),
+                'analyticsConnection',
+                'searchConsoleConnection',
+                'reportSchedules' => fn ($q) => $q->where('is_active', true),
+                'healthState',
+                'siteStatus',
+                'tags',
+            ])
+            ->withCount([
+                'sitePlugins',
+                'sitePlugins as plugins_with_updates_count' => fn ($q) => $q->where('has_update', true),
+                'siteThemes as themes_with_updates_count' => fn ($q) => $q->where('has_update', true),
+                'siteUsers',
+                'backups',
+                'reportSchedules',
+            ])
             ->withCount(['reportSchedules', 'siteUsers', 'sitePlugins'])
             // SPEC §4.4 — group by client: order by client name so rows are
             // contiguous per client and the view can emit a header per group.
             ->when($this->groupBy === 'client', fn ($q) => $q->orderBy(
                 \App\Models\Client::select('name')->whereColumn('clients.id', 'sites.client_id')
             ))
-            ->paginate((int) app(SettingsService::class)->get('sites_per_page', 16));
+            ->paginate((int) app(SettingsService::class)->get('sites_per_page', 50));
 
         return view('livewire.sites.sites-list', compact('sites'))
             ->layout('components.layouts.app', ['title' => 'Sites']);

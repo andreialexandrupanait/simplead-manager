@@ -91,6 +91,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // Classic widget dashboard — kept as a backup view (the pre-§4 landing).
     Route::get('/dashboard/classic', Dashboard\GlobalDashboard::class)->name('dashboard.classic');
 
+    // Alerts — sites that need a human. Used to be `dashboard?tab=alerts`, so the
+    // fleet overview doubled as the alert list.
+    Route::get('/alerts', \App\Livewire\Alerts\AlertsOverview::class)->name('alerts.index');
+
     // Sites — global list (same §4 screen).
     Route::get('/sites', Sites\SitesList::class)->name('sites.index');
     // SPEC §10 — "Un singur ecran, nu un wizard." The four-step CreateSiteWizard

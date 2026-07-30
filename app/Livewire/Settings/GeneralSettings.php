@@ -46,7 +46,7 @@ class GeneralSettings extends Component
         $this->form->defaultTimeout = (int) $settings->get('default_timeout', 30);
         $this->form->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
         $this->form->dashboardPerPage = (int) $settings->get('dashboard_per_page', 30);
-        $this->form->sitesPerPage = (int) $settings->get('sites_per_page', 16);
+        $this->form->sitesPerPage = (int) $settings->get('sites_per_page', 50);
         $this->form->accentColor = $settings->get('branding.accent_color');
         $this->faviconPath = $settings->get('branding.favicon');
         $this->logoPath = $settings->get('branding.logo');
