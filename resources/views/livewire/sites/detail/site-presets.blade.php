@@ -1,15 +1,15 @@
 <div>
     <x-ui.page-header
-        title="{{ __('Presetări') }}"
-        subtitle="{{ __('Pachetul Standard SimpleAD — cele zece setări care contează, din cele ~55 ale conectorului.') }}"
+        title="{{ __('Presets') }}"
+        subtitle="{{ __('The Standard SimpleAD pack — the ten settings that matter, out of the connector\'s ~55.') }}"
     >
         <x-slot:actions>
             <x-ui.button variant="secondary" size="sm" wire:click="applyStandardPackage" wire:loading.attr="disabled" wire:target="applyStandardPackage">
                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="applyStandardPackage" />
-                {{ __('Aplică pachetul standard') }}
+                {{ __('Apply the standard preset') }}
             </x-ui.button>
             <x-ui.button variant="primary" size="sm" wire:click="save" wire:loading.attr="disabled" wire:target="save" :disabled="! $isDirty">
-                {{ __('Salvează') }}
+                {{ __('Save') }}
             </x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -27,7 +27,7 @@
                             <p class="text-sm font-medium text-gray-900">
                                 {{ $setting['label'] }}
                                 @if($setting['essential'])
-                                    <x-ui.badge variant="red" class="ml-1">{{ __('Esențială') }}</x-ui.badge>
+                                    <x-ui.badge variant="red" class="ml-1">{{ __('Essential') }}</x-ui.badge>
                                 @endif
                             </p>
                             @if($setting['description'])

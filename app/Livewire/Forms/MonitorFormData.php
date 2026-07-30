@@ -84,15 +84,20 @@ class MonitorFormData extends Form
     {
         $settings = app(SettingsService::class);
 
+        // `default_interval` is stored in SECONDS (the select offers 60…3600)
+        // while a monitor's interval is in MINUTES. Reading it straight across
+        // turned "every 5 minutes" into every 300 minutes.
+        $intervalSeconds = (int) ($settings->get('default_interval') ?? 300);
+
         $this->url = '';
         $this->type = 'http';
-        $this->interval_minutes = (int) $settings->get('default_interval', 5);
-        $this->timeout = (int) $settings->get('default_timeout', 30);
+        $this->interval_minutes = max(1, intdiv($intervalSeconds, 60));
+        $this->timeout = (int) ($settings->get('default_timeout') ?? 30);
         $this->http_method = 'GET';
         $this->follow_redirects = true;
         $this->keyword = '';
         $this->keyword_type = 'exists';
         $this->keyword_case_sensitive = false;
-        $this->alert_after_failures = (int) $settings->get('alert_after_failures', 3);
+        $this->alert_after_failures = (int) ($settings->get('alert_after_failures') ?? 3);
     }
 }

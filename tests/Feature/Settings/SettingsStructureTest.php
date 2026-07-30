@@ -37,7 +37,7 @@ class SettingsStructureTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $html = Blade::render('@include(\'livewire.settings.partials.settings-tabs\')');
+        $html = Blade::render('<x-settings.nav />');
 
         foreach (['settings.general', 'settings.notifications', 'settings.integrations',
             'settings.data', 'settings.report-templates', 'settings.account'] as $name) {
@@ -55,7 +55,7 @@ class SettingsStructureTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Viewer]));
 
-        $html = Blade::render('@include(\'livewire.settings.partials.settings-tabs\')');
+        $html = Blade::render('<x-settings.nav />');
 
         $this->assertStringContainsString(route('settings.account'), $html);
 

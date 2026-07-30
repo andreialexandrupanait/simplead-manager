@@ -38,12 +38,21 @@ class NotificationSettings extends Component
         $this->notifyRecovery = (bool) $settings->get('notify_recovery', true);
         $this->notifySslExpiring = (bool) $settings->get('notify_ssl_expiring', true);
         $this->quietHoursEnabled = (bool) $settings->get('quiet_hours_enabled', false);
-        $this->quietHoursStart = $settings->get('quiet_hours_start', '22:00');
-        $this->quietHoursEnd = $settings->get('quiet_hours_end', '07:00');
+
+        // SettingsService::get() returns the *stored* value when the row exists,
+        // and a stored NULL comes back as null rather than as the default — which
+        // is a TypeError against these string properties under strict_types.
+        $this->quietHoursStart = $settings->get('quiet_hours_start', '22:00') ?? '22:00';
+        $this->quietHoursEnd = $settings->get('quiet_hours_end', '07:00') ?? '07:00';
     }
 
     public function savePreferences(SettingsService $settings): void
     {
+        $this->validate([
+            'quietHoursStart' => 'required|date_format:H:i',
+            'quietHoursEnd' => 'required|date_format:H:i',
+        ]);
+
         $settings->set('notify_down', $this->notifyDown, 'notifications', 'boolean');
         $settings->set('notify_recovery', $this->notifyRecovery, 'notifications', 'boolean');
         $settings->set('notify_ssl_expiring', $this->notifySslExpiring, 'notifications', 'boolean');
@@ -51,18 +60,30 @@ class NotificationSettings extends Component
         $settings->set('quiet_hours_start', $this->quietHoursStart, 'notifications', 'string');
         $settings->set('quiet_hours_end', $this->quietHoursEnd, 'notifications', 'string');
 
-        $this->dispatch('notify', type: 'success', message: 'Notification preferences saved.');
+        $this->dispatch('notify', type: 'success', message: __('Notification preferences saved.'));
     }
 
     public function deleteChannel(int $id): void
     {
-        NotificationChannel::findOrFail($id)->delete();
+        $channel = NotificationChannel::findOrFail($id);
+        $name = $channel->name;
+        $channel->delete();
+
+        unset($this->channels);
+
+        $this->dispatch('notify', type: 'success', message: __('Channel :name deleted.', ['name' => $name]));
     }
 
     public function toggleChannel(int $id): void
     {
         $channel = NotificationChannel::findOrFail($id);
         $channel->update(['is_active' => ! $channel->is_active]);
+
+        unset($this->channels);
+
+        $this->dispatch('notify', type: 'success', message: $channel->is_active
+            ? __('Channel :name enabled.', ['name' => $channel->name])
+            : __('Channel :name disabled.', ['name' => $channel->name]));
     }
 
     public function testChannel(int $id): void
@@ -73,8 +94,8 @@ class NotificationSettings extends Component
             channel: $channel,
             site: null,
             event: 'test',
-            title: 'Test Notification',
-            message: 'This is a test notification from SimpleAD Manager.',
+            title: __('Test Notification'),
+            message: __('This is a test notification from SimpleAD Manager.'),
             fields: [
                 ['title' => 'Channel', 'value' => $channel->name, 'short' => true],
                 ['title' => 'Type', 'value' => ucfirst($channel->type), 'short' => true],
@@ -82,7 +103,7 @@ class NotificationSettings extends Component
             severity: 'info',
         );
 
-        $this->dispatch('notify', type: 'info', message: "Test notification dispatched to {$channel->name}.");
+        $this->dispatch('notify', type: 'info', message: __('Test notification dispatched to :name.', ['name' => $channel->name]));
     }
 
     #[On('channels-updated')]
@@ -152,14 +173,21 @@ class NotificationSettings extends Component
         $this->dispatch('close-modal-notification-template');
         $this->reset('editingTemplateId', 'templateEvent', 'templateTitle', 'templateMessage');
         unset($this->notificationTemplates);
-        session()->flash('success', 'Template saved.');
+
+        // A session flash never reaches the user here: this component's view is
+        // re-rendered on its own, the page shell that renders flash alerts is
+        // not — so the message stayed in the session and surfaced on whatever
+        // page was loaded next. The toast stack listens for `notify` and works
+        // over an open modal.
+        $this->dispatch('notify', type: 'success', message: __('Template saved.'));
     }
 
     public function deleteTemplate(int $id): void
     {
         NotificationTemplate::findOrFail($id)->delete();
         unset($this->notificationTemplates);
-        session()->flash('success', 'Template deleted.');
+
+        $this->dispatch('notify', type: 'success', message: __('Template deleted.'));
     }
 
     // --- Escalation Rules ---
@@ -194,13 +222,16 @@ class NotificationSettings extends Component
         $this->reset('escalationSourceId', 'escalationTargetId');
         $this->escalationDelay = 15;
         unset($this->escalationRules);
-        session()->flash('success', 'Escalation rule created.');
+
+        $this->dispatch('notify', type: 'success', message: __('Escalation rule created.'));
     }
 
     public function deleteEscalationRule(int $id): void
     {
         NotificationEscalationRule::findOrFail($id)->delete();
         unset($this->escalationRules);
+
+        $this->dispatch('notify', type: 'success', message: __('Escalation rule removed.'));
     }
 
     public function render()

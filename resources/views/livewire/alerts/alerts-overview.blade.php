@@ -3,17 +3,17 @@
 
 <div>
     <x-ui.page-header
-        title="{{ __('Alerte') }}"
-        subtitle="{{ __('Site-urile care au nevoie de tine, grupate pe client.') }}"
+        title="{{ __('Alerts') }}"
+        subtitle="{{ __('The sites that need you, grouped by client.') }}"
     />
 
     {{-- Filters double as the summary — the numbers you would have read anyway. --}}
     <div class="mb-5 flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700">
         @php($tabs = [
-            'all' => __('Toate'),
-            'down' => __('Căzute'),
-            'disconnected' => __('Deconectate'),
-            'health' => __('Sănătate critică'),
+            'all' => __('All'),
+            'down' => __('Down'),
+            'disconnected' => __('Disconnected'),
+            'health' => __('Critical health'),
         ])
         @foreach($tabs as $key => $label)
             <button type="button" wire:click="$set('filter', '{{ $key }}')"
@@ -44,7 +44,7 @@
                 </p>
                 <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px]
                              {{ $group['severity'] === 0 ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' }}">
-                    {{ $group['severity'] === 0 ? __('critic') : __('atenție') }}
+                    {{ $group['severity'] === 0 ? __('critical') : __('attention') }}
                 </span>
             </div>
 
@@ -56,26 +56,26 @@
                     </a>
                     <span class="truncate text-gray-400">— {{ $site['reasons'] }}</span>
                     @if($site['last_seen'])
-                        <span class="ml-auto shrink-0 text-[11px] text-gray-400">{{ __('sincronizat') }} {{ $site['last_seen'] }}</span>
+                        <span class="ml-auto shrink-0 text-[11px] text-gray-400">{{ __('synced') }} {{ $site['last_seen'] }}</span>
                     @endif
                 </div>
             @endforeach
         </div>
     @empty
         <div class="rounded-lg border border-gray-200 p-10 text-center dark:border-gray-700">
-            <p class="text-sm text-gray-700 dark:text-gray-200">{{ __('Nicio alertă.') }}</p>
+            <p class="text-sm text-gray-700 dark:text-gray-200">{{ __('No alerts.') }}</p>
             <p class="mt-1 text-[13px] text-gray-500">
-                {{ trans_choice(':count site funcționează normal|:count site-uri funcționează normal', $alerts['healthy'], ['count' => $alerts['healthy']]) }}
+                {{ trans_choice(':count site is healthy|:count sites are healthy', $alerts['healthy'], ['count' => $alerts['healthy']]) }}
             </p>
         </div>
     @endforelse
 
     @if($alerts['total'] > 0)
         <p class="mt-4 text-[13px] text-gray-500">
-            {{ trans_choice(':count site funcționează normal|:count site-uri funcționează normal', $alerts['healthy'], ['count' => $alerts['healthy']]) }}
+            {{ trans_choice(':count site is healthy|:count sites are healthy', $alerts['healthy'], ['count' => $alerts['healthy']]) }}
             ·
             <a href="{{ route('notifications.index') }}" class="text-accent-600 hover:underline" wire:navigate>
-                {{ __('Istoricul notificărilor') }}
+                {{ __('Notification history') }}
             </a>
         </p>
     @endif

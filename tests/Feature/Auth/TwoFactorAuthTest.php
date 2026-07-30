@@ -81,13 +81,13 @@ class TwoFactorAuthTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(TwoFactorAuthentication::class)
-            ->set('password', 'wrong-password')
+            ->set('disablePassword', 'wrong-password')
             ->call('disable')
-            ->assertHasErrors('password');
+            ->assertHasErrors('disablePassword');
         $this->assertTrue($user->fresh()->hasTwoFactorEnabled());
 
         Livewire::test(TwoFactorAuthentication::class)
-            ->set('password', 'password')
+            ->set('disablePassword', 'password')
             ->call('disable')
             ->assertHasNoErrors();
         $this->assertFalse($user->fresh()->hasTwoFactorEnabled());

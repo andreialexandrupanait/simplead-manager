@@ -41,7 +41,16 @@ class StorageDestinations extends Component
                 'last_test_error' => $passed ? null : 'Test returned false.',
             ]);
 
-            session()->flash('storage-success', "Connection test for {$destination->name} ".($passed ? 'passed.' : 'failed.'));
+            // Was a `storage-*` session flash rendered by this component alone;
+            // the page shows notify toasts centrally, so every other action on
+            // the tab reported itself differently. All four speak toast now.
+            $this->dispatch(
+                'notify',
+                type: $passed ? 'success' : 'error',
+                message: $passed
+                    ? __('Connection test for :name passed.', ['name' => $destination->name])
+                    : __('Connection test for :name failed.', ['name' => $destination->name]),
+            );
         } catch (RequestException|\RuntimeException $e) {
             $destination->update([
                 'last_tested_at' => now(),
@@ -49,16 +58,24 @@ class StorageDestinations extends Component
                 'last_test_error' => $e->getMessage(),
             ]);
 
-            session()->flash('storage-error', "Connection test for {$destination->name} failed: {$e->getMessage()}");
+            $this->dispatch('notify', type: 'error', message: __('Connection test for :name failed: :error', [
+                'name' => $destination->name,
+                'error' => $e->getMessage(),
+            ]));
         }
     }
 
     public function setDefault(int $id): void
     {
         StorageDestination::where('is_default', true)->update(['is_default' => false]);
-        StorageDestination::findOrFail($id)->update(['is_default' => true]);
+        $destination = StorageDestination::findOrFail($id);
+        $destination->update(['is_default' => true]);
 
         unset($this->destinations);
+
+        $this->dispatch('notify', type: 'success', message: __(':name is now the default destination.', [
+            'name' => $destination->name,
+        ]));
     }
 
     public function deleteDestination(int $id): void
@@ -66,7 +83,9 @@ class StorageDestinations extends Component
         $destination = StorageDestination::findOrFail($id);
 
         if ($destination->backups()->exists()) {
-            session()->flash('storage-error', "Cannot delete {$destination->name} — it has existing backups.");
+            $this->dispatch('notify', type: 'error', message: __('Cannot delete :name — it has existing backups.', [
+                'name' => $destination->name,
+            ]));
 
             return;
         }
@@ -74,7 +93,7 @@ class StorageDestinations extends Component
         $destination->delete();
         unset($this->destinations);
 
-        session()->flash('storage-success', 'Storage destination deleted.');
+        $this->dispatch('notify', type: 'success', message: __('Storage destination deleted.'));
     }
 
     #[On('storage-destination-saved')]

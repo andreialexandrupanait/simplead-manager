@@ -32,7 +32,8 @@ class MonitoringDefaultsTest extends TestCase
     public function test_a_new_monitor_starts_from_the_configured_defaults(): void
     {
         $settings = app(SettingsService::class);
-        $settings->set('default_interval', 15, 'monitoring', 'integer');
+        // The setting is in seconds; a monitor's interval is in minutes.
+        $settings->set('default_interval', 900, 'monitoring', 'integer');
         $settings->set('default_timeout', 45, 'monitoring', 'integer');
         $settings->set('alert_after_failures', 2, 'monitoring', 'integer');
 
@@ -43,6 +44,22 @@ class MonitoringDefaultsTest extends TestCase
         $this->assertSame(15, $form->interval_minutes);
         $this->assertSame(45, $form->timeout);
         $this->assertSame(2, $form->alert_after_failures);
+    }
+
+    public function test_a_null_setting_row_falls_back_instead_of_crashing(): void
+    {
+        // SettingsService::get() returns a stored NULL rather than the default,
+        // and typed properties under strict_types turn that into a TypeError.
+        $settings = app(SettingsService::class);
+        $settings->set('default_interval', null, 'monitoring', 'integer');
+        $settings->set('default_timeout', null, 'monitoring', 'integer');
+
+        $form = Livewire::test(ConfigureMonitor::class)
+            ->call('openModal')
+            ->instance()->form;
+
+        $this->assertSame(5, $form->interval_minutes);
+        $this->assertSame(30, $form->timeout);
     }
 
     public function test_it_falls_back_to_the_built_in_values_when_nothing_is_configured(): void

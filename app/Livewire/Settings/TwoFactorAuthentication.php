@@ -21,7 +21,19 @@ class TwoFactorAuthentication extends Component
 
     public string $confirmCode = '';
 
-    public string $password = '';
+    /**
+     * The "disable 2FA" form's password.
+     *
+     * The regenerate and disable forms render at the same time and used to bind
+     * the same property: typing into one filled the other, and a validation
+     * error from either surfaced under whichever block rendered the message.
+     * They own separate properties now — this one stays named `password`
+     * because TwoFactorAuthTest drives the disable flow through it.
+     */
+    public string $disablePassword = '';
+
+    /** The "regenerate recovery codes" form's password. */
+    public string $regeneratePassword = '';
 
     /** @var list<string> */
     public array $recoveryCodes = [];
@@ -118,12 +130,18 @@ class TwoFactorAuthentication extends Component
             metadata: ['user_id' => $user->id],
         );
 
-        session()->flash('success', __('Two-factor authentication is now enabled.'));
+        $this->dispatch('notify', type: 'success', message: __('Two-factor authentication is now enabled.'));
     }
 
     public function regenerateRecoveryCodes(TwoFactorAuthService $service): void
     {
-        $this->validate(['password' => 'required|current_password']);
+        $this->validate(
+            ['regeneratePassword' => 'required|current_password'],
+            [
+                'regeneratePassword.required' => __('Your current password is required.'),
+                'regeneratePassword.current_password' => __('The provided password is incorrect.'),
+            ],
+        );
 
         if (! $this->enabled()) {
             return;
@@ -134,7 +152,7 @@ class TwoFactorAuthentication extends Component
 
         $this->recoveryCodes = $codes;
         $this->showingRecoveryCodes = true;
-        $this->reset('password');
+        $this->reset('regeneratePassword');
 
         ActivityLogger::log(
             type: 'auth',
@@ -142,12 +160,18 @@ class TwoFactorAuthentication extends Component
             title: 'Two-factor recovery codes regenerated',
         );
 
-        session()->flash('success', __('New recovery codes generated.'));
+        $this->dispatch('notify', type: 'success', message: __('New recovery codes generated.'));
     }
 
     public function disable(): void
     {
-        $this->validate(['password' => 'required|current_password']);
+        $this->validate(
+            ['disablePassword' => 'required|current_password'],
+            [
+                'disablePassword.required' => __('Your current password is required.'),
+                'disablePassword.current_password' => __('The provided password is incorrect.'),
+            ],
+        );
 
         Auth::user()->forceFill([
             'two_factor_secret' => null,
@@ -157,7 +181,7 @@ class TwoFactorAuthentication extends Component
         ])->save();
 
         session()->forget('auth.two_factor_confirmed');
-        $this->reset('password', 'recoveryCodes');
+        $this->reset('disablePassword', 'regeneratePassword', 'recoveryCodes');
         $this->showingRecoveryCodes = false;
         unset($this->enabled);
 
@@ -167,7 +191,7 @@ class TwoFactorAuthentication extends Component
             title: 'Two-factor authentication disabled',
         );
 
-        session()->flash('success', __('Two-factor authentication has been disabled.'));
+        $this->dispatch('notify', type: 'success', message: __('Two-factor authentication has been disabled.'));
     }
 
     public function render()

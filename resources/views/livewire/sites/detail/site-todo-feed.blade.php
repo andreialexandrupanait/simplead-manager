@@ -41,13 +41,13 @@
     @empty
         <p class="px-2 py-2 text-[13px] text-gray-500">
             <span class="text-green-600" aria-hidden="true">✓</span>
-            {{ __('Nimic de rezolvat pe acest site.') }}
+            {{ __('Nothing to fix on this site.') }}
         </p>
     @endforelse
 
     @if($hidden > 0)
         <p class="px-2 pt-1 text-xs text-gray-400">
-            {{ __('și încă :n de verificat', ['n' => $hidden]) }}
+            {{ __('and :n more to check', ['n' => $hidden]) }}
         </p>
     @endif
 </x-ui.module-card>

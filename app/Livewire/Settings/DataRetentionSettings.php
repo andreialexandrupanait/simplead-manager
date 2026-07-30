@@ -83,10 +83,18 @@ class DataRetentionSettings extends Component
         return $stats;
     }
 
+    /**
+     * Side effect of the master switch. Still an `updated` hook: the control is
+     * now `wire:click="$toggle('enabled')"` (x-ui.toggle renders a <button>, so
+     * wire:model had no value to read), and $toggle round-trips through $set —
+     * which runs the updating/updated hooks exactly as wire:model.live did.
+     */
     public function updatedEnabled(RetentionPolicyService $policy): void
     {
         $policy->setEnabled($this->enabled);
-        $this->dispatch('notify', type: 'success', message: $this->enabled ? 'Automatic cleanup enabled.' : 'Automatic cleanup disabled.');
+        $this->dispatch('notify', type: 'success', message: $this->enabled
+            ? __('Automatic cleanup enabled.')
+            : __('Automatic cleanup disabled.'));
     }
 
     public function save(RetentionPolicyService $policy): void
@@ -106,20 +114,29 @@ class DataRetentionSettings extends Component
         }
 
         unset($this->categoryStats);
-        $this->dispatch('notify', type: 'success', message: 'Retention settings saved.');
+        $this->dispatch('notify', type: 'success', message: __('Retention settings saved.'));
     }
 
+    /**
+     * Fills the inputs with the shipped defaults. It deliberately does not
+     * persist — that stays a Save away, same as any other edit — but it used to
+     * do so in complete silence, so the button looked broken.
+     */
     public function resetToDefaults(): void
     {
         foreach (RetentionPolicyService::CATEGORIES as $key => $config) {
             $this->days[$key] = $config['default'];
         }
+
+        $this->resetValidation();
+
+        $this->dispatch('notify', type: 'info', message: __('Defaults restored in the form — press Save to apply them.'));
     }
 
     public function runCleanupNow(): void
     {
         if ($this->hasRunningJobs) {
-            $this->dispatch('notify', type: 'warning', message: 'Cleanup is already running.');
+            $this->dispatch('notify', type: 'warning', message: __('Cleanup is already running.'));
 
             return;
         }
@@ -133,13 +150,13 @@ class DataRetentionSettings extends Component
             'Starting retention cleanup...'
         );
 
-        $this->dispatch('notify', type: 'info', message: 'Retention cleanup started.');
+        $this->dispatch('notify', type: 'info', message: __('Retention cleanup started.'));
     }
 
     public function formatOldest(?string $oldest): string
     {
         if (! $oldest) {
-            return 'No data';
+            return (string) __('No data');
         }
 
         try {
@@ -147,12 +164,12 @@ class DataRetentionSettings extends Component
             $daysAgo = (int) $date->diffInDays(now());
 
             if ($daysAgo === 0) {
-                return 'Today';
+                return (string) __('Today');
             }
 
-            return "{$daysAgo}d ago";
+            return (string) __(':days days ago', ['days' => $daysAgo]);
         } catch (\Exception) {
-            return 'Unknown';
+            return (string) __('Unknown');
         }
     }
 

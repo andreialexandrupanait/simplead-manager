@@ -33,18 +33,30 @@ class GeneralSettings extends Component
 
     public function mount(SettingsService $settings): void
     {
-        $this->form->appName = $settings->get('app_name', 'SimpleAd Manager');
-        $this->form->appUrl = $settings->get('app_url', config('app.url', ''));
-        $this->form->defaultTimezone = $settings->get('default_timezone', 'UTC');
-        $this->form->dateFormat = $settings->get('date_format', 'M d, Y');
-        $this->form->defaultInterval = (int) $settings->get('default_interval', 300);
-        $this->form->defaultTimeout = (int) $settings->get('default_timeout', 30);
-        $this->form->alertAfterFailures = (int) $settings->get('alert_after_failures', 3);
-        $this->form->dashboardPerPage = (int) $settings->get('dashboard_per_page', 30);
-        $this->form->sitesPerPage = (int) $settings->get('sites_per_page', 50);
-        $this->form->accentColor = $settings->get('branding.accent_color');
-        $this->faviconPath = $settings->get('branding.favicon');
-        $this->logoPath = $settings->get('branding.logo');
+        // Coalesce AFTER the get(), not through its $default argument.
+        // SettingsService::get() only falls back to the default when the row is
+        // missing entirely; a row that exists holding NULL — exactly what
+        // removeFavicon()/removeLogo() write — comes back as null. Assigning
+        // that to the non-nullable string/int properties below is a TypeError
+        // under strict_types, i.e. a 500 on page load.
+        $this->form->appName = (string) ($settings->get('app_name') ?? 'SimpleAd Manager');
+        $this->form->appUrl = (string) ($settings->get('app_url') ?? config('app.url', ''));
+        $this->form->defaultTimezone = (string) ($settings->get('default_timezone') ?? 'UTC');
+        $this->form->dateFormat = (string) ($settings->get('date_format') ?? 'M d, Y');
+        $this->form->defaultInterval = (int) ($settings->get('default_interval') ?? 300);
+        $this->form->defaultTimeout = (int) ($settings->get('default_timeout') ?? 30);
+        $this->form->alertAfterFailures = (int) ($settings->get('alert_after_failures') ?? 3);
+        $this->form->dashboardPerPage = (int) ($settings->get('dashboard_per_page') ?? 30);
+        $this->form->sitesPerPage = (int) ($settings->get('sites_per_page') ?? 50);
+
+        $accentColor = $settings->get('branding.accent_color');
+        $this->form->accentColor = $accentColor === null ? null : (string) $accentColor;
+
+        $faviconPath = $settings->get('branding.favicon');
+        $this->faviconPath = $faviconPath === null ? null : (string) $faviconPath;
+
+        $logoPath = $settings->get('branding.logo');
+        $this->logoPath = $logoPath === null ? null : (string) $logoPath;
     }
 
     #[Computed]
@@ -90,7 +102,7 @@ class GeneralSettings extends Component
             $this->form->logo = null;
         }
 
-        $this->dispatch('notify', type: 'success', message: 'Settings saved successfully.');
+        $this->dispatch('notify', type: 'success', message: __('Settings saved successfully.'));
     }
 
     public function removeFavicon(SettingsService $settings): void
@@ -100,6 +112,8 @@ class GeneralSettings extends Component
             $settings->set('branding.favicon', null, 'branding', 'string');
             $this->faviconPath = null;
         }
+
+        $this->dispatch('notify', type: 'success', message: __('Favicon removed.'));
     }
 
     public function removeLogo(SettingsService $settings): void
@@ -109,6 +123,8 @@ class GeneralSettings extends Component
             $settings->set('branding.logo', null, 'branding', 'string');
             $this->logoPath = null;
         }
+
+        $this->dispatch('notify', type: 'success', message: __('Logo removed.'));
     }
 
     public function openStatusForm(?int $id = null): void
@@ -143,8 +159,14 @@ class GeneralSettings extends Component
             ]
         );
 
+        $wasEditing = $this->editingStatusId !== null;
+
         $this->dispatch('close-modal-status-form');
         unset($this->siteStatuses);
+
+        $this->dispatch('notify', type: 'success', message: $wasEditing
+            ? __('Status updated.')
+            : __('Status added.'));
     }
 
     public function deleteStatus(int $id): void
@@ -152,13 +174,20 @@ class GeneralSettings extends Component
         $status = SiteStatus::withCount('sites')->findOrFail($id);
 
         if ($status->sites_count > 0) {
-            $this->dispatch('notify', type: 'error', message: "Cannot delete \"{$status->name}\" — {$status->sites_count} site(s) are assigned to it.");
+            $this->dispatch('notify', type: 'error', message: __('Cannot delete ":name" — :count site(s) are assigned to it.', [
+                'name' => $status->name,
+                'count' => $status->sites_count,
+            ]));
 
             return;
         }
 
+        $name = $status->name;
+
         $status->delete();
         unset($this->siteStatuses);
+
+        $this->dispatch('notify', type: 'success', message: __('Status ":name" deleted.', ['name' => $name]));
     }
 
     public function purgeMonitoringData(): void
@@ -166,7 +195,7 @@ class GeneralSettings extends Component
         UptimeCheck::query()->delete();
         UptimeIncident::query()->delete();
 
-        $this->dispatch('notify', type: 'warning', message: 'Monitoring data has been purged.');
+        $this->dispatch('notify', type: 'warning', message: __('Monitoring data has been purged.'));
     }
 
     public function render()

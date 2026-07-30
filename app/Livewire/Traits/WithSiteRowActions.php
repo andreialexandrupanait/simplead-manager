@@ -18,8 +18,11 @@ use Livewire\Attributes\Computed;
  * hard-codes three of its eight signals to "not applicable". Shared here so
  * both screens offer the same actions rather than two divergent copies.
  *
- * Backup, uptime-check and delete already live in the components/traits the
- * hosts use, so they are deliberately not duplicated here.
+ * Backup and uptime-check already live in the components/traits the hosts use,
+ * so they are not duplicated here. Delete is here because leaving it out was a
+ * bug: the row's ⋮ menu calls confirmDelete() unconditionally, so on the landing
+ * page it threw MethodNotFoundException — the delete option looked available and
+ * did nothing but log an exception.
  */
 trait WithSiteRowActions
 {
@@ -27,6 +30,11 @@ trait WithSiteRowActions
     public ?int $renamingSiteId = null;
 
     public string $renamingSiteName = '';
+
+    /** Delete confirmation state. */
+    public ?int $deletingSiteId = null;
+
+    public ?string $deletingSiteName = null;
 
     public function toggleSiteSelection(int $siteId): void
     {
@@ -60,7 +68,7 @@ trait WithSiteRowActions
 
         SyncWordPressSite::dispatch($site);
 
-        $this->dispatch('notify', type: 'success', message: __('Sincronizare pusă în coadă pentru :name.', ['name' => $site->name]));
+        $this->dispatch('notify', type: 'success', message: __('Sync queued for :name.', ['name' => $site->name]));
     }
 
     public function startRename(int $siteId, string $currentName): void
@@ -84,8 +92,32 @@ trait WithSiteRowActions
         $this->renamingSiteId = null;
         $this->renamingSiteName = '';
 
-        $this->dispatch('notify', type: 'success', message: __('Site redenumit în „:name".', ['name' => $site->name]));
+        $this->dispatch('notify', type: 'success', message: __('Site renamed to ":name".', ['name' => $site->name]));
         $this->dispatch('close-modal-rename-site');
+    }
+
+    public function confirmDelete(int $siteId, string $siteName): void
+    {
+        $this->deletingSiteId = $siteId;
+        $this->deletingSiteName = $siteName;
+        $this->dispatch('open-modal-delete-site');
+    }
+
+    public function deleteSite(): void
+    {
+        $site = Site::findOrFail($this->deletingSiteId);
+        $this->authorize('delete', $site);
+
+        $siteName = $site->name;
+        $site->delete();
+
+        unset($this->sites);
+
+        $this->deletingSiteId = null;
+        $this->deletingSiteName = null;
+
+        $this->dispatch('notify', type: 'success', message: __('Site ":name" has been deleted.', ['name' => $siteName]));
+        $this->dispatch('close-modal-delete-site');
     }
 
     /** Statuses offered by the row's ⋮ menu. */

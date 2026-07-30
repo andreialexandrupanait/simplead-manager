@@ -89,7 +89,7 @@
                             wire:confirm="{{ __('Stop collecting PHP errors on this site?') }}"
                             class="mt-1 text-[11px] text-gray-400 hover:text-red-600 transition"
                         >
-                            {{ __('Oprește colectarea pe acest site') }}
+                            {{ __('Stop collecting on this site') }}
                         </button>
                     @endif
                 </div>

@@ -1,5 +1,18 @@
-<x-layouts.app :title="__('General settings')">
-    @include('livewire.settings.partials.settings-tabs')
+<x-layouts.app :title="__('Settings')">
+    <x-ui.page-header :title="__('General')"
+                      :subtitle="__('Application identity, regional settings, monitoring and site statuses.')" />
+
+    <x-settings.nav :sections="[
+        'branding' => __('Branding'),
+        'regional' => __('Regional'),
+        'monitoring' => __('Monitoring'),
+        'statuses' => __('Statuses'),
+        'connector' => __('WordPress connector'),
+        'danger' => __('Danger zone'),
+    ]" />
+
+    <x-ui.flash-alert type="success" key="success" />
+    <x-ui.flash-alert type="error" key="error" />
 
     <div class="space-y-6">
         <livewire:settings.general-settings />
