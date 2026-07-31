@@ -8,11 +8,15 @@
 # Serviciile folosesc nume UNICE cu prefix `manager-` pentru a nu coliziona pe
 # rețeaua shared `coolify` cu simplead-app / simplead-hub / simplead-web.
 #
-# horizon + scheduler sunt CREATE dar INERTE pe staging: MANAGER_WORKERS_ENABLED
-# (default false) le ține pe un loop de sleep — zero joburi, zero schedule ticks —
-# iar la deploy sunt și oprite explicit. La cutover: set true + start.
+# horizon + scheduler sunt protejate de gate-ul MANAGER_WORKERS_ENABLED. În
+# producție e `true` (workerii lucrează). Default-ul e `false` — un mediu nou
+# pornește inert (loop de sleep: zero joburi, zero schedule ticks), ca să nu
+# apeleze site-uri client din greșeală. NU schimba default-ul.
 #
-# docker-compose.prod.yml (stack-ul sursă) rămâne neatins.
+# Acesta e SINGURUL stack de deploy. `docker-compose.prod.yml` + `deploy.sh`
+# (stack-ul self-hosted pre-Coolify, cu Postgres/Redis/certbot pe host) au fost
+# șterse pe 2026-07-31 — vezi CLAUDE.md. Sandbox-ul de restore trăiește separat,
+# opt-in, în `docker-compose.sandbox.yml`.
 # ============================================================================
 
 x-app-image: &app-image
@@ -67,7 +71,7 @@ x-app-env: &app-env
   TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
   # --- Gotenberg: sidecar intern ---------------------------------------------
   GOTENBERG_URL: ${GOTENBERG_URL:-http://manager-gotenberg:3000}
-  # --- Mail: neutralizat pe staging (MAIL_MAILER=log) ------------------------
+  # --- Mail: default `log` — un mediu nou nu trimite email real până e setat --
   MAIL_MAILER: ${MAIL_MAILER:-log}
   MAIL_SCHEME: ${MAIL_SCHEME:-}
   MAIL_HOST: ${MAIL_HOST:-}
@@ -170,18 +174,14 @@ services:
     stop_grace_period: 20s
 
   # ==========================================================================
-  # manager-horizon — CREAT dar INERT pe staging.
+  # manager-horizon — procesează cozile. ACTIV în producție.
   #
-  # MANAGER_WORKERS_ENABLED=false (default) → loop de sleep, ZERO joburi
-  # procesate (nu apelează site-uri client, nu trimite email/Slack, nu face
-  # backup/restore). La deploy este și OPRIT explicit (docker stop).
+  # Gate: MANAGER_WORKERS_ENABLED. `false` (default) → loop de sleep, ZERO joburi
+  # procesate — nu apelează site-uri client, nu trimite email/Slack, nu face
+  # backup/restore. Asta protejează un mediu nou; producția îl are pe `true`.
   #
-  # ACTIVARE la cutover (după ce Horizon-ul sursă e oprit):
-  #   set MANAGER_WORKERS_ENABLED=true + start manager-horizon.
-  #
-  # stop_grace_period 3660s: la activare, un RestoreBackup poate rula până la
-  # 3600s; un grace mai scurt ar tăia un restore în doi. (Inert = irelevant,
-  # dar păstrat identic cu producția.)
+  # stop_grace_period 3660s: un RestoreBackup poate rula până la 3600s; un grace
+  # mai scurt ar tăia un restore în doi.
   # ==========================================================================
   manager-horizon:
     <<: *app-image
@@ -202,7 +202,7 @@ services:
     command:
       - |
         if [ "$$MANAGER_WORKERS_ENABLED" != "true" ]; then
-          echo "[horizon] DEZACTIVAT pe staging (MANAGER_WORKERS_ENABLED=$$MANAGER_WORKERS_ENABLED) - inert, niciun job procesat.";
+          echo "[horizon] DEZACTIVAT (MANAGER_WORKERS_ENABLED=$$MANAGER_WORKERS_ENABLED) - inert, niciun job procesat.";
           while true; do sleep 3600; done
         fi
         echo "[horizon] ACTIV";
@@ -228,7 +228,7 @@ services:
       - /var/www/html/bootstrap/cache:size=16M,uid=1000,gid=1000
 
   # ==========================================================================
-  # manager-scheduler — CREAT dar INERT pe staging (același gate).
+  # manager-scheduler — `schedule:work`. ACTIV în producție (același gate).
   # ==========================================================================
   manager-scheduler:
     <<: *app-image
@@ -248,7 +248,7 @@ services:
     command:
       - |
         if [ "$$MANAGER_WORKERS_ENABLED" != "true" ]; then
-          echo "[scheduler] DEZACTIVAT pe staging (MANAGER_WORKERS_ENABLED=$$MANAGER_WORKERS_ENABLED) - inert, niciun tick.";
+          echo "[scheduler] DEZACTIVAT (MANAGER_WORKERS_ENABLED=$$MANAGER_WORKERS_ENABLED) - inert, niciun tick.";
           while true; do sleep 3600; done
         fi
         echo "[scheduler] ACTIV";

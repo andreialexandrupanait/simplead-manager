@@ -1,0 +1,84 @@
+# ============================================================================
+# Sandbox de restore (C-08 „proven restore") — OPT-IN, pornit manual.
+#
+# NU face parte din stack-ul de producție. Coolify deployează exclusiv
+# `docker-compose.coolify.yml`; acest fișier se rulează separat, la cerere:
+#
+#   docker compose -f docker-compose.sandbox.yml up -d
+#   docker compose -f docker-compose.sandbox.yml down -v     # aruncă tot
+#
+# Ce e: un WordPress de unică folosință în care jobul `RunProvenRestore`
+# (app/Jobs/RunProvenRestore.php) restaurează un backup pilot și îi face
+# health-check, ca să dovedească faptul că backup-urile chiar se pot restaura.
+#
+# Ca să fie folosit, trebuie înregistrat o dată în manager ca Site intern cu
+# `is_sandbox = true` și url `http://sandbox-wp`, cu API key propriu, iar
+# site-ul-sursă trebuie să aibă `proven_restore_enabled = true`. Fără asta
+# jobul iese devreme cu „Proven restore skipped: no proven_restore_enabled site."
+#
+# Starea la 2026-07-31: inactiv în producție (0 site-uri sandbox, 0 site-uri
+# cu proven_restore_enabled, 0 rânduri în `proven_restores`). Definiția e
+# păstrată aici pentru că a fost extrasă din `docker-compose.prod.yml` — stack-ul
+# pre-Coolify — înainte ca acesta să fie șters.
+#
+# Rețele: `sandbox` e internă (fără internet — ținta de restore e aruncabilă și
+# nu trebuie să poată suna acasă). `manager` e rețeaua proiectului Coolify, prin
+# care manager-horizon ajunge la connector + health-check-urile HTTP; e declarată
+# `external`, deci stack-ul aplicativ trebuie să ruleze deja.
+# ============================================================================
+
+services:
+  sandbox-db:
+    image: mariadb:11
+    container_name: simplead-sandbox-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: "${SANDBOX_DB_NAME:-wordpress}"
+      MARIADB_USER: "${SANDBOX_DB_USER:-wordpress}"
+      MARIADB_PASSWORD: "${SANDBOX_DB_PASSWORD:-wordpress}"
+      MARIADB_ROOT_PASSWORD: "${SANDBOX_DB_ROOT_PASSWORD:-rootpw}"
+    networks:
+      - sandbox
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  sandbox-wp:
+    image: wordpress:6-php8.3-apache
+    container_name: simplead-sandbox-wp
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: sandbox-db
+      WORDPRESS_DB_NAME: "${SANDBOX_DB_NAME:-wordpress}"
+      WORDPRESS_DB_USER: "${SANDBOX_DB_USER:-wordpress}"
+      WORDPRESS_DB_PASSWORD: "${SANDBOX_DB_PASSWORD:-wordpress}"
+    volumes:
+      # Connectorul SAM montat read-only: managerul conduce restore-ul staged aici
+      # exact cum ar face-o pe un site real.
+      - ./wordpress-plugin/simplead-manager-connector:/var/www/html/wp-content/plugins/simplead-manager-connector:ro
+    networks:
+      - manager   # accesibil din manager-horizon pentru connector + health-check
+      - sandbox   # vorbește cu sandbox-db
+    depends_on:
+      - sandbox-db
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+networks:
+  sandbox:
+    driver: bridge
+    internal: true   # fără ieșire la internet pentru ținta de restore
+  manager:
+    external: true
+    # Rețeaua proiectului Coolify (resource UUID). Verifică numele curent cu:
+    #   docker inspect manager-horizon --format '{{json .NetworkSettings.Networks}}'
+    name: ${MANAGER_NETWORK:-y12jcr1kywwdseq7i1cevtjv}

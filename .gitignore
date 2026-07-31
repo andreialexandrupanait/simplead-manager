@@ -6,6 +6,10 @@ features/
 /public/build
 /public/hot
 /public/storage
+# Package assets — published by `vendor:publish --tag=laravel-assets`, which the
+# Docker build runs. Committing them means they silently drift out of sync with
+# composer.lock (Livewire then warns "published assets are out of date").
+/public/vendor
 /storage/*.key
 /storage/pail
 /vendor
@@ -28,15 +32,16 @@ yarn-error.log
 /.zed
 # Claude Code config (keep local, not in repo)
 .claude/
-docker/certbot/conf/accounts/
-docker/certbot/conf/archive/
-docker/certbot/conf/live/
-docker/certbot/conf/renewal/
 
 # Production artifacts
 storage/logs/*.log
 storage/app/backups/
 storage/app/temp/
+storage/app/backup-audit/
+
+# Built plugin packages — generated, never commit
+dist/*.zip
+dist/*.zip.sha256
 
 # Debug scripts
 dispatch_*.php
@@ -62,7 +67,8 @@ migration-data/
 # Prod DB dumps (local, never commit)
 db-backups/
 
-# Backup-v2 lab/spike + baseline artifacts (local only, never commit — spike/ e 14GB/35k fișiere)
+# Backup-v2 lab/spike: harness-ul e trackat explicit, dar tot ce generează rularea
+# lui (fixture-uri, dump-uri, output de oracol) rămâne local.
 spike/
 lab/
 .baseline-artifacts/

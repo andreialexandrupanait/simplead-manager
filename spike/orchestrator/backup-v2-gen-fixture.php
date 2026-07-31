@@ -16,7 +16,6 @@ declare(strict_types=1);
  *
  * Usage: php gen-fixture.php <abspath>   (abspath defaults to /var/www/html)
  */
-
 const FIXTURE_SEED = 1337;
 const FIXTURE_SUBDIR = 'wp-content/uploads/sam-backup-lab';
 

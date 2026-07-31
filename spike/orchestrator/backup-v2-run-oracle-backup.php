@@ -13,8 +13,8 @@ require '/work/vendor/autoload.php';
 $app = require '/work/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Enums\BackupSessionState;
+use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\BackupRunner;
 use App\Backup\V2\Plugin\SimpleadBackupClient;
 use App\Backup\V2\Storage\ObjectLayout;

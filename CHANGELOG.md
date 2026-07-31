@@ -7,6 +7,50 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Changed
+- **One deploy stack, not two — the pre-Coolify leftovers are gone.** Since the
+  2026-07-29 cutover the repo carried both `docker-compose.prod.yml` (447 lines: app,
+  horizon, scheduler, nginx **with certbot TLS**, `pgsql`, `redis`, pgbouncer,
+  gotenberg, plus the restore sandbox) and `docker-compose.coolify.yml`, kept side by
+  side as a rollback net during the migration. Only the latter is live — the running
+  `manager-app` carries
+  `com.docker.compose.project.config_files=…/docker-compose.coolify.yml`, and not one
+  container from the old stack exists on the host, not even stopped. The net was never
+  taken down, so the repo shipped a compose file and a `deploy.sh` that would have
+  built and recreated containers under a *different* compose project than the live
+  one — breaking production for anyone who ran them, including the six `docs/plan/`
+  files that still told them to. Both are deleted, along with the now-unreachable
+  `docker/nginx/conf.d.ssl/` TLS template (Traefik terminates TLS; only
+  `docker-compose.prod.yml` ever selected it). The sandbox services survive as an
+  explicit opt-in `docker-compose.sandbox.yml` — proven restore (C-08) has no other
+  definition, and while it is inactive today (0 sandbox sites, 0 sites with
+  `proven_restore_enabled`, 0 `proven_restores` rows) its job code is still on `main`.
+  `docs/runbook-instalare.md` was rewritten against Coolify; `docs/plan/` and the
+  July audit moved to `docs/archive/` behind a README that says, plainly, not to
+  follow their deploy instructions.
+
+### Fixed
+- **Livewire's JS is now published at build time instead of committed.** Production
+  served `/vendor/livewire/livewire.min.js` from 6.5 MB of files committed in March
+  2026, while `composer.lock` had moved on to `livewire/livewire ^4.1` — so every
+  page logged `Livewire: The published Livewire assets are out of date` to the
+  console. The Docker build now runs `vendor:publish --tag=laravel-assets --force`
+  after `composer install`, so the shipped JS is whatever the locked version
+  publishes, and `public/vendor/` is git-ignored. (Composer only fires that publish on
+  `post-update-cmd`, which a production `composer install` never triggers — hence the
+  drift.)
+
+### Removed
+- **~1.05 GB of database dumps and migration artifacts moved out of the repo.**
+  `migration-data/` and `db-backups/` held three distinct dumps (verified distinct, not
+  copies) from the 07-25 migration and the pre-Faza-1 snapshot; they now live in
+  `/home/andrei/backups/simplead-manager/dumps/`. The repo drops from 1.3 GB to 264 MB —
+  it was 80% dumps and 20% code. Also cleared: `.baseline-artifacts/` (2.7 MB of JUnit
+  XML), 159 zero-byte `reports-*.zip` in `storage/app/temp/`, a stale 2.4 MB backup-v2
+  log, compiled Blade views, and a screenshot pasted at the project root. The built
+  plugin zip and a one-off backup-audit CSV were untracked and git-ignored — both are
+  generated, not source. 53 branches already merged into `main` were deleted.
+
 ### Security
 - **Connector 2.19.0 — authenticated IP auto-whitelisting.** Until 2.18.0 the
   connector's permission chain was *IP whitelist → rate limit → HMAC*, and `/info`

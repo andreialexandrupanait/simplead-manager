@@ -20,6 +20,11 @@
 node_modules
 public/build
 
+# Published package assets — the build republishes them from vendor/ so the image
+# never inherits a stale copy from the build context (Coolify builds a fresh clone,
+# where this directory does not exist at all).
+public/vendor
+
 # PHP dependencies — installed fresh by Composer inside the build
 vendor
 
@@ -39,8 +44,9 @@ tests
 database/factories
 phpunit.xml
 
-# Documentation
+# Documentation (`*.md` prinde doar rădăcina — subdirectoarele se exclud explicit)
 *.md
+docs/
 features/
 
 # Claude Code / local tooling — not application code
@@ -52,10 +58,13 @@ bin
 
 # Docker / deploy tooling — not needed inside the container
 docker-compose*.yml
-deploy.sh
-scripts/dev-*.sh
-scripts/backfill-screenshots.php
-docker/certbot/conf/
+
+# Labs, spikes and one-off build output — never part of the runtime image
+spike/
+lab/
+dist/
+workers/
+.baseline-artifacts/
 
 # OS / misc
 .DS_Store

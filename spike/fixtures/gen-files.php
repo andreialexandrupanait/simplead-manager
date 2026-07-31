@@ -18,7 +18,6 @@ declare(strict_types=1);
  * uploads. The huge-file tail (1–5 GB) is written via a streamed seeded keystream so
  * memory stays flat regardless of file size.
  */
-
 $opts = getopt('', ['profile:', 'seed::', 'root:', 'out:', 'sparse::']);
 $profile = $opts['profile'] ?? 'small';
 $seed = (int) ($opts['seed'] ?? 42);
@@ -28,9 +27,9 @@ $sparse = array_key_exists('sparse', $opts);
 
 $profiles = [
     // files, small-file byte buckets, big-file tail [count => size]
-    'small'  => ['files' => 5000,   'big' => []],
+    'small' => ['files' => 5000,   'big' => []],
     'medium' => ['files' => 100000, 'big' => [200 * 1048576 => 5]],
-    'large'  => ['files' => 500000, 'big' => [1073741824 => 3, 3 * 1073741824 => 2]],
+    'large' => ['files' => 500000, 'big' => [1073741824 => 3, 3 * 1073741824 => 2]],
     // Targeted "large" for the single-big-file round (NEXT-STEPS): a realistic spread
     // of incompressible small files PLUS one 2 GB single file, larger than any chunk
     // threshold, so it becomes ONE chunk → temp = file size, one 2 GB multipart.
@@ -57,7 +56,7 @@ $count = 0;
 /** Deterministic per-path PRNG. */
 function rngFor(int $seed, string $path): int
 {
-    return (int) hexdec(substr(hash('sha256', $seed . '|' . $path), 0, 12));
+    return (int) hexdec(substr(hash('sha256', $seed.'|'.$path), 0, 12));
 }
 
 /**
@@ -75,7 +74,7 @@ function fillIncompressible($fp, $ctx, int $size, int $seed, string $path): void
         $target = (int) min(1048576, $size - $written); // build ≤1 MB at a time
         $buf = '';
         while (strlen($buf) < $target) {
-            $buf .= hash('sha256', $seed . '|' . $path . '|' . $counter, true); // 32 fresh bytes
+            $buf .= hash('sha256', $seed.'|'.$path.'|'.$counter, true); // 32 fresh bytes
             $counter++;
         }
         $chunk = substr($buf, 0, $target);
@@ -114,10 +113,10 @@ for ($n = 0; $n < $cfg['files']; $n++) {
     $r = rngFor($seed, "f$n");
     $dir = $dirs[$r % count($dirs)];
     $size = $buckets[($r >> 8) % count($buckets)];
-    $rel = "$dir/file_" . $n . '.dat';
+    $rel = "$dir/file_".$n.'.dat';
     $abs = "$root/$rel";
     $sha = writeSmall($abs, $size, $seed);
-    fwrite($fh, json_encode(['p' => $rel, 's' => $size, 'sha256' => $sha]) . "\n");
+    fwrite($fh, json_encode(['p' => $rel, 's' => $size, 'sha256' => $sha])."\n");
     $totalBytes += $size;
     $count++;
     if ($count % 20000 === 0) {
@@ -130,14 +129,14 @@ if (! $sparse) {
     $hi = 0;
     foreach ($cfg['big'] as $size => $howMany) {
         for ($k = 0; $k < $howMany; $k++) {
-            $rel = 'uploads/2025/01/huge_' . $hi . '.bin';
+            $rel = 'uploads/2025/01/huge_'.$hi.'.bin';
             $abs = "$root/$rel";
             $sha = writeHuge($abs, (int) $size, $seed, $sparse);
-            fwrite($fh, json_encode(['p' => $rel, 's' => (int) $size, 'sha256' => $sha]) . "\n");
+            fwrite($fh, json_encode(['p' => $rel, 's' => (int) $size, 'sha256' => $sha])."\n");
             $totalBytes += (int) $size;
             $count++;
             $hi++;
-            fwrite(STDERR, "  huge $rel (" . round($size / 1048576) . " MB)\n");
+            fwrite(STDERR, "  huge $rel (".round($size / 1048576)." MB)\n");
         }
     }
 }

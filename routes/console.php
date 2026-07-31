@@ -38,7 +38,7 @@ $criticalFailureAlert = static function (string $task): Closure {
 // default of 24h. A scheduler killed with SIGKILL never releases its mutex, so a
 // bare withoutOverlapping() would silently wedge these dispatchers for a full day
 // (no uptime/security/DNS/backup dispatch) while the heartbeat stays green. The
-// scheduler's stop_grace_period (docker-compose.prod.yml) is the graceful side of
+// scheduler's stop_grace_period (docker-compose.coolify.yml) is the graceful side of
 // the same fix. 10 min comfortably exceeds every dispatch-only task's runtime.
 Schedule::call(new MonitoringDispatcher)
     ->everyMinute()

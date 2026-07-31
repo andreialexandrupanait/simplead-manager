@@ -2,9 +2,10 @@
 
 ## Architecture
 - Laravel 11 / PHP 8.3 app managing multiple WordPress sites via connector plugin
-- Docker production: app, horizon, scheduler, nginx, pgsql, pgbouncer, redis
+- Docker production: `manager-{app,horizon,scheduler,nginx,pgbouncer,gotenberg}`. Postgres and Redis are **managed Coolify resources**, not compose services; Traefik terminates TLS.
 - WordPress connector plugin: `wordpress-plugin/simplead-manager-connector/`
-- Deploy: **Coolify** (manual, from `main`) — see the numbered **Deployment procedure** below. `deploy.sh` is stale (pre-Coolify).
+- Deploy: **Coolify** (manual, from `main`) — see the numbered **Deployment procedure** below.
+- **`docker-compose.coolify.yml` is the only deploy stack.** The pre-Coolify one (`docker-compose.prod.yml` + `deploy.sh`, which ran Postgres/Redis/certbot on the host) was deleted on 2026-07-31; it had been dead since the 07-29 cutover and would have spawned containers under a different compose project. Anything still referring to it lives in `docs/archive/`.
 - Frontend: Livewire 4 + Blade + Tailwind CSS + Vite
 
 ## Project Structure
@@ -44,7 +45,7 @@
 ## Quick Commands (user shortcuts)
 When the user says any of these, execute immediately without asking:
 
-- **"deploy"** or **"deploy prod"** — Follow the numbered **Deployment procedure** below (Coolify). Do NOT run `deploy.sh` or `docker compose -f docker-compose.prod.yml …` — see the warning there.
+- **"deploy"** or **"deploy prod"** — Follow the numbered **Deployment procedure** below (Coolify).
 - **"logs"** — Show last 50 error-level entries from today's production Laravel log
 - **"status"** — Show `docker ps --filter 'label=coolify.applicationId=6' --format '{{.Names}} {{.Status}}'`
 
@@ -91,7 +92,13 @@ Coolify runs locally (UI on `:8000`); app = `managersimpleadro`, resource UUID
    and grep the changed code in the live container.
 
 ## Other Commands
-- ⚠️ `./deploy.sh` and `docker compose -f docker-compose.prod.yml …` are **STALE (pre-Coolify)** — they build/recreate under a different compose project than the live Coolify one (`docker compose -f docker-compose.prod.yml ps` is empty), so they would spawn conflicting containers and break prod. Deploy via Coolify (procedure above).
 - Live logs: `docker logs -f $(docker ps --filter name=manager-app --format '{{.Names}}')` (or `manager-horizon` for the queue)
 - Queue: managed by Horizon (container `manager-horizon-…`)
 - Build assets: `npm run build`  ·  Dev server: `npm run dev`
+- Run the suite on this host: `bin/test [phpunit args]` — spins up `sam-test-pgsql` / `sam-test-redis` on 127.0.0.1 with their own credentials; never touches prod.
+- `docker-compose.sandbox.yml` — the throwaway WordPress that "proven restore" (C-08) restores into. Opt-in, started by hand, not part of the deploy. Currently unused (0 sandbox sites registered).
+
+## Repo hygiene
+- **DB dumps and migration artifacts do not belong in the repo.** They live in `/home/andrei/backups/simplead-manager/` (`/opt/backups` is root-owned, no passwordless sudo).
+- `public/vendor/` is **not** committed — the Docker build runs `vendor:publish --tag=laravel-assets --force` so Livewire's JS stays in lockstep with `composer.lock`. Committed copies drift and make Livewire log "published assets are out of date".
+- `docs/archive/` is history, not instructions — see its README before following anything in there.

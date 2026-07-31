@@ -104,9 +104,9 @@ return [
         // Direct (non-pooled) Postgres connection for DDL/migrations. PgBouncer
         // transaction pooling breaks Laravel's prepared-statement protocol on
         // multi-statement migrations, and the runtime config cache means
-        // `exec -e DB_HOST=...` overrides are ignored — so deploy.sh runs
-        // `migrate --database=pgsql_direct` instead. DB_DIRECT_HOST/PORT are set
-        // in docker-compose.prod.yml; locally this falls back to the pooled host.
+        // `exec -e DB_HOST=...` overrides are ignored — so migrations must run as
+        // `migrate --database=pgsql_direct`. DB_DIRECT_HOST/PORT come from the
+        // Coolify env; locally this falls back to the pooled host.
         'pgsql_direct' => [
             'driver' => 'pgsql',
             'host' => env('DB_DIRECT_HOST', env('DB_HOST', '127.0.0.1')),
