@@ -18,7 +18,6 @@ use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\RetentionService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -59,21 +58,29 @@ class SessionActions
 
         $scope = $opts['scope'] ?? $this->defaultScope($type);
 
-        // The `backups` row is opened here, before the session, and in the same
-        // transaction — so a session can never exist without one. Opening it
-        // lazily on first success would mean a session that dies in
-        // capability_check leaves no row at all: the site would go on reporting
-        // its last good backup, and nothing would alert.
-        $session = DB::transaction(function () use ($site, $destination, $type, $scope, $opts) {
-            $backup = $this->envelope->open(
-                site: $site,
-                destination: $destination,
-                type: $type,
-                trigger: (string) ($opts['trigger'] ?? 'manual'),
-                scope: $scope,
-            );
+        // The `backups` row is opened BEFORE the session, so a session can never
+        // exist without one. Opening it lazily on first success would mean a
+        // session that dies in capability_check leaves no row at all: the site
+        // would go on reporting its last good backup, and nothing would alert.
+        //
+        // Deliberately NOT wrapped in a transaction. Production runs PostgreSQL
+        // behind PgBouncer in transaction-pooling mode, where an explicit
+        // transaction and prepared statements do not mix — the first statement
+        // inside aborts and every one after it fails with "current transaction
+        // is aborted". Ordering gives the guarantee anyway, and the failure this
+        // trades for is benign in a way the transaction's was not: an orphaned
+        // `pending` row with no session is swept by stuck recovery, whereas a
+        // session with no row is invisible to everything the operator looks at.
+        $backup = $this->envelope->open(
+            site: $site,
+            destination: $destination,
+            type: $type,
+            trigger: (string) ($opts['trigger'] ?? 'manual'),
+            scope: $scope,
+        );
 
-            return BackupSession::create([
+        try {
+            $session = BackupSession::create([
                 'site_id' => $site->id,
                 'backup_id' => $backup->id,
                 'type' => $type,
@@ -88,7 +95,13 @@ class SessionActions
                 'full_base_id' => $opts['full_base_id'] ?? null,
                 'chain_position' => $opts['chain_position'] ?? null,
             ]);
-        });
+        } catch (\Throwable $e) {
+            // Take the row back rather than leaving a backup that will never run
+            // sitting `pending` in the site's history.
+            $backup->delete();
+
+            throw $e;
+        }
 
         $pending = RunBackupSessionJob::dispatch($session->id);
 
