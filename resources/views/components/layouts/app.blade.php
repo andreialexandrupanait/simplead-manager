@@ -113,9 +113,10 @@
 
                     The border does the separating, not the tone. In dark mode
                     --surface-app is also #1A1A1A, so rail and page are the same
-                    colour and a dark border would draw nothing; border-white/10
-                    reads against both a #FAFAFA page and a #1A1A1A one. --}}
-               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-white/10 overflow-hidden transition-[width,transform] duration-300 ease-in-out
+                    colour and a dark border would draw nothing — white/5 is the
+                    faintest edge that still registers there. Going lower makes
+                    the rail and the page merge in dark mode. --}}
+               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-white/5 overflow-hidden transition-[width,transform] duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -138,7 +139,7 @@
                  simply absorbed as it regrows. Constraining the image is what
                  actually leaves air between the wordmark and the collapse
                  toggle. --}}
-            <div class="flex h-16 items-center gap-2 px-4 border-b border-white/10"
+            <div class="flex h-16 items-center gap-2 px-4 border-b border-white/5"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full flex-1 min-w-0 overflow-hidden transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
@@ -172,14 +173,30 @@
 
             {{-- Sidebar bottom section.
 
-                 Settings, Profile and Log Out used to live here. They are account
-                 controls, not navigation, and every other application on the web
-                 puts them behind the avatar in the top right — so that is where
-                 they are now (see the header's account menu). What stays is the
-                 clock. --}}
-            <div class="border-t border-white/10 mt-auto">
+                 Profile and Log Out moved to the header's account menu — they
+                 are things about you, not places you go. Settings stayed: it is
+                 an admin-only destination like any other nav entry, and it was
+                 only ever grouped with the other two because they sat next to
+                 each other. It lives here and nowhere else. --}}
+            <div class="border-t border-white/5 mt-auto">
+                <div class="p-2">
+                    @if(auth()->user()->isAdmin())
+                        <a href="{{ route('settings.general') }}"
+                           @mouseenter="showSidebarTooltip($el)"
+                           @mouseleave="hideSidebarTooltip()"
+                           class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && ! request()->routeIs('settings.account') ? 'bg-white/10 text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-white/5' }}"
+                           :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
+                            <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span class="whitespace-nowrap transition-opacity duration-200"
+                                  :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
+                                {{ __('Settings') }}
+                            </span>
+                        </a>
+                    @endif
+                </div>
+
                 {{-- Live clock --}}
-                <div class="px-3 py-2 text-center"
+                <div class="px-3 py-2 text-center border-t border-white/5"
                      x-data="{
                          datetime: '',
                          updateClock() {

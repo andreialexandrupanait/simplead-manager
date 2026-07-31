@@ -55,8 +55,8 @@ class SidebarFleetNavTest extends TestCase
         // `sites.index` renders the very same component as `dashboard`.
         $this->assertStringNotContainsString(route('sites.index'), $html);
 
-        // Settings is an account control, not navigation — it lives in the
-        // header's account menu now, once.
+        // Settings lives once, pinned in the rail footer (layouts/app.blade.php)
+        // — not a second time inside the nav list.
         $this->assertStringNotContainsString(route('settings.general'), $html);
     }
 

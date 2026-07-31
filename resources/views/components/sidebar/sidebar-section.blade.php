@@ -5,7 +5,7 @@
      directly under the logo bar's own border-b and separates nothing from
      nothing. The site sidebar is unaffected — there the first section follows the
      back-link, the site switcher and Prezentare, so it is not the first child. --}}
-<div class="mt-2 pt-2 border-t border-white/10 first:mt-0 first:border-t-0 first:pt-0">
+<div class="mt-2 pt-2 border-t border-white/5 first:mt-0 first:border-t-0 first:pt-0">
     <p class="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40 transition-all duration-300"
        :class="sidebarOpen ? '' : 'lg:opacity-0 lg:h-0 lg:mb-0 lg:overflow-hidden'">
         {{ $title }}

@@ -200,13 +200,12 @@
             {{-- Notifications --}}
             <livewire:components.notification-dropdown />
 
-            {{-- Account menu. Settings, Profile and Log Out used to sit at the
-                 bottom of the sidebar, mixed in with navigation. They are not
-                 places you go, they are things about you — so they live behind
-                 the avatar, where every other application puts them.
+            {{-- Account menu — things about you, not places you go. Settings is
+                 deliberately NOT here: it is an admin destination and belongs in
+                 the sidebar with the rest of the navigation, once.
 
-                 One dropdown rather than three buttons: the header already
-                 carries search, the theme toggle and notifications, and a fourth
+                 One dropdown rather than separate buttons: the header already
+                 carries search, the theme toggle and notifications, and another
                  icon starts squeezing the title on a phone. --}}
             <x-ui.dropdown align="right" width="56">
                 <x-slot:trigger>
@@ -232,13 +231,6 @@
                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
                     {{ __('Profile') }}
                 </a>
-
-                @if(auth()->user()->isAdmin())
-                    <a href="{{ route('settings.general') }}" wire:navigate
-                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
-                        {{ __('Settings') }}
-                    </a>
-                @endif
 
                 {{-- Logout is a POST, so it moves as a whole form — a link here
                      would be a CSRF hole, not a shortcut. --}}
