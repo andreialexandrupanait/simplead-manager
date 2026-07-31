@@ -181,6 +181,64 @@ class ContactFormDeliveryTest extends TestCase
         $this->assertArrayNotHasKey('form_id', $run['data']);
     }
 
+    /**
+     * The question that started this: does anything look at the SITE?
+     *
+     * Detection used to compare active plugin slugs against five hardcoded names.
+     * A site whose forms are Elementor widgets has no form plugin at all, so it
+     * was refused with "no proven way to suppress integrations" while having
+     * plenty of forms. 23 of the 27 sites in the fleet are exactly that shape.
+     */
+    public function test_forms_are_discovered_from_site_content_not_the_plugin_list(): void
+    {
+        $this->site->update(['connector_version' => '2.23.0']);
+
+        $api = $this->createMock(WordPressApiServiceInterface::class);
+        $api->method('request')->willReturn($this->jsonResponse([
+            'scanned_posts' => 12,
+            'forms' => [
+                ['source' => 'elementor', 'type' => 'Elementor Pro', 'id' => 'a1b2c3', 'name' => 'Contact', 'submittable' => true, 'url' => 'https://shop.example.com/contact/', 'title' => 'Contact'],
+                ['source' => 'raw', 'type' => 'Raw HTML form', 'id' => '', 'name' => 'Raw form', 'submittable' => false, 'url' => 'https://shop.example.com/legacy/', 'title' => 'Legacy'],
+            ],
+        ]));
+
+        $factory = $this->createMock(WordPressApiServiceFactory::class);
+        $factory->method('make')->willReturn($api);
+
+        $result = (new ContactFormChecker($factory))->discoverForms($this->site);
+
+        $this->assertTrue($result['available']);
+        $this->assertCount(2, $result['forms']);
+        // The page each form sits on is the part that was never reported.
+        $this->assertSame('https://shop.example.com/contact/', $result['forms'][0]['url']);
+        // Reported even though it cannot be submitted to — knowing it exists and
+        // why it is skipped beats an opaque refusal.
+        $this->assertFalse($result['forms'][1]['submittable']);
+    }
+
+    public function test_an_older_connector_says_why_it_cannot_scan(): void
+    {
+        $this->site->update(['connector_version' => '2.22.0']);
+
+        $factory = $this->createMock(WordPressApiServiceFactory::class);
+        $factory->expects($this->never())->method('make');
+
+        $result = (new ContactFormChecker($factory))->discoverForms($this->site);
+
+        $this->assertFalse($result['available']);
+        $this->assertStringContainsString('2.23.0', $result['reason']);
+        $this->assertSame([], $result['forms']);
+    }
+
+    /**
+     * Elementor Pro is the fleet's dominant form builder; leaving it out of the
+     * allowlist is what limited this feature to one site.
+     */
+    public function test_elementor_pro_counts_as_a_supported_form_plugin(): void
+    {
+        $this->assertArrayHasKey('elementor-pro', ContactFormChecker::SUPPORTED_PLUGINS);
+    }
+
     public function test_a_site_can_override_the_delivery_address(): void
     {
         $this->site->update(['form_test_email' => 'forms@client.example']);

@@ -38,7 +38,9 @@
 @endphp
 
 <div
-    class="group flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 {{ $site->is_up === false ? 'bg-red-50/30' : '' }}"
+    {{-- The dark variants are not decoration: the row had none at all, so on a
+         dark list container the hover flashed light grey over dark. --}}
+    class="group flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5 {{ $site->is_up === false ? 'bg-red-50/30 dark:bg-red-500/10' : '' }}"
     data-site-id="{{ $site->id }}"
     wire:key="site-{{ $site->id }}"
 >

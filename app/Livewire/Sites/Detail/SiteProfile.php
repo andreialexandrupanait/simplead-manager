@@ -43,8 +43,11 @@ class SiteProfile extends Component
 
     public string $formTestFormId = '';
 
-    /** Forms the connector reported, populated by detectForms(). */
+    /** Submittable forms, for the picker. */
     public array $formOptions = [];
+
+    /** Everything the site reported, submittable or not, grouped in the view. */
+    public array $discoveredForms = [];
 
     public ?string $formsError = null;
 
@@ -74,13 +77,38 @@ class SiteProfile extends Component
 
         $this->formsError = null;
 
-        $capability = app(ContactFormChecker::class)->capability($this->site);
+        $checker = app(ContactFormChecker::class);
+
+        // Ask the SITE what forms it has, rather than asking the plugin list what
+        // it might have. A site whose forms are Elementor widgets has no form
+        // plugin at all, and used to be refused on that basis alone.
+        $discovered = $checker->discoverForms($this->site);
+
+        if ($discovered['available']) {
+            $this->discoveredForms = $discovered['forms'];
+            $this->formOptions = collect($discovered['forms'])
+                ->filter(fn (array $f) => ($f['submittable'] ?? false) && ($f['id'] ?? '') !== '')
+                ->map(fn (array $f) => [
+                    'id' => (string) $f['id'],
+                    'title' => trim(($f['name'] ?? 'Form').' — '.($f['title'] ?? '')),
+                ])
+                ->values()
+                ->all();
+
+            if ($discovered['forms'] === []) {
+                $this->formsError = __('Nothing on this site looks like a form. Nothing was submitted.');
+            }
+
+            return;
+        }
+
+        // Older connector: fall back to the per-plugin listing.
+        $capability = $checker->capability($this->site);
         $this->formOptions = $capability['forms'];
 
         if ($this->formOptions === []) {
-            $this->formsError = $capability['supported']
-                ? __('The connector did not list any forms. Version 2.22.0 or newer is needed to choose one; below that the test uses the first form it finds.')
-                : __('No form plugin here has a proven way to suppress integrations, so no test runs on this site.');
+            $this->formsError = $discovered['reason']
+                ?? __('The connector did not list any forms.');
         }
     }
 

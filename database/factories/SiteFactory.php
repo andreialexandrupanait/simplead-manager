@@ -21,7 +21,11 @@ class SiteFactory extends Factory
      */
     public function definition(): array
     {
-        $domain = fake()->unique()->domainName();
+        // .test is reserved by RFC 2606 and can never resolve. domainName() hands
+        // out REAL domains (hyatt.com, langosh.com), so any code that fetches a
+        // site URL in a test was quietly making requests to strangers' servers —
+        // which is exactly what made the suite depend on internet latency.
+        $domain = fake()->unique()->domainWord().'.test';
 
         return [
             'name' => fake()->company().' Website',

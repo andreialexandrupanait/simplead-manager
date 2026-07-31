@@ -35,6 +35,9 @@ class ContactFormChecker
         'gravityforms' => 'Gravity Forms',
         'ninja-forms' => 'Ninja Forms',
         'mailchimp-for-wp' => 'MC4WP',
+        // 23 of 27 sites build their contact forms with Elementor Pro. Leaving it
+        // out is what made this feature cover a single site.
+        'elementor-pro' => 'Elementor Pro',
     ];
 
     /**
@@ -203,6 +206,48 @@ class ContactFormChecker
         ]);
 
         return $data;
+    }
+
+    /**
+     * Ask the site what forms it actually has, by scanning its content.
+     *
+     * This is the question the old detection never asked. It compared active
+     * plugin slugs against an allowlist, so a site whose forms are Elementor
+     * widgets — most of this fleet — answered "no form plugin" while having
+     * plenty of forms. Requires connector 2.23.0.
+     *
+     * @return array{available: bool, reason: ?string, forms: array<int, array<string, mixed>>}
+     */
+    public function discoverForms(Site $site): array
+    {
+        $minVersion = (string) config('monitoring.form_test.min_discovery_version', '2.23.0');
+
+        if (! $site->connectorAtLeast($minVersion)) {
+            return [
+                'available' => false,
+                'reason' => "The connector on this site is older than {$minVersion}, so it cannot scan the site for forms.",
+                'forms' => [],
+            ];
+        }
+
+        try {
+            $response = $this->apiFactory->make($site)
+                ->request('GET', '/form-test/discover', [], [], 60);
+        } catch (\Throwable $e) {
+            return ['available' => false, 'reason' => $e->getMessage(), 'forms' => []];
+        }
+
+        if (! $response->successful()) {
+            return ['available' => false, 'reason' => 'HTTP '.$response->status(), 'forms' => []];
+        }
+
+        $data = $response->json() ?? [];
+
+        return [
+            'available' => true,
+            'reason' => null,
+            'forms' => is_array($data['forms'] ?? null) ? $data['forms'] : [],
+        ];
     }
 
     /**

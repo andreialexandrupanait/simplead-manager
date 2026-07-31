@@ -139,6 +139,39 @@
                     <p class="mt-1 text-xs text-amber-600">{{ $formsError }}</p>
                 @endif
                 @error('formTestFormId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                {{-- Everything the scan found, including what cannot be submitted to.
+                     Knowing a form exists and why it is skipped beats a flat refusal. --}}
+                @if($discoveredForms)
+                    <div class="mt-4 border-t pt-3">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                            {{ trans_choice('{1} :count form found on this site|[2,*] :count forms found on this site', count($discoveredForms), ['count' => count($discoveredForms)]) }}
+                        </p>
+                        <div class="mt-2 space-y-2">
+                            @foreach(collect($discoveredForms)->groupBy('url') as $url => $forms)
+                                <div>
+                                    <a href="{{ $url }}" target="_blank" rel="noopener"
+                                       class="block truncate text-xs text-accent-600 hover:underline">
+                                        {{ $forms->first()['title'] ?: $url }}
+                                    </a>
+                                    <div class="mt-0.5 space-y-0.5 pl-3">
+                                        @foreach($forms as $form)
+                                            <div class="flex items-center gap-1.5 text-xs">
+                                                <x-ui.badge :variant="($form['submittable'] ?? false) ? 'green' : 'gray'">
+                                                    {{ $form['type'] ?? '—' }}
+                                                </x-ui.badge>
+                                                <span class="truncate text-gray-600">{{ $form['name'] ?? '' }}</span>
+                                                @unless($form['submittable'] ?? false)
+                                                    <span class="text-gray-400">— {{ __('no submit adapter yet, not tested') }}</span>
+                                                @endunless
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 

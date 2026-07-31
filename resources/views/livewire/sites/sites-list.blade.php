@@ -113,7 +113,10 @@
     @if($sites->count())
         @if($viewMode === 'list')
             {{-- Vedere LISTĂ densă (SPEC §4.1), grupată opțional pe client (§4.4) --}}
-            <div class="overflow-hidden rounded-lg border border-gray-200 divide-y divide-gray-100 dark:divide-gray-800 dark:border-gray-700">
+            {{-- bg-white: the rows are transparent, so without a background here the
+                 page's #FAFAFA showed through the whole list. The grid view already
+                 reads white because its cards use x-ui.card. --}}
+            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 dark:divide-gray-800 dark:border-gray-700 dark:bg-gray-800">
                 @php($currentClient = null)
                 @foreach($sites as $site)
                     @if($groupBy === 'client')

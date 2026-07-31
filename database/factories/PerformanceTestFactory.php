@@ -25,7 +25,7 @@ class PerformanceTestFactory extends Factory
             'performance_monitor_id' => null,
             'performance_page_id' => null,
             'device' => fake()->randomElement(['mobile', 'desktop']),
-            'url' => fake()->url(),
+            'url' => 'https://'.fake()->domainWord().'.test/',
             'performance_score' => fake()->numberBetween(40, 100),
             'accessibility_score' => fake()->numberBetween(60, 100),
             'best_practices_score' => fake()->numberBetween(60, 100),

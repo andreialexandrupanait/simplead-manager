@@ -25,7 +25,8 @@ class UptimeMonitorFactory extends Factory
         return [
             'site_id' => Site::factory(),
             'type' => 'http',
-            'url' => fake()->url(),
+            // A reserved .test host, never a real one — see SiteFactory.
+            'url' => 'https://'.fake()->domainWord().'.test/',
             'timeout' => 30,
             'http_method' => 'GET',
             'http_headers' => null,

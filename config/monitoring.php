@@ -142,5 +142,10 @@ return [
         // one. Below this the Manager offers no choice and the test falls back to
         // whichever form comes first.
         'min_form_choice_version' => '2.22.0',
+        // Connector release that scans site CONTENT for forms of any kind, rather
+        // than matching the plugin list against an allowlist — and that can submit
+        // to an Elementor Pro form. Below this, a site whose forms are Elementor
+        // widgets reports "no form plugin" however many forms it actually has.
+        'min_discovery_version' => '2.23.0',
     ],
 ];

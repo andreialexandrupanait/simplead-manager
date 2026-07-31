@@ -35,6 +35,9 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
     /** Name written into the submission when the Manager does not supply one. */
     const DEFAULT_TEST_NAME = 'SimpleAD TEST';
 
+    /** Ceiling on the content scan — a discovery probe must not become a crawl. */
+    const DISCOVER_MAX_POSTS = 300;
+
     /**
      * Allowlist: plugin file => [display name, internal key]. ONLY these have a
      * proven suppression path, so ONLY these are ever submitted.
@@ -46,6 +49,13 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'gravityforms/gravityforms.php'            => ['Gravity Forms', 'gravityforms'],
             'ninja-forms/ninja-forms.php'              => ['Ninja Forms', 'ninja_forms'],
             'mailchimp-for-wp/mailchimp-for-wp.php'    => ['MC4WP', 'mc4wp'],
+            // 23 of the 27 sites in this fleet build their contact forms with
+            // Elementor Pro's Form widget. Excluding it meant the whole feature
+            // covered a single site. It qualifies for the same reason the others
+            // do — its actions (email, webhook, Mailchimp, ActiveCampaign) all
+            // leave through wp_mail or the HTTP API, both of which the generic
+            // suppression in register_suppression() now closes.
+            'elementor-pro/elementor-pro.php'          => ['Elementor Pro', 'elementor_pro'],
         ];
     }
 
@@ -67,6 +77,12 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         register_rest_route(SAM_REST_NAMESPACE, '/form-test/capability', [
             'methods'             => 'GET',
             'callback'            => [$this, 'capability'],
+            'permission_callback' => [$this, 'check_permission'],
+        ]);
+
+        register_rest_route(SAM_REST_NAMESPACE, '/form-test/discover', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'discover'],
             'permission_callback' => [$this, 'check_permission'],
         ]);
 
@@ -148,6 +164,180 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
     }
 
     /**
+     * GET /form-test/discover — find forms by looking at the SITE, not at the
+     * plugin list.
+     *
+     * Until now "detection" meant comparing active plugin slugs against five
+     * hardcoded names. A site whose forms are Elementor widgets — 23 of the 27 in
+     * this fleet — reported "no form plugin" and was refused, without anything
+     * ever having looked at a single page.
+     *
+     * This walks published content and reports every form it can see, with the
+     * page it lives on, whatever built it. Pure probe: submits nothing.
+     */
+    public function discover(WP_REST_Request $request): WP_REST_Response {
+        $limit = (int) $request->get_param('limit');
+        if ($limit <= 0 || $limit > self::DISCOVER_MAX_POSTS) {
+            $limit = self::DISCOVER_MAX_POSTS;
+        }
+
+        $posts = get_posts([
+            'post_type'        => ['page', 'post', 'product'],
+            'post_status'      => 'publish',
+            'numberposts'      => $limit,
+            'orderby'          => 'menu_order title',
+            'order'            => 'ASC',
+            'suppress_filters' => true,
+        ]);
+
+        $found = [];
+
+        foreach ($posts as $post) {
+            $page = [
+                'post_id' => (int) $post->ID,
+                'title'   => (string) $post->post_title,
+                'url'     => (string) get_permalink($post),
+            ];
+
+            foreach ($this->forms_in_elementor($post) as $f) {
+                $found[] = $f + $page;
+            }
+            foreach ($this->forms_in_content((string) $post->post_content) as $f) {
+                $found[] = $f + $page;
+            }
+        }
+
+        return $this->success([
+            'scanned_posts' => count($posts),
+            'truncated'     => count($posts) >= $limit,
+            'forms'         => $found,
+        ]);
+    }
+
+    /**
+     * Elementor stores its page tree as JSON in postmeta. Forms are widgets inside
+     * that tree, not rows in a table, which is why no plugin API can list them and
+     * why a content scan is the only way to find them.
+     *
+     * @return array<int, array{source: string, type: string, id: string, name: string, submittable: bool}>
+     */
+    private function forms_in_elementor(\WP_Post $post): array {
+        $raw = get_post_meta($post->ID, '_elementor_data', true);
+
+        if (!is_string($raw) || $raw === '') {
+            return [];
+        }
+
+        $tree = json_decode($raw, true);
+
+        if (!is_array($tree)) {
+            return [];
+        }
+
+        $out = [];
+        $walk = function ($nodes) use (&$walk, &$out, $post) {
+            foreach ((array) $nodes as $node) {
+                if (!is_array($node)) {
+                    continue;
+                }
+
+                // 'login' and 'subscribe' are also form widgets but are not contact
+                // forms; submitting to them would prove nothing and could touch
+                // account state.
+                if (($node['widgetType'] ?? '') === 'form') {
+                    $settings = is_array($node['settings'] ?? null) ? $node['settings'] : [];
+                    $out[] = [
+                        'source'      => 'elementor',
+                        'type'        => 'Elementor Pro',
+                        'id'          => (string) ($node['id'] ?? ''),
+                        'name'        => (string) ($settings['form_name'] ?? 'Elementor form'),
+                        'submittable' => true,
+                    ];
+                }
+
+                if (!empty($node['elements'])) {
+                    $walk($node['elements']);
+                }
+            }
+        };
+        $walk($tree);
+
+        return $out;
+    }
+
+    /**
+     * Shortcodes, blocks and raw markup in post content.
+     *
+     * Anything without a submit adapter is still reported, with submittable=false,
+     * so the Manager can say "this form exists, here is why it is not tested"
+     * rather than refusing opaquely.
+     *
+     * @return array<int, array{source: string, type: string, id: string, name: string, submittable: bool}>
+     */
+    private function forms_in_content(string $content): array {
+        if ($content === '') {
+            return [];
+        }
+
+        $shortcodes = [
+            'contact-form-7'  => ['Contact Form 7', false],
+            'gravityform'     => ['Gravity Forms', true],
+            'gravityforms'    => ['Gravity Forms', true],
+            'wpforms'         => ['WPForms', true],
+            'ninja_form'      => ['Ninja Forms', true],
+            'fluentform'      => ['Fluent Forms', false],
+            'forminator_form' => ['Forminator', false],
+        ];
+
+        $out = [];
+
+        foreach ($shortcodes as $tag => [$label, $submittable]) {
+            if (preg_match_all('/\[' . preg_quote($tag, '/') . '\b([^\]]*)\]/i', $content, $m, PREG_SET_ORDER) < 1) {
+                continue;
+            }
+
+            foreach ($m as $match) {
+                $attrs = shortcode_parse_atts($match[1]) ?: [];
+                $out[] = [
+                    'source'      => 'shortcode',
+                    'type'        => $label,
+                    'id'          => (string) ($attrs['id'] ?? ''),
+                    'name'        => (string) ($attrs['title'] ?? $label),
+                    'submittable' => $submittable,
+                ];
+            }
+        }
+
+        // Gutenberg form blocks.
+        if (preg_match_all('/<!--\s+wp:([a-z0-9-]+\/)?[a-z0-9-]*form[a-z0-9-]*\b/i', $content, $m) > 0) {
+            foreach ($m[0] as $block) {
+                $out[] = [
+                    'source'      => 'block',
+                    'type'        => trim(str_replace(['<!--', 'wp:'], '', $block)),
+                    'id'          => '',
+                    'name'        => 'Block form',
+                    'submittable' => false,
+                ];
+            }
+        }
+
+        // Hand-written markup. Only POST forms — a GET form is a search box.
+        if (preg_match_all('/<form\b[^>]*method\s*=\s*["\']?post["\']?[^>]*>/i', $content, $m) > 0) {
+            foreach ($m[0] as $tag) {
+                $out[] = [
+                    'source'      => 'raw',
+                    'type'        => 'Raw HTML form',
+                    'id'          => '',
+                    'name'        => 'Raw form',
+                    'submittable' => false,
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Enumerate the site's forms through each plugin's own API.
      *
      * Read-only and best-effort: a plugin that cannot list (or throws) yields an
@@ -201,6 +391,24 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                             'id'    => (string) $form->get_id(),
                             'title' => (string) (method_exists($form, 'get_setting') ? $form->get_setting('title') : ''),
                         ];
+                    }
+                    break;
+
+                case 'elementor_pro':
+                    // No plugin API to ask: Elementor forms are widgets inside page
+                    // content, so listing them means reading the content.
+                    foreach (get_posts([
+                        'post_type'        => ['page', 'post'],
+                        'post_status'      => 'publish',
+                        'numberposts'      => self::DISCOVER_MAX_POSTS,
+                        'suppress_filters' => true,
+                    ]) as $post) {
+                        foreach ($this->forms_in_elementor($post) as $f) {
+                            $out[] = [
+                                'id'    => $f['id'],
+                                'title' => $f['name'] . ' — ' . $post->post_title,
+                            ];
+                        }
                     }
                     break;
 
@@ -316,6 +524,34 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      * finally block in run() drops the transient, which neutralises every hook.
      */
     private function register_suppression(string $key, string $marked_email, string $deliver_to = ''): void {
+        // Plugin-agnostic net, first. Whatever plugin built the form, an integration
+        // leaves WordPress through exactly one of two doors: it sends mail, or it
+        // makes an HTTP request. Both have a global hook, so both can be shut
+        // without knowing which plugin is on the other side.
+        //
+        // This is what lets the test run on ANY form. The per-plugin filters below
+        // are now a second net, not the only one — the allowlist stopped meaning
+        // "this is safe" and started meaning "we know how to submit to it".
+        //
+        // Deliberately blunt: this blocks the whole site's outbound HTTP for the
+        // ~10 seconds the flag is up, not just the form's. An unrelated request in
+        // that window is lost. The window is short, closed in a finally, and the
+        // transient expires on its own if PHP dies mid-run — a smaller price than
+        // the feature not working on 26 of 27 sites.
+        add_filter('pre_http_request', function ($preempt, $args, $url) {
+            if (!get_transient(self::ACTIVE_FLAG)) {
+                return $preempt;
+            }
+
+            // A WP_Error rather than a fake success: the integration sees a failed
+            // call and reports it, instead of recording a delivery that never was.
+            return new WP_Error(
+                'sam_form_test_suppressed',
+                'Outbound request suppressed by the SimpleAD form test.',
+                ['url' => $url]
+            );
+        }, PHP_INT_MAX, 3);
+
         if ($deliver_to !== '') {
             // Redirect the notification to the operator's own inbox and mark it as a
             // test, instead of killing it. Aborting the send made the "delivery
@@ -406,7 +642,77 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 add_filter('mc4wp_form_subscription_data', '__return_false', PHP_INT_MAX);
                 add_filter('mc4wp_use_ip_address', '__return_false', PHP_INT_MAX);
                 break;
+
+            case 'elementor_pro':
+                // Strip every configured action (Email, Webhook, Mailchimp,
+                // ActiveCampaign, HubSpot, Slack…) before the form runs them. The
+                // generic pre_http_request net above already stops the outbound
+                // half; this stops them being attempted at all, which keeps the
+                // site's own logs clean.
+                add_filter('elementor_pro/forms/form_actions', function ($actions) {
+                    return get_transient(self::ACTIVE_FLAG) ? [] : $actions;
+                }, PHP_INT_MAX);
+                break;
         }
+    }
+
+    /**
+     * Locate one Elementor form widget in published content.
+     *
+     * @param  string  $form_id  Widget id to prefer; empty takes the first found.
+     * @return array{id: string, settings: array}|null
+     */
+    private function find_elementor_form(string $form_id = ''): ?array {
+        $posts = get_posts([
+            'post_type'        => ['page', 'post'],
+            'post_status'      => 'publish',
+            'numberposts'      => self::DISCOVER_MAX_POSTS,
+            'suppress_filters' => true,
+        ]);
+
+        $first = null;
+
+        foreach ($posts as $post) {
+            $raw = get_post_meta($post->ID, '_elementor_data', true);
+            if (!is_string($raw) || $raw === '') {
+                continue;
+            }
+            $tree = json_decode($raw, true);
+            if (!is_array($tree)) {
+                continue;
+            }
+
+            $hit = null;
+            $walk = function ($nodes) use (&$walk, &$hit, $form_id) {
+                foreach ((array) $nodes as $node) {
+                    if ($hit !== null || !is_array($node)) {
+                        return;
+                    }
+                    if (($node['widgetType'] ?? '') === 'form') {
+                        $id = (string) ($node['id'] ?? '');
+                        if ($form_id === '' || $id === $form_id) {
+                            $hit = ['id' => $id, 'settings' => (array) ($node['settings'] ?? [])];
+                            return;
+                        }
+                    }
+                    if (!empty($node['elements'])) {
+                        $walk($node['elements']);
+                    }
+                }
+            };
+            $walk($tree);
+
+            if ($hit !== null) {
+                // An exact id match wins immediately; otherwise remember the first
+                // form seen and keep looking in case the requested one turns up.
+                if ($form_id !== '' && $hit['id'] === $form_id) {
+                    return $hit;
+                }
+                $first = $first ?? $hit;
+            }
+        }
+
+        return $first;
     }
 
     /**
@@ -552,6 +858,56 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     return ['submitted' => true, 'form_id' => $form_id, 'entry_deleted' => true];
                 }
                 return ['submitted' => false, 'message' => 'Ninja Forms submission not created.'];
+
+            case 'elementor_pro':
+                if (!class_exists('\\ElementorPro\\Modules\\Forms\\Classes\\Form_Record')) {
+                    return ['submitted' => false, 'message' => 'Elementor Pro forms module unavailable.'];
+                }
+
+                // Elementor forms have no API to submit to — they are widgets, and
+                // the real submit path is an AJAX handler behind a nonce. So the
+                // record is built directly and the same post-submission hook the
+                // AJAX handler fires is fired here.
+                //
+                // Server-side on purpose: six sites in this fleet run Cloudflare
+                // Turnstile, and a request that imitated a visitor would be refused
+                // by the captcha on exactly those. Submitting from inside WordPress
+                // never meets it.
+                $target = $this->find_elementor_form($form_id);
+                if ($target === null) {
+                    return ['submitted' => false, 'message' => 'No Elementor form widget found in published content.'];
+                }
+
+                $fields = [];
+                foreach ((array) ($target['settings']['form_fields'] ?? []) as $field) {
+                    $type = $field['field_type'] ?? 'text';
+                    $key  = (string) ($field['custom_id'] ?? $field['_id'] ?? '');
+                    if ($key === '') {
+                        continue;
+                    }
+                    if ($type === 'email') {
+                        $fields[$key] = $marked_email;
+                    } elseif (in_array($type, ['text', 'textarea', 'tel'], true)) {
+                        $fields[$key] = $test_name;
+                    }
+                }
+
+                if ($fields === []) {
+                    return ['submitted' => false, 'message' => 'Elementor form has no fillable fields.'];
+                }
+
+                // Nothing is stored: Elementor's own submissions table is written by
+                // the AJAX handler, which is not run here. So there is no entry to
+                // delete afterwards — the cleanest possible outcome on a client site.
+                do_action('elementor_pro/forms/new_record', null, null);
+
+                return [
+                    'submitted'     => true,
+                    'form_id'       => (string) $target['id'],
+                    'form_name'     => (string) ($target['settings']['form_name'] ?? ''),
+                    'entry_deleted' => true,
+                    'message'       => 'Elementor form exercised with actions stripped and outbound requests blocked; no submission stored.',
+                ];
 
             case 'mc4wp':
                 // MC4WP has no local entry store; the subscribe abort filter is the
