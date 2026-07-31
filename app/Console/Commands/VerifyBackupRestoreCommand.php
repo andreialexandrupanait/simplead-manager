@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\BackupEngine;
 use App\Models\Backup;
 use App\Services\Backup\BackupVerifier;
 use App\Services\Notifications\NotificationService;
@@ -39,6 +40,14 @@ class VerifyBackupRestoreCommand extends Command
 
         $candidates = Backup::query()
             ->where('status', 'completed')
+            // V2 rows are verified at creation by their own verifier, which HEADs
+            // every object in the manifest. This sweep downloads `file_path` and
+            // opens it as an archive; on a V2 row that path is a prefix, so the
+            // download fails and the row is stamped verification_status='failed'
+            // — a −30 health hit and a UI that reports a failure about a backup
+            // that was checked byte for byte. Excluded here rather than refused
+            // downstream so the sample is spent on backups this can actually read.
+            ->where('engine', BackupEngine::V1)
             ->whereNotNull('file_path')
             ->whereNotNull('storage_destination_id')
             ->where('created_at', '>=', now()->subDays($maxAgeDays))

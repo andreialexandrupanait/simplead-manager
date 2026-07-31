@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Contracts\WordPressApiServiceInterface;
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Helpers\FormatHelper;
 use App\Models\Backup;
@@ -362,6 +363,19 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
     {
         /** @var Site $site */
         $site = $this->backup->site;
+
+        // A V2 backup is a tree of objects under a prefix, not an archive at
+        // file_path. Left to itself this would fall through to the legacy
+        // single-archive branch, try to download `tempDir/null`, and throw —
+        // presenting a sound backup as a broken restore. Refused explicitly, and
+        // named, so the operator is pointed at the engine that can restore it
+        // rather than at a stack trace.
+        if ($this->backup->engine === BackupEngine::V2) {
+            throw new \RuntimeException(
+                "Backup #{$this->backup->id} was produced by the backup engine and cannot be restored by the "
+                .'legacy restore path. Restore it from the backup engine, which replays the chain and can roll back.'
+            );
+        }
 
         if ($this->backup->format === 'v3-zip') {
             $this->materialiseV3ZipBackup($this->backup, $this->tempDir);

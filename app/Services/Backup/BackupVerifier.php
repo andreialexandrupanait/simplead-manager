@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Enums\BackupEngine;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageFactory;
@@ -28,6 +29,10 @@ class BackupVerifier
      */
     public function verify(Backup $backup): array
     {
+        if ($guard = $this->refuseV2($backup)) {
+            return $guard;
+        }
+
         $tempDir = storage_path('app/temp/verify-ondemand-'.uniqid());
         @mkdir($tempDir, 0700, true);
 
@@ -50,6 +55,36 @@ class BackupVerifier
         } finally {
             $this->cleanup($tempDir);
         }
+    }
+
+    /**
+     * Refuse to judge a backup this verifier cannot read.
+     *
+     * `file_path` on a V2 row is a prefix holding a tree of objects, not an
+     * archive. Downloading it fails, and this class records that failure as
+     * `verification_status = 'failed'` on the row — which BackupHealthService
+     * reads as "last verification check FAILED" and docks 30 points for. The
+     * weekly Level-B sweep runs unattended, so within days of the first V2
+     * backup every V2 site would be reporting a verification failure that says
+     * nothing about the backup and everything about the reader.
+     *
+     * V2 has its own verifier, which HEADs every object in the manifest and
+     * cross-checks the recorded checksums, and it is the one that writes
+     * verified_at for those rows. So this returns ok rather than a failure: the
+     * backup is verified, just not here.
+     *
+     * @return array{ok: bool, message: string}|null null when this verifier owns the row
+     */
+    private function refuseV2(Backup $backup): ?array
+    {
+        if ($backup->engine !== BackupEngine::V2) {
+            return null;
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Verified by the backup engine at creation — not re-checked by the legacy verifier.',
+        ];
     }
 
     /**

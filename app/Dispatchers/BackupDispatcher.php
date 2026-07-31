@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dispatchers;
 
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
@@ -194,9 +195,19 @@ class BackupDispatcher
     {
         $maxAutoRetries = 2;
 
-        // InProgress: worker should be updating updated_at regularly via
-        // reportProgress(). If no update in 20 min, worker is dead.
+        // V1 rows only, and this filter is load-bearing. Recovery "recovers" a
+        // backup by dispatching CreateBackup — so without it, any V2 session
+        // running longer than 20 minutes (which is most of them: it uploads
+        // chunk by chunk and does not touch this row between phases) would get
+        // the old engine dispatched on top of a live one, both writing to the
+        // same client site. V2 sessions are recovered by their own sweep, which
+        // reads heartbeat_at and knows how to resume from a checkpoint.
+        //
+        // Safe to add because every existing row is 'v1' by column default —
+        // pinned by EngineColumnTest, since a filter that quietly matched
+        // nothing would silently stop recovering V1 backups instead.
         $stuckInProgress = Backup::where('status', BackupStatus::InProgress)
+            ->where('engine', BackupEngine::V1)
             ->where('updated_at', '<', now()->subMinutes(20))
             ->with('site')
             ->get();
@@ -210,6 +221,7 @@ class BackupDispatcher
         $pendingThresholdMinutes = $basePendingMinutes + $staggerAllowanceMinutes;
 
         $stuckPending = Backup::where('status', BackupStatus::Pending)
+            ->where('engine', BackupEngine::V1)
             ->where('started_at', '<', now()->subMinutes($pendingThresholdMinutes))
             ->with('site')
             ->get();

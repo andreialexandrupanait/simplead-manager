@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
 use App\Models\BackupConfig;
@@ -306,9 +307,19 @@ class RetentionService
             try {
                 $driver = StorageFactory::make($destination);
 
+                // The new engine writes a tree of objects under an immutable
+                // prefix, so `file_path` names a prefix, not a file. Checked
+                // FIRST and on `engine`, never on `format`: a row that reached
+                // the single-file branch by mistake would call DeleteObject on a
+                // prefix, and S3 answers 204 for a key that does not exist — the
+                // delete would report success, the row would be dropped, and
+                // every object under that prefix orphaned forever, silently.
+                if ($backup->engine === BackupEngine::V2) {
+                    $this->deletePrefixRecursively($driver, $target['remote_path']);
+                }
                 // multipart-v3: target['remote_path'] is a prefix containing many files.
                 // Enumerate + delete each. v2-zip / v3-zip: single file path + sidecar.
-                if ($backup->format === BackupManifestV3::FORMAT) {
+                elseif ($backup->format === BackupManifestV3::FORMAT) {
                     $this->deleteMultipartPrefix($driver, $target['remote_path']);
                 } else {
                     $driver->delete($target['remote_path']);
@@ -412,6 +423,43 @@ class RetentionService
                 throw $listErr;
             }
         }
+
+        foreach ($entries as $remotePath) {
+            try {
+                $driver->delete($remotePath);
+            } catch (\Throwable $e) {
+                Log::warning("RetentionService: failed to delete {$remotePath}: {$e->getMessage()}");
+            }
+        }
+    }
+
+    /**
+     * Delete every object under a V2 backup prefix.
+     *
+     * Written fresh rather than reusing deleteMultipartPrefix() for two reasons.
+     * That method reads a BackupManifestV3 first, and a V2 manifest.json is a
+     * different document (`objects[].key`, not `files[].name`), so every V2
+     * delete would reach the fallback through an exception and log "manifest
+     * unreadable" on a manifest that is perfectly readable. And its fallback uses
+     * list(), which passes Delimiter => '/' — a V2 backup keeps its chunks in
+     * files/ and database/ subdirectories, so a non-recursive list would delete
+     * the four sidecars, report success, and leave every actual chunk behind.
+     *
+     * _COMPLETE goes first. It is the single marker that says a backup is whole,
+     * so a delete interrupted halfway leaves a prefix that verification correctly
+     * reports as incomplete rather than as a whole backup with missing chunks.
+     */
+    private function deletePrefixRecursively(StorageDriver $driver, string $prefix): void
+    {
+        $entries = [];
+        foreach ($driver->listRecursive($prefix) as $file) {
+            if (! empty($file['path'])) {
+                $entries[] = (string) $file['path'];
+            }
+        }
+
+        $completeMarker = rtrim($prefix, '/').'/_COMPLETE';
+        usort($entries, static fn (string $a, string $b): int => ($b === $completeMarker) <=> ($a === $completeMarker));
 
         foreach ($entries as $remotePath) {
             try {

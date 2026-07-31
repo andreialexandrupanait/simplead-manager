@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Traits;
 
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
@@ -268,6 +269,17 @@ trait WithBackupActions
 
         if (! $backup->storageDestination || ! $backup->file_path) {
             session()->flash('backup-error', 'Backup file not available for download.');
+
+            return null;
+        }
+
+        // On a V2 row file_path is a prefix, so a presigned URL for it points at
+        // nothing — a download button that hands the user a dead link. The
+        // portable package (a single zip of files/ + database.sql.gz, rebuilt
+        // from the chain) is what makes these downloadable; until it lands, say
+        // so rather than producing the link.
+        if ($backup->engine === BackupEngine::V2) {
+            session()->flash('backup-error', 'This backup is stored as chunks. Download is not available for it yet.');
 
             return null;
         }
