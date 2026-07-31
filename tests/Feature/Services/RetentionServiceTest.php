@@ -242,6 +242,81 @@ class RetentionServiceTest extends TestCase
         $this->assertDatabaseHas('backups', ['id' => $fresh->id]);
     }
 
+    /**
+     * The simplead.ro situation, reproduced.
+     *
+     * Its backups stopped on 2026-06-10 while the policy stayed at 30 days, so
+     * every chain it owns sits below the cutoff and every one is deletable.
+     * Retention runs at the end of a successful backup, so the first green run
+     * after someone repairs that site would have erased all 49 restore points.
+     */
+    public function test_days_mode_never_removes_the_last_restore_point(): void
+    {
+        $this->createBackupConfig('days', 30);
+
+        $oldest = $this->createBackup(['created_at' => now()->subDays(90)]);
+        $middle = $this->createBackup(['created_at' => now()->subDays(60)]);
+        $newest = $this->createBackup(['created_at' => now()->subDays(51)]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $newest->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $oldest->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $middle->id]);
+    }
+
+    public function test_count_mode_never_removes_the_last_restore_point(): void
+    {
+        // retention_value = 0 is the degenerate case: it condemns everything.
+        $this->createBackupConfig('count', 0);
+
+        $older = $this->createBackup(['created_at' => now()->subDays(5)]);
+        $newest = $this->createBackup(['created_at' => now()->subDay()]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $newest->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $older->id]);
+    }
+
+    /**
+     * The kept chain is kept WHOLE — a full stripped of its incrementals is not
+     * a restore point, it is a broken chain.
+     */
+    public function test_the_kept_chain_keeps_its_incrementals(): void
+    {
+        $this->createBackupConfig('days', 30);
+
+        $full = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(60)]);
+        $incremental = $this->createBackup([
+            'type' => 'incremental',
+            'parent_backup_id' => $full->id,
+            'created_at' => now()->subDays(55),
+        ]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $full->id]);
+        $this->assertDatabaseHas('backups', ['id' => $incremental->id]);
+    }
+
+    /**
+     * The guard must not become a licence to hoard: when even one chain
+     * survives on its own merits, everything else expires normally.
+     */
+    public function test_the_guard_does_not_fire_when_a_chain_survives_normally(): void
+    {
+        $this->createBackupConfig('days', 30);
+
+        $expired = $this->createBackup(['created_at' => now()->subDays(60)]);
+        $fresh = $this->createBackup(['created_at' => now()->subDay()]);
+
+        $this->service->apply($this->site, $this->destination);
+
+        $this->assertDatabaseHas('backups', ['id' => $fresh->id]);
+        $this->assertDatabaseMissing('backups', ['id' => $expired->id]);
+    }
+
     public function test_dry_run_deletes_nothing(): void
     {
         // Safe-rollout guard: with the log-only flag on, an over-count chain that

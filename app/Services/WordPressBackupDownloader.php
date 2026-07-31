@@ -24,6 +24,40 @@ class WordPressBackupDownloader
     ) {}
 
     /**
+     * The reason a connector call failed, as a human can read it.
+     *
+     * WordPress reports a PHP fatal inside a REST response at
+     * `data.error.message` — `error.message` holds only the WP_Error summary,
+     * and on a fatal there is no WP_Error at all. Reading the shallow key alone
+     * meant every 500 was recorded as "HTTP 500" with the actual cause left in a
+     * log line nobody reads: florinpasat.com spent eight nights failing on
+     * "Allowed memory size exhausted" while the database said only that the
+     * chunk failed.
+     *
+     * @param  array<string, mixed>|null  $json
+     */
+    private function explainFailure(?array $json, int $status): string
+    {
+        $fatal = $json['data']['error'] ?? null;
+
+        if (is_array($fatal) && filled($fatal['message'] ?? null)) {
+            $where = isset($fatal['file'], $fatal['line'])
+                ? ' ('.basename((string) $fatal['file']).':'.$fatal['line'].')'
+                : '';
+
+            return (string) $fatal['message'].$where;
+        }
+
+        foreach ([$json['error']['message'] ?? null, $json['message'] ?? null] as $candidate) {
+            if (filled($candidate) && is_string($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return "HTTP {$status}";
+    }
+
+    /**
      * Download a backup in chunks. Tries the chunked prepare-init path first,
      * falls back to legacy sync prepare for older plugin versions.
      */
@@ -64,7 +98,7 @@ class WordPressBackupDownloader
         $prepare = $prepareResponse->json();
 
         if (empty($prepare['success']) || empty($prepare['token'])) {
-            throw new \RuntimeException('Backup prepare failed: '.($prepare['error']['message'] ?? 'Unknown'));
+            throw new \RuntimeException('Backup prepare failed: '.$this->explainFailure($prepare, $prepareResponse->status()));
         }
 
         $token = $prepare['token'];
@@ -147,7 +181,7 @@ class WordPressBackupDownloader
                         ], [], 300);
 
                         if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
-                            $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
+                            $error = $this->explainFailure($execResponse->json(), $execResponse->status());
                             $body = substr((string) $execResponse->body(), 0, 1000);
                             Log::warning("Chunk {$i} exec failed response", ['status' => $execResponse->status(), 'body' => $body]);
                             throw new \RuntimeException("Chunk {$i} exec failed: {$error}");
@@ -238,7 +272,7 @@ class WordPressBackupDownloader
                             $pendingExec = null;
 
                             if (empty($execData['success'])) {
-                                $error = $execData['error']['message'] ?? 'Unknown error';
+                                $error = $this->explainFailure($execData, 0);
                                 throw new \RuntimeException("Files chunk {$i} exec failed: {$error}");
                             }
 
@@ -261,7 +295,7 @@ class WordPressBackupDownloader
                         ], [], 300);
 
                         if (! $execResponse->successful() || empty($execResponse->json()['success'])) {
-                            $error = $execResponse->json()['error']['message'] ?? "HTTP {$execResponse->status()}";
+                            $error = $this->explainFailure($execResponse->json(), $execResponse->status());
                             throw new \RuntimeException("Files chunk {$i} exec failed: {$error}");
                         }
 

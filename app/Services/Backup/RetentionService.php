@@ -6,6 +6,7 @@ namespace App\Services\Backup;
 
 use App\Enums\BackupStatus;
 use App\Models\Backup;
+use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageDriver;
@@ -49,27 +50,34 @@ class RetentionService
             ->orderByDesc('created_at')
             ->get();
 
-        $chains = $this->buildChains($allBackups);
-
         $cutoff = $config->retention_type === 'days'
             ? now()->subDays((int) $config->retention_value)
             : null;
 
-        // Sort chains by their NEWEST member (most-recent restore point first).
-        usort($chains, fn (Collection $a, Collection $b) => $this->chainNewest($b) <=> $this->chainNewest($a));
+        $chains = $this->planChains($allBackups);
+        $chainsToDelete = $this->planExpiredChains($chains, $config);
 
-        $chainsToDelete = [];
-        if ($config->retention_type === 'count') {
-            // Keep the N chains with the newest restore points; delete the rest.
-            $chainsToDelete = array_slice($chains, (int) $config->retention_value);
-        } else {
-            // Days: a chain is deletable ONLY when its newest member is older
-            // than the cutoff. An old full carrying a fresh incremental survives.
-            foreach ($chains as $chain) {
-                if ($this->chainNewest($chain) < $cutoff) {
-                    $chainsToDelete[] = $chain;
-                }
-            }
+        // Never leave a site with no restore point at all.
+        //
+        // Both policies can condemn every chain a site has. In days-mode it takes
+        // only a site whose backups stopped: simplead.ro last succeeded on
+        // 2026-06-10 with a 30-day policy, so all 49 of its chains sit below the
+        // cutoff and every one of them is deletable. Retention is invoked at the
+        // end of a successful backup, so the moment someone repairs that site the
+        // first green run would wipe its entire history — the one thing retention
+        // must never do.
+        //
+        // planChains() returns newest-first and planExpiredChains() preserves that
+        // order, so shifting drops the most recent chain from the condemned list —
+        // the one worth keeping.
+        if ($chains !== [] && count($chainsToDelete) === count($chains)) {
+            $kept = array_shift($chainsToDelete);
+            Log::warning('RetentionService: policy would have removed every restore point — keeping the newest chain', [
+                'site_id' => $site->id,
+                'retention' => $config->retention_type.'='.$config->retention_value,
+                'chains_total' => count($chains),
+                'kept_backup_ids' => $kept->pluck('id')->all(),
+            ]);
         }
 
         foreach ($chainsToDelete as $chain) {
@@ -148,8 +156,52 @@ class RetentionService
 
     /**
      * Group backups into chains: each full (or orphaned incremental) plus the
-     * incrementals that descend from it.
+     * incrementals that descend from it, newest chain first.
      *
+     * Public so `backup:retention-report` can predict deletions using the very
+     * code that performs them. A report with its own copy of this logic would
+     * eventually describe a retention policy that no longer exists.
+     *
+     * @param  Collection<int, Backup>  $allBackups
+     * @return list<Collection<int, Backup>>
+     */
+    public function planChains(Collection $allBackups): array
+    {
+        $chains = $this->buildChains($allBackups);
+
+        // Sort chains by their NEWEST member (most-recent restore point first).
+        usort($chains, fn (Collection $a, Collection $b) => $this->chainNewest($b) <=> $this->chainNewest($a));
+
+        return $chains;
+    }
+
+    /**
+     * Which of those chains the configured policy condemns, in the same
+     * newest-first order. Does NOT apply the last-restore-point guard — that is
+     * {@see apply()}'s call, and the report shows it separately so you can see
+     * when it would have fired.
+     *
+     * @param  list<Collection<int, Backup>>  $chains
+     * @return list<Collection<int, Backup>>
+     */
+    public function planExpiredChains(array $chains, BackupConfig $config): array
+    {
+        if ($config->retention_type === 'count') {
+            // Keep the N chains with the newest restore points; delete the rest.
+            return array_slice($chains, (int) $config->retention_value);
+        }
+
+        // Days: a chain is deletable ONLY when its newest member is older than
+        // the cutoff. An old full carrying a fresh incremental survives.
+        $cutoff = now()->subDays((int) $config->retention_value);
+
+        return array_values(array_filter(
+            $chains,
+            fn (Collection $chain) => $this->chainNewest($chain) < $cutoff,
+        ));
+    }
+
+    /**
      * @param  Collection<int, Backup>  $allBackups
      * @return list<Collection<int, Backup>>
      */
