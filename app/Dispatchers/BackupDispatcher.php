@@ -12,6 +12,7 @@ use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Services\ActivityLogger;
 use App\Services\Backup\DiskSpaceGuard;
+use App\Services\Backup\SiteOperationLock;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Facades\Log;
 
@@ -260,6 +261,7 @@ class BackupDispatcher
 
         CreateBackup::releaseUniqueLock($backup->site_id);
         CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
+        $this->releaseSiteLockHeldByBackupJob($backup);
 
         $site = $backup->site;
         if (! $site) {
@@ -311,6 +313,7 @@ class BackupDispatcher
 
         CreateBackup::releaseUniqueLock($backup->site_id);
         CreateIncrementalBackup::releaseUniqueLock($backup->site_id);
+        $this->releaseSiteLockHeldByBackupJob($backup);
 
         $site = $backup->site;
         if ($site) {
@@ -322,5 +325,47 @@ class BackupDispatcher
             NotifyBackupFailed::dispatch($site, $backup, $errorMessage);
             ActivityLogger::backupFailed($site, $errorMessage);
         }
+    }
+
+    /**
+     * Hand back the site lock a dead backup job was holding.
+     *
+     * Stuck recovery released the jobs' unique locks and nothing else, so a
+     * worker killed mid-backup left SiteOperationLock held for its full two-hour
+     * TTL. During that window the site took no backup, no restore and no safe
+     * update from anything — recovery would dutifully re-dispatch, the fresh job
+     * would fail to acquire, and the site sat idle until the lock aged out. The
+     * one mechanism meant to unstick a site was the one thing that could not.
+     *
+     * Released by owner match, never blind force: the holder may be a restore or
+     * a safe update that is running perfectly well, and taking its lock away
+     * would let a backup start on top of it. Same prefix convention the jobs
+     * themselves use in BackupJobTrait::failed().
+     */
+    protected function releaseSiteLockHeldByBackupJob(Backup $backup): void
+    {
+        $holder = SiteOperationLock::current($backup->site_id);
+        if ($holder === null) {
+            return;
+        }
+
+        $ref = $holder['ref'];
+        $ours = str_starts_with($ref, CreateBackup::class.':')
+            || str_starts_with($ref, CreateIncrementalBackup::class.':');
+
+        if (! $ours) {
+            Log::info("Stuck backup #{$backup->id}: site lock held by {$ref} — left alone", [
+                'site_id' => $backup->site_id,
+                'operation' => $holder['operation'],
+            ]);
+
+            return;
+        }
+
+        SiteOperationLock::forceRelease($backup->site_id);
+        Log::warning("Released the site lock held by a dead backup job ({$ref})", [
+            'site_id' => $backup->site_id,
+            'backup_id' => $backup->id,
+        ]);
     }
 }
