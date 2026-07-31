@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Helpers\FormatHelper;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $storage_destination_id
  * @property string $type
  * @property string $trigger
+ * @property \App\Enums\BackupEngine $engine
  * @property \App\Enums\BackupStatus $status
  * @property string|null $stage
  * @property int $progress_percent
@@ -117,11 +119,13 @@ class Backup extends Model
         'files_changed_count',
         'files_deleted_count',
         'files_total_count',
+        'engine',
     ];
 
     protected $casts = [
         'status' => BackupStatus::class,
         'restore_status' => BackupStatus::class,
+        'engine' => BackupEngine::class,
         'progress_percent' => 'integer',
         'includes_files' => 'boolean',
         'includes_database' => 'boolean',

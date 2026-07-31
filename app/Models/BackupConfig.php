@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $full_backup_day_of_week
  * @property \Illuminate\Support\Carbon|null $last_full_backup_at
  * @property \Illuminate\Support\Carbon|null $stale_alert_sent_at
+ * @property \App\Enums\BackupEngine $backup_engine
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -62,9 +63,11 @@ class BackupConfig extends Model
         'full_backup_day_of_week',
         'last_full_backup_at',
         'stale_alert_sent_at',
+        'backup_engine',
     ];
 
     protected $casts = [
+        'backup_engine' => \App\Enums\BackupEngine::class,
         'is_enabled' => 'boolean',
         'use_streaming' => 'boolean',
         'backup_before_updates' => 'boolean',
