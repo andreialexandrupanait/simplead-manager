@@ -45,7 +45,7 @@ class SessionActions
     /**
      * Start (queue) a new backup. $type ∈ full|incremental|database|files.
      *
-     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,trigger?:string,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int}  $opts
+     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,trigger?:string,delay_seconds?:int,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int}  $opts
      */
     public function startBackup(Site $site, string $type, array $opts = []): BackupSession
     {
@@ -90,7 +90,15 @@ class SessionActions
             ]);
         });
 
-        RunBackupSessionJob::dispatch($session->id);
+        $pending = RunBackupSessionJob::dispatch($session->id);
+
+        // The scheduler spreads a night's backups so twenty sites are not pulled
+        // at once. The row already exists and reads `pending`, so the delay is
+        // visible as "queued" rather than as nothing happening.
+        $delay = (int) ($opts['delay_seconds'] ?? 0);
+        if ($delay > 0) {
+            $pending->delay(now()->addSeconds($delay));
+        }
 
         return $session;
     }
@@ -218,13 +226,23 @@ class SessionActions
     }
 
     /**
+     * Every restore point holds files AND the database.
+     *
+     * `incremental` matched neither list, so the scope came out
+     * {database: false, files: false} and an incremental produced a backup
+     * containing nothing at all — which then failed verification for listing no
+     * objects. The type describes how the FILES are captured (a full sweep, or
+     * only what changed since the chain base); the database is dumped whole and
+     * transactionally every time, because a point you can restore to is a point
+     * where the files and the data agree.
+     *
      * @return array<string, bool>
      */
     private function defaultScope(string $type): array
     {
         return [
-            'database' => in_array($type, ['full', 'database'], true),
-            'files' => in_array($type, ['full', 'files'], true),
+            'database' => in_array($type, ['full', 'incremental', 'database'], true),
+            'files' => in_array($type, ['full', 'incremental', 'files'], true),
         ];
     }
 }

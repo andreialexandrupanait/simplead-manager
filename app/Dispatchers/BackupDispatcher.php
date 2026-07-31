@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Dispatchers;
 
+use App\Backup\V2\Chain\ChainPlanner;
+use App\Backup\V2\Orchestration\SessionActions;
+use App\Backup\V2\Support\BackupV2Gate;
 use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
@@ -89,6 +92,18 @@ class BackupDispatcher
             Log::info("BackupDispatcher: staggering site #{$site->id} ({$site->domain}) by {$delaySeconds}s");
         }
 
+        // The schedule stays here — frequency, hour, which day is the full — and
+        // only the engine that carries it out changes. Branching per config in
+        // the loop rather than filtering the selection query keeps that query
+        // identical for the sites still on the old engine, which is what makes
+        // "nothing changed for them" something you can read rather than trust.
+        if (BackupV2Gate::engineFor($site, $config) === BackupEngine::V2) {
+            $this->dispatchV2Backup($site, $delaySeconds);
+            $this->scheduleNextRun($config);
+
+            return;
+        }
+
         if ($backupType === 'incremental') {
             $pending = CreateIncrementalBackup::dispatch(
                 $site,
@@ -110,7 +125,41 @@ class BackupDispatcher
             }
         }
 
-        // Calculate next backup time in the config's timezone, then convert to UTC
+        $this->scheduleNextRun($config);
+    }
+
+    /**
+     * Hand a scheduled run to the new engine.
+     *
+     * The type is decided by ChainPlanner rather than determineBackupType()
+     * because the chain is a property of the sessions, not of the config: it has
+     * to know which completed full to build on and what position this link takes.
+     * The user-facing schedule is the same two fields either way.
+     */
+    protected function dispatchV2Backup(\App\Models\Site $site, int $delaySeconds): void
+    {
+        $plan = (new ChainPlanner)->planFor($site);
+
+        try {
+            app(SessionActions::class)->startBackup($site, $plan['type'], [
+                'trigger' => 'scheduled',
+                'full_base_id' => $plan['full_base_id'],
+                'chain_position' => $plan['chain_position'],
+                'delay_seconds' => $delaySeconds,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("BackupDispatcher: could not start a backup for site #{$site->id}: {$e->getMessage()}", [
+                'site_id' => $site->id,
+                'exception' => $e::class,
+            ]);
+        }
+    }
+
+    /**
+     * Calculate the next run in the config's timezone, then store it in UTC.
+     */
+    protected function scheduleNextRun(BackupConfig $config): void
+    {
         $tz = $config->timezone ?: 'UTC';
         $next = match ($config->frequency) {
             'daily' => now($tz)->addDay(),

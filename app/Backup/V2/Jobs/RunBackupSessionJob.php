@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Jobs;
 
+use App\Backup\V2\Chain\ChainResolver;
+use App\Backup\V2\Chain\S3ManifestReader;
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Models\BackupSession;
@@ -162,6 +164,30 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
                 bucket: $s3->bucket(),
                 layout: $layout,
                 logger: $logger,
+                // Without this an incremental was an incremental in name only.
+                // The runner asks the provider for the chain's current file state
+                // and hands it to the plugin, which returns a plan covering only
+                // what changed plus tombstones for what was deleted. Unwired, the
+                // provider was null, resolveBaseManifest() returned null, and the
+                // plugin swept every file on the host exactly as for a full.
+                baseManifestProvider: static function (BackupSession $s) use ($s3): ?array {
+                    if ($s->type !== 'incremental') {
+                        return null;
+                    }
+
+                    return (new ChainResolver)->baseFileState(
+                        $s,
+                        // Each chain member's prefix comes from the member's own
+                        // frozen object_prefix, never recomputed — a base written
+                        // under an older layout is still found where it actually
+                        // is.
+                        new S3ManifestReader(
+                            $s3->client(),
+                            $s3->bucket(),
+                            static fn (BackupSession $member) => SessionLayoutResolver::for($member),
+                        ),
+                    );
+                },
             ))->run();
         } finally {
             SiteOperationLock::release((int) $session->site_id, $token);

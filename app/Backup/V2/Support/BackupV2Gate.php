@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Support;
 
+use App\Enums\BackupEngine;
+use App\Models\BackupConfig;
+use App\Models\Site;
+
 /**
  * Single source of truth for whether the V2 backup ENGINE (not the UI — that is
  * BackupV2Access) may run against a specific site.
@@ -49,5 +53,32 @@ final class BackupV2Gate
     public static function allowsSite(int $siteId): bool
     {
         return self::enabled() && self::siteAllowed($siteId);
+    }
+
+    /**
+     * Which engine actually runs this site's next backup.
+     *
+     * Two switches, and the order between them is the whole design: the column
+     * on backup_configs declares the intent, this gate grants the permission,
+     * and permission is checked last. So flipping the column for a site that is
+     * not on the env allowlist does nothing, and removing a site from the
+     * allowlist returns it to the old engine at the next minute regardless of
+     * what the column says. That is the rollback a pilot needs — one line, no
+     * database write, no deploy.
+     *
+     * Not two sources of truth: the column can only ever narrow what the gate
+     * already permits.
+     */
+    public static function engineFor(Site $site, ?BackupConfig $config = null): BackupEngine
+    {
+        if (! self::allowsSite((int) $site->id)) {
+            return BackupEngine::V1;
+        }
+
+        $config ??= $site->backupConfig;
+
+        return $config?->backup_engine === BackupEngine::V2
+            ? BackupEngine::V2
+            : BackupEngine::V1;
     }
 }
