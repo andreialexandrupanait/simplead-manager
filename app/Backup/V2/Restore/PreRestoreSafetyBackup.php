@@ -9,7 +9,7 @@ use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Orchestration\BackupRunner;
 use App\Backup\V2\Plugin\PluginClient;
-use App\Backup\V2\Storage\ObjectLayout;
+use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Site;
 use Aws\S3\S3Client;
@@ -53,11 +53,7 @@ final class PreRestoreSafetyBackup
             'format_version' => (string) config('backup_v2.format_version', 'simplead-backup/1'),
         ]);
 
-        $layout = ObjectLayout::forBackup(
-            clientId: $this->site->getAttribute('client_id') ?? 0,
-            siteId: $session->site_id,
-            backupId: $session->backup_id ?? $session->id,
-        );
+        $layout = SessionLayoutResolver::for($session, $this->site);
 
         (new BackupRunner(
             session: $session,

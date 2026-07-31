@@ -6,8 +6,8 @@ namespace App\Backup\V2\Jobs;
 
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\BackupVerification;
-use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Support\BackupLogger;
 use App\Backup\V2\Verification\BackupVerifier;
 use App\Models\Site;
@@ -76,11 +76,7 @@ class VerifyBackupSessionJob implements ShouldBeUnique, ShouldQueue
 
         $s3 = S3ClientFactory::forDestination($destination);
 
-        $layout = ObjectLayout::forBackup(
-            clientId: $site->getAttribute('client_id') ?? 0,
-            siteId: $session->site_id,
-            backupId: $session->backup_id ?? $session->id,
-        );
+        $layout = SessionLayoutResolver::for($session, $site);
 
         $verification = (new BackupVerifier($logger))->verifyOnComplete(
             $session,

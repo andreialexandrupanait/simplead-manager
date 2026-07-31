@@ -15,6 +15,7 @@ use App\Backup\V2\Restore\RestorePlan;
 use App\Backup\V2\Restore\RestoreRunner;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Support\BackupLogger;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Models\Site;
@@ -93,11 +94,7 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
         $s3 = S3ClientFactory::forDestination($destination);
         $client = SimpleadBackupClient::forSite($site, $logger);
 
-        $layoutFor = static fn (BackupSession $b): ObjectLayout => ObjectLayout::forBackup(
-            clientId: $b->site?->getAttribute('client_id') ?? 0,
-            siteId: $b->site_id,
-            backupId: $b->backup_id ?? $b->id,
-        );
+        $layoutFor = static fn (BackupSession $b): ObjectLayout => SessionLayoutResolver::for($b);
 
         $reader = new S3ManifestReader($s3->client(), $s3->bucket(), $layoutFor);
 

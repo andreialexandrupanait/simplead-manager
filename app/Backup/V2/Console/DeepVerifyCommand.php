@@ -8,6 +8,7 @@ use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Backup\V2\Verification\DeepVerifyService;
 use App\Models\Site;
@@ -133,30 +134,34 @@ class DeepVerifyCommand extends Command
     }
 
     /**
-     * The same prefix the runner wrote to.
+     * Where the backup's objects actually are.
      *
-     * `--client` and `--prefix-template` remain as explicit lab overrides; with
-     * neither, both the client id and the backup id come from the session, as in
-     * RunBackupSessionJob. Deriving them any other way is how this command
-     * managed to look in the wrong place twice over: `--client` defaulted to 1
-     * regardless of the site's owner, and the backup id was `$session->id` where
-     * the runner uses `backup_id ?? id`.
+     * This used to derive the prefix itself, and got it wrong twice over:
+     * `--client` defaulted to 1 regardless of the site's owner, and the backup
+     * id was `$session->id` where the runner uses `backup_id ?? id`. It asks
+     * SessionLayoutResolver now, like everything else — a verifier with its own
+     * idea of where to look does not verify a backup, it verifies its own
+     * arithmetic.
+     *
+     * `--client` and `--prefix-template` survive only as lab overrides for
+     * objects written by a harness rather than by the runner.
      */
     private function layoutFor(BackupSession $session): ObjectLayout
     {
         $template = $this->option('prefix-template');
         $clientOption = $this->option('client');
 
-        $clientId = $clientOption !== null && $clientOption !== ''
-            ? (int) $clientOption
-            : (int) ($session->site?->getAttribute('client_id') ?? 0);
+        if ((is_string($template) && $template !== '') || ($clientOption !== null && $clientOption !== '')) {
+            $clientId = (int) ($clientOption !== null && $clientOption !== ''
+                ? $clientOption
+                : ($session->site?->getAttribute('client_id') ?? 0));
+            $backupId = (int) ($session->backup_id ?? $session->id);
 
-        $backupId = (int) ($session->backup_id ?? $session->id);
-
-        if (is_string($template) && $template !== '') {
-            return new ObjectLayout($clientId, (int) $session->site_id, $backupId, $template);
+            return is_string($template) && $template !== ''
+                ? new ObjectLayout($clientId, (int) $session->site_id, $backupId, $template)
+                : ObjectLayout::forBackup($clientId, (int) $session->site_id, $backupId);
         }
 
-        return ObjectLayout::forBackup($clientId, (int) $session->site_id, $backupId);
+        return SessionLayoutResolver::for($session);
     }
 }

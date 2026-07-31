@@ -37,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $retry_count
  * @property \Illuminate\Support\Carbon|null $next_retry_at
  * @property string $idempotency_key
+ * @property string|null $object_prefix
  * @property string|null $error_code
  * @property string|null $error_message
  * @property string $format_version
@@ -72,6 +73,7 @@ class BackupSession extends Model
         'retry_count',
         'next_retry_at',
         'idempotency_key',
+        'object_prefix',
         'error_code',
         'error_message',
         'format_version',

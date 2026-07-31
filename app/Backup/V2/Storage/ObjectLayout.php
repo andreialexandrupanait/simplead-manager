@@ -60,6 +60,23 @@ final class ObjectLayout
     }
 
     /**
+     * Adopt a prefix that was already written to, verbatim.
+     *
+     * A backup's objects live wherever they were first put. Recomputing the
+     * prefix later — from ids that can change, or from a template that can be
+     * edited — does not move them; it only stops anything finding them. This is
+     * the only way to address an existing backup, and {@see SessionLayoutResolver}
+     * is the only thing that should call it.
+     */
+    public static function fromPrefix(string $prefix): self
+    {
+        // Passed as the template rather than assigned: the prefix carries no
+        // placeholders, so strtr leaves it untouched and the property stays
+        // readonly — a stored prefix must not be mutable after the fact.
+        return new self('', '', '', $prefix);
+    }
+
+    /**
      * The expanded backup root prefix (no trailing slash).
      */
     public function prefix(): string
