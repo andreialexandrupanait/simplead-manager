@@ -121,6 +121,8 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\SiteUser|null $wpAdminUser
  * @property string|null $smoke_canary_selector
  * @property string|null $form_test_email
+ * @property bool $form_test_enabled
+ * @property string|null $form_test_form_id
  * @property \Illuminate\Support\Carbon|null $key_urls_locked_at
  * @property \Illuminate\Support\Carbon|null $key_urls_derived_at
  * @property int|null $smoke_dom_reference
@@ -187,6 +189,8 @@ class Site extends Model
         'ai_context',
         'smoke_canary_selector',
         'form_test_email',
+        'form_test_enabled',
+        'form_test_form_id',
         'key_urls_locked_at',
         'key_urls_derived_at',
         'smoke_dom_reference',
@@ -207,6 +211,7 @@ class Site extends Model
         'domain_expires_at' => 'datetime',
         'standard_preset_applied_at' => 'datetime',
         'key_urls' => 'array',
+        'form_test_enabled' => 'boolean',
         'key_urls_locked_at' => 'datetime',
         'key_urls_derived_at' => 'datetime',
         'domain_checked_at' => 'datetime',

@@ -138,5 +138,9 @@ return [
         'webhook_secret' => env('FORM_TEST_WEBHOOK_SECRET'),
         // Connector release that redirects instead of aborting the notification.
         'min_connector_version' => '2.21.0',
+        // Connector release that can list a site's forms and submit to a chosen
+        // one. Below this the Manager offers no choice and the test falls back to
+        // whichever form comes first.
+        'min_form_choice_version' => '2.22.0',
     ],
 ];

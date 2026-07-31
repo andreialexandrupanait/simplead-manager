@@ -92,6 +92,13 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     'required'          => false,
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                // Which form to submit to. Omitted → the first one found, the
+                // pre-2.22.0 behaviour. Listed by GET /form-test/capability.
+                'form_id' => [
+                    'type'              => 'string',
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
             ],
         ]);
     }
@@ -132,7 +139,95 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'plugin_key'  => $plugin['key'] ?? null,
             'supported'   => $plugin['supported'] ?? false,
             'active'      => $plugin !== null,
+            // The site's forms, so the operator can pick which one is the contact
+            // form. Without this the test submits to whichever comes first, and on
+            // a site with a newsletter alongside a contact form that is a coin toss.
+            // Still a pure probe: listing forms submits nothing.
+            'forms'       => !empty($plugin['supported']) ? $this->list_forms($plugin['key']) : [],
         ]);
+    }
+
+    /**
+     * Enumerate the site's forms through each plugin's own API.
+     *
+     * Read-only and best-effort: a plugin that cannot list (or throws) yields an
+     * empty list, which simply means the Manager offers no choice and the test
+     * falls back to the first form.
+     *
+     * @return array<int, array{id: string, title: string}>
+     */
+    private function list_forms(?string $key): array {
+        $out = [];
+
+        try {
+            switch ($key) {
+                case 'gravityforms':
+                    if (!class_exists('GFAPI')) {
+                        break;
+                    }
+                    foreach (GFAPI::get_forms() as $form) {
+                        $out[] = [
+                            'id'    => (string) ($form['id'] ?? ''),
+                            'title' => (string) ($form['title'] ?? ''),
+                        ];
+                    }
+                    break;
+
+                case 'wpforms':
+                    if (!function_exists('wpforms') || !wpforms()->get('form')) {
+                        break;
+                    }
+                    $forms = wpforms()->get('form')->get('', ['numberposts' => 100]);
+                    foreach ((array) $forms as $form) {
+                        if (!is_object($form)) {
+                            continue;
+                        }
+                        $out[] = [
+                            'id'    => (string) ($form->ID ?? ''),
+                            'title' => (string) ($form->post_title ?? ''),
+                        ];
+                    }
+                    break;
+
+                case 'ninja_forms':
+                    if (!function_exists('Ninja_Forms')) {
+                        break;
+                    }
+                    foreach (Ninja_Forms()->form()->get_forms() as $form) {
+                        if (!method_exists($form, 'get_id')) {
+                            continue;
+                        }
+                        $out[] = [
+                            'id'    => (string) $form->get_id(),
+                            'title' => (string) (method_exists($form, 'get_setting') ? $form->get_setting('title') : ''),
+                        ];
+                    }
+                    break;
+
+                case 'mc4wp':
+                    if (!function_exists('mc4wp_get_forms')) {
+                        break;
+                    }
+                    foreach (mc4wp_get_forms() as $form) {
+                        $out[] = [
+                            'id'    => (string) ($form->ID ?? ''),
+                            'title' => (string) ($form->name ?? ''),
+                        ];
+                    }
+                    break;
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        // A form with no title is unpickable in a dropdown; name it by its id.
+        foreach ($out as $i => $form) {
+            if ($form['title'] === '') {
+                $out[$i]['title'] = 'Form #' . $form['id'];
+            }
+        }
+
+        return array_values(array_filter($out, static fn ($f) => $f['id'] !== ''));
     }
 
     /**
@@ -156,6 +251,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         $marked_email = $this->marked_email();
         $deliver_to   = (string) $request->get_param('deliver_to');
         $test_name    = (string) $request->get_param('test_name');
+        $form_id      = (string) $request->get_param('form_id');
 
         if ($test_name === '') {
             $test_name = self::DEFAULT_TEST_NAME;
@@ -168,6 +264,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'marked_email'          => $marked_email,
             'delivered_to'          => $deliver_to !== '' ? $deliver_to : null,
             'test_name'             => $test_name,
+            'requested_form_id'     => $form_id !== '' ? $form_id : null,
             'suppression_confirmed' => false,
             'entry_deleted'         => false,
         ];
@@ -181,7 +278,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             $result['suppression_confirmed'] = true;
 
             // (4) Inject a marked submit + (5) delete the created entry.
-            $submit = $this->inject_marked_submit($plugin['key'], $marked_email, $test_name);
+            $submit = $this->inject_marked_submit($plugin['key'], $marked_email, $test_name, $form_id);
             $result = array_merge($result, $submit);
         } catch (\Throwable $e) {
             $result['error'] = $e->getMessage();
@@ -348,7 +445,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      *
      * @return array<string,mixed>
      */
-    private function inject_marked_submit(string $key, string $marked_email, string $test_name = self::DEFAULT_TEST_NAME): array {
+    private function inject_marked_submit(string $key, string $marked_email, string $test_name = self::DEFAULT_TEST_NAME, string $form_id = ''): array {
         switch ($key) {
             case 'gravityforms':
                 if (!class_exists('GFAPI')) {
@@ -358,9 +455,21 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 if (empty($forms)) {
                     return ['submitted' => false, 'message' => 'No Gravity Forms form found.'];
                 }
-                $form_id = $forms[0]['id'];
+                // An id the Manager asked for wins; an unknown id falls back to the
+                // first form rather than failing, so a form deleted on the site does
+                // not silently stop the weekly test.
+                $target = $forms[0];
+                if ($form_id !== '') {
+                    foreach ($forms as $candidate) {
+                        if ((string) ($candidate['id'] ?? '') === $form_id) {
+                            $target = $candidate;
+                            break;
+                        }
+                    }
+                }
+                $form_id = (string) $target['id'];
                 $entry = ['form_id' => $form_id, 'source_url' => home_url()];
-                foreach ($forms[0]['fields'] as $field) {
+                foreach ($target['fields'] as $field) {
                     $type = $field->type ?? '';
                     if ($type === 'email') {
                         $entry[(string) $field->id] = $marked_email;
@@ -375,7 +484,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     return ['submitted' => false, 'message' => $entry_id->get_error_message()];
                 }
                 // Fire feed/notification pipeline (suppressed by our filters).
-                do_action('gform_after_submission', GFAPI::get_entry($entry_id), $forms[0]);
+                do_action('gform_after_submission', GFAPI::get_entry($entry_id), $target);
                 $deleted = GFAPI::delete_entry($entry_id);
                 return [
                     'submitted'     => true,
@@ -392,7 +501,13 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     // Lite has no entry storage; suppression still validated.
                     return ['submitted' => false, 'message' => 'WPForms entry storage unavailable (Lite?).'];
                 }
-                $forms = wpforms()->get('form') ? wpforms()->get('form')->get('', ['numberposts' => 1]) : [];
+                $form_handler = wpforms()->get('form');
+                $forms = $form_handler ? $form_handler->get($form_id !== '' ? (int) $form_id : '', ['numberposts' => 1]) : [];
+                if (empty($forms)) {
+                    // The requested form is gone; fall back to any form rather than
+                    // letting a stale id stop the weekly test.
+                    $forms = $form_handler ? $form_handler->get('', ['numberposts' => 1]) : [];
+                }
                 if (empty($forms)) {
                     return ['submitted' => false, 'message' => 'No WPForms form found.'];
                 }
@@ -417,7 +532,16 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 if (empty($forms)) {
                     return ['submitted' => false, 'message' => 'No Ninja Forms form found.'];
                 }
-                $form_id = method_exists($forms[0], 'get_id') ? $forms[0]->get_id() : 0;
+                $target = $forms[0];
+                if ($form_id !== '') {
+                    foreach ($forms as $candidate) {
+                        if (method_exists($candidate, 'get_id') && (string) $candidate->get_id() === $form_id) {
+                            $target = $candidate;
+                            break;
+                        }
+                    }
+                }
+                $form_id = method_exists($target, 'get_id') ? $target->get_id() : 0;
                 $sub = Ninja_Forms()->form($form_id)->sub()->get();
                 $sub->update_field_value('email', $marked_email);
                 $sub->update_field_value('name', $test_name);

@@ -52,7 +52,12 @@
         Skip to content
     </a>
 
-    <div class="flex h-full"
+    {{-- min-h-full, not h-full. With a fixed height this flex container pinned
+         [data-main] to exactly 100vh, and a sticky element can only travel inside
+         its containing block — so the page header detached after one screen of
+         scrolling and left a 65px band of content sliding past above the settings
+         tab bar. The aside is `fixed`, so it does not depend on this height. --}}
+    <div class="flex min-h-full"
          x-data="{
             sidebarOpen: localStorage.getItem('sidebarOpen') !== 'false',
             mobileSidebarOpen: false,
@@ -107,17 +112,19 @@
                    sidebarOpen ? 'lg:w-64 sidebar-open' : 'lg:w-16'
                ]">
 
-            {{-- Logo area. The bar is h-16 and the anchor adds py-2, so the logo
-                 has ~48px to live in — max-h-14 (56px) overflowed it and the mark
-                 was clipped by the bar's overflow-hidden. --}}
+            {{-- Logo area. The bar is h-16 (64px) and the aside clips overflow, so
+                 the logo's ceiling is the bar height minus whatever padding the
+                 anchor adds. The anchor carries no vertical padding for exactly
+                 that reason: max-h-14 (56px) then fits with 4px of air top and
+                 bottom. Adding py-* back shrinks the logo again. --}}
             <div class="flex h-16 items-center gap-2 px-4 border-b border-gray-200 dark:border-gray-800"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full py-2.5 flex-1 min-w-0 transition-all duration-300"
+                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full flex-1 min-w-0 transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="max-h-11 w-auto object-contain dark:brightness-0 dark:invert">
+                             class="max-h-14 w-auto object-contain dark:brightness-0 dark:invert">
                     @else
                         <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif

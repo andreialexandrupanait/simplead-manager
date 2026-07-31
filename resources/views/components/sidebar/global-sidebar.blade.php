@@ -52,6 +52,4 @@
             {{ __('Activity') }}
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
-
-    
 </div>

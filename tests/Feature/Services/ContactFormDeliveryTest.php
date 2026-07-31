@@ -117,6 +117,70 @@ class ContactFormDeliveryTest extends TestCase
         $this->assertArrayNotHasKey('deliver_to', $run['data']);
     }
 
+    /**
+     * The weekly sweep shipped covering every connected site, gated only by the
+     * plugin fail-safe. That gate says what is SAFE to test, not what anyone asked
+     * to be tested — a scheduled real submission on a client's live form should not
+     * be inherited by being connected.
+     */
+    public function test_the_weekly_sweep_only_touches_sites_that_opted_in(): void
+    {
+        // $this->site is connected with a supported plugin but has NOT opted in.
+        $calls = [];
+        (new CheckContactForms)->handle($this->checkerRecording($calls));
+
+        $this->assertSame([], $calls, 'A site nobody opted in was tested by the schedule.');
+
+        $this->site->update(['form_test_enabled' => true]);
+
+        $calls = [];
+        (new CheckContactForms)->handle($this->checkerRecording($calls));
+
+        $this->assertNotEmpty(collect($calls)->where('endpoint', '/form-test/run'));
+    }
+
+    /**
+     * A run aimed at one site is an explicit request, so it must not be gated by a
+     * toggle that only governs the schedule — same reasoning as the "run now" button.
+     */
+    public function test_a_single_site_run_ignores_the_toggle(): void
+    {
+        // Read from the DB: the column's default is not reflected onto the model
+        // instance that created it.
+        $this->assertFalse($this->site->fresh()->form_test_enabled);
+
+        $calls = [];
+        (new CheckContactForms($this->site->id))->handle($this->checkerRecording($calls));
+
+        $this->assertNotEmpty(collect($calls)->where('endpoint', '/form-test/run'));
+    }
+
+    public function test_a_chosen_form_is_sent_to_the_connector(): void
+    {
+        $this->site->update(['form_test_form_id' => '7', 'connector_version' => '2.22.0']);
+
+        $calls = [];
+        $this->checkerRecording($calls)->runGatedTest($this->site);
+
+        $run = collect($calls)->firstWhere('endpoint', '/form-test/run');
+        $this->assertSame('7', $run['data']['form_id'] ?? null);
+    }
+
+    /**
+     * 2.21.0 knows nothing about form_id. Sending it would imply a choice the site
+     * cannot honour, so the Manager keeps quiet and accepts the first-form default.
+     */
+    public function test_a_connector_that_cannot_target_a_form_is_not_asked_to(): void
+    {
+        $this->site->update(['form_test_form_id' => '7', 'connector_version' => '2.21.0']);
+
+        $calls = [];
+        $this->checkerRecording($calls)->runGatedTest($this->site);
+
+        $run = collect($calls)->firstWhere('endpoint', '/form-test/run');
+        $this->assertArrayNotHasKey('form_id', $run['data']);
+    }
+
     public function test_a_site_can_override_the_delivery_address(): void
     {
         $this->site->update(['form_test_email' => 'forms@client.example']);
@@ -129,7 +193,12 @@ class ContactFormDeliveryTest extends TestCase
 
     public function test_the_weekly_sweep_skips_sites_whose_plugin_cannot_be_suppressed(): void
     {
-        $unsupported = Site::factory()->create(['is_connected' => true, 'connector_version' => '2.21.0']);
+        $this->site->update(['form_test_enabled' => true]);
+        $unsupported = Site::factory()->create([
+            'is_connected' => true,
+            'connector_version' => '2.21.0',
+            'form_test_enabled' => true,
+        ]);
         SitePlugin::factory()->create([
             'site_id' => $unsupported->id,
             'slug' => 'contact-form-7',

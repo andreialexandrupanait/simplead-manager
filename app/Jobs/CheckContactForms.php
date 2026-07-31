@@ -66,6 +66,14 @@ class CheckContactForms implements ShouldBeUnique, ShouldQueue
 
         Site::query()
             ->where('is_connected', true)
+            // Opt-in, per site — but only for the scheduled fleet sweep. The plugin
+            // fail-safe decides what is SAFE to test; this decides what someone
+            // actually asked to be tested, and a scheduled real submission on a
+            // client's live form is not something to inherit by being connected.
+            //
+            // A run aimed at one site is an explicit request, so it runs regardless
+            // of the toggle — the same reasoning as the "run now" button.
+            ->when($this->siteId === null, fn ($q) => $q->where('form_test_enabled', true))
             ->when($this->siteId !== null, fn ($q) => $q->whereKey($this->siteId))
             ->each(function (Site $site) use ($checker, &$tested, &$skipped): void {
                 try {

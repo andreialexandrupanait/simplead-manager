@@ -7,6 +7,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\SiteRiskyPlugin;
+use App\Services\ContactFormChecker;
 use App\Services\KeyUrlService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -38,6 +39,15 @@ class SiteProfile extends Component
 
     public string $formTestEmail = '';
 
+    public bool $formTestEnabled = false;
+
+    public string $formTestFormId = '';
+
+    /** Forms the connector reported, populated by detectForms(). */
+    public array $formOptions = [];
+
+    public ?string $formsError = null;
+
     public string $newRiskySlug = '';
 
     public string $newRiskyReason = '';
@@ -50,6 +60,37 @@ class SiteProfile extends Component
         $this->keyUrls = implode("\n", (array) ($site->key_urls ?? []));
         $this->canarySelector = (string) ($site->smoke_canary_selector ?? '');
         $this->formTestEmail = (string) ($site->form_test_email ?? '');
+        $this->formTestEnabled = (bool) $site->form_test_enabled;
+        $this->formTestFormId = (string) ($site->form_test_form_id ?? '');
+    }
+
+    /**
+     * Ask the site which forms it has, so the operator can pick the contact one.
+     * Safe by construction: capability() is a pure probe and submits nothing.
+     */
+    public function detectForms(): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        $this->formsError = null;
+
+        $capability = app(ContactFormChecker::class)->capability($this->site);
+        $this->formOptions = $capability['forms'];
+
+        if ($this->formOptions === []) {
+            $this->formsError = $capability['supported']
+                ? __('The connector did not list any forms. Version 2.22.0 or newer is needed to choose one; below that the test uses the first form it finds.')
+                : __('No form plugin here has a proven way to suppress integrations, so no test runs on this site.');
+        }
+    }
+
+    /** Whether this connector is new enough to list and target a specific form. */
+    #[Computed]
+    public function canChooseForm(): bool
+    {
+        return $this->site->connectorAtLeast(
+            (string) config('monitoring.form_test.min_form_choice_version', '2.22.0')
+        );
     }
 
     #[Computed]
@@ -115,11 +156,14 @@ class SiteProfile extends Component
         $this->validate([
             'canarySelector' => ['nullable', 'string', 'max:255'],
             'formTestEmail' => ['nullable', 'email', 'max:191'],
+            'formTestFormId' => ['nullable', 'string', 'max:64'],
         ]);
 
         $this->site->update([
             'smoke_canary_selector' => $this->canarySelector !== '' ? $this->canarySelector : null,
             'form_test_email' => $this->formTestEmail !== '' ? $this->formTestEmail : null,
+            'form_test_enabled' => $this->formTestEnabled,
+            'form_test_form_id' => $this->formTestFormId !== '' ? $this->formTestFormId : null,
         ]);
 
         $this->dispatch('notify', type: 'success', message: __('Profile saved.'));

@@ -94,7 +94,7 @@ class ContactFormChecker
      * for on-host confirmation, but the connector can never flip an unsupported
      * plugin to supported.
      *
-     * @return array{form_plugin: ?string, supported: bool, connector: ?array<string,mixed>}
+     * @return array{form_plugin: ?string, supported: bool, connector: ?array<string,mixed>, forms: array<int, array{id: string, title: string}>}
      */
     public function capability(Site $site): array
     {
@@ -122,6 +122,10 @@ class ContactFormChecker
             'form_plugin' => $detected['plugin'] ?? null,
             'supported' => $supported,
             'connector' => $connector,
+            // The site's forms, so an operator can say WHICH one is the contact
+            // form. Empty on a connector older than 2.22.0, which simply means no
+            // choice is offered.
+            'forms' => is_array($connector['forms'] ?? null) ? $connector['forms'] : [],
         ];
 
         $this->recordCheck($site, $result['form_plugin'], $supported, [
@@ -169,6 +173,14 @@ class ContactFormChecker
                 'deliver_to' => $deliverTo,
                 'test_name' => (string) config('monitoring.form_test.name', 'SimpleAD TEST'),
             ];
+        }
+
+        // Target a specific form where one was chosen and the connector can honour
+        // it. Otherwise the connector submits to the first form it finds, which on
+        // a site with a newsletter next to a contact form is a coin toss.
+        if (filled($site->form_test_form_id)
+            && $site->connectorAtLeast((string) config('monitoring.form_test.min_form_choice_version', '2.22.0'))) {
+            $payload['form_id'] = (string) $site->form_test_form_id;
         }
 
         $response = $this->apiFactory->make($site)

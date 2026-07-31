@@ -88,7 +88,61 @@
             </div>
         </div>
 
-        <div class="mt-3">
+        {{-- Opt-in for the weekly sweep. Off by default: a scheduled real
+             submission on a client's live form is a decision, not something a site
+             should inherit by being connected. --}}
+        <div class="mt-5 border-t pt-4">
+            <label class="flex cursor-pointer items-start gap-3">
+                <input type="checkbox" wire:model="formTestEnabled"
+                       class="mt-0.5 h-4 w-4 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                <span>
+                    <span class="block text-sm text-gray-900">{{ __('Test this site\'s form every week') }}</span>
+                    <span class="block text-xs text-gray-500">
+                        {{ __('Monday mornings, a real submission goes through the site\'s own form with integrations suppressed. Off means only the manual "Run test now" button works.') }}
+                    </span>
+                </span>
+            </label>
+
+            <div class="mt-4">
+                <div class="flex items-end gap-2">
+                    <div class="min-w-0 flex-1">
+                        <label class="block text-sm text-gray-700">{{ __('Which form') }}</label>
+                        @if($this->formOptions)
+                            <select wire:model="formTestFormId"
+                                    class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+                                <option value="">{{ __('First one found') }}</option>
+                                @foreach($this->formOptions as $form)
+                                    <option value="{{ $form['id'] }}">{{ $form['title'] }} (#{{ $form['id'] }})</option>
+                                @endforeach
+                            </select>
+                        @else
+                            <input type="text" wire:model="formTestFormId"
+                                   class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs text-gray-800 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"
+                                   placeholder="{{ __('First one found') }}">
+                        @endif
+                    </div>
+                    <x-ui.button variant="secondary" wire:click="detectForms" wire:loading.attr="disabled">
+                        <x-ui.spinner size="sm" class="mr-1 hidden" wire:loading.class.remove="hidden" wire:target="detectForms" />
+                        {{ __('Detect forms') }}
+                    </x-ui.button>
+                </div>
+
+                <p class="mt-1 text-xs text-gray-500">
+                    @if(! $this->canChooseForm)
+                        {{ __('This site\'s connector is too old to list its forms — the test uses whichever form comes first. Push connector 2.22.0 to choose.') }}
+                    @else
+                        {{ __('The submission goes through the plugin\'s API, so what matters is the form, not the page it sits on. On a site with a newsletter next to a contact form, picking the right one avoids testing the wrong thing.') }}
+                    @endif
+                </p>
+
+                @if($formsError)
+                    <p class="mt-1 text-xs text-amber-600">{{ $formsError }}</p>
+                @endif
+                @error('formTestFormId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
+        <div class="mt-4">
             <x-ui.button wire:click="saveSmokeSettings">{{ __('Save') }}</x-ui.button>
         </div>
     </x-ui.card>
