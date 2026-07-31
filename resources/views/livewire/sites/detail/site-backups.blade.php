@@ -5,6 +5,36 @@
     <x-ui.flash-alert type="success" key="backup-success" />
     <x-ui.flash-alert type="error" key="backup-error" />
 
+    {{-- The V2 engine pilot. Shown only for allowlisted sites, and only to
+         admins — the same two conditions that guard the console route, so this
+         never links somewhere that 404s. Everything below on this page is still
+         the V1 engine: the two do not share a table, so a V2 backup is
+         invisible here and this banner is the only sign it happened. --}}
+    @if($this->backupV2Console)
+        @php $v2 = $this->backupV2Console; @endphp
+        <div class="mb-4 rounded-lg border border-accent-200 bg-accent-50 p-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="text-sm text-gray-700">
+                    <span class="font-medium text-gray-900">{{ __('This site is piloting the new backup engine.') }}</span>
+                    @if($v2['latest'])
+                        <span class="block text-xs text-gray-600 mt-0.5">
+                            {{ __('Last V2 backup') }}:
+                            <span class="font-medium">{{ $v2['latest']->state->value }}</span>
+                            · {{ $v2['latest']->created_at?->diffForHumans() }}
+                            · {{ trans_choice('{1}:count session|[2,*]:count sessions', $v2['sessions'], ['count' => $v2['sessions']]) }}
+                        </span>
+                    @else
+                        <span class="block text-xs text-gray-600 mt-0.5">{{ __('No V2 backup has run yet.') }}</span>
+                    @endif
+                    <span class="block text-xs text-gray-500 mt-0.5">{{ __('The history below is the current engine — V2 backups are kept separately.') }}</span>
+                </div>
+                <a href="{{ $v2['url'] }}" wire:navigate class="shrink-0 text-sm font-medium text-accent-600 hover:text-accent-500 underline">
+                    {{ __('Open the V2 console') }}
+                </a>
+            </div>
+        </div>
+    @endif
+
     {{-- Storage Quota Warning --}}
     @if($this->storageQuotaInfo && $this->storageQuotaInfo['level'] !== 'ok')
         <div class="mb-4 rounded-lg p-3 {{ $this->storageQuotaInfo['level'] === 'error' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200' }}">

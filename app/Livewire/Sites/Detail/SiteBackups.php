@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Support\BackupV2Access;
+use App\Backup\V2\Support\BackupV2Gate;
 use App\Enums\BackupStatus;
 use App\Livewire\Traits\WithBackupActions;
 use App\Livewire\Traits\WithBackupProgress;
@@ -63,6 +66,37 @@ class SiteBackups extends Component
     public function storageDestinations()
     {
         return StorageDestination::where('is_active', true)->get();
+    }
+
+    /**
+     * The V2 console, when this site is actually piloting the V2 engine.
+     *
+     * Returns null unless BOTH gates that guard the console hold, so the link
+     * can never point at a 404 or a page whose every button is refused:
+     *   - BackupV2Access: the UI flag is on and the viewer is an admin — the
+     *     exact condition EnsureBackupV2Ui enforces on the route;
+     *   - BackupV2Gate: the engine may run for this site id (the allowlist).
+     *
+     * Until now the console had no link anywhere in the application; the only
+     * way in was to know and type the URL. A pilot nobody can reach is not a
+     * pilot.
+     *
+     * @return array{url:string, sessions:int, latest:?\App\Backup\V2\Models\BackupSession}|null
+     */
+    #[Computed]
+    public function backupV2Console(): ?array
+    {
+        if (! BackupV2Access::allows(auth()->user()) || ! BackupV2Gate::allowsSite((int) $this->site->id)) {
+            return null;
+        }
+
+        return [
+            'url' => route('backup-v2.site', $this->site),
+            'sessions' => BackupSession::where('site_id', $this->site->id)->count(),
+            'latest' => BackupSession::where('site_id', $this->site->id)
+                ->latest('id')
+                ->first(),
+        ];
     }
 
     /**
