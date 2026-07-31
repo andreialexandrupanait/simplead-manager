@@ -57,6 +57,13 @@ class SiteOverview extends Component
         $this->site = $site;
         $this->initJobTracking();
 
+        // Arriving from "save now, connect later": land with the credentials
+        // dialog already open, so pairing is the next thing you see rather than
+        // something you have to go find behind the settings icon.
+        if (request()->boolean('connect') && ! $site->is_connected && auth()->user()?->canManageSites()) {
+            $this->openConnectModal();
+        }
+
         // Load cached server resources
         $cached = Cache::get("server-resources-{$this->site->id}");
         if ($cached) {

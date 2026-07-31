@@ -90,7 +90,7 @@
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">3</span>
-                        <span>{{ __('Go to') }} <strong>WP Admin &rarr; Settings &rarr; SimpleAD Manager</strong></span>
+                        <span>{{ __('In the WordPress sidebar, open') }} <strong>SAD Mentenanta</strong></span>
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-xs font-semibold text-accent-600">4</span>
