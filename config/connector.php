@@ -9,6 +9,17 @@ return [
                 'Fix: .htaccess multi-setting apply now snapshots the pristine file exactly once before any change and, if the post-write self-check fails, rolls back to that true original instead of a partially-modified intermediate — a failed batch can no longer leave a client site 500ing (P0-12)',
             ],
         ],
+        '2.24.0' => [
+            'date' => '2026-08-01',
+            'changes' => [
+                'Fix: the database dump no longer exhausts PHP memory on tables with wide rows — florinpasat.com had failed on this every night for eight nights, at chunk 3 of 70, on a 512M limit',
+                'The dump released nothing between batches: wpdb keeps its own reference to every result set in last_result, so dropping the fetched rows freed neither copy and two live sets of the same data accumulated for the length of the dump. It now calls wpdb::flush() and unsets explicitly',
+                'The 500-row fetch is adaptive: the batch is derived from the table\'s AVG_ROW_LENGTH and the memory actually remaining, so a table of multi-megabyte LONGTEXT rows is read in tens rather than hundreds',
+                'The pending INSERT buffer is capped in BYTES (4 MB) as well as rows — a row cap alone cannot protect against a table whose average is small but whose outliers are enormous, which is wp_options with one large autoloaded value. The cap also keeps the generated INSERT under a default max_allowed_packet, so the dump stays restorable',
+                'SAVEQUERIES is neutralised for the duration of the dump and restored afterwards: it accumulates every query with no ceiling, so a site where someone once enabled it to debug something would fail regardless of how carefully the batches are sized',
+                'Both dump paths (full and chunked) now share one implementation. They carried the same four defects in two copies, which is how fixing it once would have left it in place',
+            ],
+        ],
         '2.19.0' => [
             'date' => '2026-07-25',
             'changes' => [

@@ -2058,11 +2058,177 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         exit;
     }
 
+    /**
+     * A memory limit in bytes, or a conservative guess when the host declines to say.
+     */
+    private function memory_limit_bytes(): int {
+        $raw = trim((string) @ini_get('memory_limit'));
+
+        // -1 means unlimited, which on shared hosting usually means "the real
+        // limit is somewhere else and you will meet it without warning".
+        if ($raw === '' || $raw === '-1') {
+            return 256 * 1024 * 1024;
+        }
+
+        $unit  = strtolower(substr($raw, -1));
+        $value = (int) $raw;
+
+        switch ($unit) {
+            case 'g': return $value * 1024 * 1024 * 1024;
+            case 'm': return $value * 1024 * 1024;
+            case 'k': return $value * 1024;
+            default:  return $value;
+        }
+    }
+
+    /**
+     * How many rows of this table we can hold at once without running the host
+     * out of memory.
+     *
+     * The old code fetched 500 rows regardless of how wide they were. For
+     * wp_postmeta or wp_options carrying multi-megabyte LONGTEXT that is
+     * hundreds of megabytes in a single fetch, and it is what exhausted 512M on
+     * florinpasat.com for eight consecutive nights.
+     *
+     * AVG_ROW_LENGTH is MySQL's own estimate and it is free. The factor of 3
+     * covers the three live copies of the same data at peak: the rows as
+     * fetched, wpdb's own retained result set, and the escaped SQL text.
+     */
+    private function adaptive_row_batch($wpdb, string $table): int {
+        $available = max(
+            16 * 1024 * 1024,
+            $this->memory_limit_bytes() - memory_get_usage(true)
+        );
+        $budget = (int) ($available * 0.15);
+
+        $avg_row = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(AVG_ROW_LENGTH, 0) FROM INFORMATION_SCHEMA.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
+            $table
+        ));
+
+        // MariaDB reports 0 for some engines and for empty tables; a floor keeps
+        // the division honest and simply yields the old batch size for narrow rows.
+        $avg_row = max(256, $avg_row);
+
+        // The lower bound is one row, not a comfortable minimum. A floor of ten
+        // would still ask for 300 MB from a table of 10 MB rows, which is the
+        // same failure this method exists to prevent — just further along. Rows
+        // that large are rare enough that reading them one at a time costs
+        // little, and a slow backup beats a fatal one.
+        return (int) max(1, min(500, intdiv($budget, $avg_row * 3)));
+    }
+
+    /**
+     * Write one table's rows to $fh as INSERT statements, in constant memory.
+     *
+     * Both dump paths used to carry their own copy of this loop, with the same
+     * four leaks in each: a fixed 500-row fetch, wpdb's retained result set
+     * never released, nothing unset between iterations, and a pending buffer
+     * capped by row count rather than by bytes. Fixing it twice is how it comes
+     * back a third time.
+     *
+     * Returns the number of rows written.
+     */
+    private function dump_table_rows($wpdb, $fh, string $table, ?int $row_offset = null, ?int $row_limit = null): int {
+        $columns_sql = null;
+        $offset      = $row_offset !== null ? $row_offset : 0;
+        $batch       = $this->adaptive_row_batch($wpdb, $table);
+        $rows_dumped = 0;
+
+        $pending       = [];
+        $pending_bytes = 0;
+
+        // A cap in BYTES, not rows. The row cap alone cannot protect against a
+        // table whose average is small but whose outliers are enormous —
+        // wp_options with one huge autoloaded value is the classic. 4 MB also
+        // keeps the generated INSERT comfortably under a default
+        // max_allowed_packet, so the dump stays restorable.
+        $flush_bytes = 4 * 1024 * 1024;
+
+        $flush = function () use ($fh, $table, &$pending, &$pending_bytes, &$columns_sql) {
+            if ($pending === [] || $columns_sql === null) {
+                return;
+            }
+            fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending) . ";\n");
+            $pending       = [];
+            $pending_bytes = 0;
+        };
+
+        while (true) {
+            $fetch = $batch;
+            if ($row_limit !== null) {
+                $remaining = $row_limit - $rows_dumped;
+                if ($remaining <= 0) {
+                    break;
+                }
+                $fetch = min($batch, $remaining);
+            }
+
+            $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$fetch}", ARRAY_A);
+            if (empty($rows)) {
+                break;
+            }
+
+            foreach ($rows as $row) {
+                if ($columns_sql === null) {
+                    $columns_sql = '(' . implode(', ', array_map(function ($c) {
+                        return "`{$c}`";
+                    }, array_keys($row))) . ')';
+                }
+
+                $values = array_map(function ($v) use ($wpdb) {
+                    if ($v === null) return 'NULL';
+                    return "'" . $wpdb->_real_escape($v) . "'";
+                }, array_values($row));
+
+                $tuple = '(' . implode(', ', $values) . ')';
+                unset($values);
+
+                $pending[]      = $tuple;
+                $pending_bytes += strlen($tuple);
+                $rows_dumped++;
+
+                if (count($pending) >= 50 || $pending_bytes >= $flush_bytes) {
+                    $flush();
+                }
+
+                if ($row_limit !== null && $rows_dumped >= $row_limit) {
+                    break;
+                }
+            }
+
+            $offset += count($rows);
+
+            // wpdb keeps its own reference to the result set in last_result, so
+            // dropping $rows alone frees nothing — two copies of every batch
+            // stayed live for the whole dump.
+            unset($rows, $row);
+            $wpdb->flush();
+
+            if ($row_limit !== null && $rows_dumped >= $row_limit) {
+                break;
+            }
+        }
+
+        $flush();
+
+        return $rows_dumped;
+    }
+
     private function php_database_dump($wpdb, string $db_name, string $output_file): void {
         $fh = fopen($output_file, 'w');
         if (!$fh) {
             return;
         }
+
+        // SAVEQUERIES accumulates every query plus its backtrace for the life of
+        // the request, with no ceiling. A client who once turned it on to debug
+        // something would fail this dump no matter how carefully the batches are
+        // sized, and the failure would look like ours.
+        $saved_queries = isset($wpdb->save_queries) ? $wpdb->save_queries : null;
+        $wpdb->save_queries = false;
+        $wpdb->queries = array();
 
         fwrite($fh, "-- SimpleAd Manager Database Backup\n");
         fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
@@ -2070,57 +2236,23 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
 
         $tables = $wpdb->get_col("SHOW TABLES");
-        $batch_size = 50; // rows per INSERT statement
 
         foreach ($tables as $table) {
             $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
             fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
             fwrite($fh, $create[1] . ";\n\n");
 
-            $offset = 0;
-            $chunk = 500;
-            $columns_sql = null;
-            $pending_values = [];
-
-            while (true) {
-                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$chunk}", ARRAY_A);
-                if (empty($rows)) {
-                    break;
-                }
-
-                foreach ($rows as $row) {
-                    if ($columns_sql === null) {
-                        $columns_sql = '(' . implode(', ', array_map(function ($c) {
-                            return "`{$c}`";
-                        }, array_keys($row))) . ')';
-                    }
-
-                    $values = array_map(function ($v) use ($wpdb) {
-                        if ($v === null) return 'NULL';
-                        return "'" . $wpdb->_real_escape($v) . "'";
-                    }, array_values($row));
-
-                    $pending_values[] = '(' . implode(', ', $values) . ')';
-
-                    if (count($pending_values) >= $batch_size) {
-                        fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
-                        $pending_values = [];
-                    }
-                }
-
-                $offset += $chunk;
-            }
-
-            // Flush remaining rows
-            if (!empty($pending_values) && $columns_sql !== null) {
-                fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
-            }
+            $this->dump_table_rows($wpdb, $fh, $table);
 
             fwrite($fh, "\n");
         }
 
         fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
         fclose($fh);
+
+        if ($saved_queries !== null) {
+            $wpdb->save_queries = $saved_queries;
+        }
     }
 
     private function gzip_file(string $source, string $dest): bool {
@@ -2169,7 +2301,10 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
         }
 
-        $batch_size = 50; // rows per INSERT statement
+        // See php_database_dump() for why SAVEQUERIES is neutralised here.
+        $saved_queries = isset($wpdb->save_queries) ? $wpdb->save_queries : null;
+        $wpdb->save_queries = false;
+        $wpdb->queries = array();
 
         foreach ($tables as $table) {
             if ($emit_ddl) {
@@ -2179,55 +2314,7 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
                 fwrite($fh, $create[1] . ";\n\n");
             }
 
-            $offset = ($row_offset !== null) ? $row_offset : 0;
-            $batch = 500;
-            $columns_sql = null;
-            $pending_values = [];
-            $rows_dumped = 0;
-
-            while (true) {
-                $fetch = $batch;
-                if ($row_limit !== null) {
-                    $remaining = $row_limit - $rows_dumped;
-                    if ($remaining <= 0) break;
-                    $fetch = min($batch, $remaining);
-                }
-
-                $rows = $wpdb->get_results("SELECT * FROM `{$table}` LIMIT {$offset}, {$fetch}", ARRAY_A);
-                if (empty($rows)) break;
-
-                foreach ($rows as $row) {
-                    if ($columns_sql === null) {
-                        $columns_sql = '(' . implode(', ', array_map(function ($c) {
-                            return "`{$c}`";
-                        }, array_keys($row))) . ')';
-                    }
-
-                    $values = array_map(function ($v) use ($wpdb) {
-                        if ($v === null) return 'NULL';
-                        return "'" . $wpdb->_real_escape($v) . "'";
-                    }, array_values($row));
-
-                    $pending_values[] = '(' . implode(', ', $values) . ')';
-                    $rows_dumped++;
-
-                    if (count($pending_values) >= $batch_size) {
-                        fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
-                        $pending_values = [];
-                    }
-
-                    if ($row_limit !== null && $rows_dumped >= $row_limit) break;
-                }
-
-                $offset += count($rows);
-
-                if ($row_limit !== null && $rows_dumped >= $row_limit) break;
-            }
-
-            // Flush remaining rows
-            if (!empty($pending_values) && $columns_sql !== null) {
-                fwrite($fh, "INSERT INTO `{$table}` {$columns_sql} VALUES " . implode(', ', $pending_values) . ";\n");
-            }
+            $this->dump_table_rows($wpdb, $fh, $table, $row_offset, $row_limit);
 
             fwrite($fh, "\n");
         }
@@ -2237,6 +2324,10 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
 
         fclose($fh);
+
+        if ($saved_queries !== null) {
+            $wpdb->save_queries = $saved_queries;
+        }
     }
 
     /**
