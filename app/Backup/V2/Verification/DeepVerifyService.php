@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Verification;
 
+use App\Backup\V2\Crypto\BackupKeyring;
+use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\BackupVerification;
 use App\Backup\V2\Storage\ObjectLayout;
@@ -97,14 +99,38 @@ final class DeepVerifyService
                     }
 
                     // (b) open the archive / parse the DB.
+                    //
+                    // Objects are sealed before they reach storage, so the bytes
+                    // whose sha256 was just confirmed are ciphertext — opening
+                    // them as a zip reports every sound backup as a bad archive,
+                    // which is the report manufacturing the corruption it claims
+                    // to detect. Decrypted here, after the storage-level check
+                    // and before the content-level one, so both are honest about
+                    // what they are looking at.
+                    $decrypted = null;
+                    if (ObjectCipher::isEncrypted($tmp)) {
+                        $decrypted = (string) tempnam(sys_get_temp_dir(), 'v2deepplain_');
+                        try {
+                            (new BackupKeyring)
+                                ->forKeyId((string) ObjectCipher::keyIdOf($tmp))
+                                ->decryptFile($tmp, $decrypted);
+                        } catch (Throwable $e) {
+                            @unlink($decrypted);
+                            $badArchive[] = $key.' (could not be decrypted: '.$e->getMessage().')';
+
+                            continue;
+                        }
+                    }
+                    $readable = $decrypted ?? $tmp;
+
                     if ($kind === 'files') {
-                        if (! $this->isValidZip($tmp)) {
+                        if (! $this->isValidZip($readable)) {
                             $badArchive[] = $key;
 
                             continue;
                         }
                     } elseif ($kind === 'database') {
-                        $sqlOk = $this->isValidSqlGzip($tmp);
+                        $sqlOk = $this->isValidSqlGzip($readable);
                         if ($sqlOk === false) {
                             $badSql[] = $key;
 
@@ -115,6 +141,9 @@ final class DeepVerifyService
                     $opened[] = $key;
                 } finally {
                     @unlink($tmp);
+                    if (isset($decrypted)) {
+                        @unlink($decrypted);
+                    }
                 }
             }
 
