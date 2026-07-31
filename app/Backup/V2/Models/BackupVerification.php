@@ -33,6 +33,13 @@ class BackupVerification extends Model
 
     public const KIND_DEEP = 'deep';
 
+    /**
+     * The same checks as KIND_CREATE, run because an operator asked. Kept
+     * distinct so a re-verification does not masquerade as the automatic pass
+     * the backup got at completion — the history should say who asked.
+     */
+    public const KIND_MANUAL = 'manual';
+
     public const STATUS_PASSED = 'passed';
 
     public const STATUS_FAILED = 'failed';

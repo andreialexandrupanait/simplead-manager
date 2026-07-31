@@ -10,6 +10,8 @@ use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Backup\V2\Verification\DeepVerifyService;
+use App\Models\Site;
+use App\Models\StorageDestination;
 use Illuminate\Console\Command;
 
 /**
@@ -19,9 +21,8 @@ use Illuminate\Console\Command;
  *
  * INERT without config('backup_v2.enabled') — with the default flag off the command
  * reports that V2 is disabled and does nothing (no storage reads, no DB writes), so it
- * is safe to register/schedule in production. The lab S3 (MinIO) client is used; the
- * production per-destination S3 resolution is the same TODO the rest of V2 shares
- * (S3ClientFactory).
+ * is safe to register/schedule in production. The S3 client is resolved per session
+ * from the site's own StorageDestination, exactly as RunBackupSessionJob does.
  */
 class DeepVerifyCommand extends Command
 {
@@ -29,7 +30,7 @@ class DeepVerifyCommand extends Command
         .'{--session= : Restrict to a single backup_session id} '
         .'{--site= : Restrict to a single site id} '
         .'{--sample=4 : Objects to fully download+open per backup (0 = all)} '
-        .'{--client=1 : client_id for the object-prefix template (lab)} '
+        .'{--client= : Override client_id in the object prefix (lab/testing)} '
         .'{--prefix-template= : Override the object-prefix template (lab/testing)} '
         .'{--json : Emit a machine-readable JSON report}';
 
@@ -44,10 +45,10 @@ class DeepVerifyCommand extends Command
         }
 
         $sample = (int) $this->option('sample');
-        $factory = S3ClientFactory::lab();
-        $s3 = $factory->client();
-        $bucket = $factory->bucket();
         $service = new DeepVerifyService;
+
+        /** @var array<int, \App\Backup\V2\Storage\S3ClientFactory> $factories */
+        $factories = [];
 
         $results = [];
         foreach ($this->sessions() as $session) {
@@ -63,6 +64,28 @@ class DeepVerifyCommand extends Command
 
                 continue;
             }
+
+            // Resolve the bucket the objects were actually written to. This used
+            // to be S3ClientFactory::lab() for every session, so on production
+            // the command looked in the lab MinIO, found nothing, and recorded a
+            // FAILED verification against a perfectly sound backup — a report
+            // that manufactures the corruption it claims to detect.
+            $site = $session->site;
+            $destination = $site instanceof Site ? StorageDestination::resolveForSite($site) : null;
+            if ($destination === null) {
+                $results[] = [
+                    'session_id' => $session->id,
+                    'status' => 'skipped',
+                    'sample_size' => 0,
+                    'error' => 'no_storage_destination',
+                ];
+
+                continue;
+            }
+
+            $factory = $factories[$destination->id] ??= S3ClientFactory::forDestination($destination);
+            $s3 = $factory->client();
+            $bucket = $factory->bucket();
 
             $layout = $this->layoutFor($session);
             $verification = $service->deepVerify($session, $s3, $bucket, $layout, $sample);
@@ -109,15 +132,31 @@ class DeepVerifyCommand extends Command
         return $query->orderBy('id')->get();
     }
 
+    /**
+     * The same prefix the runner wrote to.
+     *
+     * `--client` and `--prefix-template` remain as explicit lab overrides; with
+     * neither, both the client id and the backup id come from the session, as in
+     * RunBackupSessionJob. Deriving them any other way is how this command
+     * managed to look in the wrong place twice over: `--client` defaulted to 1
+     * regardless of the site's owner, and the backup id was `$session->id` where
+     * the runner uses `backup_id ?? id`.
+     */
     private function layoutFor(BackupSession $session): ObjectLayout
     {
         $template = $this->option('prefix-template');
-        $client = (int) $this->option('client');
+        $clientOption = $this->option('client');
+
+        $clientId = $clientOption !== null && $clientOption !== ''
+            ? (int) $clientOption
+            : (int) ($session->site?->getAttribute('client_id') ?? 0);
+
+        $backupId = (int) ($session->backup_id ?? $session->id);
 
         if (is_string($template) && $template !== '') {
-            return new ObjectLayout($client, (int) $session->site_id, (int) $session->id, $template);
+            return new ObjectLayout($clientId, (int) $session->site_id, $backupId, $template);
         }
 
-        return ObjectLayout::forBackup($client, (int) $session->site_id, (int) $session->id);
+        return ObjectLayout::forBackup($clientId, (int) $session->site_id, $backupId);
     }
 }

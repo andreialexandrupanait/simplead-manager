@@ -9,6 +9,7 @@ use App\Backup\V2\Enums\RestoreMode;
 use App\Backup\V2\Enums\RestoreSessionState;
 use App\Backup\V2\Jobs\RunBackupSessionJob;
 use App\Backup\V2\Jobs\RunRestoreSessionJob;
+use App\Backup\V2\Jobs\VerifyBackupSessionJob;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Quota\QuotaService;
@@ -123,12 +124,20 @@ class SessionActions
     }
 
     /**
-     * Record a manual integrity verification pass.
+     * Queue a real integrity verification.
+     *
+     * This used to be markVerified(), which set verified_at = now() and checked
+     * nothing — a button that made a claim on the operator's behalf. The claim
+     * is load-bearing: ChainRetentionService reads verified_at for its
+     * keep-last-verified guarantee, so a decorative stamp could make retention
+     * preserve a broken backup and expire a sound one.
+     *
+     * Nothing here writes verified_at. Only {@see BackupVerifier} does, in both
+     * directions, after actually looking at the objects.
      */
-    public function markVerified(BackupSession $session): void
+    public function requestVerification(BackupSession $session): void
     {
-        $session->verified_at = now();
-        $session->save();
+        VerifyBackupSessionJob::dispatch($session->id);
     }
 
     /**

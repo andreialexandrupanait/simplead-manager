@@ -47,13 +47,19 @@ final class BackupVerifier
     }
 
     /**
-     * Produce (and persist) the create-verification record for a completed backup.
+     * Produce (and persist) a verification record for a completed backup.
+     *
+     * $kind distinguishes the automatic pass at completion from one an operator
+     * asked for later. The checks are identical — that is the point: the button
+     * in the UI runs the same verification the engine runs, rather than a
+     * cheaper imitation of it.
      */
     public function verifyOnComplete(
         BackupSession $session,
         S3Client $s3,
         string $bucket,
         ObjectLayout $layout,
+        string $kind = BackupVerification::KIND_CREATE,
     ): BackupVerification {
         $checks = [];
         $objectCount = 0;
@@ -66,7 +72,7 @@ final class BackupVerifier
             $checks['manifest_present'] = true;
             $checks['manifest_objects'] = count($objects);
             if ($objects === []) {
-                return $this->record($session, BackupVerification::STATUS_FAILED, 0, null, $checks, 'manifest lists no objects');
+                return $this->record($session, $kind, BackupVerification::STATUS_FAILED, 0, null, $checks, 'manifest lists no objects');
             }
 
             // (2) control documents present.
@@ -78,7 +84,7 @@ final class BackupVerifier
                 if (! $this->head($s3, $bucket, $key)) {
                     $checks[$label] = false;
 
-                    return $this->record($session, BackupVerification::STATUS_CORRUPT, 0, null, $checks, "required control object missing: {$key}");
+                    return $this->record($session, $kind, BackupVerification::STATUS_CORRUPT, 0, null, $checks, "required control object missing: {$key}");
                 }
                 $checks[$label] = true;
             }
@@ -125,20 +131,20 @@ final class BackupVerifier
             $checks['composite_checksum'] = $composite;
 
             if ($missing !== []) {
-                return $this->record($session, BackupVerification::STATUS_CORRUPT, $objectCount, $composite, $checks, count($missing).' object(s) missing in storage');
+                return $this->record($session, $kind, BackupVerification::STATUS_CORRUPT, $objectCount, $composite, $checks, count($missing).' object(s) missing in storage');
             }
             if ($sizeMismatch !== []) {
-                return $this->record($session, BackupVerification::STATUS_CORRUPT, $objectCount, $composite, $checks, count($sizeMismatch).' object(s) with a size mismatch');
+                return $this->record($session, $kind, BackupVerification::STATUS_CORRUPT, $objectCount, $composite, $checks, count($sizeMismatch).' object(s) with a size mismatch');
             }
             if ($shaMismatch !== []) {
-                return $this->record($session, BackupVerification::STATUS_FAILED, $objectCount, $composite, $checks, count($shaMismatch).' object(s) where manifest/checksums disagree');
+                return $this->record($session, $kind, BackupVerification::STATUS_FAILED, $objectCount, $composite, $checks, count($shaMismatch).' object(s) where manifest/checksums disagree');
             }
 
-            return $this->record($session, BackupVerification::STATUS_PASSED, $objectCount, $composite, $checks, null);
+            return $this->record($session, $kind, BackupVerification::STATUS_PASSED, $objectCount, $composite, $checks, null);
         } catch (Throwable $e) {
             $checks['exception'] = $e->getMessage();
 
-            return $this->record($session, BackupVerification::STATUS_FAILED, $objectCount, $composite, $checks, $e->getMessage());
+            return $this->record($session, $kind, BackupVerification::STATUS_FAILED, $objectCount, $composite, $checks, $e->getMessage());
         }
     }
 
@@ -147,6 +153,7 @@ final class BackupVerifier
      */
     private function record(
         BackupSession $session,
+        string $kind,
         string $status,
         int $objectCount,
         ?string $composite,
@@ -157,7 +164,7 @@ final class BackupVerifier
 
         $verification = new BackupVerification([
             'backup_session_id' => $session->id,
-            'kind' => BackupVerification::KIND_CREATE,
+            'kind' => $kind,
             'status' => $status,
             'object_count' => $objectCount,
             'sample_size' => null,
@@ -168,13 +175,18 @@ final class BackupVerifier
         ]);
         $verification->save();
 
-        // A PASSED create-verification is the ONLY writer of the retention-facing
-        // verified_at stamp. A failed/corrupt verification leaves it untouched, so
-        // the backup is never counted as "verified" for keep-last-verified.
-        if ($status === BackupVerification::STATUS_PASSED) {
-            $session->verified_at = now();
-            $session->save();
-        }
+        // This is the only writer of the retention-facing verified_at stamp, and
+        // it writes in both directions.
+        //
+        // Leaving the stamp untouched on failure was right for a first
+        // verification and wrong for every one after it: a backup that passed at
+        // creation and fails a re-check would keep saying "verified" for as long
+        // as it existed. ChainRetentionService reads this field for its
+        // keep-last-verified guarantee, so a stale stamp does not merely mislead
+        // an operator — it can make retention preserve a broken backup and expire
+        // a sound one.
+        $session->verified_at = $status === BackupVerification::STATUS_PASSED ? now() : null;
+        $session->save();
 
         $this->logger->log(
             $status === BackupVerification::STATUS_PASSED ? 'info' : 'warning',

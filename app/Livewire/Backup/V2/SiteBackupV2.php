@@ -223,7 +223,7 @@ class SiteBackupV2 extends Component
 
     public function verifySession(int $id): void
     {
-        $this->withSession($id, fn (BackupSession $s) => app(SessionActions::class)->markVerified($s), 'Backup marked verified.');
+        $this->withSession($id, fn (BackupSession $s) => app(SessionActions::class)->requestVerification($s), 'Verification queued.');
     }
 
     public function protectSession(int $id, bool $protected): void
