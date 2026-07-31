@@ -6,6 +6,7 @@ namespace App\Backup\V2\Models;
 
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\BackupSessionState;
+use App\Backup\V2\Jobs\NotifyBackupV2Failed;
 use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Backup;
@@ -172,6 +173,15 @@ class BackupSession extends Model
             'backup session transition',
             ['from' => $from->value, 'to' => $to->value, 'stage' => $this->stage]
         );
+
+        // Alerting hangs off the one funnel every state change passes through,
+        // rather than off each place that fails. There is no path to a failed
+        // backup that does not come through here, so there is no path that can
+        // fail quietly — which is exactly what V2 did until the engine learned
+        // to record its own failures.
+        if ($from !== $to && in_array($to, [BackupSessionState::Failed, BackupSessionState::Corrupt], true)) {
+            NotifyBackupV2Failed::dispatch($this->id);
+        }
 
         return $this;
     }

@@ -6,6 +6,8 @@ namespace App\Backup\V2\Jobs;
 
 use App\Backup\V2\Chain\ChainResolver;
 use App\Backup\V2\Chain\S3ManifestReader;
+use App\Backup\V2\Enums\BackupErrorCode;
+use App\Backup\V2\Enums\RestoreSessionState;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Plugin\SimpleadBackupClient;
@@ -13,6 +15,7 @@ use App\Backup\V2\Restore\PreRestoreSafetyBackup;
 use App\Backup\V2\Restore\RestoreHealthCheck;
 use App\Backup\V2\Restore\RestorePlan;
 use App\Backup\V2\Restore\RestoreRunner;
+use App\Backup\V2\StateMachine\RestoreStateMachine;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\S3ClientFactory;
 use App\Backup\V2\Storage\SessionLayoutResolver;
@@ -28,6 +31,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use RuntimeException;
+use Throwable;
 
 /**
  * Queued entry point that runs (or resumes) one RestoreSession through RestoreRunner.
@@ -115,5 +119,30 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
             healthCheck: fn (RestoreSession $s, RestorePlan $p): bool => $healthCheck($s, $p),
             logger: $logger,
         ))->run();
+    }
+
+    /**
+     * A restore that dies must not look like one still running.
+     *
+     * With tries = 1 there is no second attempt, so a session left mid-phase
+     * stays there — and a restore frozen at `database_restore` is the single
+     * worst thing to be ambiguous about: it is the state in which a site may be
+     * half-written.
+     */
+    public function failed(?Throwable $e): void
+    {
+        $session = RestoreSession::find($this->restoreSessionId);
+        if (! $session instanceof RestoreSession || $session->state->isTerminal()) {
+            return;
+        }
+
+        $session->recordError(
+            BackupErrorCode::EngineError,
+            $e?->getMessage() ?? 'restore job failed without an exception',
+        );
+
+        if (RestoreStateMachine::canTransition($session->state, RestoreSessionState::Failed)) {
+            $session->transitionTo(RestoreSessionState::Failed, 'job failed: '.class_basename($e ?? 'unknown'));
+        }
     }
 }

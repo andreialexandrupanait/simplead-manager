@@ -29,6 +29,18 @@ enum BackupErrorCode: string
     case PostRestoreValidationFailed = 'post_restore_validation_failed';
 
     /**
+     * Anything the engine did not anticipate.
+     *
+     * The codes above are the failures we know how to name. Until this existed
+     * there was no code for the rest, so the runner caught only
+     * CorruptBackupException and every other throwable escaped — leaving the
+     * session frozen in whatever phase it died in, with no error, no terminal
+     * state and nothing to alert on. A session stuck at `uploading` forever
+     * reads exactly like one still uploading.
+     */
+    case EngineError = 'engine_error';
+
+    /**
      * Whether this class of error is generally worth retrying (transient) vs a
      * hard failure. Advisory only — the caller decides the actual policy.
      */
@@ -37,7 +49,10 @@ enum BackupErrorCode: string
         return match ($this) {
             self::HostTimeout, self::UploadFailed, self::CallbackLost, self::SnapshotUnavailable => true,
             self::ObjectMissing, self::ChecksumMismatch, self::DiskFull, self::ManifestInvalid,
-            self::BrokenChain, self::RestoreApplyFailed, self::PostRestoreValidationFailed => false,
+            self::BrokenChain, self::RestoreApplyFailed, self::PostRestoreValidationFailed,
+            // An error we could not classify is not one we should retry blindly:
+            // the failure that keeps repeating costs a client site each time.
+            self::EngineError => false,
         };
     }
 
@@ -55,6 +70,7 @@ enum BackupErrorCode: string
             self::BrokenChain => 'Backup chain is broken',
             self::RestoreApplyFailed => 'Restore apply failed',
             self::PostRestoreValidationFailed => 'Post-restore validation failed',
+            self::EngineError => 'Backup engine error',
         };
     }
 }

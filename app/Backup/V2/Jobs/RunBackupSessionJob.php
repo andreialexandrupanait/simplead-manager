@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Jobs;
 
+use App\Backup\V2\Enums\BackupErrorCode;
+use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\BackupRunner;
 use App\Backup\V2\Plugin\SimpleadBackupClient;
+use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Storage\S3ClientFactory;
 use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Support\BackupLogger;
@@ -20,6 +23,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use RuntimeException;
+use Throwable;
 
 /**
  * Queued entry point that runs (or resumes) one BackupSession through BackupRunner.
@@ -94,5 +98,34 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
             layout: $layout,
             logger: $logger,
         ))->run();
+    }
+
+    /**
+     * The last thing that runs when the job dies.
+     *
+     * BackupRunner now records its own failures, but it can only speak for what
+     * happens inside it. A session whose destination cannot be resolved, whose
+     * plugin credentials are missing, or that is killed by the worker before the
+     * runner is even constructed would otherwise sit in `requested` forever —
+     * and with tries = 1 there is no second attempt to notice.
+     *
+     * Idempotent: if the runner already reached a terminal state this is a no-op,
+     * so the more specific error it recorded is not overwritten by a generic one.
+     */
+    public function failed(?Throwable $e): void
+    {
+        $session = BackupSession::find($this->backupSessionId);
+        if (! $session instanceof BackupSession || $session->state->isTerminal()) {
+            return;
+        }
+
+        $session->recordError(
+            BackupErrorCode::EngineError,
+            $e?->getMessage() ?? 'backup job failed without an exception',
+        );
+
+        if (BackupStateMachine::canTransition($session->state, BackupSessionState::Failed)) {
+            $session->transitionTo(BackupSessionState::Failed, 'job failed: '.class_basename($e ?? 'unknown'));
+        }
     }
 }

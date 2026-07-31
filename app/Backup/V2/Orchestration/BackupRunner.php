@@ -9,6 +9,7 @@ use App\Backup\V2\Enums\BackupSessionState as S;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Plugin\DownloadedChunk;
 use App\Backup\V2\Plugin\PluginClient;
+use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Storage\BackupSessionProgressStore;
 use App\Backup\V2\Storage\HardenedMultipartUploader;
 use App\Backup\V2\Storage\ObjectLayout;
@@ -125,6 +126,22 @@ final class BackupRunner
             $this->session->transitionTo(S::Corrupt);
 
             return $this->session;
+        } catch (Throwable $e) {
+            // Everything that is not corruption used to escape this method
+            // entirely. The session stayed in whatever phase it died in, with no
+            // error recorded and no terminal state — and a session frozen at
+            // `uploading` is indistinguishable from one still uploading, so
+            // nothing alerted and nobody knew.
+            //
+            // Recorded and moved to a terminal state here, then rethrown: the
+            // queue still needs to see the failure, and the job's failed() hook
+            // remains the net for anything that dies outside this method.
+            $this->session->recordError(BackupErrorCode::EngineError, $e->getMessage());
+            if (BackupStateMachine::canTransition($this->session->state, S::Failed)) {
+                $this->session->transitionTo(S::Failed, 'engine error: '.class_basename($e));
+            }
+
+            throw $e;
         }
 
         return $this->session;
