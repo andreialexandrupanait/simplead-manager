@@ -53,8 +53,13 @@ final class BackupStateMachine
 
         $graph = [];
 
-        // requested: forward + can be cancelled/failed before any work.
-        $graph[S::Requested->value] = [S::CapabilityCheck, S::Cancelling, S::Failed];
+        // requested: forward, or parked before any work has happened. retry_wait
+        // is reachable from here because a session can be deferred before its
+        // first phase — the site is busy with a restore, say. Without the edge it
+        // had nowhere legal to wait, so it stayed in `requested` looking like a
+        // job the queue had simply not reached yet, and the attendant that
+        // re-dispatches parked sessions never saw it.
+        $graph[S::Requested->value] = [S::CapabilityCheck, S::RetryWait, S::Cancelling, S::Failed];
 
         foreach ($processing as $state) {
             $edges = [$forward[$state->value], ...$branch];

@@ -8,6 +8,7 @@ use App\Backup\V2\Console\DeepVerifyCommand;
 use App\Backup\V2\Console\ImportLegacyCommand;
 use App\Backup\V2\Console\ProvenRestoreCommand;
 use App\Backup\V2\Console\ReconcileStorageCommand;
+use App\Backup\V2\Console\RecoverStuckSessionsCommand;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -34,6 +35,7 @@ class BackupV2ServiceProvider extends ServiceProvider
                 DeepVerifyCommand::class,
                 ProvenRestoreCommand::class,
                 ImportLegacyCommand::class,
+                RecoverStuckSessionsCommand::class,
             ]);
         }
     }

@@ -393,6 +393,17 @@ Schedule::command('backups:recover-stuck-restores')
     ->name('recover-stuck-restores')
     ->onOneServer();
 
+// The same job for backup sessions, plus the attendant for parked ones. Kept
+// separate from the V1 stuck sweep on purpose: that one "recovers" a backup by
+// dispatching CreateBackup, which on a site running the new engine would put the
+// old one on top of a live session. A session parked in retry_wait is only
+// honest if something comes back for it — without this, retry_wait is the same
+// silent stall as a session frozen at `uploading`, with a nicer name.
+Schedule::command('backups:recover-stuck-sessions')
+    ->everyFifteenMinutes()
+    ->name('recover-stuck-backup-sessions')
+    ->onOneServer();
+
 // P2-27: recover safe updates whose worker died mid-pipeline without running
 // failed() — a row stuck in an intermediate state (backing_up/updating/
 // health_checking/rolling_back) otherwise wedges the site's safe-update slot and

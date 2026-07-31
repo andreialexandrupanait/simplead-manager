@@ -16,6 +16,7 @@ use App\Backup\V2\Support\BackupLogger;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\SiteOperationLock;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -64,9 +65,26 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(public readonly int $backupSessionId) {}
 
+    /**
+     * The unique lock releases after this even if the worker is SIGKILLed.
+     * Without it Laravel's default leaves the key behind and a resume silently
+     * no-ops until it ages out.
+     */
+    public int $uniqueFor = 3600;
+
+    /**
+     * Unique per SITE, not per session.
+     *
+     * Keyed on the session id, two sessions for the same site were two different
+     * keys, so nothing stopped both from running at once — each pulling chunks
+     * and dumping the database of the same WordPress install. The site is the
+     * resource under contention, so the site is what the key names.
+     */
     public function uniqueId(): string
     {
-        return 'backup-v2-session-'.$this->backupSessionId;
+        $siteId = BackupSession::query()->whereKey($this->backupSessionId)->value('site_id');
+
+        return 'backup-v2-site-'.($siteId ?? 'unknown-'.$this->backupSessionId);
     }
 
     public function handle(): void
@@ -92,25 +110,62 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
             );
         }
 
-        // Resolve the site's REAL S3 destination + per-site plugin credentials.
-        $destination = StorageDestination::resolveForSite($site);
-        if ($destination === null) {
-            throw new RuntimeException("No storage destination is configured for site {$session->site_id}.");
+        // Serialise against the other engine. V1's backup, incremental, restore
+        // and safe-update jobs all take this lock; V2 took nothing, so the two
+        // could run on the same WordPress install at once — one building an
+        // archive on the host while the other chunked the same filesystem and
+        // dumped the same database. Acquired here rather than when the session
+        // is created because a session can sit queued for minutes, and a
+        // two-hour lock held across queue latency blocks V1 for a job that has
+        // not started.
+        //
+        // The ref format is the convention BackupJobTrait::failed() matches on,
+        // so V1 can never force-release a V2 lock and vice versa.
+        $token = SiteOperationLock::acquire(
+            (int) $session->site_id,
+            SiteOperationLock::OPERATION_BACKUP,
+            self::class.':'.$session->id,
+        );
+
+        if ($token === null) {
+            $holder = SiteOperationLock::current((int) $session->site_id);
+            $busyWith = $holder['operation'] ?? 'another operation';
+
+            $logger->warning('backup deferred: site busy', ['holder' => $busyWith]);
+
+            // Parked, not failed. The checkpoint is untouched and the recovery
+            // sweep re-dispatches it once next_retry_at passes.
+            if (BackupStateMachine::canTransition($session->state, BackupSessionState::RetryWait)) {
+                $session->next_retry_at = now()->addMinutes(5);
+                $session->transitionTo(BackupSessionState::RetryWait, "site busy with {$busyWith}");
+            }
+
+            return;
         }
 
-        $s3 = S3ClientFactory::forDestination($destination);
-        $client = SimpleadBackupClient::forSite($site, $logger);
+        try {
+            // Resolve the site's REAL S3 destination + per-site plugin credentials.
+            $destination = StorageDestination::resolveForSite($site);
+            if ($destination === null) {
+                throw new RuntimeException("No storage destination is configured for site {$session->site_id}.");
+            }
 
-        $layout = SessionLayoutResolver::for($session, $site);
+            $s3 = S3ClientFactory::forDestination($destination);
+            $client = SimpleadBackupClient::forSite($site, $logger);
 
-        (new BackupRunner(
-            session: $session,
-            client: $client,
-            s3: $s3->client(),
-            bucket: $s3->bucket(),
-            layout: $layout,
-            logger: $logger,
-        ))->run();
+            $layout = SessionLayoutResolver::for($session, $site);
+
+            (new BackupRunner(
+                session: $session,
+                client: $client,
+                s3: $s3->client(),
+                bucket: $s3->bucket(),
+                layout: $layout,
+                logger: $logger,
+            ))->run();
+        } finally {
+            SiteOperationLock::release((int) $session->site_id, $token);
+        }
     }
 
     /**
@@ -128,7 +183,20 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
     public function failed(?Throwable $e): void
     {
         $session = BackupSession::find($this->backupSessionId);
-        if (! $session instanceof BackupSession || $session->state->isTerminal()) {
+        if (! $session instanceof BackupSession) {
+            return;
+        }
+
+        // failed() runs on a fresh instance, so the runtime token is gone.
+        // Release by ref match: the holder may be a restore or a safe update
+        // running perfectly well, and taking its lock away would let a backup
+        // start on top of it.
+        $holder = SiteOperationLock::current((int) $session->site_id);
+        if ($holder !== null && str_starts_with($holder['ref'], self::class.':')) {
+            SiteOperationLock::forceRelease((int) $session->site_id);
+        }
+
+        if ($session->state->isTerminal()) {
             return;
         }
 
