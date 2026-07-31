@@ -112,19 +112,30 @@
                    sidebarOpen ? 'lg:w-64 sidebar-open' : 'lg:w-16'
                ]">
 
-            {{-- Logo area. The bar is h-16 (64px) and the aside clips overflow, so
-                 the logo's ceiling is the bar height minus whatever padding the
-                 anchor adds. The anchor carries no vertical padding for exactly
-                 that reason: max-h-14 (56px) then fits with 4px of air top and
-                 bottom. Adding py-* back shrinks the logo again. --}}
+            {{-- Logo area — sized by WIDTH, with the anchor clipping the overflow.
+                 Capping the height instead is what made the logo look tiny: the
+                 current brand SVG is a 1000x1000 canvas whose artwork is only
+                 967x177, so 82% of the file is transparent padding. A 56px height
+                 cap applies to the padding too, leaving about 10px of visible
+                 logo — which is why raising max-h-11 to max-h-14 changed almost
+                 nothing, and why an earlier fix mistook padding for clipping.
+                 Driving the size from the width and clipping what spills gives
+                 ~32px of actual logo here, and still behaves for a normally
+                 cropped wordmark: at this width a tight 900x200 logo renders 40px
+                 tall, well inside the bar, so nothing is cut.
+
+                 86%, not full width: the anchor is flex-1, so padding on it is
+                 simply absorbed as it regrows. Constraining the image is what
+                 actually leaves air between the wordmark and the collapse
+                 toggle. --}}
             <div class="flex h-16 items-center gap-2 px-4 border-b border-gray-200 dark:border-gray-800"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
-                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full flex-1 min-w-0 transition-all duration-300"
+                <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full flex-1 min-w-0 overflow-hidden transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="max-h-14 w-auto object-contain dark:brightness-0 dark:invert">
+                             class="w-[86%] h-auto object-contain dark:brightness-0 dark:invert">
                     @else
                         <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
