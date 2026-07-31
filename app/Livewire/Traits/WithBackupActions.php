@@ -16,9 +16,58 @@ use Illuminate\Support\Facades\URL;
 
 trait WithBackupActions
 {
+    /**
+     * Route a manual backup to the engine this site actually runs.
+     *
+     * Without this the scheduler and the buttons disagreed: a site moved to the
+     * new engine would still get the old one from "Backup now" — and since the
+     * two do not share a lock namespace by accident but by design, that is how
+     * you end up with both engines working on one site at once.
+     *
+     * Returns true when the new engine took it.
+     */
+    protected function startOnNewEngineIfConfigured(string $type): bool
+    {
+        if (\App\Backup\V2\Support\BackupV2Gate::engineFor($this->site) !== BackupEngine::V2) {
+            return false;
+        }
+
+        // The chain planner decides full-vs-incremental for a scheduled run; a
+        // person clicking "Full backup" has already decided, so their choice
+        // stands and only the chain base is looked up.
+        $plan = (new \App\Backup\V2\Chain\ChainPlanner)->planFor($this->site);
+        $useChain = $type === 'incremental' && $plan['type'] === 'incremental';
+
+        try {
+            $session = app(\App\Backup\V2\Orchestration\SessionActions::class)->startBackup(
+                $this->site,
+                $useChain ? 'incremental' : 'full',
+                [
+                    'trigger' => 'manual',
+                    'full_base_id' => $useChain ? $plan['full_base_id'] : null,
+                    'chain_position' => $useChain ? $plan['chain_position'] : null,
+                ],
+            );
+        } catch (\Throwable $e) {
+            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
+
+            return true;
+        }
+
+        $this->trackingBackupId = $session->backup_id;
+        unset($this->activeBackup);
+
+        return true;
+    }
+
     public function backupDatabase(): void
     {
         $this->authorizeSiteModification($this->site);
+        // A database-only backup is not a thing the new engine makes: every restore point it writes holds files and the database together, because a point you can restore to is one where the two agree.
+        if ($this->startOnNewEngineIfConfigured('full')) {
+            return;
+        }
+
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
@@ -67,6 +116,10 @@ trait WithBackupActions
     public function backupFull(): void
     {
         $this->authorizeSiteModification($this->site);
+        if ($this->startOnNewEngineIfConfigured('full')) {
+            return;
+        }
+
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
@@ -115,6 +168,10 @@ trait WithBackupActions
     public function backupIncremental(): void
     {
         $this->authorizeSiteModification($this->site);
+        if ($this->startOnNewEngineIfConfigured('incremental')) {
+            return;
+        }
+
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
             session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
