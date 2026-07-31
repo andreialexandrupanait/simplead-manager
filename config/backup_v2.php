@@ -51,35 +51,45 @@ return [
     |--------------------------------------------------------------------------
     | Resource profiles (LOW_IMPACT / NORMAL / FAST)
     |--------------------------------------------------------------------------
-    | Starting values only — the WORDPRESS-ENGINE / PERFORMANCE work derives the
-    | real limits from host capability discovery (max_execution_time,
-    | memory_limit, free disk, load) in the lab. These are conservative seeds so
-    | nothing runs unbounded before benchmarking sets them.
+    | How hard a backup is allowed to lean on a client's site. Read by
+    | App\Backup\V2\Orchestration\ResourceProfile, which maps each value onto a
+    | parameter the plugin honours or a decision the manager makes.
     */
     'profiles' => [
+        // Every value here reaches a parameter the plugin actually honours, or a
+        // decision the manager actually makes. The keys that could not — a memory
+        // budget the plugin overrides with its own ini_set, a file-count batch it
+        // has no parameter for — were removed rather than left describing an
+        // intention the code never carried out.
         'low_impact' => [
-            'step_seconds' => 8,    // wall-clock budget per WP step (well under CF ~100s)
-            'memory_budget_mb' => 64,   // soft cap; suspend if the host memory_limit is tighter
-            'min_free_disk_mb' => 512,  // disk guard floor
-            'file_batch' => 200,  // files processed per step
-            'pause_ms' => 400,  // adaptive pause between steps
+            'file_chunk_mb' => 25,      // smaller zips = shorter single requests
+            'compression' => 'store',   // no CPU spent compressing already-compressed media
+            'db_time_budget' => 20,     // seconds per dump call, well under any proxy timeout
+            'db_segment_mb' => 8,
+            'db_batch_rows' => 200,     // rows per SELECT — the lever on peak memory
+            'pause_ms' => 400,          // breathing room between chunks
+            'min_free_disk_mb' => 512,
             'max_concurrency' => 1,
         ],
         'normal' => [
-            'step_seconds' => 20,
-            'memory_budget_mb' => 128,
-            'min_free_disk_mb' => 512,
-            'file_batch' => 1000,
+            'file_chunk_mb' => 50,
+            'compression' => 'store',
+            'db_time_budget' => 45,
+            'db_segment_mb' => 16,
+            'db_batch_rows' => 500,
             'pause_ms' => 100,
-            'max_concurrency' => 2,
+            'min_free_disk_mb' => 512,
+            'max_concurrency' => 1,
         ],
         'fast' => [ // VPS/dedicated only, explicit opt-in
-            'step_seconds' => 45,
-            'memory_budget_mb' => 256,
-            'min_free_disk_mb' => 1024,
-            'file_batch' => 4000,
+            'file_chunk_mb' => 100,
+            'compression' => 'deflate',
+            'db_time_budget' => 90,
+            'db_segment_mb' => 32,
+            'db_batch_rows' => 1000,
             'pause_ms' => 0,
-            'max_concurrency' => 4,
+            'min_free_disk_mb' => 1024,
+            'max_concurrency' => 2,
         ],
     ],
     'default_profile' => (string) env('BACKUP_ENGINE_V2_DEFAULT_PROFILE', 'low_impact'),

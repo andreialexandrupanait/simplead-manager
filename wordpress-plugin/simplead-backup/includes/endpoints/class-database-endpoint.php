@@ -31,6 +31,7 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
                     'session_id'    => array('type' => 'string', 'required' => false),
                     'time_budget'   => array('type' => 'number', 'required' => false),
                     'segment_bytes' => array('type' => 'integer', 'required' => false),
+                    'batch_rows'    => array('type' => 'integer', 'required' => false),
                     'exclude_tables'=> array('type' => 'array', 'required' => false),
                 ),
             ),
@@ -62,10 +63,17 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
         $session_id = (string) ($request->get_param('session_id') ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
         $output_dir = SAM_Backup_Temp::session_dir($session_id) . '/database';
 
+        // `??`, not `?:`. With the old falsy-coalesce an explicit 0 or an empty
+        // string fell silently through to the default, so a caller could not
+        // express "no budget" and — worse — could not tell that its value had
+        // been ignored. batch_rows is newly exposed: the dumper has always
+        // accepted it, and it is the real lever on the host's peak memory,
+        // because it decides how many rows a single SELECT pulls into PHP.
         $overrides = array(
-            'time_budget'    => (float) ($request->get_param('time_budget') ?: SAM_Backup_Options::get('time_budget', 90)),
-            'segment_bytes'  => (int) ($request->get_param('segment_bytes') ?: SAM_Backup_Options::get('segment_bytes', 8388608)),
-            'exclude_tables' => (array) ($request->get_param('exclude_tables') ?: array()),
+            'time_budget'    => (float) ($request->get_param('time_budget') ?? SAM_Backup_Options::get('time_budget', 90)),
+            'segment_bytes'  => (int) ($request->get_param('segment_bytes') ?? SAM_Backup_Options::get('segment_bytes', 8388608)),
+            'batch_rows'     => (int) ($request->get_param('batch_rows') ?? 1000),
+            'exclude_tables' => (array) ($request->get_param('exclude_tables') ?? array()),
         );
 
         SAM_Backup_Logger::info('database/dump start', array('session' => $session_id));

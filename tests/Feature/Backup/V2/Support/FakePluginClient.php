@@ -35,9 +35,11 @@ final class FakePluginClient implements PluginClient
     public function capabilities(): array
     {
         return [
-            'plugin' => ['version' => 'fake-0'],
+            'plugin' => ['version' => '0.5.0'],
             'wordpress' => ['version' => '6.9'],
             'php' => ['version' => PHP_VERSION],
+            'extensions' => ['zip' => true],
+            'disk' => ['temp_dir' => '/tmp/sam_backup', 'temp_writable' => true, 'free_bytes' => 8 * 1024 ** 3],
             'database' => ['consistent_snapshot_supported' => true, 'server_version' => 'fake', 'engine_family' => 'mysql', 'non_innodb_tables' => []],
         ];
     }

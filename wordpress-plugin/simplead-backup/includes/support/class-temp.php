@@ -44,6 +44,33 @@ final class SAM_Backup_Temp {
     }
 
     /**
+     * Can we actually write into the temp root?
+     *
+     * root() reports where the directory is, which is not the same question and
+     * was the only one anyone asked. A temp root owned by another user — the
+     * usual cause being a root-run wp-cli command that booted the plugin — makes
+     * every dump and every staged restore answer 500, with nothing to show for
+     * it but a PHP warning in the host's error log. An actual write is the only
+     * honest test: is_writable() reports on the directory bit and can disagree
+     * with reality under ACLs, SELinux or a read-only mount.
+     */
+    public static function is_writable(): bool {
+        $root = self::ensure('');
+        if (! is_dir($root)) {
+            return false;
+        }
+
+        $probe = $root . '/.writable-' . wp_generate_password(8, false);
+        $written = @file_put_contents($probe, 'x');
+        if ($written === false) {
+            return false;
+        }
+        @unlink($probe);
+
+        return true;
+    }
+
+    /**
      * Free bytes on the temp filesystem (used by capability discovery / disk guard).
      */
     public static function free_bytes(): ?int {

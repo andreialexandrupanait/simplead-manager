@@ -6,6 +6,7 @@ namespace App\Backup\V2\Orchestration;
 
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\BackupSessionState as S;
+use App\Backup\V2\Exceptions\PreflightFailed;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Plugin\DownloadedChunk;
 use App\Backup\V2\Plugin\PluginClient;
@@ -100,7 +101,10 @@ final class BackupRunner
             $this->session->site_id,
         );
         $this->progress = new BackupSessionProgressStore($this->session);
+        $this->profile = ResourceProfile::named($this->session->resource_profile);
     }
+
+    private readonly ResourceProfile $profile;
 
     /**
      * Run (or resume) the session to a terminal state. Returns the session.
@@ -126,6 +130,18 @@ final class BackupRunner
         } catch (CorruptBackupException $e) {
             $this->session->recordError(BackupErrorCode::ChecksumMismatch, $e->getMessage());
             $this->session->transitionTo(S::Corrupt);
+
+            return $this->session;
+        } catch (PreflightFailed $e) {
+            // Terminal, not parked. A host with no free disk, an ancient plugin
+            // or a bucket that rejects writes does not fix itself in five
+            // minutes, and retrying costs the site another walk of its
+            // filesystem to reach the same answer. It ends here, with the
+            // precondition named in the alert.
+            $this->session->recordError($e->errorCode, $e->getMessage());
+            if (BackupStateMachine::canTransition($this->session->state, S::Failed)) {
+                $this->session->transitionTo(S::Failed, 'preflight refused the backup');
+            }
 
             return $this->session;
         } catch (Throwable $e) {
@@ -214,6 +230,15 @@ final class BackupRunner
     {
         $caps = $this->client->capabilities();
 
+        // Refuse here or not at all. Everything after this point costs the client's
+        // site real work — walking its filesystem, building zips, holding a
+        // transaction open — and none of it is recoverable if the host was never
+        // in a state to finish. The probe already asked all of these questions and
+        // used almost none of the answers.
+        $preflight = new PreflightCheck;
+        $preflight->assertHostIsReady($caps, $this->profile->minFreeDiskMb);
+        $preflight->assertStorageAccepts($this->s3, $this->bucket, $this->layout);
+
         $this->mergeCheckpoint([
             'capabilities' => [
                 'plugin_version' => $caps['plugin']['version'] ?? null,
@@ -244,10 +269,16 @@ final class BackupRunner
             return;
         }
 
-        $options = ['include_defaults' => true, 'compression' => $this->compression];
-        if ($this->fileChunkThreshold !== null) {
-            $options['threshold'] = $this->fileChunkThreshold;
-        }
+        // The profile decides how big a zip the host is asked to build and
+        // whether it spends CPU compressing it. Both were accepted by this class
+        // and by the plugin all along, and nobody ever sent them — so every site,
+        // on every profile, got the plugin's 100 MiB default with no compression
+        // choice at all. The explicit constructor values stay as a test seam.
+        $options = [
+            'include_defaults' => true,
+            'compression' => $this->compression ?: $this->profile->compression,
+            'threshold' => $this->fileChunkThreshold ?? $this->profile->fileChunkBytes,
+        ];
 
         // Incremental: hand the plugin the materialised base file-state so it plans ONLY changed+new
         // files and reports tombstones. A full (or a run with no baseline) sends no base_manifest and
@@ -311,10 +342,16 @@ final class BackupRunner
             return; // every DB segment already confirmed on a prior run
         }
 
-        $params = ['exclude_tables' => $this->excludeTables()];
-        if ($this->dbSegmentBytes !== null) {
-            $params['segment_bytes'] = $this->dbSegmentBytes;
-        }
+        // batch_rows is the real lever on the host's peak memory during a dump:
+        // it is how many rows a single SELECT pulls into PHP at once. time_budget
+        // bounds how long one request holds the snapshot open. Both were already
+        // understood by the dumper; the profile is what finally decides them.
+        $params = [
+            'exclude_tables' => $this->excludeTables(),
+            'segment_bytes' => $this->dbSegmentBytes ?? $this->profile->dbSegmentBytes,
+            'time_budget' => $this->profile->dbTimeBudget,
+            'batch_rows' => $this->profile->dbBatchRows,
+        ];
 
         $dump = $this->client->dbDump($this->pluginSessionId(), $params);
 
@@ -458,6 +495,12 @@ final class BackupRunner
             }
 
             $this->fault('files', $index);
+
+            // Hand the host back its CPU and disk before asking for the next
+            // chunk. Without this the loop pulls as fast as the site can answer,
+            // which on shared hosting is the difference between a backup nobody
+            // notices and one that shows up in the visitors' page load times.
+            $this->profile->pause();
         }
     }
 

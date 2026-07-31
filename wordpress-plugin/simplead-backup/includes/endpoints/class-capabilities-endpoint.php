@@ -76,8 +76,15 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
                 'note'                 => 'reported only; the backup engine never invokes shell functions',
             ),
             'disk' => array(
-                'temp_dir'   => SAM_Backup_Temp::root(),
-                'free_bytes' => SAM_Backup_Temp::free_bytes(),
+                'temp_dir'      => SAM_Backup_Temp::root(),
+                'free_bytes'    => SAM_Backup_Temp::free_bytes(),
+                // Reported because naming the directory proved nothing. A temp
+                // root owned by another user — which is what a root-run wp-cli
+                // command leaves behind — makes every dump and every staged
+                // restore answer 500 with nothing but a PHP warning in the
+                // host's error log. The manager refuses the backup up front now
+                // instead of discovering it three phases in.
+                'temp_writable' => SAM_Backup_Temp::is_writable(),
             ),
             'transport' => array(
                 'multipart_upload_supported' => class_exists('ZipArchive') && function_exists('curl_init'),

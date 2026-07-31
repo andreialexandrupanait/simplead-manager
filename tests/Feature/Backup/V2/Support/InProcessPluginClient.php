@@ -86,9 +86,11 @@ final class InProcessPluginClient implements PluginClient
     public function capabilities(): array
     {
         return [
-            'plugin' => ['name' => 'simplead-backup', 'version' => 'inproc-0.3.0'],
+            'plugin' => ['name' => 'simplead-backup', 'version' => '0.5.0'],
             'wordpress' => ['version' => '6.9'],
             'php' => ['version' => PHP_VERSION],
+            'extensions' => ['zip' => true],
+            'disk' => ['temp_dir' => '/tmp/sam_backup', 'temp_writable' => true, 'free_bytes' => 8 * 1024 ** 3],
             'database' => ['consistent_snapshot_supported' => true, 'server_version' => 'inproc', 'engine_family' => 'mysql', 'non_innodb_tables' => []],
         ];
     }
