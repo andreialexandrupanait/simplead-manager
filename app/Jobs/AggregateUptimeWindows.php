@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\UptimeCheck;
+use App\Models\UptimeHourlyAggregate;
 use App\Models\UptimeMonitor;
 use App\Services\RetentionPolicyService;
 use Illuminate\Bus\Queueable;
@@ -22,9 +23,9 @@ use Illuminate\Queue\SerializesModels;
  * retention window, so a "365d" figure could only ever reflect the retained
  * coverage.
  *
- * This job bounds the query to the actual retained coverage so the stored value
- * is honest (it reflects the data that genuinely exists), and takes the cost out
- * of the per-check hot path.
+ * This job takes that cost out of the per-check hot path. Since SPEC §14.1's hourly
+ * aggregates exist, it reads them rather than the raw pings, so the "365d" label is
+ * finally accurate: the aggregates are kept 13 months, the raw pings 14 days.
  */
 class AggregateUptimeWindows implements ShouldBeUnique, ShouldQueue
 {
@@ -48,24 +49,46 @@ class AggregateUptimeWindows implements ShouldBeUnique, ShouldQueue
 
     public function handle(RetentionPolicyService $retention): void
     {
-        // uptime_checks only exist for the retained window, so the long-window
-        // figure can only ever cover that. Bound the query to it (capped at a
-        // year) so the value is honest rather than mislabelled.
-        $days = min(365, $retention->getDays('uptime'));
-        $since = now()->subDays($days);
+        // The figure now comes from the hourly aggregates (SPEC §14.1), which are
+        // kept 13 months, so "365d" finally means 365 days. Raw pings are retained
+        // for 14 days and could never have covered a year — the old bound to the
+        // raw retention window made the number honest but tiny.
+        $since = now()->subDays(365);
 
         UptimeMonitor::query()
             ->where('status', 'active')
-            ->each(function (UptimeMonitor $monitor) use ($since): void {
-                $stats = UptimeCheck::forMonitorSince($monitor->id, $since)
-                    ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up')
+            ->each(function (UptimeMonitor $monitor) use ($since, $retention): void {
+                $stats = UptimeHourlyAggregate::query()
+                    ->where('monitor_id', $monitor->id)
+                    ->where('bucket_hour', '>=', $since)
+                    ->selectRaw('SUM(checks_total) as total, SUM(checks_up) as up')
                     ->first();
 
                 $total = (int) ($stats->total ?? 0);
                 $up = (int) ($stats->up ?? 0);
 
+                // Before the first hourly run there are no buckets yet; fall back to
+                // the raw pings so the value never blanks out during the changeover.
+                if ($total === 0) {
+                    [$total, $up] = $this->fromRawChecks($monitor, $retention);
+                }
+
                 $monitor->uptime_365d = $total > 0 ? round(($up / $total) * 100, 3) : null;
                 $monitor->saveQuietly();
             });
+    }
+
+    /**
+     * @return array{0: int, 1: int} total and up counts over the retained raw window
+     */
+    private function fromRawChecks(UptimeMonitor $monitor, RetentionPolicyService $retention): array
+    {
+        $since = now()->subDays(min(365, $retention->getDays('uptime')));
+
+        $stats = UptimeCheck::forMonitorSince($monitor->id, $since)
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_up = true THEN 1 ELSE 0 END) as up')
+            ->first();
+
+        return [(int) ($stats->total ?? 0), (int) ($stats->up ?? 0)];
     }
 }

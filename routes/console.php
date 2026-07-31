@@ -74,6 +74,21 @@ Schedule::job(new \App\Jobs\RecordHealthScores)->dailyAt('01:00')->name('daily-h
 // every check, bounded honestly to the retained uptime-checks coverage.
 Schedule::job(new \App\Jobs\AggregateUptimeWindows)->dailyAt('01:30')->name('aggregate-uptime-windows')->onOneServer();
 
+// SPEC §14.1: fold raw pings into hourly buckets kept 13 months. Hourly, and well
+// clear of the 03:00 retention run — pings for hours not yet folded up would
+// otherwise be pruned before they were ever aggregated.
+Schedule::job(new \App\Jobs\AggregateUptimeHourly)
+    ->hourlyAt(5)
+    ->name('aggregate-uptime-hourly')
+    ->onOneServer();
+
+// SPEC §14.1: raw PHP errors live 30 days, the aggregate 13 months. Ahead of the
+// 03:00 retention run for the same reason as the uptime fold above.
+Schedule::job(new \App\Jobs\AggregatePhpErrorsMonthly)
+    ->dailyAt('01:45')
+    ->name('aggregate-php-errors-monthly')
+    ->onOneServer();
+
 // ==========================================================================
 // Monthly Aggregation
 // ==========================================================================

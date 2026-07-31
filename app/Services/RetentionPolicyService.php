@@ -12,13 +12,26 @@ use Illuminate\Support\Facades\Schema;
 class RetentionPolicyService
 {
     public const CATEGORIES = [
+        // SPEC §14.1: raw pings 14 days. Anything longer is answered from
+        // uptime_hourly_aggregates, which AggregateUptimeHourly folds these into
+        // every hour and which this service keeps for 13 months below.
         'uptime' => [
             'label' => 'Uptime Checks',
-            'default' => 45,
+            'default' => 14,
             'min' => 7,
             'max' => 365,
             'tables' => [
                 ['table' => 'uptime_checks', 'column' => 'checked_at', 'col_type' => 'timestamp', 'label' => 'Uptime checks', 'condition' => null],
+            ],
+        ],
+        // SPEC §14.1: 13 months, so "July this year against July last year" works.
+        'uptime_hourly' => [
+            'label' => 'Uptime Hourly Aggregates',
+            'default' => 396,
+            'min' => 90,
+            'max' => 1825,
+            'tables' => [
+                ['table' => 'uptime_hourly_aggregates', 'column' => 'bucket_hour', 'col_type' => 'timestamp', 'label' => 'Uptime hourly aggregates', 'condition' => null],
             ],
         ],
         'performance' => [
@@ -114,14 +127,25 @@ class RetentionPolicyService
                 ['table' => 'dns_changes', 'column' => 'detected_at', 'col_type' => 'timestamp', 'label' => 'DNS changes', 'condition' => null],
             ],
         ],
+        // SPEC §14.1: raw PHP errors 30 days. The 13-month history lives in
+        // php_error_monthly_aggregates, folded up before this prunes.
         'php_error_logs' => [
             'label' => 'PHP Error Logs',
-            'default' => 60,
+            'default' => 30,
             'min' => 14,
             'max' => 365,
             'dry_run' => true,
             'tables' => [
                 ['table' => 'php_error_logs', 'column' => 'last_seen_at', 'col_type' => 'timestamp', 'label' => 'PHP error logs', 'condition' => null],
+            ],
+        ],
+        'php_error_aggregates' => [
+            'label' => 'PHP Error Monthly Aggregates',
+            'default' => 396,
+            'min' => 90,
+            'max' => 1825,
+            'tables' => [
+                ['table' => 'php_error_monthly_aggregates', 'column' => 'bucket_month', 'col_type' => 'date', 'label' => 'PHP error monthly aggregates', 'condition' => null],
             ],
         ],
         'in_app_notifications' => [
@@ -134,20 +158,23 @@ class RetentionPolicyService
                 ['table' => 'in_app_notifications', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'In-app notifications', 'condition' => null],
             ],
         ],
-        // P3-23: generated report PDFs. Pruning is file-aware (the PDF on disk is
-        // deleted alongside its row), so RetentionCleanup handles this category via
-        // its dedicated cleanExpiredReports() path rather than the generic table
-        // deleter — the `tables` entry below is metadata for the dry-run counter.
-        'reports' => [
-            'label' => 'Report PDFs',
-            'default' => 365,
+        'link_checks' => [
+            'label' => 'Broken Link Checks',
+            'default' => 396,
             'min' => 90,
             'max' => 1825,
-            'dry_run' => true,
             'tables' => [
-                ['table' => 'reports', 'column' => 'generated_at', 'col_type' => 'timestamp', 'label' => 'Report PDFs', 'condition' => null],
+                // Results first: they are the children, and the run row is what the
+                // month-on-month difference is computed against.
+                ['table' => 'link_check_results', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Link check results', 'condition' => null],
+                ['table' => 'link_check_runs', 'column' => 'created_at', 'col_type' => 'timestamp', 'label' => 'Link check runs', 'condition' => null],
             ],
         ],
+        // NOTE: reports are deliberately absent. SPEC §14.1 keeps them permanently —
+        // a report is the record of what was delivered to a client, and the client
+        // may ask about one years later. A previous 365-day category existed here
+        // (dry-run gated, so it never actually deleted anything); it was removed
+        // rather than lengthened, because "permanent" is not a long number.
     ];
 
     public function __construct(

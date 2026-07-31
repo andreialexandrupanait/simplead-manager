@@ -48,10 +48,19 @@ class ReportWeeklyPeriodTest extends TestCase
         });
     }
 
-    public function test_pdf_retention_category_is_registered(): void
+    /**
+     * SPEC §14.1 keeps reports permanently: a report is the record of what was
+     * delivered to a client, and the client may ask about one years later. There
+     * was a 365-day retention category for them (dry-run gated, so it never
+     * actually deleted); it is gone, and no category may quietly reintroduce it.
+     */
+    public function test_reports_are_never_pruned_by_retention(): void
     {
-        $this->assertArrayHasKey('reports', RetentionPolicyService::CATEGORIES);
-        $this->assertTrue(RetentionPolicyService::CATEGORIES['reports']['dry_run']);
-        $this->assertSame('reports', RetentionPolicyService::CATEGORIES['reports']['tables'][0]['table']);
+        $this->assertArrayNotHasKey('reports', RetentionPolicyService::CATEGORIES);
+
+        $prunedTables = collect(RetentionPolicyService::CATEGORIES)
+            ->flatMap(fn (array $category) => array_column($category['tables'], 'table'));
+
+        $this->assertNotContains('reports', $prunedTables);
     }
 }
