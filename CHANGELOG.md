@@ -7,6 +7,31 @@ WordPress sites.
 
 ## [Unreleased]
 
+### Added
+- **An audit of the two backup engines, against production rather than intentions**
+  (`docs/backup/AUDIT-V1-VS-V2.md`). The two are good at complementary things and neither is
+  sufficient alone: V1 has the product — UI, chain-aware retention, 3-2-1 replication, failure
+  alerting that demonstrably fires, a restore proven in production — while its database dump is
+  wrong by construction. Each chunk is a separate HTTP request, so a separate PHP process, so a
+  separate MySQL connection, so a separate snapshot; a consistent snapshot only holds inside one
+  connection. The repo had already measured the cost and then shipped past it: 342 orphan rows
+  against 0 for `--single-transaction`. On a WooCommerce site under traffic a V1 restore can produce
+  orders whose line items are missing. V2 fixes exactly that (one connection, `START TRANSACTION
+  WITH CONSISTENT SNAPSHOT`) and is honest when it cannot — but it is invisible in the UI, never
+  alerts on failure, has no working retention, no replication, and only speaks S3.
+  Three findings were not in either engine's own documentation. **Neither engine encrypts client
+  backups**: `BACKUP_ENCRYPTION_KEY` has exactly one consumer, `DatabaseDumpCommand`, which dumps
+  the *manager's* database — every client site's database sits in the clear on Hetzner and Dropbox.
+  **V1's retention has never deleted anything**: `retention_dry_run` is `true` in production, so
+  1,448 backups going back to 12 March occupy 1.18 TB while the configured policies say roughly
+  324 GB. And **`RunBackupSessionJob` has `tries = 1` and no `failed()`**, so a V2 backup that dies
+  on anything other than a corrupt-checksum exception leaves the session wedged mid-state and says
+  nothing at all.
+  The recommendation is neither engine but the seam between them, which was designed and never
+  wired: `backup_sessions.backup_id`, whose own migration comment says it exists "so the two engines
+  can coexist during migration". V1's product layer never reads `file_path` or an object count, so
+  it is already form-agnostic — keep V1's face over V2's engine.
+
 ### Changed
 - **One deploy stack, not two — the pre-Coolify leftovers are gone.** Since the
   2026-07-29 cutover the repo carried both `docker-compose.prod.yml` (447 lines: app,

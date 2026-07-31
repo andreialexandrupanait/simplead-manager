@@ -3,6 +3,14 @@
 > Actualizat la finalul fiecărei faze interne. Directiva: [`DIRECTIVE-simplead-backup.md`](DIRECTIVE-simplead-backup.md).
 > Design: [`TARGET-ARCHITECTURE.md`](TARGET-ARCHITECTURE.md) · Roadmap: [`IMPLEMENTATION-ROADMAP.md`](IMPLEMENTATION-ROADMAP.md)
 > Acceptanță: [`ACCEPTANCE-TESTS.md`](ACCEPTANCE-TESTS.md) · Decizii: [`DECISION-LOG.md`](DECISION-LOG.md)
+> **Comparație cu motorul curent: [`AUDIT-V1-VS-V2.md`](AUDIT-V1-VS-V2.md)** (31 iul 2026, date din producție)
+
+> ⚠️ **Actualizare 2026-07-31 — rândurile „Producție: neatinsă" de mai jos nu mai sunt valabile.**
+> Pilotul a pornit pe feaagalati.ro: `backup_v2.enabled=true`, `site_ids=["32"]`, `ui_enabled=true`,
+> iar un backup V2 real a rulat în producție (sesiunea #2, 451,5 MB, 1m47s, verificat, pe Hetzner).
+> `restore_enabled` și `proven_restore_enabled` rămân `false`. Restul stărilor pe faze de mai jos
+> descriu laboratorul și sunt corecte ca atare; pentru ce lipsește ca V2 să fie folosibil în
+> producție, vezi auditul.
 
 **Verdict curent:** ✅ **READY FOR PILOT** — motorul V2 complet și dovedit end-to-end în laborator; audit independent
 APROBAT (0 critice, 0 majore); **precondițiile de producție ÎNCHISE** (resolvere creds S3 din `StorageDestination` +
