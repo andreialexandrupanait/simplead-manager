@@ -39,6 +39,15 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
     const DISCOVER_MAX_POSTS = 300;
 
     /**
+     * Where forms can live. elementor_library is not optional: Theme Builder
+     * templates, popups and global widgets are stored there, so a form in a
+     * footer or a popup is invisible to a scan of pages alone — which is exactly
+     * how the first version of this scan reported "0 forms" for a site whose
+     * homepage visibly renders one.
+     */
+    const DISCOVER_POST_TYPES = ['page', 'post', 'product', 'elementor_library', 'e-landing-page'];
+
+    /**
      * Allowlist: plugin file => [display name, internal key]. ONLY these have a
      * proven suppression path, so ONLY these are ever submitted.
      */
@@ -182,8 +191,8 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         }
 
         $posts = get_posts([
-            'post_type'        => ['page', 'post', 'product'],
-            'post_status'      => 'publish',
+            'post_type'        => self::DISCOVER_POST_TYPES,
+            'post_status'      => ['publish', 'private'],
             'numberposts'      => $limit,
             'orderby'          => 'menu_order title',
             'order'            => 'ASC',
@@ -191,6 +200,11 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         ]);
 
         $found = [];
+        // Coverage counters. A scan that finds nothing is ambiguous — no forms, or
+        // a scan that never reached them? These say which, so the next question is
+        // answered with a number instead of another guess.
+        $withElementor = 0;
+        $parsed = 0;
 
         foreach ($posts as $post) {
             $page = [
@@ -198,6 +212,14 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 'title'   => (string) $post->post_title,
                 'url'     => (string) get_permalink($post),
             ];
+
+            $raw = get_post_meta($post->ID, '_elementor_data', true);
+            if (is_string($raw) && $raw !== '') {
+                $withElementor++;
+                if (is_array($this->decode_elementor($raw))) {
+                    $parsed++;
+                }
+            }
 
             foreach ($this->forms_in_elementor($post) as $f) {
                 $found[] = $f + $page;
@@ -208,9 +230,12 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         }
 
         return $this->success([
-            'scanned_posts' => count($posts),
-            'truncated'     => count($posts) >= $limit,
-            'forms'         => $found,
+            'scanned_posts'          => count($posts),
+            'post_types'             => self::DISCOVER_POST_TYPES,
+            'posts_with_elementor'   => $withElementor,
+            'elementor_data_parsed'  => $parsed,
+            'truncated'              => count($posts) >= $limit,
+            'forms'                  => $found,
         ]);
     }
 
@@ -228,7 +253,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             return [];
         }
 
-        $tree = json_decode($raw, true);
+        $tree = $this->decode_elementor($raw);
 
         if (!is_array($tree)) {
             return [];
@@ -263,6 +288,28 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         $walk($tree);
 
         return $out;
+    }
+
+    /**
+     * Decode _elementor_data, tolerating the slashed form.
+     *
+     * WordPress adds slashes on save, and depending on how the value was written
+     * a plain json_decode can return null on a perfectly good tree. Trying the
+     * unslashed form second costs nothing and avoids silently reporting a page as
+     * having no forms because its JSON would not parse.
+     *
+     * @return array|null
+     */
+    private function decode_elementor(string $raw) {
+        $tree = json_decode($raw, true);
+
+        if (is_array($tree)) {
+            return $tree;
+        }
+
+        $tree = json_decode(wp_unslash($raw), true);
+
+        return is_array($tree) ? $tree : null;
     }
 
     /**
@@ -398,8 +445,8 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     // No plugin API to ask: Elementor forms are widgets inside page
                     // content, so listing them means reading the content.
                     foreach (get_posts([
-                        'post_type'        => ['page', 'post'],
-                        'post_status'      => 'publish',
+                        'post_type'        => self::DISCOVER_POST_TYPES,
+                        'post_status'      => ['publish', 'private'],
                         'numberposts'      => self::DISCOVER_MAX_POSTS,
                         'suppress_filters' => true,
                     ]) as $post) {
@@ -664,8 +711,8 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      */
     private function find_elementor_form(string $form_id = ''): ?array {
         $posts = get_posts([
-            'post_type'        => ['page', 'post'],
-            'post_status'      => 'publish',
+            'post_type'        => self::DISCOVER_POST_TYPES,
+            'post_status'      => ['publish', 'private'],
             'numberposts'      => self::DISCOVER_MAX_POSTS,
             'suppress_filters' => true,
         ]);
@@ -677,7 +724,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             if (!is_string($raw) || $raw === '') {
                 continue;
             }
-            $tree = json_decode($raw, true);
+            $tree = $this->decode_elementor($raw);
             if (!is_array($tree)) {
                 continue;
             }
