@@ -273,7 +273,10 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
 
                 // §7.5 — seed the key-URL set (homepage now; top GSC pages fill in
                 // once Search Console data lands, via FetchSearchConsoleData).
-                app(\App\Services\KeyUrlService::class)->deriveAndStore($this->site);
+                // refreshIfDue, not deriveAndStore: the spec asks for a quarterly
+                // recompute, and this runs on every sync. It also respects a set
+                // that was pinned by hand, which the old call overwrote.
+                app(\App\Services\KeyUrlService::class)->refreshIfDue($this->site);
 
                 // §10 step 6 — reference scan + first backup.
                 RunSecurityScan::dispatch($this->site);

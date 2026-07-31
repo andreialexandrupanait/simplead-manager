@@ -364,6 +364,16 @@
         >
             Rapoarte
         </x-sidebar.sidebar-item>
+
+        {{-- SPEC §9 „Profil" — ce nu se poate împărți cu alt site: URL-uri cheie,
+             selector-canar, listă de risc, adresă de test formulare. --}}
+        <x-sidebar.sidebar-item
+            :href="route('sites.profile', $site)"
+            icon="sliders"
+            :active="request()->routeIs('sites.profile')"
+        >
+            Profil
+        </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
     {{-- „Setări site" eliminat din nav: setările globale sunt deja în footer-ul
          sidebar-ului (Settings). --}}

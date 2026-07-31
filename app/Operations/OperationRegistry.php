@@ -22,12 +22,18 @@ use App\Operations\Operations\QueueSafeUpdatesOperation;
 class OperationRegistry
 {
     /**
-     * SPEC §6.2's operation catalogue. Two of the eleven listed types are
+     * SPEC §6.2's operation catalogue. Three of the eleven listed types are
      * deliberately absent rather than forgotten:
      *   - restore: a restore needs a specific backup chosen per site, so there is
      *     no meaningful fleet-wide selection to run it over;
      *   - instant wp-admin login: it hands one browser one session — batching it
-     *     across thirty sites means nothing.
+     *     across thirty sites means nothing;
+     *   - verified restore: it exists (RunProvenRestore, and the V2 path behind
+     *     backup_v2.proven_restore_enabled) but runs on its own monthly schedule
+     *     per site. Putting it on the fleet engine would offer an operator a
+     *     button that spins up an ephemeral container per selected site — an
+     *     expensive thing to fire by accident, for no gain over the schedule.
+     *     This one was previously missing from the count as well as the map.
      *
      * @var array<string, class-string<Operation>>
      */

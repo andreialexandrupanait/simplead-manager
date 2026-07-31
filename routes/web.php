@@ -161,6 +161,10 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/reports/{report}/view', Sites\Detail\ReportView::class)->name('sites.reports.view');
         Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download')->middleware('throttle:10,1');
+        // SPEC §9 — the per-site half of the plan/profile split: key URLs, canary
+        // selector, risk list, form-test address. Three of the four had no editor
+        // anywhere in the app before this.
+        Route::get('/profile', Sites\Detail\SiteProfile::class)->name('sites.profile');
         Route::get('/settings', Sites\Detail\SiteSettings::class)->name('sites.settings');
 
     });

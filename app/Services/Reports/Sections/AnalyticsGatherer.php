@@ -85,6 +85,14 @@ class AnalyticsGatherer extends BaseReportSectionGatherer
             'chart_x_labels' => $chartXLabels,
             'pageviews_trend' => $this->calculateTrend($cur?->analytics_pageviews, $prev?->analytics_pageviews),
             'users_trend' => $this->calculateTrend($cur?->analytics_users, $prev?->analytics_users),
+            // The bare previous-period figures, kept alongside the display trends so
+            // ReportSendGate can apply SPEC §12.3's "salt de trafic de câteva ori"
+            // barrier. The trend arrays above are formatted for the PDF (direction,
+            // colour, display string) and cannot be compared numerically.
+            'users_previous' => $prev?->analytics_users,
+            'pageviews_previous' => $prev?->analytics_pageviews,
+            'users_current' => $cur?->analytics_users,
+            'pageviews_current' => $cur?->analytics_pageviews,
             'bounce_rate_trend' => $this->calculateTrendInverse($overview['bounce_rate'] ?? null, null),
             'duration_trend' => $this->calculateTrend($overview['avg_session_duration'] ?? null, null),
             'traffic_bar_chart' => $trafficBarChart,

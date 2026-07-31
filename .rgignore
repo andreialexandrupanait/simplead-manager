@@ -1,0 +1,9 @@
+# Directoare excluse din căutări (ripgrep, fd, etc.)
+# Motiv: spike/ singur are ~35.000 fișiere și a cauzat un rg la 815% CPU.
+spike/
+migration-data/
+db-backups/
+vendor/
+node_modules/
+.baseline-artifacts/
+.phpunit.cache/

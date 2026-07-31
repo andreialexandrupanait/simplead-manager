@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $description
  * @property bool $is_default
  * @property int $sort_order
+ * @property string|null $backup_frequency
+ * @property string|null $report_frequency
  * @property array|null $security_settings
  * @property array|null $tweak_settings
  * @property bool $include_modules
@@ -43,6 +45,8 @@ class MaintenancePlan extends Model
         'include_modules',
         'include_security',
         'include_tweaks',
+        'backup_frequency',
+        'report_frequency',
         'source_site_id',
         'created_by',
     ];

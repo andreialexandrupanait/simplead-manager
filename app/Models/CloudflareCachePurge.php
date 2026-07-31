@@ -20,6 +20,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read \App\Models\SiteCloudflare|null $siteCloudflare
  * @property-read \App\Models\User|null $purgedBy
  */
+/**
+ * NOTE: nothing writes this table. It looks like an orphan and is not one — the
+ * fleet can purge Cloudflare cache (OperationRegistry 'cloudflare.purge') and
+ * that purge is never recorded here, so the history this model exists to hold is
+ * simply missing. It is kept rather than deleted because deleting it would erase
+ * the intent along with the gap; wiring the purge operation to log here is the
+ * fix, not a DROP TABLE.
+ */
 class CloudflareCachePurge extends Model
 {
     use HasFactory;

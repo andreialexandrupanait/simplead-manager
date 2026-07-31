@@ -66,9 +66,36 @@ class PluginRiskAssessmentService
         return implode("\n", $parts);
     }
 
+    /**
+     * The Anthropic key, from the Integrations settings screen if it was entered
+     * there, otherwise from the environment.
+     *
+     * This used to be assembled by IncidentResponseConfigServiceProvider, which
+     * survived the deletion of the incident-response module purely to seed
+     * config('incident-response.ai.api_key') for this one service — a boot-time
+     * provider and a whole config file named after a feature that no longer
+     * exists. Reading the setting here is the same lookup, in the open.
+     */
+    private function apiKey(): ?string
+    {
+        $stored = app(SettingsService::class)->get('ai_anthropic_api_key');
+
+        if (is_string($stored) && $stored !== '') {
+            try {
+                return decrypt($stored);
+            } catch (\Throwable) {
+                // A key we cannot decrypt is a key we do not have; fall through.
+            }
+        }
+
+        $fromEnv = config('updates.ai.api_key');
+
+        return is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : null;
+    }
+
     private function callClaude(string $context): ?array
     {
-        $apiKey = config('incident-response.ai.api_key');
+        $apiKey = $this->apiKey();
         if (! $apiKey) {
             return null;
         }
@@ -79,7 +106,7 @@ class PluginRiskAssessmentService
                 'anthropic-version' => '2023-06-01',
                 'content-type' => 'application/json',
             ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-                'model' => config('incident-response.ai.model', 'claude-sonnet-4-5-20250929'),
+                'model' => config('updates.ai.model', 'claude-sonnet-4-5-20250929'),
                 'max_tokens' => 1024,
                 'temperature' => 0.1,
                 'system' => 'You are a WordPress plugin update risk analyst. Analyze the plugin update context and return a JSON object with exactly these fields: score (0-100 where 0=safe, 100=very risky), level ("safe" if score<30, "caution" if 30-70, "risky" if >70), reasons (array of 2-4 short reason strings), recommendation (one sentence). Consider: breaking changes in changelog, plugin popularity, maintenance activity, PHP/WP compatibility, whether the update is a major version bump. Return ONLY valid JSON, no markdown.',

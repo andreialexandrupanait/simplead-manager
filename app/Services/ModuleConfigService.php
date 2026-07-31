@@ -146,10 +146,39 @@ class ModuleConfigService
             $this->configureModule($site, $moduleKey, $enabled, $interval);
         }
 
+        $this->applyCadences($site, $plan);
+
         $site->update([
             'maintenance_plan_id' => $plan->id,
             'is_plan_customized' => false,
         ]);
+    }
+
+    /**
+     * SPEC §9: a plan defines backup rhythm and report cadence, not just which
+     * checks are on. Both used to live only per-site, so a plan could turn backups
+     * on without saying how often — which is most of the value of a template you
+     * apply to thirty sites.
+     *
+     * A null cadence on the plan means "leave the site's own setting alone", so
+     * applying a plan never silently overwrites a deliberate per-site choice.
+     */
+    private function applyCadences(Site $site, MaintenancePlan $plan): void
+    {
+        if (filled($plan->backup_frequency)) {
+            $config = $site->backupConfig;
+
+            if ($config) {
+                $config->update(['frequency' => $plan->backup_frequency]);
+            }
+        }
+
+        if (filled($plan->report_frequency)) {
+            // Only existing schedules are retimed. Creating one here would start
+            // sending a client reports because a plan was applied, which is a
+            // decision nobody made.
+            $site->reportSchedules()->update(['frequency' => $plan->report_frequency]);
+        }
     }
 
     /**

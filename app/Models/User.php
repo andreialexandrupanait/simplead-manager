@@ -33,7 +33,6 @@ use Illuminate\Notifications\Notifiable;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read string $initials
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Site> $sites
- * @property-read \Illuminate\Database\Eloquent\Collection<int, DashboardWidget> $dashboardWidgets
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ActivityLog> $activityLogs
  */
 class User extends Authenticatable implements MustVerifyEmail
@@ -104,11 +103,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sites(): HasMany
     {
         return $this->hasMany(Site::class);
-    }
-
-    public function dashboardWidgets(): HasMany
-    {
-        return $this->hasMany(DashboardWidget::class);
     }
 
     public function activityLogs(): HasMany

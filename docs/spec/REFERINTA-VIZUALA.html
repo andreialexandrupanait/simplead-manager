@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAD Manager — referință vizuală</title>
+<style>
+:root{
+  /* suprafețe — alb pe gri neutru */
+  --bg:#f0f1f3; --card:#ffffff; --soft:#f6f7f8;
+  --line:#e6e8eb; --line-strong:#cdd2d8;
+  /* text */
+  --tx:#1d2327; --tx2:#646970; --tx3:#9ba1a8;
+  /* semantice — variantă pentru text */
+  --ok:#0a8a2a; --ok-bg:#e7f6ec;
+  --warn:#b06a00; --warn-bg:#fdf5e2;
+  --bad:#c8262a; --bad-bg:#fceaea;
+  --accent:#2271b1; --accent-bg:#e8f1f9;
+  /* semantice — variantă vie, pentru iconițe */
+  --ok-i:#00b62e; --warn-i:#e8a800; --bad-i:#e0393c;
+  --r-sm:8px; --r-lg:12px;
+  --lift:0 1px 2px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.page{max-width:1200px;margin:0 auto;padding:0 24px 90px}
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round;vertical-align:-.14em;flex-shrink:0}
+
+.topnav{position:sticky;top:0;z-index:10;background:rgba(250,249,247,.93);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:28px}
+.topnav .in{max-width:1200px;margin:0 auto;padding:11px 24px;display:flex;gap:6px;
+  flex-wrap:wrap;align-items:center}
+.topnav a{font-size:12px;color:var(--tx2);text-decoration:none;padding:4px 9px;border-radius:6px}
+.topnav a:hover{background:var(--soft);color:var(--tx)}
+.topnav strong{font-size:13px;font-weight:500;margin-right:10px}
+
+h1{font-size:22px;font-weight:500;margin:26px 0 4px}
+.lead{color:var(--tx2);font-size:13px;margin:0 0 10px}
+h2{font-size:11px;letter-spacing:1.2px;color:var(--tx3);font-weight:400;text-transform:uppercase;
+  margin:48px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:13px;font-weight:500;margin:26px 0 10px}
+.note{font-size:12px;color:var(--tx2);margin:9px 0 0;max-width:780px}
+code{font:400 12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);
+  padding:1px 5px;border-radius:4px;color:var(--tx2)}
+.demo{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px}
+.rowd{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:9px}
+.tok{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--card)}
+.tok .sw{height:42px}
+.tok .nm{padding:6px 9px;font:400 10.5px ui-monospace,Menlo,monospace;color:var(--tx2)}
+.scale div{display:flex;align-items:baseline;gap:14px;padding:5px 0}
+.scale .sz{font:400 11px ui-monospace,Menlo,monospace;color:var(--tx3);width:38px}
+.spacing{display:flex;align-items:flex-end;gap:12px}
+.spacing div{text-align:center}
+.spacing .b{background:var(--accent);border-radius:2px;width:22px}
+.spacing .lb{font:400 10px ui-monospace,Menlo,monospace;color:var(--tx3);margin-top:5px}
+
+.btn{font-size:12px;padding:6px 11px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:transparent;color:var(--tx2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:var(--soft)}
+.btn-p{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.btn-d{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+.btn:disabled{opacity:.45;cursor:default}
+.badge{font-size:11px;padding:1px 7px;border-radius:9px;display:inline-block;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-bad{background:var(--bad-bg);color:var(--bad)}
+.b-mute{background:var(--soft);color:var(--tx2)}
+.b-acc{background:var(--accent-bg);color:var(--accent)}
+.metric{background:var(--soft);border-radius:var(--r-sm);padding:11px 13px;min-width:112px}
+.metric .k{font-size:11px;color:var(--tx2);margin:0}
+.metric .v{font-size:21px;font-weight:500;margin:3px 0 0}
+.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tab{font-size:13px;padding:5px 10px;border-radius:var(--r-sm);color:var(--tx2);cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px}
+.tab.on{background:var(--soft);color:var(--tx)}
+.seg{display:inline-flex;background:var(--soft);border-radius:var(--r-sm);padding:2px}
+.seg span{text-align:center;font-size:11px;padding:4px 11px;border-radius:5px;color:var(--tx2);cursor:pointer}
+.seg span.on{background:var(--tx);color:var(--card)}
+input[type=text],select{font:400 12px inherit;padding:6px 10px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);background:var(--card);color:var(--tx);outline:none}
+input[type=text]:focus,select:focus{border-color:var(--accent)}
+input[type=text]::placeholder{color:var(--tx3)}
+.chk{width:15px;height:15px;border:1px solid var(--line-strong);border-radius:4px;background:var(--card);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.chk.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chk .ic{width:11px;height:11px;stroke-width:3}
+.tgl{width:34px;height:19px;border-radius:10px;background:var(--line-strong);position:relative;
+  cursor:pointer;display:inline-block;flex-shrink:0}
+.tgl.on{background:var(--accent)}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:#fff;transition:.15s}
+.tgl.on::after{left:17px}
+.pbar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.skel{background:linear-gradient(90deg,var(--soft) 25%,#e9e7e1 50%,var(--soft) 75%);
+  background-size:200% 100%;animation:sh 1.4s infinite;border-radius:5px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.toast{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--ok);border-radius:var(--r-sm);padding:11px 14px}
+.toast.w{border-left-color:var(--warn)} .toast.e{border-left-color:var(--bad)}
+.toast p{margin:0;font-size:12.5px} .toast .sub{color:var(--tx2);font-size:11.5px;margin-top:2px}
+.empty{text-align:center;padding:30px 16px;color:var(--tx3)}
+.empty .ic{width:26px;height:26px;margin-bottom:9px}
+.empty p{margin:0;font-size:13px}
+.toolbar{display:flex;align-items:center;gap:8px;background:var(--tx);color:#fff;
+  border-radius:var(--r-sm);padding:9px 14px;font-size:13px;flex-wrap:wrap}
+.toolbar button{font-size:12px;padding:4px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.24);
+  background:transparent;color:#fff;cursor:pointer}
+.toolbar button:hover{background:rgba(255,255,255,.12)}
+.dialog{max-width:400px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);padding:18px}
+.dialog h4{margin:0 0 6px;font-size:14px;font-weight:500}
+.dialog p{margin:0 0 14px;font-size:13px;color:var(--tx2)}
+.dialog .acts{display:flex;gap:8px;justify-content:flex-end}
+
+.strip{display:flex;align-items:center;gap:9px}
+.grp{display:flex;gap:9px;align-items:center}
+.grp .ic{width:17px;height:17px}
+.dv{width:1px;height:16px;background:var(--line-strong)}
+.i-ok{color:var(--ok-i)} .i-warn{color:var(--warn-i)} .i-bad{color:var(--bad-i)} .i-off{color:#c4c9cf}
+.spark{width:34px;height:3px;border-radius:2px;background:#d8dce1}
+.spark.d{background:var(--bad-i)}
+.legend{display:flex;gap:16px;margin:0 0 10px;padding-left:15px;flex-wrap:wrap}
+.legend span{font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:5px}
+.legend .ic{width:11px;height:11px;fill:currentColor;stroke:none}
+
+.box{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.srow{display:flex;align-items:center;gap:11px;padding:11px 15px;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:none}
+.srow:hover{background:var(--soft)}
+.av{width:27px;height:27px;border-radius:50%;background:var(--soft);display:flex;align-items:center;
+  justify-content:center;font-size:11px;color:var(--tx2);flex-shrink:0}
+.sname{flex:1;min-width:0}
+.sname p{margin:0;font-size:13px;display:flex;align-items:center;gap:5px}
+.sname .cl{font-size:11px;color:var(--tx3)}
+.upd{font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:4px}
+.upd .ic{width:15px;height:15px;color:var(--tx3)}
+.gridbox{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px}
+.gcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.gthumb{height:94px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--tx3)}
+.gthumb .ic{width:22px;height:22px}
+
+.sbwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:18px;align-items:start}
+.sb{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 0;max-width:304px}
+.sbi{display:flex;align-items:center;gap:11px;padding:9px 18px;font-size:14px;color:var(--tx2);cursor:pointer}
+.sbi:hover{background:var(--soft)}
+.sbi.on{background:var(--soft);color:var(--tx);font-weight:500}
+.sbi .ic{width:19px;height:19px}
+.sbi .rt{margin-left:auto;display:flex;align-items:center;gap:7px}
+.sbi .rt .ic{width:15px;height:15px;color:var(--tx3)}
+.sbsub{padding:7px 18px 7px 48px;font-size:13px;color:var(--tx2);cursor:pointer}
+.sbsub:hover{color:var(--tx)}
+.sbsub.on{color:var(--accent)}
+.gl{font-size:10.5px;color:var(--tx3);letter-spacing:1.1px;padding:16px 18px 5px}
+.sbhr{height:1px;background:var(--line);margin:10px 0}
+.switcher{margin:0 14px 12px;padding:10px 12px;background:var(--soft);border-radius:var(--r-sm);
+  display:flex;align-items:center;gap:9px}
+
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;margin-bottom:16px}
+.mhd{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.mhd p{font-size:15px;font-weight:500;margin:0;flex:1}
+.mhd .mn{width:16px;height:16px;color:var(--tx3);cursor:pointer}
+.mico{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;color:#fff}
+.mico .ic{width:15px;height:15px;stroke-width:2.1}
+.mi-dark{background:#2c3338} .mi-ok{background:var(--ok-i)}
+.mi-warn{background:var(--warn-i)} .mi-bad{background:var(--bad-i)}
+.mrow{display:flex;justify-content:space-between;align-items:center;background:var(--soft);
+  border-radius:6px;padding:11px 14px;margin-bottom:4px;font-size:13px;gap:8px}
+.mrow .lb{color:var(--tx2)}
+.mbox{background:var(--soft);border-radius:6px;padding:11px 14px;margin-bottom:4px}
+.mbox .k{font-size:12px;color:var(--tx2);margin:0}
+.mbox .v{font-size:18px;margin:3px 0 0}
+.mact{display:block;text-align:center;font-size:13px;color:var(--accent);padding-top:12px;cursor:pointer}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+
+.summary{display:flex;gap:24px;padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.summary .v{font-size:21px;font-weight:500;margin:0}
+.summary .k{font-size:11.5px;color:var(--tx2);margin:2px 0 0}
+.ccard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 15px;margin-bottom:9px}
+.ccard.crit{border-color:var(--bad)}
+.ccard .ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.ccard .ch p{margin:0;font-size:13.5px;font-weight:500}
+.iss{font-size:12.5px;color:var(--tx2);display:flex;align-items:center;gap:7px;padding:2px 0}
+.iss .ic{width:14px;height:14px}
+.collapsed{background:var(--soft);border-radius:var(--r-sm);padding:11px 15px;
+  display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--tx2)}
+
+.arow{display:flex;align-items:center;gap:11px;padding:11px 15px;border-bottom:1px solid var(--line);font-size:12.5px}
+.arow:last-child{border-bottom:none}
+.arow:hover{background:var(--soft)}
+.arow .sev{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.arow .txt{flex:1;min-width:0}
+.arow .txt p{margin:0}
+.arow .meta{font-size:11px;color:var(--tx3);margin-top:1px}
+.arow .tm{font-size:11px;color:var(--tx3);white-space:nowrap}
+.urow{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--line)}
+.urow:last-child{border-bottom:none}
+.uic{width:32px;height:32px;border-radius:var(--r-sm);background:var(--soft);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--tx2)}
+.uic .ic{width:16px;height:16px}
+
+/* alb pe gri: cardurile se ridică, bordura devine aproape invizibilă */
+.demo,.tok,.box,.gcard,.sb,.mcard,.ccard,.dialog,.toast{box-shadow:var(--lift)}
+.ccard.crit{border-color:var(--bad-i)}
+.summary{border-bottom-color:var(--line)}
+.arow .sev{box-shadow:none}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+<symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+<symbol id="i-bug" viewBox="0 0 24 24"><path d="M9 9V7a3 3 0 0 1 6 0v2M8 9h8v6a4 4 0 0 1-8 0zM4 12h4M16 12h4M5 6l2 2M19 6l-2 2M5 18l2-2M19 18l-2-2"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M3.5 7l8.5 6 8.5-6"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2.5l2.4 11h9.4L20 8H6.5"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-1.8 6M20 5v6h-6"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-chev-u" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-arr-l" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+<symbol id="i-arr-u" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+<symbol id="i-arr-d" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L20 20"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-1.5 2h15zM10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="i-world" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3c2.6 3.2 2.6 14.8 0 18M12 3c-2.6 3.2-2.6 14.8 0 18"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3v5h5M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM9 13h6M9 17h5"/></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.6-5.7M4 6v5h5M12 8.5V12l2.5 1.8"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v6M15 3v6M7 9h10v3a5 5 0 0 1-10 0zM12 17v4"/></symbol>
+<symbol id="i-checks" viewBox="0 0 24 24"><path d="M9 4.5H7a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-15a1 1 0 0 0-1-1h-2M9 4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9zM8.5 13l2 2 4.5-4.5"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19h16M4 15l4.5-5 3.5 3 5-7"/></symbol>
+<symbol id="i-task" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-dash" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="4" rx="1"/><rect x="13" y="10" width="7" height="10" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/><path d="M4 15.5l4-4 3 3 4-5 5 6"/><circle cx="9" cy="9.5" r="1.2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 13.5h4l1.2 3h5.6l1.2-3h4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6.5 7l.9 12.1a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.5 7M9 7V4.5h6V7"/></symbol>
+<symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l8.5 15h-17zM12 10v4M12 17h.01"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M9.5 5v14M14.5 5v14"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M20 4L3.5 10.5l6.5 2.5 2.5 6.5z"/></symbol>
+</svg>
+
+<div class="topnav"><div class="in">
+  <strong>SAD Manager</strong>
+  <a href="#tok">Token-uri</a><a href="#comp">Componente</a><a href="#nav">Navigație</a>
+  <a href="#panou">Panou</a><a href="#site-uri">Site-uri</a><a href="#site">Prezentare site</a>
+  <a href="#alerte">Alerte</a><a href="#upd">Actualizări</a><a href="#rap">Rapoarte</a>
+</div></div>
+
+<div class="page">
+
+<h1>Referință vizuală</h1>
+<p class="lead">Token-uri, componente și ecrane. Iconițele sunt sprite SVG inline — fără dependențe externe.</p>
+
+<h2 id="tok">Token-uri</h2>
+<div class="tokens">
+  <div class="tok"><div class="sw" style="background:#faf9f7"></div><div class="nm">--bg</div></div>
+  <div class="tok"><div class="sw" style="background:#ffffff"></div><div class="nm">--card</div></div>
+  <div class="tok"><div class="sw" style="background:#f2f1ed"></div><div class="nm">--soft</div></div>
+  <div class="tok"><div class="sw" style="background:#e6e4de"></div><div class="nm">--line</div></div>
+  <div class="tok"><div class="sw" style="background:#cfccc3"></div><div class="nm">--line-strong</div></div>
+  <div class="tok"><div class="sw" style="background:#26241f"></div><div class="nm">--tx</div></div>
+  <div class="tok"><div class="sw" style="background:#6b675e"></div><div class="nm">--tx2</div></div>
+  <div class="tok"><div class="sw" style="background:#9a958a"></div><div class="nm">--tx3</div></div>
+  <div class="tok"><div class="sw" style="background:#3f6d1a"></div><div class="nm">--ok</div></div>
+  <div class="tok"><div class="sw" style="background:#8a5209"></div><div class="nm">--warn</div></div>
+  <div class="tok"><div class="sw" style="background:#a52f2c"></div><div class="nm">--bad</div></div>
+  <div class="tok"><div class="sw" style="background:#1a5fa4"></div><div class="nm">--accent</div></div>
+  <div class="tok"><div class="sw" style="background:#ecf3e2"></div><div class="nm">--ok-bg</div></div>
+  <div class="tok"><div class="sw" style="background:#fbf1de"></div><div class="nm">--warn-bg</div></div>
+  <div class="tok"><div class="sw" style="background:#fbe7e5"></div><div class="nm">--bad-bg</div></div>
+  <div class="tok"><div class="sw" style="background:#e6eefa"></div><div class="nm">--accent-bg</div></div>
+</div>
+
+<h3>Scală tipografică — două greutăți</h3>
+<div class="demo scale">
+  <div><span class="sz">24px</span><span style="font-size:24px;font-weight:500">Titlu de pagină</span></div>
+  <div><span class="sz">18px</span><span style="font-size:18px;font-weight:500">Titlu de secțiune</span></div>
+  <div><span class="sz">15px</span><span style="font-size:15px">Valoare de metrică</span></div>
+  <div><span class="sz">13px</span><span style="font-size:13px">Text de interfață — implicit</span></div>
+  <div><span class="sz">12px</span><span style="font-size:12px">Rânduri dense, etichete</span></div>
+  <div><span class="sz">11px</span><span style="font-size:11px;color:var(--tx3)">Secundar, contoare, timestamp</span></div>
+</div>
+
+<h3>Spațiere</h3>
+<div class="demo spacing">
+  <div><div class="b" style="height:4px"></div><div class="lb">4</div></div>
+  <div><div class="b" style="height:8px"></div><div class="lb">8</div></div>
+  <div><div class="b" style="height:12px"></div><div class="lb">12</div></div>
+  <div><div class="b" style="height:16px"></div><div class="lb">16</div></div>
+  <div><div class="b" style="height:24px"></div><div class="lb">24</div></div>
+</div>
+<p class="note">Plus razele <code>--r-sm: 8px</code> pentru controale și <code>--r-lg: 12px</code> pentru carduri. Fără umbre, fără gradienți: ierarhia vine din borduri de 1px și spațiere.</p>
+
+<h2 id="comp">Componente</h2>
+
+<h3>Butoane</h3>
+<div class="demo rowd">
+  <button class="btn btn-p"><svg class="ic"><use href="#i-plus"/></svg> Adaugă site</button>
+  <button class="btn"><svg class="ic"><use href="#i-filter"/></svg> Filtru</button>
+  <button class="btn"><svg class="ic"><use href="#i-refresh"/></svg> Actualizează</button>
+  <button class="btn btn-d"><svg class="ic"><use href="#i-trash"/></svg> Șterge</button>
+  <button class="btn" disabled>Indisponibil</button>
+</div>
+
+<h3>Controale de formular</h3>
+<div class="demo rowd">
+  <input type="text" placeholder="Caută site, client, plugin…" style="width:220px">
+  <select><option>Toate planurile</option><option>Standard</option><option>Premium</option></select>
+  <span style="display:flex;align-items:center;gap:7px;font-size:12.5px"><span class="chk on"><svg class="ic"><use href="#i-check"/></svg></span> Selectat</span>
+  <span style="display:flex;align-items:center;gap:7px;font-size:12.5px"><span class="chk"></span> Neselectat</span>
+  <span style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span class="tgl on"></span> Activ</span>
+  <span style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span class="tgl"></span> Inactiv</span>
+</div>
+
+<h3>Badge-uri și metrici</h3>
+<div class="demo rowd" style="margin-bottom:12px">
+  <span class="badge b-ok">ok</span><span class="badge b-warn">atenție</span>
+  <span class="badge b-bad">critic</span><span class="badge b-mute">inactiv</span>
+  <span class="badge b-acc">programat</span><span class="badge b-warn">12</span><span class="badge b-bad">3</span>
+</div>
+<div class="demo rowd">
+  <div class="metric"><p class="k">Site-uri</p><p class="v">58</p></div>
+  <div class="metric"><p class="k">Disponibilitate</p><p class="v">99,74%</p></div>
+  <div class="metric"><p class="k">Necesită atenție</p><p class="v" style="color:var(--bad)">3</p></div>
+  <div class="metric"><p class="k">În regulă</p><p class="v" style="color:var(--ok)">50</p></div>
+</div>
+
+<h3>Taburi, segmente, progres</h3>
+<div class="demo">
+  <div class="tabs" style="margin-bottom:14px">
+    <span class="tab on">Toate <span style="color:var(--tx3)">58</span></span>
+    <span class="tab">Actualizări <span class="badge b-warn">12</span></span>
+    <span class="tab">Alerte <span class="badge b-bad">3</span></span>
+    <span class="tab">Planuri</span>
+  </div>
+  <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+    <div class="seg"><span>24h</span><span class="on">7 zile</span><span>30 zile</span></div>
+    <div style="flex:1;min-width:180px"><div class="pbar"><i style="width:64%"></i></div>
+      <p style="font-size:11px;color:var(--tx3);margin:5px 0 0">Actualizare pe 18 site-uri · 12 gata</p></div>
+  </div>
+</div>
+
+<h3>Strip de stare — trei grupuri</h3>
+<div class="demo">
+  <div class="strip">
+    <div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-bad"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div>
+    <span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-warn"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div>
+    <span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-off"><use href="#i-cart"/></svg></div>
+    <span class="dv"></span><span class="spark d"></span>
+  </div>
+  <p class="note">Disponibilitate (uptime · SSL · backup) · Sănătate (securitate · performanță · erori PHP) · Funcționare (formulare · WooCommerce).</p>
+</div>
+
+<h3>Bară de selecție, notificări, stare goală, dialog</h3>
+<div class="demo" style="display:grid;gap:16px">
+  <div class="toolbar">
+    <span style="font-weight:500">18 selectate</span>
+    <button>Actualizează</button><button>Backup</button><button>Aplică plan</button>
+    <button>Presetări</button><button>Golește cache</button><button>Verifică</button>
+    <span style="margin-left:auto;cursor:pointer;display:flex"><svg class="ic" style="width:16px;height:16px"><use href="#i-x"/></svg></span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:12px">
+    <div class="toast"><svg class="ic" style="width:16px;height:16px;color:var(--ok);margin-top:1px"><use href="#i-check"/></svg>
+      <div><p>Actualizare finalizată pe 18 site-uri</p><p class="sub">Smoke check trecut peste tot · 0 rollback</p></div></div>
+    <div class="toast w"><svg class="ic" style="width:16px;height:16px;color:var(--warn);margin-top:1px"><use href="#i-warn"/></svg>
+      <div><p>Raport reținut pentru feco.ro</p><p class="sub">Incident critic nerezolvat · trimitere blocată</p></div></div>
+    <div class="toast e"><svg class="ic" style="width:16px;height:16px;color:var(--bad);margin-top:1px"><use href="#i-x"/></svg>
+      <div><p>Rollback executat pe m1-beauty.at</p><p class="sub">Smoke check picat · versiune readusă 3.21</p></div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <div style="border:1px solid var(--line);border-radius:var(--r-sm)">
+      <div class="empty"><svg class="ic"><use href="#i-inbox"/></svg><p>Nicio alertă deschisă</p></div>
+    </div>
+    <div class="dialog">
+      <h4>Actualizezi 18 site-uri?</h4>
+      <p>Elementor 3.21 → 3.22. Se aplică întâi pe 2 site-uri canar, cu smoke check și rollback automat la eșec.</p>
+      <div class="acts"><button class="btn">Anulează</button><button class="btn btn-p">Aprobă lotul</button></div>
+    </div>
+  </div>
+</div>
+
+<h3>Stare de încărcare — pentru componentele leneșe</h3>
+<div class="demo" style="max-width:300px">
+  <div class="mcard" style="margin:0">
+    <div class="mhd"><span class="mico mi-dark"></span><div class="skel" style="height:12px;width:82px"></div></div>
+    <div class="skel" style="height:30px;margin-bottom:4px"></div>
+    <div class="skel" style="height:30px;margin-bottom:4px"></div>
+    <div class="skel" style="height:30px;width:70%"></div>
+  </div>
+</div>
+<p class="note">Uptime, Backupuri și Trafic lovesc API-uri externe. Scheletul se randează imediat, datele sosesc după.</p>
+
+<h2 id="nav">Cele două contexte de navigație</h2>
+<div class="sbwrap">
+  <div>
+    <p class="note" style="margin:0 0 8px;letter-spacing:.5px">CONTEXT FLOTĂ</p>
+    <div class="sb">
+      <div style="padding:0 16px 10px;font-size:13px;font-weight:500">SAD Manager</div>
+      <div style="margin:0 12px 10px"><input type="text" placeholder="Caută…" style="width:100%;font-size:11.5px"></div>
+      <div class="gl">VEDERE</div>
+      <div class="sbi on"><svg class="ic"><use href="#i-dash"/></svg>Panou</div>
+      <div class="sbi"><svg class="ic"><use href="#i-bell"/></svg>Alerte<span class="rt"><span class="badge b-bad">3</span></span></div>
+      <div class="gl">OPERAȚIUNI</div>
+      <div class="sbi"><svg class="ic"><use href="#i-world"/></svg>Site-uri<span class="rt" style="font-size:11px;color:var(--tx3)">58</span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-refresh"/></svg>Actualizări<span class="rt"><span class="badge b-warn">12</span></span></div>
+      <div class="gl">EVIDENȚĂ</div>
+      <div class="sbi"><svg class="ic"><use href="#i-file"/></svg>Rapoarte</div>
+      <div class="sbi"><svg class="ic"><use href="#i-history"/></svg>Activitate</div>
+      <div class="sbhr"></div>
+      <div class="sbi"><svg class="ic"><use href="#i-settings"/></svg>Setări</div>
+    </div>
+  </div>
+  <div>
+    <p class="note" style="margin:0 0 8px;letter-spacing:.5px">CONTEXT SITE</p>
+    <div class="sb">
+      <div style="padding:0 16px 8px;font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:5px">
+        <svg class="ic" style="width:13px;height:13px"><use href="#i-arr-l"/></svg> Toate site-urile</div>
+      <div class="switcher">
+        <span class="av" style="width:22px;height:22px;font-size:10px;background:var(--line)">F</span>
+        <span style="font-size:13px;font-weight:500">feco.ro</span>
+        <svg class="ic" style="margin-left:auto;width:14px;height:14px;color:var(--tx3)"><use href="#i-chev-d"/></svg>
+      </div>
+      <div class="sbi on"><svg class="ic"><use href="#i-home"/></svg>Prezentare</div>
+      <div class="gl">MENTENANȚĂ</div>
+      <div class="sbi"><svg class="ic"><use href="#i-plug"/></svg>Pluginuri și teme<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-refresh"/></svg>Actualizări<span class="rt"><span class="badge b-warn">12</span><svg class="ic"><use href="#i-chev-u"/></svg></span></div>
+      <div class="sbsub on">Disponibile</div>
+      <div class="sbsub">Reguli automate</div>
+      <div class="sbsub">Ignorate</div>
+      <div class="sbsub">Istoric</div>
+      <div class="sbi"><svg class="ic"><use href="#i-database"/></svg>Backupuri<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="gl">SUPRAVEGHERE</div>
+      <div class="sbi"><svg class="ic"><use href="#i-activity"/></svg>Uptime<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-shield"/></svg>Securitate<span class="rt"><span class="badge b-bad">2</span><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-bolt"/></svg>Performanță<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-checks"/></svg>Verificări<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="gl">DATE</div>
+      <div class="sbi"><svg class="ic"><use href="#i-chart"/></svg>Trafic<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbi"><svg class="ic"><use href="#i-task"/></svg>Sarcini</div>
+      <div class="sbi"><svg class="ic"><use href="#i-file"/></svg>Rapoarte<span class="rt"><svg class="ic"><use href="#i-chev-d"/></svg></span></div>
+      <div class="sbhr"></div>
+      <div class="sbi"><svg class="ic"><use href="#i-settings"/></svg>Setări site</div>
+    </div>
+  </div>
+</div>
+<p class="note">Sidebar-urile nu coexistă — se înlocuiesc. De aceea „Actualizări" poate exista în ambele fără confuzie: în flotă răspunde la „pe ce site-uri", în site la „ce are site-ul ăsta".</p>
+
+<h2 id="panou">Ecran — Panou</h2>
+<div class="summary">
+  <div><p class="v" style="color:var(--bad)">3</p><p class="k">necesită atenție</p></div>
+  <div><p class="v">5</p><p class="k">așteaptă aprobare</p></div>
+  <div><p class="v" style="color:var(--ok)">50</p><p class="k">în regulă</p></div>
+</div>
+<div class="ccard crit">
+  <div class="ch"><p>M1 Beauty <span style="font-size:11px;color:var(--tx3);font-weight:400">· 1 site</span></p><span class="badge b-bad">critic</span></div>
+  <div class="iss"><svg class="ic i-bad"><use href="#i-lock"/></svg> SSL expiră în 6 zile — reînnoire automată eșuată</div>
+</div>
+<div class="ccard">
+  <div class="ch"><p>GTA Energy <span style="font-size:11px;color:var(--tx3);font-weight:400">· 3 site-uri</span></p><span class="badge b-warn">atenție</span></div>
+  <div class="iss"><svg class="ic i-warn"><use href="#i-cart"/></svg> 12 comenzi blocate în „pending" de peste 48h</div>
+  <div class="iss"><svg class="ic i-off"><use href="#i-mail"/></svg> Formular contact — livrare confirmată</div>
+</div>
+<div class="ccard">
+  <div class="ch"><p>Feco <span style="font-size:11px;color:var(--tx3);font-weight:400">· 2 site-uri</span></p><span class="badge b-warn">atenție</span></div>
+  <div class="iss"><svg class="ic i-warn"><use href="#i-activity"/></svg> Incident uptime 4 min, 03:12 — rezolvat</div>
+  <div class="iss"><svg class="ic i-bad"><use href="#i-bug"/></svg> 847 avertismente PHP — JetWooBuilder 2.1.3</div>
+</div>
+<div class="collapsed">
+  <span>50 de clienți fără probleme</span>
+  <span style="color:var(--accent);cursor:pointer;display:flex;align-items:center;gap:4px">Arată toți <svg class="ic" style="width:13px;height:13px"><use href="#i-chev-r"/></svg></span>
+</div>
+<p class="note">Grupat pe client, ordonat după gravitate, cei sănătoși strânși într-o linie. În zilele bune, ecranul are patru rânduri.</p>
+
+<h2 id="site-uri">Ecran — Site-uri</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+  <div class="tabs">
+    <span class="tab on">Toate <span style="color:var(--tx3)">58</span></span>
+    <span class="tab">Actualizări <span class="badge b-warn">12</span></span>
+    <span class="tab">Alerte <span class="badge b-bad">3</span></span>
+    <span class="tab">Planuri</span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="btn">Grupare: client</button>
+    <button class="btn"><svg class="ic"><use href="#i-filter"/></svg> Filtru</button>
+    <button class="btn"><svg class="ic"><use href="#i-grid"/></svg></button>
+  </div>
+</div>
+<div class="legend">
+  <span><svg class="ic i-ok"><use href="#i-dot"/></svg>ok</span>
+  <span><svg class="ic i-warn"><use href="#i-dot"/></svg>atenție</span>
+  <span><svg class="ic i-bad"><use href="#i-dot"/></svg>critic</span>
+  <span><svg class="ic i-off"><use href="#i-dot"/></svg>nu se aplică</span>
+</div>
+<div class="box">
+  <div class="srow"><span class="chk on"><svg class="ic"><use href="#i-check"/></svg></span><div class="av">M</div>
+    <div class="sname"><p>m1-beauty.at <svg class="ic" style="width:13px;height:13px;color:var(--tx3)"><use href="#i-ext"/></svg></p><p class="cl">M1 Beauty</p></div>
+    <span class="upd">3 <svg class="ic"><use href="#i-refresh"/></svg></span><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-bad"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-warn"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-off"><use href="#i-cart"/></svg></div><span class="dv"></span>
+    <span class="spark d"></span><svg class="ic" style="width:16px;height:16px;color:var(--tx3)"><use href="#i-dots"/></svg></div>
+  <div class="srow"><span class="chk on"><svg class="ic"><use href="#i-check"/></svg></span><div class="av">G</div>
+    <div class="sname"><p>gtaenergy.ro</p><p class="cl">GTA Energy</p></div>
+    <span class="upd">8 <svg class="ic"><use href="#i-refresh"/></svg></span><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-ok"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-ok"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-warn"><use href="#i-cart"/></svg></div><span class="dv"></span>
+    <span class="spark"></span><svg class="ic" style="width:16px;height:16px;color:var(--tx3)"><use href="#i-dots"/></svg></div>
+  <div class="srow"><span class="chk"></span><div class="av">F</div>
+    <div class="sname"><p>feco.ro</p><p class="cl">Feco</p></div>
+    <span class="upd">12 <svg class="ic"><use href="#i-refresh"/></svg></span><span class="dv"></span>
+    <div class="grp"><svg class="ic i-warn"><use href="#i-activity"/></svg><svg class="ic i-ok"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-warn"><use href="#i-bolt"/></svg><svg class="ic i-bad"><use href="#i-bug"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-ok"><use href="#i-cart"/></svg></div><span class="dv"></span>
+    <span class="spark"></span><svg class="ic" style="width:16px;height:16px;color:var(--tx3)"><use href="#i-dots"/></svg></div>
+  <div class="srow"><span class="chk"></span><div class="av">A</div>
+    <div class="sname"><p>asic.ro</p><p class="cl">Asic</p></div>
+    <span class="upd" style="color:var(--tx3)">— <svg class="ic"><use href="#i-refresh"/></svg></span><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-ok"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-ok"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div><span class="dv"></span>
+    <div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-ok"><use href="#i-cart"/></svg></div><span class="dv"></span>
+    <span class="spark"></span><svg class="ic" style="width:16px;height:16px;color:var(--tx3)"><use href="#i-dots"/></svg></div>
+</div>
+<div style="margin-top:10px"><div class="toolbar">
+  <span style="font-weight:500">2 selectate</span>
+  <button>Actualizează</button><button>Backup</button><button>Aplică plan</button><button>Verifică</button>
+</div></div>
+<p class="note">Rând la 44px. La 58 de site-uri, densitatea e diferența dintre 12 rânduri vizibile și 8.</p>
+
+<h3>Aceleași date, vedere grid</h3>
+<div class="gridbox">
+  <div class="gcard"><div class="gthumb"><svg class="ic"><use href="#i-photo"/></svg></div>
+    <div style="padding:11px 13px"><p style="margin:0 0 9px;font-size:13px">m1-beauty.at</p>
+      <div class="strip"><div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-bad"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-warn"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-off"><use href="#i-cart"/></svg></div></div></div></div>
+  <div class="gcard"><div class="gthumb"><svg class="ic"><use href="#i-photo"/></svg></div>
+    <div style="padding:11px 13px"><p style="margin:0 0 9px;font-size:13px">gtaenergy.ro</p>
+      <div class="strip"><div class="grp"><svg class="ic i-ok"><use href="#i-activity"/></svg><svg class="ic i-ok"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-ok"><use href="#i-bolt"/></svg><svg class="ic i-ok"><use href="#i-bug"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-warn"><use href="#i-cart"/></svg></div></div></div></div>
+  <div class="gcard"><div class="gthumb"><svg class="ic"><use href="#i-photo"/></svg></div>
+    <div style="padding:11px 13px"><p style="margin:0 0 9px;font-size:13px">feco.ro</p>
+      <div class="strip"><div class="grp"><svg class="ic i-warn"><use href="#i-activity"/></svg><svg class="ic i-ok"><use href="#i-lock"/></svg><svg class="ic i-ok"><use href="#i-database"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-shield"/></svg><svg class="ic i-warn"><use href="#i-bolt"/></svg><svg class="ic i-bad"><use href="#i-bug"/></svg></div><span class="dv"></span><div class="grp"><svg class="ic i-ok"><use href="#i-mail"/></svg><svg class="ic i-ok"><use href="#i-cart"/></svg></div></div></div></div>
+</div>
+
+<h2 id="site">Ecran — Prezentare site</h2>
+<div class="cols3">
+  <div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-dark"><svg class="ic"><use href="#i-info"/></svg></span><p>Info site</p><svg class="ic mn"><use href="#i-settings"/></svg></div>
+      <div class="mrow"><span class="lb">Scor de sănătate</span><span style="color:var(--warn)">72 · atenție</span></div>
+      <div class="mrow"><span class="lb">WordPress</span><span>6.9</span></div>
+      <div class="mrow"><span class="lb">PHP</span><span>8.3.12</span></div>
+      <div class="mrow"><span class="lb">Plan</span><span>Standard</span></div>
+      <div class="mrow"><span class="lb">Server</span><span>Hetzner · hel1</span></div>
+    </div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-bad"><svg class="ic"><use href="#i-shield"/></svg></span><p>Securitate</p><svg class="ic mn"><use href="#i-settings"/></svg><svg class="ic mn"><use href="#i-dots"/></svg></div>
+      <div class="mrow"><span class="lb">Vulnerabilități</span><span class="badge b-bad">2</span></div>
+      <div class="mrow"><span class="lb">Integritate fișiere</span><span style="color:var(--ok)">curat</span></div>
+      <div class="mrow"><span class="lb">Administratori noi</span><span>0</span></div>
+      <div class="mrow"><span class="lb">Ultima scanare</span><span>acum 6h</span></div>
+      <span class="mact">Rulează scanare</span>
+    </div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-dark"><svg class="ic"><use href="#i-task"/></svg></span><p>Sarcini</p></div>
+      <div class="mrow"><span class="lb">Deschise</span><span>2</span></div>
+      <div class="mrow"><span class="lb">Finalizate luna asta</span><span>5</span></div>
+      <span class="mact">Deschide în app.simplead.ro</span>
+    </div>
+  </div>
+  <div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-warn"><svg class="ic"><use href="#i-refresh"/></svg></span><p>Actualizări</p><svg class="ic mn"><use href="#i-settings"/></svg></div>
+      <div class="seg" style="margin-bottom:9px;width:100%"><span class="on" style="flex:1">Disponibile 12</span><span style="flex:1">Ignorate 2</span></div>
+      <div class="g3">
+        <div class="mbox"><p class="k">Core</p><p class="v">1</p></div>
+        <div class="mbox"><p class="k">Pluginuri</p><p class="v">10</p></div>
+        <div class="mbox"><p class="k">Teme</p><p class="v">1</p></div></div>
+      <span class="mact">Actualizează tot</span>
+      <div class="mrow" style="margin-top:7px"><span class="lb">Reguli automate</span><span style="color:var(--accent)">active ›</span></div>
+    </div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-warn"><svg class="ic"><use href="#i-checks"/></svg></span><p>Verificări</p><svg class="ic mn"><use href="#i-settings"/></svg></div>
+      <div class="mrow"><span class="lb">Formulare contact</span><span style="color:var(--ok)">livrare ok</span></div>
+      <div class="mrow"><span class="lb">WooCommerce</span><span style="color:var(--warn)">12 blocate</span></div>
+      <div class="mrow"><span class="lb">Linkuri rupte</span><span>3 noi</span></div>
+      <div class="mrow"><span class="lb">Erori PHP</span><span class="badge b-bad">847</span></div>
+      <div class="mrow"><span class="lb">Cron</span><span style="color:var(--ok)">activ</span></div>
+      <div class="mrow"><span class="lb">Licențe premium</span><span style="color:var(--warn)">1 expiră în 22z</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-ok"><svg class="ic"><use href="#i-activity"/></svg></span><p>Uptime</p><svg class="ic mn"><use href="#i-settings"/></svg><svg class="ic mn"><use href="#i-dots"/></svg></div>
+      <div class="seg" style="margin-bottom:9px;width:100%"><span style="flex:1">24h</span><span class="on" style="flex:1">7 zile</span><span style="flex:1">30 zile</span></div>
+      <div class="mbox"><p class="k">Stare</p><p class="v" style="color:var(--ok)">Site funcțional</p></div>
+      <div class="g2">
+        <div class="mbox"><p class="k">Disponibilitate</p><p class="v">99,74%</p></div>
+        <div class="mbox"><p class="k">Timp răspuns</p><p class="v">352 ms</p></div></div>
+      <div class="mbox" style="margin-top:3px"><p class="k">21–28 iulie</p>
+        <svg viewBox="0 0 260 46" style="width:100%;height:46px;margin-top:5px">
+          <polyline points="0,30 12,24 24,32 36,20 48,28 60,18 72,26 84,14 96,24 108,30 120,16 132,22 144,12 156,26 168,20 180,28 192,16 204,24 216,18 228,26 240,20 252,22" fill="none" stroke="#1a5fa4" stroke-width="1.5"/>
+          <rect x="0" y="38" width="260" height="6" rx="3" fill="#7fa84a"/></svg></div>
+    </div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-ok"><svg class="ic"><use href="#i-database"/></svg></span><p>Backupuri</p><svg class="ic mn"><use href="#i-settings"/></svg><svg class="ic mn"><use href="#i-dots"/></svg></div>
+      <div class="mrow"><span class="lb">Ultimul backup</span><span>acum 2h</span></div>
+      <div class="mrow"><span class="lb">Următorul</span><span>mâine, 03:00</span></div>
+      <div class="mrow"><span class="lb">Restore verificat</span><span style="color:var(--ok)">12 iulie · ok</span></div>
+      <div class="mbox"><div style="display:flex;justify-content:space-between"><p class="k">Stocare</p><p class="k">1,9 GB</p></div>
+        <div class="pbar" style="margin-top:7px"><i style="width:22%"></i></div></div>
+      <span class="mact">Rulează backup</span>
+    </div>
+    <div class="mcard">
+      <div class="mhd"><span class="mico mi-dark"><svg class="ic"><use href="#i-chart"/></svg></span><p>Trafic</p><svg class="ic mn"><use href="#i-settings"/></svg></div>
+      <div class="seg" style="margin-bottom:9px;width:100%"><span style="flex:1">7 zile</span><span class="on" style="flex:1">30 zile</span><span style="flex:1">90 zile</span></div>
+      <div class="mrow"><span class="lb">Sesiuni</span><span>8.420 <svg class="ic i-ok" style="width:12px;height:12px"><use href="#i-arr-u"/></svg></span></div>
+      <div class="mrow"><span class="lb">Utilizatori</span><span>6.180 <svg class="ic i-ok" style="width:12px;height:12px"><use href="#i-arr-u"/></svg></span></div>
+      <div class="mrow"><span class="lb">Clicuri din căutare</span><span>1.204</span></div>
+      <div class="mrow"><span class="lb">Poziție medie</span><span>14,2 <svg class="ic i-ok" style="width:12px;height:12px"><use href="#i-arr-d"/></svg></span></div>
+      <div class="mrow"><span class="lb">Din cache Cloudflare</span><span>78%</span></div>
+    </div>
+  </div>
+</div>
+<p class="note">Prima coloană și Verificări vin din baza locală — se randează imediat. Uptime, Backupuri și Trafic sunt componente leneșe, cu taburile de perioadă ca proprietăți proprii, nu ale părintelui.</p>
+
+<h2 id="alerte">Ecran — Alerte</h2>
+<div class="tabs" style="margin-bottom:12px">
+  <span class="tab on">Deschise <span class="badge b-bad">3</span></span>
+  <span class="tab">Confirmate <span style="color:var(--tx3)">2</span></span>
+  <span class="tab">Rezolvate</span>
+</div>
+<div class="box">
+  <div class="arow"><span class="sev" style="background:var(--bad-i)"></span>
+    <svg class="ic i-bad" style="width:16px;height:16px"><use href="#i-lock"/></svg>
+    <div class="txt"><p>SSL expiră în 6 zile — reînnoire automată eșuată</p><p class="meta">m1-beauty.at · M1 Beauty</p></div>
+    <span class="tm">acum 2h</span><button class="btn">Confirmă</button></div>
+  <div class="arow"><span class="sev" style="background:var(--bad-i)"></span>
+    <svg class="ic i-bad" style="width:16px;height:16px"><use href="#i-bug"/></svg>
+    <div class="txt"><p>847 avertismente PHP — JetWooBuilder 2.1.3</p><p class="meta">feco.ro · Feco</p></div>
+    <span class="tm">acum 5h</span><button class="btn">Confirmă</button></div>
+  <div class="arow"><span class="sev" style="background:var(--warn-i)"></span>
+    <svg class="ic i-warn" style="width:16px;height:16px"><use href="#i-cart"/></svg>
+    <div class="txt"><p>12 comenzi blocate în „pending" de peste 48h</p><p class="meta">gtaenergy.ro · GTA Energy</p></div>
+    <span class="tm">ieri</span><button class="btn">Confirmă</button></div>
+</div>
+<p class="note">Un singur flux pentru tot: uptime, SSL, backup eșuat, vulnerabilitate, formular care nu mai trimite, erori peste prag. Trei stări — deschisă, confirmată, rezolvată.</p>
+
+<h2 id="upd">Ecran — Actualizări</h2>
+<div class="box">
+  <div class="urow"><span class="chk on"><svg class="ic"><use href="#i-check"/></svg></span>
+    <span class="uic"><svg class="ic"><use href="#i-plug"/></svg></span>
+    <div style="flex:1;min-width:0"><p style="margin:0;font-size:13px">Elementor <span style="color:var(--tx3)">3.21 → 3.22</span></p>
+      <p style="margin:1px 0 0;font-size:11px;color:var(--tx3)">18 site-uri · minoră · risc scăzut</p></div>
+    <span class="badge b-ok">automat</span>
+    <button class="btn btn-p">Aprobă lotul</button></div>
+  <div class="urow"><span class="chk"></span>
+    <span class="uic"><svg class="ic"><use href="#i-plug"/></svg></span>
+    <div style="flex:1;min-width:0"><p style="margin:0;font-size:13px">WooCommerce <span style="color:var(--tx3)">9.4 → 10.0</span></p>
+      <p style="margin:1px 0 0;font-size:11px;color:var(--tx3)">7 site-uri · majoră · listă de risc</p></div>
+    <span class="badge b-warn">cere aprobare</span>
+    <button class="btn">Verifică</button></div>
+  <div class="urow"><span class="chk"></span>
+    <span class="uic" style="background:var(--bad-bg);color:var(--bad)"><svg class="ic"><use href="#i-shield"/></svg></span>
+    <div style="flex:1;min-width:0"><p style="margin:0;font-size:13px">Contact Form 7 <span style="color:var(--tx3)">5.9.2 → 5.9.3</span></p>
+      <p style="margin:1px 0 0;font-size:11px;color:var(--tx3)">4 site-uri · CVE-2026-1188 · patch disponibil</p></div>
+    <span class="badge b-bad">vulnerabilitate</span>
+    <button class="btn btn-d">Aplică acum</button></div>
+</div>
+<p class="note">O singură axă: pluginul, nu site-ul. Al treilea rând e regula 3 — vulnerabilitate critică cu patch, singura care sare peste aprobare.</p>
+
+<h2 id="rap">Ecran — Rapoarte</h2>
+<div class="tabs" style="margin-bottom:12px">
+  <span class="tab on">Generate</span><span class="tab">Programare</span>
+  <span class="tab">Blocate <span class="badge b-warn">2</span></span>
+</div>
+<div class="box">
+  <div class="arow"><svg class="ic i-ok" style="width:16px;height:16px"><use href="#i-send"/></svg>
+    <div class="txt"><p>asic.ro — iulie 2026</p><p class="meta">trimis către contact@asic.ro</p></div>
+    <span class="tm">1 aug, 08:00</span><span class="badge b-ok">trimis</span></div>
+  <div class="arow"><svg class="ic i-warn" style="width:16px;height:16px"><use href="#i-pause"/></svg>
+    <div class="txt"><p>feco.ro — iulie 2026</p><p class="meta">reținut · incident critic nerezolvat</p></div>
+    <span class="tm">1 aug, 08:00</span><button class="btn">Revizuiește</button></div>
+  <div class="arow"><svg class="ic i-warn" style="width:16px;height:16px"><use href="#i-pause"/></svg>
+    <div class="txt"><p>m1-beauty.at — iulie 2026</p><p class="meta">reținut · secțiunea Trafic fără date, token GSC expirat</p></div>
+    <span class="tm">1 aug, 08:00</span><button class="btn">Revizuiește</button></div>
+  <div class="arow"><svg class="ic" style="width:16px;height:16px;color:var(--tx3)"><use href="#i-clock"/></svg>
+    <div class="txt"><p>gtaenergy.ro — iulie 2026</p><p class="meta">programat</p></div>
+    <span class="tm">1 aug, 08:00</span><span class="badge b-acc">programat</span></div>
+</div>
+<p class="note">Tabul „Blocate" e cel mai important din ecran: acolo ajung rapoartele oprite de barierele de siguranță. Fără el, automatizarea completă ar fi oarbă.</p>
+
+</div>
+</body>
+</html>

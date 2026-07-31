@@ -105,7 +105,6 @@ return [
         'redis:performance' => 120,
         'redis:reports' => 120,
         'redis:security' => 60,
-        'redis:incident-response' => 120,
         'redis:ops-instant' => 30,
     ],
 
@@ -272,40 +271,6 @@ return [
             'timeout' => 600,
             'nice' => 0,
         ],
-        'supervisor-incident-response' => [
-            'connection' => 'redis',
-            'queue' => ['incident-response'],
-            'balance' => 'simple',
-            'maxProcesses' => 2,
-            'maxTime' => 0,
-            'maxJobs' => 0,
-            'memory' => 512,
-            'tries' => 1,
-            // P2-56: RunIncidentResponse runs nested SYNC work — CreateBackup
-            // dispatchSync (budget 2700s) and safe-update (another nested backup).
-            // This must be >= the nested backup budget so a large-site backup is
-            // never SIGKILLed mid-operation. Kept in sync with
-            // RunIncidentResponse::$timeout (3000s).
-            'timeout' => 3000,
-            'nice' => 0,
-        ],
-        'supervisor-audit' => [
-            'connection' => 'redis',
-            'queue' => ['audit'],
-            'balance' => 'simple',
-            // A SINGLE crawl at a time: Screaming Frog is memory-heavy (-Xmx2g)
-            // and WithoutOverlapping guards the invariant regardless.
-            'maxProcesses' => 1,
-            'maxTime' => 0,
-            'maxJobs' => 0,
-            'memory' => 512,
-            // No auto-retry: an SF crawl is expensive — a failure surfaces on the
-            // audit_run row, not a silent re-crawl. Kept in sync with
-            // RunSfCrawl::$tries (1) / ::$timeout (1900, just above SF's 1800).
-            'tries' => 1,
-            'timeout' => 1900,
-            'nice' => 0,
-        ],
         // Faza 4: dedicated fast lane for cheap, synchronous fleet operations
         // (e.g. Cloudflare cache purge). Mirrors OperationDuration::Instant
         // (queue 'ops-instant', tries 2, timeout 60).
@@ -347,12 +312,6 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
-            'supervisor-incident-response' => [
-                'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 2),
-            ],
-            'supervisor-audit' => [
-                'maxProcesses' => 1, // never more than one SF crawl
-            ],
             'supervisor-ops-instant' => [
                 'maxProcesses' => (int) env('HORIZON_OPS_INSTANT_WORKERS', 3),
             ],
@@ -374,12 +333,6 @@ return [
             'supervisor-general' => [
                 'maxProcesses' => (int) env('HORIZON_GENERAL_WORKERS', 1),
             ],
-            'supervisor-incident-response' => [
-                'maxProcesses' => (int) env('HORIZON_INCIDENT_RESPONSE_WORKERS', 1),
-            ],
-            'supervisor-audit' => [
-                'maxProcesses' => 1,
-            ],
         ],
 
         'local' => [
@@ -397,12 +350,6 @@ return [
             ],
             'supervisor-general' => [
                 'maxProcesses' => 2,
-            ],
-            'supervisor-incident-response' => [
-                'maxProcesses' => 1,
-            ],
-            'supervisor-audit' => [
-                'maxProcesses' => 1,
             ],
             'supervisor-ops-instant' => [
                 'maxProcesses' => 3,

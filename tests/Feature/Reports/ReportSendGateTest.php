@@ -48,6 +48,76 @@ class ReportSendGateTest extends TestCase
         $this->assertSame([], $result['reasons']);
     }
 
+    /**
+     * SPEC §12.3's other out-of-range case: "salt de trafic de câteva ori". It was
+     * deferred for want of prior-period data, which the snapshot does in fact carry
+     * — a report that presents a tripling as growth is worse than a late one, since
+     * a 3x month-on-month move is nearly always a measurement that changed.
+     */
+    public function test_a_traffic_multiple_holds_the_report(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        $result = $this->gate->evaluate($this->reportFor($site, [
+            'analytics' => ['users_current' => 9000, 'users_previous' => 1200],
+        ]));
+
+        $this->assertFalse($result['send']);
+        $this->assertStringContainsStringIgnoringCase('users moved', implode(' | ', $result['reasons']));
+    }
+
+    public function test_a_traffic_collapse_holds_the_report_too(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        // A collapse is the same broken-measurement signal inverted, and just as
+        // wrong to send unreviewed.
+        $result = $this->gate->evaluate($this->reportFor($site, [
+            'analytics' => ['pageviews_current' => 400, 'pageviews_previous' => 5000],
+        ]));
+
+        $this->assertFalse($result['send']);
+        $this->assertStringContainsStringIgnoringCase('pageviews moved', implode(' | ', $result['reasons']));
+    }
+
+    public function test_ordinary_growth_still_sends(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        $result = $this->gate->evaluate($this->reportFor($site, [
+            'analytics' => ['users_current' => 1500, 'users_previous' => 1200],
+        ]));
+
+        $this->assertTrue($result['send']);
+    }
+
+    /**
+     * Without a floor, a quiet site would hold its report every month: 4 users
+     * becoming 20 is a five-fold rise and means nothing.
+     */
+    public function test_small_numbers_do_not_hold_the_report(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        $result = $this->gate->evaluate($this->reportFor($site, [
+            'analytics' => ['users_current' => 20, 'users_previous' => 4],
+        ]));
+
+        $this->assertTrue($result['send']);
+    }
+
+    public function test_a_site_with_no_previous_period_is_not_held(): void
+    {
+        $site = Site::factory()->create(['is_up' => true]);
+
+        // First month on the platform: nothing to compare against is not an anomaly.
+        $result = $this->gate->evaluate($this->reportFor($site, [
+            'analytics' => ['users_current' => 9000, 'users_previous' => null],
+        ]));
+
+        $this->assertTrue($result['send']);
+    }
+
     public function test_an_open_uptime_incident_holds_the_report(): void
     {
         $site = Site::factory()->create(['is_up' => true]);

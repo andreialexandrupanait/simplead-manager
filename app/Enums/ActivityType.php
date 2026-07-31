@@ -29,6 +29,12 @@ enum ActivityType: string
     case Database = 'database';
     case Dns = 'dns';
     case ErrorLog = 'error_log';
+    // The next five belong to modules deleted in Faza 1 (incident response, the
+    // SEO engine, the client portal). Nothing writes them any more, and they are
+    // deliberately NOT removed: activity_logs is history, and production still
+    // holds 226 rows of type 'seo'. Dropping the case would make those rows fail
+    // to hydrate — the Activity screen would throw on a value that was perfectly
+    // legitimate when it was written.
     case IncidentResponse = 'incident_response';
     case Seo = 'seo';
     case SeoFix = 'seo_fix';

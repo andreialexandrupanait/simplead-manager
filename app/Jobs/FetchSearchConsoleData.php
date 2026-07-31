@@ -123,8 +123,10 @@ class FetchSearchConsoleData implements ShouldBeUnique, ShouldQueue
 
             // SPEC §7.5 — refresh the derived key URLs now that top GSC pages
             // are cached (non-fatal: a failure here must not fail the GSC sync).
+            // Quarterly cadence and manual-override lock are enforced inside
+            // refreshIfDue; this used to overwrite the set on every fetch.
             try {
-                app(\App\Services\KeyUrlService::class)->deriveAndStore($this->site);
+                app(\App\Services\KeyUrlService::class)->refreshIfDue($this->site);
             } catch (\Throwable $e) {
                 \Log::warning("Key-URL derivation failed for site {$this->site->id}: {$e->getMessage()}");
             }
