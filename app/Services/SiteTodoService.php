@@ -65,7 +65,7 @@ class SiteTodoService
         }
 
         $config = $site->backupConfig;
-        $stale = ! $site->last_backup_at || $site->last_backup_at->lt(now()->subHours(36));
+        $stale = ! $site->last_backup_at || $site->last_backup_at->lt(now()->subHours((int) config('backups.stale_after_hours', 36)));
         if (! $config || ! $config->is_enabled) {
             $items[] = self::item('backups', 'high', 'Backups not configured', 'This site has no active backup schedule.', 'sites.backups', $site);
         } elseif ($stale) {

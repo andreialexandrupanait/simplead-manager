@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $incremental_frequency
  * @property int|null $full_backup_day_of_week
  * @property \Illuminate\Support\Carbon|null $last_full_backup_at
+ * @property \Illuminate\Support\Carbon|null $stale_alert_sent_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -60,6 +61,7 @@ class BackupConfig extends Model
         'incremental_frequency',
         'full_backup_day_of_week',
         'last_full_backup_at',
+        'stale_alert_sent_at',
     ];
 
     protected $casts = [
@@ -73,6 +75,7 @@ class BackupConfig extends Model
         'next_backup_at' => 'datetime',
         'full_backup_day_of_week' => 'integer',
         'last_full_backup_at' => 'datetime',
+        'stale_alert_sent_at' => 'datetime',
     ];
 
     public function site(): BelongsTo

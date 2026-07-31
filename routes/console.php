@@ -279,6 +279,16 @@ Schedule::job(new \App\Jobs\CheckLicenseExpiry)
     ->name('check-license-expiry')
     ->onOneServer();
 
+// A site that stops being backed up produces no failed row, so the observer that
+// alerts on backup failures never sees it. Nothing noticed simplead.ro going 51
+// days without one. Runs after the overnight backup window so a site that ran at
+// 03:00 is not reported at 07:00 for missing the night before.
+Schedule::job(new \App\Jobs\CheckStaleBackups)
+    ->dailyAt('07:30')
+    ->name('check-stale-backups')
+    ->withoutOverlapping(10)
+    ->onOneServer();
+
 // Backfill DNS monitors for any connected site still missing one — a safety net
 // for sites onboarded before DNS was a plan default (P1-56). The command only
 // touches sites with no monitor, so this is idempotent.

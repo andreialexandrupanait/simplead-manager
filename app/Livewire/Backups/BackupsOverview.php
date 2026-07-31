@@ -130,7 +130,7 @@ class BackupsOverview extends Component
             ->whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true))
             ->where(fn ($q) => $q
                 ->whereNull('last_backup_at')
-                ->orWhere('last_backup_at', '<', now()->subHours(36))
+                ->orWhere('last_backup_at', '<', now()->subHours((int) config('backups.stale_after_hours', 36)))
             )
             ->with(['backupConfig.storageDestination', 'healthState'])
             ->orderByRaw('last_backup_at ASC NULLS FIRST')

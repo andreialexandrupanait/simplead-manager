@@ -131,7 +131,7 @@ class DashboardService
         $staleBackups = $this->scopeSite(Site::whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true)), $ids)
             ->where(fn ($q) => $q
                 ->whereNull('last_backup_at')
-                ->orWhere('last_backup_at', '<', now()->subHours(36))
+                ->orWhere('last_backup_at', '<', now()->subHours((int) config('backups.stale_after_hours', 36)))
             )
             ->count();
 

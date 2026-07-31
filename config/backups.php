@@ -23,6 +23,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | When a backup counts as too old
+    |--------------------------------------------------------------------------
+    |
+    | Three screens each carried their own hardcoded 36 hours (the backups
+    | overview, the dashboard counter and the per-site to-do list). Alerting on
+    | the same question with a fourth copy would guarantee the alert and the UI
+    | eventually disagreed about which sites are in trouble, so they all read
+    | this now.
+    |
+    | `stale_after_hours` is a daily backup plus half a day of slack — a site
+    | that missed one night. `stale_critical_after_hours` is three missed
+    | nights, which is no longer a hiccup.
+    |
+    */
+    'stale_after_hours' => (int) env('BACKUP_STALE_AFTER_HOURS', 36),
+    'stale_critical_after_hours' => (int) env('BACKUP_STALE_CRITICAL_AFTER_HOURS', 72),
+
+    /*
+    | How long before the same stale site is worth mentioning again. The
+    | NotificationService dedup window is 5 minutes, which is right for a burst
+    | of events and useless for a daily sweep — without a persisted marker a
+    | site with no backup would be reported every single morning until someone
+    | fixed it, which is how people learn to ignore an alert channel.
+    */
+    'stale_realert_after_days' => (int) env('BACKUP_STALE_REALERT_AFTER_DAYS', 3),
+
+    /*
+    |--------------------------------------------------------------------------
     | Scheduled / bulk dispatch stagger
     |--------------------------------------------------------------------------
     |

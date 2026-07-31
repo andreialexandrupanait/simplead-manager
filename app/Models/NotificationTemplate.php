@@ -51,6 +51,7 @@ class NotificationTemplate extends Model
         'backup_failed' => 'Backup Failed',
         'restore_failed' => 'Restore Failed',
         'backup_verify_failures' => 'Backup Verification Failed',
+        'backup_stale' => 'Backup Missing or Stale',
         'performance_drop' => 'Performance Drop',
         'budget_violation' => 'Budget Violation',
         'security_score_critical' => 'Security Score Critical',
