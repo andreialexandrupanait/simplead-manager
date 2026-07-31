@@ -35,20 +35,29 @@ class CheckBrokenLinks implements ShouldBeUnique, ShouldQueue
     /** Connector release that introduced the /content-urls endpoint. */
     private const MIN_CONNECTOR_VERSION = '2.19.2';
 
-    public function __construct()
-    {
+    /**
+     * @param  int|null  $siteId  Limit the sweep to one site. The monthly run passes
+     *                            nothing and covers the fleet; the "scan now" button on
+     *                            a site passes its id, so one operator click does not
+     *                            crawl every site in the fleet.
+     */
+    public function __construct(
+        public ?int $siteId = null,
+    ) {
         $this->onQueue('default');
     }
 
     public function uniqueId(): string
     {
-        return 'check-broken-links';
+        // Per-site runs must not collide with each other or with the fleet sweep.
+        return 'check-broken-links'.($this->siteId !== null ? ':'.$this->siteId : '');
     }
 
     public function handle(BrokenLinkChecker $checker): void
     {
         Site::query()
             ->where('is_connected', true)
+            ->when($this->siteId !== null, fn ($q) => $q->whereKey($this->siteId))
             ->each(function (Site $site) use ($checker): void {
                 // /content-urls only exists from 2.19.2 on — an older connector would
                 // 404 and produce a failed run row instead of a clean skip.

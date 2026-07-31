@@ -166,6 +166,16 @@ class BrokenLinkChecker
     /**
      * HEAD-check a URL (GET fallback on 405), following internal redirect chains.
      *
+     * SPEC §5.3 asks to check whether the existing Redirecturi module already covers
+     * redirect-chain detection and, if so, to feed it rather than duplicate it. It
+     * does not: SiteRedirect holds rules the Manager PUSHES to the site
+     * (RedirectSyncService replaces the connector's whole set from it), so those rows
+     * are instructions, not observations. Writing a detected chain there would create
+     * a live redirect on the client's site as a side effect of a read-only scan.
+     *
+     * The chains are therefore recorded on the scan result and shown on the Checks
+     * screen, where a human can decide whether one deserves a rule.
+     *
      * @return array{status_code: int|null, is_broken: bool, chain: array<int, array{url: string, status_code: int}>}
      */
     private function checkUrl(string $url, bool $followRedirects): array

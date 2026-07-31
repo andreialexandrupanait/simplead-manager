@@ -522,4 +522,27 @@ return [
     'sec_cat_http_headers' => 'Header-e HTTP',
     'sec_cat_ssl_https' => 'SSL și HTTPS',
     'sec_no_data' => 'Nu sunt disponibile date de verificare a securității.',
+
+    // Broken links section (SPEC §5.7 — reported as the change, not the state)
+    'section_broken_links' => 'Linkuri rupte',
+    'broken_links_no_change' => 'Nicio schimbare față de scanarea anterioară.',
+    'broken_links_change' => ':new linkuri rupte noi, :resolved rezolvate față de scanarea anterioară.',
+    'broken_links_broken' => 'Rupte',
+    'broken_links_checked' => 'URL-uri verificate',
+    'broken_links_chains' => 'Lanțuri de redirect',
+    'broken_links_url' => 'URL',
+    'broken_links_found_on' => 'Găsit pe',
+    'broken_links_status' => 'Status',
+
+    // SPEC §12.4 — the attributed sentence that justifies the invoice
+    'updates_narrative_title' => 'Ce a prevenit asta',
+    'updates_narrative_found' => 'Am identificat :count :level generate de :name.',
+    'updates_narrative_applied' => 'Am aplicat versiunea :version pe :date.',
+    'updates_narrative_active' => 'Erori active în prezent din această sursă: :count.',
+    'updates_narrative_no_update' => 'Încă nu există o versiune care să le repare; urmărim situația.',
+    'level_warning' => 'avertismente',
+    'level_fatal' => 'erori fatale',
+    'level_notice' => 'notificări',
+    'level_deprecated' => 'avertismente de depreciere',
+    'level_unknown' => 'erori',
 ];

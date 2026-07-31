@@ -8,10 +8,12 @@ use App\Contracts\WordPressApiServiceInterface;
 use App\Jobs\CheckWooHealth;
 use App\Models\Site;
 use App\Models\SitePlugin;
+use App\Services\Security\SsrfGuard;
 use App\Services\WordPressApiServiceFactory;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -73,6 +75,87 @@ class CheckWooHealthTest extends TestCase
                 ['id' => 'stripe', 'title' => 'Stripe', 'enabled' => true, 'available' => true],
             ],
         ], $overrides);
+    }
+
+    /**
+     * SPEC §5.4 lists "checkout returnează 200" first among the store signals, and
+     * it was the one that never worked: checkout_status was hard-coded to null with
+     * a note saying a Manager-side probe was "an optional future signal". The
+     * evaluation logic for it existed and was unreachable.
+     *
+     * The URL has to come from the connector — guessing "/checkout/" 404s on every
+     * store with localised permalinks, and a guessed 404 would be recorded as a
+     * broken checkout.
+     */
+    public function test_checkout_is_probed_from_outside_and_recorded(): void
+    {
+        Queue::fake();
+        $site = $this->wooSite();
+
+        $this->bindWooHealth($this->applicableBody([
+            'checkout_url' => 'https://shop.example.com/finalizare-comanda/',
+        ]));
+
+        Http::fake(['https://shop.example.com/*' => Http::response('', 200)]);
+        $this->fakeSsrfGuard();
+
+        (new CheckWooHealth)->handle();
+
+        $this->assertDatabaseHas('woo_checks', [
+            'site_id' => $site->id,
+            'checkout_status' => 200,
+        ]);
+    }
+
+    public function test_a_broken_checkout_is_recorded_as_such(): void
+    {
+        Queue::fake();
+        $site = $this->wooSite();
+
+        $this->bindWooHealth($this->applicableBody([
+            'checkout_url' => 'https://shop.example.com/checkout/',
+        ]));
+
+        Http::fake(['https://shop.example.com/*' => Http::response('Fatal error', 500)]);
+        $this->fakeSsrfGuard();
+
+        (new CheckWooHealth)->handle();
+
+        $this->assertDatabaseHas('woo_checks', [
+            'site_id' => $site->id,
+            'checkout_status' => 500,
+        ]);
+    }
+
+    /**
+     * A connector too old to send the URL must leave the signal at "not probed"
+     * rather than guessing — null never counts against the store.
+     */
+    public function test_no_checkout_url_leaves_the_signal_unprobed(): void
+    {
+        Queue::fake();
+        $site = $this->wooSite();
+
+        $this->bindWooHealth($this->applicableBody());
+
+        (new CheckWooHealth)->handle();
+
+        $this->assertDatabaseHas('woo_checks', [
+            'site_id' => $site->id,
+            'checkout_status' => null,
+        ]);
+    }
+
+    /**
+     * The probe is a Manager-side fetch of a site-supplied URL, so it goes through
+     * the SSRF guard. Tests stub the DNS half so no lookup happens.
+     */
+    private function fakeSsrfGuard(): void
+    {
+        $this->app->instance(SsrfGuard::class, new class extends SsrfGuard
+        {
+            public function assertPublicUrl(string $url): void {}
+        });
     }
 
     public function test_gateway_down_maps_to_red_critical_alert(): void

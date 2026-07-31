@@ -16,7 +16,7 @@
     $inUptime = request()->routeIs('sites.uptime');
     $inSecurity = request()->routeIs('sites.security*') || request()->routeIs('sites.tweaks*');
     $inPerformance = request()->routeIs('sites.performance');
-    $inChecks = request()->routeIs('sites.cron') || request()->routeIs('sites.database');
+    $inChecks = request()->routeIs('sites.checks.*') || request()->routeIs('sites.cron') || request()->routeIs('sites.database');
     $inTraffic = request()->routeIs('sites.analytics') || request()->routeIs('sites.search-console') || request()->routeIs('sites.cloudflare');
     $inReports = request()->routeIs('sites.reports') || request()->routeIs('sites.reports.view');
 
@@ -267,17 +267,41 @@
         </x-sidebar.sidebar-item>
 
         {{-- Verificări ▾ — spec: Formulare · WooCommerce · Linkuri rupte · Erori PHP ·
-             Cron · Bază de date. Real: Cron (sites.cron), Bază de date (sites.database). --}}
+             Cron · Bază de date. Toate șase există acum. --}}
         <x-sidebar.sidebar-group
             title="Verificări"
             icon="check-circle"
             key="checks"
             :active="$inChecks"
         >
-            {{-- TODO: rută inexistentă — Formulare --}}
-            {{-- TODO: rută inexistentă — WooCommerce --}}
-            {{-- TODO: rută inexistentă — Linkuri rupte --}}
-            {{-- TODO: rută inexistentă — Erori PHP (modul la nivel de flotă, fără rută per-site) --}}
+            <x-sidebar.sidebar-item
+                :href="route('sites.checks.forms', $site)"
+                icon="mail"
+                :active="request()->routeIs('sites.checks.forms')"
+            >
+                Formulare
+            </x-sidebar.sidebar-item>
+            <x-sidebar.sidebar-item
+                :href="route('sites.checks.woo', $site)"
+                icon="shopping-cart"
+                :active="request()->routeIs('sites.checks.woo')"
+            >
+                WooCommerce
+            </x-sidebar.sidebar-item>
+            <x-sidebar.sidebar-item
+                :href="route('sites.checks.links', $site)"
+                icon="link"
+                :active="request()->routeIs('sites.checks.links')"
+            >
+                Linkuri rupte
+            </x-sidebar.sidebar-item>
+            <x-sidebar.sidebar-item
+                :href="route('sites.checks.errors', $site)"
+                icon="alert-triangle"
+                :active="request()->routeIs('sites.checks.errors')"
+            >
+                Erori PHP
+            </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.cron', $site)"
                 icon="clock"

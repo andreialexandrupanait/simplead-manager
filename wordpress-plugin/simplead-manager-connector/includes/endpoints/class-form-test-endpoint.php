@@ -29,6 +29,12 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
     /** Max seconds the active flag may live. */
     const ACTIVE_TTL = 120;
 
+    /** Prefix stamped on the redirected notification's subject. */
+    const SUBJECT_MARKER = '[TEST]';
+
+    /** Name written into the submission when the Manager does not supply one. */
+    const DEFAULT_TEST_NAME = 'SimpleAD TEST';
+
     /**
      * Allowlist: plugin file => [display name, internal key]. ONLY these have a
      * proven suppression path, so ONLY these are ever submitted.
@@ -68,6 +74,25 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'methods'             => 'POST',
             'callback'            => [$this, 'run'],
             'permission_callback' => [$this, 'check_permission'],
+            'args'                => [
+                // Where the notification should be delivered instead of the site's
+                // own recipient. When supplied, the mail is REDIRECTED rather than
+                // aborted, so the Manager can confirm it actually arrived — the
+                // delivery half of SPEC §5.4. The client's inbox stays clean either
+                // way. Omitted → the pre-2.21.0 behaviour (abort the send).
+                'deliver_to' => [
+                    'type'              => 'string',
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_email',
+                ],
+                // Name written into the submission, so the entry is recognisably a
+                // test rather than an anonymous stranger.
+                'test_name' => [
+                    'type'              => 'string',
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ]);
     }
 
@@ -129,11 +154,20 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
         }
 
         $marked_email = $this->marked_email();
+        $deliver_to   = (string) $request->get_param('deliver_to');
+        $test_name    = (string) $request->get_param('test_name');
+
+        if ($test_name === '') {
+            $test_name = self::DEFAULT_TEST_NAME;
+        }
+
         $result = [
             'supported'             => true,
             'submitted'             => false,
             'form_plugin'           => $plugin['name'],
             'marked_email'          => $marked_email,
+            'delivered_to'          => $deliver_to !== '' ? $deliver_to : null,
+            'test_name'             => $test_name,
             'suppression_confirmed' => false,
             'entry_deleted'         => false,
         ];
@@ -143,11 +177,11 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
 
         try {
             // (3) Register suppression hooks BEFORE any submit.
-            $this->register_suppression($plugin['key'], $marked_email);
+            $this->register_suppression($plugin['key'], $marked_email, $deliver_to);
             $result['suppression_confirmed'] = true;
 
             // (4) Inject a marked submit + (5) delete the created entry.
-            $submit = $this->inject_marked_submit($plugin['key'], $marked_email);
+            $submit = $this->inject_marked_submit($plugin['key'], $marked_email, $test_name);
             $result = array_merge($result, $submit);
         } catch (\Throwable $e) {
             $result['error'] = $e->getMessage();
@@ -184,23 +218,53 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      * interceptor) on the +samtest marker, so nothing leaks past the run. The
      * finally block in run() drops the transient, which neutralises every hook.
      */
-    private function register_suppression(string $key, string $marked_email): void {
+    private function register_suppression(string $key, string $marked_email, string $deliver_to = ''): void {
+        if ($deliver_to !== '') {
+            // Redirect the notification to the operator's own inbox and mark it as a
+            // test, instead of killing it. Aborting the send made the "delivery
+            // verified" half of SPEC §5.4 impossible to answer — there was no message
+            // left to look for. The client's own recipient is replaced, so their inbox
+            // stays as clean as it was under the abort.
+            add_filter('wp_mail', function ($atts) use ($marked_email, $deliver_to) {
+                if (!get_transient(self::ACTIVE_FLAG) || !is_array($atts)) {
+                    return $atts;
+                }
+                if (!$this->is_our_test_mail($atts, $marked_email)) {
+                    return $atts;
+                }
+
+                $atts['to'] = $deliver_to;
+
+                $subject = (string) ($atts['subject'] ?? '');
+                if (stripos($subject, self::SUBJECT_MARKER) === false) {
+                    $atts['subject'] = self::SUBJECT_MARKER . ' ' . $subject;
+                }
+
+                return $atts;
+            }, PHP_INT_MAX, 1);
+        }
+
         // Generic safety net: abort delivery of the marked email itself. This is
         // the last line of defence regardless of which plugin routes it.
         // pre_wp_mail (WP 5.7+) short-circuits wp_mail entirely when non-null.
-        add_filter('pre_wp_mail', function ($short, $atts) use ($marked_email) {
-            if (!get_transient(self::ACTIVE_FLAG)) {
-                return $short;
-            }
-            $to = $atts['to'] ?? [];
-            $to = is_array($to) ? $to : [$to];
-            foreach ($to as $addr) {
-                if (stripos((string) $addr, '+samtest') !== false) {
-                    return false; // abort send
+        //
+        // Skipped when a delivery address was supplied: the filter above has already
+        // rewritten the recipient, and aborting here would undo the redirect.
+        if ($deliver_to === '') {
+            add_filter('pre_wp_mail', function ($short, $atts) use ($marked_email) {
+                if (!get_transient(self::ACTIVE_FLAG)) {
+                    return $short;
                 }
-            }
-            return $short;
-        }, PHP_INT_MAX, 2);
+                $to = $atts['to'] ?? [];
+                $to = is_array($to) ? $to : [$to];
+                foreach ($to as $addr) {
+                    if (stripos((string) $addr, '+samtest') !== false) {
+                        return false; // abort send
+                    }
+                }
+                return $short;
+            }, PHP_INT_MAX, 2);
+        }
 
         switch ($key) {
             case 'gravityforms':
@@ -249,6 +313,33 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
     }
 
     /**
+     * Is this outgoing mail the one our test caused?
+     *
+     * The flag lives for up to two minutes, and a real order confirmation could be
+     * sent in that window — redirecting a customer's email to the operator would be
+     * far worse than the problem being solved. So the match is strict: the marked
+     * address has to appear in the recipients, the subject or the body. A form
+     * notification normally goes to the site admin and quotes the submitter's
+     * address in the body, which is what makes it identifiable.
+     *
+     * @param array<string,mixed> $atts
+     */
+    private function is_our_test_mail(array $atts, string $marked_email): bool {
+        $to = $atts['to'] ?? [];
+        $to = is_array($to) ? $to : [$to];
+
+        foreach ($to as $addr) {
+            if (stripos((string) $addr, '+samtest') !== false) {
+                return true;
+            }
+        }
+
+        $haystack = (string) ($atts['subject'] ?? '') . ' ' . (string) ($atts['message'] ?? '');
+
+        return stripos($haystack, $marked_email) !== false;
+    }
+
+    /**
      * Best-effort marked submit + immediate cleanup of the created entry.
      *
      * Real end-to-end proof is performed on the owner-gated pilot; here we create
@@ -257,7 +348,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      *
      * @return array<string,mixed>
      */
-    private function inject_marked_submit(string $key, string $marked_email): array {
+    private function inject_marked_submit(string $key, string $marked_email, string $test_name = self::DEFAULT_TEST_NAME): array {
         switch ($key) {
             case 'gravityforms':
                 if (!class_exists('GFAPI')) {
@@ -270,8 +361,13 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 $form_id = $forms[0]['id'];
                 $entry = ['form_id' => $form_id, 'source_url' => home_url()];
                 foreach ($forms[0]['fields'] as $field) {
-                    if (($field->type ?? '') === 'email') {
+                    $type = $field->type ?? '';
+                    if ($type === 'email') {
                         $entry[(string) $field->id] = $marked_email;
+                    } elseif ($type === 'name' || $type === 'text' || $type === 'textarea') {
+                        // The word TEST in every field that takes free text, so
+                        // anyone looking at the entry knows what it is.
+                        $entry[(string) $field->id] = $test_name;
                     }
                 }
                 $entry_id = GFAPI::add_entry($entry);
@@ -305,7 +401,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 $entry_id = $entry_handler->add([
                     'form_id' => $form_id,
                     'status'  => 'sam-test',
-                    'fields'  => wp_json_encode(['email' => $marked_email]),
+                    'fields'  => wp_json_encode(['email' => $marked_email, 'name' => $test_name]),
                 ]);
                 if ($entry_id && method_exists($entry_handler, 'delete')) {
                     $entry_handler->delete($entry_id);
@@ -324,6 +420,7 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                 $form_id = method_exists($forms[0], 'get_id') ? $forms[0]->get_id() : 0;
                 $sub = Ninja_Forms()->form($form_id)->sub()->get();
                 $sub->update_field_value('email', $marked_email);
+                $sub->update_field_value('name', $test_name);
                 $saved = $sub->save();
                 $sub_id = is_object($saved) && method_exists($saved, 'get_id') ? $saved->get_id() : ($sub->get_id() ?? null);
                 if ($sub_id) {

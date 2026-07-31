@@ -34,6 +34,8 @@ class FormCheck extends Model
         'supported',
         'submitted_at',
         'delivery_verified',
+        'delivery_verified_at',
+        'delivered_to',
         'suppression_confirmed',
         'status',
         'checked_at',
@@ -44,6 +46,7 @@ class FormCheck extends Model
         'delivery_verified' => 'boolean',
         'suppression_confirmed' => 'boolean',
         'submitted_at' => 'datetime',
+        'delivery_verified_at' => 'datetime',
         'checked_at' => 'datetime',
     ];
 

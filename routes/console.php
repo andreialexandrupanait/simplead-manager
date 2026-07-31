@@ -330,8 +330,12 @@ Schedule::job(new \App\Jobs\SendDailyDigest)
     ->onOneServer();
 
 // Faza 5.3 — broken-link sweep (connector /content-urls + Manager HEAD-check, diff-based).
+//
+// 00:30 on the 1st, not 02:00: SPEC §5.7 wants the sweep to finish BEFORE the
+// month's report is generated, and 02:00 was a straight collision with the monthly
+// aggregation below — two long jobs starting on the same minute.
 Schedule::job(new \App\Jobs\CheckBrokenLinks)
-    ->monthlyOn(1, '02:00')
+    ->monthlyOn(1, '00:30')
     ->name('check-broken-links')
     ->onOneServer();
 
@@ -339,6 +343,14 @@ Schedule::job(new \App\Jobs\CheckBrokenLinks)
 Schedule::job(new \App\Jobs\CheckWooHealth)
     ->dailyAt('05:30')
     ->name('check-woo-health')
+    ->onOneServer();
+
+// SPEC §5.4 — the real weekly contact-form submission. The service behind it had
+// no caller at all until now. Monday morning, so a form that broke over the
+// weekend is found before the week's enquiries are lost.
+Schedule::job(new \App\Jobs\CheckContactForms)
+    ->weeklyOn(1, '06:30')
+    ->name('check-contact-forms')
     ->onOneServer();
 
 // ==========================================================================

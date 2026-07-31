@@ -109,4 +109,34 @@ return [
     | spec's floor is two; a monitor asking for more is honoured.
     */
     'incident_after_failures' => (int) env('UPTIME_INCIDENT_AFTER_FAILURES', 2),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Contact-form test (SPEC §5.4)
+    |--------------------------------------------------------------------------
+    | "Trimitere reală săptămânală cu marcaj, plus verificare de livrare."
+    |
+    | The submission is a standard one: a fixed identity, with the word TEST in
+    | every field that takes free text, so anyone who later finds the entry or the
+    | email knows immediately what it is.
+    |
+    | `deliver_to` is where the site's notification is REDIRECTED. That redirect is
+    | what makes delivery verifiable at all — the connector used to abort the send,
+    | which left no message to look for. It also keeps the client's own inbox clean.
+    | A site can override it (sites.form_test_email) when its forms must be tested
+    | against a different mailbox.
+    |
+    | Unset = the test still runs and still confirms suppression, but the connector
+    | falls back to aborting the mail, and delivery cannot be verified.
+    */
+    'form_test' => [
+        'enabled' => (bool) env('FORM_TEST_ENABLED', true),
+        'deliver_to' => env('FORM_TEST_DELIVER_TO'),
+        'name' => env('FORM_TEST_NAME', 'SimpleAD TEST'),
+        // Shared secret for the inbound hook the test mailbox forwards to. Unset =
+        // the endpoint rejects everything, so delivery is simply never confirmed.
+        'webhook_secret' => env('FORM_TEST_WEBHOOK_SECRET'),
+        // Connector release that redirects instead of aborting the notification.
+        'min_connector_version' => '2.21.0',
+    ],
 ];

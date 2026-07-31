@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\SiteMonthlySnapshot;
 use App\Services\Reports\Sections\AnalyticsGatherer;
 use App\Services\Reports\Sections\BackupsGatherer;
+use App\Services\Reports\Sections\BrokenLinksGatherer;
 use App\Services\Reports\Sections\CloudflareGatherer;
 use App\Services\Reports\Sections\DatabaseGatherer;
 use App\Services\Reports\Sections\DatabaseHealthGatherer;
@@ -77,7 +78,7 @@ class ReportGeneratorService
 
         // Pre-resolve section title/description overrides
         $sectionOverrides = [];
-        foreach (['executive_snapshot', 'technical_stability', 'updates', 'backups', 'tasks', 'analytics', 'search_console', 'performance', 'infrastructure', 'recommendations', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks'] as $key) {
+        foreach (['executive_snapshot', 'technical_stability', 'updates', 'backups', 'tasks', 'analytics', 'search_console', 'performance', 'infrastructure', 'recommendations', 'plugin_inventory', 'database_health', 'cloudflare', 'wp_users', 'security_checks', 'broken_links'] as $key) {
             $sectionOverrides[$key] = [
                 'title' => $this->template->getSectionTitle($key, $this->language),
                 'description' => $this->template->getSectionDescription($key, $this->language),
@@ -186,6 +187,7 @@ class ReportGeneratorService
             new UptimeGatherer,
             new BackupsGatherer,
             new TasksGatherer,
+            new BrokenLinksGatherer,
             new AnalyticsGatherer,
             new SearchConsoleGatherer,
             new PerformanceGatherer,

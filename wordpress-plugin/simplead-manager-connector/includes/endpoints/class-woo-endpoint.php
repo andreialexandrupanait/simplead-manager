@@ -55,6 +55,11 @@ class SAM_Woo_Endpoint extends SAM_Endpoint_Base {
 
         return $this->success([
             'applicable'                   => true,
+            // The Manager probes this URL from outside to see what a customer would
+            // get. It has to come from the site: guessing "/checkout/" breaks on
+            // every store with localised permalinks, and a guessed 404 would be
+            // recorded as a broken checkout.
+            'checkout_url'                 => function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : null,
             'pending_hours'                => $pending_hours,
             'pending_orders_count'         => $pending_count,
             'pending_over_threshold'       => $pending_count > 0,

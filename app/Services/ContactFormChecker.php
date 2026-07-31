@@ -18,8 +18,10 @@ use App\Models\SitePlugin;
  * (slugs) — no new detection code — and the allowlist is the authority for
  * `supported`. Anything else is reported {supported:false} and NEVER submitted.
  *
- * This service is NOT scheduled anywhere. runGatedTest() runs only when an
- * operator explicitly invokes it, and only after capability() gates it.
+ * SPEC §5.4 asks for a real weekly submission, and CheckContactForms now provides
+ * it. The fail-safe above is unchanged and is what makes a schedule acceptable:
+ * an unsupported plugin is refused before any submit, so the weekly run cannot
+ * reach a site whose integrations we cannot switch off.
  */
 class ContactFormChecker
 {
@@ -156,8 +158,21 @@ class ContactFormChecker
             );
         }
 
+        $deliverTo = $this->deliveryAddress($site);
+
+        // Only ask for the redirect where the connector understands it. On an older
+        // build the extra parameters are ignored and the notification is aborted as
+        // before — the test still runs, delivery just cannot be confirmed.
+        $payload = [];
+        if ($deliverTo !== null && $site->connectorAtLeast((string) config('monitoring.form_test.min_connector_version', '2.21.0'))) {
+            $payload = [
+                'deliver_to' => $deliverTo,
+                'test_name' => (string) config('monitoring.form_test.name', 'SimpleAD TEST'),
+            ];
+        }
+
         $response = $this->apiFactory->make($site)
-            ->request('POST', '/form-test/run', [], [], 120);
+            ->request('POST', '/form-test/run', $payload, [], 120);
 
         $data = $response->successful() ? ($response->json() ?? []) : [];
 
@@ -168,9 +183,29 @@ class ContactFormChecker
             'status' => $submitted ? 'submitted' : 'run_no_submit',
             'suppression_confirmed' => $suppression,
             'submitted_at' => $submitted ? now() : null,
+            // Delivery is confirmed separately, by looking in the mailbox the
+            // notification was redirected to. Clear any earlier verdict so a stale
+            // "verified" from last week cannot be read as covering this run.
+            'delivery_verified' => false,
+            'delivered_to' => $data['delivered_to'] ?? $deliverTo,
         ]);
 
         return $data;
+    }
+
+    /**
+     * Where this site's test notification should be delivered: the site's own
+     * override (SPEC §9's per-site profile field) falling back to the global
+     * address. Null means no address is configured anywhere, in which case the
+     * connector keeps aborting the mail as it did before 2.21.0.
+     */
+    public function deliveryAddress(Site $site): ?string
+    {
+        $address = $site->form_test_email ?: config('monitoring.form_test.deliver_to');
+
+        $address = is_string($address) ? trim($address) : '';
+
+        return $address !== '' ? $address : null;
     }
 
     /**

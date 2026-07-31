@@ -122,6 +122,37 @@
     @endif
 @endif
 
+{{-- SPEC §12.4 — „cifra care justifică factura". Singura secțiune care
+     demonstrează muncă preventivă; restul spun doar „nu s-a stricat nimic".
+     Se scrie din fapte: câte erori, de la ce plugin, ce versiune s-a aplicat și
+     câte erori mai sunt active de atunci. --}}
+@php $narratives = $data['error_logs']['narratives'] ?? []; @endphp
+@if(($sectionOptions['updates']['show_error_narrative'] ?? true) && !empty($narratives))
+    <hr class="subsection-divider">
+    <h3>{{ __('report.updates_narrative_title', [], $lang) }}</h3>
+
+    @foreach($narratives as $n)
+        <p style="font-size: 8.5pt; color: #334155; margin-bottom: 8px;">
+            {{ __('report.updates_narrative_found', [
+                'count' => $n['occurrences'],
+                'level' => __('report.level_'.($n['level'] ?? 'warning'), [], $lang),
+                'name' => $n['name'],
+            ], $lang) }}
+
+            @if($n['updated_at'])
+                {{ __('report.updates_narrative_applied', [
+                    'version' => $n['updated_to'] ?? '—',
+                    'date' => \Carbon\Carbon::parse($n['updated_at'])->format('d/m/Y'),
+                ], $lang) }}
+
+                {{ __('report.updates_narrative_active', ['count' => $n['still_active']], $lang) }}
+            @else
+                {{ __('report.updates_narrative_no_update', [], $lang) }}
+            @endif
+        </p>
+    @endforeach
+@endif
+
 {{-- Before/after homepage pairs (SPEC §7.4 etapa 2) --}}
 @if(($sectionOptions['updates']['show_visual_checks'] ?? true) && !empty($u['visual_checks'] ?? []))
     <hr class="subsection-divider">

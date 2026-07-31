@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\Site;
 use App\Models\WooCheck;
 use App\Services\Notifications\NotificationService;
+use App\Services\Security\SsrfGuard;
 use App\Services\WooHealthService;
 use App\Services\WordPressApiServiceFactory;
 use Illuminate\Bus\Queueable;
@@ -15,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -50,20 +52,32 @@ class CheckWooHealth implements ShouldBeUnique, ShouldQueue
     /** Connector release that introduced the /woo-health endpoint. */
     private const MIN_CONNECTOR_VERSION = '2.19.2';
 
-    public function __construct()
-    {
+    /** Seconds to wait for the checkout page. A slow checkout is still a checkout. */
+    private const CHECKOUT_TIMEOUT = 20;
+
+    /**
+     * @param  int|null  $siteId  Limit the sweep to one site. The scheduled run passes
+     *                            nothing and covers the fleet; the "check now" button on
+     *                            a site passes its id, so one operator click does not
+     *                            trigger 27 connector calls.
+     */
+    public function __construct(
+        public ?int $siteId = null,
+    ) {
         $this->onQueue('default');
     }
 
     public function uniqueId(): string
     {
-        return 'check-woo-health';
+        // Per-site runs must not collide with each other or with the fleet sweep.
+        return 'check-woo-health'.($this->siteId !== null ? ':'.$this->siteId : '');
     }
 
     public function handle(): void
     {
         Site::query()
             ->where('is_connected', true)
+            ->when($this->siteId !== null, fn ($q) => $q->whereKey($this->siteId))
             ->whereHas('sitePlugins', fn ($q) => $q
                 ->where('slug', 'woocommerce')
                 ->where('is_active', true))
@@ -111,10 +125,9 @@ class CheckWooHealth implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // checkout_status stays NULL for now — a Manager-side GET on the store's
-        // checkout URL is an optional future signal (see class docblock). When wired,
-        // pass its HTTP status as the second arg to evaluate().
-        $signals = WooHealthService::evaluate($response->json() ?? [], null);
+        $payload = $response->json() ?? [];
+
+        $signals = WooHealthService::evaluate($payload, $this->probeCheckout($payload['checkout_url'] ?? null));
 
         $previous = WooCheck::where('site_id', $site->id)->first();
         $previousColor = $previous?->applicable ? $previous->getStatusColorAttribute() : null;
@@ -163,6 +176,53 @@ class CheckWooHealth implements ShouldBeUnique, ShouldQueue
             deepLink: '<'.route('sites.overview', $site).'|Open site →>',
             severity: $signals['severity'],
         );
+    }
+
+    /**
+     * Fetch the store's checkout page the way a customer would.
+     *
+     * The connector answers /woo-health from INSIDE WordPress, so it can report a
+     * perfectly configured store while the checkout page itself white-screens for
+     * visitors. This is the only signal in the set that comes from outside.
+     *
+     * Returns null — "not probed", which never counts against the store — when the
+     * connector is too old to send a checkout URL, when the URL is not a public
+     * address, or when the request fails for a reason that is ours rather than the
+     * site's (a timeout on our side is not evidence that their checkout is broken).
+     */
+    private function probeCheckout(?string $checkoutUrl): ?int
+    {
+        if (! is_string($checkoutUrl) || trim($checkoutUrl) === '') {
+            return null;
+        }
+
+        try {
+            app(SsrfGuard::class)->assertPublicUrl($checkoutUrl);
+        } catch (\Throwable $e) {
+            Log::info('CheckWooHealth: checkout URL rejected by SSRF guard', [
+                'url' => $checkoutUrl,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        try {
+            // No redirect following: a checkout that 302s to the cart (empty basket)
+            // is normal, and recording the destination's 200 would hide the hop.
+            return Http::withoutRedirecting()
+                ->timeout(self::CHECKOUT_TIMEOUT)
+                ->withHeaders(['User-Agent' => 'SimpleAD-Manager/checkout-probe'])
+                ->get($checkoutUrl)
+                ->status();
+        } catch (\Throwable $e) {
+            Log::info('CheckWooHealth: checkout probe failed', [
+                'url' => $checkoutUrl,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function recordError(Site $site, string $message): void

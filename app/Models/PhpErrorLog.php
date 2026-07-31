@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon $first_seen_at
  * @property \Illuminate\Support\Carbon|null $last_seen_at
  * @property bool $is_resolved
+ * @property string|null $source_type
+ * @property string|null $source_slug
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site

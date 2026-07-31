@@ -5,6 +5,7 @@ use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ConnectorPluginDownloadController;
 use App\Http\Controllers\DropboxAuthController;
+use App\Http\Controllers\FormTestDeliveryController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ReportDownloadController;
@@ -32,6 +33,13 @@ Route::get('/health', HealthCheckController::class)->middleware('throttle:30,1')
 
 // Inbound webhooks (no auth, rate-limited)
 Route::post('/api/webhooks/inbound', [WebhookController::class, 'handle'])->name('webhooks.inbound')->middleware('throttle:60,1');
+
+// SPEC §5.4 delivery proof: the test mailbox forwards the redirected form
+// notification here. Shared-secret header, not auth — the sender is a mail
+// forwarder, which has no session.
+Route::post('/api/webhooks/form-test-delivery', FormTestDeliveryController::class)
+    ->name('webhooks.form-test-delivery')
+    ->middleware('throttle:60,1');
 
 // Temporary restore file download (token-protected, no auth)
 Route::get('/restore-download/{token}', function (string $token) {
@@ -143,6 +151,13 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
         Route::get('/cloudflare', Sites\Detail\SiteCloudflare::class)->name('sites.cloudflare');
         Route::get('/database', Sites\Detail\SiteDatabaseCleanup::class)->name('sites.database');
         Route::get('/cron', Sites\Detail\SiteCron::class)->name('sites.cron');
+        // SPEC §3.2 "Verificări" — four routes onto one screen, same as
+        // plugins/themes/core/licenses, so the sidebar can link straight to a tab.
+        // Cron and Bază de date are the group's other two entries, above.
+        Route::get('/checks/forms', Sites\Detail\SiteChecks::class)->name('sites.checks.forms');
+        Route::get('/checks/woocommerce', Sites\Detail\SiteChecks::class)->name('sites.checks.woo');
+        Route::get('/checks/links', Sites\Detail\SiteChecks::class)->name('sites.checks.links');
+        Route::get('/checks/php-errors', Sites\Detail\SiteChecks::class)->name('sites.checks.errors');
         Route::get('/reports', Sites\Detail\SiteReports::class)->name('sites.reports');
         Route::get('/reports/{report}/view', Sites\Detail\ReportView::class)->name('sites.reports.view');
         Route::get('/reports/bulk-download', BulkReportDownloadController::class)->name('reports.bulk-download')->middleware('throttle:10,1');

@@ -120,6 +120,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int|null $wp_admin_user_id
  * @property-read \App\Models\SiteUser|null $wpAdminUser
  * @property string|null $smoke_canary_selector
+ * @property string|null $form_test_email
  * @property int|null $smoke_dom_reference
  * @property array|null $smoke_dom_references
  * @property string|null $external_project_id
@@ -183,6 +184,7 @@ class Site extends Model
         'wp_admin_user_id',
         'ai_context',
         'smoke_canary_selector',
+        'form_test_email',
         'smoke_dom_reference',
         'smoke_dom_references',
         'external_project_id',

@@ -82,6 +82,15 @@
         </div>
     @endif
 
+    {{-- Linkuri rupte — SPEC §5.7, raportat pe DIFERENȚĂ, nu pe stare. Scanarea
+         calcula de la început „câte noi / câte rezolvate" și nu le citea nimeni. --}}
+    @if(in_array('broken_links', $sections) && isset($data['broken_links']['broken_count']))
+        @php $sectionNumber++; @endphp
+        <div class="report-section">
+            @include('reports.partials.broken-links')
+        </div>
+    @endif
+
     {{-- Plugin & Theme Inventory --}}
     @if(in_array('plugin_inventory', $sections) && isset($data['plugin_inventory']))
         @php $sectionNumber++; @endphp
