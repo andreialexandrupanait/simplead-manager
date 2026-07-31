@@ -62,7 +62,12 @@ code{font:400 12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--
 .btn{font-size:12px;padding:6px 11px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
   background:transparent;color:var(--tx2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .btn:hover{background:var(--soft)}
-.btn-p{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+/* Primary carries a solid fill. The tinted-outline version (accent text on
+   var(--accent-bg)) sat almost invisible on the page background, so the one
+   action a screen exists for was the easiest thing to miss. Only this variant
+   is loud — .btn and .btn-d stay quiet, which is what keeps the hierarchy. */
+.btn-p{border-color:var(--accent);color:#fff;background:var(--accent)}
+.btn-p:hover{background:var(--accent-hover,#1d6098)}
 .btn-d{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
 .btn:disabled{opacity:.45;cursor:default}
 .badge{font-size:11px;padding:1px 7px;border-radius:9px;display:inline-block;white-space:nowrap}

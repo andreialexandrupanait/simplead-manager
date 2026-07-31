@@ -65,7 +65,16 @@
     {{-- Timeline --}}
     <x-ui.card class="!p-0 overflow-hidden">
         @forelse($events as $event)
-            <div class="flex gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            @php($target = $event->target_url)
+            <div class="relative flex gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ $target ? 'cursor-pointer' : '' }}">
+                {{-- Stretched link: the whole row is the target. It cannot be an
+                     <a> wrapping the row — the row already contains a link to the
+                     site, and nested anchors are invalid HTML that breaks
+                     wire:navigate. The overlay sits under the inner links, which
+                     lift themselves with z-10. --}}
+                @if($target)
+                    <a href="{{ $target }}" wire:navigate class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true"></a>
+                @endif
                 {{-- Severity indicator --}}
                 <div class="shrink-0 mt-0.5">
                     @switch($event->severity?->value)
@@ -121,7 +130,7 @@
                     <div class="mt-1 flex items-center gap-3 text-[11px] text-gray-400 dark:text-gray-500">
                         <span title="{{ $event->created_at->format('Y-m-d H:i:s') }}">{{ $event->created_at->diffForHumans() }}</span>
                         @if($event->site)
-                            <a href="{{ route('sites.overview', $event->site) }}" class="text-accent-500 hover:text-accent-700 hover:underline" wire:navigate>{{ $event->site->name }}</a>
+                            <a href="{{ route('sites.overview', $event->site) }}" class="relative z-10 text-accent-500 hover:text-accent-700 hover:underline" wire:navigate>{{ $event->site->name }}</a>
                         @endif
                         @if($event->user)
                             <span>{{ $event->user->name }}</span>
@@ -129,13 +138,13 @@
                     </div>
                 </div>
 
-                {{-- Link --}}
-                @if($event->url)
-                    <a href="{{ $event->url }}" class="shrink-0 self-center text-gray-400 hover:text-accent-600 transition" wire:navigate>
+                {{-- Affordance only — the row itself is the link now. --}}
+                @if($target)
+                    <span class="shrink-0 self-center text-gray-400" aria-hidden="true">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
-                    </a>
+                    </span>
                 @endif
             </div>
         @empty

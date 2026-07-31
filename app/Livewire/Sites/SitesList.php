@@ -42,18 +42,9 @@ class SitesList extends Component
     /** Maintenance plan chosen in the bulk toolbar's picker (§9). */
     public ?int $bulkPlanId = null;
 
-    /** SPEC §4.4 primary tab: all | updates | alerts | plans. */
-    #[Url]
-    public string $tab = 'all';
-
     /** SPEC §4.4 grouping: none | client. */
     #[Url]
     public string $groupBy = 'none';
-
-    public function updatedTab(): void
-    {
-        $this->resetPage();
-    }
 
     public function toggleGroupByClient(): void
     {
@@ -96,30 +87,6 @@ class SitesList extends Component
     public function trends(): array
     {
         return app(\App\Services\DashboardService::class)->getTrends();
-    }
-
-    /**
-     * How many sites need a human. The list of them lives on /alerts now; this
-     * is only the way in.
-     */
-    #[Computed]
-    public function attentionCount(): int
-    {
-        return Site::query()->visibleTo(auth()->user())->needsAttention()->count();
-    }
-
-    /** SPEC §4.4 tab counters — sites with updates / with an active alert. */
-    #[Computed]
-    public function tabCounts(): array
-    {
-        $user = auth()->user();
-
-        return [
-            'updates' => Site::query()->visibleTo($user)
-                ->whereHas('sitePlugins', fn ($q) => $q->where('has_update', true))->count(),
-            // Same definition as the sidebar counter and the alerts page.
-            'alerts' => Site::query()->visibleTo($user)->needsAttention()->count(),
-        ];
     }
 
     public function updatedTagId(): void
@@ -444,14 +411,6 @@ class SitesList extends Component
                         $q->where('health_score', '<', HealthLevel::WARNING_THRESHOLD)->orWhere('is_up', false);
                     }),
                     default => $q,
-                };
-            })
-            ->when($this->tab !== 'all', function ($q) {
-                // SPEC §4.4 primary tabs (orthogonal to the health filter).
-                return match ($this->tab) {
-                    'updates' => $q->whereHas('sitePlugins', fn ($p) => $p->where('has_update', true)),
-                    'alerts' => $q->needsAttention(),
-                    default => $q, // 'plans' is a grouping, not a row filter
                 };
             })
             // The rich fleet row opens a hovercard per signal, so everything it

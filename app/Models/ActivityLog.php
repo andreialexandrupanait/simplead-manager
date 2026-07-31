@@ -63,6 +63,27 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Where this event actually happened.
+     *
+     * Most helpers in {@see \App\Services\ActivityLogger} pass an explicit
+     * `url:`, but the bare `log()` calls do not — about a fifth of rows have no
+     * destination at all. Rather than leave those inert, fall back to the site
+     * the event belongs to, which is the answer the reader wanted anyway.
+     *
+     * Null means genuinely nowhere to go (an auth or settings event with no
+     * site); callers must treat the row as non-clickable rather than link to a
+     * dead href.
+     */
+    public function getTargetUrlAttribute(): ?string
+    {
+        if (filled($this->url)) {
+            return $this->url;
+        }
+
+        return $this->site ? route('sites.overview', $this->site) : null;
+    }
+
     public function scopeOfType(Builder $query, string $type): Builder
     {
         return $query->where('type', $type);

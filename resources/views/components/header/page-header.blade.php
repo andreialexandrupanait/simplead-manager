@@ -199,6 +199,58 @@
 
             {{-- Notifications --}}
             <livewire:components.notification-dropdown />
+
+            {{-- Account menu. Settings, Profile and Log Out used to sit at the
+                 bottom of the sidebar, mixed in with navigation. They are not
+                 places you go, they are things about you — so they live behind
+                 the avatar, where every other application puts them.
+
+                 One dropdown rather than three buttons: the header already
+                 carries search, the theme toggle and notifications, and a fourth
+                 icon starts squeezing the title on a phone. --}}
+            <x-ui.dropdown align="right" width="56">
+                <x-slot:trigger>
+                    <button type="button"
+                            aria-label="{{ __('Account menu') }}"
+                            class="flex items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
+                        <span class="h-8 w-8 rounded-full bg-accent-500 flex items-center justify-center text-white text-xs font-medium overflow-hidden">
+                            @if(auth()->user()->avatar_path)
+                                <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="" class="h-full w-full object-cover">
+                            @else
+                                {{ auth()->user()->initials }}
+                            @endif
+                        </span>
+                    </button>
+                </x-slot:trigger>
+
+                <div class="border-b border-gray-100 dark:border-gray-700 px-4 py-2">
+                    <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ auth()->user()->name }}</p>
+                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ auth()->user()->email }}</p>
+                </div>
+
+                <a href="{{ route('settings.account') }}" wire:navigate
+                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                    {{ __('Profile') }}
+                </a>
+
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('settings.general') }}" wire:navigate
+                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                        {{ __('Settings') }}
+                    </a>
+                @endif
+
+                {{-- Logout is a POST, so it moves as a whole form — a link here
+                     would be a CSRF hole, not a shortcut. --}}
+                <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100 dark:border-gray-700">
+                    @csrf
+                    <button type="submit"
+                            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <x-icons.log-out class="h-4 w-4" aria-hidden="true" />
+                        {{ __('Log Out') }}
+                    </button>
+                </form>
+            </x-ui.dropdown>
         </div>
     </div>
 </header>

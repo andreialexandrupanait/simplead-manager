@@ -105,7 +105,13 @@
         <aside data-sidebar
                aria-label="{{ __('Main navigation') }}"
                style="will-change: width, transform;"
-               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200 dark:border-gray-800 overflow-hidden transition-[width,transform] duration-300 ease-in-out
+               {{-- bg-sidebar (#1A1A1A light / #0F0F0F dark) — the rail is dark in
+                    both themes, so its own contrast never depends on the page
+                    theme. Everything inside is coloured against dark explicitly
+                    rather than via the .dark utility overrides in app.css, which
+                    only fire in dark mode and would leave dark-on-dark text here
+                    the rest of the time. --}}
+               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-black/20 overflow-hidden transition-[width,transform] duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -128,19 +134,23 @@
                  simply absorbed as it regrows. Constraining the image is what
                  actually leaves air between the wordmark and the collapse
                  toggle. --}}
-            <div class="flex h-16 items-center gap-2 px-4 border-b border-gray-200 dark:border-gray-800"
+            <div class="flex h-16 items-center gap-2 px-4 border-b border-white/10"
                  :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0'">
                 <a href="{{ route('dashboard') }}" data-logo class="flex items-center h-full flex-1 min-w-0 overflow-hidden transition-all duration-300"
                    :class="sidebarOpen ? '' : 'lg:hidden'">
                     @if($brandingLogo)
+                        {{-- The invert is unconditional now. It used to be dark:
+                             only, which was right while the rail was white — on a
+                             dark rail in light mode the black wordmark simply
+                             disappeared. --}}
                         <img src="{{ Storage::url($brandingLogo) }}"
                              alt="{{ $settingsService->get('app_name', 'SimpleAd Manager') }}"
-                             class="w-[86%] h-auto object-contain dark:brightness-0 dark:invert">
+                             class="w-[86%] h-auto object-contain brightness-0 invert">
                     @else
-                        <span class="text-lg font-semibold text-gray-900 whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
+                        <span class="text-lg font-semibold text-white whitespace-nowrap">{{ $settingsService->get('app_name', 'SimpleAd Manager') }}</span>
                     @endif
                 </a>
-                <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-gray-400 hover:text-gray-700 transition"
+                <button @click="toggleSidebar()" aria-label="{{ __('Toggle sidebar') }}" class="ml-auto hidden lg:flex items-center justify-center text-white/50 hover:text-white transition"
                         :class="sidebarOpen ? '' : 'lg:ml-0'">
                     <x-icons.menu class="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -156,63 +166,16 @@
                 @endif
             </nav>
 
-            {{-- Sidebar bottom section --}}
-            <div class="border-t border-gray-200 dark:border-gray-800 mt-auto">
-                {{-- Action buttons container --}}
-                <div class="p-2 space-y-0.5">
-                    {{-- Settings (admin only) --}}
-                    @if(auth()->user()->isAdmin())
-                    <a href="{{ route('settings.general') }}"
-                       @mouseenter="showSidebarTooltip($el)"
-                       @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.*') && !request()->routeIs('settings.account') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
-                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                        <x-icons.settings class="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span class="whitespace-nowrap transition-opacity duration-200"
-                              :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                            {{ __('Settings') }}
-                        </span>
-                    </a>
-                    @endif
+            {{-- Sidebar bottom section.
 
-                    {{-- Profile --}}
-                    <a href="{{ route('settings.account') }}"
-                       @mouseenter="showSidebarTooltip($el)"
-                       @mouseleave="hideSidebarTooltip()"
-                       class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 {{ request()->routeIs('settings.account') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
-                       :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                        <div class="h-5 w-5 rounded-full bg-accent-500 flex items-center justify-center text-white text-[10px] font-medium shrink-0 overflow-hidden">
-                            @if(auth()->user()->avatar_path)
-                                <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="Avatar {{ auth()->user()->name }}" class="h-full w-full object-cover">
-                            @else
-                                {{ auth()->user()->initials }}
-                            @endif
-                        </div>
-                        <span class="whitespace-nowrap transition-opacity duration-200"
-                              :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                            {{ __('Profile') }}
-                        </span>
-                    </a>
-
-                    {{-- Logout --}}
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <button type="submit"
-                                @mouseenter="showSidebarTooltip($el)"
-                                @mouseleave="hideSidebarTooltip()"
-                                class="flex items-center gap-3 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 w-full"
-                                :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
-                            <x-icons.log-out class="h-4 w-4 shrink-0" aria-hidden="true" />
-                            <span class="whitespace-nowrap transition-all duration-300"
-                                  :class="sidebarOpen ? '' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'">
-                                {{ __('Log Out') }}
-                            </span>
-                        </button>
-                    </form>
-                </div>
-
+                 Settings, Profile and Log Out used to live here. They are account
+                 controls, not navigation, and every other application on the web
+                 puts them behind the avatar in the top right — so that is where
+                 they are now (see the header's account menu). What stays is the
+                 clock. --}}
+            <div class="border-t border-white/10 mt-auto">
                 {{-- Live clock --}}
-                <div class="px-3 py-2 text-center border-t border-gray-200 dark:border-gray-800"
+                <div class="px-3 py-2 text-center"
                      x-data="{
                          datetime: '',
                          updateClock() {
@@ -230,7 +193,7 @@
 
                     {{-- When expanded --}}
                     <div x-show="sidebarOpen" class="transition-all duration-300">
-                        <div class="text-xs text-gray-400 font-mono" x-text="datetime"></div>
+                        <div class="text-xs text-white/40 font-mono" x-text="datetime"></div>
                     </div>
 
                     {{-- When collapsed --}}
@@ -238,7 +201,7 @@
                          @mouseenter="showSidebarTooltip($el)"
                          @mouseleave="hideSidebarTooltip()"
                          class="lg:flex hidden items-center justify-center">
-                        <x-icons.clock class="h-4 w-4 text-gray-400" />
+                        <x-icons.clock class="h-4 w-4 text-white/40" />
                         <span class="hidden" x-text="datetime"></span>
                     </div>
                 </div>

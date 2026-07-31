@@ -24,7 +24,7 @@ class SidebarFleetNavTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_fleet_sidebar_carries_panou_and_alerts_with_counts(): void
+    public function test_the_fleet_sidebar_carries_the_dashboard_and_alerts_with_counts(): void
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
@@ -33,7 +33,9 @@ class SidebarFleetNavTest extends TestCase
 
         $html = Blade::render('<x-sidebar.global-sidebar />');
 
-        $this->assertStringContainsString('Panou', $html);
+        // "Panou" was a Romanian string hardcoded as the source text, so it read
+        // as Romanian even to an English user. The key is English now.
+        $this->assertStringContainsString('Dashboard', $html);
         $this->assertStringContainsString('Alerts', $html);
 
         // Alerts is its own screen now, not a tab on the landing page.
@@ -53,11 +55,12 @@ class SidebarFleetNavTest extends TestCase
         // `sites.index` renders the very same component as `dashboard`.
         $this->assertStringNotContainsString(route('sites.index'), $html);
 
-        // Settings lives once, pinned in the rail footer (layouts/app.blade.php).
+        // Settings is an account control, not navigation — it lives in the
+        // header's account menu now, once.
         $this->assertStringNotContainsString(route('settings.general'), $html);
     }
 
-    public function test_the_slim_set_keeps_records_and_drops_per_site_modules(): void
+    public function test_the_slim_set_keeps_records_and_the_two_fleet_wide_modules(): void
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
 
@@ -67,7 +70,25 @@ class SidebarFleetNavTest extends TestCase
         $this->assertStringContainsString(route('reports.index'), $html);
         $this->assertStringContainsString(route('activity.index'), $html);
 
-        // Per-site modules live in the site context; their routes still exist.
-        $this->assertStringNotContainsString(route('uptime.index'), $html);
+        // Backups and Uptime are the two modules you check across the whole
+        // fleet without a site in mind. Their only way in used to be a stat card
+        // on the landing page or typing the URL.
+        $this->assertStringContainsString(route('backups.index'), $html);
+        $this->assertStringContainsString(route('uptime.index'), $html);
+    }
+
+    /**
+     * The rest of the per-site modules stay in the site context — the nav is
+     * still exception-first, not a directory of every route.
+     */
+    public function test_the_remaining_per_site_modules_stay_out(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+        $html = Blade::render('<x-sidebar.global-sidebar />');
+
+        $this->assertStringNotContainsString(route('security.index'), $html);
+        $this->assertStringNotContainsString(route('performance.index'), $html);
+        $this->assertStringNotContainsString(route('dns.index'), $html);
     }
 }

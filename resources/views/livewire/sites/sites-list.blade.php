@@ -17,44 +17,12 @@
     </div>
 
     {{-- The fleet at a glance. What used to sit here was the attention band —
-         a wall of red before you could see your sites. That lives on /alerts
-         now; the count below is the way in. --}}
+         a wall of red before you could see your sites. Sites needing attention
+         are reached from the sidebar's Alerts entry, which carries the count. --}}
     <x-dashboard.fleet-stats />
 
-    @php($attention = $this->attentionCount)
-    @if($attention > 0)
-        <a href="{{ route('alerts.index') }}" wire:navigate
-           class="mb-6 mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm transition hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10">
-            <span class="font-medium text-red-700 dark:text-red-400">
-                {{ trans_choice(':count site needs attention|:count sites need attention', $attention, ['count' => $attention]) }}
-            </span>
-            <span class="text-red-600 dark:text-red-400">{{ __('View alerts') }} →</span>
-        </a>
-    @else
-        <div class="mb-6 mt-4"></div>
-    @endif
-
-    {{-- SPEC §4.4 — primary tabs: Toate · Actualizări · Alerte · Planuri --}}
-    <div class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200 dark:border-gray-700">
-        @php($tabs = ['all' => __('All'), 'updates' => __('Updates'), 'alerts' => __('Alerts'), 'plans' => __('Plans')])
-        @foreach($tabs as $key => $label)
-            <button type="button" wire:click="$set('tab', '{{ $key }}')"
-                    class="-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition
-                           {{ $tab === $key
-                               ? 'border-accent-500 text-accent-600 dark:text-accent-400'
-                               : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200' }}">
-                {{ $label }}
-                @if($key === 'updates' && $this->tabCounts['updates'] > 0)
-                    <span class="rounded-full bg-gray-100 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $this->tabCounts['updates'] }}</span>
-                @elseif($key === 'alerts' && $this->tabCounts['alerts'] > 0)
-                    <span class="rounded-full bg-red-100 px-1.5 text-xs text-red-700 dark:bg-red-500/15 dark:text-red-400">{{ $this->tabCounts['alerts'] }}</span>
-                @endif
-            </button>
-        @endforeach
-    </div>
-
     {{-- Search & Filter Bar --}}
-    <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div class="mb-6 mt-4 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs
             :options="['all' => __('All'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')]"
             :selected="$filter"

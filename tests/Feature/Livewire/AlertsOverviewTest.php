@@ -93,14 +93,13 @@ class AlertsOverviewTest extends TestCase
         Site::factory()->count(2)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 95]);
 
         $onAlertsPage = Livewire::test(AlertsOverview::class)->instance()->alerts()['total'];
-        $onLandingPage = Livewire::test(\App\Livewire\Sites\SitesList::class)->instance()->attentionCount();
 
         // The sidebar composer reads the same scope, so asserting the scope once
-        // covers all three call sites.
+        // covers both remaining call sites. (The landing page used to be a third;
+        // its banner is gone — the sidebar badge is the only counter now.)
         $viaScope = Site::query()->visibleTo(auth()->user())->needsAttention()->count();
 
         $this->assertSame(3, $onAlertsPage);
-        $this->assertSame(3, $onLandingPage);
         $this->assertSame(3, $viaScope);
     }
 }

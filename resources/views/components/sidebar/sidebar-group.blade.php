@@ -19,9 +19,9 @@
         'danger' => 'bg-red-500 text-white',
         'warning' => 'bg-amber-400 text-black',
         'accent' => 'bg-accent-500 text-white',
-        'muted' => 'bg-gray-100 text-gray-600',
+        'muted' => 'bg-white/10 text-white/70',
     ][$countTone] ?? 'bg-red-500 text-white';
-    $dotClass = ['danger' => 'bg-red-500', 'warning' => 'bg-amber-400', 'accent' => 'bg-accent-500', 'muted' => 'bg-gray-400'][$countTone] ?? 'bg-red-500';
+    $dotClass = ['danger' => 'bg-red-500', 'warning' => 'bg-amber-400', 'accent' => 'bg-accent-500', 'muted' => 'bg-white/40'][$countTone] ?? 'bg-red-500';
 @endphp
 
 {{-- Accordion, not sticky state.
@@ -41,7 +41,7 @@
             @mouseleave="hideSidebarTooltip()"
             :aria-expanded="(expanded || !sidebarOpen).toString()"
             class="relative flex w-full items-center gap-3 px-3 rounded-lg py-1.5 text-sm font-medium transition-all duration-200
-                   {{ $active ? 'bg-gray-100 text-gray-900 font-semibold dark:bg-gray-800 dark:text-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800' }}"
+                   {{ $active ? 'bg-white/10 text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-white/5' }}"
             :class="sidebarOpen ? '' : 'lg:justify-center lg:px-0 lg:gap-0'">
 
         <x-dynamic-component :component="'icons.' . $icon" class="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -59,7 +59,7 @@
             @if($hasCount)
                 <span class="min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none {{ $toneClasses }}">{{ (int) $count > 99 ? '99+' : (int) $count }}</span>
             @endif
-            <x-icons.chevron-right class="h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform duration-200"
+            <x-icons.chevron-right class="h-3.5 w-3.5 shrink-0 text-white/40 transition-transform duration-200"
                                    ::class="expanded ? 'rotate-90' : ''" />
         </span>
     </button>

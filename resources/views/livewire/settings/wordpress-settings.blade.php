@@ -14,6 +14,14 @@
                     {{ __(':done of :total sites processed', ['done' => count($pluginPushResults), 'total' => $pushTotal]) }}
                 </x-ui.badge>
             @else
+                {{-- Push only reaches sites that already answer. A site being
+                     onboarded, or one whose connector is broken, needs the zip
+                     by hand — and until now the only way to it was a text link
+                     buried in a modal on an existing site's page. --}}
+                <x-ui.button size="sm" variant="ghost" :href="route('download.connector-plugin')">
+                    {{ __('Download .zip') }}
+                </x-ui.button>
+
                 <x-ui.button type="button" size="sm" variant="secondary"
                              wire:click="openPushSiteSelector"
                              wire:loading.attr="disabled"

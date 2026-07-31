@@ -16,8 +16,10 @@ use Tests\TestCase;
  * The landing screen: fleet numbers first, then the sites.
  *
  * It used to open with the three-band Panou — a wall of red listing every
- * unhappy site before you could see your fleet. That list has its own screen
- * now (/alerts) and the landing page keeps only the count as a way in.
+ * unhappy site before you could see your fleet. That list moved to /alerts, and
+ * the count that replaced it moved again, to the sidebar's Alerts entry: the
+ * landing page said the same number twice, once cached and once not, so the two
+ * could disagree on screen.
  */
 class SitesListPanouTest extends TestCase
 {
@@ -38,27 +40,17 @@ class SitesListPanouTest extends TestCase
             ->assertSee(__('Uptime'));
     }
 
-    public function test_sites_needing_attention_are_a_link_not_a_list(): void
+    /**
+     * The landing page shows the fleet, not the exceptions. A site that needs a
+     * human is still listed — it just does not get a red banner above the fold.
+     */
+    public function test_the_landing_page_carries_no_attention_banner(): void
     {
         Site::factory()->create(['name' => 'down-site', 'is_up' => false, 'is_connected' => true]);
 
-        $component = Livewire::test(SitesList::class);
-
-        // The count and the way in are here…
-        $component->assertSee(route('alerts.index'), escape: false);
-
-        // …but the per-site breakdown is not; that is the alerts screen's job.
-        $this->assertSame(1, $component->instance()->attentionCount());
-    }
-
-    public function test_the_attention_link_is_absent_when_everything_is_healthy(): void
-    {
-        Site::factory()->count(2)->create(['is_up' => true, 'is_connected' => true, 'health_score' => 95]);
-
-        $component = Livewire::test(SitesList::class);
-
-        $this->assertSame(0, $component->instance()->attentionCount());
-        $component->assertDontSee(route('alerts.index'), escape: false);
+        Livewire::test(SitesList::class)
+            ->assertDontSee(__('View alerts'))
+            ->assertSee('down-site');
     }
 
     public function test_classic_dashboard_is_kept_as_a_backup_route_and_linked(): void
@@ -68,7 +60,13 @@ class SitesListPanouTest extends TestCase
         Livewire::test(SitesList::class)->assertSee(route('dashboard.classic'), false);
     }
 
-    public function test_updates_tab_filters_to_sites_with_pending_plugin_updates(): void
+    /**
+     * The All/Updates/Alerts/Plans tab row is gone. Updates and Alerts have their
+     * own screens in the sidebar, "Plans" never filtered anything (it was a
+     * grouping wearing a filter's clothes), and "All" was the default. What is
+     * left is one filter bar instead of two stacked ones.
+     */
+    public function test_the_primary_tab_row_is_gone_and_every_site_is_listed(): void
     {
         $withUpdate = Site::factory()->create(['name' => 'needs-update', 'is_up' => true, 'is_connected' => true]);
         \App\Models\SitePlugin::factory()->for($withUpdate)->create(['has_update' => true]);
@@ -76,9 +74,9 @@ class SitesListPanouTest extends TestCase
 
         Livewire::test(SitesList::class)
             ->set('viewMode', 'list')
-            ->set('tab', 'updates')
+            ->assertDontSee(__('Plans'))
             ->assertSee('needs-update')
-            ->assertDontSee('up-to-date');
+            ->assertSee('up-to-date');
     }
 
     public function test_the_whole_fleet_fits_on_one_page(): void
