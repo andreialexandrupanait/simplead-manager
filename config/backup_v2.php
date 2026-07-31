@@ -111,6 +111,25 @@ return [
     'multipart_retry_base_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_BASE_MS', 200),
     'multipart_retry_max_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_MAX_MS', 15000),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Encryption
+    |--------------------------------------------------------------------------
+    | Objects are sealed with AES-256-GCM on the manager, under a key held per
+    | client, before they reach the bucket. The manager already has every chunk
+    | in a local temp file on its way out, so this costs no plugin change and no
+    | extra round trip.
+    |
+    | The cost is real and worth stating: the key is stored under APP_KEY, so
+    | APP_KEY becomes the root of the scheme. `backup:export-keys` produces the
+    | recovery bundle that makes that survivable. Turning this OFF does not make
+    | existing backups readable without a key — each object records its own key
+    | id, and restore honours it.
+    */
+    'encryption' => [
+        'enabled' => (bool) env('BACKUP_ENGINE_V2_ENCRYPTION_ENABLED', true),
+    ],
+
     // Manifest / completion contract. The 'require_manifest' and
     // 'require_completion_marker' switches that used to sit here described a
     // contract the code enforces unconditionally in finalize() — a backup cannot

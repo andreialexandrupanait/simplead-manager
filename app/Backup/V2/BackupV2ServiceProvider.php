@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backup\V2;
 
 use App\Backup\V2\Console\DeepVerifyCommand;
+use App\Backup\V2\Console\ExportKeysCommand;
 use App\Backup\V2\Console\ImportLegacyCommand;
 use App\Backup\V2\Console\ProvenRestoreCommand;
 use App\Backup\V2\Console\ReconcileStorageCommand;
@@ -36,6 +37,7 @@ class BackupV2ServiceProvider extends ServiceProvider
                 ProvenRestoreCommand::class,
                 ImportLegacyCommand::class,
                 RecoverStuckSessionsCommand::class,
+                ExportKeysCommand::class,
             ]);
         }
     }

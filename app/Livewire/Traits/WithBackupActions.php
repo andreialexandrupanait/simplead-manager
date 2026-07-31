@@ -274,14 +274,16 @@ trait WithBackupActions
         }
 
         // On a V2 row file_path is a prefix, so a presigned URL for it points at
-        // nothing — a download button that hands the user a dead link. The
-        // portable package (a single zip of files/ + database.sql.gz, rebuilt
-        // from the chain) is what makes these downloadable; until it lands, say
-        // so rather than producing the link.
+        // nothing. What the owner needs is the portable package: one zip of
+        // files/ + database.sql.gz, rebuilt by replaying the chain and
+        // decrypting — the same shape the old engine produced, openable with any
+        // unzip tool and importable with any mysql client.
+        //
+        // Building it means pulling every chunk out of storage, so it is queued
+        // and the link appears once it is ready rather than blocking a web
+        // worker for minutes.
         if ($backup->engine === BackupEngine::V2) {
-            session()->flash('backup-error', 'This backup is stored as chunks. Download is not available for it yet.');
-
-            return null;
+            return $this->downloadV2Backup($backup);
         }
 
         $destination = $backup->storageDestination;
@@ -302,6 +304,46 @@ trait WithBackupActions
         }
 
         return $this->redirect($url);
+    }
+
+    /**
+     * Hand back the portable package, building it if it does not exist yet.
+     *
+     * Kept as a two-step — ask, then download — rather than pretending to be
+     * instant. Replaying a chain across storage takes minutes for a real site,
+     * and a button that appears to work while quietly doing nothing is worse
+     * than one that says what it is doing.
+     */
+    protected function downloadV2Backup(Backup $backup): mixed
+    {
+        $session = \App\Backup\V2\Models\BackupSession::query()
+            ->where('backup_id', $backup->id)
+            ->first();
+
+        if (! $session instanceof \App\Backup\V2\Models\BackupSession) {
+            session()->flash('backup-error', 'This backup has no session to rebuild a package from.');
+
+            return null;
+        }
+
+        $key = (string) (($session->checkpoint['portable_key'] ?? null) ?: '');
+
+        if ($key !== '') {
+            $driver = StorageFactory::make($backup->storageDestination);
+            $url = $driver->temporaryUrl($key);
+
+            if ($url) {
+                return $this->redirect($url);
+            }
+        }
+
+        \App\Backup\V2\Jobs\BuildPortablePackageJob::dispatch($session->id);
+        session()->flash(
+            'backup-success',
+            'Preparing a downloadable archive of this backup. It takes a few minutes; the download will be ready here.',
+        );
+
+        return null;
     }
 
     public function cancelBackup(): void

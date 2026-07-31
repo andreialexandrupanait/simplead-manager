@@ -330,8 +330,7 @@ class BackupRunnerE2ETest extends TestCase
             if ($object['kind'] !== 'files') {
                 continue;
             }
-            $zipPath = (string) tempnam(sys_get_temp_dir(), 'oracle_');
-            $this->s3()->getObject(['Bucket' => $this->bucket, 'Key' => $object['key'], 'SaveAs' => $zipPath]);
+            $zipPath = $this->fetchDecrypted((string) $object['key']);
 
             $zip = new ZipArchive;
             $this->assertTrue($zip->open($zipPath, ZipArchive::CHECKCONS) === true, "chunk {$object['key']} is a valid zip");
@@ -367,8 +366,7 @@ class BackupRunnerE2ETest extends TestCase
                 continue;
             }
             $segments++;
-            $gzPath = (string) tempnam(sys_get_temp_dir(), 'dbseg_');
-            $this->s3()->getObject(['Bucket' => $this->bucket, 'Key' => $object['key'], 'SaveAs' => $gzPath]);
+            $gzPath = $this->fetchDecrypted((string) $object['key']);
             $decoded = gzdecode((string) file_get_contents($gzPath));
             $this->assertNotFalse($decoded, "segment {$object['key']} must be valid gzip");
             $sql .= $decoded;
@@ -479,5 +477,33 @@ class BackupRunnerE2ETest extends TestCase
                 $expected,
             ));
         }
+    }
+
+    /**
+     * Pull an object from storage into a local file the test can open.
+     *
+     * Objects are sealed before they reach the bucket, so what is stored is
+     * deliberately not a readable zip — checking that it is would be checking
+     * that encryption had failed. Decrypting here makes the assertion stronger
+     * rather than weaker: it proves the bytes survive the full round trip
+     * through real storage and the cipher, not merely that something was
+     * uploaded.
+     */
+    private function fetchDecrypted(string $key): string
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), 'fetch_');
+        $this->s3()->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $path]);
+
+        if (! \App\Backup\V2\Crypto\ObjectCipher::isEncrypted($path)) {
+            return $path;
+        }
+
+        $plain = (string) tempnam(sys_get_temp_dir(), 'fetchplain_');
+        (new \App\Backup\V2\Crypto\BackupKeyring)
+            ->forKeyId((string) \App\Backup\V2\Crypto\ObjectCipher::keyIdOf($path))
+            ->decryptFile($path, $plain);
+        @unlink($path);
+
+        return $plain;
     }
 }

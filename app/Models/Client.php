@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
+ * @property string|null $backup_key
+ * @property string|null $backup_key_id
  * @property int $id
  * @property string $name
  * @property string|null $email
@@ -60,6 +62,9 @@ class Client extends Model
     ];
 
     protected $casts = [
+        // Sealed with APP_KEY at rest, so the backup key never appears in a
+        // query log, a database dump, or a backup of this application.
+        'backup_key' => 'encrypted',
         'deleted_at' => 'datetime',
         'vat_payer' => 'boolean',
     ];

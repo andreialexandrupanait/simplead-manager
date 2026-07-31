@@ -7,6 +7,8 @@ namespace App\Backup\V2\Restore;
 use App\Backup\V2\Chain\BrokenChainException;
 use App\Backup\V2\Chain\ChainResolver;
 use App\Backup\V2\Chain\ManifestReader;
+use App\Backup\V2\Crypto\BackupKeyring;
+use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\RestoreMode;
 use App\Backup\V2\Enums\RestoreSessionState as S;
@@ -225,17 +227,46 @@ final class RestoreRunner
         }
 
         $tmp = (string) tempnam(sys_get_temp_dir(), 'v2restore_');
+        $plain = null;
+        $encrypted = false;
+
         try {
             $this->s3->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
-            $localSha = (string) hash_file('sha256', $tmp);
-            $result = $this->client->restoreStageChunk($this->token(), $kind, $seq, $tmp);
+
+            // Decrypt between storage and the host. The plugin has no key and no
+            // business having one — it receives the same plaintext zip it would
+            // have received before encryption existed, so nothing on the WordPress
+            // side changed.
+            //
+            // Detected from the object's own header rather than from a flag on the
+            // session, so a chain that spans the day encryption was turned on
+            // restores without anyone having to remember which links are which.
+            $source = $tmp;
+            if (ObjectCipher::isEncrypted($tmp)) {
+                $encrypted = true;
+                $keyId = (string) ObjectCipher::keyIdOf($tmp);
+                $plain = (string) tempnam(sys_get_temp_dir(), 'v2plain_');
+
+                // Authentication failure here is the point of the whole scheme:
+                // altered or truncated bytes stop being restorable rather than
+                // becoming a site restored from something that is not the backup.
+                (new BackupKeyring)->forKeyId($keyId)->decryptFile($tmp, $plain);
+                $source = $plain;
+            }
+
+            $localSha = (string) hash_file('sha256', $source);
+            $result = $this->client->restoreStageChunk($this->token(), $kind, $seq, $source);
         } finally {
             @unlink($tmp);
+            if ($plain !== null) {
+                @unlink($plain);
+            }
         }
 
         $staged[$id] = [
             'key' => $key,
             'sha256' => $localSha,
+            'encrypted' => $encrypted,
             'staged_sha256' => (string) ($result['sha256'] ?? ''),
             'size' => (int) ($result['size'] ?? 0),
         ];
@@ -243,10 +274,22 @@ final class RestoreRunner
         $this->session->heartbeat();
     }
 
+    /**
+     * Decryption is not a pass over the staged set — it happens per chunk, in
+     * stageOne, between pulling the object and pushing it to the host. Doing it
+     * here would mean holding every decrypted chunk of a full backup on disk at
+     * once, which is exactly what chunking exists to avoid.
+     *
+     * The phase remains as the place that records what was decrypted, so an
+     * operator reading the checkpoint can tell an encrypted restore from a
+     * legacy one.
+     */
     private function decrypt(): void
     {
-        // Placeholder: the lab stores objects in the clear. When client-side encryption lands,
-        // decryption happens here (the plugin still verifies sha256 of the decrypted staged bytes).
+        $staged = (array) ($this->checkpoint()['staged'] ?? []);
+        $encrypted = count(array_filter($staged, static fn (array $c): bool => (bool) ($c['encrypted'] ?? false)));
+
+        $this->mergeCheckpoint(['decrypted_chunks' => $encrypted]);
     }
 
     private function verify(RestorePlan $plan): void

@@ -7,6 +7,7 @@ namespace App\Backup\V2\Orchestration;
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\BackupSessionState as S;
 use App\Backup\V2\Exceptions\PreflightFailed;
+use App\Backup\V2\Exceptions\SiteUnderStrain;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Plugin\DownloadedChunk;
 use App\Backup\V2\Plugin\PluginClient;
@@ -102,9 +103,19 @@ final class BackupRunner
         );
         $this->progress = new BackupSessionProgressStore($this->session);
         $this->profile = ResourceProfile::named($this->session->resource_profile);
+        $this->impact = new SiteImpactMonitor;
     }
 
     private readonly ResourceProfile $profile;
+
+    private readonly SiteImpactMonitor $impact;
+
+    /** @var array<string, string> object key → sha256 of its plaintext */
+    private array $plaintextHashes = [];
+
+    private bool $cipherResolved = false;
+
+    private ?\App\Backup\V2\Crypto\ObjectCipher $cipherInstance = null;
 
     /**
      * Run (or resume) the session to a terminal state. Returns the session.
@@ -130,6 +141,20 @@ final class BackupRunner
         } catch (CorruptBackupException $e) {
             $this->session->recordError(BackupErrorCode::ChecksumMismatch, $e->getMessage());
             $this->session->transitionTo(S::Corrupt);
+
+            return $this->session;
+        } catch (SiteUnderStrain $e) {
+            // Parked, deliberately, not failed. Continuing would cost the site's
+            // visitors more than finishing tonight is worth, and the checkpoint
+            // survives — so the price of stopping too early is a delay, which is
+            // the right way round for a judgement made about somebody else's
+            // server.
+            $this->session->recordError($e->errorCode, $e->getMessage());
+            if (BackupStateMachine::canTransition($this->session->state, S::RetryWait)) {
+                $this->mergeCheckpoint(['resume_from' => $this->session->state->value]);
+                $this->session->next_retry_at = now()->addHour();
+                $this->session->transitionTo(S::RetryWait, 'paused: the site was struggling');
+            }
 
             return $this->session;
         } catch (PreflightFailed $e) {
@@ -460,7 +485,19 @@ final class BackupRunner
                 continue; // already uploaded on a prior run — never re-pull/re-upload
             }
 
-            $exec = $this->client->filesChunkExec($this->pluginSessionId(), $index);
+            // Time the round-trip. This is the only place the manager finds out
+            // how the site is coping: everything else it can see is its own
+            // work. A host that has started to struggle answers slower here
+            // before it answers with an error anywhere.
+            $startedAt = microtime(true);
+            try {
+                $exec = $this->client->filesChunkExec($this->pluginSessionId(), $index);
+            } catch (Throwable $e) {
+                $this->impact->observeFailure($e->getMessage());
+
+                throw $e;
+            }
+            $this->impact->observe(microtime(true) - $startedAt);
 
             // Empty-chunk contract: a chunk that materialised 0 files is NOT
             // downloaded, NOT uploaded and NOT put in the manifest.
@@ -723,9 +760,55 @@ final class BackupRunner
         );
     }
 
+    /**
+     * Put an object in storage, encrypted if this client has a key.
+     *
+     * The two hashes are not redundant and getting them the wrong way round
+     * breaks the engine quietly. `sha256` is of what storage actually holds — it
+     * is what upload_verifying re-downloads and re-hashes, so it must be the
+     * CIPHERTEXT or every backup would fail its own verification. The plaintext
+     * hash is what a restore checks after decrypting, and is the only thing that
+     * says the bytes that come back are the bytes that went in.
+     */
     private function uploadObject(string $localPath, string $key): \App\Backup\V2\Storage\MultipartUploadResult
     {
-        return $this->uploader()->upload($localPath, $key);
+        $cipher = $this->cipher();
+        if ($cipher === null) {
+            return $this->uploader()->upload($localPath, $key);
+        }
+
+        $plaintextSha = (string) hash_file('sha256', $localPath);
+        $encrypted = (string) tempnam(sys_get_temp_dir(), 'v2enc_');
+
+        try {
+            $cipher->encryptFile($localPath, $encrypted);
+            $result = $this->uploader()->upload($encrypted, $key);
+        } finally {
+            @unlink($encrypted);
+        }
+
+        $this->plaintextHashes[$key] = $plaintextSha;
+
+        return $result;
+    }
+
+    /**
+     * The client's cipher, resolved once per run. Null when encryption is off.
+     */
+    private function cipher(): ?\App\Backup\V2\Crypto\ObjectCipher
+    {
+        if ($this->cipherResolved) {
+            return $this->cipherInstance;
+        }
+
+        $this->cipherResolved = true;
+        /** @var \App\Models\Site|null $site */
+        $site = $this->session->site;
+        $this->cipherInstance = ! $site instanceof \App\Models\Site
+            ? null
+            : (new \App\Backup\V2\Crypto\BackupKeyring)->forSite($site);
+
+        return $this->cipherInstance;
     }
 
     private function putJson(string $key, string $body): void
@@ -794,6 +877,15 @@ final class BackupRunner
      */
     private function recordObject(string $objectId, array $object): void
     {
+        // Carry the plaintext hash alongside the stored one. Verification reads
+        // `sha256` against what storage holds; restore reads this against what
+        // comes back out of the cipher.
+        $key = (string) ($object['key'] ?? '');
+        if (isset($this->plaintextHashes[$key])) {
+            $object['plaintext_sha256'] = $this->plaintextHashes[$key];
+            $object['encrypted'] = true;
+        }
+
         $this->session->refresh();
         $objects = $this->session->confirmed_objects ?? [];
         $objects[$objectId] = $object;

@@ -265,10 +265,26 @@ class IncrementalChainE2ETest extends TestCase
         ));
     }
 
+    /**
+     * Objects are sealed before they reach the bucket, so what is stored is
+     * deliberately not a readable zip — asserting that it is would be asserting
+     * that encryption had failed. Decrypting first makes this stronger: it
+     * proves the bytes survive the whole round trip through real storage and
+     * the cipher, across every link of the chain.
+     */
     private function extractFromChunk(string $key, string $entry): ?string
     {
         $tmp = (string) tempnam(sys_get_temp_dir(), 'incz_');
         $this->s3()->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
+
+        if (\App\Backup\V2\Crypto\ObjectCipher::isEncrypted($tmp)) {
+            $plain = (string) tempnam(sys_get_temp_dir(), 'incplain_');
+            (new \App\Backup\V2\Crypto\BackupKeyring)
+                ->forKeyId((string) \App\Backup\V2\Crypto\ObjectCipher::keyIdOf($tmp))
+                ->decryptFile($tmp, $plain);
+            @unlink($tmp);
+            $tmp = $plain;
+        }
         $zip = new ZipArchive;
         if ($zip->open($tmp, ZipArchive::CHECKCONS) !== true) {
             @unlink($tmp);
