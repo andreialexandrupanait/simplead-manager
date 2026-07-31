@@ -2,17 +2,119 @@
 # Run the test suite in an isolated environment on the production host.
 #
 # Spins up ephemeral postgres/redis containers bound to 127.0.0.1 (matching
-# the values pinned in phpunit.xml), migrates the test schema, then runs
-# phpunit inside the app image with the project mounted. Never touches the
-# production database or Redis (different containers, different credentials).
+# the values pinned in phpunit.xml), brings up the backup lab (MinIO + a real
+# WordPress + MySQL 8 + MariaDB 11), migrates the test schema, then runs phpunit
+# inside the app image with the project mounted. Never touches the production
+# database or Redis (different containers, different credentials).
+#
+# THE LAB IS NOT OPTIONAL. Twelve test files prove the backup engine against real
+# S3 semantics and a real WordPress; without the lab every one of them calls
+# markTestSkipped and the suite reports "OK" having proven nothing. That is worse
+# than a red build, because it looks like a green one. So bin/test starts the lab
+# and pins SAM_LAB=required, which turns those skips into failures.
 #
 # Usage: bin/test [phpunit args...]   e.g. bin/test --filter=SafeUpdate
+#        bin/test --fast [phpunit args...]   skip the lab (unit/feature loop only)
 
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PG_NAME=sam-test-pgsql
 REDIS_NAME=sam-test-redis
+
+# --fast: developer loop that does not touch the lab. Lab-backed tests skip, and
+# say so, instead of failing — the only mode in which a skip is honest.
+WITH_LAB=1
+if [ "${1:-}" = "--fast" ]; then
+  WITH_LAB=0
+  shift
+fi
+
+# Host-published ports from spike/docker-compose.spike.yml. bin/test runs the app
+# container with --network host, so the compose service aliases (spike-minio:9000)
+# do not resolve here — the published loopback ports do.
+LAB_S3_ENDPOINT=http://127.0.0.1:19000
+LAB_WP_HOST=http://127.0.0.1:18080
+
+ensure_lab() {
+  local compose="$PROJECT_DIR/spike/docker-compose.spike.yml"
+  if [ ! -f "$compose" ]; then
+    echo "Lab compose file missing: $compose" >&2
+    exit 1
+  fi
+
+  echo "Starting backup lab (MinIO + WordPress + MySQL 8 + MariaDB 11)..."
+  docker compose -f "$compose" up -d >/dev/null
+
+  # MinIO is the gate: the uploader/verifier tests are the bulk of the lab suite,
+  # and its bucket-creation sidecar has to have run before any of them.
+  for i in $(seq 1 60); do
+    if curl -sf -o /dev/null "$LAB_S3_ENDPOINT/minio/health/live"; then break; fi
+    [ "$i" = 60 ] && { echo "lab MinIO did not become ready at $LAB_S3_ENDPOINT" >&2; exit 1; }
+    sleep 1
+  done
+
+  for i in $(seq 1 60); do
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' "$LAB_WP_HOST/")" != "000" ]; then break; fi
+    [ "$i" = 60 ] && { echo "lab WordPress did not answer at $LAB_WP_HOST" >&2; exit 1; }
+    sleep 1
+  done
+
+  provision_lab_wp
+}
+
+# `docker compose up` gives you a WordPress that has never been installed and has
+# no plugin. The HTTP end-to-end tests need an installed site, the simplead-backup
+# plugin deployed and keyed, and the deterministic file fixture. Both steps are
+# idempotent, so this runs on every invocation and costs nothing after the first.
+provision_lab_wp() {
+  local wp=sam_spike-spike-wp-1
+
+  if ! docker exec "$wp" test -f /var/www/html/wp-config.php 2>/dev/null \
+     || ! docker exec "$wp" sh -lc 'wp core is-installed --allow-root' >/dev/null 2>&1; then
+    echo "Installing lab WordPress..."
+    docker exec "$wp" bash -lc '
+      command -v wp >/dev/null 2>&1 || {
+        curl -sSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar &&
+        chmod +x /usr/local/bin/wp; }
+      wp core is-installed --allow-root 2>/dev/null || wp core install \
+        --url='"$LAB_WP_HOST"' --title=SpikeWP \
+        --admin_user=admin --admin_password=admin --admin_email=admin@example.com \
+        --skip-email --allow-root
+      wp plugin activate simplead-manager-connector --allow-root || true
+    ' >/dev/null
+  fi
+
+  # Pretty permalinks are not cosmetic here. With WordPress's default "plain"
+  # structure /wp-json/... is not a route at all: WP 301s it to a trailing slash
+  # and serves an HTML 404, so every signed request the client makes comes back as
+  # a web page. The REST API only answers at ?rest_route=, which the client does
+  # not use. This is the difference between the whole HTTP E2E suite passing and
+  # reporting "plugin not active".
+  if [ -z "$(docker exec "$wp" sh -lc 'wp option get permalink_structure --allow-root' 2>/dev/null)" ]; then
+    echo "Enabling pretty permalinks (required for /wp-json routes)..."
+    docker exec "$wp" sh -lc '
+      wp rewrite structure "/%postname%/" --hard --allow-root &&
+      wp rewrite flush --hard --allow-root
+    ' >/dev/null 2>&1 || true
+  fi
+
+  echo "Provisioning simplead-backup in the lab..."
+  "$PROJECT_DIR/spike/orchestrator/backup-v2-e2e-setup.sh" >/dev/null
+  docker exec "$wp" sh -lc 'wp plugin activate simplead-backup --allow-root' >/dev/null 2>&1 || true
+
+  # The provisioning above runs wp-cli through `docker exec` as root, and booting
+  # the plugin creates /tmp/sam_backup owned by root with mode 700. Apache then
+  # runs as www-data and every write into it fails — the dump and stage-chunk
+  # endpoints answer 500 with nothing but a PHP warning in the Apache log.
+  # (Worth noting: the plugin reports disk.temp_dir but never checks that it is
+  # writable. That gap is real on client hosts too, and C2's preflight closes it.)
+  docker exec "$wp" sh -lc '
+    mkdir -p /tmp/sam_backup &&
+    chown -R www-data:www-data /tmp/sam_backup &&
+    chmod 755 /tmp/sam_backup
+  ' >/dev/null 2>&1 || true
+}
 
 ensure_container() {
   local name=$1; shift
@@ -30,6 +132,16 @@ ensure_container "$PG_NAME" \
 ensure_container "$REDIS_NAME" \
   -p 127.0.0.1:6379:6379 \
   redis:7-alpine
+
+if [ "$WITH_LAB" = 1 ]; then
+  ensure_lab
+  export BACKUP_ENGINE_V2_LAB_S3_ENDPOINT="$LAB_S3_ENDPOINT"
+  export BACKUP_ENGINE_V2_LAB_WP_HOST="$LAB_WP_HOST"
+  export SAM_LAB=required
+else
+  echo "Skipping the backup lab (--fast). Lab-backed tests will skip, not fail."
+  export SAM_LAB=optional
+fi
 
 echo "Waiting for test postgres..."
 for i in $(seq 1 30); do
@@ -55,6 +167,7 @@ run_in_app() {
     -e CACHE_STORE=array -e SESSION_DRIVER=array -e QUEUE_CONNECTION=sync \
     -e BACKUP_ENGINE_V2_LAB_S3_ENDPOINT \
     -e BACKUP_ENGINE_V2_LAB_WP_HOST \
+    -e SAM_LAB \
     -e MAIL_MAILER=array -e PULSE_ENABLED=false -e TELESCOPE_ENABLED=false \
     -e AWS_ACCESS_KEY_ID= -e AWS_SECRET_ACCESS_KEY= -e AWS_BUCKET= \
     -e RESEND_KEY= -e SLACK_BOT_USER_OAUTH_TOKEN= \

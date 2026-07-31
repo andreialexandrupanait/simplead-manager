@@ -111,6 +111,8 @@ final class BackupRunner
             return $this->session;
         }
 
+        $this->reenterAfterPause();
+
         try {
             $this->phase(S::CapabilityCheck, 'probing host capabilities', fn () => $this->capabilityCheck());
             $this->phase(S::Inventory, 'building file inventory', fn () => $this->inventory());
@@ -133,12 +135,19 @@ final class BackupRunner
             // `uploading` is indistinguishable from one still uploading, so
             // nothing alerted and nobody knew.
             //
-            // Recorded and moved to a terminal state here, then rethrown: the
-            // queue still needs to see the failure, and the job's failed() hook
-            // remains the net for anything that dies outside this method.
+            // It parks in retry_wait, NOT failed. `failed` is terminal, and run()
+            // returns immediately from a terminal session — so recording the
+            // error as failed here made a crashed backup impossible to resume,
+            // which is the one property this engine exists for. retry_wait is
+            // equally visible and equally un-confusable with "still uploading",
+            // but it keeps the checkpoint live: the next attempt skips every
+            // object already confirmed. The job's failed() hook is what declares
+            // a session dead, once the queue has stopped retrying.
             $this->session->recordError(BackupErrorCode::EngineError, $e->getMessage());
-            if (BackupStateMachine::canTransition($this->session->state, S::Failed)) {
-                $this->session->transitionTo(S::Failed, 'engine error: '.class_basename($e));
+            if (BackupStateMachine::canTransition($this->session->state, S::RetryWait)) {
+                $this->mergeCheckpoint(['resume_from' => $this->session->state->value]);
+                $this->session->next_retry_at = now()->addMinutes(5);
+                $this->session->transitionTo(S::RetryWait, 'engine error: '.class_basename($e));
             }
 
             throw $e;
@@ -148,6 +157,33 @@ final class BackupRunner
     }
 
     // ── phase dispatch ───────────────────────────────────────────────────
+
+    /**
+     * Put a parked session back on the linear path before dispatching phases.
+     *
+     * retry_wait and paused are not on ORDER, so orderIndex() reports them as
+     * PHP_INT_MAX — "past everything". Dispatching phases from there skipped all
+     * ten of them and returned the session still parked: a resume that did
+     * nothing at all and said nothing about it. The phase we parked from is
+     * recorded in the checkpoint, so re-entering it is exact rather than guessed,
+     * and phase() then re-runs that one phase from its own checkpoint.
+     */
+    private function reenterAfterPause(): void
+    {
+        if (! in_array($this->session->state, [S::RetryWait, S::Paused], true)) {
+            return;
+        }
+
+        $from = S::tryFrom((string) ($this->checkpoint()['resume_from'] ?? ''));
+        // Nothing recorded (a session parked by an older build, or by an operator
+        // before any phase ran) restarts from the top. Every phase is idempotent
+        // and skips its own confirmed work, so that is safe, only slower.
+        $target = $from !== null && in_array($from->value, self::ORDER, true)
+            ? $from
+            : S::CapabilityCheck;
+
+        $this->session->transitionTo($target, 'resuming from '.$this->session->state->value);
+    }
 
     /**
      * Enter $target (through the state machine) and run $work, unless the session

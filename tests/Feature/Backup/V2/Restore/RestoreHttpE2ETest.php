@@ -6,6 +6,7 @@ namespace Tests\Feature\Backup\V2\Restore;
 
 use App\Backup\V2\Plugin\SimpleadBackupClient;
 use PHPUnit\Framework\Attributes\Group;
+use Tests\Feature\Backup\V2\Support\RequiresLab;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -15,15 +16,18 @@ use ZipArchive;
  * (restore/stage-chunk), then applies + commits a staged, atomic swap — and the file physically
  * lands on the WordPress host (confirmed by a scoped re-backup of the target dir).
  *
- * Scoped to a throwaway subdir under ABSPATH so it never disturbs the real install. Skipped (never
- * failed) when the plugin is not reachable. The correctness of the swap/rollback/modes is proven
- * exhaustively in RestoreEngineTest + RestoreRunnerE2ETest; this test is specifically the
- * authenticated HTTP round-trip (signing + plugin auth + real WP filesystem).
+ * Scoped to a throwaway subdir under ABSPATH so it never disturbs the real install. The correctness
+ * of the swap/rollback/modes is proven exhaustively in RestoreEngineTest + RestoreRunnerE2ETest;
+ * this test is specifically the authenticated HTTP round-trip (signing + plugin auth + real WP
+ * filesystem). An unreachable plugin fails the run under bin/test and skips only under --fast
+ * ({@see RequiresLab}).
  */
 #[Group('e2e')]
 #[Group('restore')]
 class RestoreHttpE2ETest extends TestCase
 {
+    use RequiresLab;
+
     private static function wpHost(): string
     {
         // Default is the sam_spike_net container alias; override to the host-published
@@ -36,7 +40,7 @@ class RestoreHttpE2ETest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->skipUnlessPluginReady();
+        $this->requireLabPlugin();
     }
 
     public function test_authenticated_http_restore_lands_a_file_on_the_host(): void
@@ -132,15 +136,15 @@ class RestoreHttpE2ETest extends TestCase
         return $path;
     }
 
-    private function skipUnlessPluginReady(): void
+    private function requireLabPlugin(): void
     {
         try {
             $caps = SimpleadBackupClient::lab(self::wpHost())->capabilities();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
+            $this->labUnavailable('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
         }
         if (($caps['plugin']['name'] ?? null) !== 'simplead-backup') {
-            $this->markTestSkipped('simplead-backup plugin not active on '.self::wpHost());
+            $this->labUnavailable('simplead-backup plugin not active on '.self::wpHost());
         }
     }
 }

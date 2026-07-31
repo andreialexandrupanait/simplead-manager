@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Backup\V2\Storage;
 
+use App\Models\BackupConfig;
+use App\Models\Site;
+use App\Models\StorageDestination;
 use Aws\CommandInterface;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use GuzzleHttp\Promise\Create;
 use Psr\Http\Message\RequestInterface;
+use Tests\Feature\Backup\V2\Support\RequiresLab;
 use Throwable;
 
 /**
@@ -22,6 +26,8 @@ use Throwable;
  */
 trait InteractsWithLabMinio
 {
+    use RequiresLab;
+
     protected string $minioEndpoint = 'http://spike-minio:9000';
 
     protected string $minioKey = 'spikeadmin';
@@ -48,8 +54,44 @@ trait InteractsWithLabMinio
         try {
             $this->minioClient()->headBucket(['Bucket' => $this->bucket]);
         } catch (Throwable $e) {
-            $this->markTestSkipped('Lab MinIO not reachable at '.$this->minioEndpoint.': '.$e->getMessage());
+            $this->labUnavailable('Lab MinIO not reachable at '.$this->minioEndpoint.': '.$e->getMessage());
         }
+    }
+
+    /**
+     * A StorageDestination row pointing at the lab MinIO.
+     *
+     * Production resolves its bucket through StorageDestination::resolveForSite()
+     * and S3ClientFactory::forDestination(), decrypting the credentials on the
+     * way. Tests that reach for S3ClientFactory::lab() instead skip that entire
+     * path — which is how the deep-verify command shipped hardcoded to the lab
+     * bucket and nobody noticed. Going through a real destination row means the
+     * resolution production depends on is exercised, not assumed.
+     */
+    protected function labDestination(?Site $site = null): StorageDestination
+    {
+        $destination = StorageDestination::factory()->create([
+            'type' => 's3',
+            'is_active' => true,
+            'is_default' => true,
+            'config' => [
+                'endpoint' => $this->minioEndpoint,
+                'region' => 'us-east-1',
+                'bucket' => $this->bucket,
+                'use_path_style' => true,
+                'key' => encrypt($this->minioKey),
+                'secret' => encrypt($this->minioSecret),
+            ],
+        ]);
+
+        if ($site instanceof Site) {
+            BackupConfig::query()->updateOrCreate(
+                ['site_id' => $site->id],
+                ['storage_destination_id' => $destination->id],
+            );
+        }
+
+        return $destination;
     }
 
     protected function minioClient(int $retries = 0): S3Client

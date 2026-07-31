@@ -113,6 +113,10 @@ class BackupV2CommandsTest extends TestCase
         $site = Site::factory()->create();
         // Deep-verify now enforces the site allowlist (BackupV2Gate::siteAllowed).
         Config::set('backup_v2.site_ids', [(string) $site->id]);
+        // …and resolves the bucket from the site's own destination, as the runner
+        // does. Without one it skips with `no_storage_destination` rather than
+        // silently reading whatever bucket the lab happens to have.
+        $this->labDestination($site);
         $session = BackupSession::create([
             'site_id' => $site->id,
             'type' => 'full',

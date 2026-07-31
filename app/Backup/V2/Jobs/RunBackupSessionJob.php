@@ -47,7 +47,20 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 3600;
 
-    public int $tries = 1;
+    /**
+     * A crashed attempt is resumable, so it is worth resuming.
+     *
+     * This was 1, which meant the first dropped connection or killed worker ended
+     * the backup for the night — the checkpoint, the confirmed objects and the
+     * multipart parts all survived, and nothing ever came back for them. Each
+     * retry re-enters BackupRunner::run(), which skips every phase already past
+     * and every object already confirmed, so a retry costs only the work that was
+     * actually lost.
+     */
+    public int $tries = 3;
+
+    /** @var array<int, int> seconds between attempts */
+    public array $backoff = [120, 600];
 
     public function __construct(public readonly int $backupSessionId) {}
 

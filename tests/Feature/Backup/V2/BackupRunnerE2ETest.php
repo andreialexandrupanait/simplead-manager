@@ -63,7 +63,7 @@ class BackupRunnerE2ETest extends TestCase
         config(['backup_v2.multipart_part_mb' => 5]);
 
         $this->bootMinio();
-        $this->skipUnlessPluginAndFixtureReady();
+        $this->requireLabPluginAndFixture();
     }
 
     protected function tearDown(): void
@@ -451,29 +451,29 @@ class BackupRunnerE2ETest extends TestCase
         return $out;
     }
 
-    private function skipUnlessPluginAndFixtureReady(): void
+    private function requireLabPluginAndFixture(): void
     {
         $client = $this->realClient();
 
         try {
             $caps = $client->capabilities();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
+            $this->labUnavailable('simplead-backup plugin not reachable at '.self::wpHost().': '.$e->getMessage());
         }
 
         if (($caps['plugin']['name'] ?? null) !== 'simplead-backup') {
-            $this->markTestSkipped('simplead-backup plugin not active on '.self::wpHost());
+            $this->labUnavailable('simplead-backup plugin not active on '.self::wpHost());
         }
 
         try {
             $inv = $client->filesInventory('preflight_'.uniqid('', true), LabBackupFixture::includeRule(), ['preview' => true]);
         } catch (\Throwable $e) {
-            $this->markTestSkipped('files inventory preflight failed: '.$e->getMessage());
+            $this->labUnavailable('files inventory preflight failed: '.$e->getMessage());
         }
 
         $expected = count(LabBackupFixture::spec());
         if ((int) ($inv['total_files'] ?? 0) !== $expected) {
-            $this->markTestSkipped(sprintf(
+            $this->labUnavailable(sprintf(
                 'fixture not provisioned (found %d files, expected %d). Run spike/orchestrator/backup-v2-e2e-setup.sh.',
                 (int) ($inv['total_files'] ?? 0),
                 $expected,
