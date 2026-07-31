@@ -540,7 +540,7 @@ final class BackupRunner
 
         // Verify-at-creation (P6): the moment a backup reaches `completed`, produce
         // its create-verification record and — on pass — stamp verified_at, which
-        // retention reads for keep-last-verified. Deliberately non-fatal: a verifier
+        // is written through to the `backups` row. Deliberately non-fatal: a verifier
         // failure records a failed/corrupt verification but never un-completes an
         // already-whole backup (verify-before-complete has already guaranteed it).
         try {

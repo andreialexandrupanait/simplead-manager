@@ -33,9 +33,6 @@ return [
         explode(',', (string) env('BACKUP_ENGINE_V2_SITE_IDS', ''))
     ), static fn ($v) => $v !== '')),
 
-    // The new scheduler that dispatches V2 backups. False = V2 never self-starts.
-    'scheduler_enabled' => (bool) env('BACKUP_ENGINE_V2_SCHEDULER_ENABLED', false),
-
     // V2 restore orchestration. False = no V2 restore can be initiated.
     'restore_enabled' => (bool) env('BACKUP_ENGINE_V2_RESTORE_ENABLED', false),
 
@@ -49,11 +46,6 @@ return [
     // backup:reconcile-storage WRITE mode. False = command is strictly read-only
     // (reports drift only); it never mutates rows or storage.
     'reconciliation_writes_enabled' => (bool) env('BACKUP_RECONCILIATION_WRITES_ENABLED', false),
-
-    // Chain-safe retention (App\Backup\V2\Retention\ChainRetentionService) runs log-only until
-    // observed. True = dry-run (select + log, delete nothing); an actual delete additionally
-    // requires apply(force: true) AND 'enabled'. Mirrors V1 config('backups.retention_dry_run').
-    'retention_dry_run' => (bool) env('BACKUP_ENGINE_V2_RETENTION_DRY_RUN', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -99,8 +91,6 @@ return [
     | Placeholder defaults; the real format + part size are locked by measured
     | comparison (object-per-file vs pack/TAR-stream vs multipart-per-segment).
     */
-    'file_chunk_target_mb' => (int) env('BACKUP_ENGINE_V2_FILE_CHUNK_MB', 100),
-    'db_chunk_target_mb' => (int) env('BACKUP_ENGINE_V2_DB_CHUNK_MB', 50),
     'multipart_part_mb' => (int) env('BACKUP_ENGINE_V2_MULTIPART_PART_MB', 16),
     'presigned_ttl_seconds' => (int) env('BACKUP_ENGINE_V2_PRESIGNED_TTL', 600),
 
@@ -111,10 +101,12 @@ return [
     'multipart_retry_base_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_BASE_MS', 200),
     'multipart_retry_max_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_MAX_MS', 15000),
 
-    // Manifest / completion contract
+    // Manifest / completion contract. The 'require_manifest' and
+    // 'require_completion_marker' switches that used to sit here described a
+    // contract the code enforces unconditionally in finalize() — a backup cannot
+    // reach `completed` without both. A flag that cannot be turned off is not a
+    // setting, it is a claim that the reader can weaken the guarantee.
     'format_version' => 'simplead-backup/1',
-    'require_manifest' => true,      // a backup cannot be 'completed' without a valid manifest
-    'require_completion_marker' => true, // _COMPLETE written last, always
 
     // S3 object layout root (per TARGET-ARCHITECTURE.md). Tenant-isolated.
     'object_prefix' => 'clients/{client_id}/sites/{site_id}/backups/{backup_id}',

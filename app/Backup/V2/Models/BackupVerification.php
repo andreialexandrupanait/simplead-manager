@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * P6 verification record for a V2 backup — the evidence a completed backup was
  * checked. `kind` is 'create' (cheap, produced at completion) or 'deep' (sampled,
  * scheduled). `status` is 'passed', 'failed' or 'corrupt'. Only a PASSED create
- * verification stamps `backup_sessions.verified_at`, which retention reads for
- * its keep-last-verified guarantee.
+ * verification stamps `backup_sessions.verified_at`, which is written through to
+ * the `backups` row and read by BackupHealthService when scoring a site.
  *
  * @property int $id
  * @property int $backup_session_id

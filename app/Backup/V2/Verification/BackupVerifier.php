@@ -25,9 +25,9 @@ use Throwable;
  *   - a composite checksum (sha256 over the ordered per-object sha256s) is recorded.
  *
  * A PASSED create-verification is the ONLY thing that stamps
- * `backup_sessions.verified_at`, which ChainRetentionService reads for its
- * keep-last-verified guarantee. A backup with no passing verification is never
- * treated as verified for retention.
+ * `backup_sessions.verified_at`, and it is written through to the `backups` row,
+ * where BackupHealthService reads it when scoring a site. A backup with no
+ * passing verification never counts as verified.
  *
  * This is deliberately HEAD-only (no full object download): it is meant to run
  * on every completion with negligible cost. Byte-level content corruption that
@@ -181,10 +181,9 @@ final class BackupVerifier
         // Leaving the stamp untouched on failure was right for a first
         // verification and wrong for every one after it: a backup that passed at
         // creation and fails a re-check would keep saying "verified" for as long
-        // as it existed. ChainRetentionService reads this field for its
-        // keep-last-verified guarantee, so a stale stamp does not merely mislead
-        // an operator — it can make retention preserve a broken backup and expire
-        // a sound one.
+        // as it existed. BackupHealthService scores a site on this field, so a
+        // stale stamp does not merely mislead an operator — it reports a site as
+        // protected by a backup that has since been shown not to be there.
         $passed = $status === BackupVerification::STATUS_PASSED;
         $session->verified_at = $passed ? now() : null;
         $session->save();

@@ -28,7 +28,7 @@ use Throwable;
  * The UI's "Verify" button used to call SessionActions::markVerified(), which
  * set verified_at = now() and looked at nothing. It was a button that made a
  * claim on the operator's behalf. That claim is load-bearing:
- * ChainRetentionService reads verified_at for its keep-last-verified guarantee,
+ * BackupHealthService reads verified_at when scoring a site,
  * so a decorative stamp could make retention keep a broken backup and expire a
  * sound one.
  *

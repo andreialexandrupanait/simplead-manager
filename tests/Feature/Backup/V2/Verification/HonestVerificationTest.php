@@ -24,10 +24,10 @@ use Tests\TestCase;
 /**
  * A backup may only claim to be verified if something looked at it.
  *
- * `verified_at` is not decoration: ChainRetentionService reads it for its
- * keep-last-verified guarantee, so a stamp nobody earned can make retention
- * preserve a broken backup and expire a sound one. The UI's Verify button used
- * to set it directly and inspect nothing.
+ * `verified_at` is not decoration: it is written through to the `backups` row,
+ * where BackupHealthService scores a site on it. A stamp nobody earned reports a
+ * site as protected by a backup that was never checked. The UI's Verify button
+ * used to set it directly and inspect nothing.
  */
 class HonestVerificationTest extends TestCase
 {

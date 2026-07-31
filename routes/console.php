@@ -404,6 +404,21 @@ Schedule::command('backups:recover-stuck-sessions')
     ->name('recover-stuck-backup-sessions')
     ->onOneServer();
 
+// Recompute what each storage destination actually holds. V1 retention adjusts
+// used_bytes incrementally on every delete, and quota enforcement reads the same
+// number — so without a periodic recount the figure quotas are enforced on drifts
+// away from the truth and nothing ever corrects it. Inert unless the engine is
+// enabled; it only ever writes the reconciled total.
+Schedule::call(function (): void {
+    \App\Models\StorageDestination::query()
+        ->where('is_active', true)
+        ->pluck('id')
+        ->each(fn (int $id) => \App\Backup\V2\Jobs\ReconcileUsedBytesJob::dispatch($id));
+})
+    ->weeklyOn(1, '02:30')
+    ->name('reconcile-storage-used-bytes')
+    ->onOneServer();
+
 // P2-27: recover safe updates whose worker died mid-pipeline without running
 // failed() — a row stuck in an intermediate state (backing_up/updating/
 // health_checking/rolling_back) otherwise wedges the site's safe-update slot and

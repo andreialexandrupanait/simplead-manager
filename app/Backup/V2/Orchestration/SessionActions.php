@@ -14,8 +14,10 @@ use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Quota\QuotaService;
 use App\Backup\V2\StateMachine\BackupStateMachine;
+use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\RetentionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -148,9 +150,8 @@ class SessionActions
      *
      * This used to be markVerified(), which set verified_at = now() and checked
      * nothing — a button that made a claim on the operator's behalf. The claim
-     * is load-bearing: ChainRetentionService reads verified_at for its
-     * keep-last-verified guarantee, so a decorative stamp could make retention
-     * preserve a broken backup and expire a sound one.
+     * is load-bearing: BackupHealthService scores a site on verified_at, so a
+     * decorative stamp reports a site as protected by a backup nobody checked.
      *
      * Nothing here writes verified_at. Only {@see BackupVerifier} does, in both
      * directions, after actually looking at the objects.
@@ -161,8 +162,16 @@ class SessionActions
     }
 
     /**
-     * Delete a backup session row. Refuses to orphan a chain: a completed full that
-     * still carries completed incrementals cannot be deleted.
+     * Delete a backup session and the objects it wrote. Refuses to orphan a
+     * chain: a completed full that still carries completed incrementals cannot
+     * be deleted.
+     *
+     * The objects part is not incidental. This used to delete the row and
+     * nothing else, so every deletion from the console silently left a full
+     * backup's worth of chunks in the bucket, paid for indefinitely with nothing
+     * pointing at them. Routed through RetentionService::purge, which is the one
+     * place that knows how to remove a backup from storage — including replicas
+     * and the used_bytes accounting — rather than a second, quieter deleter.
      */
     public function delete(BackupSession $session): void
     {
@@ -177,7 +186,12 @@ class SessionActions
             throw new RuntimeException('Cannot delete a full backup that still has incrementals. Delete the incrementals first.');
         }
 
+        $backup = $session->backup;
         $session->delete();
+
+        if ($backup instanceof Backup) {
+            app(RetentionService::class)->purge($backup);
+        }
     }
 
     /**
