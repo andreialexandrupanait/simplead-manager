@@ -526,6 +526,16 @@ final class BackupRunner
         $this->putJson($this->layout->completeMarker(), $completeBody);
         $this->assertObjectPresent($this->layout->completeMarker());
 
+        // Retention gives a destination's used_bytes back by exactly the size
+        // recorded on the `backups` row, so anything left out of that figure is
+        // never reclaimed — a small, systematic, one-directional drift in the
+        // number quotas are enforced on. The four sidecars are part of what this
+        // backup occupies, so they are part of what it reports.
+        $this->mergeCheckpoint(['sidecar_bytes' => strlen($manifestJson)
+            + strlen($checksumsJson)
+            + strlen($metadataJson)
+            + strlen($completeBody)]);
+
         $this->session->transitionTo(S::Completed, 'backup complete');
 
         // Verify-at-creation (P6): the moment a backup reaches `completed`, produce

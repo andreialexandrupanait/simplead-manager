@@ -7,6 +7,7 @@ namespace App\Backup\V2\Models;
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Jobs\NotifyBackupV2Failed;
+use App\Backup\V2\Orchestration\BackupEnvelope;
 use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Backup;
@@ -173,6 +174,17 @@ class BackupSession extends Model
             'backup session transition',
             ['from' => $from->value, 'to' => $to->value, 'stage' => $this->stage]
         );
+
+        // Keep the `backups` row this session is carried by in step. Hung off the
+        // same funnel as alerting, and for the same reason: every state change
+        // comes through here, so nothing can move without the rest of the
+        // application seeing it. A model observer would instead fire on every
+        // heartbeat — once per uploaded chunk — and would never see the object
+        // prefix at all, since that is written through the query builder
+        // precisely to avoid firing model events.
+        if ($from !== $to) {
+            app(BackupEnvelope::class)->sync($this);
+        }
 
         // Alerting hangs off the one funnel every state change passes through,
         // rather than off each place that fails. There is no path to a failed

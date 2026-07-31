@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Jobs\NotifyBackupFailed;
 use App\Models\Backup;
@@ -58,6 +59,17 @@ class BackupObserver
         if ($newStatus === BackupStatus::Completed->value) {
             $this->handleCompleted($backup);
 
+            return;
+        }
+
+        // A V2 backup raises its own failure alert, and a better one: it carries
+        // the phase it died in, a typed error code and a link straight to the
+        // session. Both alerts use the same `backup_failed` event, so leaving
+        // this one in place would not produce two messages — NotificationService
+        // dedups on a five-minute window — it would produce a race over which
+        // message the operator reads. handleCompleted deliberately still runs
+        // for V2: moving sites.last_backup_at is the whole point of the row.
+        if ($backup->engine === BackupEngine::V2) {
             return;
         }
 

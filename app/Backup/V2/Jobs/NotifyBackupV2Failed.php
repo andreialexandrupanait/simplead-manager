@@ -59,10 +59,11 @@ class NotifyBackupV2Failed implements ShouldQueue
         $phase = $session->stage ?: $session->state->value;
 
         $summary = sprintf(
-            '*%s* — backup failed at *%s* (`%s`): %s',
+            '*%s* — backup failed at *%s* (`%s`, session #%d): %s',
             $site->name,
             $phase,
             $code,
+            $session->id,
             \Illuminate\Support\Str::limit($reason, 300),
         );
 
@@ -70,7 +71,12 @@ class NotifyBackupV2Failed implements ShouldQueue
             site: $site,
             event: 'backup_failed',
             summary: $summary,
-            deepLink: '<'.route('backup-v2.detail', $session->id).'|Open the session →>',
+            // The site's own backup history, not the V2 console. That console is
+            // behind a feature flag and an admin check, so for most recipients
+            // most of the time the link 404s — a critical alert whose one action
+            // is a dead end. The session id is in the summary for whoever can
+            // open it.
+            deepLink: '<'.route('sites.backups', $site).'|Open the site backups →>',
             // corrupt is not "try again later": the objects that were written
             // disagree with the manifest, and no retry makes that untrue.
             severity: 'critical',

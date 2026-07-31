@@ -185,8 +185,22 @@ final class BackupVerifier
         // keep-last-verified guarantee, so a stale stamp does not merely mislead
         // an operator — it can make retention preserve a broken backup and expire
         // a sound one.
-        $session->verified_at = $status === BackupVerification::STATUS_PASSED ? now() : null;
+        $passed = $status === BackupVerification::STATUS_PASSED;
+        $session->verified_at = $passed ? now() : null;
         $session->save();
+
+        // Write it through to the `backups` row too. This runs after the session
+        // reaches `completed`, so the envelope's own sync had nothing to copy
+        // yet — and without this every V2 backup reads to BackupHealthService as
+        // "not verified in the last 14 days", permanently capping those sites at
+        // 80 for a check that actually passed.
+        (new \App\Backup\V2\Orchestration\BackupEnvelope)->recordVerification(
+            $session,
+            $passed,
+            $passed
+                ? sprintf('Verified at creation: %d object(s) present and checksummed.', $objectCount)
+                : ($error ?? 'Verification failed.'),
+        );
 
         $this->logger->log(
             $status === BackupVerification::STATUS_PASSED ? 'info' : 'warning',

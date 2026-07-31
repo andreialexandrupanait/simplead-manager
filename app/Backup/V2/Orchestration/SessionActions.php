@@ -16,6 +16,7 @@ use App\Backup\V2\Quota\QuotaService;
 use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -36,12 +37,13 @@ class SessionActions
 {
     public function __construct(
         private readonly QuotaService $quota = new QuotaService,
+        private readonly BackupEnvelope $envelope = new BackupEnvelope,
     ) {}
 
     /**
      * Start (queue) a new backup. $type ∈ full|incremental|database|files.
      *
-     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int}  $opts
+     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,trigger?:string,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int}  $opts
      */
     public function startBackup(Site $site, string $type, array $opts = []): BackupSession
     {
@@ -53,20 +55,38 @@ class SessionActions
         // Enforce quota on the reconciled used_bytes (no-op unless enforcement is on).
         $this->quota->assertWithinQuota($destination, (int) ($opts['estimated_bytes'] ?? 0));
 
-        $session = BackupSession::create([
-            'site_id' => $site->id,
-            'type' => $type,
-            'scope' => $opts['scope'] ?? $this->defaultScope($type),
-            'exclusions' => $opts['exclusions'] ?? [],
-            'resource_profile' => $opts['resource_profile'] ?? (string) config('backup_v2.default_profile', 'low_impact'),
-            'state' => BackupSessionState::Requested,
-            'confirmed_objects' => [],
-            'confirmed_parts' => [],
-            'idempotency_key' => 'ui-'.$type.'-'.$site->id.'-'.Str::random(16),
-            'format_version' => (string) config('backup_v2.format_version', 'simplead-backup/1'),
-            'full_base_id' => $opts['full_base_id'] ?? null,
-            'chain_position' => $opts['chain_position'] ?? null,
-        ]);
+        $scope = $opts['scope'] ?? $this->defaultScope($type);
+
+        // The `backups` row is opened here, before the session, and in the same
+        // transaction — so a session can never exist without one. Opening it
+        // lazily on first success would mean a session that dies in
+        // capability_check leaves no row at all: the site would go on reporting
+        // its last good backup, and nothing would alert.
+        $session = DB::transaction(function () use ($site, $destination, $type, $scope, $opts) {
+            $backup = $this->envelope->open(
+                site: $site,
+                destination: $destination,
+                type: $type,
+                trigger: (string) ($opts['trigger'] ?? 'manual'),
+                scope: $scope,
+            );
+
+            return BackupSession::create([
+                'site_id' => $site->id,
+                'backup_id' => $backup->id,
+                'type' => $type,
+                'scope' => $scope,
+                'exclusions' => $opts['exclusions'] ?? [],
+                'resource_profile' => $opts['resource_profile'] ?? (string) config('backup_v2.default_profile', 'low_impact'),
+                'state' => BackupSessionState::Requested,
+                'confirmed_objects' => [],
+                'confirmed_parts' => [],
+                'idempotency_key' => 'ui-'.$type.'-'.$site->id.'-'.Str::random(16),
+                'format_version' => (string) config('backup_v2.format_version', 'simplead-backup/1'),
+                'full_base_id' => $opts['full_base_id'] ?? null,
+                'chain_position' => $opts['chain_position'] ?? null,
+            ]);
+        });
 
         RunBackupSessionJob::dispatch($session->id);
 
