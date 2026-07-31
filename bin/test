@@ -154,6 +154,26 @@ done
 # Laravel falls back to it for any variable not pinned here. Real environment
 # variables beat .env, so every value that could point tests at production —
 # DB/Redis URLs AND third-party credentials — must be pinned (empty) below.
+# The image a deploy happens to have left on the host is not something the test
+# runner should depend on: Coolify's build prunes dangling images, which silently
+# took `simplead-app:latest` out from under this script. Prefer the purpose-built
+# one, fall back to the deployed app image, and say so rather than failing with a
+# docker pull error for a repository that was never remote.
+APP_IMAGE="${SAM_TEST_IMAGE:-}"
+if [ -z "$APP_IMAGE" ]; then
+  for candidate in simplead-app:latest simplead-manager-app:latest; do
+    if docker image inspect "$candidate" >/dev/null 2>&1; then
+      APP_IMAGE="$candidate"
+      break
+    fi
+  done
+fi
+if [ -z "$APP_IMAGE" ]; then
+  echo "No app image found (tried simplead-app:latest, simplead-manager-app:latest)." >&2
+  echo "Build one with: docker build -t simplead-app:latest ." >&2
+  exit 1
+fi
+
 run_in_app() {
   docker run --rm --network host \
     -u "$(id -u):$(id -g)" --group-add 1002 \
@@ -175,7 +195,7 @@ run_in_app() {
     -e GOOGLE_CLIENT_ID= -e GOOGLE_CLIENT_SECRET= \
     -e ANTHROPIC_API_KEY= -e OPENAI_API_KEY= \
     -e CLOUDFLARE_API_TOKEN= -e PAGESPEED_API_KEY= -e WPSCAN_API_KEY= \
-    simplead-app:latest "$@"
+    "$APP_IMAGE" "$@"
 }
 
 # A cached config (bootstrap/cache/config.php) would take precedence over ALL
