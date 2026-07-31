@@ -73,7 +73,10 @@
     --surface-card:      #FFFFFF;   /* cards, raised */
     --surface-muted:     #F3F4F6;   /* hover, slightly elevated */
     --surface-elevated:  #E5E7EB;   /* divider-heavy surfaces */
-    --surface-sidebar:        #1A1A1A;   /* nav rail in light mode (looks great on bright body) */
+    /* The nav rail is #1A1A1A in BOTH themes — it is a brand surface, not a
+       theme surface, so it must not shift when the page does. The dark block
+       below deliberately does not override it. */
+    --surface-sidebar:        #1A1A1A;
     --surface-sidebar-hover:  #2C2C2C;
 
     /* Borders */
@@ -110,8 +113,11 @@
     --surface-card:      #232323;
     --surface-muted:     #2C2C2C;
     --surface-elevated:  #3C3C3C;
-    --surface-sidebar:        #0F0F0F;  /* deeper than body so rail stays distinct */
-    --surface-sidebar-hover:  #1F1F1F;
+    /* --surface-sidebar is NOT redefined here on purpose: the rail keeps its
+       #1A1A1A in dark mode too. That is the same value as --surface-app above,
+       so the rail no longer separates itself from the body by tone — the
+       border on the <aside> is what draws the edge. Do not "fix" this by
+       darkening the rail again; see layouts/app.blade.php. */
 
     /* Borders — subtle on dark */
     --border-subtle:     #232323;

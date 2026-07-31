@@ -105,13 +105,17 @@
         <aside data-sidebar
                aria-label="{{ __('Main navigation') }}"
                style="will-change: width, transform;"
-               {{-- bg-sidebar (#1A1A1A light / #0F0F0F dark) — the rail is dark in
-                    both themes, so its own contrast never depends on the page
-                    theme. Everything inside is coloured against dark explicitly
-                    rather than via the .dark utility overrides in app.css, which
-                    only fire in dark mode and would leave dark-on-dark text here
-                    the rest of the time. --}}
-               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-black/20 overflow-hidden transition-[width,transform] duration-300 ease-in-out
+               {{-- bg-sidebar is #1A1A1A in BOTH themes — a fixed brand surface,
+                    not a theme surface. Everything inside is therefore coloured
+                    against dark explicitly, never through the .dark utility
+                    overrides in app.css: those only fire in dark mode and would
+                    leave dark-on-dark text here the rest of the time.
+
+                    The border does the separating, not the tone. In dark mode
+                    --surface-app is also #1A1A1A, so rail and page are the same
+                    colour and a dark border would draw nothing; border-white/10
+                    reads against both a #FAFAFA page and a #1A1A1A one. --}}
+               class="fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-white/10 overflow-hidden transition-[width,transform] duration-300 ease-in-out
                       lg:translate-x-0 w-64"
                :class="[
                    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
