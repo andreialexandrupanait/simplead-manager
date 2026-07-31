@@ -31,6 +31,9 @@ class RetentionCleanup implements ShouldQueue
 
     public const JOB_KEY = 'retention-cleanup';
 
+    /** SPEC §14.1: "Capturi de ecran — ultimele 3 seturi per site". */
+    private const KEEP_SCREENSHOT_SETS = 3;
+
     public function __construct(
         public string $trigger = 'scheduled',
     ) {}
@@ -162,6 +165,9 @@ class RetentionCleanup implements ShouldQueue
         // Expired backups (per-backup expires_at)
         $expiredBackups = $this->cleanExpiredBackups($deadline);
 
+        // Update screenshots: keep the last 3 sets per site (SPEC §7.4 / §14.1)
+        $prunedScreenshotSets = $this->cleanExcessScreenshots($deadline);
+
         // Expired rollback points
         try {
             app(\App\Services\RollbackService::class)->cleanExpired();
@@ -178,6 +184,7 @@ class RetentionCleanup implements ShouldQueue
             'total_deleted' => $totalDeleted,
             'categories' => $categoryResults,
             'expired_backups' => $expiredBackups,
+            'pruned_screenshot_sets' => $prunedScreenshotSets,
             'hit_deadline' => $hitDeadline,
         ];
 
@@ -326,6 +333,68 @@ class RetentionCleanup implements ShouldQueue
         }
 
         return $count;
+    }
+
+    /**
+     * Keep the last 3 before/after screenshot sets per site (SPEC §7.4 etapa 2, §14.1).
+     *
+     * This is a count-based rule, not an age-based one, so it cannot live in
+     * RetentionPolicyService::CATEGORIES with the day-count categories. It also has to
+     * walk the disk rather than only the table: the `system` category prunes
+     * `safe_updates` rows after ~90 days, and until now that dropped the only pointer
+     * to the JPEGs and left them on disk forever.
+     *
+     * @return int Number of screenshot sets deleted
+     */
+    private function cleanExcessScreenshots(Carbon $deadline): int
+    {
+        $disk = Storage::disk('public');
+        $screenshots = app(\App\Services\ScreenshotService::class);
+        $deleted = 0;
+
+        foreach ($disk->directories('update-screenshots') as $siteDirectory) {
+            if (now()->gte($deadline)) {
+                break;
+            }
+
+            $siteId = (int) basename($siteDirectory);
+
+            if ($siteId <= 0) {
+                continue;
+            }
+
+            try {
+                // Directory names are safe update ids. Ordering by id descending is
+                // ordering by recency — ids are sequential and a set is written once,
+                // during the update it belongs to.
+                $sets = collect($disk->directories($siteDirectory))
+                    ->map(fn (string $path) => (int) basename($path))
+                    ->filter(fn (int $id) => $id > 0)
+                    ->sortDesc()
+                    ->values();
+
+                foreach ($sets->slice(self::KEEP_SCREENSHOT_SETS) as $safeUpdateId) {
+                    $screenshots->cleanup($siteId, $safeUpdateId);
+
+                    // Clear the now-dangling pointers if the row is still around.
+                    DB::table('safe_updates')
+                        ->where('id', $safeUpdateId)
+                        ->update([
+                            'screenshot_before_path' => null,
+                            'screenshot_after_path' => null,
+                        ]);
+
+                    $deleted++;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Screenshot retention failed for site {$siteId}", [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $deleted;
     }
 
     /**

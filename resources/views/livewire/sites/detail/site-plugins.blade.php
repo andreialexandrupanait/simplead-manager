@@ -815,6 +815,38 @@
 
         {{-- History tab --}}
         @if($tab === 'history')
+            {{-- Before/after homepage, from the safe updates that captured a pair (SPEC §7.4) --}}
+            @if($this->visualChecks->isNotEmpty())
+                <div class="border-b bg-gray-50 px-4 py-4">
+                    <p class="text-sm font-medium text-gray-900">{{ __('Homepage before and after') }}</p>
+                    <p class="mt-0.5 text-xs text-gray-500">
+                        {{ __('Captured around each safe update, so a change can be seen rather than taken on trust.') }}
+                    </p>
+
+                    <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach($this->visualChecks as $check)
+                            <div>
+                                <p class="truncate text-xs font-medium text-gray-700">{{ $check->name ?? $check->slug }}</p>
+                                <p class="text-xs text-gray-400">
+                                    {{ $check->completed_at?->format('M j, Y H:i') }}
+                                </p>
+                                <div class="mt-1.5 flex gap-1.5">
+                                    @foreach([['before', __('Before')], ['after', __('After')]] as [$label, $caption])
+                                        <a href="{{ Storage::disk('public')->url($check->{"screenshot_{$label}_path"}) }}"
+                                           target="_blank" rel="noopener" class="min-w-0 flex-1">
+                                            <span class="block text-[11px] text-gray-400">{{ $caption }}</span>
+                                            <img src="{{ Storage::disk('public')->url($check->{"screenshot_{$label}_path"}) }}"
+                                                 alt="" loading="lazy"
+                                                 class="w-full rounded border border-gray-200 bg-white">
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div class="divide-y">
                 @forelse($this->updateHistory as $log)
                     <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">

@@ -122,6 +122,38 @@
     @endif
 @endif
 
+{{-- Before/after homepage pairs (SPEC §7.4 etapa 2) --}}
+@if(($sectionOptions['updates']['show_visual_checks'] ?? true) && !empty($u['visual_checks'] ?? []))
+    <hr class="subsection-divider">
+    <h3>{{ __('report.updates_visual_title', [], $lang) }}</h3>
+    <p style="font-size: 8.5pt; color: #64748b; margin-bottom: 10px;">
+        {{ __('report.updates_visual_description', [], $lang) }}
+    </p>
+
+    @foreach($u['visual_checks'] as $pair)
+        <div style="margin-bottom: 14px;">
+            <div style="font-size: 8.5pt; color: #334155; margin-bottom: 5px;">
+                {{ $pair['name'] }}
+                @if($pair['performed_at'])
+                    <span style="color: #94a3b8;">&middot; {{ \Carbon\Carbon::parse($pair['performed_at'])->format('d/m/Y') }}</span>
+                @endif
+            </div>
+            <table style="width: 100%; border-collapse: separate; border-spacing: 8px 0;">
+                <tr>
+                    @foreach(['before', 'after'] as $label)
+                        <td style="width: 50%; vertical-align: top;">
+                            <div style="font-size: 7.5pt; color: #94a3b8; margin-bottom: 3px;">
+                                {{ __('report.updates_visual_'.$label, [], $lang) }}
+                            </div>
+                            <img src="{{ $pair[$label] }}" alt="" style="width: 100%; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </td>
+                    @endforeach
+                </tr>
+            </table>
+        </div>
+    @endforeach
+@endif
+
 {{-- Pending updates info --}}
 @if(($site->pending_updates_count ?? 0) > 0)
     <hr class="subsection-divider">

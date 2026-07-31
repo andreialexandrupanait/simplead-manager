@@ -749,6 +749,64 @@ class SafeUpdateServiceTest extends TestCase
         $this->assertSame('completed', $safeUpdate->fresh()->status);
     }
 
+    /**
+     * SPEC §7.4 rules out the pixel-diff stage: carousels, rotating banners, random
+     * products and lazy-loaded content make it fire on perfectly healthy updates.
+     * It was nevertheless wired as a gate — an update whose homepage differed by
+     * more than 15% was declared failed and rolled back.
+     *
+     * The pair is still captured and the difference still recorded; it just does not
+     * vote. This test feeds a 92% difference and asserts the update COMPLETES,
+     * because the health check and the smoke check both passed.
+     */
+    public function test_large_pixel_difference_does_not_fail_a_healthy_update(): void
+    {
+        Queue::fake();
+
+        $api = $this->createMockApi();
+        $api->method('updatePlugins')->willReturn([
+            'results' => ['elementor' => ['success' => true, 'to_version' => '3.23']],
+        ]);
+        $api->method('healthCheck')->willReturn(['status' => 'ok', 'checks' => []]);
+
+        $rollbackService = $this->createMock(RollbackService::class);
+        // The decisive assertion: the update must never be rolled back over pixels.
+        $rollbackService->expects($this->never())->method('executeRollback');
+        $rollbackService->method('createRollbackPoint')->willReturn(
+            \App\Models\RollbackPoint::factory()->make(['id' => 1])
+        );
+
+        $screenshotService = $this->createMock(ScreenshotService::class);
+        $screenshotService->method('capture')->willReturn('binary-jpeg');
+        $screenshotService->method('save')->willReturn('update-screenshots/1/1/before.jpg');
+        $screenshotService->method('compare')->willReturn([
+            'similarity' => 8.0,
+            'diff_percent' => 92.0,
+            'diff_pixels' => 70656,
+            'total_pixels' => 76800,
+        ]);
+
+        $service = $this->serviceWithCompletedBackup($rollbackService, $api, $screenshotService);
+
+        $safeUpdate = SafeUpdate::factory()->create([
+            'site_id' => $this->site->id,
+            'type' => 'plugin',
+            'slug' => 'elementor',
+            'name' => 'Elementor',
+            'from_version' => '3.22',
+            'to_version' => '3.23',
+            'status' => 'pending',
+        ]);
+
+        $service->runSafeUpdate($safeUpdate);
+
+        $safeUpdate->refresh();
+        $this->assertSame('completed', $safeUpdate->status);
+        $this->assertNull($safeUpdate->error_message);
+        // Recorded, not enforced.
+        $this->assertEquals(92.0, $safeUpdate->visual_regression_results['diff_percent']);
+    }
+
     public function test_run_health_checks_returns_false_on_exception(): void
     {
         $api = $this->createMockApi();

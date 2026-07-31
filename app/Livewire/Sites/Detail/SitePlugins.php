@@ -10,6 +10,7 @@ use App\Livewire\Traits\WithPluginManagement;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithThemeManagement;
 use App\Livewire\Traits\WithWpAdminLogin;
+use App\Models\SafeUpdate;
 use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteTheme;
@@ -25,6 +26,9 @@ use Livewire\Component;
 class SitePlugins extends Component
 {
     use WithJobTracking, WithPluginManagement, WithSiteAuthorization, WithThemeManagement, WithWpAdminLogin;
+
+    /** Matches the retention rule in SPEC §14.1: the last 3 screenshot sets per site. */
+    private const VISUAL_CHECK_SETS = 3;
 
     public Site $site;
 
@@ -241,6 +245,25 @@ class SitePlugins extends Component
         }
 
         return $query->with('user')->orderByDesc('performed_at')->limit(100)->get();
+    }
+
+    /**
+     * Before/after homepage screenshots from recent safe updates (SPEC §7.4 etapa 2).
+     *
+     * They are captured on every safe update and were, until now, written to disk and
+     * never shown to anyone. The recorded pixel difference is deliberately not rendered
+     * as a verdict — §7.4 rules out pixel diffing as a gate, so the pair is here to be
+     * looked at, not to be scored.
+     */
+    #[Computed]
+    public function visualChecks()
+    {
+        return SafeUpdate::where('site_id', $this->site->id)
+            ->whereNotNull('screenshot_before_path')
+            ->whereNotNull('screenshot_after_path')
+            ->orderByDesc('completed_at')
+            ->limit(self::VISUAL_CHECK_SETS)
+            ->get();
     }
 
     public function setTab(string $tab): void

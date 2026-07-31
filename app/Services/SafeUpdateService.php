@@ -17,8 +17,6 @@ use Illuminate\Support\Facades\Log;
 
 class SafeUpdateService
 {
-    private const VISUAL_DIFF_THRESHOLD = 15.0;
-
     public function __construct(
         protected RollbackService $rollbackService,
         protected WordPressApiServiceFactory $apiFactory,
@@ -202,17 +200,24 @@ class SafeUpdateService
             $smokeResults = $this->runSmokeChecks($site, $safeUpdate);
             $smokeEnforced = (bool) config('updates.smart_rules_enabled', false);
 
-            // Step 6: Visual regression check
+            // Step 6: after-screenshot and pixel difference (SPEC §7.4 etapa 2).
+            //
+            // The pair is captured and stored so a human can look at it and so it
+            // can go in the monthly report. The measured difference is RECORDED
+            // and never VOTES on the rollback decision: SPEC §7.4 rules out the
+            // pixel-diff stage precisely because carousels, rotating banners,
+            // random products and lazy-loaded content make it fire on healthy
+            // updates. Whether the site actually broke is answered by the health
+            // check and by the smoke check on the key URLs, both above.
             $visualResults = null;
             if ($beforeScreenshot) {
                 $visualResults = $this->runVisualRegression($site, $safeUpdate, $beforeScreenshot);
             }
 
             $healthPassed = $healthResults['passed'];
-            $visualPassed = ! $visualResults || ($visualResults['diff_percent'] ?? 0) < self::VISUAL_DIFF_THRESHOLD;
             $smokePassed = ! $smokeEnforced || $smokeResults === null || $smokeResults['passed'];
 
-            if ($healthPassed && $visualPassed && $smokePassed) {
+            if ($healthPassed && $smokePassed) {
                 $safeUpdate->update([
                     'status' => 'completed',
                     'health_check_results' => $healthResults['checks'],
@@ -229,9 +234,6 @@ class SafeUpdateService
                 $errorParts = [];
                 if (! $healthPassed) {
                     $errorParts[] = 'Health check failed';
-                }
-                if (! $visualPassed) {
-                    $errorParts[] = 'Visual regression detected significant changes ('.($visualResults['diff_percent'] ?? '?').'% different)';
                 }
                 if (! $smokePassed) {
                     $errorParts[] = 'Smoke check failed on '.$this->failedSmokeUrls($smokeResults);
