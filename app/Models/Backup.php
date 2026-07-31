@@ -59,6 +59,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $files_deleted_count
  * @property int|null $files_total_count
  * @property string|null $preparation_method
+ * @property string|null $local_export_status
+ * @property string|null $local_export_file_path
+ * @property int|null $local_export_file_size
+ * @property string|null $local_export_error
+ * @property \Illuminate\Support\Carbon|null $local_exported_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -117,6 +122,11 @@ class Backup extends Model
         'files_changed_count',
         'files_deleted_count',
         'files_total_count',
+        'local_export_status',
+        'local_export_file_path',
+        'local_export_file_size',
+        'local_export_error',
+        'local_exported_at',
     ];
 
     protected $casts = [
@@ -142,6 +152,8 @@ class Backup extends Model
         'files_changed_count' => 'integer',
         'files_deleted_count' => 'integer',
         'files_total_count' => 'integer',
+        'local_export_file_size' => 'integer',
+        'local_exported_at' => 'datetime',
     ];
 
     // Query Scopes
@@ -219,6 +231,17 @@ class Backup extends Model
     public function getIsRestoringAttribute(): bool
     {
         return in_array($this->restore_status, [BackupStatus::Pending, BackupStatus::InProgress]);
+    }
+
+    public function localExportReady(): bool
+    {
+        return $this->local_export_status === 'completed'
+            && $this->local_export_file_path !== null;
+    }
+
+    public function localExportInProgress(): bool
+    {
+        return in_array($this->local_export_status, ['pending', 'processing'], true);
     }
 
     public function getSizeDiffAttribute(): ?int
