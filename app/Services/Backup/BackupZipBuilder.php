@@ -83,11 +83,21 @@ class BackupZipBuilder
      *
      * Caller may unlink $chunkZipPath after this returns.
      *
+     * When $onlyEntries is given, only those entry names are copied and every one of them must be
+     * present. The V2 engine needs this: a chunk carried forward from an older backup holds files
+     * that a later one replaced or deleted, so copying it wholesale would resurrect them. And a
+     * named entry that turns out to be missing means the manifest is lying about where a file
+     * lives — a package quietly short a file is the one failure a backup must not have, because
+     * nobody finds out until they need it.
+     *
+     * @param  list<string>|null  $onlyEntries
      * @return int number of entries copied
      */
-    public function addEntriesFromZip(string $chunkZipPath, string $pathPrefix = ''): int
+    public function addEntriesFromZip(string $chunkZipPath, string $pathPrefix = '', ?array $onlyEntries = null): int
     {
         $this->ensureNotFinished();
+
+        $wanted = $onlyEntries === null ? null : array_fill_keys($onlyEntries, false);
 
         $reader = new ZipArchive;
         $openResult = $reader->open($chunkZipPath);
@@ -109,6 +119,13 @@ class BackupZipBuilder
                 // ZipArchive lists directory entries with trailing slash; skip them
                 if (str_ends_with($entryName, '/')) {
                     continue;
+                }
+
+                if ($wanted !== null) {
+                    if (! array_key_exists($entryName, $wanted)) {
+                        continue;
+                    }
+                    $wanted[$entryName] = true;
                 }
 
                 // The chunk zips come from a semi-trusted WP host — reject any
@@ -141,6 +158,16 @@ class BackupZipBuilder
             }
         } finally {
             $reader->close();
+        }
+
+        if ($wanted !== null) {
+            $missing = array_keys(array_filter($wanted, static fn (bool $found): bool => ! $found));
+            if ($missing !== []) {
+                $extra = count($missing) > 1 ? sprintf(' (and %d more)', count($missing) - 1) : '';
+                throw new \RuntimeException(
+                    "BackupZipBuilder: {$chunkZipPath} does not contain {$missing[0]}{$extra}."
+                );
+            }
         }
 
         $this->entriesAdded += $count;

@@ -53,32 +53,48 @@ class PortablePackageTest extends TestCase
     }
 
     /**
-     * Writes a real backup to MinIO: an encrypted file chunk, an encrypted DB
-     * segment, and a manifest that describes them.
+     * Writes a real backup to MinIO: encrypted file chunk(s), an encrypted DB segment, and a
+     * format/2 manifest that names the object holding every file.
      *
-     * @param  array<string, string>  $files
+     * @param  array<string, string>|list<array<string, string>>  $files  one chunk's files, or a
+     *                                                                    list of chunks
      */
     private function writeBackup(BackupSession $session, array $files, string $sql): void
     {
+        // Accept a single chunk (the common case) or an explicit list of them.
+        $chunks = ($files !== [] && is_array(reset($files))) ? array_values($files) : [$files];
+
         $this->layout = new ObjectLayout(1, (int) $session->site_id, (int) $session->id, $this->testPrefix.'/clients/{client_id}/sites/{site_id}/backups/{backup_id}');
         $cipher = (new BackupKeyring)->forKeyId(BackupKeyring::INSTALLATION_KEY_ID);
 
-        // files/chunk_0.zip
-        $zipPath = (string) tempnam(sys_get_temp_dir(), 'pkgsrc_');
-        $zip = new ZipArchive;
-        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        foreach ($files as $path => $contents) {
-            $zip->addFromString($path, $contents);
-        }
-        $zip->close();
+        $fileObjects = [];
+        $included = [];
 
-        $sealed = (string) tempnam(sys_get_temp_dir(), 'pkgsealed_');
-        $cipher->encryptFile($zipPath, $sealed);
-        $this->minioClient()->putObject([
-            'Bucket' => $this->bucket,
-            'Key' => $this->layout->files('chunk_0.zip'),
-            'SourceFile' => $sealed,
-        ]);
+        foreach ($chunks as $index => $chunkFiles) {
+            $zipPath = (string) tempnam(sys_get_temp_dir(), 'pkgsrc_');
+            $zip = new ZipArchive;
+            $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+            foreach ($chunkFiles as $path => $contents) {
+                $zip->addFromString($path, $contents);
+            }
+            $zip->close();
+
+            $key = $this->layout->files("chunk_{$index}.zip");
+            $sealed = (string) tempnam(sys_get_temp_dir(), 'pkgsealed_');
+            $cipher->encryptFile($zipPath, $sealed);
+            $this->minioClient()->putObject([
+                'Bucket' => $this->bucket,
+                'Key' => $key,
+                'SourceFile' => $sealed,
+            ]);
+            @unlink($zipPath);
+            @unlink($sealed);
+
+            $fileObjects[] = ['kind' => 'files', 'chunk_index' => $index, 'key' => $key, 'size' => 1, 'sha256' => 'x'];
+            foreach (array_keys($chunkFiles) as $path) {
+                $included[] = ['p' => $path, 's' => 1, 'm' => 0, 'sha256' => 'z', 'chunk_index' => $index, 'key' => $key];
+            }
+        }
 
         // database/chunk_0.sql.gz
         $gzPath = (string) tempnam(sys_get_temp_dir(), 'pkgdb_');
@@ -92,15 +108,12 @@ class PortablePackageTest extends TestCase
         ]);
 
         $manifest = [
-            'objects' => [
-                ['kind' => 'files', 'chunk_index' => 0, 'key' => $this->layout->files('chunk_0.zip'), 'size' => 1, 'sha256' => 'x'],
+            'format_version' => 'simplead-backup/2',
+            'objects' => array_merge($fileObjects, [
                 ['kind' => 'database', 'chunk_index' => 0, 'key' => $this->layout->database('chunk_0.sql.gz'), 'size' => 1, 'sha256' => 'y'],
-            ],
+            ]),
             'files' => [
-                'included' => array_map(
-                    static fn (string $p): array => ['p' => $p, 's' => 1, 'm' => 0, 'sha256' => 'z', 'chunk_index' => 0],
-                    array_keys($files),
-                ),
+                'included' => $included,
                 'tombstones' => [],
             ],
         ];
@@ -110,7 +123,7 @@ class PortablePackageTest extends TestCase
             'Body' => (string) json_encode($manifest),
         ]);
 
-        foreach ([$zipPath, $sealed, $gzPath, $sealedDb] as $tmp) {
+        foreach ([$gzPath, $sealedDb] as $tmp) {
             @unlink($tmp);
         }
     }
@@ -195,11 +208,19 @@ class PortablePackageTest extends TestCase
         $session = $this->makeBackupSession($site, ['type' => 'full', 'state' => S::Completed]);
         $this->writeBackup($session, ['real.txt' => 'x'], 'SELECT 1;');
 
-        // Claim a path the chunk does not hold.
+        // Claim a path the chunk does not hold — pointing at a real, readable object, so the lie is
+        // only discoverable by actually looking inside it.
         $manifest = json_decode((string) $this->minioClient()->getObject([
             'Bucket' => $this->bucket, 'Key' => $this->layout->manifest(),
         ])['Body'], true);
-        $manifest['files']['included'][] = ['p' => 'ghost.txt', 's' => 1, 'm' => 0, 'sha256' => 'z', 'chunk_index' => 0];
+        $manifest['files']['included'][] = [
+            'p' => 'ghost.txt',
+            's' => 1,
+            'm' => 0,
+            'sha256' => 'z',
+            'chunk_index' => 0,
+            'key' => $this->layout->files('chunk_0.zip'),
+        ];
         $this->minioClient()->putObject([
             'Bucket' => $this->bucket,
             'Key' => $this->layout->manifest(),
@@ -226,15 +247,49 @@ class PortablePackageTest extends TestCase
      * So the property worth pinning is not "the package is correct" — it is "the
      * package is correct without the site fitting in memory".
      */
-    public function test_building_a_package_does_not_hold_the_site_in_memory(): void
+    public function test_building_a_package_does_not_grow_with_the_size_of_the_site(): void
+    {
+        // Measured as a SCALING property rather than an absolute ceiling. PHP reports peak usage in
+        // whole allocated arenas, which move in large steps and never shrink, so a single number is
+        // mostly noise. Doubling the site and seeing the same peak is not.
+        $smallSite = $this->measurePeakBuilding(3);
+        $largeSite = $this->measurePeakBuilding(6);
+
+        $this->assertLessThan(
+            max($smallSite, 4 * 1024 * 1024) * 1.5,
+            $largeSite,
+            sprintf(
+                'peak memory must track one chunk, not the whole site: 3 chunks took %d bytes, 6 took %d',
+                $smallSite,
+                $largeSite,
+            ),
+        );
+    }
+
+    /**
+     * Build a package from $chunkCount chunks of 4 MB each, verify the bytes survive, and return the
+     * peak memory the build itself added.
+     */
+    private function measurePeakBuilding(int $chunkCount): int
     {
         $site = Site::factory()->create();
         $session = $this->makeBackupSession($site, ['type' => 'full', 'state' => S::Completed]);
 
-        // Incompressible, so the stored chunk cannot shrink out of the way of the
-        // thing being measured.
-        $big = random_bytes(24 * 1024 * 1024);
-        $this->writeBackup($session, ['wp-content/uploads/big.bin' => $big], 'SELECT 1;');
+        // Incompressible, so the stored chunks cannot shrink out of the way of what is measured.
+        $chunks = [];
+        $expected = [];
+        for ($c = 0; $c < $chunkCount; $c++) {
+            $path = "wp-content/uploads/big_{$c}.bin";
+            $bytes = random_bytes(4 * 1024 * 1024);
+            $chunks[] = [$path => $bytes];
+            $expected[$path] = hash('sha256', $bytes);
+        }
+
+        $this->writeBackup($session, $chunks, 'SELECT 1;');
+
+        // The fixture bytes are not part of what the builder costs.
+        unset($chunks, $bytes);
+        gc_collect_cycles();
 
         $out = (string) tempnam(sys_get_temp_dir(), 'pkg_').'.zip';
 
@@ -243,26 +298,21 @@ class PortablePackageTest extends TestCase
         $result = $this->builder()->build($session->fresh(), $out);
         $growth = memory_get_peak_usage(true) - $before;
 
-        // The old implementation grew by at least the file itself. Half of it is
-        // a generous ceiling that still fails loudly if anyone reintroduces
-        // addFromString.
-        $this->assertLessThan(
-            12 * 1024 * 1024,
-            $growth,
-            'the builder must stream through disk, not buffer entries in memory (grew by '.$growth.' bytes)',
-        );
-
-        // And it is still a correct package, not merely a cheap one.
+        // Cheap is only interesting if it is also correct.
         $zip = new ZipArchive;
         $this->assertTrue($zip->open($out, ZipArchive::CHECKCONS) === true);
-        $this->assertSame(
-            hash('sha256', $big),
-            hash('sha256', (string) $zip->getFromName('files/wp-content/uploads/big.bin')),
-            'the bytes in the package must be the bytes that went in',
-        );
+        foreach ($expected as $path => $sha) {
+            $this->assertSame(
+                $sha,
+                hash('sha256', (string) $zip->getFromName('files/'.$path)),
+                "the bytes in the package must be the bytes that went in ({$path})",
+            );
+        }
         $zip->close();
-        $this->assertSame(1, $result['files']);
+        $this->assertSame(count($expected), $result['files']);
         @unlink($out);
+
+        return $growth;
     }
 
     /**
