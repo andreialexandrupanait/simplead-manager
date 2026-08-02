@@ -29,9 +29,16 @@ use ZipArchive;
  * did — `files/` plus `database.sql.gz` in one zip — so it opens with any
  * unzip tool and the dump imports with any mysql client.
  *
- * Built by streaming: entries are copied chunk by chunk and the database
- * segments appended one at a time, so peak memory is one chunk rather than one
- * backup.
+ * Built through disk, not memory: entries are staged out of each chunk into a
+ * scratch directory and added to the package by path, and the database segments
+ * are concatenated into a file first. ZipArchive only reads those files when it
+ * closes, so peak memory stays flat no matter how big the site is.
+ *
+ * It used to use addFromString(), which reads each file into a PHP string and
+ * makes ZipArchive hold it until close() — so the true peak was the whole
+ * backup, not one chunk as the comment here used to claim. The first real site
+ * to try it (450 MB) died on the 256 MB worker limit, and the fixture-sized lab
+ * tests could never have caught it.
  */
 class PortablePackageBuilder
 {
@@ -68,14 +75,32 @@ class PortablePackageBuilder
             }
         }
 
-        $files = 0;
-        foreach ($wantedByKey as $key => $paths) {
-            $files += $this->copyEntries($key, $paths, $zip);
+        // Everything the package is built from lives here until close() has read
+        // it, then the whole tree goes. Bounded by the size of the site, on the
+        // manager's disk — never on the client's.
+        $stage = $this->makeStagingDir();
+
+        try {
+            $files = 0;
+            foreach ($wantedByKey as $key => $paths) {
+                $files += $this->copyEntries($key, $paths, $zip, $stage);
+            }
+
+            $this->appendDatabase($session, $zip, $stage);
+
+            // close() is where ZipArchive actually reads every staged file and
+            // writes the archive, so nothing may be deleted before it returns.
+            if ($zip->close() !== true) {
+                throw new RuntimeException("Could not write the portable package at {$destination}.");
+            }
+        } catch (\Throwable $e) {
+            @$zip->close();
+            $this->removeTree($stage);
+
+            throw $e;
         }
 
-        $this->appendDatabase($session, $zip);
-
-        $zip->close();
+        $this->removeTree($stage);
 
         return ['files' => $files, 'bytes' => (int) filesize($destination)];
     }
@@ -83,7 +108,7 @@ class PortablePackageBuilder
     /**
      * @param  list<string>  $paths
      */
-    private function copyEntries(string $key, array $paths, ZipArchive $out): int
+    private function copyEntries(string $key, array $paths, ZipArchive $out, string $stage): int
     {
         $local = $this->pull($key);
 
@@ -93,10 +118,19 @@ class PortablePackageBuilder
                 throw new RuntimeException("Backup chunk {$key} could not be opened.");
             }
 
+            foreach ($paths as $path) {
+                $this->assertContainedPath($path, $key);
+            }
+
+            // One call, not one per file: extractTo writes straight to disk, so
+            // no entry is ever held whole in memory.
+            $chunk->extractTo($stage.'/files', $paths);
+            $chunk->close();
+
             $copied = 0;
             foreach ($paths as $path) {
-                $bytes = $chunk->getFromName($path);
-                if ($bytes === false) {
+                $staged = $stage.'/files/'.$path;
+                if (! is_file($staged)) {
                     // The manifest says this chunk holds this path. If it does
                     // not, the package would be quietly short a file — which is
                     // exactly the class of failure a portable backup must not
@@ -104,10 +138,9 @@ class PortablePackageBuilder
                     throw new RuntimeException("Backup chunk {$key} does not contain {$path}.");
                 }
 
-                $out->addFromString('files/'.$path, $bytes);
+                $out->addFile($staged, 'files/'.$path);
                 $copied++;
             }
-            $chunk->close();
 
             return $copied;
         } finally {
@@ -116,10 +149,58 @@ class PortablePackageBuilder
     }
 
     /**
+     * Refuse a manifest path that would climb out of the staging directory.
+     *
+     * These paths come from archives this engine wrote itself, so this should
+     * never fire — but "should never" is not a reason to hand an unchecked path
+     * to extractTo, and the check costs nothing.
+     */
+    private function assertContainedPath(string $path, string $key): void
+    {
+        if (str_starts_with($path, '/') || preg_match('#(^|/)\.\.(/|$)#', $path) === 1) {
+            throw new RuntimeException("Backup chunk {$key} names an unsafe path: {$path}.");
+        }
+    }
+
+    private function makeStagingDir(): string
+    {
+        $dir = sys_get_temp_dir().'/portable_stage_'.bin2hex(random_bytes(8));
+
+        // Site files and the database dump get separate subtrees: a WordPress root
+        // is perfectly entitled to contain a file called database.sql.gz, and it
+        // must not be able to overwrite the dump we are assembling.
+        foreach ([$dir.'/files', $dir.'/db'] as $sub) {
+            if (! mkdir($sub, 0700, true) && ! is_dir($sub)) {
+                throw new RuntimeException("Could not create the staging directory {$sub}.");
+            }
+        }
+
+        return $dir;
+    }
+
+    private function removeTree(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $items = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($items as $item) {
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+
+        @rmdir($dir);
+    }
+
+    /**
      * The database is always the target backup's own dump, never reassembled
      * across the chain: every restore point carries a complete, consistent one.
      */
-    private function appendDatabase(BackupSession $session, ZipArchive $out): void
+    private function appendDatabase(BackupSession $session, ZipArchive $out, string $stage): void
     {
         $manifest = $this->reader->read($session);
         $segments = array_values(array_filter(
@@ -135,7 +216,12 @@ class PortablePackageBuilder
 
         // Concatenated gzip members are themselves valid gzip, so the segments
         // append directly and `gunzip` yields the whole dump in order.
-        $combined = (string) tempnam(sys_get_temp_dir(), 'portable_db_');
+        //
+        // It goes in the staging directory rather than a bare tempnam() so that
+        // the caller's cleanup reclaims it. Previously it was only removed when
+        // the build threw: every SUCCESSFUL package left its whole compressed
+        // database behind in the system temp directory, forever.
+        $combined = $stage.'/db/database.sql.gz';
         $handle = fopen($combined, 'wb');
 
         try {
@@ -153,7 +239,6 @@ class PortablePackageBuilder
             $out->setCompressionName('database.sql.gz', ZipArchive::CM_STORE);
         } catch (\Throwable $e) {
             @fclose($handle);
-            @unlink($combined);
 
             throw $e;
         }

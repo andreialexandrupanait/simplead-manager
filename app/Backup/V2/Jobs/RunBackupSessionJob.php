@@ -182,12 +182,15 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
                         // under an older layout is still found where it actually
                         // is.
                         new S3ManifestReader(
-                            $s3->client(),
+                            $s3->readClient(),
                             $s3->bucket(),
                             static fn (BackupSession $member) => SessionLayoutResolver::for($member),
                         ),
                     );
                 },
+                // upload_verifying re-reads every object it just wrote. Without a
+                // retry here a single Hetzner throttle discarded a finished backup.
+                readS3: $s3->readClient(),
             ))->run();
         } finally {
             SiteOperationLock::release((int) $session->site_id, $token);

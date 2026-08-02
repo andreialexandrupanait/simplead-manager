@@ -111,6 +111,16 @@ return [
     'multipart_retry_base_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_BASE_MS', 200),
     'multipart_retry_max_ms' => (int) env('BACKUP_ENGINE_V2_MULTIPART_RETRY_MAX_MS', 15000),
 
+    // Retries for READING objects back (verification, deep verify, portable
+    // package, restore, manifest reads) — S3ClientFactory::readClient(). The SDK
+    // retries throttling, 5xx and network failures with its own exponential
+    // backoff, and does not retry a genuinely missing or forbidden object. Left at
+    // 0 this cost us two of the first five production backups: a Hetzner
+    // `SlowDown` while re-reading checksums.json branded a correct backup
+    // unverified, and one failed GetObject discarded twenty minutes of finished
+    // work. 4 attempts = the original plus three.
+    'read_max_attempts' => (int) env('BACKUP_ENGINE_V2_READ_MAX_ATTEMPTS', 4),
+
     /*
     |--------------------------------------------------------------------------
     | Encryption

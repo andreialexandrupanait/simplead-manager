@@ -68,7 +68,7 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
 
         $s3 = S3ClientFactory::forDestination($destination);
         $reader = new S3ManifestReader(
-            $s3->client(),
+            $s3->readClient(),
             $s3->bucket(),
             static fn (BackupSession $member) => SessionLayoutResolver::for($member),
         );
@@ -77,7 +77,8 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
         $key = PortablePackageBuilder::objectKeyFor($session);
 
         try {
-            $result = (new PortablePackageBuilder($s3->client(), $s3->bucket(), $reader))
+            // Reads the whole chain back out; writes exactly one object at the end.
+            $result = (new PortablePackageBuilder($s3->readClient(), $s3->bucket(), $reader))
                 ->build($session, $local);
 
             $s3->client()->putObject([

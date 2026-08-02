@@ -212,4 +212,97 @@ class PortablePackageTest extends TestCase
         $this->expectExceptionMessageMatches('/does not contain ghost\.txt/');
         $this->builder()->build($session->fresh(), $out);
     }
+
+    /**
+     * The bug every other test in this file was too small to see.
+     *
+     * The builder used to read each entry with getFromName() and hand the string
+     * to addFromString(), which makes ZipArchive hold it until close(). Peak
+     * memory was therefore the size of the whole site, not of one file — and with
+     * fixtures measured in bytes, every assertion above still passed. The first
+     * real backup to try it, 450 MB, died on the queue worker's 256 MB limit, and
+     * the download button had never worked in production even once.
+     *
+     * So the property worth pinning is not "the package is correct" — it is "the
+     * package is correct without the site fitting in memory".
+     */
+    public function test_building_a_package_does_not_hold_the_site_in_memory(): void
+    {
+        $site = Site::factory()->create();
+        $session = $this->makeBackupSession($site, ['type' => 'full', 'state' => S::Completed]);
+
+        // Incompressible, so the stored chunk cannot shrink out of the way of the
+        // thing being measured.
+        $big = random_bytes(24 * 1024 * 1024);
+        $this->writeBackup($session, ['wp-content/uploads/big.bin' => $big], 'SELECT 1;');
+
+        $out = (string) tempnam(sys_get_temp_dir(), 'pkg_').'.zip';
+
+        memory_reset_peak_usage();
+        $before = memory_get_peak_usage(true);
+        $result = $this->builder()->build($session->fresh(), $out);
+        $growth = memory_get_peak_usage(true) - $before;
+
+        // The old implementation grew by at least the file itself. Half of it is
+        // a generous ceiling that still fails loudly if anyone reintroduces
+        // addFromString.
+        $this->assertLessThan(
+            12 * 1024 * 1024,
+            $growth,
+            'the builder must stream through disk, not buffer entries in memory (grew by '.$growth.' bytes)',
+        );
+
+        // And it is still a correct package, not merely a cheap one.
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($out, ZipArchive::CHECKCONS) === true);
+        $this->assertSame(
+            hash('sha256', $big),
+            hash('sha256', (string) $zip->getFromName('files/wp-content/uploads/big.bin')),
+            'the bytes in the package must be the bytes that went in',
+        );
+        $zip->close();
+        $this->assertSame(1, $result['files']);
+        @unlink($out);
+    }
+
+    /**
+     * Every successful build used to leave its whole compressed database behind
+     * in the system temp directory, because the only unlink() sat in the failure
+     * branch. On a manager backing up a fleet nightly, that is a disk that fills
+     * up for no reason anybody can see.
+     */
+    public function test_a_finished_build_leaves_nothing_behind_in_temp(): void
+    {
+        $site = Site::factory()->create();
+        $session = $this->makeBackupSession($site, ['type' => 'full', 'state' => S::Completed]);
+        $this->writeBackup($session, ['wp-config.php' => '<?php'], 'SELECT 1;');
+
+        $before = $this->tempArtifacts();
+
+        $out = (string) tempnam(sys_get_temp_dir(), 'pkg_').'.zip';
+        $this->builder()->build($session->fresh(), $out);
+
+        $this->assertSame(
+            $before,
+            $this->tempArtifacts(),
+            'the build must clean up its staging directory and database scratch file',
+        );
+
+        @unlink($out);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tempArtifacts(): array
+    {
+        $found = array_merge(
+            (array) glob(sys_get_temp_dir().'/portable_stage_*'),
+            (array) glob(sys_get_temp_dir().'/portable_db_*'),
+            (array) glob(sys_get_temp_dir().'/portable_plain_*'),
+        );
+        sort($found);
+
+        return array_values(array_filter($found));
+    }
 }

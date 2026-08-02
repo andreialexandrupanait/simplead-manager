@@ -85,7 +85,7 @@ class DeepVerifyCommand extends Command
             }
 
             $factory = $factories[$destination->id] ??= S3ClientFactory::forDestination($destination);
-            $s3 = $factory->client();
+            $s3 = $factory->readClient();
             $bucket = $factory->bucket();
 
             $layout = $this->layoutFor($session);

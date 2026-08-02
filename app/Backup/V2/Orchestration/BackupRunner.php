@@ -95,6 +95,11 @@ final class BackupRunner
         private readonly string $compression = 'store',
         private readonly ?Closure $faultAfterObject = null,
         private readonly ?Closure $baseManifestProvider = null,
+        // Reads (upload_verifying, presence checks) go through their own client so
+        // they can retry a throttle without stacking a retry layer underneath
+        // HardenedMultipartUploader, which already retries each part itself.
+        // Defaults to $s3, so every existing caller and test keeps working.
+        private readonly ?S3Client $readS3 = null,
     ) {
         $this->logger = ($logger ?? new BackupLogger)->forSession(
             'backup',
@@ -547,7 +552,7 @@ final class BackupRunner
             $key = (string) $object['key'];
 
             try {
-                $head = $this->s3->headObject(['Bucket' => $this->bucket, 'Key' => $key]);
+                $head = $this->readS3()->headObject(['Bucket' => $this->bucket, 'Key' => $key]);
             } catch (Throwable $e) {
                 throw new CorruptBackupException("Object missing in storage: {$key} ({$e->getMessage()})");
             }
@@ -564,7 +569,7 @@ final class BackupRunner
             // verification for very large objects instead of a full re-download.
             $tmp = (string) tempnam(sys_get_temp_dir(), 'v2verify_');
             try {
-                $this->s3->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
+                $this->readS3()->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
                 $remoteSha = (string) hash_file('sha256', $tmp);
             } finally {
                 @unlink($tmp);
@@ -750,6 +755,15 @@ final class BackupRunner
 
     // ── S3 helpers ───────────────────────────────────────────────────────
 
+    /**
+     * The client for reading storage back. Falls back to the write client when the
+     * caller did not supply one, which is what the lab and the unit tests do.
+     */
+    private function readS3(): S3Client
+    {
+        return $this->readS3 ?? $this->s3;
+    }
+
     private function uploader(): HardenedMultipartUploader
     {
         return HardenedMultipartUploader::fromConfig(
@@ -824,7 +838,7 @@ final class BackupRunner
     private function assertObjectPresent(string $key): void
     {
         try {
-            $this->s3->headObject(['Bucket' => $this->bucket, 'Key' => $key]);
+            $this->readS3()->headObject(['Bucket' => $this->bucket, 'Key' => $key]);
         } catch (Throwable $e) {
             throw new CorruptBackupException("Expected object not present after write: {$key} ({$e->getMessage()})");
         }

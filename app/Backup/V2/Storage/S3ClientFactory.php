@@ -107,11 +107,40 @@ final class S3ClientFactory
     }
 
     /**
+     * The client for READING objects back out of storage.
+     *
+     * Reads get the SDK's own retry policy; uploads do not. The asymmetry is the
+     * point. On the write path HardenedMultipartUploader retries each part itself,
+     * so a second retry layer underneath it would only confuse the accounting. On
+     * the read path nothing retried at all, and it cost us two of the first five
+     * production backups:
+     *
+     *   - a `SlowDown (server)` from Hetzner while re-reading checksums.json marked
+     *     a whole, complete, correct backup as unverified;
+     *   - a single failed GetObject on one file chunk threw away twenty minutes of
+     *     finished work.
+     *
+     * Neither backup was damaged. The *check* was, and with `retries => 0` a
+     * momentary throttle was indistinguishable from a corrupt archive. The SDK
+     * already knows which errors deserve another go — throttling, 5xx and network
+     * failures yes, NoSuchKey and AccessDenied no — so a missing object still
+     * fails immediately instead of being asked for five times.
+     *
+     * This matters more, not less, as sites are migrated: every extra site is more
+     * requests against the same bucket, which is what provokes a throttle.
+     */
+    public function readClient(): S3Client
+    {
+        return $this->client((int) config('backup_v2.read_max_attempts', 4));
+    }
+
+    /**
      * Build the SDK client.
      *
      * @param  int  $retries  SDK-level retries. Default 0 so the
      *                        HardenedMultipartUploader's own per-part retry logic
-     *                        is the single source of retry truth.
+     *                        is the single source of retry truth on the write
+     *                        path. Read paths should use readClient() instead.
      */
     public function client(int $retries = 0): S3Client
     {

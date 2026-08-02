@@ -100,9 +100,10 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
 
         $layoutFor = static fn (BackupSession $b): ObjectLayout => SessionLayoutResolver::for($b);
 
-        $reader = new S3ManifestReader($s3->client(), $s3->bucket(), $layoutFor);
+        $reader = new S3ManifestReader($s3->readClient(), $s3->bucket(), $layoutFor);
 
         // Real safety backup (returns the BackupSession id) — MANDATORY for MIRROR.
+        // It writes, so it keeps the plain client and its own upload retry logic.
         $safetyBackup = new PreRestoreSafetyBackup($site, $client, $s3->client(), $s3->bucket(), $logger);
         // Real post-restore probe: site HTTP 2xx/3xx + core DB tables with rows.
         $healthCheck = new RestoreHealthCheck($site, app(HttpFactory::class), $logger);
@@ -110,7 +111,9 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
         (new RestoreRunner(
             session: $session,
             client: $client,
-            s3: $s3->client(),
+            // The restore only ever reads from storage; a throttle here must not
+            // abort a restore that is already halfway through swapping a live site.
+            s3: $s3->readClient(),
             bucket: $s3->bucket(),
             resolver: new ChainResolver,
             reader: $reader,

@@ -80,7 +80,7 @@ class VerifyBackupSessionJob implements ShouldBeUnique, ShouldQueue
 
         $verification = (new BackupVerifier($logger))->verifyOnComplete(
             $session,
-            $s3->client(),
+            $s3->readClient(),
             $s3->bucket(),
             $layout,
             BackupVerification::KIND_MANUAL,
