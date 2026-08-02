@@ -7,6 +7,7 @@ namespace App\Backup\V2;
 use App\Backup\V2\Console\DeepVerifyCommand;
 use App\Backup\V2\Console\ExportKeysCommand;
 use App\Backup\V2\Console\ImportLegacyCommand;
+use App\Backup\V2\Console\InstallBackupPluginCommand;
 use App\Backup\V2\Console\ProvenRestoreCommand;
 use App\Backup\V2\Console\ReconcileStorageCommand;
 use App\Backup\V2\Console\RecoverStuckSessionsCommand;
@@ -42,6 +43,7 @@ class BackupV2ServiceProvider extends ServiceProvider
                 ExportKeysCommand::class,
                 SetBackupEngineCommand::class,
                 RunBackupNowCommand::class,
+                InstallBackupPluginCommand::class,
             ]);
         }
     }

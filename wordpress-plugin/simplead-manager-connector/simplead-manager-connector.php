@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.24.0
+ * Version: 2.25.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.24.0');
+define('SAM_VERSION', '2.25.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -73,6 +73,7 @@ spl_autoload_register(function ($class) {
         'SAM_Audit_Endpoint'        => 'endpoints/class-audit-endpoint.php',
         'SAM_Login_Endpoint'        => 'endpoints/class-login-endpoint.php',
         'SAM_Self_Update_Endpoint'  => 'endpoints/class-self-update-endpoint.php',
+        'SAM_Package_Install_Endpoint' => 'endpoints/class-package-install-endpoint.php',
         'SAM_Cache_Endpoint'        => 'endpoints/class-cache-endpoint.php',
         'SAM_Diagnostic_Endpoint'   => 'endpoints/class-diagnostic-endpoint.php',
         'SAM_Site_Tweaks_Endpoint'  => 'endpoints/class-site-tweaks-endpoint.php',

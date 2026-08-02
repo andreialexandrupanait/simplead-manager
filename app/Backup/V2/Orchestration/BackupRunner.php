@@ -17,6 +17,7 @@ use App\Backup\V2\Storage\HardenedMultipartUploader;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
+use App\Models\BackupConfig;
 use Aws\S3\S3Client;
 use Closure;
 use RuntimeException;
@@ -430,11 +431,10 @@ final class BackupRunner
         $params = [
             'exclude_tables' => $this->excludeTables(),
             'segment_bytes' => $this->dbSegmentBytes ?? $this->profile->dbSegmentBytes,
-            'time_budget' => $this->profile->dbTimeBudget,
             'batch_rows' => $this->profile->dbBatchRows,
         ];
 
-        $dump = $this->client->dbDump($this->pluginSessionId(), $params);
+        $dump = $this->dumpWithinTime($params);
 
         $done = (bool) ($dump['done'] ?? false);
         $consistent = (bool) ($dump['consistent'] ?? false);
@@ -1159,6 +1159,71 @@ final class BackupRunner
     private function excludeTables(): array
     {
         return array_values(array_map('strval', (array) ($this->session->scope['exclude_tables'] ?? [])));
+    }
+
+    /**
+     * Dump the database, giving it more time if it runs out of it.
+     *
+     * A dump that hits its budget is not a failure of the site or of the data: it is a database
+     * that needs longer than the profile allows, and because the snapshot has to be held for the
+     * whole dump there is no resuming — only trying again with more room. Left alone this is a
+     * backup that fails at the same point every night, reporting a consistency error that reads
+     * like corruption on a site where nothing is wrong.
+     *
+     * What works is written back to the site's config, so this is paid for once rather than nightly.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private function dumpWithinTime(array $params): array
+    {
+        $config = BackupConfig::where('site_id', $this->session->site_id)->first();
+        $start = (int) ($config?->db_time_budget_seconds ?: $this->profile->dbTimeBudget);
+
+        $ladder = DbDumpBudget::ladder($start);
+        $dump = [];
+
+        foreach ($ladder as $i => $budget) {
+            $dump = $this->client->dbDump($this->pluginSessionId(), $params + ['time_budget' => $budget]);
+
+            if ((bool) ($dump['done'] ?? false)) {
+                // Only worth remembering when it is not what we would have tried anyway.
+                if ($budget > (int) $this->profile->dbTimeBudget && $config !== null && $config->db_time_budget_seconds !== $budget) {
+                    $config->forceFill(['db_time_budget_seconds' => $budget])->save();
+                    $this->logger->info('remembered a longer db dump budget for this site', [
+                        'seconds' => $budget,
+                    ]);
+                }
+
+                return $dump;
+            }
+
+            $last = $i === count($ladder) - 1;
+            $this->logger->warning($last ? 'db dump out of time at the ceiling' : 'db dump out of time, retrying with more', [
+                'budget_seconds' => $budget,
+                'tables_dumped' => count((array) ($dump['tables'] ?? [])),
+                'rows_dumped' => (int) ($dump['total_rows'] ?? 0),
+            ]);
+
+            if ($last) {
+                // Not corruption: nothing came back wrong, the database is simply larger than one
+                // request can hold. Terminal rather than parked, because tomorrow night will reach
+                // the same answer at the same cost to the site — someone has to decide what to
+                // exclude, or give this site a longer budget.
+                throw new PreflightFailed(BackupErrorCode::HostTimeout, sprintf(
+                    'The database did not finish dumping in %d seconds, the most one request may hold '
+                    .'the snapshot open (reached %d of %d tables, %d rows). Exclude a large table, or '
+                    .'raise this site\'s db_time_budget_seconds if it is not behind a proxy that would '
+                    .'cut the request off first.',
+                    $budget,
+                    count((array) ($dump['tables'] ?? [])),
+                    (int) ($dump['table_count'] ?? 0),
+                    (int) ($dump['total_rows'] ?? 0),
+                ));
+            }
+        }
+
+        return $dump;
     }
 
     private function scopeHash(): string

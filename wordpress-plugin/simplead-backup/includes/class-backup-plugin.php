@@ -95,7 +95,7 @@ final class SAM_Backup_Plugin {
                 SAM_Backup_Temp::session_dir('restore_' . $safe),
                 null
             );
-            $engine->apply();
+            $engine->apply(true); // the cron fallback IS the detached request
         } catch (\Throwable $e) {
             // apply() has already written `failed` with the reason into the status file, which is
             // what the manager reads. Nothing is waiting on this call.

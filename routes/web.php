@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppBackupDownloadController;
 use App\Http\Controllers\BackupDownloadController;
+use App\Http\Controllers\BackupPluginDownloadController;
 use App\Http\Controllers\BulkReportDownloadController;
 use App\Http\Controllers\ConnectorPluginDownloadController;
 use App\Http\Controllers\DropboxAuthController;
@@ -77,6 +78,11 @@ Route::get('/r/{report}/{token}', ReportViewController::class)
 // Plugin download via signed URL (for WP self-update — no auth required)
 Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)
     ->name('download.connector-plugin.signed')
+    ->middleware(['signed', 'throttle:10,1']);
+
+// The V2 backup engine, same shape: the connector fetches it from here to install it.
+Route::get('/download/backup-plugin/signed', BackupPluginDownloadController::class)
+    ->name('download.backup-plugin.signed')
     ->middleware(['signed', 'throttle:10,1']);
 
 // Auth routes (Breeze)

@@ -292,7 +292,7 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         $token = (string) $request->get_param('token');
 
         try {
-            $result = $this->engine($token)->apply();
+            $result = $this->engine($token)->apply(true); // this IS the detached request
         } catch (\Throwable $e) {
             // The status file already carries `failed` with the reason; nobody is waiting on this
             // response, so it exists only for the log.

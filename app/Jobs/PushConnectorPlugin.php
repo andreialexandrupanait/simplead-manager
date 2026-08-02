@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
+use App\Support\PluginPackage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,9 +15,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use ZipArchive;
 
 class PushConnectorPlugin implements ShouldQueue
 {
@@ -36,38 +34,9 @@ class PushConnectorPlugin implements ShouldQueue
 
     private function buildPluginZipHash(): ?string
     {
-        $sourceDir = base_path('wordpress-plugin/simplead-manager-connector');
-
-        if (! is_dir($sourceDir)) {
-            return null;
-        }
-
-        $tempFile = tempnam(sys_get_temp_dir(), 'connector-hash-');
-
-        try {
-            $zip = new ZipArchive;
-            $zip->open($tempFile, ZipArchive::OVERWRITE);
-
-            $files = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::LEAVES_ONLY
-            );
-
-            foreach ($files as $file) {
-                if ($file->isFile()) {
-                    $relativePath = 'simplead-manager-connector/'.substr($file->getRealPath(), strlen($sourceDir) + 1);
-                    $zip->addFile($file->getRealPath(), $relativePath);
-                }
-            }
-
-            $zip->close();
-
-            return hash_file('sha256', $tempFile);
-        } finally {
-            if (file_exists($tempFile)) {
-                unlink($tempFile);
-            }
-        }
+        // The same builder the download controller serves from, so the hash we promise and the zip
+        // the site receives are produced by one piece of code rather than two that must agree.
+        return PluginPackage::connector()->hash();
     }
 
     public function handle(): void

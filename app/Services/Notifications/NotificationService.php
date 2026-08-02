@@ -114,7 +114,12 @@ class NotificationService
             \App\Models\InAppNotification::create([
                 'user_id' => $site->user_id,
                 'type' => $severity,
-                'title' => $inAppTitle,
+                // `title` is varchar(255) and some events carry a whole explanation as their
+                // title — a backup refusing with the numbers that made it refuse, for one. The
+                // insert then fails on length, the catch below swallows it, and the user simply
+                // never sees the alert. Worse under Postgres inside a transaction: the failed
+                // statement poisons it, and everything after it fails too.
+                'title' => \Illuminate\Support\Str::limit($inAppTitle, 250),
                 'message' => $inAppMessage,
                 'data' => array_filter([
                     'event' => $event,

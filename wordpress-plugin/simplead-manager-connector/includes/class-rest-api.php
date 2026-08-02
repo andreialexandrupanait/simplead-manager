@@ -29,6 +29,7 @@ class SAM_REST_API {
             'SAM_Audit_Endpoint',
             'SAM_Login_Endpoint',
             'SAM_Self_Update_Endpoint',
+            'SAM_Package_Install_Endpoint',
             'SAM_Cache_Endpoint',
             'SAM_Diagnostic_Endpoint',
             'SAM_Site_Tweaks_Endpoint',

@@ -170,7 +170,7 @@ final class SAM_Backup_Restore_Engine {
     /**
      * @return array<string,mixed>
      */
-    public function apply(): array {
+    public function apply(bool $detached = false): array {
         // Re-entry is REFUSED, not retried, and this is the whole point.
         //
         // apply_files() and drop_orphaned_restore_tables() both clear the previous run's trash and
@@ -188,7 +188,14 @@ final class SAM_Backup_Restore_Engine {
         // previous state and conclude nothing happened. The detached request is the one arriving
         // here, so it must be let through; refusing it deadlocks the restore in `queued` forever,
         // which is exactly what the first async attempt did.
-        if ($current === 'applying' && $phase !== 'queued') {
+        //
+        // But ONLY the detached request. The exemption used to be granted to whoever asked, which
+        // meant a manager retrying restore/apply during that same gap — a redelivered job, most
+        // obviously — walked straight past the guard and started a second apply alongside the
+        // first. Two applies over one token destroy each other's rollback data. `$detached` is set
+        // by the two internal callers (the loopback route and the cron hook) and by nothing the
+        // manager can reach.
+        if ($current === 'applying' && ! ($detached && $phase === 'queued')) {
             throw new RuntimeException(
                 'an apply is already running for this token; poll restore/status instead of starting another'
             );

@@ -63,8 +63,13 @@ final class BackupStateMachine
 
         foreach ($processing as $state) {
             $edges = [$forward[$state->value], ...$branch];
-            // Late integrity failures surface as corrupt.
-            if (in_array($state, [S::UploadVerifying, S::Finalizing], true)) {
+            // Integrity failures surface as corrupt. database_export belongs here with the two
+            // late ones: a dump that did not come back as a single consistent snapshot is exactly
+            // that verdict, and the runner has always thrown CorruptBackupException for it. Without
+            // the edge the throw became an IllegalStateTransition instead — an engine crash on top
+            // of a data problem, with the session left mid-phase and the real reason two exceptions
+            // deep.
+            if (in_array($state, [S::DatabaseExport, S::UploadVerifying, S::Finalizing], true)) {
                 $edges[] = S::Corrupt;
             }
             $graph[$state->value] = $edges;

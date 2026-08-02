@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $last_full_backup_at
  * @property \Illuminate\Support\Carbon|null $stale_alert_sent_at
  * @property \App\Enums\BackupEngine $backup_engine
+ * @property int|null $db_time_budget_seconds
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Site|null $site
@@ -64,10 +65,12 @@ class BackupConfig extends Model
         'last_full_backup_at',
         'stale_alert_sent_at',
         'backup_engine',
+        'db_time_budget_seconds',
     ];
 
     protected $casts = [
         'backup_engine' => \App\Enums\BackupEngine::class,
+        'db_time_budget_seconds' => 'integer',
         'is_enabled' => 'boolean',
         'use_streaming' => 'boolean',
         'backup_before_updates' => 'boolean',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Plugin;
 
+use App\Backup\V2\Orchestration\DbDumpBudget;
 use App\Backup\V2\Restore\RestoreClient;
 use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
@@ -116,11 +117,22 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
 
     public function dbDump(string $sessionId, array $params = []): array
     {
-        return $this->json('POST', 'database/dump', array_merge([
+        $body = array_merge([
             'session_id' => $sessionId,
             'time_budget' => $this->dbTimeBudget,
             'segment_bytes' => $this->dbSegmentBytes,
-        ], $params));
+        ], $params);
+
+        // The timeout follows the budget rather than the client default. They are two statements
+        // about the same call, and when the default was the smaller of the two — which it becomes
+        // the moment a large database is given more time — we hung up on a dump that was still
+        // working, and called it a transport error.
+        return $this->json(
+            'POST',
+            'database/dump',
+            $body,
+            DbDumpBudget::requestTimeoutFor((int) $body['time_budget']),
+        );
     }
 
     public function dbChunkDownload(string $sessionId, int $chunkIndex, bool $deleteAfter): DownloadedChunk

@@ -196,6 +196,10 @@ return [
         'timeout' => (int) env('BACKUP_ENGINE_V2_PLUGIN_TIMEOUT', 120),
         // DB dump soft time budget + gzip segment target handed to the plugin.
         'db_time_budget' => (int) env('BACKUP_ENGINE_V2_DB_TIME_BUDGET', 90),
+        // The ceiling the dump budget may escalate to when a database does not finish in the
+        // profile's allowance. Under Cloudflare's 100-second origin timeout on purpose: past that
+        // the site is still dumping and the answer we get is a 524 that explains nothing.
+        'db_time_budget_max' => (int) env('BACKUP_ENGINE_V2_DB_TIME_BUDGET_MAX', 90),
         'db_segment_bytes' => (int) env('BACKUP_ENGINE_V2_DB_SEGMENT_BYTES', 8 * 1024 * 1024),
     ],
 
