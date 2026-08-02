@@ -366,7 +366,14 @@ final class RestoreRunner
     {
         $this->fault('before_apply');
 
-        $kick = $this->client->restoreApplyAsync($this->token());
+        // Asked, not assumed. An older plugin ignores the `async` parameter and applies
+        // synchronously, so kicking it would mean timing out after sixty seconds on what we thought
+        // was a dispatch, then reaching for a rollback while the apply was still running — strictly
+        // worse than never having tried. A host that cannot detach gets the plain call it expects.
+        $kick = $this->client->restoreSupportsAsync()
+            ? $this->client->restoreApplyAsync($this->token())
+            : ['async' => false, 'reason' => 'the site is on a plugin version that applies synchronously'];
+
         $detached = ($kick['async'] ?? false) === true;
 
         if ($detached) {

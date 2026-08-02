@@ -227,6 +227,19 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
         return $this->json('POST', 'restore/apply', ['token' => $token]);
     }
 
+    public function restoreSupportsAsync(): bool
+    {
+        try {
+            $caps = $this->capabilities();
+        } catch (Throwable $e) {
+            // If the host cannot even be asked, assume the older behaviour. Guessing "yes" costs a
+            // sixty-second timeout followed by a rollback attempt against a running apply.
+            return false;
+        }
+
+        return (bool) ($caps['restore']['async'] ?? false);
+    }
+
     public function restoreApplyAsync(string $token): array
     {
         // A short timeout on purpose: this call only asks the host to detach the work, so a slow

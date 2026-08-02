@@ -331,6 +331,11 @@ final class FakeRestoreClient implements RestoreClient
         return ['ok' => true, 'applied' => true, 'db' => null, 'files' => true];
     }
 
+    public function restoreSupportsAsync(): bool
+    {
+        return $this->async;
+    }
+
     public function restoreApplyAsync(string $token): array
     {
         return array_merge(['ok' => true, 'async' => $this->async, 'token' => $token], $this->kickExtra);

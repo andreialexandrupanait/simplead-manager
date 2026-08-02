@@ -71,6 +71,11 @@ final class InProcessRestoreClient implements RestoreClient
         return $this->engine($token)->apply();
     }
 
+    public function restoreSupportsAsync(): bool
+    {
+        return false;
+    }
+
     /**
      * In-process there is nothing to detach to — no loopback, no cron — which is exactly the answer
      * a locked-down shared host gives. Reporting it honestly keeps these tests on the synchronous

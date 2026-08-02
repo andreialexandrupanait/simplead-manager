@@ -42,6 +42,16 @@ interface RestoreClient
     public function restoreApply(string $token): array;
 
     /**
+     * Does this host's plugin know how to detach an apply?
+     *
+     * Asked before the kick rather than inferred from the reply, because an older plugin does not
+     * reject the unknown `async` parameter — it ignores it and applies synchronously, holding the
+     * request open for minutes. The caller would then time out on what it believed was a quick
+     * dispatch, and go looking for a restore to roll back while one was still running.
+     */
+    public function restoreSupportsAsync(): bool;
+
+    /**
      * POST restore/apply with `async` — ask the host to detach the work and return at once.
      *
      * Answers `{async: true, method: loopback|cron}` when it could, `{async: false}` when the host
