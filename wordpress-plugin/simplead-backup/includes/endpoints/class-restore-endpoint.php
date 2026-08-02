@@ -209,12 +209,25 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
     private function apply_async(string $token): WP_REST_Response {
         $engine = $this->engine($token);
 
-        // Refuse to start a second one. apply() itself refuses too, but catching it here means the
-        // manager gets a clear answer instead of a 500 from deep inside the engine.
+        // Never start a second one. apply() refuses re-entry too, but answering here means the
+        // manager gets a clear reply instead of a 500 from deep inside the engine — and, crucially,
+        // that mark_apply_queued() below does not overwrite a state that already means something.
+        //
+        // Both branches matter for a redelivered job: it may arrive while the first apply is still
+        // running, or after it finished. Saying `async: true` in either case sends the manager to
+        // restore/status, which is where the real answer is.
         $state = (string) ($engine->status()['state'] ?? '');
+
         if ($state === 'applying') {
             return new WP_REST_Response(
                 array('ok' => true, 'async' => true, 'token' => $token, 'already_running' => true),
+                200
+            );
+        }
+
+        if ($state === 'applied') {
+            return new WP_REST_Response(
+                array('ok' => true, 'async' => true, 'token' => $token, 'already_applied' => true),
                 200
             );
         }

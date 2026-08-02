@@ -55,7 +55,19 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 3600;
 
-    public int $tries = 1;
+    /**
+     * Two, not one — but only because re-entry is now safe.
+     *
+     * A worker killed mid-restore (a deploy, an OOM elsewhere on the box) used to be the end of it:
+     * with a single attempt the session sat wherever it died until someone noticed. Retrying was
+     * worse than that, though, because a second apply used to clear the first one's rollback data.
+     *
+     * Now the plugin refuses a re-entrant apply and reports instead, and the runner resumes from the
+     * phase recorded on the session rather than starting over — so a redelivered job picks the
+     * restore back up and polls it to a verdict, which is the only way an interrupted restore ever
+     * reconciles itself.
+     */
+    public int $tries = 2;
 
     public function __construct(public readonly int $restoreSessionId) {}
 

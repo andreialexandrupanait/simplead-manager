@@ -109,6 +109,26 @@ class AsyncApplyTest extends TestCase
         $this->assertSame(R::Failed, $restore->state);
     }
 
+    /**
+     * A worker killed mid-restore and redelivered. The apply it started has since finished, so the
+     * job must pick up the verdict rather than start a second one — which used to clear the first
+     * one's rollback data on the way in.
+     */
+    public function test_a_redelivered_job_picks_up_an_apply_that_already_finished(): void
+    {
+        $client = new FakeRestoreClient(
+            async: true,
+            statuses: [['state' => 'applied', 'db' => true, 'files' => true]],
+            kickExtra: ['already_applied' => true],
+        );
+
+        $restore = $this->runRestore($client);
+
+        $this->assertSame(R::Completed, $restore->state);
+        $this->assertSame(0, $client->syncApplies, 'it must not re-run the apply');
+        $this->assertSame(0, $client->rollbacks);
+    }
+
     public function test_a_host_that_cannot_detach_is_applied_synchronously(): void
     {
         // A locked-down host with no loopback and no cron. Refusing to restore it would be worse
@@ -203,10 +223,12 @@ final class FakeRestoreClient implements RestoreClient
 
     /**
      * @param  list<array<string, mixed>|\Throwable>  $statuses
+     * @param  array<string, mixed>  $kickExtra
      */
     public function __construct(
         private readonly bool $async,
         private readonly array $statuses,
+        private readonly array $kickExtra = [],
     ) {}
 
     public function restorePrepare(string $token, array $opts): array
@@ -228,7 +250,7 @@ final class FakeRestoreClient implements RestoreClient
 
     public function restoreApplyAsync(string $token): array
     {
-        return ['ok' => true, 'async' => $this->async, 'token' => $token];
+        return array_merge(['ok' => true, 'async' => $this->async, 'token' => $token], $this->kickExtra);
     }
 
     public function restoreCommit(string $token): array
