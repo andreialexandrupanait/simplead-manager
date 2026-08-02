@@ -42,6 +42,17 @@ interface RestoreClient
     public function restoreApply(string $token): array;
 
     /**
+     * POST restore/apply with `async` — ask the host to detach the work and return at once.
+     *
+     * Answers `{async: true, method: loopback|cron}` when it could, `{async: false}` when the host
+     * offers neither, in which case the caller falls back to restoreApply(). Anything that reports
+     * `async: true` must then be followed with restoreStatus() until it reaches a terminal state.
+     *
+     * @return array<string, mixed>
+     */
+    public function restoreApplyAsync(string $token): array;
+
+    /**
      * POST restore/commit — restore confirmed good: drop retained pre-apply tables + trash.
      *
      * @return array<string, mixed>

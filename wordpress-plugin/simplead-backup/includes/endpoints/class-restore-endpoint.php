@@ -54,12 +54,29 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
             ),
         ));
 
+        register_rest_route($this->namespace(), '/restore/apply-execute', array(
+            array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'apply_execute'),
+                // Same HMAC as everything else: the loopback signs with the site's own credentials,
+                // so this is not a back door — it is the plugin calling itself with the same proof
+                // of identity the manager uses.
+                'permission_callback' => array($this, 'check_permission'),
+                'args'                => array(
+                    'token' => array('type' => 'string', 'required' => true),
+                ),
+            ),
+        ));
+
         register_rest_route($this->namespace(), '/restore/apply', array(
             array(
                 'methods'             => 'POST',
                 'callback'            => array($this, 'apply'),
                 'permission_callback' => array($this, 'check_permission'),
-                'args'                => array('token' => array('type' => 'string', 'required' => true)),
+                'args'                => array(
+                    'token' => array('type' => 'string', 'required' => true),
+                    'async' => array('type' => 'boolean', 'required' => false, 'default' => false),
+                ),
             ),
         ));
 
@@ -150,6 +167,20 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         return new WP_REST_Response($result, 200);
     }
 
+    /**
+     * Apply the staged restore — in the background when the host allows it.
+     *
+     * Applying a real site takes minutes. Held open as one HTTP request it outlives the client's
+     * patience long before it outlives the work: the manager times out, concludes the restore
+     * failed, and calls rollback — while this process carries on and completes the swap. The site
+     * ends up correctly restored and recorded as failed, with the old copy left on disk because
+     * nobody ever reached commit. That is not a hypothetical; it is what the first real attempt did.
+     *
+     * So with `async` the work is detached — loopback first, wp-cron second — and the manager polls
+     * restore/status instead of holding a socket. If neither is available the response says so
+     * (`async: false`) and the manager falls back to the synchronous path, which is still the right
+     * answer for a small site.
+     */
     public function apply(WP_REST_Request $request): WP_REST_Response {
         ignore_user_abort(true);
         @set_time_limit(0);
@@ -157,6 +188,11 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         @ini_set('memory_limit', '512M');
 
         $token = (string) $request->get_param('token');
+
+        if ((bool) $request->get_param('async')) {
+            return $this->apply_async($token);
+        }
+
         try {
             $result = $this->engine($token)->apply();
         } catch (\Throwable $e) {
@@ -165,6 +201,112 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         }
         SAM_Backup_Logger::info('restore/apply done', array('token' => $token));
         return new WP_REST_Response($result, 200);
+    }
+
+    /**
+     * The detached half of apply(): kick the work off and return immediately.
+     */
+    private function apply_async(string $token): WP_REST_Response {
+        $engine = $this->engine($token);
+
+        // Refuse to start a second one. apply() itself refuses too, but catching it here means the
+        // manager gets a clear answer instead of a 500 from deep inside the engine.
+        $state = (string) ($engine->status()['state'] ?? '');
+        if ($state === 'applying') {
+            return new WP_REST_Response(
+                array('ok' => true, 'async' => true, 'token' => $token, 'already_running' => true),
+                200
+            );
+        }
+
+        // Claimed BEFORE dispatching, so a poll that lands between the kick and the worker starting
+        // sees `applying` rather than the previous state — which the manager would read as "nothing
+        // happened" and retry.
+        $engine->mark_apply_queued();
+
+        if ($this->dispatch_apply_loopback($token)) {
+            SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'loopback'));
+            return new WP_REST_Response(
+                array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'loopback'),
+                200
+            );
+        }
+
+        $hook = 'sam_backup_restore_apply';
+        if (!wp_next_scheduled($hook, array($token))) {
+            wp_schedule_single_event(time(), $hook, array($token));
+            spawn_cron();
+        }
+        if (wp_next_scheduled($hook, array($token))) {
+            SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'cron'));
+            return new WP_REST_Response(
+                array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'cron'),
+                200
+            );
+        }
+
+        // Neither route works on this host. Put the state back so the synchronous retry is not
+        // refused by apply()'s own re-entry guard, and say plainly that async is unavailable.
+        $engine->clear_apply_queued();
+        SAM_Backup_Logger::warning('restore/apply cannot detach on this host', array('token' => $token));
+
+        return new WP_REST_Response(
+            array('ok' => true, 'async' => false, 'token' => $token, 'reason' => 'no loopback or cron available'),
+            200
+        );
+    }
+
+    /**
+     * Internal: run the apply this request was detached into. Not called by the manager.
+     */
+    public function apply_execute(WP_REST_Request $request): WP_REST_Response {
+        ignore_user_abort(true);
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '512M');
+
+        $token = (string) $request->get_param('token');
+
+        try {
+            $result = $this->engine($token)->apply();
+        } catch (\Throwable $e) {
+            // The status file already carries `failed` with the reason; nobody is waiting on this
+            // response, so it exists only for the log.
+            SAM_Backup_Logger::error('restore/apply-execute failed', array('token' => $token, 'error' => $e->getMessage()));
+            return $this->error('APPLY_FAILED', $e->getMessage(), 500);
+        }
+
+        SAM_Backup_Logger::info('restore/apply-execute done', array('token' => $token));
+        return new WP_REST_Response($result, 200);
+    }
+
+    /**
+     * Fire-and-forget POST back to ourselves, signed the way every other call is.
+     */
+    private function dispatch_apply_loopback(string $token): bool {
+        $body = wp_json_encode(array('token' => $token));
+        $timestamp = (string) time();
+        $nonce = wp_generate_password(32, false);
+        $route = '/' . $this->namespace() . '/restore/apply-execute';
+        $secret = (string) get_option('sam_api_secret', '');
+        $signature = hash_hmac('sha256', implode('|', array('POST', $route, $timestamp, $nonce, $body)), $secret);
+
+        $result = wp_remote_post(rest_url($this->namespace() . '/restore/apply-execute'), array(
+            'method'    => 'POST',
+            'timeout'   => 1,
+            'blocking'  => false,
+            'headers'   => array(
+                'Content-Type'            => 'application/json',
+                'X-SAM-Backup-Key'        => (string) get_option('sam_api_key', ''),
+                'X-SAM-Backup-Timestamp'  => $timestamp,
+                'X-SAM-Backup-Nonce'      => $nonce,
+                'X-SAM-Backup-Signature'  => $signature,
+            ),
+            'body'      => $body,
+            'sslverify' => false,
+        ));
+
+        return !is_wp_error($result);
     }
 
     public function commit(WP_REST_Request $request): WP_REST_Response {

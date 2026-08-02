@@ -59,6 +59,15 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
                 'table_prefix'=> $wpdb->prefix,
             ),
             'database' => $db,
+            // What the restore side of this plugin can do. Without it the manager has no way to
+            // tell an old plugin from a new one, and would have to guess whether asking for an
+            // async apply is safe — on an old plugin the flag is simply absent and it stays
+            // synchronous, which is still correct for a small site.
+            'restore' => array(
+                'async'    => true,
+                'loopback' => true,
+                'cron'     => (bool) (! defined('DISABLE_WP_CRON') || ! DISABLE_WP_CRON),
+            ),
             'extensions' => array(
                 'zip'    => class_exists('ZipArchive'),
                 'gzip'   => function_exists('gzopen'),

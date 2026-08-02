@@ -118,6 +118,13 @@ final class SAM_Backup_Exclusions {
             array('type' => 'glob', 'value' => 'wp-content/updraft/**'),
             array('type' => 'glob', 'value' => 'wp-content/ai1wm-backups/**'),
             array('type' => 'glob', 'value' => '**/wflogs/**'),
+            // Our own restore leftovers. A restore that is interrupted before commit or rollback
+            // leaves a full copy of the pre-restore site in sam-restore-trash-*, inside ABSPATH —
+            // and without this the next backup faithfully picks it up, doubling the site and
+            // carrying the duplicate forward into every restore point after it. The hourly sweep
+            // removes them; this makes sure a backup taken before the sweep is not poisoned.
+            array('type' => 'glob', 'value' => 'sam-restore-trash-*/**'),
+            array('type' => 'glob', 'value' => 'sam-restore-staging-*/**'),
         );
     }
 

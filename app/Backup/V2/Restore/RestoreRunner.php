@@ -47,6 +47,20 @@ use Throwable;
  */
 final class RestoreRunner
 {
+    /**
+     * How long a detached apply may run before we stop waiting.
+     *
+     * Generous on purpose. The old ceiling was the HTTP client's 120 seconds, which a real site
+     * exceeds routinely — and being wrong in that direction cost a correct restore its verdict.
+     * Giving up too early is the expensive mistake here; waiting is only slow.
+     */
+    private const APPLY_MAX_WAIT_SECONDS = 3000;
+
+    private const POLL_INTERVAL_SECONDS = 5;
+
+    /** A site mid-swap can be briefly unreachable; several failures in a row is a different thing. */
+    private const MAX_POLL_FAILURES = 5;
+
     /** Ordered happy path — used to skip already-passed phases on a resumed run. */
     private const ORDER = [
         S::Requested->value,
@@ -83,6 +97,8 @@ final class RestoreRunner
         private readonly ?Closure $healthCheck = null,
         ?BackupLogger $logger = null,
         private readonly ?Closure $fault = null,
+        // Test seam: lets the poll loop run without spending real seconds.
+        private readonly ?Closure $sleeper = null,
     ) {
         $this->logger = ($logger ?? new BackupLogger)->forSession(
             'restore',
@@ -325,17 +341,95 @@ final class RestoreRunner
         $this->mergeCheckpoint(['critical_window' => true]);
     }
 
+    /**
+     * Perform the swap — detached and polled where the host allows it.
+     *
+     * Held open as one request this is the step that broke: applying a real site takes minutes, the
+     * client gave up at two, and the plugin carried on and finished anyway. The manager then rolled
+     * back a restore that had in fact succeeded and recorded the opposite of what happened.
+     *
+     * So the work is detached and its progress read from the host. A host with neither loopback nor
+     * cron answers `async: false` and we do it synchronously, which is still right for a small site.
+     */
     private function apply(RestorePlan $plan): void
     {
         $this->fault('before_apply');
-        $result = $this->client->restoreApply($this->token());
+
+        $kick = $this->client->restoreApplyAsync($this->token());
+
+        $result = ($kick['async'] ?? false) === true
+            ? $this->awaitApply()
+            : $this->client->restoreApply($this->token());
+
         $this->fault('after_apply');
 
         $this->mergeCheckpoint(['apply' => [
             'db' => $result['db'] ?? null,
             'files' => $result['files'] ?? null,
             'applied' => (bool) ($result['applied'] ?? false),
+            'async' => ($kick['async'] ?? false) === true,
         ]]);
+    }
+
+    /**
+     * Poll the host until the detached apply reaches a terminal state.
+     *
+     * @return array<string, mixed>
+     */
+    private function awaitApply(): array
+    {
+        $deadline = now()->addSeconds(self::APPLY_MAX_WAIT_SECONDS);
+        $consecutiveTransportErrors = 0;
+
+        while (now()->lessThan($deadline)) {
+            $this->sleepBetweenPolls();
+
+            try {
+                $status = $this->client->restoreStatus($this->token());
+                $consecutiveTransportErrors = 0;
+            } catch (Throwable $e) {
+                // A site mid-swap can be briefly unreachable — maintenance mode, a restarting
+                // php-fpm pool. One failed poll says nothing; several in a row say the host is gone.
+                if (++$consecutiveTransportErrors >= self::MAX_POLL_FAILURES) {
+                    throw new RestoreVerifyException(
+                        'lost contact with the site while it was applying the restore: '.$e->getMessage()
+                    );
+                }
+
+                continue;
+            }
+
+            $state = (string) ($status['state'] ?? '');
+
+            if ($state === 'applied') {
+                return ['applied' => true, 'db' => $status['db'] ?? null, 'files' => $status['files'] ?? null];
+            }
+
+            if ($state === 'failed') {
+                throw new RestoreVerifyException(
+                    'the site reported the restore failed: '.(string) ($status['error'] ?? 'no reason given')
+                );
+            }
+
+            $this->session->heartbeat();
+            $this->mergeCheckpoint(['apply_phase' => (string) ($status['phase'] ?? $state)]);
+        }
+
+        throw new RestoreVerifyException(sprintf(
+            'the restore was still applying after %d seconds',
+            self::APPLY_MAX_WAIT_SECONDS,
+        ));
+    }
+
+    private function sleepBetweenPolls(): void
+    {
+        if ($this->sleeper !== null) {
+            ($this->sleeper)(self::POLL_INTERVAL_SECONDS);
+
+            return;
+        }
+
+        sleep(self::POLL_INTERVAL_SECONDS);
     }
 
     private function recordFileRestore(): void
@@ -385,7 +479,25 @@ final class RestoreRunner
             return;
         }
 
-        // Mutating states: the plugin apply() self-rolls-back a mid-swap failure, but call
+        // ASK THE SITE BEFORE UNDOING ANYTHING.
+        //
+        // This is the defect that made the first real restore worse than useless. A transport
+        // timeout is indistinguishable from a genuine failure at this level — and it was treated as
+        // one. The manager rolled back a restore the plugin had in fact completed, recorded
+        // `failed`, and left the old copy of the site on the customer's disk because it never
+        // reached commit. The site was correct; only the story about it was wrong.
+        //
+        // The host knows what happened. One question is enough.
+        if ($this->appliedDespiteTheError()) {
+            $this->logger->warning('the restore had actually finished; not rolling it back', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->mergeCheckpoint(['recovered_from_transport_failure' => true]);
+
+            return;
+        }
+
+        // Genuinely failed: the plugin self-rolls-back a mid-swap failure, but call
         // restore/rollback regardless (idempotent no-op if nothing was applied) so the site is
         // guaranteed at its pre-apply state, then fail.
         try {
@@ -395,6 +507,44 @@ final class RestoreRunner
             $this->session->recordError(BackupErrorCode::RestoreApplyFailed, $e->getMessage());
             $this->session->transitionTo(S::Failed);
         }
+    }
+
+    /**
+     * Did the site finish the restore even though we stopped hearing about it?
+     *
+     * Deliberately conservative: only an explicit `applied` counts. If the host cannot be reached,
+     * or says anything else, we fall through to rollback — the safe direction when the answer is
+     * unknown is to put the site back, not to assume it is fine.
+     */
+    private function appliedDespiteTheError(): bool
+    {
+        try {
+            $status = $this->client->restoreStatus($this->token());
+        } catch (Throwable $e) {
+            $this->logger->warning('could not ask the site what happened; assuming the restore failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        if ((string) ($status['state'] ?? '') !== 'applied') {
+            return false;
+        }
+
+        // It finished. Complete the transaction the timeout interrupted — dropping the retained
+        // pre-apply tables and the trash directory — so the customer is not left carrying a second
+        // copy of their own site.
+        try {
+            $this->client->restoreCommit($this->token());
+        } catch (Throwable $e) {
+            // The restore stands either way; the leftovers are swept by the plugin's own cron.
+            $this->logger->warning('the restore finished but could not be committed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return true;
     }
 
     private function rollback(string $reason): void

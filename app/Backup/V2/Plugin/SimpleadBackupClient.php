@@ -33,6 +33,12 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
 {
     private const NAMESPACE = 'simplead-backup/v1';
 
+    /** Asking the host to detach the apply — it either dispatches promptly or it cannot. */
+    private const KICK_TIMEOUT = 60;
+
+    /** Reading the status file while polling. */
+    private const POLL_TIMEOUT = 30;
+
     public function __construct(
         private readonly HttpFactory $http,
         private readonly string $baseUrl,
@@ -221,6 +227,18 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
         return $this->json('POST', 'restore/apply', ['token' => $token]);
     }
 
+    public function restoreApplyAsync(string $token): array
+    {
+        // A short timeout on purpose: this call only asks the host to detach the work, so a slow
+        // answer means the dispatch itself is in trouble, not that the restore is taking a while.
+        return $this->json(
+            'POST',
+            'restore/apply',
+            ['token' => $token, 'async' => true],
+            self::KICK_TIMEOUT,
+        );
+    }
+
     public function restoreCommit(string $token): array
     {
         return $this->json('POST', 'restore/commit', ['token' => $token]);
@@ -233,7 +251,9 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
 
     public function restoreStatus(string $token): array
     {
-        return $this->json('POST', 'restore/status', ['token' => $token]);
+        // Polled in a loop while an apply runs; it reads one small JSON file, so a request that
+        // hangs for the full apply timeout would stall the poller instead of reporting a problem.
+        return $this->json('POST', 'restore/status', ['token' => $token], self::POLL_TIMEOUT);
     }
 
     // ── internals ────────────────────────────────────────────────────────
@@ -244,12 +264,12 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    private function json(string $method, string $path, array $params): array
+    private function json(string $method, string $path, array $params, ?int $timeout = null): array
     {
         [$url, $body, $headers] = $this->sign($method, $path, $params);
 
         try {
-            $response = $this->request($headers, $body)->send($method, $url);
+            $response = $this->request($headers, $body, $timeout)->send($method, $url);
         } catch (Throwable $e) {
             throw new PluginClientException("simplead-backup {$path} transport error: {$e->getMessage()}");
         }
@@ -353,11 +373,11 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     /**
      * @param  array<string, string>  $headers
      */
-    private function request(array $headers, string $body): PendingRequest
+    private function request(array $headers, string $body, ?int $timeout = null): PendingRequest
     {
         return $this->http
             ->withHeaders($headers)
-            ->timeout($this->timeout)
+            ->timeout($timeout ?? $this->timeout)
             ->connectTimeout(15)
             ->withBody($body, 'application/json');
     }

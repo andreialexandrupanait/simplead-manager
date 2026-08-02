@@ -171,6 +171,34 @@ final class SAM_Backup_Restore_Engine {
      * @return array<string,mixed>
      */
     public function apply(): array {
+        // Re-entry is REFUSED, not retried, and this is the whole point.
+        //
+        // apply_files() and drop_orphaned_restore_tables() both clear the previous run's trash and
+        // sambk_old_* tables at the start — the data rollback depends on. So a second apply over a
+        // first one that is still running, or that already finished, destroys the ability to undo
+        // either. That is precisely what happened the first time a manager timed out waiting: it
+        // gave up, called rollback, and the rollback had nothing left to work with while the site
+        // had in fact been restored correctly.
+        $current = (string) ($this->status()['state'] ?? '');
+
+        if ($current === 'applying') {
+            throw new RuntimeException(
+                'an apply is already running for this token; poll restore/status instead of starting another'
+            );
+        }
+
+        if ($current === 'applied' && $this->load_apply_state() !== null) {
+            $state = (array) $this->load_apply_state();
+
+            return array(
+                'ok'      => true,
+                'applied' => true,
+                'already' => true,
+                'db'      => $state['db'] ?? null,
+                'files'   => $state['files'] ?? null,
+            );
+        }
+
         $plan = $this->load_plan();
         $apply_state = array('files' => null, 'db' => null, 'mode' => $plan['mode']);
 
@@ -183,18 +211,23 @@ final class SAM_Backup_Restore_Engine {
                 throw new RuntimeException('nothing staged to apply');
             }
 
-            $this->set_status('applying', array());
+            $this->set_status('applying', array('phase' => 'starting', 'started_at' => gmdate('c')));
             $this->maintenance_on();
             $maintenance = true;
 
             // DB first: import + atomic RENAME swap (kept as sambk_old_* for rollback).
             if ($has_db) {
+                // The phase is written as it changes so a polling manager can tell a long apply
+                // apart from a dead one. Without it `applying` is a constant string for however
+                // many minutes the swap takes, which reads exactly like a process that has stopped.
+                $this->set_status('applying', array('phase' => 'database', 'started_at' => gmdate('c')));
                 $apply_state['db'] = $this->apply_database($plan);
                 $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
             }
 
             // Files: extract → prune → journaled per-path swap (trash kept for rollback).
             if ($has_files) {
+                $this->set_status('applying', array('phase' => 'files', 'started_at' => gmdate('c')));
                 $apply_state['files'] = $this->apply_files($plan);
                 $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
             }
@@ -260,6 +293,16 @@ final class SAM_Backup_Restore_Engine {
      * @return array<string,mixed>
      */
     public function rollback(): array {
+        // Never while an apply is still moving. Reversing a journal that is still being written
+        // leaves the site in a state that is neither the old one nor the new one — and since the
+        // manager reaches for rollback exactly when it has stopped hearing from us, this is the
+        // likeliest moment for the two to collide.
+        if ((string) ($this->status()['state'] ?? '') === 'applying') {
+            throw new RuntimeException(
+                'an apply is still running; wait for it to finish or fail before rolling back'
+            );
+        }
+
         $state = $this->load_apply_state();
         if (!is_array($state)) {
             // Nothing was applied — the site is already at pre-apply.
@@ -302,6 +345,25 @@ final class SAM_Backup_Restore_Engine {
 
     public function cleanup(): void {
         $this->recursive_delete($this->work_dir);
+    }
+
+    /**
+     * Claim the apply before it is detached.
+     *
+     * Between the kick and the background worker actually starting there is a gap — small, but the
+     * manager polls into it. Without this the status still reads `staged`, which looks exactly like
+     * a dispatch that never happened, and the manager would reasonably try again.
+     */
+    public function mark_apply_queued(): void {
+        $this->set_status('applying', array('phase' => 'queued', 'queued_at' => gmdate('c')));
+    }
+
+    /**
+     * Undo the claim when the host turns out to have no way to detach the work, so the synchronous
+     * retry is not turned away by apply()'s own re-entry guard.
+     */
+    public function clear_apply_queued(): void {
+        $this->set_status('staged', array('async_unavailable' => true));
     }
 
     // ── DB apply / rollback ──────────────────────────────────────────────────

@@ -71,6 +71,16 @@ final class InProcessRestoreClient implements RestoreClient
         return $this->engine($token)->apply();
     }
 
+    /**
+     * In-process there is nothing to detach to — no loopback, no cron — which is exactly the answer
+     * a locked-down shared host gives. Reporting it honestly keeps these tests on the synchronous
+     * path rather than polling a status that will never change.
+     */
+    public function restoreApplyAsync(string $token): array
+    {
+        return ['ok' => true, 'async' => false, 'token' => $token, 'reason' => 'in-process client cannot detach'];
+    }
+
     public function restoreCommit(string $token): array
     {
         return $this->engine($token)->commit();
