@@ -24,6 +24,8 @@ class BackupV2Settings
 
     public const KEY_FLEET_ENROLMENT = 'backup_v2_fleet_enrolment';
 
+    public const KEY_AUTOMATIC_RESTORES = 'backup_automatic_restores_enabled';
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /**
@@ -67,5 +69,29 @@ class BackupV2Settings
     public function setRestoreEnabled(bool $enabled): void
     {
         $this->settings->set(self::KEY_RESTORE_ENABLED, $enabled, 'backups', 'boolean');
+    }
+
+    /**
+     * May anything restore a site without a person asking for it?
+     *
+     * There is exactly one such thing — the weekly proven restore, which puts a site's latest
+     * backup into the throwaway sandbox and health-checks the result. It is off by default and it
+     * has always been inert in practice, because no site carries the per-site flag it looks for.
+     *
+     * "Inert because a list happens to be empty" is not the same as "off", though, and the
+     * difference matters for the one operation in this product that overwrites a live site. This
+     * makes it a switch somebody can look at and see is off, rather than a conclusion they have to
+     * reach by reading three files.
+     *
+     * Restores a person starts are unaffected.
+     */
+    public function automaticRestoresEnabled(): bool
+    {
+        return (bool) $this->settings->get(self::KEY_AUTOMATIC_RESTORES, false);
+    }
+
+    public function setAutomaticRestoresEnabled(bool $enabled): void
+    {
+        $this->settings->set(self::KEY_AUTOMATIC_RESTORES, $enabled, 'backups', 'boolean');
     }
 }

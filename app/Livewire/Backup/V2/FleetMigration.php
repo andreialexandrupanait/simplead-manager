@@ -124,6 +124,31 @@ class FleetMigration extends Component
     }
 
     #[Computed]
+    public function automaticRestores(): bool
+    {
+        return app(BackupV2Settings::class)->automaticRestoresEnabled();
+    }
+
+    /**
+     * The weekly proven restore — the only thing here that restores without being asked.
+     *
+     * Shown even though it is off, and off by default, because "nothing restores automatically" is
+     * a promise somebody should be able to check rather than infer.
+     */
+    public function toggleAutomaticRestores(): void
+    {
+        $this->guard();
+
+        $settings = app(BackupV2Settings::class);
+        $settings->setAutomaticRestoresEnabled(! $settings->automaticRestoresEnabled());
+
+        unset($this->automaticRestores);
+        session()->flash('fleet-success', $settings->automaticRestoresEnabled()
+            ? __('The weekly proven restore into the sandbox is enabled.')
+            : __('Nothing will restore a site unless a person asks for it.'));
+    }
+
+    #[Computed]
     public function fleetEnrolment(): bool
     {
         return app(BackupV2Settings::class)->fleetEnrolmentEnabled();

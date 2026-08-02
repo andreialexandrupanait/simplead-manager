@@ -72,6 +72,22 @@
                     {{ $this->restoreEnabled ? __('Disable restores') : __('Enable restores') }}
                 </x-ui.button>
             </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Automatic restores') }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        @if($this->automaticRestores)
+                            {{ __('The weekly proven restore is ON: once a week a site\'s latest backup is restored into the sandbox and health-checked. It never targets a live site.') }}
+                        @else
+                            {{ __('Off. Nothing restores a site unless a person asks for it — the weekly proven restore into the sandbox is the only automatic one, and it is switched off.') }}
+                        @endif
+                    </p>
+                </div>
+                <x-ui.button wire:click="toggleAutomaticRestores" :variant="$this->automaticRestores ? 'secondary' : 'ghost'">
+                    {{ $this->automaticRestores ? __('Switch off') : __('Switch on') }}
+                </x-ui.button>
+            </div>
         </x-ui.card>
 
         {{-- Progress of a running migration --}}

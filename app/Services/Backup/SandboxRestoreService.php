@@ -51,6 +51,19 @@ class SandboxRestoreService
      */
     public function restoreInto(Site $sandbox, Backup $backup): void
     {
+        // The target must be the throwaway WordPress, and this is the place to insist on it.
+        //
+        // Nothing in this method cared what it was given: the only thing keeping a client's site
+        // out of it was that its one caller happened to select `is_sandbox` first. That is a
+        // guarantee held by convention, one careless call away from a proven-restore overwriting a
+        // live site with somebody else's backup — the single most destructive thing this codebase
+        // could do. It costs one comparison to make it a property of the operation instead.
+        if (! $sandbox->is_sandbox) {
+            throw new \RuntimeException(
+                "Refusing to restore into '{$sandbox->domain}': a proven restore may only target the sandbox site."
+            );
+        }
+
         if ($backup->format !== 'v3-zip') {
             throw new \RuntimeException("Proven restore supports v3-zip backups only; got '{$backup->format}'.");
         }

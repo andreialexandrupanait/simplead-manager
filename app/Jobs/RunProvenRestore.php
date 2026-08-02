@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\BackupStatus;
 use App\Models\ProvenRestore;
 use App\Models\Site;
+use App\Services\Backup\BackupV2Settings;
 use App\Services\Backup\SandboxRestoreService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Bus\Queueable;
@@ -37,6 +38,16 @@ class RunProvenRestore implements ShouldQueue
 
     public function handle(SandboxRestoreService $service): void
     {
+        // The only scheduled thing in this product that restores anything, and it is off unless
+        // somebody has said otherwise on the screen. It was already inert — no site carries the
+        // per-site flag — but "inert because a list is empty" is not something anyone can see, and
+        // this is the one operation that overwrites a live WordPress.
+        if (! app(BackupV2Settings::class)->automaticRestoresEnabled()) {
+            Log::info('Proven restore skipped: automatic restores are switched off.');
+
+            return;
+        }
+
         $sandbox = Site::where('is_sandbox', true)->first();
         if (! $sandbox) {
             Log::info('Proven restore skipped: no sandbox site is provisioned.');

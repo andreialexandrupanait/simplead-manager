@@ -48,7 +48,7 @@ class SandboxRestoreProveTest extends TestCase
 
     public function test_prove_restores_a_v3_backup_into_the_sandbox_and_records_passing_checks(): void
     {
-        $sandbox = Site::factory()->create(['url' => 'https://sandbox.example.test']);
+        $sandbox = Site::factory()->create(['url' => 'https://sandbox.example.test', 'is_sandbox' => true]);
         $backup = $this->v3Backup($sandbox, rows: 42);
 
         // Sandbox WordPress transport + health probes, all healthy.
@@ -86,7 +86,7 @@ class SandboxRestoreProveTest extends TestCase
 
     public function test_prove_fails_closed_when_the_archive_is_corrupt(): void
     {
-        $sandbox = Site::factory()->create(['url' => 'https://sandbox.example.test']);
+        $sandbox = Site::factory()->create(['url' => 'https://sandbox.example.test', 'is_sandbox' => true]);
         $backup = $this->v3Backup($sandbox, rows: 10);
         $backup->update(['checksum' => str_repeat('0', 64)]); // wrong sha256 → corrupt
 

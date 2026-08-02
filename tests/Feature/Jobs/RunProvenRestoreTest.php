@@ -28,6 +28,11 @@ class RunProvenRestoreTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // The weekly proof is off by default now — nothing restores a site unless somebody said it
+        // may. These tests are about what it does once allowed to run; that it does nothing while
+        // switched off is asserted in NothingRestoresByItselfTest.
+        app(\App\Services\Backup\BackupV2Settings::class)->setAutomaticRestoresEnabled(true);
         Queue::fake(); // suppress FetchSiteFavicon + alert channel fan-out
     }
 
