@@ -155,6 +155,27 @@ class AsyncApplyTest extends TestCase
         );
     }
 
+    /**
+     * Seen for real on the first async attempt: the host accepted the loopback and then answered it
+     * with a 500, so the restore sat claimed-but-never-started while the manager polled it happily
+     * towards a fifty-minute deadline. Nothing had been touched, so the answer is to stop waiting
+     * and do it in-band — not to refuse, and not to keep watching.
+     */
+    public function test_an_apply_that_is_accepted_but_never_starts_falls_back_to_synchronous(): void
+    {
+        $client = new FakeRestoreClient(
+            async: true,
+            statuses: [['state' => 'applying', 'phase' => 'queued']], // never moves off queued
+        );
+
+        $restore = $this->runRestore($client);
+
+        $this->assertSame(R::Completed, $restore->state, 'the restore still has to happen; got '.$restore->state->value.' — '.(string) $restore->error_message);
+        $this->assertSame(1, $client->syncApplies, 'it was done in-band once waiting proved pointless');
+        $this->assertSame(0, $client->rollbacks, 'nothing was applied, so there was nothing to undo');
+        $this->assertFalse((bool) $restore->checkpoint['apply']['async']);
+    }
+
     public function test_a_host_that_cannot_detach_is_applied_synchronously(): void
     {
         // A locked-down host with no loopback and no cron. Refusing to restore it would be worse
@@ -201,7 +222,9 @@ class AsyncApplyTest extends TestCase
             layoutFor: $layoutFor,
             preRestoreBackup: null,
             healthCheck: fn (): bool => true,
-            sleeper: static fn (int $s) => null,
+            // Time travels instead of passing, so a poll loop that waits minutes costs the suite
+            // nothing while the deadlines it is built around still expire.
+            sleeper: static fn (int $seconds) => \Illuminate\Support\Carbon::setTestNow(now()->addSeconds($seconds)),
         ))->run();
 
         return $restore->fresh();
@@ -300,7 +323,10 @@ final class FakeRestoreClient implements RestoreClient
 
     public function restoreStatus(string $token): array
     {
-        $next = $this->statuses[$this->poll] ?? end($this->statuses);
+        // Past the end of the script the last entry repeats — a host that keeps saying the same
+        // thing. end() would move the internal pointer of a readonly property, which PHP refuses.
+        $next = $this->statuses[$this->poll]
+            ?? ($this->statuses === [] ? null : $this->statuses[array_key_last($this->statuses)]);
         $this->poll++;
 
         if ($next instanceof \Throwable) {

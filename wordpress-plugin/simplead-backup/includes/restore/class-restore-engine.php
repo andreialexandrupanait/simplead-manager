@@ -179,9 +179,16 @@ final class SAM_Backup_Restore_Engine {
         // either. That is precisely what happened the first time a manager timed out waiting: it
         // gave up, called rollback, and the rollback had nothing left to work with while the site
         // had in fact been restored correctly.
-        $current = (string) ($this->status()['state'] ?? '');
+        $status  = $this->status();
+        $current = (string) ($status['state'] ?? '');
+        $phase   = (string) ($status['phase'] ?? '');
 
-        if ($current === 'applying') {
+        // `applying` + phase `queued` is the claim the async dispatcher stakes BEFORE handing the
+        // work to a detached request — it exists so a poll landing in that gap does not read the
+        // previous state and conclude nothing happened. The detached request is the one arriving
+        // here, so it must be let through; refusing it deadlocks the restore in `queued` forever,
+        // which is exactly what the first async attempt did.
+        if ($current === 'applying' && $phase !== 'queued') {
             throw new RuntimeException(
                 'an apply is already running for this token; poll restore/status instead of starting another'
             );

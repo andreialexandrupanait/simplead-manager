@@ -58,6 +58,16 @@ final class RestoreRunner
 
     private const POLL_INTERVAL_SECONDS = 5;
 
+    /**
+     * How long the host may sit on a dispatched-but-not-started apply before we stop believing it.
+     *
+     * The plugin claims the work the instant it accepts the kick, and the detached request should
+     * pick it up in seconds. If it never does — a loopback that was accepted and then failed, a
+     * cron that never fires — the claim alone would otherwise keep us polling until the full apply
+     * deadline, which is fifty minutes of watching a restore that never began.
+     */
+    private const QUEUED_GRACE_SECONDS = 120;
+
     /** A site mid-swap can be briefly unreachable; several failures in a row is a different thing. */
     private const MAX_POLL_FAILURES = 5;
 
@@ -356,10 +366,23 @@ final class RestoreRunner
         $this->fault('before_apply');
 
         $kick = $this->client->restoreApplyAsync($this->token());
+        $detached = ($kick['async'] ?? false) === true;
 
-        $result = ($kick['async'] ?? false) === true
-            ? $this->awaitApply()
-            : $this->client->restoreApply($this->token());
+        if ($detached) {
+            try {
+                $result = $this->awaitApply();
+            } catch (ApplyNeverStartedException $e) {
+                // Accepted and then dropped. The site has not been touched — the claim is only a
+                // status file — so doing it in-band is both safe and better than refusing.
+                $this->logger->warning('the detached apply never started; doing it synchronously', [
+                    'reason' => $e->getMessage(),
+                ]);
+                $detached = false;
+                $result = $this->client->restoreApply($this->token());
+            }
+        } else {
+            $result = $this->client->restoreApply($this->token());
+        }
 
         $this->fault('after_apply');
 
@@ -367,7 +390,7 @@ final class RestoreRunner
             'db' => $result['db'] ?? null,
             'files' => $result['files'] ?? null,
             'applied' => (bool) ($result['applied'] ?? false),
-            'async' => ($kick['async'] ?? false) === true,
+            'async' => $detached,
         ]]);
     }
 
@@ -379,6 +402,7 @@ final class RestoreRunner
     private function awaitApply(): array
     {
         $deadline = now()->addSeconds(self::APPLY_MAX_WAIT_SECONDS);
+        $queuedUntil = now()->addSeconds(self::QUEUED_GRACE_SECONDS);
         $consecutiveTransportErrors = 0;
 
         while (now()->lessThan($deadline)) {
@@ -411,8 +435,20 @@ final class RestoreRunner
                 );
             }
 
+            $phase = (string) ($status['phase'] ?? $state);
+
+            // Still only claimed, never started. The host took the kick and then dropped it, so
+            // waiting out the full apply deadline would be fifty minutes spent on a restore that
+            // never began. Say so, and let the caller fall back to doing it synchronously.
+            if ($phase === 'queued' && now()->greaterThan($queuedUntil)) {
+                throw new ApplyNeverStartedException(sprintf(
+                    'the site accepted the restore but had not started it after %d seconds',
+                    self::QUEUED_GRACE_SECONDS,
+                ));
+            }
+
             $this->session->heartbeat();
-            $this->mergeCheckpoint(['apply_phase' => (string) ($status['phase'] ?? $state)]);
+            $this->mergeCheckpoint(['apply_phase' => $phase]);
         }
 
         throw new RestoreVerifyException(sprintf(
