@@ -46,6 +46,10 @@ class FleetMigrationService
      *     effective_engine: BackupEngine,
      *     destination: ?string,
      *     scheduled: bool,
+     *     answering: bool,
+     *     engine_silent: bool,
+     *     engine_error: ?string,
+     *     checked_at: ?\Illuminate\Support\Carbon,
      *     ready: bool,
      *     blocked_by: ?string,
      *     steps: list<string>,
@@ -61,9 +65,12 @@ class FleetMigrationService
         $connectorOk = $connector !== null && $connector !== ''
             && Semver::atLeast($connector, self::MIN_CONNECTOR);
 
+        // What the engine SAID when we last asked it, not what an install told us it would be.
+        // Those are different claims, and treating the second as the first is how thirteen sites
+        // came to be recorded as migrated while answering 401 to every request.
         $plugin = $site->backup_plugin_version;
-        $pluginOk = $plugin !== null && $plugin !== ''
-            && Semver::atLeast($plugin, PluginPackage::backupEngine()->version());
+        $answering = $plugin !== null && $plugin !== '';
+        $pluginOk = $answering && Semver::atLeast($plugin, PluginPackage::backupEngine()->version());
 
         $blocked = match (true) {
             ! $site->is_connected => __('The connector is not reachable on this site.'),
@@ -87,12 +94,21 @@ class FleetMigrationService
             }
         }
 
+        // A site whose column says V2 while its engine says nothing is not done, however green the
+        // row would otherwise look. Reported as its own state so it cannot be mistaken for either
+        // "still on V1" or "migrated".
+        $engineSilent = $engine === BackupEngine::V2 && ! $answering;
+
         return [
             'site' => $site,
             'connector' => $connector,
             'connector_ok' => $connectorOk,
             'plugin' => $plugin,
             'plugin_ok' => $pluginOk,
+            'answering' => $answering,
+            'engine_silent' => $engineSilent,
+            'engine_error' => $site->backup_plugin_error,
+            'checked_at' => $site->backup_plugin_checked_at,
             'engine' => $engine,
             // What the site would ACTUALLY run tonight — the column narrowed by the gate. The two
             // can disagree, and when they do it is the gate that decides, so showing only the column

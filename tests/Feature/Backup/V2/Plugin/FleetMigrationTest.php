@@ -159,6 +159,40 @@ class FleetMigrationTest extends TestCase
         $this->assertTrue(app(BackupV2Settings::class)->restoreEnabled());
     }
 
+    public function test_a_site_whose_engine_says_nothing_is_not_counted_as_migrated(): void
+    {
+        // The column says V2 and the version column is empty, which is what "we asked and got
+        // nothing" looks like. Thirteen sites were in exactly this state and the console showed
+        // them green, because it read a version we had written down rather than an answer.
+        $site = $this->site(connector: '2.26.0', plugin: null, engine: BackupEngine::V2);
+        $site->forceFill(['backup_plugin_error' => 'REST API access is restricted.'])->save();
+
+        $status = app(FleetMigrationService::class)->status($site->fresh());
+
+        $this->assertTrue($status['engine_silent']);
+        $this->assertFalse($status['answering']);
+        $this->assertSame('REST API access is restricted.', $status['engine_error']);
+
+        $summary = Livewire::actingAs($this->admin)->test(FleetMigration::class)->get('summary');
+
+        $this->assertSame(0, $summary['on_v2'], 'a mute engine is not a migrated site');
+        $this->assertSame(1, $summary['blocked']);
+    }
+
+    public function test_a_site_that_answers_is_counted_as_migrated(): void
+    {
+        $this->site(
+            connector: '2.26.0',
+            plugin: PluginPackage::backupEngine()->version(),
+            engine: BackupEngine::V2,
+        );
+
+        $summary = Livewire::actingAs($this->admin)->test(FleetMigration::class)->get('summary');
+
+        $this->assertSame(1, $summary['on_v2']);
+        $this->assertSame(0, $summary['blocked']);
+    }
+
     public function test_a_non_admin_cannot_reach_the_console(): void
     {
         $viewer = User::factory()->create(['role' => UserRole::Viewer]);

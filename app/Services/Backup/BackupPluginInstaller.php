@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Backup\V2\Plugin\PluginClientException;
 use App\Backup\V2\Plugin\SimpleadBackupClient;
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
@@ -47,25 +48,46 @@ class BackupPluginInstaller
     {
         try {
             $caps = SimpleadBackupClient::forSite($site)->capabilities();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             // Not reachable, or the plugin is not there. Recorded as "unknown", not as a failure:
             // a site that has never had the plugin is the normal case before a migration.
-            $this->remember($site, null);
+            $this->remember($site, null, $this->explain($e));
 
             return null;
         }
 
         $version = (string) ($caps['plugin']['version'] ?? '');
-        $this->remember($site, $version !== '' ? $version : null);
+        $this->remember($site, $version !== '' ? $version : null, null);
 
         return $version !== '' ? $version : null;
     }
 
-    private function remember(Site $site, ?string $version): void
+    /**
+     * Turn a transport failure into something worth putting on a screen.
+     *
+     * `HTTP 401` sends whoever reads it looking at credentials. On thirteen sites the real answer
+     * was `rest_not_logged_in` — our OWN connector hardening turning our own plugin away, because
+     * it waved through one of the manager's two REST namespaces and blocked the other.
+     */
+    private function explain(Throwable $e): string
+    {
+        $code = $e instanceof PluginClientException ? (string) ($e->payload['code'] ?? '') : '';
+
+        if ($code === 'rest_not_logged_in') {
+            return 'WordPress is refusing REST requests to the backup engine. Push the connector '
+                .'(2.26.0 or newer) — older ones allow only their own namespace through the '
+                .'"restrict REST API" hardening.';
+        }
+
+        return $e->getMessage();
+    }
+
+    private function remember(Site $site, ?string $version, ?string $error): void
     {
         $site->forceFill([
             'backup_plugin_version' => $version,
             'backup_plugin_checked_at' => now(),
+            'backup_plugin_error' => $error,
         ])->save();
     }
 
@@ -119,7 +141,20 @@ class BackupPluginInstaller
         $version = (string) ($body['new_version'] ?? 'unknown');
         $installed = (bool) ($body['installed'] ?? false);
 
-        $this->remember($site, $version);
+        // Ask the engine itself rather than believing the install report. A successful install says
+        // the files are in place; it says nothing about whether the manager can reach them. Thirteen
+        // sites were installed, recorded as ready, and answering 401 to every request — because the
+        // connector's own REST hardening blocked the engine's namespace. Writing down a version we
+        // were told is not evidence that anything works.
+        $answering = $this->probe($site);
+
+        if ($answering === null) {
+            return [
+                'ok' => false,
+                'message' => __('Installed :version, but the engine does not answer: ', ['version' => $version])
+                    .(string) $site->fresh()?->backup_plugin_error,
+            ];
+        }
 
         $message = $installed
             ? "installed {$version}"

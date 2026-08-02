@@ -223,10 +223,23 @@ class SAM_Security_Hardening {
     public function restrict_rest_api($result) {
         // Allow our own endpoints first (use constant to match any configured namespace)
         // Must check BEFORE $result so we override other plugins' restrictions
+        //
+        // "Our own" is two plugins, not one: the connector and the backup engine, which lives in
+        // its own REST namespace. Listing only the connector's meant that turning this hardening on
+        // silently cut the backup engine off — installed, running, and answering 401 to the manager
+        // that installed it. The backup plugin may not be present at all, so its namespace is read
+        // from its constant when it is and named directly when it is not.
         $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
-        $namespace = defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1';
-        if (strpos($request_uri, '/' . $namespace . '/') !== false) {
-            return null;
+
+        $namespaces = [
+            defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1',
+            defined('SAM_BACKUP_REST_NAMESPACE') ? SAM_BACKUP_REST_NAMESPACE : 'simplead-backup/v1',
+        ];
+
+        foreach ($namespaces as $namespace) {
+            if (strpos($request_uri, '/' . $namespace . '/') !== false) {
+                return null;
+            }
         }
 
         if (!empty($result)) {

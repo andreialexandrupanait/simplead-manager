@@ -190,8 +190,16 @@ if (defined('SAM_VERSION')) {
             add_filter('rest_authentication_errors', function ($result) {
                 // Allow SimpleAd endpoints through first — they use HMAC auth
                 // Must check BEFORE $result so we override other plugins' restrictions (e.g. ASE)
+                //
+                // BOTH namespaces. The manager ships two plugins: the connector at simplead/v1 and
+                // the backup engine at simplead-backup/v1. Only the first was listed, so on every
+                // site with this hardening on, the backup engine was installed and unreachable —
+                // 401 rest_not_logged_in, from us, about our own plugin. Found on 13 of 29 sites
+                // the day the fleet moved to the new engine. This file is generated text and
+                // cannot see the backup plugin's constant, so the namespace is written out.
                 $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
-                if (strpos($uri, '/wp-json/simplead/v1/') !== false) {
+                if (strpos($uri, '/wp-json/simplead/v1/') !== false
+                    || strpos($uri, '/wp-json/simplead-backup/v1/') !== false) {
                     return null;
                 }
                 if (!empty($result)) {

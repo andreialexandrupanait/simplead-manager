@@ -63,8 +63,9 @@ class FleetMigration extends Component
 
             $rows[] = match ($this->filter) {
                 'pending' => $status['ready'] && $status['steps'] !== [] ? $status : null,
-                'done' => $status['effective_engine'] === BackupEngine::V2 ? $status : null,
-                'blocked' => ! $status['ready'] ? $status : null,
+                // "Done" means the engine answered, not that a column says so.
+                'done' => $status['effective_engine'] === BackupEngine::V2 && ! $status['engine_silent'] ? $status : null,
+                'blocked' => ! $status['ready'] || $status['engine_silent'] ? $status : null,
                 default => $status,
             };
         }
@@ -87,7 +88,11 @@ class FleetMigration extends Component
         foreach (Site::withoutTrashed()->with('backupConfig')->get() as $site) {
             $status = $migration->status($site);
             $total++;
-            if ($status['effective_engine'] === BackupEngine::V2) {
+            if ($status['engine_silent']) {
+                // Migrated on paper, mute in practice. Counted with the problems, because that is
+                // what it is — and counting it as done is exactly the mistake that hid it.
+                $blocked++;
+            } elseif ($status['effective_engine'] === BackupEngine::V2) {
                 $onV2++;
             } elseif (! $status['ready']) {
                 $blocked++;

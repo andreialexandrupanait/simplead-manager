@@ -56,6 +56,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $connector_version
  * @property string|null $backup_plugin_version
  * @property \Illuminate\Support\Carbon|null $backup_plugin_checked_at
+ * @property string|null $backup_plugin_error
  * @property bool $backup_ok
  * @property \Illuminate\Support\Carbon|null $last_backup_at
  * @property string|null $notes
@@ -175,6 +176,7 @@ class Site extends Model
         'connector_version',
         'backup_plugin_version',
         'backup_plugin_checked_at',
+        'backup_plugin_error',
         'backup_ok',
         'last_backup_at',
         'notes',

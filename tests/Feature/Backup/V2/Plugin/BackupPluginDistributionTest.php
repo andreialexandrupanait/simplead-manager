@@ -11,6 +11,7 @@ use App\Services\WordPressApiServiceFactory;
 use App\Support\PluginPackage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
@@ -100,6 +101,7 @@ class BackupPluginDistributionTest extends TestCase
     {
         $site = Site::factory()->create();
         $sent = [];
+        $this->engineAnswers('9.9.9');
 
         $installer = new BackupPluginInstaller($this->factoryRecording($sent, [
             'success' => true, 'installed' => true, 'new_version' => '9.9.9', 'active' => true,
@@ -136,6 +138,7 @@ class BackupPluginDistributionTest extends TestCase
         // and a backup fails at the first call with something that reads like a network problem.
         $site = Site::factory()->create();
         $sent = [];
+        $this->engineAnswers('0.7.1');
 
         $installer = new BackupPluginInstaller($this->factoryRecording($sent, [
             'success' => true,
@@ -148,6 +151,20 @@ class BackupPluginDistributionTest extends TestCase
         $result = $installer->install($site);
 
         $this->assertStringContainsString('NOT ACTIVE', $result['message']);
+    }
+
+    /**
+     * The engine, answering. install() asks it directly after the connector reports success —
+     * "the files are in place" and "the manager can reach them" are different claims, and treating
+     * the first as the second is what left thirteen sites recorded as migrated and mute.
+     */
+    private function engineAnswers(string $version): void
+    {
+        Http::fake([
+            '*/wp-json/simplead-backup/v1/capabilities' => Http::response([
+                'plugin' => ['name' => 'simplead-backup', 'version' => $version],
+            ], 200),
+        ]);
     }
 
     /**

@@ -128,6 +128,8 @@
                                         {{-- The reason travels with the row. "Not ready" on its own is a
                                              question nobody can act on. --}}
                                         <p class="text-xs text-amber-600 mt-1">{{ $row['blocked_by'] }}</p>
+                                    @elseif($row['engine_silent'] && $row['engine_error'])
+                                        <p class="text-xs text-red-600 mt-1">{{ $row['engine_error'] }}</p>
                                     @endif
                                 </td>
                                 <td class="py-2.5 pr-3">
@@ -139,9 +141,17 @@
                                     <span class="{{ $row['plugin_ok'] ? 'text-gray-600 dark:text-gray-300' : 'text-amber-600' }}">
                                         {{ $row['plugin'] ?: '—' }}
                                     </span>
+                                    @if($row['engine_silent'])
+                                        {{-- Installed and mute. The version alone would show green
+                                             here, which is exactly how thirteen sites passed as
+                                             migrated while answering 401 to every request. --}}
+                                        <p class="text-xs text-red-600 mt-0.5">{{ __('does not answer') }}</p>
+                                    @endif
                                 </td>
                                 <td class="py-2.5 pr-3">
-                                    @if($row['effective_engine']->value === 'v2')
+                                    @if($row['engine_silent'])
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300">{{ __('V2 — mute') }}</span>
+                                    @elseif($row['effective_engine']->value === 'v2')
                                         <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">V2</span>
                                     @else
                                         <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">V1</span>
@@ -168,6 +178,11 @@
                                         @endif
                                         @if($row['ready'] && ! $row['connector_ok'])
                                             <x-ui.button size="xs" variant="ghost" wire:click="pushConnector({{ $site->id }})">{{ __('Connector') }}</x-ui.button>
+                                        @endif
+                                        @if($row['engine_silent'])
+                                            {{-- The fix for the failure we actually hit: the
+                                                 connector carries the corrected REST filter. --}}
+                                            <x-ui.button size="xs" wire:click="pushConnector({{ $site->id }})">{{ __('Fix connector') }}</x-ui.button>
                                         @endif
                                         @if($row['ready'] && $row['connector_ok'] && ! $row['plugin_ok'])
                                             <x-ui.button size="xs" variant="ghost" wire:click="installPlugin({{ $site->id }})">{{ __('Engine') }}</x-ui.button>
