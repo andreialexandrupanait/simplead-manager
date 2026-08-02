@@ -201,6 +201,17 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
         } finally {
             SiteOperationLock::release((int) $session->site_id, $token);
         }
+
+        // The archive a person can actually use is built straight away, so it is waiting rather
+        // than being started by whoever needs it on the worst day of their week. It reads only from
+        // storage — the client's site is not touched — and it is verified before it is published,
+        // so the download button can only ever hand over something that opened and parsed.
+        //
+        // Dispatched after the lock is released: this does not go near the site, and holding the
+        // site's operation lock through it would block the next backup for no reason.
+        if ($session->refresh()->state === BackupSessionState::Completed) {
+            BuildPortablePackageJob::dispatch((int) $session->id);
+        }
     }
 
     /**

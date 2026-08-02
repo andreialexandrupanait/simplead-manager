@@ -379,6 +379,43 @@ class PortablePackageTest extends TestCase
     }
 
     /**
+     * The archive has to be usable by someone who no longer has this platform, which means it has
+     * to say what it is. Instructions that live in the manager are instructions you cannot read on
+     * the day you need them.
+     */
+    public function test_the_package_carries_its_own_metadata_and_instructions(): void
+    {
+        $site = Site::factory()->create(['url' => 'https://exemplu.ro', 'name' => 'Exemplu']);
+        $session = $this->makeBackupSession($site, ['type' => 'incremental', 'state' => S::Completed]);
+        $this->writeBackup($session, ['wp-config.php' => '<?php', 'index.php' => '<?php'], "CREATE TABLE `wp_a` (id int);\n");
+
+        $out = (string) tempnam(sys_get_temp_dir(), 'pkg_').'.zip';
+        $this->builder()->build($session->fresh(), $out);
+
+        $zip = new ZipArchive;
+        $zip->open($out);
+
+        $meta = json_decode((string) $zip->getFromName('backup-meta.json'), true);
+        $this->assertIsArray($meta, 'the package must carry backup-meta.json');
+        $this->assertSame('https://exemplu.ro', $meta['site_url']);
+        $this->assertSame(2, $meta['files_count']);
+
+        // The archive is a whole site even though the run that produced it was an incremental —
+        // that is what format/2 buys, and calling it "incremental" here would describe the run
+        // while misleading about the file in your hands.
+        $this->assertSame('full', $meta['type'], 'the archive is a complete restore point');
+        $this->assertSame('incremental', $meta['source_backup_type'], 'the run it came from is kept for provenance');
+
+        $instructions = (string) $zip->getFromName('RESTAURARE.txt');
+        $this->assertStringContainsString('exemplu.ro', $instructions);
+        $this->assertStringContainsString('database.sql.gz', $instructions);
+        $this->assertStringContainsString('siteurl', $instructions, 'a restore onto another domain needs this');
+
+        $zip->close();
+        @unlink($out);
+    }
+
+    /**
      * @return list<string>
      */
     private function tempArtifacts(): array

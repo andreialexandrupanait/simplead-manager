@@ -104,6 +104,22 @@ return [
     'multipart_part_mb' => (int) env('BACKUP_ENGINE_V2_MULTIPART_PART_MB', 16),
     'presigned_ttl_seconds' => (int) env('BACKUP_ENGINE_V2_PRESIGNED_TTL', 600),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Downloadable package
+    |--------------------------------------------------------------------------
+    | One archive per restore point, built on the manager straight after a backup
+    | completes — it reads only from storage, so it never touches the client's site.
+    |
+    | Packages do NOT deduplicate against each other the way the engine's own
+    | objects do: each is a whole separate copy of the site. Keeping one per site
+    | is the difference between a fixed cost and a second bucket that grows as
+    | fast as the first. Older restore points can still be packaged on demand.
+    */
+    'portable' => [
+        'keep_per_site' => (int) env('BACKUP_ENGINE_V2_PORTABLE_KEEP', 1),
+    ],
+
     // Where work that does not fit in memory gets staged.
     //
     // NOT sys_get_temp_dir(). In production /tmp is a 512 MB tmpfs — RAM with a

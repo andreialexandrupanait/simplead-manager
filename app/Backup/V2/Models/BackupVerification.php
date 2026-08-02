@@ -40,6 +40,14 @@ class BackupVerification extends Model
      */
     public const KIND_MANUAL = 'manual';
 
+    /**
+     * The downloadable archive, opened and parsed after it was built.
+     *
+     * Distinct from CREATE and DEEP, which check the engine's own objects. This checks the artefact
+     * a person would actually be handed — the one that has to work when the platform does not.
+     */
+    public const KIND_PORTABLE = 'portable';
+
     public const STATUS_PASSED = 'passed';
 
     public const STATUS_FAILED = 'failed';

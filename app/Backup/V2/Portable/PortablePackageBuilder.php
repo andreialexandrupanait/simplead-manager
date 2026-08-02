@@ -11,6 +11,7 @@ use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Storage\WorkDir;
+use App\Models\Site;
 use App\Services\Backup\BackupZipBuilder;
 use Aws\S3\S3Client;
 use RuntimeException;
@@ -75,7 +76,7 @@ class PortablePackageBuilder
     /**
      * Materialise $session (replaying its chain) into a single zip at $destination.
      *
-     * @return array{files: int, bytes: int}
+     * @return array{files: int, bytes: int, sha256: string}
      */
     public function build(BackupSession $session, string $destination): array
     {
@@ -110,6 +111,14 @@ class PortablePackageBuilder
 
             // Counted separately: `files` means the site's files, not "entries in the archive".
             $this->appendDatabase($session, $builder);
+
+            $manifest = $this->reader->read($session);
+            $builder->addString('backup-meta.json', (string) json_encode(
+                $this->meta($session, $manifest, $files),
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            ));
+            $builder->addString('RESTAURARE.txt', $this->restoreInstructions($session, $manifest));
+
             $result = $builder->finish();
         } catch (\Throwable $e) {
             $builder->abort();
@@ -118,6 +127,130 @@ class PortablePackageBuilder
         }
 
         return ['files' => $files, 'bytes' => (int) $result['size'], 'sha256' => (string) $result['sha256']];
+    }
+
+    /**
+     * What the archive says about itself.
+     *
+     * `type` describes the ARCHIVE, not the run that produced it: since format/2 every restore
+     * point is complete, so every package is a whole site even when the backup behind it uploaded
+     * nothing. Calling it `incremental` here would be true of the run and misleading about the file
+     * in your hands. The run's own type is kept alongside, for provenance.
+     *
+     * `format` is v3-zip because that is genuinely what this is — the same layout the previous
+     * engine writes — which lets IntegrityVerifier and BackupBrowserService read it unchanged.
+     *
+     * @param  array<string, mixed>  $manifest
+     * @return array<string, mixed>
+     */
+    private function meta(BackupSession $session, array $manifest, int $files): array
+    {
+        $site = $session->site instanceof Site ? $session->site : null;
+        $env = (array) ($manifest['environment'] ?? []);
+        $db = (array) ($manifest['database'] ?? []);
+
+        return [
+            'format' => 'v3-zip',
+            'type' => 'full',
+            'produced_by' => 'simplead-backup',
+            'source_backup_type' => (string) $session->type,
+            'source_format_version' => (string) ($manifest['format_version'] ?? ''),
+            'session_id' => (int) $session->id,
+            'backup_id' => $session->backup_id === null ? null : (int) $session->backup_id,
+
+            'site_id' => (int) $session->site_id,
+            'site_name' => $site?->name,
+            'site_url' => $site?->url,
+            'site_domain' => $site?->domain,
+
+            'restore_point_at' => optional($session->completed_at)->toIso8601String()
+                ?? (string) ($manifest['completed_at'] ?? ''),
+            'packaged_at' => now()->toIso8601String(),
+
+            'wp_version' => $env['wp_version'] ?? null,
+            'php_version' => $env['php_version'] ?? null,
+            'db_server_version' => $env['db_server_version'] ?? null,
+            'db_engine' => $env['db_engine'] ?? null,
+            'table_prefix' => $env['table_prefix'] ?? null,
+            // Whether the dump came from a single transactional snapshot. A restore from a dump
+            // taken without one can contain rows that never coexisted; worth knowing before relying
+            // on it, and worth never hiding.
+            'consistent_snapshot' => (bool) ($env['consistent_snapshot'] ?? false),
+
+            'files_count' => $files,
+            'database_name' => $db['name'] ?? null,
+            'database_tables' => (int) ($db['table_count'] ?? 0),
+            'database_rows' => (int) ($db['total_rows'] ?? 0),
+        ];
+    }
+
+    /**
+     * The instructions, in the archive, in Romanian.
+     *
+     * The whole reason this package exists is that the platform might not be there when it is
+     * needed. Instructions that live in the manager are instructions you cannot read on the day
+     * you need them.
+     *
+     * @param  array<string, mixed>  $manifest
+     */
+    private function restoreInstructions(BackupSession $session, array $manifest): string
+    {
+        $env = (array) ($manifest['environment'] ?? []);
+        $db = (array) ($manifest['database'] ?? []);
+        $site = $session->site instanceof Site ? $session->site : null;
+
+        $domain = $site !== null ? $site->url : ('site '.$session->site_id);
+        $prefix = (string) ($env['table_prefix'] ?? 'wp_');
+        $tables = (int) ($db['table_count'] ?? 0);
+        $rows = (int) ($db['total_rows'] ?? 0);
+        $when = optional($session->completed_at)->format('d.m.Y H:i') ?? '(necunoscut)';
+
+        return <<<TXT
+        RESTAURARE MANUALĂ — {$domain}
+        Punct de restaurare: {$when}
+
+        Arhiva conține tot ce trebuie ca să repui site-ul în picioare fără SimpleAd Manager:
+
+          files/             toate fișierele site-ului ({$prefix}… în baza de date)
+          database.sql.gz    dump complet: {$tables} tabele, {$rows} rânduri
+          backup-meta.json   versiuni și cifre, pentru verificare
+
+        PAȘI
+
+        1. Dezarhivează.
+
+               unzip backup.zip -d restaurare
+
+        2. Copiază fișierele în rădăcina site-ului.
+
+               cp -a restaurare/files/. /calea/catre/site/
+
+        3. Importă baza de date într-una GOALĂ.
+
+               gunzip -c restaurare/database.sql.gz | mysql -u UTILIZATOR -p NUME_BAZA
+
+           Dumpul e consistent: toate tabelele au fost citite din același snapshot,
+           deci nu conține rânduri care nu au existat împreună.
+
+        4. Ajustează wp-config.php pentru noua bază: DB_NAME, DB_USER, DB_PASSWORD,
+           DB_HOST. Prefixul tabelelor este "{$prefix}" — dacă îl schimbi, site-ul
+           pornește dar nu-și găsește conținutul.
+
+        5. Dacă domeniul diferă, corectează adresele:
+
+               UPDATE {$prefix}options SET option_value='https://domeniul-nou'
+                 WHERE option_name IN ('siteurl','home');
+
+        6. Verifică: pagina principală răspunde, apoi zona de administrare.
+
+        VERIFICARE ÎNAINTE DE A TE BAZA PE EA
+
+               unzip -t backup.zip
+               gunzip -t restaurare/database.sql.gz
+
+        Ambele trebuie să treacă fără eroare. Numărul de fișiere din files/ și cifrele
+        bazei de date trebuie să corespundă cu backup-meta.json.
+        TXT;
     }
 
     /**

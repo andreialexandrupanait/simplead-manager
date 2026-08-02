@@ -6,18 +6,22 @@ namespace App\Backup\V2\Jobs;
 
 use App\Backup\V2\Chain\S3ManifestReader;
 use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Models\BackupVerification;
 use App\Backup\V2\Portable\PortablePackageBuilder;
 use App\Backup\V2\Storage\S3ClientFactory;
 use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\IntegrityVerifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -85,6 +89,17 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
         try {
             $result = $builder->build($session, $local);
 
+            // Opened, parsed and checked BEFORE it is published. If manual restore is the recovery
+            // plan, the archive has to be proven good on the day it is made — not on the day it is
+            // needed. A package that fails is never uploaded, so the download button can only ever
+            // hand over something that passed.
+            $verification = $this->verify($session, $local, (string) $result['sha256'], (int) $result['files']);
+            if (! $verification->passed()) {
+                throw new RuntimeException(
+                    "The portable package failed its own verification: {$verification->error}"
+                );
+            }
+
             $s3->client()->putObject([
                 'Bucket' => $s3->bucket(),
                 'Key' => $key,
@@ -93,12 +108,78 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             $this->recordOnBackup($session, $key, $result['bytes']);
+            $this->pruneOlderPackages($s3, $session);
         } catch (Throwable $e) {
             $this->recordFailure($session, $e->getMessage());
 
             throw $e;
         } finally {
             @unlink($local);
+        }
+    }
+
+    /**
+     * Run the offline integrity checks over the built archive and record the outcome.
+     *
+     * Reuses the verifier the previous engine has always used on its own archives — CHECKCONS over
+     * every entry's CRC, backup-meta.json parsed, the dump extracted and run through the SQL parser,
+     * files/ non-empty. Same layout, same checks; nothing new to get wrong.
+     */
+    private function verify(BackupSession $session, string $localPath, string $sha256, int $files): BackupVerification
+    {
+        $outcome = (new IntegrityVerifier)->verifyV3Zip($localPath, $sha256);
+
+        return BackupVerification::create([
+            'backup_session_id' => $session->id,
+            'kind' => BackupVerification::KIND_PORTABLE,
+            'status' => $outcome['ok'] ? BackupVerification::STATUS_PASSED : BackupVerification::STATUS_FAILED,
+            'object_count' => $files,
+            'sample_size' => $files,
+            'checks' => $outcome['checks'],
+            'error' => $outcome['ok'] ? null : $outcome['message'],
+            'verified_at' => $outcome['ok'] ? now() : null,
+        ]);
+    }
+
+    /**
+     * Drop the site's older packages, newest first, down to the configured count.
+     *
+     * Packages do not deduplicate against each other the way the engine's own objects do — each one
+     * is a whole separate copy of the site. Keeping one per site is the difference between a fixed
+     * cost and a second bucket that grows as fast as the first.
+     */
+    private function pruneOlderPackages(S3ClientFactory $s3, BackupSession $session): void
+    {
+        $keep = max(1, (int) config('backup_v2.portable.keep_per_site', 1));
+
+        /** @var list<BackupSession> $withPackages */
+        $withPackages = BackupSession::query()
+            ->where('site_id', $session->site_id)
+            ->whereNotNull('checkpoint')
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (BackupSession $s): bool => ! empty($s->checkpoint['portable_key'] ?? null))
+            ->values()
+            ->all();
+
+        foreach (array_slice($withPackages, $keep) as $stale) {
+            $staleKey = (string) $stale->checkpoint['portable_key'];
+
+            try {
+                $s3->client()->deleteObject(['Bucket' => $s3->bucket(), 'Key' => $staleKey]);
+            } catch (Throwable $e) {
+                // Leaving a package behind costs storage; failing the build over it would cost the
+                // fresh package that is already verified and uploaded.
+                Log::warning("BuildPortablePackageJob: could not remove the old package {$staleKey}: {$e->getMessage()}");
+
+                continue;
+            }
+
+            $checkpoint = $stale->checkpoint ?? [];
+            unset($checkpoint['portable_key'], $checkpoint['portable_bytes'], $checkpoint['portable_built_at']);
+            $stale->newQuery()->whereKey($stale->getKey())->toBase()->update([
+                'checkpoint' => json_encode($checkpoint),
+            ]);
         }
     }
 
@@ -139,5 +220,27 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
         return $bytes >= 1024 ** 3
             ? round($bytes / (1024 ** 3), 1).' GB'
             : round($bytes / (1024 ** 2), 1).' MB';
+    }
+
+    /**
+     * Release the uniqueness lock when the job dies, and say so where it can be seen.
+     *
+     * A PHP fatal kills the worker before Laravel can release the ShouldBeUnique lock, so it sat
+     * held for the full uniqueFor hour. During that hour every further attempt — the nightly one,
+     * and every press of the Download button — was silently discarded while the UI kept saying it
+     * was preparing. That is exactly what happened the first time a real site was tried.
+     */
+    public function failed(Throwable $e): void
+    {
+        try {
+            Cache::lock('laravel_unique_job:'.static::class.$this->uniqueId())->forceRelease();
+        } catch (Throwable $releaseError) {
+            Log::warning("BuildPortablePackageJob: could not release its unique lock: {$releaseError->getMessage()}");
+        }
+
+        $session = BackupSession::find($this->backupSessionId);
+        if ($session instanceof BackupSession) {
+            $this->recordFailure($session, $e->getMessage());
+        }
     }
 }

@@ -289,6 +289,10 @@ final class BackupRunner
                 'db_engine' => $caps['database']['engine_family'] ?? null,
                 'consistent_snapshot' => (bool) ($caps['database']['consistent_snapshot_supported'] ?? false),
                 'non_innodb_tables' => $caps['database']['non_innodb_tables'] ?? [],
+                // Carried so a downloaded archive can say which prefix its tables use. Restoring by
+                // hand into a fresh WordPress means either matching it or editing wp-config, and
+                // guessing wrong produces a site that loads with none of its content.
+                'table_prefix' => $caps['wordpress']['table_prefix'] ?? null,
             ],
         ]);
 
@@ -749,6 +753,7 @@ final class BackupRunner
                 'db_server_version' => $cp['db']['server_version'] ?? ($cp['capabilities']['db_server_version'] ?? null),
                 'db_engine' => $cp['capabilities']['db_engine'] ?? null,
                 'consistent_snapshot' => (bool) ($cp['capabilities']['consistent_snapshot'] ?? false),
+                'table_prefix' => $cp['capabilities']['table_prefix'] ?? null,
             ],
             'started_at' => optional($this->session->started_at)->toIso8601String(),
             'completed_at' => now()->toIso8601String(),
