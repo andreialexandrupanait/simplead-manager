@@ -172,7 +172,14 @@
                 <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                <span>{{ __('A safety backup is created automatically before restoring (full backup when files are included).') }}</span>
+                @if($this->usesNewEngine())
+                    {{-- On the new engine the safety copy is taken inside the restore itself, through
+                         the same engine — so it does not appear here as a separate step. Saying so
+                         matters: an unexplained missing step reads as a missing safety net. --}}
+                    <span>{{ __('A safety backup is taken as part of the restore, and the site is put back exactly as it was if anything fails.') }}</span>
+                @else
+                    <span>{{ __('A safety backup is created automatically before restoring (full backup when files are included).') }}</span>
+                @endif
             </div>
 
             {{-- Confirmation checkbox --}}

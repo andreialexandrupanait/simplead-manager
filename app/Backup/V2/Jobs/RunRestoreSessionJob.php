@@ -23,6 +23,7 @@ use App\Backup\V2\Support\BackupLogger;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\BackupV2Settings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -89,10 +90,12 @@ final class RunRestoreSessionJob implements ShouldBeUnique, ShouldQueue
         // Hard guard: restore may only run when the engine is enabled AND the site is
         // allowlisted AND restore is explicitly enabled — all default off (zero prod
         // impact). BackupV2Gate::allowsSite covers enabled + allowlist.
-        if (! BackupV2Gate::allowsSite((int) $session->site_id) || ! (bool) config('backup_v2.restore_enabled', false)) {
+        $restoreEnabled = app(BackupV2Settings::class)->restoreEnabled();
+
+        if (! BackupV2Gate::allowsSite((int) $session->site_id) || ! $restoreEnabled) {
             $logger->warning('restore refused: site not enabled/allowlisted or restore disabled', [
                 'enabled' => BackupV2Gate::enabled(),
-                'restore_enabled' => (bool) config('backup_v2.restore_enabled', false),
+                'restore_enabled' => $restoreEnabled,
                 'site_id' => $session->site_id,
             ]);
 

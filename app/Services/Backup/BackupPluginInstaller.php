@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Backup\V2\Plugin\SimpleadBackupClient;
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
 use App\Support\PluginPackage;
@@ -33,6 +34,40 @@ class BackupPluginInstaller
     public function __construct(
         private readonly WordPressApiServiceFactory $factory,
     ) {}
+
+    /**
+     * Ask the site which version of the engine it is running, and remember the answer.
+     *
+     * The fleet console needs this for every site at once. Asking twenty-nine WordPress
+     * installations over HTTP on each page render is not a table — it is a minute of waiting and
+     * twenty-nine requests to other people's servers — so the reading is stored, with the time it
+     * was taken, and refreshed deliberately.
+     */
+    public function probe(Site $site): ?string
+    {
+        try {
+            $caps = SimpleadBackupClient::forSite($site)->capabilities();
+        } catch (Throwable) {
+            // Not reachable, or the plugin is not there. Recorded as "unknown", not as a failure:
+            // a site that has never had the plugin is the normal case before a migration.
+            $this->remember($site, null);
+
+            return null;
+        }
+
+        $version = (string) ($caps['plugin']['version'] ?? '');
+        $this->remember($site, $version !== '' ? $version : null);
+
+        return $version !== '' ? $version : null;
+    }
+
+    private function remember(Site $site, ?string $version): void
+    {
+        $site->forceFill([
+            'backup_plugin_version' => $version,
+            'backup_plugin_checked_at' => now(),
+        ])->save();
+    }
 
     /**
      * @return array{ok: bool, message: string, version?: string, installed?: bool}
@@ -83,6 +118,8 @@ class BackupPluginInstaller
 
         $version = (string) ($body['new_version'] ?? 'unknown');
         $installed = (bool) ($body['installed'] ?? false);
+
+        $this->remember($site, $version);
 
         $message = $installed
             ? "installed {$version}"

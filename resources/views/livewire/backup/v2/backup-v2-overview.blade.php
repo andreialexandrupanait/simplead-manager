@@ -6,9 +6,16 @@
     @else
         <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <x-ui.page-header title="Backup V2" subtitle="{{ __('Next-gen backup engine — sessions, storage & alerts') }}" />
-            <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                <span class="h-1.5 w-1.5 rounded-full bg-purple-500"></span> {{ __('Preview — engine V2') }}
-            </span>
+            <div class="flex items-center gap-2">
+                {{-- The console had no way to reach the fleet view, and a migration nobody can find
+                     is a migration nobody runs. --}}
+                <x-ui.button href="{{ route('backup-v2.fleet') }}" variant="secondary" size="sm">
+                    {{ __('Fleet & migration') }}
+                </x-ui.button>
+                <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    <span class="h-1.5 w-1.5 rounded-full bg-purple-500"></span> {{ __('Preview — engine V2') }}
+                </span>
+            </div>
         </div>
 
         {{-- Alerts --}}

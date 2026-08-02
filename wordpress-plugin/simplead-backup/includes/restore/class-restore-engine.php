@@ -226,6 +226,7 @@ final class SAM_Backup_Restore_Engine {
             }
 
             $this->set_status('applying', array('phase' => 'starting', 'started_at' => gmdate('c')));
+            $this->disk_watch_start();
             $this->maintenance_on();
             $maintenance = true;
 
@@ -246,6 +247,10 @@ final class SAM_Backup_Restore_Engine {
                 $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
             }
 
+            $this->disk_sample();
+            $apply_state['disk'] = $this->disk_report();
+            $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
+
             $this->maintenance_off();
             $maintenance = false;
 
@@ -259,9 +264,18 @@ final class SAM_Backup_Restore_Engine {
             $this->set_status('applied', array(
                 'db'    => $apply_state['db'] !== null,
                 'files' => $apply_state['files'] !== null,
+                // Carried in the status too, not only in the apply state: the manager reads the
+                // status after the fact, and this is the one measurement it cannot take itself.
+                'disk'  => $apply_state['disk'],
             ));
 
-            return array('ok' => true, 'applied' => true, 'db' => $apply_state['db'], 'files' => $apply_state['files']);
+            return array(
+                'ok'      => true,
+                'applied' => true,
+                'db'      => $apply_state['db'],
+                'files'   => $apply_state['files'],
+                'disk'    => $apply_state['disk'],
+            );
         } catch (\Throwable $e) {
             // A throw from apply_database/apply_files has already rolled its own phase back to
             // pre-apply. Lift maintenance so the (untouched or rolled-back) site is reachable.
@@ -363,6 +377,100 @@ final class SAM_Backup_Restore_Engine {
 
     public function cleanup(): void {
         $this->recursive_delete($this->work_dir);
+    }
+
+    // ── disk watermark ───────────────────────────────────────────────────────
+
+    /**
+     * The least free space seen on each filesystem during the apply, and what it started from.
+     *
+     * The restore's peak footprint is the one number about a restore that cannot be measured from
+     * outside: the apply happens with the site in maintenance, and WordPress answers 503 to
+     * everything then — including this plugin's own capabilities endpoint. So the manager's
+     * preflight arithmetic has always been a prediction nobody could check.
+     *
+     * Sampling from in here makes it checkable on every restore. If the prediction is wrong, it
+     * says so on a small site, in a report, instead of on a large one, halfway through a swap.
+     *
+     * @var array<string,array<string,int|null>>
+     */
+    private array $disk_watermark = array();
+
+    private function disk_watch_start(): void {
+        $this->disk_watermark = array();
+        foreach ($this->disk_paths() as $name => $path) {
+            $free = $this->free_bytes($path);
+            $this->disk_watermark[$name] = array(
+                'path'      => $path,
+                'baseline'  => $free,
+                'min_free'  => $free,
+                'samples'   => 1,
+            );
+        }
+    }
+
+    /**
+     * One sample. Cheap enough (two stat calls) to take at every chunk boundary, which is where the
+     * footprint actually moves: a chunk is extracted, swapped in, and dropped.
+     */
+    private function disk_sample(): void {
+        foreach ($this->disk_paths() as $name => $path) {
+            if (!isset($this->disk_watermark[$name])) {
+                continue;
+            }
+            $free = $this->free_bytes($path);
+            if ($free === null) {
+                continue;
+            }
+            $seen = $this->disk_watermark[$name]['min_free'];
+            if ($seen === null || $free < $seen) {
+                $this->disk_watermark[$name]['min_free'] = $free;
+            }
+            $this->disk_watermark[$name]['samples']++;
+        }
+    }
+
+    /**
+     * What the samples add up to: peak_used = baseline - min_free, per filesystem.
+     *
+     * @return array<string,mixed>
+     */
+    private function disk_report(): array {
+        $out = array();
+        foreach ($this->disk_watermark as $name => $w) {
+            $peak = ($w['baseline'] === null || $w['min_free'] === null)
+                ? null
+                : max(0, (int) $w['baseline'] - (int) $w['min_free']);
+            $out[$name] = array(
+                'path'            => $w['path'],
+                'baseline_bytes'  => $w['baseline'],
+                'min_free_bytes'  => $w['min_free'],
+                'peak_used_bytes' => $peak,
+                'samples'         => $w['samples'],
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * The two filesystems a restore leans on, which are not always the same one: the chunks land in
+     * the plugin's temp directory, the trash and the file being swapped in are inside the site.
+     *
+     * @return array<string,string>
+     */
+    private function disk_paths(): array {
+        return array(
+            'temp' => class_exists('SAM_Backup_Temp') ? SAM_Backup_Temp::root() : sys_get_temp_dir(),
+            'site' => $this->abspath,
+        );
+    }
+
+    private function free_bytes(string $path): ?int {
+        $dir = is_dir($path) ? $path : dirname($path);
+        $free = @disk_free_space($dir);
+
+        return ($free === false || $free === null) ? null : (int) $free;
     }
 
     /**
@@ -906,6 +1014,10 @@ final class SAM_Backup_Restore_Engine {
                     $this->fault('files_swap', ++$step_no);
                 }
 
+                // Sampled here, at the widest point of the chunk: its files are extracted, what
+                // they displaced is in the trash, and nothing has been freed yet.
+                $this->disk_sample();
+
                 $this->recursive_delete($unit_dir);
                 // The chunk's content is live now and whatever it displaced is in the trash, which
                 // is what a rollback reads. Keeping the zip would only hold disk the site may need
@@ -916,6 +1028,7 @@ final class SAM_Backup_Restore_Engine {
                 $this->delete_unit($rel, $trash_dir, $journal, $journal_file);
                 $this->fault('files_swap', ++$step_no);
             }
+            $this->disk_sample();
         } catch (\Throwable $e) {
             $failure = $e->getMessage();
         }

@@ -54,6 +54,8 @@ use Illuminate\Support\Facades\Storage;
  * @property bool $is_up
  * @property int $pending_updates_count
  * @property string|null $connector_version
+ * @property string|null $backup_plugin_version
+ * @property \Illuminate\Support\Carbon|null $backup_plugin_checked_at
  * @property bool $backup_ok
  * @property \Illuminate\Support\Carbon|null $last_backup_at
  * @property string|null $notes
@@ -171,6 +173,8 @@ class Site extends Model
         'is_up',
         'pending_updates_count',
         'connector_version',
+        'backup_plugin_version',
+        'backup_plugin_checked_at',
         'backup_ok',
         'last_backup_at',
         'notes',
@@ -207,6 +211,7 @@ class Site extends Model
         'is_sandbox' => 'boolean',
         'proven_restore_enabled' => 'boolean',
         'last_backup_at' => 'datetime',
+        'backup_plugin_checked_at' => 'datetime',
         'last_synced_at' => 'datetime',
         'domain_expires_at' => 'datetime',
         'standard_preset_applied_at' => 'datetime',

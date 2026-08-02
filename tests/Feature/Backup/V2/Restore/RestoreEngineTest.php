@@ -483,6 +483,80 @@ class RestoreEngineTest extends TestCase
         $this->assertFileDoesNotExist($this->abspath.'/'.self::DIR.'/extra.txt');
     }
 
+    // ── Test 9: the restore reports what it actually cost the host ──
+
+    /**
+     * The peak footprint is the one number about a restore that cannot be measured from outside:
+     * the apply runs with the site in maintenance, where WordPress answers 503 to everything —
+     * including this plugin's own capabilities endpoint. Every figure we had was a prediction from
+     * the manager's preflight, and nobody could check it.
+     */
+    public function test_the_apply_reports_the_disk_it_used(): void
+    {
+        $backup = [];
+        for ($f = 0; $f < 6; $f++) {
+            $backup[self::DIR."/m{$f}.bin"] = str_repeat("payload{$f}", 2048);
+        }
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('watermark');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+
+        $result = $engine->apply();
+
+        $this->assertArrayHasKey('disk', $result, 'the apply must say what it cost');
+
+        foreach (['temp', 'site'] as $fs) {
+            $this->assertArrayHasKey($fs, $result['disk'], "both filesystems are measured: {$fs}");
+            $report = $result['disk'][$fs];
+
+            $this->assertGreaterThan(1, $report['samples'], 'a single sample is a reading, not a peak');
+            $this->assertNotNull($report['baseline_bytes']);
+            $this->assertLessThanOrEqual(
+                $report['baseline_bytes'],
+                $report['min_free_bytes'],
+                'free space cannot end up above where it started within one apply',
+            );
+            $this->assertSame(
+                $report['baseline_bytes'] - $report['min_free_bytes'],
+                $report['peak_used_bytes'],
+                'peak used is exactly what the watermark says',
+            );
+        }
+    }
+
+    /**
+     * ...and it survives to be asked about afterwards. The manager reads the status after the fact —
+     * that is the whole reconciliation path — so a measurement that only exists in the apply's
+     * return value is one a redelivered job can never see.
+     */
+    public function test_the_measurement_is_still_there_after_the_apply(): void
+    {
+        $backup = [self::DIR.'/a.txt' => 'ORIGINAL-A'];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('watermark-status');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $engine->apply();
+
+        $status = $this->engine('watermark-status')->status();
+
+        $this->assertSame('applied', $status['state'] ?? null);
+        $this->assertArrayHasKey('site', $status['disk'] ?? []);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     /** @param  array<int,string>  $paths */

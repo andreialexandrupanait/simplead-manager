@@ -431,6 +431,41 @@ final class RestoreRunner
             'applied' => (bool) ($result['applied'] ?? false),
             'async' => $detached,
         ]]);
+
+        $this->recordMeasuredDisk($result);
+    }
+
+    /**
+     * What the restore actually cost the host, next to what we predicted it would.
+     *
+     * The peak is the one number about a restore that cannot be measured from out here: the apply
+     * runs with the site in maintenance, and WordPress answers 503 to everything then — including
+     * the capabilities endpoint this would have to ask. So the plugin samples it from the inside and
+     * reports it, and it lands beside `disk_preflight` in the same checkpoint.
+     *
+     * Which makes the preflight's arithmetic checkable on every restore rather than plausible. If it
+     * is wrong, that shows up on a small site in a report instead of on a large one, half way
+     * through a swap.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private function recordMeasuredDisk(array $result): void
+    {
+        $disk = $result['disk'] ?? null;
+
+        if (! is_array($disk) || $disk === []) {
+            return; // an older plugin does not report it; that is not a failure
+        }
+
+        $this->mergeCheckpoint(['disk_actual' => $disk]);
+
+        $predicted = (array) ($this->checkpoint()['disk_preflight'] ?? []);
+        $this->logger->info('restore disk footprint', [
+            'site_peak_bytes' => $disk['site']['peak_used_bytes'] ?? null,
+            'temp_peak_bytes' => $disk['temp']['peak_used_bytes'] ?? null,
+            'site_predicted_bytes' => $predicted['site_required_bytes'] ?? null,
+            'temp_predicted_bytes' => $predicted['temp_required_bytes'] ?? null,
+        ]);
     }
 
     /**
@@ -489,7 +524,13 @@ final class RestoreRunner
             $state = (string) ($status['state'] ?? '');
 
             if ($state === 'applied') {
-                return ['applied' => true, 'db' => $status['db'] ?? null, 'files' => $status['files'] ?? null];
+                return [
+                    'applied' => true,
+                    'db' => $status['db'] ?? null,
+                    'files' => $status['files'] ?? null,
+                    // Measured inside the maintenance window, where nothing out here could look.
+                    'disk' => $status['disk'] ?? null,
+                ];
             }
 
             if ($state === 'failed') {

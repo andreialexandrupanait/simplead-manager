@@ -34,17 +34,32 @@ final class BackupV2Gate
 
     /**
      * Is this site id on the (non-empty) allowlist? Empty allowlist → false.
+     *
+     * `*` means every site, and it is what makes the fleet manageable from a screen instead of from
+     * a deployment. The allowlist was the right shape for a pilot — one site, changed by editing the
+     * environment — and the wrong shape the moment enrolling a site became an ordinary decision:
+     * every new site needed a deploy, which is exactly how retention spent a year switched off
+     * behind a variable nobody could reach from the page where the policy is set.
+     *
+     * The kill switch is untouched. `BACKUP_ENGINE_V2_ENABLED=false` still stops everything, and
+     * putting a concrete list back still narrows the fleet to it — both without a database write.
+     * With `*`, enrolment is the `backup_configs.backup_engine` column alone, which the console can
+     * change per site and undo per site.
      */
     public static function siteAllowed(int $siteId): bool
     {
         /** @var list<string> $ids */
-        $ids = (array) config('backup_v2.site_ids', []);
+        $ids = array_map('strval', (array) config('backup_v2.site_ids', []));
 
         if ($ids === []) {
             return false;
         }
 
-        return in_array((string) $siteId, array_map('strval', $ids), true);
+        if (in_array('*', $ids, true)) {
+            return true;
+        }
+
+        return in_array((string) $siteId, $ids, true);
     }
 
     /**

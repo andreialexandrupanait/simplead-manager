@@ -188,6 +188,7 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', '2fa.challenge'
     // the console is invisible in production with the default flags.
     Route::prefix('/backup-v2')->middleware('backup-v2.ui')->group(function () {
         Route::get('/', \App\Livewire\Backup\V2\BackupV2Overview::class)->name('backup-v2.index');
+        Route::get('/fleet', \App\Livewire\Backup\V2\FleetMigration::class)->name('backup-v2.fleet');
         Route::get('/sites/{site}', \App\Livewire\Backup\V2\SiteBackupV2::class)->name('backup-v2.site');
         Route::get('/sessions/{session}', \App\Livewire\Backup\V2\BackupV2Detail::class)->name('backup-v2.detail');
     });

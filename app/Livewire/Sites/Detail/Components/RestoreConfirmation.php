@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Components;
 
+use App\Backup\V2\Enums\RestoreMode;
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Orchestration\SessionActions;
+use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\RestoreBackup;
@@ -107,6 +111,24 @@ class RestoreConfirmation extends Component
         }
 
         $this->authorize('restore', $this->backup);
+    }
+
+    /**
+     * Is the selected restore point one the new engine produced?
+     *
+     * The two engines write different things to storage, and this component always dispatched the
+     * old one's job — while the backup BUTTONS on the same page route by engine
+     * ({@see \App\Livewire\Traits\WithBackupActions::startOnNewEngineIfConfigured}). Both engines
+     * write rows into `backups`, so as soon as a site moves to V2 its restore points appear in this
+     * very list, and "Restore" would hand a V2 restore point to the V1 job. It would not find what
+     * it expects and the site would be the place we found out.
+     *
+     * Routed by the BACKUP's engine rather than the site's, deliberately: a migrated site keeps its
+     * old restore points, and each one has to go back through the engine that produced it.
+     */
+    public function usesNewEngine(): bool
+    {
+        return $this->backup?->engine === BackupEngine::V2;
     }
 
     public function setRestoreMode(string $mode): void
@@ -215,6 +237,17 @@ class RestoreConfirmation extends Component
     public function restore(): void
     {
         if (! $this->confirmed || ! $this->backup) {
+            return;
+        }
+
+        // A V2 restore takes its own safety copy, inside the restore session, through the same
+        // engine it is about to restore with ({@see \App\Backup\V2\Restore\PreRestoreSafetyBackup}
+        // — mandatory for MIRROR, and the backstop the guaranteed rollback falls back to). Running
+        // the V1 safety backup first would produce a V1-format copy of a site that no longer uses
+        // that engine: a safety net in the wrong shape, plus a duplicate full backup.
+        if ($this->usesNewEngine()) {
+            $this->dispatchRestore();
+
             return;
         }
 
@@ -350,6 +383,12 @@ class RestoreConfirmation extends Component
             ? $this->selectedFiles
             : [];
 
+        if ($this->usesNewEngine()) {
+            $this->dispatchNewEngineRestore($restoreDb, $restoreFiles, $selectedFiles);
+
+            return;
+        }
+
         $this->backup->update([
             'restore_status' => 'pending',
             'restore_stage' => 'queued',
@@ -365,6 +404,50 @@ class RestoreConfirmation extends Component
 
         $mode = $this->restoreMode === 'selective' ? 'Selective restore' : 'Full restore';
         session()->flash('backup-success', "{$mode} has been queued. The site will be restored from this backup.");
+    }
+
+    /**
+     * Start a restore on the engine that produced this restore point.
+     *
+     * @param  list<string>  $selectedFiles
+     */
+    protected function dispatchNewEngineRestore(bool $restoreDb, bool $restoreFiles, array $selectedFiles): void
+    {
+        $session = BackupSession::where('backup_id', $this->backup?->id)->first();
+
+        if (! $session instanceof BackupSession) {
+            // The row says V2 but there is no session behind it. Refusing is the only safe answer:
+            // handing it to the V1 job — which is what used to happen to every V2 row — would point
+            // the old engine at storage written by the new one.
+            session()->flash('backup-error', __('This restore point has no V2 session behind it and cannot be restored.'));
+            $this->dispatch('close-modal-restore-confirmation');
+
+            return;
+        }
+
+        $scope = [
+            'database' => $restoreDb,
+            'files' => $restoreFiles,
+        ];
+        if ($selectedFiles !== []) {
+            // The engine bounds MIRROR deletions to these roots too, so a selective restore can
+            // never reach outside what the person actually picked.
+            $scope['paths'] = array_map(static fn ($p): string => trim((string) $p, '/'), $selectedFiles);
+        }
+
+        try {
+            $restore = app(SessionActions::class)->startRestore($session, RestoreMode::SafeMerge, $scope);
+        } catch (\Throwable $e) {
+            session()->flash('backup-error', __('Could not start the restore: ').$e->getMessage());
+            $this->dispatch('close-modal-restore-confirmation');
+
+            return;
+        }
+
+        $this->dispatch('restore-dispatched', backupId: $this->backup?->id);
+        $this->dispatch('close-modal-restore-confirmation');
+
+        session()->flash('backup-success', __('Restore queued (session #:id). A safety backup is taken first, and the site is put back exactly as it was if anything fails.', ['id' => $restore->id]));
     }
 
     protected function resolveDestination(): ?StorageDestination

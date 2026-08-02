@@ -217,13 +217,21 @@ class SessionActions
 
     /**
      * Start (queue) a restore of the given backup session.
+     *
+     * @param  array<string, mixed>|null  $scope  database|files|paths — null restores everything.
+     *                                            Carried so the site page's selective restore means
+     *                                            the same thing on this engine as it does on the old
+     *                                            one; the plan bounds MIRROR deletions to these
+     *                                            paths too, so a selective restore cannot reach
+     *                                            outside what was actually chosen.
      */
-    public function startRestore(BackupSession $source, RestoreMode $mode = RestoreMode::SafeMerge): RestoreSession
+    public function startRestore(BackupSession $source, RestoreMode $mode = RestoreMode::SafeMerge, ?array $scope = null): RestoreSession
     {
         $restore = RestoreSession::create([
             'site_id' => $source->site_id,
             'backup_session_id' => $source->id,
             'mode' => $mode->value,
+            'scope' => $scope,
             'state' => RestoreSessionState::Requested,
             'idempotency_key' => 'ui-restore-'.$source->id.'-'.Str::random(16),
         ]);
