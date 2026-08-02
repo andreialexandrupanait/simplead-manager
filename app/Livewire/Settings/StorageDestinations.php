@@ -78,6 +78,47 @@ class StorageDestinations extends Component
         ]));
     }
 
+    /**
+     * Take a destination out of use, or put it back.
+     *
+     * `is_active` decided everything and could only ever be set once, when the destination was
+     * created: nothing in the interface could turn one off. So retiring a provider meant either
+     * deleting it — impossible once it has backups — or leaving it live and hoping nothing chose
+     * it. Both are worse than a switch.
+     *
+     * Refuses to switch off the last active one. Every site without an explicit destination falls
+     * back to whichever is active ({@see StorageDestination::resolveForSite}), and so does the
+     * platform's own nightly database dump; with none active, both stop silently. That is a
+     * fleet-wide outage from one click, so it is not allowed to be one.
+     */
+    public function toggleActive(int $id): void
+    {
+        $destination = StorageDestination::findOrFail($id);
+
+        if ($destination->is_active && StorageDestination::where('is_active', true)->count() <= 1) {
+            $this->dispatch('notify', type: 'error', message: __('Cannot switch off :name — it is the only active destination, and backups would have nowhere to go.', [
+                'name' => $destination->name,
+            ]));
+
+            return;
+        }
+
+        if ($destination->is_active && $destination->is_default) {
+            $this->dispatch('notify', type: 'error', message: __('Cannot switch off :name while it is the default. Make another destination the default first.', [
+                'name' => $destination->name,
+            ]));
+
+            return;
+        }
+
+        $destination->update(['is_active' => ! $destination->is_active]);
+        unset($this->destinations);
+
+        $this->dispatch('notify', type: 'success', message: $destination->is_active
+            ? __(':name is active again.', ['name' => $destination->name])
+            : __(':name is switched off — nothing new will be stored there. Existing backups are untouched.', ['name' => $destination->name]));
+    }
+
     public function deleteDestination(int $id): void
     {
         $destination = StorageDestination::findOrFail($id);

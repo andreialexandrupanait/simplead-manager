@@ -40,6 +40,7 @@
                         $tTest = "testDestination({$destination->id})";
                         $tDefault = "setDefault({$destination->id})";
                         $tDelete = "deleteDestination({$destination->id})";
+                        $tActive = "toggleActive({$destination->id})";
                     @endphp
                     <div wire:key="destination-{{ $destination->id }}" class="flex items-center justify-between gap-4 py-3">
                         <div class="flex min-w-0 items-center gap-3">
@@ -66,6 +67,11 @@
                                     @if($destination->is_default)
                                         <x-ui.badge variant="blue" class="ml-1">{{ __('Default') }}</x-ui.badge>
                                     @endif
+                                    @unless($destination->is_active)
+                                        {{-- Off is a state worth seeing at a glance: a retired
+                                             destination still holds backups and still appears here. --}}
+                                        <x-ui.badge variant="gray" class="ml-1">{{ __('Switched off') }}</x-ui.badge>
+                                    @endunless
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     {{ match($destination->type) {
@@ -131,6 +137,23 @@
                                 <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="{{ $tTest }}" />
                                 <x-icons.check-circle class="h-4 w-4" wire:loading.remove wire:target="{{ $tTest }}" />
                                 <span class="sr-only">{{ __('Test Connection') }}</span>
+                            </x-ui.button>
+
+                            {{-- Switching a destination off is how you retire a provider you no
+                                 longer use: deleting is impossible once it holds backups, and
+                                 leaving it active means something may still choose it. --}}
+                            <x-ui.button
+                                variant="ghost" size="xs"
+                                wire:click="toggleActive({{ $destination->id }})"
+                                wire:target="{{ $tActive }}"
+                                wire:loading.attr="disabled"
+                                :title="$destination->is_active ? __('Switch off') : __('Switch on')"
+                            >
+                                <x-ui.spinner size="sm" class="hidden" wire:loading.class.remove="hidden" wire:target="{{ $tActive }}" />
+                                <svg aria-hidden="true" class="h-4 w-4 {{ $destination->is_active ? 'text-green-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" wire:loading.remove wire:target="{{ $tActive }}">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                                </svg>
+                                <span class="sr-only">{{ $destination->is_active ? __('Switch off') : __('Switch on') }}</span>
                             </x-ui.button>
 
                             @if(! $destination->is_default)
