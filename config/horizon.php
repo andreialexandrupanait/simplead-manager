@@ -299,10 +299,16 @@ return [
                 'balanceCooldown' => 3,
             ],
             'supervisor-backups' => [
-                // 2 (was 3): backups are the memory hog; the 7.7G host can't
-                // afford 3x1024M concurrent. Streaming-to-disk (PR #40) keeps real
-                // RSS low, so 2 concurrent backups is ample for tens of sites.
-                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 2),
+                // Backups are the memory hog, and this default was 2 because the host had 7.7G and
+                // could not afford 3x1024M at once. That host is gone — the current one has 62G,
+                // and the deployment sets this to 3. Streaming-to-disk keeps real RSS far below the
+                // per-worker ceiling anyway.
+                //
+                // This supervisor sat completely idle from the day the V2 engine arrived until the
+                // fleet moved onto it: the V2 job declared no queue, so every backup went to
+                // `default` and was served by supervisor-general — three workers at half the
+                // memory, shared with reports and security scans.
+                'maxProcesses' => (int) env('HORIZON_BACKUP_WORKERS', 3),
             ],
             'supervisor-notifications' => [
                 'maxProcesses' => (int) env('HORIZON_NOTIFICATION_WORKERS', 3),

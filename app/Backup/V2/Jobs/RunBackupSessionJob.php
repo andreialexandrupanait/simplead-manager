@@ -65,7 +65,19 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
     /** @var array<int, int> seconds between attempts */
     public array $backoff = [120, 600];
 
-    public function __construct(public readonly int $backupSessionId) {}
+    public function __construct(public readonly int $backupSessionId)
+    {
+        // The queue that was tuned for this work, not the general one.
+        //
+        // Declaring no queue put every V2 backup on `default`, which Horizon serves from
+        // supervisor-general — three workers at 512 MB, shared with reports, security scans and
+        // performance checks. Meanwhile supervisor-backups, configured with a gigabyte per worker
+        // and an hour of timeout precisely because backups are the memory hog, sat empty.
+        //
+        // Invisible while one site was on V2. With the whole fleet moved, a night of backups would
+        // hold all three general workers for hours and everything else would queue behind them.
+        $this->onQueue('backups');
+    }
 
     /**
      * The unique lock releases after this even if the worker is SIGKILLed.
