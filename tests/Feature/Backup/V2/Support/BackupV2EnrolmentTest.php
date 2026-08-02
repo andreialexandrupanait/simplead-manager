@@ -60,6 +60,29 @@ class BackupV2EnrolmentTest extends TestCase
         $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($this->siteOn(BackupEngine::V2)));
     }
 
+    public function test_fleet_enrolment_opens_the_gate_without_touching_the_deployment(): void
+    {
+        // The switch has to live in the database: the deploy token this manager holds cannot write
+        // environment variables, so an env-only switch would be one nobody in the product can reach.
+        config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => []]);
+        $site = $this->siteOn(BackupEngine::V2);
+
+        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($site), 'closed until someone opens it');
+
+        app(BackupV2Settings::class)->setFleetEnrolmentEnabled(true);
+
+        $this->assertSame(BackupEngine::V2, BackupV2Gate::engineFor($site->fresh()));
+    }
+
+    public function test_the_master_switch_still_wins_over_fleet_enrolment(): void
+    {
+        // Whatever the screen says, the deployment can still stop every site at once.
+        config(['backup_v2.enabled' => false, 'backup_v2.site_ids' => []]);
+        app(BackupV2Settings::class)->setFleetEnrolmentEnabled(true);
+
+        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($this->siteOn(BackupEngine::V2)));
+    }
+
     public function test_an_empty_allowlist_still_means_nobody(): void
     {
         config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => []]);

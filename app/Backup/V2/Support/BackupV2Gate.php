@@ -7,6 +7,7 @@ namespace App\Backup\V2\Support;
 use App\Enums\BackupEngine;
 use App\Models\BackupConfig;
 use App\Models\Site;
+use App\Services\Backup\BackupV2Settings;
 
 /**
  * Single source of truth for whether the V2 backup ENGINE (not the UI — that is
@@ -14,13 +15,17 @@ use App\Models\Site;
  *
  * Two independent conditions must BOTH hold:
  *   1. the master kill-switch config('backup_v2.enabled') is true, AND
- *   2. the site id appears in the config('backup_v2.site_ids') allowlist.
+ *   2. the site is eligible — either fleet enrolment is on (a setting, changed from the console),
+ *      or the site id appears in the config('backup_v2.site_ids') allowlist.
  *
- * The allowlist is fail-closed: an EMPTY list means "no site is eligible" (it never
- * means "all sites"). So with the default config — enabled=false and an empty
- * site_ids — allowsSite() is false for every site and no engine code path can touch
- * a real site. A site is eligible only when the owner has both flipped the master
- * switch AND explicitly listed that site id.
+ * Both are fail-closed. Fleet enrolment defaults to false and an EMPTY allowlist means "no site is
+ * eligible" — it never means "all sites". So with the default config — enabled=false, no setting
+ * written, empty site_ids — allowsSite() is false for every site and no engine code path can touch
+ * a real site.
+ *
+ * Eligibility is permission, not intent: it says a site MAY run the new engine, and the
+ * `backup_configs.backup_engine` column says whether it does. The column can only ever narrow what
+ * this grants, which is what makes turning the fleet back a single write per site.
  */
 final class BackupV2Gate
 {
@@ -48,6 +53,14 @@ final class BackupV2Gate
      */
     public static function siteAllowed(int $siteId): bool
     {
+        // Fleet enrolment, set from the console, says every site may be enrolled and leaves the
+        // choice to the per-site column. It lives in the database rather than the environment
+        // because the deploy token this manager holds cannot write environment variables — a switch
+        // in `.env` would have been one nobody working in the product could reach.
+        if (app(BackupV2Settings::class)->fleetEnrolmentEnabled()) {
+            return true;
+        }
+
         /** @var list<string> $ids */
         $ids = array_map('strval', (array) config('backup_v2.site_ids', []));
 

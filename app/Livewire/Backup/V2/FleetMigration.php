@@ -118,6 +118,34 @@ class FleetMigration extends Component
         return app(BackupV2Settings::class)->restoreEnabled();
     }
 
+    #[Computed]
+    public function fleetEnrolment(): bool
+    {
+        return app(BackupV2Settings::class)->fleetEnrolmentEnabled();
+    }
+
+    /**
+     * Allow any site to be enrolled, instead of only the ones the deployment names.
+     *
+     * Without it, moving a site means editing an environment variable and redeploying — and the
+     * deploy token this manager holds cannot even write environment variables, so that switch would
+     * live somewhere nobody working in the product could reach. The master kill switch is untouched:
+     * `BACKUP_ENGINE_V2_ENABLED=false` still stops every site at once, from the deployment side.
+     */
+    public function toggleFleetEnrolment(): void
+    {
+        $this->guard();
+
+        $settings = app(BackupV2Settings::class);
+        $settings->setFleetEnrolmentEnabled(! $settings->fleetEnrolmentEnabled());
+
+        unset($this->fleetEnrolment, $this->rows, $this->summary);
+
+        session()->flash('fleet-success', $settings->fleetEnrolmentEnabled()
+            ? __('Any site may now be moved to the V2 engine.')
+            : __('Only sites named in the deployment may run the V2 engine.'));
+    }
+
     /**
      * Turn V2 restores on or off for everyone.
      *

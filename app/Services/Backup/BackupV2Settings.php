@@ -22,7 +22,32 @@ class BackupV2Settings
 {
     public const KEY_RESTORE_ENABLED = 'backup_v2_restore_enabled';
 
+    public const KEY_FLEET_ENROLMENT = 'backup_v2_fleet_enrolment';
+
     public function __construct(private readonly SettingsService $settings) {}
+
+    /**
+     * May any site be enrolled, or only the ones the deployment names?
+     *
+     * The allowlist in `BACKUP_ENGINE_V2_SITE_IDS` was right for a pilot: one site, changed by
+     * editing the deployment. It is wrong once enrolling a site is an ordinary decision, because
+     * every site then needs a deploy — and the deploy token this manager holds is scoped to
+     * deployments, so it cannot even write that variable. The switch would have lived somewhere
+     * nobody working in the product could reach.
+     *
+     * So the fleet decision moves here, and the environment keeps the two powers that matter:
+     * `BACKUP_ENGINE_V2_ENABLED=false` still stops every site at once, and with fleet enrolment off
+     * the allowlist is exactly as binding as it always was.
+     */
+    public function fleetEnrolmentEnabled(): bool
+    {
+        return (bool) $this->settings->get(self::KEY_FLEET_ENROLMENT, false);
+    }
+
+    public function setFleetEnrolmentEnabled(bool $enabled): void
+    {
+        $this->settings->set(self::KEY_FLEET_ENROLMENT, $enabled, 'backups', 'boolean');
+    }
 
     /**
      * May a V2 restore actually run?
