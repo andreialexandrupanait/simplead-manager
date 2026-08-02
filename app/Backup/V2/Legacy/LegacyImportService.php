@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backup\V2\Legacy;
 
 use App\Backup\V2\Models\LegacyBackupIndexEntry;
+use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
@@ -279,7 +280,7 @@ final class LegacyImportService
             return [];
         }
 
-        $tmp = (string) tempnam(sys_get_temp_dir(), 'legacyimp_');
+        $tmp = (string) WorkDir::temp('legacyimp_');
         try {
             $driver->download($path, $tmp);
             $json = (string) file_get_contents($tmp);

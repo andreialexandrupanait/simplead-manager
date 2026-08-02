@@ -15,6 +15,7 @@ use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Storage\BackupSessionProgressStore;
 use App\Backup\V2\Storage\HardenedMultipartUploader;
 use App\Backup\V2\Storage\ObjectLayout;
+use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
 use Aws\S3\S3Client;
 use Closure;
@@ -567,7 +568,7 @@ final class BackupRunner
             // sha256 re-verification straight from storage (download + hash). Objects
             // are pulled-and-freed and small; TODO(P3): use S3 ChecksumSHA256 / ranged
             // verification for very large objects instead of a full re-download.
-            $tmp = (string) tempnam(sys_get_temp_dir(), 'v2verify_');
+            $tmp = (string) WorkDir::temp('v2verify_');
             try {
                 $this->readS3()->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $tmp]);
                 $remoteSha = (string) hash_file('sha256', $tmp);
@@ -792,7 +793,7 @@ final class BackupRunner
         }
 
         $plaintextSha = (string) hash_file('sha256', $localPath);
-        $encrypted = (string) tempnam(sys_get_temp_dir(), 'v2enc_');
+        $encrypted = (string) WorkDir::temp('v2enc_');
 
         try {
             $cipher->encryptFile($localPath, $encrypted);

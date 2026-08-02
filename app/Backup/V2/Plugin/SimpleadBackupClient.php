@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Backup\V2\Plugin;
 
 use App\Backup\V2\Restore\RestoreClient;
+use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Site;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Throwable;
@@ -167,15 +169,36 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
 
         [$url, , $headers] = $this->sign('POST', 'restore/stage-chunk', [], $body);
 
+        // Send the chunk as a STREAM, not as the string we just signed. Handing a
+        // string to withBody() makes Guzzle copy it into a php://temp, which spills
+        // to disk past two megabytes — and in production that disk is a tmpfs of
+        // 64 MB in the web container. The first restore ever attempted against a
+        // real host died there, three seconds in, on
+        // `fwrite(): No space left on device`, with a chunk of only 11 MB.
+        //
+        // The bytes on disk are the bytes we signed: $body was read from this same
+        // file a few lines up and nothing has touched it since.
+        $handle = fopen($localPath, 'rb');
+        if ($handle === false) {
+            throw new PluginClientException("restore chunk source could not be opened: {$localPath}");
+        }
+
+        // Wrapped as a PSR-7 stream rather than passed as a bare resource: that is
+        // what withBody() declares it takes, and Utils::streamFor reads straight
+        // from the handle without copying.
+        $stream = Utils::streamFor($handle);
+
         try {
             $response = $this->http
                 ->withHeaders($headers)
                 ->timeout($this->timeout)
                 ->connectTimeout(15)
-                ->withBody($body, 'application/octet-stream')
+                ->withBody($stream, 'application/octet-stream')
                 ->send('POST', $url.'?'.$query);
         } catch (Throwable $e) {
             throw new PluginClientException("simplead-backup restore/stage-chunk transport error: {$e->getMessage()}");
+        } finally {
+            $stream->close();
         }
 
         $decoded = $response->json();
@@ -262,7 +285,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     {
         [$url, $body, $headers] = $this->sign('POST', $path, $params);
 
-        $tmp = (string) tempnam(sys_get_temp_dir(), $tmpPrefix);
+        $tmp = (string) WorkDir::temp($tmpPrefix);
 
         try {
             $response = $this->request($headers, $body)->sink($tmp)->send('POST', $url);

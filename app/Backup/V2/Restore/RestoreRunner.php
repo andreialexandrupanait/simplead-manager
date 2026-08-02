@@ -15,6 +15,7 @@ use App\Backup\V2\Enums\RestoreSessionState as S;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Storage\ObjectLayout;
+use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
 use Aws\S3\S3Client;
 use Closure;
@@ -226,7 +227,7 @@ final class RestoreRunner
             return; // already staged on a prior run — never re-pull/re-push
         }
 
-        $tmp = (string) tempnam(sys_get_temp_dir(), 'v2restore_');
+        $tmp = (string) WorkDir::temp('v2restore_');
         $plain = null;
         $encrypted = false;
 
@@ -245,7 +246,7 @@ final class RestoreRunner
             if (ObjectCipher::isEncrypted($tmp)) {
                 $encrypted = true;
                 $keyId = (string) ObjectCipher::keyIdOf($tmp);
-                $plain = (string) tempnam(sys_get_temp_dir(), 'v2plain_');
+                $plain = (string) WorkDir::temp('v2plain_');
 
                 // Authentication failure here is the point of the whole scheme:
                 // altered or truncated bytes stop being restorable rather than

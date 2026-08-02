@@ -9,6 +9,7 @@ use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\BackupVerification;
 use App\Backup\V2\Storage\ObjectLayout;
+use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
 use Aws\S3\S3Client;
 use Throwable;
@@ -86,7 +87,7 @@ final class DeepVerifyService
                 $kind = (string) ($object['kind'] ?? '');
                 $declaredSha = (string) ($object['sha256'] ?? '');
 
-                $tmp = (string) tempnam(sys_get_temp_dir(), 'v2deep_');
+                $tmp = (string) WorkDir::temp('v2deep_');
                 try {
                     $s3->getObject(['Bucket' => $bucket, 'Key' => $key, 'SaveAs' => $tmp]);
 
@@ -109,7 +110,7 @@ final class DeepVerifyService
                     // what they are looking at.
                     $decrypted = null;
                     if (ObjectCipher::isEncrypted($tmp)) {
-                        $decrypted = (string) tempnam(sys_get_temp_dir(), 'v2deepplain_');
+                        $decrypted = (string) WorkDir::temp('v2deepplain_');
                         try {
                             (new BackupKeyring)
                                 ->forKeyId((string) ObjectCipher::keyIdOf($tmp))

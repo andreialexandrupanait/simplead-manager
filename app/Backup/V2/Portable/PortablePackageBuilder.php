@@ -10,6 +10,7 @@ use App\Backup\V2\Crypto\BackupKeyring;
 use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Storage\SessionLayoutResolver;
+use App\Backup\V2\Storage\WorkDir;
 use Aws\S3\S3Client;
 use RuntimeException;
 use ZipArchive;
@@ -59,13 +60,15 @@ class PortablePackageBuilder
      */
     public function workDir(): string
     {
-        $dir = $this->workDir ?? (string) config('backup_v2.work_dir', sys_get_temp_dir());
-
-        if (! is_dir($dir) && ! mkdir($dir, 0700, true) && ! is_dir($dir)) {
-            throw new RuntimeException("Could not create the backup work directory {$dir}.");
+        if ($this->workDir === null) {
+            return WorkDir::path();
         }
 
-        return $dir;
+        if (! is_dir($this->workDir) && ! mkdir($this->workDir, 0700, true) && ! is_dir($this->workDir)) {
+            throw new RuntimeException("Could not create the backup work directory {$this->workDir}.");
+        }
+
+        return $this->workDir;
     }
 
     /**
