@@ -163,8 +163,10 @@ final class RestoreRunner
 
     private function validate(BackupSession $target, RestorePlan $plan): void
     {
-        // Every chain member must be a whole backup (_COMPLETE present) before any restore work.
-        foreach ($this->resolver->resolveChain($target) as $member) {
+        // Every backup this restore actually depends on must be whole (_COMPLETE present) before any
+        // restore work. For a format/2 backup that is the target alone — its manifest names its
+        // objects directly, so the state of the backups it happens to descend from is irrelevant.
+        foreach ($this->resolver->membersToVerify($target, $this->reader) as $member) {
             $this->assertComplete($member);
         }
 

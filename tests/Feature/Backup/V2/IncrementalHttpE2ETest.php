@@ -95,7 +95,7 @@ class IncrementalHttpE2ETest extends TestCase
             layout: $this->layoutFor($inc),
             fileChunkThreshold: self::FILE_CHUNK_THRESHOLD,
             dbSegmentBytes: self::DB_SEGMENT_BYTES,
-            baseManifestProvider: fn (BackupSession $s): ?array => $resolver->baseFileState($s, $reader),
+            baseStateProvider: fn (BackupSession $s): ?array => $resolver->materialize($resolver->baseChainFor($s), $reader),
         ))->run();
 
         $this->assertSame(BackupSessionState::Completed, $inc->refresh()->state);
@@ -106,11 +106,31 @@ class IncrementalHttpE2ETest extends TestCase
         $this->assertSame($full->id, $incManifest['full_base_id']);
         $this->assertSame(1, $incManifest['chain_position']);
 
-        // (b) NOTHING file-side was uploaded: 0 file objects, 0 included files, 0 tombstones —
-        // every unchanged file was skipped by the real plugin diff.
+        // (b) NOTHING file-side was uploaded — every unchanged file was skipped by the real plugin
+        // diff — and yet the manifest still describes the whole site. That pair is the entire point:
+        // the cost of an incremental, the standing of a full.
         $this->assertSame(0, $this->countObjects($incManifest, 'files'), 'unchanged incremental must upload no file chunks');
-        $this->assertSame([], (array) ($incManifest['files']['included'] ?? []), 'no changed/new files');
         $this->assertSame([], (array) ($incManifest['files']['tombstones'] ?? []), 'no deletions → no tombstones');
+
+        $fullManifest = $this->manifest($full);
+        $incIncluded = (array) ($incManifest['files']['included'] ?? []);
+        $this->assertCount(
+            count((array) ($fullManifest['files']['included'] ?? [])),
+            $incIncluded,
+            'the incremental must list every file present at its restore point, not only what it uploaded',
+        );
+
+        // And every one of them points at an object the FULL uploaded, under the full's own prefix —
+        // carried forward by reference rather than copied.
+        $incPrefix = $this->layoutFor($inc)->files('');
+        foreach ($incIncluded as $entry) {
+            $this->assertNotEmpty($entry['key'] ?? '', 'every entry must name the object that holds it');
+            $this->assertStringNotContainsString(
+                $incPrefix,
+                (string) $entry['key'],
+                'an unchanged file must still point at the object it was originally uploaded in',
+            );
+        }
 
         // (c) DB was STILL dumped in full on the incremental (full-dump-every-backup).
         $this->assertGreaterThan(0, $this->countObjects($incManifest, 'database'), 'incremental must still take a full DB dump');

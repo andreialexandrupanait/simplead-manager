@@ -155,7 +155,11 @@ return [
     // contract the code enforces unconditionally in finalize() — a backup cannot
     // reach `completed` without both. A flag that cannot be turned off is not a
     // setting, it is a claim that the reader can weaken the guarantee.
-    'format_version' => 'simplead-backup/1',
+    // Bumped to /2 when the manifest started carrying the COMPLETE file list for the restore point
+    // rather than only what that run uploaded. A /2 manifest names the object holding every file, so
+    // one read restores or packages it; a /1 incremental only makes sense replayed over its chain.
+    // ChainResolver keeps the replay path for /1 backups, which stay valid until retention takes them.
+    'format_version' => 'simplead-backup/2',
 
     // S3 object layout root (per TARGET-ARCHITECTURE.md). Tenant-isolated.
     'object_prefix' => 'clients/{client_id}/sites/{site_id}/backups/{backup_id}',

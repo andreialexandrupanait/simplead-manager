@@ -94,13 +94,18 @@ class IncrementalChainE2ETest extends TestCase
         $this->runBackup($inc1);
         $this->assertSame(BackupSessionState::Completed, $inc1->refresh()->state);
 
-        // (1) incremental correctness: ONLY changed+new uploaded, unchanged NOT re-uploaded.
+        // (1) incremental correctness, in two halves that have to hold together:
+        //     what it UPLOADED is only what changed, and what it DESCRIBES is the whole site.
         $m1 = $this->manifest($inc1);
+
+        $uploaded1 = $this->pathsUploadedBy($m1, $inc1);
+        sort($uploaded1);
+        $this->assertSame(['dir1/f1.dat', 'dir1/f6.dat'], $uploaded1, 'incremental uploads only changed+new');
+
         $included1 = $this->includedPaths($m1);
-        sort($included1);
-        $this->assertSame(['dir1/f1.dat', 'dir1/f6.dat'], $included1, 'incremental uploads only changed+new');
-        $this->assertNotContains('dir1/f2.dat', $included1, 'unchanged file must not be re-uploaded');
-        $this->assertNotContains('dir2/g1.dat', $included1, 'unchanged file must not be re-uploaded');
+        $this->assertContains('dir1/f2.dat', $included1, 'unchanged file is carried forward by reference');
+        $this->assertContains('dir2/g1.dat', $included1, 'unchanged file is carried forward by reference');
+        $this->assertNotContains('dir2/g3.dat', $included1, 'a deleted file is absent from the restore point');
         $this->assertSame(['dir2/g3.dat'], $m1['files']['tombstones'], 'deleted file recorded as tombstone');
         $this->assertSame($full->id, $m1['full_base_id']);
         $this->assertSame(1, $m1['chain_position']);
@@ -116,11 +121,15 @@ class IncrementalChainE2ETest extends TestCase
         $this->assertSame(BackupSessionState::Completed, $inc2->refresh()->state);
 
         $m2 = $this->manifest($inc2);
-        $included2 = $this->includedPaths($m2);
-        sort($included2);
-        $this->assertSame(['dir2/g1.dat', 'dir3/h1.dat'], $included2, 'inc2 uploads only its changed+new');
+        $uploaded2 = $this->pathsUploadedBy($m2, $inc2);
+        sort($uploaded2);
+        $this->assertSame(['dir2/g1.dat', 'dir3/h1.dat'], $uploaded2, 'inc2 uploads only its changed+new');
         $this->assertSame(['dir1/f2.dat'], $m2['files']['tombstones']);
         $this->assertSame(2, $m2['chain_position']);
+
+        // inc2 sits two links from the full, and still describes the site on its own: a file last
+        // touched by the FULL is reachable from inc2's manifest without reading anything else.
+        $this->assertContains('dir1/f3.dat', $this->includedPaths($m2), 'a file from the full is still described by inc2');
 
         // (2) RESTORE FROM CHAIN — materialise full+inc1+inc2, reproduce live fixture bit-for-bit.
         $resolver = new ChainResolver;
@@ -161,7 +170,8 @@ class IncrementalChainE2ETest extends TestCase
         $this->assertSame($inc2->id, $state['dir2/g1.dat']['source_session_id']);
         $this->assertSame($full->id, $state['dir1/f3.dat']['source_session_id']);
 
-        // (3a) broken chain: base full no longer valid (incomplete) → resolveChain refuses.
+        // (3a) resolveChain still refuses a chain that does not hold together — that contract is
+        // unchanged, and format/1 backups still depend on it.
         BackupSession::where('id', $full->id)->update(['state' => BackupSessionState::Failed->value]);
         try {
             (new ChainResolver)->resolveChain($inc2->fresh());
@@ -170,11 +180,23 @@ class IncrementalChainE2ETest extends TestCase
             $this->assertStringContainsString('missing or not completed', $e->getMessage());
         }
 
-        // (3b) corrupt base: base manifest object gone → materialise refuses before restoring.
-        BackupSession::where('id', $full->id)->update(['state' => BackupSessionState::Completed->value]);
+        // (3b) …but the restore point does not. This used to be the opposite assertion: losing the
+        // base full's manifest cost you every backup that descended from it, which is exactly the
+        // fragility a chain buys you. inc2 names its objects itself, so it survives both the base
+        // being marked failed AND its manifest being deleted outright.
         $this->s3()->deleteObject(['Bucket' => $this->bucket, 'Key' => $this->layoutFor($full)->manifest()]);
-        $this->expectException(BrokenChainException::class);
-        (new ChainResolver)->materialize((new ChainResolver)->resolveChain($inc2->fresh()), $this->manifestReader());
+
+        $survivors = (new ChainResolver)->stateFor($inc2->fresh(), $this->manifestReader());
+        $this->assertEqualsCanonicalizing(
+            array_keys($live),
+            array_keys($survivors),
+            'a self-sufficient restore point survives the loss of its base manifest',
+        );
+        $this->assertSame(
+            $state['dir1/f3.dat']['key'],
+            $survivors['dir1/f3.dat']['key'],
+            'a file inherited from the full still points at the full’s object',
+        );
     }
 
     // ── helpers ──────────────────────────────────────────────────────────
@@ -202,7 +224,7 @@ class IncrementalChainE2ETest extends TestCase
         $resolver = new ChainResolver;
         $reader = $this->manifestReader();
         $baseProvider = fn (BackupSession $s): ?array => $s->type === 'incremental'
-            ? $resolver->baseFileState($s, $reader)
+            ? $resolver->materialize($resolver->baseChainFor($s), $reader)
             : null;
 
         (new BackupRunner(
@@ -216,7 +238,7 @@ class IncrementalChainE2ETest extends TestCase
             dbSegmentBytes: null,
             compression: 'store',
             faultAfterObject: null,
-            baseManifestProvider: $baseProvider,
+            baseStateProvider: $baseProvider,
         ))->run();
     }
 
@@ -263,6 +285,27 @@ class IncrementalChainE2ETest extends TestCase
             static fn (array $e): string => (string) $e['p'],
             (array) ($manifest['files']['included'] ?? []),
         ));
+    }
+
+    /**
+     * The paths this backup actually put bytes on the wire for — entries whose object lives under
+     * its own prefix. Everything else in the manifest was carried forward from an earlier backup.
+     *
+     * @param  array<string, mixed>  $manifest
+     * @return list<string>
+     */
+    private function pathsUploadedBy(array $manifest, BackupSession $session): array
+    {
+        $ownPrefix = $this->layoutFor($session)->files('');
+
+        $paths = [];
+        foreach ((array) ($manifest['files']['included'] ?? []) as $entry) {
+            if (str_contains((string) ($entry['key'] ?? ''), $ownPrefix)) {
+                $paths[] = (string) $entry['p'];
+            }
+        }
+
+        return $paths;
     }
 
     /**

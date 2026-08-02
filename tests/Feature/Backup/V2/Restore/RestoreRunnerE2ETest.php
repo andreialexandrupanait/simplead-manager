@@ -261,7 +261,7 @@ class RestoreRunnerE2ETest extends TestCase
         $resolver = new ChainResolver;
         $reader = $this->reader();
         $baseProvider = fn (BackupSession $s): ?array => $s->type === 'incremental'
-            ? $resolver->baseFileState($s, $reader)
+            ? $resolver->materialize($resolver->baseChainFor($s), $reader)
             : null;
 
         (new BackupRunner(
@@ -275,7 +275,7 @@ class RestoreRunnerE2ETest extends TestCase
             dbSegmentBytes: null,
             compression: 'store',
             faultAfterObject: null,
-            baseManifestProvider: $baseProvider,
+            baseStateProvider: $baseProvider,
         ))->run();
 
         $this->assertSame(BackupSessionState::Completed, $session->refresh()->state, 'backup must complete');

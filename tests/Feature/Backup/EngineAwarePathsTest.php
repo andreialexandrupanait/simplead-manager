@@ -125,6 +125,123 @@ class EngineAwarePathsTest extends TestCase
     }
 
     /**
+     * The data-loss this format made possible, and the guard against it.
+     *
+     * Since format/2 a backup's manifest names the object holding every file at that restore point,
+     * including files it never uploaded — those still live in an older backup's prefix. Wholesale
+     * prefix deletion was correct while every backup only referenced its own objects. Now it would
+     * quietly gut restore points that are still listed, still verified, and still expected to work,
+     * and nobody would find out until they needed one.
+     */
+    public function test_deleting_a_backup_keeps_the_objects_a_newer_restore_point_still_references(): void
+    {
+        $destination = $this->destination();
+        $site = Site::factory()->create();
+
+        $oldPrefix = 'clients/7/sites/'.$site->id.'/backups/42';
+        $newPrefix = 'clients/7/sites/'.$site->id.'/backups/43';
+
+        // The old full uploaded two chunks and a DB dump.
+        $this->write($oldPrefix.'/files/chunk_0.zip');
+        $this->write($oldPrefix.'/files/chunk_1.zip');
+        $this->write($oldPrefix.'/database/chunk_0.sql.gz');
+        $this->write($oldPrefix.'/manifest.json', '{}');
+        $this->write($oldPrefix.'/_COMPLETE');
+
+        // The newer incremental uploaded one chunk of its own — and carried chunk_0 forward from the
+        // full by reference, which is exactly what makes it restorable on its own.
+        $this->write($newPrefix.'/files/chunk_0.zip');
+        $this->write($newPrefix.'/database/chunk_0.sql.gz');
+        $this->write($newPrefix.'/_COMPLETE');
+        $this->write($newPrefix.'/manifest.json', (string) json_encode([
+            'format_version' => 'simplead-backup/2',
+            'objects' => [
+                ['kind' => 'files', 'chunk_index' => 0, 'key' => $newPrefix.'/files/chunk_0.zip'],
+                ['kind' => 'database', 'chunk_index' => 0, 'key' => $newPrefix.'/database/chunk_0.sql.gz'],
+            ],
+            'files' => [
+                'included' => [
+                    ['p' => 'changed.txt', 'key' => $newPrefix.'/files/chunk_0.zip'],
+                    ['p' => 'untouched.txt', 'key' => $oldPrefix.'/files/chunk_0.zip'],
+                ],
+                'tombstones' => [],
+            ],
+        ]));
+
+        $old = Backup::factory()->create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $destination->id,
+            'engine' => BackupEngine::V2,
+            'file_path' => $oldPrefix,
+            'status' => BackupStatus::Completed,
+            'file_size' => 1024,
+        ]);
+        Backup::factory()->create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $destination->id,
+            'engine' => BackupEngine::V2,
+            'file_path' => $newPrefix,
+            'status' => BackupStatus::Completed,
+            'file_size' => 512,
+        ]);
+
+        app(RetentionService::class)->purge($old);
+
+        // Still referenced → must survive, even though its own backup is gone.
+        $this->assertFileExists(
+            $this->storageDir.'/'.$oldPrefix.'/files/chunk_0.zip',
+            'an object a newer restore point still names must not be deleted with its original backup',
+        );
+
+        // Referenced by nobody → reclaimed, which is the whole point of retention.
+        $this->assertFileDoesNotExist($this->storageDir.'/'.$oldPrefix.'/files/chunk_1.zip');
+        $this->assertFileDoesNotExist($this->storageDir.'/'.$oldPrefix.'/database/chunk_0.sql.gz');
+        $this->assertFileDoesNotExist($this->storageDir.'/'.$oldPrefix.'/_COMPLETE');
+        $this->assertDatabaseMissing('backups', ['id' => $old->id]);
+    }
+
+    /**
+     * Fails closed: an unreadable manifest means an unknown reference set. Keeping objects that are
+     * no longer needed costs storage; deleting objects that are still needed costs the backup.
+     */
+    public function test_an_unreadable_neighbour_manifest_stops_the_delete_rather_than_guessing(): void
+    {
+        $destination = $this->destination();
+        $site = Site::factory()->create();
+
+        $oldPrefix = 'clients/7/sites/'.$site->id.'/backups/50';
+        $newPrefix = 'clients/7/sites/'.$site->id.'/backups/51';
+
+        $this->write($oldPrefix.'/files/chunk_0.zip');
+        $this->write($oldPrefix.'/_COMPLETE');
+        $this->write($newPrefix.'/manifest.json', 'this is not json');
+
+        $old = Backup::factory()->create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $destination->id,
+            'engine' => BackupEngine::V2,
+            'file_path' => $oldPrefix,
+            'status' => BackupStatus::Completed,
+            'file_size' => 1024,
+        ]);
+        Backup::factory()->create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $destination->id,
+            'engine' => BackupEngine::V2,
+            'file_path' => $newPrefix,
+            'status' => BackupStatus::Completed,
+            'file_size' => 512,
+        ]);
+
+        app(RetentionService::class)->purge($old);
+
+        $this->assertFileExists(
+            $this->storageDir.'/'.$oldPrefix.'/files/chunk_0.zip',
+            'nothing may be deleted while it is unknown what still references it',
+        );
+    }
+
+    /**
      * The regression that would cost real data: a legacy row must keep taking
      * the single-file-plus-sidecar path it took before the branch existed.
      */

@@ -70,19 +70,15 @@ final class RestorePlan
         /** @var list<string> $dbTables */
         $dbTables = array_values(array_map('strval', (array) ($scope['db_tables'] ?? [])));
 
-        $chain = $resolver->resolveChain($target);
-        $chainIndex = [];
-        foreach ($chain as $i => $session) {
-            $chainIndex[(int) $session->id] = $i;
-        }
-
-        // ── files: materialise final state, filter by scope paths ──────────
+        // ── files: the restore point's final state, filtered by scope paths ──
         $keepPaths = [];
         $fileChunks = [];
         if ($includeFiles) {
-            $state = $resolver->materialize($chain, $reader);
+            // One manifest for format/2; the chain replay only for older backups. Either way the
+            // state that comes back already has latest-wins applied, so no path appears twice.
+            $state = $resolver->stateFor($target, $reader);
 
-            $keyOrder = []; // key => ['order'=>chainIndex,'chunk_index'=>..,'sid'=>..]
+            $keyOrder = []; // key => ['order'=>sourceSessionId,'chunk_index'=>..,'sid'=>..]
             foreach ($state as $path => $entry) {
                 if (! self::pathInScope((string) $path, $pathFilters)) {
                     continue;
@@ -94,14 +90,18 @@ final class RestorePlan
                 }
                 $sid = (int) $entry['source_session_id'];
                 $keyOrder[$key] = [
-                    'order' => $chainIndex[$sid] ?? 0,
+                    // Ordering by the backup that produced the chunk, oldest first. It used to be the
+                    // position in the resolved chain, which meant a plan could not be built at all
+                    // unless the whole chain still resolved — a dependency a format/2 restore point
+                    // does not have. Session ids are monotonic, so the order is the same one.
+                    'order' => $sid,
                     'chunk_index' => (int) $entry['chunk_index'],
                     'sid' => $sid,
                 ];
             }
             sort($keepPaths);
 
-            // Order chunks so an earlier-chain chunk is extracted (and thus overwritten) first.
+            // Order chunks so an older chunk is extracted (and thus overwritten) first.
             uasort($keyOrder, static function (array $a, array $b): int {
                 return [$a['order'], $a['chunk_index']] <=> [$b['order'], $b['chunk_index']];
             });
@@ -116,9 +116,12 @@ final class RestorePlan
             }
         }
 
-        // ── tombstones across the chain (scope-filtered), for MIRROR belt ──
+        // ── tombstones (scope-filtered), for the MIRROR belt ──
+        // Only the manifests this restore point actually depends on: its own for format/2, the whole
+        // chain for format/1. A path deleted long ago is already simply absent from the state above,
+        // so this stays a belt rather than the mechanism.
         $tombstones = [];
-        foreach ($chain as $session) {
+        foreach ($resolver->membersToVerify($target, $reader) as $session) {
             $manifest = $reader->read($session);
             foreach ((array) ($manifest['files']['tombstones'] ?? []) as $t) {
                 $t = trim((string) $t, '/');

@@ -137,7 +137,7 @@ class BackupRunnerE2ETest extends TestCase
 
         // (h) manifest carries the required metadata.
         $this->assertSame('full', $manifest['backup_type']);
-        $this->assertSame('simplead-backup/1', $manifest['format_version']);
+        $this->assertSame('simplead-backup/2', $manifest['format_version']);
         $this->assertNotEmpty($manifest['exclusion_policy_hash']);
         $this->assertNotEmpty($manifest['scope_hash']);
         $this->assertTrue($manifest['environment']['consistent_snapshot']);
@@ -272,7 +272,7 @@ class BackupRunnerE2ETest extends TestCase
             'confirmed_parts' => [],
             'checkpoint' => [],
             'idempotency_key' => 'e2e-'.uniqid('', true),
-            'format_version' => 'simplead-backup/1',
+            'format_version' => 'simplead-backup/2',
         ]);
     }
 

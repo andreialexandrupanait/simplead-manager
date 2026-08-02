@@ -74,15 +74,25 @@ final class BackupRunner
 
     private readonly BackupSessionProgressStore $progress;
 
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $baseState = null;
+
+    private bool $baseStateResolved = false;
+
     /**
      * @param  int|null  $fileChunkThreshold  bytes per file chunk (null → plugin default 100 MiB)
      * @param  int|null  $dbSegmentBytes  uncompressed bytes per DB segment (null → client default)
      * @param  Closure(string $kind, int $index, int $confirmedCount):void|null  $faultAfterObject
      *                                                                                              Test seam: invoked AFTER an object is durably confirmed (crash injection for the resume test).
-     * @param  Closure(BackupSession):(list<array{p:string,sha256:string,s:int,m?:int}>|null)|null  $baseManifestProvider
-     *                                                                                                                     Incremental only: returns the materialised base file-state (from ChainResolver) to diff
-     *                                                                                                                     against, or null for a full/no-baseline run. Wired by the dispatcher/test so the runner stays
-     *                                                                                                                     decoupled from where base manifests live.
+     * @param  Closure(BackupSession):(array<string, array{p:string,s:int,m:int,sha256:string,key:?string}>|null)|null  $baseStateProvider
+     *                                                                                                                                      Incremental only: the materialised base file-state keyed by path (from ChainResolver),
+     *                                                                                                                                      or null for a full/no-baseline run. Wired by the dispatcher/test so the runner stays
+     *                                                                                                                                      decoupled from where base manifests live.
+     *
+     *                                                                                                                                    It carries the object KEY per path, not just the hash, because the manifest this run
+     *                                                                                                                                    writes has to name where every file lives — including the files it did not upload. The
+     *                                                                                                                                    slim [{p,sha256,s,m}] list the plugin diffs against is derived from this, so the chain is
+     *                                                                                                                                    read once and serves both.
      */
     public function __construct(
         private readonly BackupSession $session,
@@ -95,7 +105,7 @@ final class BackupRunner
         private readonly ?int $dbSegmentBytes = null,
         private readonly string $compression = 'store',
         private readonly ?Closure $faultAfterObject = null,
-        private readonly ?Closure $baseManifestProvider = null,
+        private readonly ?Closure $baseStateProvider = null,
         // Reads (upload_verifying, presence checks) go through their own client so
         // they can retry a throttle without stacking a retry layer underneath
         // HardenedMultipartUploader, which already retries each part itself.
@@ -353,15 +363,51 @@ final class BackupRunner
      *
      * @return list<array{p:string,sha256:string,s:int,m?:int}>|null
      */
-    private function resolveBaseManifest(): ?array
+    /**
+     * The materialised base file-state, keyed by path. Read once per run.
+     *
+     * @return array<string, array<string, mixed>>|null
+     */
+    private function resolveBaseState(): ?array
     {
-        if ($this->session->type !== 'incremental' || $this->baseManifestProvider === null) {
+        if ($this->session->type !== 'incremental' || $this->baseStateProvider === null) {
             return null;
         }
 
-        $base = ($this->baseManifestProvider)($this->session);
+        if ($this->baseStateResolved) {
+            return $this->baseState;
+        }
 
-        return is_array($base) ? $base : null;
+        $state = ($this->baseStateProvider)($this->session);
+        $this->baseState = is_array($state) ? $state : null;
+        $this->baseStateResolved = true;
+
+        return $this->baseState;
+    }
+
+    /**
+     * The slim [{p,sha256,s,m}] list the plugin diffs against, derived from the base state.
+     *
+     * @return list<array{p:string,sha256:string,s:int,m:int}>|null
+     */
+    private function resolveBaseManifest(): ?array
+    {
+        $state = $this->resolveBaseState();
+        if ($state === null) {
+            return null;
+        }
+
+        $out = [];
+        foreach ($state as $entry) {
+            $out[] = [
+                'p' => (string) ($entry['p'] ?? ''),
+                'sha256' => (string) ($entry['sha256'] ?? ''),
+                's' => (int) ($entry['s'] ?? 0),
+                'm' => (int) ($entry['m'] ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     private function databaseExport(): void
@@ -657,8 +703,7 @@ final class BackupRunner
         }
         usort($objects, static fn (array $a, array $b): int => [$a['kind'], $a['chunk_index']] <=> [$b['kind'], $b['chunk_index']]);
 
-        $fileEntries = array_values($cp['file_entries'] ?? []);
-        usort($fileEntries, static fn (array $a, array $b): int => (string) ($a['p'] ?? '') <=> (string) ($b['p'] ?? ''));
+        $fileEntries = $this->materialisedFileEntries($objects);
 
         return [
             'format_version' => (string) config('backup_v2.format_version', 'simplead-backup/1'),
@@ -708,6 +753,98 @@ final class BackupRunner
             'started_at' => optional($this->session->started_at)->toIso8601String(),
             'completed_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * Every file present at this restore point, each naming the object that holds it.
+     *
+     * This is what makes a restore point stand on its own. An incremental used to list only what it
+     * had just uploaded — for a site where nothing changed, literally zero entries — so restoring it
+     * meant walking back to the base full and replaying every link in between, applying tombstones in
+     * order. One unreadable manifest anywhere in that chain cost every point after it, retention could
+     * not drop a full while anything depended on it, and rebuilding a downloadable archive meant
+     * replaying the whole chain every time.
+     *
+     * So the chain is walked ONCE, here, at backup time, and the result is written down: unchanged
+     * files keep pointing at the object some earlier backup uploaded them in, changed and new files
+     * point at this run's objects, and deleted paths are simply absent. Reading one manifest is now
+     * enough to restore, to package, or to know which objects are still referenced.
+     *
+     * `tombstones` stays in the manifest for the older format's readers, but nothing here needs it any
+     * more: a deleted path is one that is not in this list.
+     *
+     * @param  list<array<string, mixed>>  $objects  this run's confirmed objects
+     * @return list<array<string, mixed>>
+     */
+    private function materialisedFileEntries(array $objects): array
+    {
+        $keyByChunk = [];
+        foreach ($objects as $object) {
+            if (($object['kind'] ?? null) === 'files') {
+                $keyByChunk[(int) ($object['chunk_index'] ?? 0)] = (string) ($object['key'] ?? '');
+            }
+        }
+
+        $cp = $this->checkpoint();
+
+        // Start from what the chain already held (empty for a full), then let this run overwrite it.
+        $state = [];
+        foreach ($this->resolveBaseState() ?? [] as $path => $entry) {
+            $key = (string) ($entry['key'] ?? '');
+            if ($key === '') {
+                // A base entry with no resolvable object cannot be honoured — refusing here is the
+                // difference between a manifest that lies and a backup that fails loudly.
+                throw new CorruptBackupException(
+                    "Base file-state names no object for {$path}; the chain cannot be materialised."
+                );
+            }
+
+            $state[(string) $path] = [
+                'p' => (string) $path,
+                's' => (int) ($entry['s'] ?? 0),
+                'm' => (int) ($entry['m'] ?? 0),
+                'sha256' => (string) ($entry['sha256'] ?? ''),
+                'key' => $key,
+                // Which backup's bytes these are. RestorePlan groups the download by it, and when a
+                // restore goes wrong it is the difference between "some file is bad" and "the file
+                // inc1 wrote is bad". Carried forward, not recomputed, so it survives the chain.
+                'src' => (int) ($entry['source_session_id'] ?? $entry['src'] ?? 0),
+            ];
+        }
+
+        foreach ((array) ($cp['incremental']['tombstones'] ?? []) as $deleted) {
+            unset($state[(string) $deleted]);
+        }
+
+        foreach (array_values($cp['file_entries'] ?? []) as $entry) {
+            $path = (string) ($entry['p'] ?? '');
+            if ($path === '') {
+                continue;
+            }
+
+            $chunkIndex = (int) ($entry['chunk_index'] ?? 0);
+            $key = $keyByChunk[$chunkIndex] ?? null;
+            if ($key === null || $key === '') {
+                // The plugin reported a file in a chunk this run never confirmed. Skipping it would
+                // produce a manifest that promises a file nobody can fetch.
+                throw new CorruptBackupException(
+                    "File {$path} is assigned to chunk {$chunkIndex}, which has no confirmed object."
+                );
+            }
+
+            $state[$path] = [
+                'p' => $path,
+                's' => (int) ($entry['s'] ?? 0),
+                'm' => (int) ($entry['m'] ?? 0),
+                'sha256' => (string) ($entry['sha256'] ?? ''),
+                'key' => $key,
+                'src' => (int) $this->session->id,
+            ];
+        }
+
+        ksort($state);
+
+        return array_values($state);
     }
 
     /**

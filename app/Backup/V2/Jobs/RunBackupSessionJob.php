@@ -168,15 +168,21 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
                 // The runner asks the provider for the chain's current file state
                 // and hands it to the plugin, which returns a plan covering only
                 // what changed plus tombstones for what was deleted. Unwired, the
-                // provider was null, resolveBaseManifest() returned null, and the
+                // provider was null, resolveBaseState() returned null, and the
                 // plugin swept every file on the host exactly as for a full.
-                baseManifestProvider: static function (BackupSession $s) use ($s3): ?array {
+                //
+                // It now also feeds the manifest this run writes: unchanged files
+                // are carried forward pointing at the objects they already live in,
+                // so the restore point stands on its own.
+                baseStateProvider: static function (BackupSession $s) use ($s3): ?array {
                     if ($s->type !== 'incremental') {
                         return null;
                     }
 
-                    return (new ChainResolver)->baseFileState(
-                        $s,
+                    $resolver = new ChainResolver;
+
+                    return $resolver->materialize(
+                        $resolver->baseChainFor($s),
                         // Each chain member's prefix comes from the member's own
                         // frozen object_prefix, never recomputed — a base written
                         // under an older layout is still found where it actually

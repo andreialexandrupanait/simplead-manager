@@ -78,8 +78,8 @@ class PortablePackageBuilder
      */
     public function build(BackupSession $session, string $destination): array
     {
-        $chain = (new ChainResolver)->resolveChain($session);
-        $state = (new ChainResolver)->materialize($chain, $this->reader);
+        // One manifest for a format/2 backup; the chain replay only for older ones.
+        $state = (new ChainResolver)->stateFor($session, $this->reader);
 
         $zip = new ZipArchive;
         if ($zip->open($destination, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {

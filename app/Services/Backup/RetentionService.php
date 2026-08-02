@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Backup\V2\Storage\WorkDir;
 use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Models\Backup;
@@ -315,7 +316,7 @@ class RetentionService
                 // delete would report success, the row would be dropped, and
                 // every object under that prefix orphaned forever, silently.
                 if ($backup->engine === BackupEngine::V2) {
-                    $this->deletePrefixRecursively($driver, $target['remote_path']);
+                    $this->deleteV2Prefix($driver, $backup, $target['remote_path']);
                 }
                 // multipart-v3: target['remote_path'] is a prefix containing many files.
                 // Enumerate + delete each. v2-zip / v3-zip: single file path + sidecar.
@@ -449,13 +450,56 @@ class RetentionService
      * so a delete interrupted halfway leaves a prefix that verification correctly
      * reports as incomplete rather than as a whole backup with missing chunks.
      */
-    private function deletePrefixRecursively(StorageDriver $driver, string $prefix): void
+    /**
+     * Delete a V2 backup's prefix, minus anything a surviving restore point still points at.
+     *
+     * Since format/2, a backup's manifest names the object holding every file at that restore point —
+     * including files it never uploaded, which still live in an older backup's prefix. Deleting a
+     * prefix wholesale was correct while every backup only ever referenced its own objects; now it
+     * would quietly gut restore points that are still listed, still verified, and still expected to
+     * work. The damage would not surface until someone actually needed one of them.
+     *
+     * So the prefix is deleted by difference: everything under it except the keys that newer,
+     * surviving backups of the same site still name. Older backups cannot reference it — a manifest
+     * only ever points backwards in time — so they are not consulted.
+     *
+     * Fails CLOSED. If a surviving backup's manifest cannot be read, nothing here is deleted: an
+     * unreadable manifest means an unknown reference set, and keeping objects that are no longer
+     * needed costs storage, while deleting objects that are still needed costs the backup.
+     */
+    private function deleteV2Prefix(StorageDriver $driver, Backup $backup, string $prefix): void
     {
+        try {
+            $referenced = $this->keysReferencedByLaterBackups($driver, $backup);
+        } catch (\Throwable $e) {
+            Log::warning(
+                "RetentionService: refusing to delete backup {$backup->id}'s objects — "
+                ."could not establish which are still referenced: {$e->getMessage()}"
+            );
+
+            return;
+        }
+
         $entries = [];
+        $kept = 0;
         foreach ($driver->listRecursive($prefix) as $file) {
-            if (! empty($file['path'])) {
-                $entries[] = (string) $file['path'];
+            $path = (string) $file['path'];
+            if ($path === '') {
+                continue;
             }
+            if (isset($referenced[$path])) {
+                $kept++;
+
+                continue;
+            }
+            $entries[] = $path;
+        }
+
+        if ($kept > 0) {
+            Log::info(
+                "RetentionService: backup {$backup->id} — keeping {$kept} object(s) under {$prefix} "
+                .'that a later restore point still references.'
+            );
         }
 
         $completeMarker = rtrim($prefix, '/').'/_COMPLETE';
@@ -468,6 +512,67 @@ class RetentionService
                 Log::warning("RetentionService: failed to delete {$remotePath}: {$e->getMessage()}");
             }
         }
+    }
+
+    /**
+     * Object keys still named by surviving V2 backups of the same site that came AFTER this one.
+     *
+     * @return array<string, true> keys as a set, for O(1) membership
+     *
+     * @throws \RuntimeException when a surviving manifest cannot be read or parsed
+     */
+    private function keysReferencedByLaterBackups(StorageDriver $driver, Backup $backup): array
+    {
+        /** @var list<Backup> $later */
+        $later = Backup::query()
+            ->where('site_id', $backup->site_id)
+            ->where('engine', BackupEngine::V2)
+            ->where('id', '>', $backup->id)
+            ->whereNotNull('file_path')
+            ->get()
+            ->all();
+
+        $referenced = [];
+
+        foreach ($later as $sibling) {
+            $manifestPath = rtrim((string) $sibling->file_path, '/').'/manifest.json';
+
+            if (! $driver->exists($manifestPath)) {
+                // A backup with no manifest never completed, or was already reclaimed. It cannot be
+                // restored, so it cannot be holding anything.
+                continue;
+            }
+
+            $local = WorkDir::temp('retention_manifest_');
+            try {
+                $driver->download($manifestPath, $local);
+                $manifest = json_decode((string) file_get_contents($local), true);
+            } finally {
+                @unlink($local);
+            }
+
+            if (! is_array($manifest)) {
+                throw new \RuntimeException("manifest of backup {$sibling->id} is unreadable");
+            }
+
+            foreach ((array) ($manifest['files']['included'] ?? []) as $entry) {
+                $key = (string) ($entry['key'] ?? '');
+                if ($key !== '') {
+                    $referenced[$key] = true;
+                }
+            }
+
+            // objects[] is normally this sibling's own uploads under its own prefix, but including it
+            // costs nothing and removes any doubt about what "still referenced" means.
+            foreach ((array) ($manifest['objects'] ?? []) as $object) {
+                $key = (string) ($object['key'] ?? '');
+                if ($key !== '') {
+                    $referenced[$key] = true;
+                }
+            }
+        }
+
+        return $referenced;
     }
 
     /**
