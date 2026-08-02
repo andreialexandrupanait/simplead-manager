@@ -554,17 +554,34 @@ final class RestoreRunner
         $this->session->heartbeat();
 
         // 1) Reverse the plugin's journal + DB swap (return to pre-apply).
+        $reversed = true;
+        $rollbackError = null;
         try {
             $this->client->restoreRollback($this->token());
         } catch (Throwable $e) {
-            $this->logger->error('plugin rollback failed', ['error' => $e->getMessage()]);
+            $reversed = false;
+            $rollbackError = $e->getMessage();
+            $this->logger->error('plugin rollback failed', ['error' => $rollbackError]);
         }
 
         // 2) Backstop: a pre-restore safety backup was taken for exactly this case. The dispatcher
         //    can restore it if the journaled rollback was insufficient (recorded for the operator).
-        $this->mergeCheckpoint(['rolled_back' => true, 'rollback_reason' => $reason]);
+        $this->mergeCheckpoint([
+            'rolled_back' => $reversed,
+            'rollback_reason' => $reason,
+            'rollback_error' => $rollbackError,
+        ]);
 
-        $this->session->transitionTo(S::Failed, 'rolled back to pre-apply');
+        // Say which of the two things happened. Claiming "rolled back to pre-apply" after the site
+        // refused the rollback is how somebody comes to believe a half-swapped site is safe, walks
+        // away, and finds out later. When the reversal did not happen, the stage says so and points
+        // at the pre-restore safety backup, which is the remaining way back.
+        $this->session->transitionTo(
+            S::Failed,
+            $reversed
+                ? 'rolled back to pre-apply'
+                : 'ROLLBACK FAILED — the site may be mid-swap; restore the pre-restore safety backup',
+        );
     }
 
     private function fail(BackupErrorCode $code, string $message): void

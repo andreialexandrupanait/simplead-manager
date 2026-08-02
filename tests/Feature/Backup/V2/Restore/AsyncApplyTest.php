@@ -129,6 +129,32 @@ class AsyncApplyTest extends TestCase
         $this->assertSame(0, $client->rollbacks);
     }
 
+    /**
+     * A rollback the site refused must not be recorded as a rollback that happened. That is how
+     * somebody comes to believe a half-swapped site is safe, walks away, and finds out later.
+     */
+    public function test_a_refused_rollback_is_not_reported_as_a_rollback(): void
+    {
+        $client = new FakeRestoreClient(
+            async: true,
+            statuses: [['state' => 'failed', 'error' => 'could not import wp_posts']],
+            rollbackThrows: new PluginClientException('restore/rollback returned HTTP 500'),
+        );
+
+        $restore = $this->runRestore($client);
+
+        $this->assertSame(R::Failed, $restore->state);
+        $this->assertFalse(
+            (bool) ($restore->checkpoint['rolled_back'] ?? true),
+            'the rollback did not happen, so nothing may claim it did',
+        );
+        $this->assertStringContainsString(
+            'ROLLBACK FAILED',
+            (string) $restore->stage,
+            'and the operator has to be able to see that from the session alone',
+        );
+    }
+
     public function test_a_host_that_cannot_detach_is_applied_synchronously(): void
     {
         // A locked-down host with no loopback and no cron. Refusing to restore it would be worse
@@ -229,6 +255,7 @@ final class FakeRestoreClient implements RestoreClient
         private readonly bool $async,
         private readonly array $statuses,
         private readonly array $kickExtra = [],
+        private readonly ?\Throwable $rollbackThrows = null,
     ) {}
 
     public function restorePrepare(string $token, array $opts): array
@@ -263,6 +290,10 @@ final class FakeRestoreClient implements RestoreClient
     public function restoreRollback(string $token): array
     {
         $this->rollbacks++;
+
+        if ($this->rollbackThrows !== null) {
+            throw $this->rollbackThrows;
+        }
 
         return ['ok' => true, 'rolled_back' => true];
     }
