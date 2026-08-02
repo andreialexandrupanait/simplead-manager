@@ -38,8 +38,19 @@ class BackupZipBuilder
 
     private bool $finished = false;
 
-    public function __construct(private readonly string $outputPath)
-    {
+    /**
+     * @param  CompressionMethod|null  $defaultCompression  STORE unless told otherwise.
+     *
+     * STORE is right when the archive is a transient staging artefact on its way to storage — the
+     * bytes are mostly already-compressed media and the CPU buys nothing. It is the wrong default
+     * when the archive is itself the product: the V2 downloadable package is kept and handed to a
+     * person, and on a real site DEFLATE took it from 448 MB to 266 MB, because a WordPress install
+     * is thousands of PHP, CSS and JS files under the media.
+     */
+    public function __construct(
+        private readonly string $outputPath,
+        ?CompressionMethod $defaultCompression = null,
+    ) {
         $stream = @fopen($outputPath, 'wb');
         if ($stream === false) {
             throw new \RuntimeException("BackupZipBuilder: cannot open output for write: {$outputPath}");
@@ -48,12 +59,17 @@ class BackupZipBuilder
         $this->zip = new ZipStream(
             outputStream: $this->outputStream,
             sendHttpHeaders: false,
-            defaultCompressionMethod: CompressionMethod::STORE, // backups are mostly already-compressed assets; no point re-compressing
+            defaultCompressionMethod: $defaultCompression ?? CompressionMethod::STORE,
             defaultEnableZeroHeader: true,
         );
     }
 
-    public function addFileFromPath(string $localPath, string $entryName): void
+    /**
+     * @param  CompressionMethod|null  $compression  overrides the archive default for this entry —
+     *                                               used to skip re-compressing an already-gzipped
+     *                                               database dump.
+     */
+    public function addFileFromPath(string $localPath, string $entryName, ?CompressionMethod $compression = null): void
     {
         $this->ensureNotFinished();
 
@@ -62,7 +78,11 @@ class BackupZipBuilder
             throw new \RuntimeException("BackupZipBuilder: cannot read {$localPath}");
         }
         try {
-            $this->zip->addFileFromStream(fileName: $entryName, stream: $stream);
+            $this->zip->addFileFromStream(
+                fileName: $entryName,
+                stream: $stream,
+                compressionMethod: $compression,
+            );
         } finally {
             fclose($stream);
         }

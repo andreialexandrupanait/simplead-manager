@@ -15,6 +15,7 @@ use App\Models\Site;
 use App\Services\Backup\BackupZipBuilder;
 use Aws\S3\S3Client;
 use RuntimeException;
+use ZipStream\CompressionMethod;
 
 /**
  * Rebuild a backup into one archive a person can actually use.
@@ -96,7 +97,11 @@ class PortablePackageBuilder
             $wantedByKey[$key][] = (string) $path;
         }
 
-        $builder = new BackupZipBuilder($destination);
+        // DEFLATE, unlike the staging archives this writer usually produces. This one is kept and
+        // handed to a person: a WordPress install is thousands of PHP, CSS and JS files under the
+        // media, and on a real site compressing them took the package from 448 MB to 266 MB. The
+        // database dump is added STORE'd below, because it is gzip already.
+        $builder = new BackupZipBuilder($destination, CompressionMethod::DEFLATE);
 
         try {
             $files = 0;
@@ -309,7 +314,7 @@ class PortablePackageBuilder
             }
             fclose($handle);
 
-            $out->addFileFromPath($combined, 'database.sql.gz');
+            $out->addFileFromPath($combined, 'database.sql.gz', CompressionMethod::STORE);
         } finally {
             if (is_resource($handle)) {
                 fclose($handle);
