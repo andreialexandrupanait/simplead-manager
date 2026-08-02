@@ -245,24 +245,69 @@ final class DeepVerifyService
     /**
      * A DB segment is valid when it is readable gzip AND its decoded body contains
      * at least one recognisable SQL statement token (head/middle/tail all do).
+     *
+     * Read in windows rather than whole. This used to file_get_contents() the
+     * segment and gzdecode() it in one go, which holds both the compressed and the
+     * fully decompressed dump in memory at once — and SQL compresses about ten to
+     * one, so a 32 MB segment from the `fast` profile decodes to roughly 350 MB,
+     * comfortably past a queue worker's limit. It never showed up because the only
+     * databases it had ever been pointed at were small enough to fit.
      */
     private function isValidSqlGzip(string $path): bool
     {
-        $raw = @file_get_contents($path);
-        if ($raw === false || $raw === '') {
+        // gzopen reads a non-gzip file straight through as plain text, so on its
+        // own it would accept a segment that is not compressed at all. gzdecode()
+        // used to reject that for us; the magic-number check keeps the same
+        // verdict now that the read is streamed.
+        if (! $this->hasGzipMagic($path)) {
             return false;
-        }
-        $decoded = @gzdecode($raw);
-        if ($decoded === false || $decoded === '') {
-            return false;
-        }
-        foreach (self::SQL_TOKENS as $token) {
-            if (str_contains($decoded, $token)) {
-                return true;
-            }
         }
 
+        $handle = @gzopen($path, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        // Longest token minus one: the most a match can straddle a window edge.
+        $overlap = max(array_map('strlen', self::SQL_TOKENS)) - 1;
+        $carry = '';
+
+        try {
+            while (! gzeof($handle)) {
+                $window = gzread($handle, 1024 * 1024);
+                if ($window === false || $window === '') {
+                    break;
+                }
+
+                $haystack = $carry.$window;
+                foreach (self::SQL_TOKENS as $token) {
+                    if (str_contains($haystack, $token)) {
+                        return true;
+                    }
+                }
+
+                $carry = substr($haystack, -$overlap);
+            }
+        } finally {
+            gzclose($handle);
+        }
+
+        // Readable gzip with no SQL token in it — including an empty one — is not
+        // a valid dump. Same verdict as before, without inflating the whole thing.
         return false;
+    }
+
+    private function hasGzipMagic(string $path): bool
+    {
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $magic = (string) fread($handle, 2);
+        fclose($handle);
+
+        return $magic === "\x1f\x8b";
     }
 
     /**
