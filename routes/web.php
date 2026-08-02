@@ -76,14 +76,18 @@ Route::get('/r/{report}/{token}', ReportViewController::class)
     ->middleware('throttle:60,1');
 
 // Plugin download via signed URL (for WP self-update — no auth required)
+// Ten per minute was right when a push meant one site. A fleet operation is one download per site
+// within a minute or two, and twenty-seven of them hit this ceiling and failed as "Too Many
+// Requests" — the migration rate-limited by its own download route. The signature is what guards
+// this endpoint; the throttle is only there so a leaked URL cannot be replayed indefinitely.
 Route::get('/download/connector-plugin/signed', ConnectorPluginDownloadController::class)
     ->name('download.connector-plugin.signed')
-    ->middleware(['signed', 'throttle:10,1']);
+    ->middleware(['signed', 'throttle:120,1']);
 
 // The V2 backup engine, same shape: the connector fetches it from here to install it.
 Route::get('/download/backup-plugin/signed', BackupPluginDownloadController::class)
     ->name('download.backup-plugin.signed')
-    ->middleware(['signed', 'throttle:10,1']);
+    ->middleware(['signed', 'throttle:120,1']);
 
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';

@@ -85,9 +85,10 @@ class InstallBackupPluginCommand extends Command
         }
 
         if ($needle !== '') {
+            // `domain` is an accessor over `url`, not a column — querying it throws on Postgres.
             $site = ctype_digit($needle)
                 ? Site::find((int) $needle)
-                : Site::query()->where('domain', $needle)->orWhere('url', 'like', '%'.$needle.'%')->first();
+                : Site::query()->where('url', 'like', '%'.$needle.'%')->first();
 
             if (! $site instanceof Site) {
                 $this->error('No such site.');
