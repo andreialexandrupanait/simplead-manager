@@ -39,6 +39,10 @@ use ZipArchive;
  * backup, not one chunk as the comment here used to claim. The first real site
  * to try it (450 MB) died on the 256 MB worker limit, and the fixture-sized lab
  * tests could never have caught it.
+ *
+ * "On disk" has to mean the storage volume, not sys_get_temp_dir(): in
+ * production /tmp is a 512 MB tmpfs, so staging there would only have swapped
+ * one memory ceiling for a slightly higher one.
  */
 class PortablePackageBuilder
 {
@@ -47,7 +51,22 @@ class PortablePackageBuilder
         private readonly string $bucket,
         private readonly ManifestReader $reader,
         private readonly BackupKeyring $keyring = new BackupKeyring,
+        private readonly ?string $workDir = null,
     ) {}
+
+    /**
+     * The directory big intermediate files are written to. Real disk, not tmpfs.
+     */
+    public function workDir(): string
+    {
+        $dir = $this->workDir ?? (string) config('backup_v2.work_dir', sys_get_temp_dir());
+
+        if (! is_dir($dir) && ! mkdir($dir, 0700, true) && ! is_dir($dir)) {
+            throw new RuntimeException("Could not create the backup work directory {$dir}.");
+        }
+
+        return $dir;
+    }
 
     /**
      * Materialise $session (replaying its chain) into a single zip at $destination.
@@ -164,7 +183,7 @@ class PortablePackageBuilder
 
     private function makeStagingDir(): string
     {
-        $dir = sys_get_temp_dir().'/portable_stage_'.bin2hex(random_bytes(8));
+        $dir = $this->workDir().'/portable_stage_'.bin2hex(random_bytes(8));
 
         // Site files and the database dump get separate subtrees: a WordPress root
         // is perfectly entitled to contain a file called database.sql.gz, and it
@@ -253,14 +272,14 @@ class PortablePackageBuilder
      */
     private function pull(string $key): string
     {
-        $path = (string) tempnam(sys_get_temp_dir(), 'portable_');
+        $path = (string) tempnam($this->workDir(), 'portable_');
         $this->s3->getObject(['Bucket' => $this->bucket, 'Key' => $key, 'SaveAs' => $path]);
 
         if (! ObjectCipher::isEncrypted($path)) {
             return $path;
         }
 
-        $plain = (string) tempnam(sys_get_temp_dir(), 'portable_plain_');
+        $plain = (string) tempnam($this->workDir(), 'portable_plain_');
         $this->keyring
             ->forKeyId((string) ObjectCipher::keyIdOf($path))
             ->decryptFile($path, $plain);

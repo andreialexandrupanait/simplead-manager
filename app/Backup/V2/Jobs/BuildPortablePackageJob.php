@@ -73,13 +73,17 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
             static fn (BackupSession $member) => SessionLayoutResolver::for($member),
         );
 
-        $local = (string) tempnam(sys_get_temp_dir(), 'portable_out_');
+        // Reads the whole chain back out; writes exactly one object at the end.
+        $builder = new PortablePackageBuilder($s3->readClient(), $s3->bucket(), $reader);
+
+        // The finished package is the size of the site. sys_get_temp_dir() is a
+        // 512 MB tmpfs in production, so it goes on the storage volume with the
+        // rest of the intermediates.
+        $local = (string) tempnam($builder->workDir(), 'portable_out_');
         $key = PortablePackageBuilder::objectKeyFor($session);
 
         try {
-            // Reads the whole chain back out; writes exactly one object at the end.
-            $result = (new PortablePackageBuilder($s3->readClient(), $s3->bucket(), $reader))
-                ->build($session, $local);
+            $result = $builder->build($session, $local);
 
             $s3->client()->putObject([
                 'Bucket' => $s3->bucket(),

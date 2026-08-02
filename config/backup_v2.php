@@ -104,6 +104,16 @@ return [
     'multipart_part_mb' => (int) env('BACKUP_ENGINE_V2_MULTIPART_PART_MB', 16),
     'presigned_ttl_seconds' => (int) env('BACKUP_ENGINE_V2_PRESIGNED_TTL', 600),
 
+    // Where work that does not fit in memory gets staged.
+    //
+    // NOT sys_get_temp_dir(). In production /tmp is a 512 MB tmpfs — RAM with a
+    // filesystem in front of it — so "stage it on disk instead" would have moved
+    // a 473 MB package from one memory limit to another, and a site of any real
+    // size would fill it. The storage volume is actual disk with hundreds of
+    // gigabytes behind it, and it is the only writable path in an otherwise
+    // read-only container.
+    'work_dir' => (string) env('BACKUP_ENGINE_V2_WORK_DIR', storage_path('app/backup-v2')),
+
     // Per-part retry policy for HardenedMultipartUploader (exponential backoff +
     // full jitter). A failed PART is retried in place; the whole object is never
     // restarted. See App\Backup\V2\Storage\HardenedMultipartUploader.

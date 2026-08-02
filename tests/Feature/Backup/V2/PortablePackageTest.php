@@ -292,17 +292,55 @@ class PortablePackageTest extends TestCase
     }
 
     /**
+     * In production /tmp is a 512 MB tmpfs — RAM with a filesystem in front of
+     * it. Staging a 473 MB package there is not "on disk"; it is the same memory
+     * ceiling one storey up, and a site of any real size overflows it. The
+     * intermediates have to land on the storage volume, which is the only
+     * writable real disk the container has.
+     */
+    public function test_intermediates_are_staged_on_the_configured_work_dir_not_tmp(): void
+    {
+        $site = Site::factory()->create();
+        $session = $this->makeBackupSession($site, ['type' => 'full', 'state' => S::Completed]);
+        $this->writeBackup($session, ['wp-config.php' => '<?php'], 'SELECT 1;');
+
+        $work = storage_path('app/backup-v2-worktest-'.bin2hex(random_bytes(4)));
+        config(['backup_v2.work_dir' => $work]);
+
+        $builder = new PortablePackageBuilder(
+            $this->minioClient(),
+            $this->bucket,
+            new S3ManifestReader($this->minioClient(), $this->bucket, fn () => $this->layout),
+        );
+
+        $this->assertSame($work, $builder->workDir());
+        $this->assertNotSame(sys_get_temp_dir(), $builder->workDir());
+        $this->assertDirectoryExists($work, 'the work directory must be created on demand');
+
+        $out = $work.'/pkg.zip';
+        $builder->build($session->fresh(), $out);
+        $this->assertFileExists($out);
+
+        // Nothing staged is left behind in the work directory either.
+        $this->assertSame([], (array) glob($work.'/portable_stage_*'));
+
+        @unlink($out);
+        @rmdir($work);
+    }
+
+    /**
      * @return list<string>
      */
     private function tempArtifacts(): array
     {
+        $dir = $this->builder()->workDir();
+
         $found = array_merge(
-            (array) glob(sys_get_temp_dir().'/portable_stage_*'),
-            (array) glob(sys_get_temp_dir().'/portable_db_*'),
-            (array) glob(sys_get_temp_dir().'/portable_plain_*'),
+            (array) glob($dir.'/portable_stage_*'),
+            (array) glob($dir.'/portable_*'),
         );
         sort($found);
 
-        return array_values(array_filter($found));
+        return array_values(array_unique(array_filter($found)));
     }
 }
