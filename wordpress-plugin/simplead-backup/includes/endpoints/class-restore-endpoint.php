@@ -111,6 +111,17 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
     public function prepare(WP_REST_Request $request): WP_REST_Response {
         @set_time_limit(120);
         $token = (string) $request->get_param('token');
+
+        // Collect what earlier restores left behind BEFORE staging a new one, so the space is
+        // reclaimed exactly when it is about to be needed.
+        //
+        // There is an hourly cron for this, and on this host it is worth nothing: DISABLE_WP_CRON
+        // is set, so WordPress only runs scheduled work when the hosting's own cron remembers to
+        // ask it to. Tying the cleanup of a client's disk to a hook we cannot see, on a schedule we
+        // do not control, is not a guarantee. This is: whatever else is true, a restore tidies up
+        // the last one before it adds to the pile.
+        $this->sweep_leftovers();
+
         try {
             $engine = $this->engine($token);
             $result = $engine->prepare(array(
@@ -357,6 +368,19 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         $safe = preg_replace('/[^A-Za-z0-9_\-]/', '', $token);
         $work_dir = SAM_Backup_Temp::session_dir('restore_' . $safe);
         return new SAM_Backup_Restore_Engine($token, rtrim(ABSPATH, '/'), $work_dir, null);
+    }
+
+    /**
+     * Best effort, and deliberately so: a restore must not be refused because tidying up failed.
+     * The sweep only takes directories older than an hour, so a restore running in parallel — which
+     * would be unusual, but is not impossible — is never touched.
+     */
+    private function sweep_leftovers(): void {
+        try {
+            SAM_Backup_Plugin::instance()->sweep_restore_leftovers();
+        } catch (\Throwable $e) {
+            SAM_Backup_Logger::warn('leftover sweep failed', array('error' => $e->getMessage()));
+        }
     }
 
     private function error(string $code, string $message, int $status): WP_REST_Response {

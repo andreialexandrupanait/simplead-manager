@@ -60,6 +60,16 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
     }
 
     public function dump(WP_REST_Request $request): WP_REST_Response {
+        // The first call of every backup, and therefore the one moment we can count on happening
+        // on every site, every night. Restore leftovers are collected here so a host whose cron
+        // never runs — DISABLE_WP_CRON is common, and the sweep is scheduled work — still gets its
+        // disk back, and gets it back before this backup starts writing to the same directory.
+        try {
+            SAM_Backup_Plugin::instance()->sweep_restore_leftovers();
+        } catch (\Throwable $e) {
+            SAM_Backup_Logger::warn('leftover sweep failed', array('error' => $e->getMessage()));
+        }
+
         $session_id = (string) ($request->get_param('session_id') ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
         $output_dir = SAM_Backup_Temp::session_dir($session_id) . '/database';
 
