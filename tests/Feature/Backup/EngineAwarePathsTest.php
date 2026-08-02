@@ -242,6 +242,93 @@ class EngineAwarePathsTest extends TestCase
     }
 
     /**
+     * A copy that is not there is a copy that does not need deleting.
+     *
+     * Backups carry a record of where they were replicated. When one of those copies had since been
+     * removed by hand, the provider answered "no such path", the delete counted as a failure, and
+     * the row was kept — permanently, because the next run asked the same question and got the same
+     * answer. Every such backup was pinned forever, which is a large part of how a terabyte
+     * accumulated: 917 backups that retention reported as deletable and could never actually delete.
+     */
+    public function test_a_replica_that_is_already_gone_does_not_block_the_delete(): void
+    {
+        $primary = $this->destination();
+        $site = Site::factory()->create();
+
+        $backup = Backup::factory()->create([
+            'site_id' => $site->id,
+            'storage_destination_id' => $primary->id,
+            'engine' => BackupEngine::V1,
+            'format' => 'v3-zip',
+            'file_path' => 'backups/site-'.$site->id.'/backup.zip',
+            'status' => BackupStatus::Completed,
+            'file_size' => 1024,
+        ]);
+
+        // A provider that behaves the way Dropbox did: refuses to delete a path it cannot find, and
+        // then confirms the path is not there.
+        $service = new class extends RetentionService
+        {
+            protected function driverFor($destination): \App\Services\Backup\Storage\StorageDriver
+            {
+                return new class implements \App\Services\Backup\Storage\StorageDriver
+                {
+                    public function delete(string $remotePath): void
+                    {
+                        throw new \RuntimeException('Dropbox API error [409]: path_lookup/not_found/');
+                    }
+
+                    public function exists(string $remotePath): bool
+                    {
+                        return false;
+                    }
+
+                    public function upload(string $localPath, string $remotePath): void {}
+
+                    public function download(string $remotePath, string $localPath): void {}
+
+                    public function size(string $remotePath): int
+                    {
+                        return 0;
+                    }
+
+                    public function list(string $directory = ''): array
+                    {
+                        return [];
+                    }
+
+                    public function listRecursive(string $directory = ''): array
+                    {
+                        return [];
+                    }
+
+                    public function uploadToAbsolutePath(string $localPath, string $absoluteRemotePath): void {}
+
+                    public function listFolders(string $absolutePath = ''): array
+                    {
+                        return [];
+                    }
+
+                    public function test(): bool
+                    {
+                        return true;
+                    }
+
+                    public function temporaryUrl(string $remotePath, int $expiresInMinutes = 60): ?string
+                    {
+                        return null;
+                    }
+                };
+            }
+        };
+
+        $service->purge($backup);
+
+        // A phantom replica must not pin the row — and with it the real copy — alive forever.
+        $this->assertDatabaseMissing('backups', ['id' => $backup->id]);
+    }
+
+    /**
      * The regression that would cost real data: a legacy row must keep taking
      * the single-file-plus-sidecar path it took before the branch existed.
      */

@@ -305,8 +305,12 @@ class RetentionService
                 continue;
             }
 
+            // Reset per destination: the "was it already gone?" probe below must never reach for
+            // the previous iteration's driver and ask the wrong provider.
+            $driver = null;
+
             try {
-                $driver = StorageFactory::make($destination);
+                $driver = $this->driverFor($destination);
 
                 // The new engine writes a tree of objects under an immutable
                 // prefix, so `file_path` names a prefix, not a file. Checked
@@ -347,6 +351,38 @@ class RetentionService
                     $primaryDeleted = true;
                 }
             } catch (\Throwable $e) {
+                // A copy that is not there is a copy that does not need deleting.
+                //
+                // The goal of this loop is "the object is gone", and a provider that answers "no
+                // such path" is telling us it already is. Treating that as a failure kept the row
+                // alive and made the whole backup undeletable — permanently, since the next run
+                // would ask the same question and get the same answer. Every backup whose Dropbox
+                // replica had been removed by hand was therefore pinned forever, which is a large
+                // part of how a terabyte accumulated.
+                //
+                // Asked by existence rather than by parsing the error, because every driver phrases
+                // it differently: S3 returns 204 for a missing key, Dropbox a 409 path_lookup.
+                $alreadyGone = false;
+                try {
+                    $alreadyGone = $driver !== null && ! $driver->exists($target['remote_path']);
+                } catch (\Throwable $probeError) {
+                    // Cannot even ask — treat the delete as failed, which is the safe direction.
+                    $alreadyGone = false;
+                }
+
+                if ($alreadyGone) {
+                    Log::info(
+                        "RetentionService: backup {$backup->id} was already absent from destination "
+                        ."{$destination->id}; counting it as reclaimed."
+                    );
+                    $remainingReplicas = $this->dropReplica($remainingReplicas, $target['destination_id']);
+                    if ($target['is_primary']) {
+                        $primaryDeleted = true;
+                    }
+
+                    continue;
+                }
+
                 Log::warning("Failed to delete backup {$backup->id} replica from destination {$destination->id}: {$e->getMessage()}");
                 $allSucceeded = false;
             }
@@ -512,6 +548,20 @@ class RetentionService
                 Log::warning("RetentionService: failed to delete {$remotePath}: {$e->getMessage()}");
             }
         }
+    }
+
+    /**
+     * The storage driver for a destination.
+     *
+     * A seam, not indirection for its own sake: the decision this class makes when a delete throws
+     * — is the object actually gone, or did the request fail? — cannot be exercised through the
+     * local driver, which silently no-ops on a missing file. The provider that surfaced the problem
+     * (Dropbox answering 409 path_lookup) needs a network to reproduce. One overridable method lets
+     * a test stand in a driver that behaves like it.
+     */
+    protected function driverFor(StorageDestination $destination): StorageDriver
+    {
+        return StorageFactory::make($destination);
     }
 
     /**
