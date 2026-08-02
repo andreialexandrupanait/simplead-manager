@@ -14,6 +14,7 @@ use App\Backup\V2\Enums\RestoreMode;
 use App\Backup\V2\Enums\RestoreSessionState as S;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
+use App\Backup\V2\Plugin\PluginClientException;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Storage\WorkDir;
 use App\Backup\V2\Support\BackupLogger;
@@ -411,9 +412,33 @@ final class RestoreRunner
             try {
                 $status = $this->client->restoreStatus($this->token());
                 $consecutiveTransportErrors = 0;
+            } catch (PluginClientException $e) {
+                // 503 is not a failure here — it is the answer.
+                //
+                // apply() puts the site into maintenance for the swap, and WordPress serves 503 for
+                // everything while that file exists, this endpoint included. So the only thing a
+                // 503 tells us is that maintenance is on, which is to say the apply is running.
+                // Reading it as lost contact is what made the first real async restore give up on a
+                // restore that was working, and then fail to roll back for the same reason.
+                if ($e->status === 503) {
+                    $consecutiveTransportErrors = 0;
+                    $this->session->heartbeat();
+                    $this->mergeCheckpoint(['apply_phase' => 'maintenance']);
+
+                    continue;
+                }
+
+                if (++$consecutiveTransportErrors >= self::MAX_POLL_FAILURES) {
+                    throw new RestoreVerifyException(
+                        'lost contact with the site while it was applying the restore: '.$e->getMessage()
+                    );
+                }
+
+                continue;
             } catch (Throwable $e) {
-                // A site mid-swap can be briefly unreachable — maintenance mode, a restarting
-                // php-fpm pool. One failed poll says nothing; several in a row say the host is gone.
+                // A site mid-swap can be briefly unreachable — a restarting php-fpm pool, a
+                // connection refused. One failed poll says nothing; several in a row say the host
+                // is gone.
                 if (++$consecutiveTransportErrors >= self::MAX_POLL_FAILURES) {
                     throw new RestoreVerifyException(
                         'lost contact with the site while it was applying the restore: '.$e->getMessage()
@@ -554,17 +579,35 @@ final class RestoreRunner
      */
     private function appliedDespiteTheError(): bool
     {
-        try {
-            $status = $this->client->restoreStatus($this->token());
-        } catch (Throwable $e) {
-            $this->logger->warning('could not ask the site what happened; assuming the restore failed', [
-                'error' => $e->getMessage(),
-            ]);
+        $status = null;
 
-            return false;
+        // Asked more than once, because the likeliest reason we cannot get an answer is that the
+        // site is still in maintenance finishing the very apply we are asking about. Giving up on
+        // the first 503 would send us to roll back a restore that is midway through succeeding.
+        for ($attempt = 0; $attempt < self::MAX_POLL_FAILURES; $attempt++) {
+            try {
+                $status = $this->client->restoreStatus($this->token());
+                break;
+            } catch (PluginClientException $e) {
+                if ($e->status !== 503) {
+                    $this->logger->warning('could not ask the site what happened; assuming the restore failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return false;
+                }
+            } catch (Throwable $e) {
+                $this->logger->warning('could not ask the site what happened; assuming the restore failed', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return false;
+            }
+
+            $this->sleepBetweenPolls();
         }
 
-        if ((string) ($status['state'] ?? '') !== 'applied') {
+        if ($status === null || (string) ($status['state'] ?? '') !== 'applied') {
             return false;
         }
 

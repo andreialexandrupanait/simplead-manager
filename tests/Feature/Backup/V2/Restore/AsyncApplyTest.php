@@ -176,6 +176,39 @@ class AsyncApplyTest extends TestCase
         $this->assertFalse((bool) $restore->checkpoint['apply']['async']);
     }
 
+    /**
+     * The second thing a real host taught us: apply() puts the site into maintenance for the swap,
+     * and WordPress serves 503 for everything while that file exists — this endpoint included. So
+     * for most of a real apply the only answer available IS a 503, and reading it as lost contact
+     * meant abandoning a restore that was working, then failing to roll back for the same reason.
+     *
+     * A 503 during an apply is not a failure. It is the site saying it is busy doing the thing.
+     */
+    public function test_maintenance_mode_is_read_as_progress_not_as_lost_contact(): void
+    {
+        $maintenance = new PluginClientException('simplead-backup restore/status returned HTTP 503', 503);
+
+        $client = new FakeRestoreClient(
+            async: true,
+            statuses: [
+                ['state' => 'applying', 'phase' => 'database'],
+                // Longer than MAX_POLL_FAILURES: under the old rule this alone ended the restore.
+                $maintenance, $maintenance, $maintenance, $maintenance,
+                $maintenance, $maintenance, $maintenance, $maintenance,
+                ['state' => 'applied', 'db' => true, 'files' => true],
+            ],
+        );
+
+        $restore = $this->runRestore($client);
+
+        $this->assertSame(
+            R::Completed,
+            $restore->state,
+            'a site in maintenance is a site mid-restore; got '.$restore->state->value.' — '.(string) $restore->error_message,
+        );
+        $this->assertSame(0, $client->rollbacks, 'and nothing was undone on account of it');
+    }
+
     public function test_a_host_that_cannot_detach_is_applied_synchronously(): void
     {
         // A locked-down host with no loopback and no cron. Refusing to restore it would be worse
