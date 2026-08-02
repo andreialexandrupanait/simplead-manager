@@ -112,6 +112,14 @@ final class SAM_Backup_Restore_Engine {
             'created_at'   => gmdate('c'),
         );
         $this->write_json($this->work_dir . '/plan.json', $plan);
+
+        // The disk as it stands BEFORE anything is pushed here. The apply's own watermark can only
+        // start once the chunks have already landed, so measured from there the temp filesystem
+        // never appears to be under pressure — its peak happened during staging, in earlier
+        // requests, each its own PHP process with no memory of the last. A stamp on disk is the
+        // only thing those requests share.
+        $this->write_json($this->work_dir . '/disk-baseline.json', $this->disk_snapshot());
+
         $this->set_status('prepared', array('mode' => $mode));
 
         return array('ok' => true, 'token' => $this->token, 'mode' => $mode);
@@ -397,16 +405,36 @@ final class SAM_Backup_Restore_Engine {
     private array $disk_watermark = array();
 
     private function disk_watch_start(): void {
+        // Prefer the reading taken at prepare time: the chunks are already staged by now, so
+        // starting the baseline here would measure the temp filesystem after its peak had passed
+        // and report that a restore cost it nothing.
+        $stamped = $this->read_json($this->work_dir . '/disk-baseline.json');
+        $stamped = is_array($stamped) ? $stamped : array();
+
         $this->disk_watermark = array();
         foreach ($this->disk_paths() as $name => $path) {
-            $free = $this->free_bytes($path);
+            $now = $this->free_bytes($path);
+            $baseline = isset($stamped[$name]) && is_int($stamped[$name]) ? $stamped[$name] : $now;
+
             $this->disk_watermark[$name] = array(
                 'path'      => $path,
-                'baseline'  => $free,
-                'min_free'  => $free,
+                'baseline'  => $baseline,
+                'min_free'  => ($now === null || $now > $baseline) ? $baseline : $now,
                 'samples'   => 1,
             );
         }
+    }
+
+    /**
+     * @return array<string,int|null>
+     */
+    private function disk_snapshot(): array {
+        $out = array();
+        foreach ($this->disk_paths() as $name => $path) {
+            $out[$name] = $this->free_bytes($path);
+        }
+
+        return $out;
     }
 
     /**

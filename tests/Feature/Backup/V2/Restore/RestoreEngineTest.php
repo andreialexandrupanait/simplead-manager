@@ -532,6 +532,45 @@ class RestoreEngineTest extends TestCase
     }
 
     /**
+     * The temp side is measured from BEFORE the chunks were pushed.
+     *
+     * Measured from the apply instead, it reads zero — the chunks landed in earlier requests, each
+     * its own PHP process, so by the time the apply starts the peak has already been and gone. The
+     * first real measurement said exactly that: "temp peak 0 MB" for a restore that had just moved
+     * 440 MB through that filesystem.
+     */
+    public function test_the_temp_baseline_predates_the_chunks(): void
+    {
+        $backup = [self::DIR.'/a.txt' => str_repeat('A', 4096)];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('baseline');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+
+        $this->assertFileExists(
+            $this->workDir.'/baseline/disk-baseline.json',
+            'the baseline is stamped at prepare time, which is the only moment all the staging '
+            .'requests have in common',
+        );
+
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $result = $engine->apply();
+
+        $stamped = json_decode((string) file_get_contents($this->workDir.'/baseline/disk-baseline.json'), true);
+
+        $this->assertSame(
+            $stamped['temp'],
+            $result['disk']['temp']['baseline_bytes'],
+            'the apply measures against what the disk looked like before anything was pushed',
+        );
+    }
+
+    /**
      * ...and it survives to be asked about afterwards. The manager reads the status after the fact —
      * that is the whole reconciliation path — so a measurement that only exists in the apply's
      * return value is one a redelivered job can never see.
